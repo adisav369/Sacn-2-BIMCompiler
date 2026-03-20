@@ -1,5 +1,6 @@
 package com.bim.designer;
 
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.api.*;
 import com.bim.designer.dao.DesignerDAO;
 import com.bim.designer.dao.StubDataSeeder;
@@ -340,7 +341,7 @@ class DesignerServerTest {
         }
 
         // Verify parent chain: every non-BUILDING bbox has a valid parent
-        var ids = bboxes.stream().map(com.bim.designer.api.DesignBBox::bomId).toList();
+        var ids = bboxes.stream().map(com.bim.backoffice.model.DesignBBox::bomId).toList();
         for (var bb : bboxes) {
             if (!"BUILDING".equals(bb.bomType())) {
                 assertNotNull(bb.parentBomId(), bb.bomId() + " must have parent");

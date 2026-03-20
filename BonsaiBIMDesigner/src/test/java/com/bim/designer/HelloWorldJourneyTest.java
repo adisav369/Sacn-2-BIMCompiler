@@ -1,5 +1,6 @@
 package com.bim.designer;
 
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.api.*;
 import com.bim.designer.dao.StubDataSeeder;
 import com.bim.designer.dao.WorkOutputDAO;
@@ -141,7 +142,7 @@ class HelloWorldJourneyTest {
                 .filter(b -> "ROOM".equals(b.bomType()))
                 .toList();
 
-        var snapResp = api.snap(rooms, "MY", 250);
+        var snapResp = api.snap(rooms, new DesignerAPI.SnapOptions("MY", 250));
         assertTrue(snapResp.success(), "Snap succeeded");
         assertEquals(rooms.size(), snapResp.bboxes().size(), "Same number of bboxes returned");
 

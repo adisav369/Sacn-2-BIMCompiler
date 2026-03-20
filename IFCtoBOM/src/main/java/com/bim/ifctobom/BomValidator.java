@@ -885,7 +885,10 @@ public class BomValidator {
                         status);
                 if (maxErr > EXACT_FIDELITY_M) exactFails++;
             } else {
-                // Approximate verb (ROUTE, FRAME) — report but do not gate
+                // Approximate verb (ROUTE, SPRAY, FRAME) — report but do not gate
+                // FRAME: fidelity check has grouping mismatch (BomValidator extraction
+                // key vs VerbDetector group may include different elements for same
+                // product/storey/discipline). LBD fix is correct in PlacementCollectorVisitor.
                 report(String.format("Fidelity: %-6s (%d instances)", verb, count),
                         String.format("max=%.4fm avg=%.4fm [approximate]", maxErr, avgErr),
                         "SKIP");

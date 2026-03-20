@@ -1,7 +1,8 @@
 # BIM Designer SRS — UX Requirements & User Journeys
 
-**Version:** 1.0 (2026-03-19)
-**Depends on:** [BIM_Designer.md](BIM_Designer.md) §17-18, [G4_SRS.md](G4_SRS.md), [DocValidate.md](DocValidate.md) §15
+**Version:** 1.1 (2026-03-20)
+**Depends on:** [BIM_Designer.md](BIM_Designer.md) §17-18, [G4_SRS.md](G4_SRS.md), [DocValidate.md](DocValidate.md) §15,
+[BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md), [ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md), [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md)
 **Scope:** Testable functional requirements, user journey acceptance criteria, UX edge cases
 
 > This document complements BIM_Designer.md (architecture/vision, 2914 lines) with SRS-grade
@@ -17,13 +18,14 @@
 | UX-F | Functional (user-facing behaviour) | 33 |
 | UX-N | Non-functional (latency, capacity) | 10 |
 | UX-E | Error/edge-case handling | 12 |
+| WF | Wireframe-First interaction (§26) | 25 |
 
 Priority: **P0** = must-have for first usable demo, **P1** = needed for daily use, **P2** = polish.
 
 ### 1.1 Foundation Guarantee — Zero Delta Compilation
 
-All three Rosetta Stone buildings compile with **+0.00% volume delta** (G2-VOLUME):
-SH (55), DX (1,099), TE (48,428). The BOM→compile→output pipeline is lossless.
+All five Rosetta Stone buildings compile with verified volume:
+SH (55), FK (82), IN (699), DX (1,099), TE (48,428). The BOM→compile→output pipeline is lossless.
 
 This is the bedrock UX guarantee: **what the user designs IS what the compiler
 produces.** No approximation, no drift, no geometry surprise. Every UX claim
@@ -1795,6 +1797,674 @@ buildings, learn an embedding where matched triples are close.
 | UX-F-31 | §25.3 | InferenceEngine (context embedding) | W-EMB-CTX-1 | SPEC ONLY |
 | UX-F-32 | §25.4 | InferenceEngine (predict next) | W-EMB-PRED-1 | SPEC ONLY |
 | UX-F-33 | §25.4 | InferenceEngine (learned patterns) | W-EMB-PRED-1 | SPEC ONLY (Stage 2) |
+
+---
+
+## 26. Wireframe-First Interaction Protocol (WF-BB)
+
+**Version:** 1.0 (2026-03-20)
+**Depends on:** §6 State Machine, §17 Design Mode, `design_bbox.py`, `bbox_visualization.py`
+
+### 26.1 Core Principle
+
+> **BBox is the interaction mode. Full geometry is the settled state.**
+
+Every item enters the viewport as a lightweight wireframe bounding box. Full LOD
+geometry loads only when the user commits. This is not a fallback — it is the
+primary working mode. Performance is built into the UX, not fought against.
+
+### 26.2 Three Rules
+
+| Rule | Trigger | Visual Result |
+|------|---------|---------------|
+| **WF-R1: First appearance** | First load of BOM, Create New, or Add Room/Storey | Item appears as wireframe bbox (GPU overlay, no Blender objects). Entire layout is bbox wireframe. Category-coloured per `DESIGN_COLORS`. |
+| **WF-R2: Edit existing** | Full geometry loaded + user toggles Design Mode + selects item | Selected item → vivid bbox overlay + full-opacity SOLID `display_type`. Unselected items → `display_type = 'BOUNDS'` (native Blender bbox, grey). |
+| **WF-R3: Add while editing** | Add Room / Add Storey while in Design Mode with existing geometry | New item appears as bbox wireframe (Rule 1). Existing committed geometry stays as BOUNDS. |
+
+Rules are consistent: bbox = "working on it", full geometry = "settled".
+
+### 26.3 Phase 1 — Initial Load (WF-R1)
+
+No full geometry exists. Everything is GPU overlay wireframe bbox.
+
+**Entry:** `createNew()` response, `addRoom()`, `addStorey()`, first building load.
+**Visual:** All bboxes rendered via `design_bbox.py`. Category colours (§17.8).
+Focused section vivid, rest grey (existing `focus_section()` behaviour).
+**Exit:** CO/Save → Compile to 3D → full geometry loads → transition to Real Mode (S0).
+**Latency contract:** Bboxes appear within 1 frame (16ms) of server response (UX-F-03).
+
+This phase is unchanged from current implementation.
+
+### 26.4 Phase 2 — Edit Existing Geometry (WF-R2)
+
+Full geometry exists in scene. User re-enters Design Mode to make changes.
+
+**Entry:** User toggles Design Mode (S0 → S1).
+**On toggle Design Mode:**
+1. Iterate all objects in Designer collections
+2. Store original `display_type` per object (for restore on exit)
+3. Set all objects to `display_type = 'BOUNDS'` (native Blender per-object bounding box, grey)
+4. No global X-ray — per-object BOUNDS gives spatial context without uniform dimming
+
+**On select/focus (S1 → S2):**
+1. Set focused object to `display_type = 'SOLID'` (full geometry visible for this item)
+2. Set `obj.show_in_front = True` (draws on top, no depth-sorting confusion)
+3. Draw vivid bbox overlay via `design_bbox.py` around the focused item only
+4. All other objects remain `display_type = 'BOUNDS'` (grey bboxes)
+
+**On deselect / change focus:**
+1. Previous focused object → back to `display_type = 'BOUNDS'`
+2. Previous `show_in_front = False`
+3. New focused object gets SOLID + show_in_front + vivid bbox
+
+**On exit Design Mode (→ S0):**
+1. Restore all objects to original `display_type` (SOLID/TEXTURED)
+2. Clear all `show_in_front` flags
+3. Disable bbox overlay (`design_bbox.disable()`)
+
+**Key advantage over global X-ray:** Selected item is full-opacity SOLID with vivid
+bbox cage. Unselected items are native Blender BOUNDS (grey boxes with spatial
+proportions). The contrast ratio is high — user instantly knows what they're editing.
+
+### 26.5 Phase 2 + Add New (WF-R3)
+
+User is in Design Mode with existing geometry (Phase 2) and adds a new item.
+
+**On Add Room / Add Storey:**
+1. New item appears as GPU overlay bbox (Phase 1 style) — vivid category colour
+2. Existing committed objects remain `display_type = 'BOUNDS'`
+3. New item is auto-focused (vivid bbox, no SOLID geometry — it has none yet)
+4. On CO → new item compiles to 3D → joins the BOUNDS pool
+
+**Visual distinction:** New items are GPU overlay wireframe (thin lines, category
+colour). Existing items are native Blender BOUNDS (thicker, grey, filled faces on
+some viewport modes). The user can tell draft from committed at a glance.
+
+### 26.6 Double-Click Inspection (Peek Mode)
+
+**Trigger:** Double-click-and-hold on a focused bbox (Phase 1 or Phase 2).
+**Visual:**
+1. Properties popup appears near the bbox showing item data from DB/BOM:
+   - Product ID, Name, Category
+   - Dimensions (W × D × H mm)
+   - Material, Construction System
+   - Compliance status (PASS/FAIL per rule)
+   - BOM line reference
+2. Orientation markers drawn on the bbox — three axis arrows at bbox centre:
+   - **Red** arrow → Right (+X)
+   - **Green** arrow → Front (+Y)
+   - **Blue** arrow → Up (+Z)
+   - Arrow length = 30% of bbox extent in that axis
+3. GPU overlay only — no Blender objects created
+
+**On release:** Popup and markers dismiss. Returns to normal focus state.
+**Latency:** Properties read from scene `_design_bboxes` JSON (already loaded).
+Orientation markers are 6 vertices (3 line segments). Total cost: zero DB queries, <1ms render.
+
+### 26.7 Implementation — Per-Object Display Control
+
+```python
+# Phase 2: Toggle Design Mode — set all to BOUNDS
+def _enter_design_phase2(context):
+    """Switch existing geometry to BOUNDS display for Design Mode."""
+    designer_objects = _get_designer_objects(context)
+    for obj in designer_objects:
+        obj["_wf_original_display"] = obj.display_type  # store for restore
+        obj.display_type = 'BOUNDS'
+        obj.display_bounds_type = 'BOX'
+        obj.color = (0.4, 0.4, 0.4, 0.3)  # grey, semi-transparent
+
+# Phase 2: Focus item — promote to SOLID
+def _focus_phase2(obj):
+    """Show focused item as full SOLID with bbox overlay."""
+    obj.display_type = 'SOLID'
+    obj.show_in_front = True
+
+# Phase 2: Unfocus — demote back to BOUNDS
+def _unfocus_phase2(obj):
+    """Return item to BOUNDS display."""
+    obj.display_type = 'BOUNDS'
+    obj.show_in_front = False
+
+# Exit Design Mode — restore all
+def _exit_design_phase2(context):
+    """Restore all objects to original display type."""
+    designer_objects = _get_designer_objects(context)
+    for obj in designer_objects:
+        original = obj.get("_wf_original_display", 'SOLID')
+        obj.display_type = original
+        obj.show_in_front = False
+        if "_wf_original_display" in obj:
+            del obj["_wf_original_display"]
+```
+
+### 26.8 State Machine Update
+
+The WF-BB protocol adds sub-states to the existing state machine (§6):
+
+```
+S0 (REAL) ──[toggle Design]──→ S1a or S1b
+
+  S1a (DESIGN_CANVAS_PHASE1)     ← no full geometry exists
+  │   All GPU overlay bboxes. Current behaviour.
+  │   ──[focus]──→ S2a (vivid bbox, rest grey)
+
+  S1b (DESIGN_CANVAS_PHASE2)     ← full geometry exists
+  │   All objects → BOUNDS. No bbox overlay yet.
+  │   ──[focus]──→ S2b (focused SOLID + bbox overlay, rest BOUNDS)
+  │   ──[Add Room]──→ new item enters as S2a bbox, rest stays BOUNDS
+
+S2b ──[double-click hold]──→ S2b-PEEK (props popup + orientation markers)
+S2b-PEEK ──[release]──→ S2b
+```
+
+Phase detection: `has_full_geometry = any(obj.type == 'MESH' for obj in designer_objects)`
+
+### 26.9 Requirements
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| WF-01 | First load always appears as wireframe bbox | `createNew()`, `addRoom()`, `addStorey()` render bboxes via GPU overlay within 16ms | P0 |
+| WF-02 | Design Mode with existing geometry uses per-object BOUNDS | All Designer objects switch to `display_type = 'BOUNDS'` on Design toggle. No global X-ray. | P0 |
+| WF-03 | Focused item shows as SOLID + vivid bbox | `display_type = 'SOLID'`, `show_in_front = True`, bbox overlay in category colour | P0 |
+| WF-04 | Unfocused items show as grey BOUNDS | `display_type = 'BOUNDS'`, `color = (0.4, 0.4, 0.4, 0.3)` | P0 |
+| WF-05 | Exit Design Mode restores original display | All objects return to stored `_wf_original_display`. Zero leftover state. | P0 |
+| WF-06 | New items in Phase 2 appear as bbox | Add Room while geometry exists → GPU overlay bbox for new item, BOUNDS for rest | P1 |
+| WF-07 | Double-click-hold shows properties popup | BOM data + orientation markers (RGB axes) appear on hold, dismiss on release | P1 |
+| WF-08 | Orientation markers use standard RGB axes | Red=+X (Right), Green=+Y (Front), Blue=+Z (Up). Length=30% of bbox extent. | P1 |
+| WF-09 | Phase detection is automatic | System detects Phase 1 vs Phase 2 by presence of mesh objects in Designer collections | P0 |
+| WF-10 | BOUNDS display is instant | Per-object `display_type` switch completes in <50ms for 100 objects | P0 |
+
+### 26.10 Witnesses
+
+| Witness | Tests | Requirement |
+|---|---|---|
+| W-WF-PHASE1 | Create New → bboxes appear, no mesh objects in scene | WF-01 |
+| W-WF-BOUNDS | Toggle Design with loaded geometry → all objects `display_type == 'BOUNDS'` | WF-02, WF-04 |
+| W-WF-FOCUS | Focus item in Phase 2 → focused is SOLID + show_in_front, rest BOUNDS | WF-03 |
+| W-WF-RESTORE | Exit Design → all objects back to original display_type, no show_in_front | WF-05 |
+| W-WF-ADD | Add Room in Phase 2 → new item is GPU bbox, existing stay BOUNDS | WF-06 |
+| W-WF-PEEK | Double-click-hold → properties popup visible + 3 axis markers drawn | WF-07, WF-08 |
+| W-WF-DETECT | Phase detection: empty scene → Phase 1, scene with mesh → Phase 2 | WF-09 |
+
+### 26.11 Traceability
+
+| Req ID | Spec Section | Python File | Witness | Status |
+|---|---|---|---|---|
+| WF-01 | §26.3 | design_bbox.py | W-WF-PHASE1 | DONE (existing) |
+| WF-02 | §26.4 | operator.py (toggle_mode) | W-WF-BOUNDS | CODE DONE — needs Blender test |
+| WF-03 | §26.4 | design_bbox.py + operator.py | W-WF-FOCUS | CODE DONE — needs Blender test |
+| WF-04 | §26.4 | operator.py | W-WF-BOUNDS | CODE DONE — needs Blender test |
+| WF-05 | §26.4 | operator.py (toggle_mode) | W-WF-RESTORE | CODE DONE — needs Blender test |
+| WF-06 | §26.5 | operator.py (add_room) | W-WF-ADD | SPEC ONLY |
+| WF-07 | §26.6 | design_bbox.py (enter_peek) | W-WF-PEEK | CODE DONE — needs Blender test |
+| WF-08 | §26.6 | design_bbox.py (_draw_phase2_overlay) | W-WF-PEEK | CODE DONE — needs Blender test |
+| WF-09 | §26.8 | operator.py (has_full_geometry) | W-WF-DETECT | CODE DONE — needs Blender test |
+| WF-10 | §26.4 | operator.py | W-WF-BOUNDS | CODE DONE — needs Blender test |
+| WF-11 | §26.12 | clash/visualization.py + design_bbox.py | W-WF-CHAIN | STUB (getChain verb) |
+| WF-12 | §26.12 | design_bbox.py | W-WF-GHOST | SPEC ONLY |
+| WF-13 | §26.12 | operator.py | W-WF-DRAG-COMMIT | STUB (moveChain verb) |
+| WF-14 | §26.12.3 | design_bbox.py + DesignerServer | W-WF-COST | STUB (costOfChange verb) |
+| WF-15 | §26.12.3 | design_bbox.py | W-WF-COST | SPEC ONLY |
+| WF-16 | §26.12.3 | DesignerServer (costOfChange verb) | W-WF-COST-CANCEL | STUB (returns zero delta) |
+| WF-17 | §26.13 | DesignerServer (moveChain → R_Request) | W-WF-CR-SPAWN | SPEC ONLY |
+| WF-18 | §26.13 | DesignerServer (discipline assignment) | W-WF-CR-IMPACT | SPEC ONLY |
+| WF-19 | §26.13 | DesignerServer (CR attachments) | W-WF-CR-FILES | SPEC ONLY |
+| WF-20 | §26.13 | DesignerServer (CR reject → revert) | W-WF-CR-REVERT | SPEC ONLY |
+| WF-21 | §26.14 | DAO layer (changelog interceptor) | W-WF-LOG | SPEC ONLY |
+| WF-22 | §26.14 | DesignerServer (undoChanges) | W-WF-UNDO | SPEC ONLY |
+| WF-23 | §26.14 | DesignerServer (conflict detection) | W-WF-CONFLICT | SPEC ONLY |
+| WF-24 | §26.14 | DesignerServer (AD_Session) | W-WF-SESSION | SPEC ONLY |
+| WF-25 | §26.14 | DesignerServer (CR↔changelog link) | W-WF-CR-LOG | SPEC ONLY |
+
+### 26.12 Clash-Aware Chain Highlight + Ghost Drag (Future: Federation Bridge)
+
+When WF-BB is used during clash resolution or conduit routing, two additional
+behaviours activate. These extend the same bbox-first principle to connected
+element chains.
+
+#### 26.12.1 Chain Highlight — "Select One, See the Whole Run"
+
+**Trigger:** User selects an item that has adjacency/connectivity data (conduit
+segment, pipe run, duct branch, cable tray span).
+
+**Behaviour:**
+1. Selected item → vivid bbox overlay (standard WF-R2 focus)
+2. Query adjacency graph for all items connected to the selected item
+   (same conduit run, same pipe circuit, same cable tray path)
+3. All connected items → tagged with a **single chain colour** (distinct from
+   both the vivid focus colour and the grey BOUNDS)
+4. Chain colour is per-run — if two conduit runs cross, each gets its own colour
+5. Unrelated items remain grey BOUNDS
+
+**Chain colour palette** (high-contrast, colourblind-safe):
+
+| Chain # | Colour | RGBA |
+|---------|--------|------|
+| 1 | Orange | (1.0, 0.6, 0.1, 0.7) |
+| 2 | Teal | (0.0, 0.7, 0.65, 0.7) |
+| 3 | Magenta | (0.85, 0.2, 0.6, 0.7) |
+| 4 | Lime | (0.5, 0.85, 0.1, 0.7) |
+| 5+ | Cycle 1-4 | — |
+
+**Data source:** Federation `elements_meta` table has `system_id` / `circuit_id`
+columns. The clash module's `clash_grouping.py` already groups elements by system.
+No new DB schema needed — just a query: `SELECT id FROM elements_meta WHERE
+system_id = (SELECT system_id FROM elements_meta WHERE guid = ?)`.
+
+**Visual result:** User clicks one conduit elbow → entire conduit run lights up
+in orange. They instantly see the full path, all connected fittings, the extent
+of what they're affecting. Everything else is grey boxes.
+
+#### 26.12.2 Ghost Drag — "Move the Box, Not the Geometry"
+
+**Trigger:** User grabs (G key or gizmo) a focused item while in Design Mode
+(Phase 2 — full geometry exists).
+
+**Behaviour:**
+1. The solid geometry of the selected item **stays in place** (frozen at original
+   position). It becomes a "ghost" — dimmed to 30% alpha or switched to WIRE
+   display, showing where the item currently is.
+2. A **drag proxy bbox** appears — a vivid wireframe box at the cursor that moves
+   freely with the user's mouse/gizmo input.
+3. Chain-highlighted items (§26.12.1) **also spawn ghost drag bboxes** that move
+   in sync, maintaining their relative offsets to the selected item. The entire
+   conduit run moves as a chain of wireframe boxes.
+4. The original solid geometry of chain items also stays frozen as ghosts.
+5. The user sees: ghost solids (where things were) + moving bbox wireframes
+   (where things will go). Zero ambiguity.
+
+**On commit (Enter / CO):**
+1. Solid geometry snaps to the new bbox positions
+2. Ghost display removed
+3. Positions written to DB
+4. Items return to BOUNDS display (Phase 2 normal)
+
+**On cancel (Esc / right-click):**
+1. Drag proxy bboxes removed
+2. Ghost display removed
+3. Everything returns to pre-drag state
+4. Zero changes to DB
+
+**Implementation approach:**
+```python
+# Ghost drag state
+_ghost_originals = {}  # obj → (original_location, original_display_type)
+_drag_bboxes = []      # list of GPU overlay bboxes tracking cursor
+
+def _enter_ghost_drag(focused_obj, chain_objects):
+    """Freeze solids, spawn drag proxy bboxes."""
+    all_objs = [focused_obj] + chain_objects
+    for obj in all_objs:
+        _ghost_originals[obj] = (obj.location.copy(), obj.display_type)
+        obj.display_type = 'WIRE'
+        obj.color = (0.5, 0.5, 0.5, 0.3)  # ghost
+
+    # Build drag proxy bboxes from object bounds
+    # These are GPU overlays that follow cursor offset
+    _build_drag_proxies(all_objs)
+
+def _commit_ghost_drag():
+    """Snap geometry to new positions, clean up ghosts."""
+    for obj, (orig_loc, orig_display) in _ghost_originals.items():
+        # obj.location already updated by proxy tracking
+        obj.display_type = 'BOUNDS'  # back to Phase 2 normal
+        obj.color = (0.4, 0.4, 0.4, 0.3)
+    _ghost_originals.clear()
+    _drag_bboxes.clear()
+```
+
+#### 26.12.3 Cost-of-Change Feedback
+
+**Trigger:** During ghost drag (§26.12.2), while the user is moving proxy bboxes
+but before commit.
+
+**Behaviour:**
+1. As the drag proxy moves, the frontend sends a lightweight `costOfChange` query
+   to the backend with the original and proposed positions of all chain items.
+2. The backend computes a **BOM diff** — what changes in the bill of materials
+   between the current and proposed positions:
+
+| Delta field | Source | Example |
+|-------------|--------|---------|
+| Material length | Path recalculation (conduit/pipe/tray meters) | "+2.3m copper pipe" |
+| Fittings | Bend detection at new routing angles | "+1 elbow, −1 straight coupling" |
+| Labour hours | Fitting count × installation rate | "+0.5 hrs" |
+| Cost | `M_Product_PO.PriceStd` × quantity deltas | "+RM 47.50" |
+| Compliance | Rule check at new positions (clearance, max run, fire zone) | "PASS" or "EXCEEDS 15m max run" |
+| Clash count | R-tree intersection at proposed positions | "0 new clashes" or "2 new clashes (ELEC×PLUMB)" |
+
+3. Results display in a **floating cost strip** near the drag proxy — same GPU
+   overlay approach as the properties popup (§26.6). Updates live as user drags.
+4. Colour-coded: green = cost-neutral or cheaper, yellow = cost increase,
+   red = compliance fail or new clash.
+
+**Backend verb:**
+```
+costOfChange(chainGuids[], originalPositions[], proposedPositions[])
+→ { materialDelta, fittingsDelta, labourHrs, costDelta, currency,
+    compliance: [{rule, status, detail}],
+    newClashes: [{guidA, guidB, discipline}] }
+```
+
+**Data source:** All from existing DB — `M_Product` pricing, `AD_Val_Rule`
+compliance rules, `elements_rtree` for clash detection. The verb is a pure
+function: no side effects, no DB writes until commit.
+
+**Latency contract:** <200ms per update. Debounced at 100ms during drag (don't
+query on every mouse pixel — batch the delta).
+
+**On commit:** The cost strip freezes, showing final delta. The `moveChain` verb
+writes new positions + updated BOM lines to DB. The cost becomes the audit trail.
+
+**On cancel:** Cost strip dismissed. Zero DB impact.
+
+**UX impact:** The user never commits blind. Every drag shows its business
+consequence. "This reroute saves RM 120" or "This move creates 2 new clashes"
+— visible before the decision is made, not discovered in a report two weeks later.
+
+#### 26.12.4 Requirements
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| WF-11 | Select connected item → entire chain highlighted in single colour | All items sharing `system_id` get chain colour. Max query time 50ms. | P1 |
+| WF-12 | Drag in Design Mode spawns ghost + proxy bbox | Original geometry freezes as WIRE/30% alpha. Proxy bbox follows cursor. Chain items move together. | P1 |
+| WF-13 | Commit drag updates positions; Cancel restores originals | Enter → snap + DB write. Esc → full restore. Zero residual state. | P1 |
+| WF-14 | Cost-of-change shown live during drag | Floating cost strip: material delta, fittings, labour, cost, compliance, clashes. Updates <200ms debounced. | P2 |
+| WF-15 | Cost strip colour-coded by severity | Green = neutral/cheaper. Yellow = cost increase. Red = compliance fail or new clash. | P2 |
+| WF-16 | Cost-of-change query is side-effect-free | `costOfChange` verb reads DB only, zero writes. Cancel = zero DB impact. | P2 |
+
+#### 26.12.5 Witnesses
+
+| Witness | Tests | Requirement |
+|---|---|---|
+| W-WF-CHAIN | Select conduit segment → all segments in same system_id highlighted in chain colour, rest grey | WF-11 |
+| W-WF-GHOST | Drag focused item → solid freezes as ghost, proxy bbox moves with cursor | WF-12 |
+| W-WF-DRAG-COMMIT | Commit drag → geometry at new position. Cancel → geometry at original position. | WF-13 |
+| W-WF-COST | Drag conduit 2m right → cost strip shows material delta + cost delta + compliance status | WF-14, WF-15 |
+| W-WF-COST-CANCEL | Drag then cancel → zero DB changes, cost strip dismissed | WF-16 |
+| W-WF-CR-SPAWN | Commit drag with cost delta → R_Request created with affected disciplines + approvers | WF-17 |
+| W-WF-CR-IMPACT | Change Request shows all affected engineers by discipline | WF-18 |
+| W-WF-CR-FILES | Change Request attaches before/after BOM diff + cost summary | WF-19 |
+
+### 26.13 Change Request — Stakeholder Impact on Commit (R_Request)
+
+**Principle:** A design change is not just geometry + cost. It affects people.
+When a move crosses discipline boundaries, the affected engineers must know.
+This maps directly to iDempiere's `R_Request` (CRM request/change order) model.
+
+#### 26.13.1 Trigger
+
+When the user commits a ghost drag (§26.12.2) and the `costOfChange` response
+indicates:
+- **Cross-discipline impact** — the moved chain affects items owned by other
+  disciplines (e.g., moving ACMV duct crosses ELEC cable tray)
+- **Cost delta exceeds threshold** — configurable per project (e.g., >RM 500)
+- **New clashes introduced** — any non-zero clash count
+- **Compliance failure** — any rule violation at new position
+
+A Change Request is automatically spawned.
+
+#### 26.13.2 Change Request Content
+
+The CR maps to iDempiere `R_Request` with BIM-specific fields:
+
+| R_Request field | BIM source | Example |
+|----------------|-----------|---------|
+| `DocumentNo` | Auto-generated | CR-2026-0047 |
+| `R_RequestType_ID` | "Design Change" | — |
+| `Summary` | Auto-generated from verb | "ACMV conduit run C-14 relocated +2.3m east" |
+| `Priority` | From compliance status | Red=Urgent, Yellow=Normal, Green=Low |
+| `SalesRep_ID` | Initiating user (designer) | — |
+| `AD_User_ID` (assigned) | Discipline lead of most-affected discipline | — |
+
+**Attached data (R_RequestUpdate / document attachments):**
+
+| Attachment | Content |
+|-----------|---------|
+| `bom_diff.json` | Before/after BOM line changes — added, removed, modified items |
+| `cost_summary.json` | Material, fittings, labour, total cost delta |
+| `affected_disciplines.json` | List of disciplines touched + element count per discipline |
+| `clash_report.json` | New clashes introduced (if any) — guidA, guidB, type |
+| `position_delta.json` | Original and proposed coordinates for all moved items |
+
+#### 26.13.3 Affected Stakeholder Resolution
+
+**"Who is affected?"** — resolved from the discipline ownership chain:
+
+```
+1. Query moved items → get discipline per item from elements_meta
+2. Query new clashes → get disciplines of clashing items
+3. Union all affected disciplines
+4. Look up discipline lead (AD_User) from project assignment table
+5. Each affected engineer gets notified via R_Request
+```
+
+| Stakeholder role | How identified | What they see |
+|-----------------|----------------|---------------|
+| **Initiator** | Current user | Full CR with "I did this" |
+| **Discipline lead (affected)** | `project_discipline_assignment.AD_User_ID` | "Your {ELEC} elements affected by ACMV change" |
+| **Project manager** | `C_Project.SalesRep_ID` | CR summary + cost delta |
+| **Approver** | Discipline lead with highest cost impact | CR assigned for approval |
+
+#### 26.13.4 Workflow — DocAction Lifecycle
+
+The CR follows the same `processIt()` lifecycle as all iDempiere documents
+(see `DocAction_SRS.md`):
+
+```
+DR (Draft) ──→ IP (In Progress) ──→ CO (Complete) ──→ AP (Approved)
+     │                                                      │
+     │         User commits drag                    Engineer reviews
+     └── CR auto-created ──→ Notification sent ──→ Approve/Reject
+```
+
+**On Approve (AP):** The position change is finalised. BOM updated. Geometry
+committed to master.
+
+**On Reject:** The position reverts to pre-drag state. The initiator is notified
+with the rejection reason. The ghost drag effectively becomes a cancel — but
+with an audit trail of why.
+
+**On Void:** CR withdrawn by initiator before review. Positions revert.
+
+#### 26.13.5 UX in Blender
+
+The CR is spawned **server-side** by the `moveChain` verb. The Python frontend:
+
+1. Calls `moveChain(guids, positions)` on commit
+2. Server returns `{ success: true, changeRequestId: "CR-2026-0047",
+   affectedDisciplines: ["ELEC", "PLUMB"], approver: "john.doe" }`
+3. Blender shows a non-modal notification:
+   **"CR-2026-0047 created — ELEC, PLUMB affected — assigned to john.doe"**
+4. The committed items show a small badge/icon in their BOUNDS display
+   indicating "pending approval" (optional, P2)
+
+The designer keeps working. They don't wait for approval. If the CR is rejected,
+the next time they open the project, the revert is visible.
+
+#### 26.13.6 Backend Verb
+
+```
+moveChain(chainGuids[], originalPositions[], proposedPositions[])
+→ {
+    success: boolean,
+    updatedPositions: [...],
+    costDelta: { material, fittings, labour, total, currency },
+    compliance: [{ rule, status, detail }],
+    newClashes: [{ guidA, guidB, discipline }],
+    // Change Request (if cross-discipline or threshold exceeded)
+    changeRequest: {
+      id: "CR-2026-0047",
+      affectedDisciplines: ["ELEC", "PLUMB"],
+      affectedEngineers: [{ name, discipline, email }],
+      approver: { name, discipline },
+      bomDiff: { added: [...], removed: [...], modified: [...] },
+      costSummary: { before, after, delta, currency }
+    }
+  }
+```
+
+#### 26.13.7 Requirements
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| WF-17 | Cross-discipline drag commit spawns R_Request | `moveChain` returns `changeRequest` with CR ID when affected disciplines > 1 or cost > threshold | P2 |
+| WF-18 | CR identifies all affected engineers by discipline | `affectedEngineers` list populated from `project_discipline_assignment` | P2 |
+| WF-19 | CR attaches BOM diff, cost summary, clash report | All attachment JSONs present in R_Request. Retrievable via `getChangeRequest(crId)`. | P2 |
+| WF-20 | CR rejection reverts positions | On AP=Reject, moved items return to original positions. Initiator notified. | P2 |
+
+#### 26.13.8 Witnesses
+
+| Witness | Tests | Requirement |
+|---|---|---|
+| W-WF-CR-SPAWN | Move ACMV chain across ELEC tray → R_Request created, DocumentNo returned | WF-17 |
+| W-WF-CR-IMPACT | CR contains affectedDisciplines=["ELEC"] + engineer name from project assignment | WF-18 |
+| W-WF-CR-FILES | CR attachments contain bom_diff with added/removed lines + cost_summary with delta | WF-19 |
+| W-WF-CR-REVERT | Reject CR → moved items back at original positions, BOM restored | WF-20 |
+
+### 26.14 ChangeLog — Audit Trail + Multi-User Undo (AD_ChangeLog)
+
+**Principle:** Every change to every field by every user is recorded. This is
+iDempiere's `AD_ChangeLog` reimagined for BIM — not just "what changed" but
+"who changed what, when, from what value, to what value, and why."
+
+#### 26.14.1 Schema
+
+Maps directly to iDempiere's `AD_ChangeLog` table pattern:
+
+```sql
+CREATE TABLE bim_changelog (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- Who
+    ad_user_id      INTEGER NOT NULL,       -- logged-in user
+    ad_session_id   INTEGER NOT NULL,       -- Blender session
+    -- When
+    created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    -- What
+    table_name      TEXT NOT NULL,           -- 'element_placement', 'x_m_bom', etc.
+    record_id       TEXT NOT NULL,           -- PK of changed record (guid or bomId)
+    column_name     TEXT NOT NULL,           -- 'pos_x', 'quantity', 'M_Product_ID'
+    -- Delta
+    old_value       TEXT,                    -- serialised previous value
+    new_value       TEXT,                    -- serialised new value
+    -- Context
+    change_type     TEXT NOT NULL,           -- 'INSERT', 'UPDATE', 'DELETE'
+    r_request_id    TEXT,                    -- link to CR if change was part of one
+    undo_sequence   INTEGER,                -- groups atomic changes (one drag = one seq)
+    description     TEXT                     -- human-readable: "Moved conduit C-14 +2.3m east"
+);
+
+CREATE INDEX idx_changelog_user ON bim_changelog(ad_user_id, created);
+CREATE INDEX idx_changelog_record ON bim_changelog(table_name, record_id);
+CREATE INDEX idx_changelog_undo ON bim_changelog(undo_sequence);
+CREATE INDEX idx_changelog_session ON bim_changelog(ad_session_id);
+```
+
+#### 26.14.2 What Gets Logged
+
+Every mutation through the Designer server is logged. The Java DAO layer
+intercepts writes and records old→new values automatically.
+
+| Operation | table_name | Columns logged | Example |
+|-----------|-----------|---------------|---------|
+| Ghost drag commit | `element_placement` | `pos_x, pos_y, pos_z` | old: (5.0, 3.0, 0.0) → new: (7.3, 3.0, 0.0) |
+| Room resize | `x_m_bom` | `width_mm, depth_mm` | old: 3000 → new: 3500 |
+| Product swap | `x_m_bom_line` | `M_Product_ID` | old: DOOR-001 → new: DOOR-002 |
+| Add room | `x_m_bom` | (all columns) | change_type=INSERT |
+| Remove room | `x_m_bom` | (all columns) | change_type=DELETE, old values preserved |
+| Jurisdiction switch | `x_m_bom` | `jurisdiction` | old: "MY" → new: "SG" |
+| Save/CO | `work_output` | `DocStatus` | old: "DR" → new: "CO" |
+| Chain move | `element_placement` | `pos_x, pos_y, pos_z` × N items | Same undo_sequence for all |
+
+#### 26.14.3 Undo Levels
+
+Changes are grouped by `undo_sequence` — all mutations from a single user action
+share the same sequence number. This enables multi-field, multi-record undo as
+one atomic operation.
+
+```
+undo(ad_user_id, undo_sequence)
+→ For each changelog row with this sequence (in reverse order):
+    UPDATE {table_name} SET {column_name} = {old_value} WHERE id = {record_id}
+    INSERT new changelog row recording the undo itself
+```
+
+**Undo is itself logged.** An undo creates new changelog entries (change_type =
+'UNDO'), so the undo can itself be undone (redo). The chain is infinite and
+fully auditable.
+
+**Multi-user safety:** A user can only undo their own changes. If user A moves
+a conduit and user B later modifies the same conduit, user A's undo is blocked
+with: "Conflict: {column} modified by {user B} at {timestamp}. Resolve manually
+or create CR."
+
+#### 26.14.4 Multi-User Login (AD_User / AD_Session)
+
+Each Blender instance authenticates against the project's user table:
+
+| Table | Purpose |
+|-------|---------|
+| `AD_User` | Users: name, email, discipline, role |
+| `AD_Session` | Active sessions: user, login time, Blender instance ID |
+| `project_discipline_assignment` | User → discipline → project mapping |
+
+**Login flow:**
+1. BIM Designer connect (A.1) includes `user_id` + `session_token`
+2. Server creates `AD_Session` row
+3. All subsequent verbs carry `ad_session_id` → logged in `bim_changelog`
+4. Panel header shows: "Connected as {user.name} ({discipline})"
+
+**Concurrent edit visibility:** When two users are editing the same building,
+each sees the other's changes via the changelog:
+- Sync timer (200ms, already in `design_bbox.py`) polls for new changelog entries
+  from other sessions
+- Other user's changes appear as a notification: "{user} moved {item}"
+- Conflicting edits (same item, same field) show a warning badge
+
+#### 26.14.5 Audit Trail Query
+
+The changelog enables queries that no BIM tool currently supports:
+
+| Query | SQL pattern | Use case |
+|-------|------------|----------|
+| "Who moved this conduit?" | `WHERE record_id = ? ORDER BY created` | Accountability |
+| "What did John change today?" | `WHERE ad_user_id = ? AND created > date('now')` | Daily review |
+| "Show all changes in CR-47" | `WHERE r_request_id = 'CR-2026-0047'` | CR review |
+| "Undo John's last 3 actions" | `WHERE ad_user_id = ? ORDER BY undo_sequence DESC LIMIT 3` | Supervisor override |
+| "What changed since last AP?" | `WHERE created > (SELECT created FROM bim_changelog WHERE description LIKE '%DocStatus%CO→AP%')` | Approval gate |
+| "Cost history of this room" | `WHERE record_id = ? AND column_name IN ('width_mm','depth_mm','M_Product_ID')` | Cost tracking |
+
+#### 26.14.6 Backend Verb
+
+```
+getChangeLog(filters: { recordId?, userId?, sinceTimestamp?, requestId?, limit? })
+→ { entries: [{ id, user, timestamp, table, record, column,
+                 oldValue, newValue, changeType, undoSeq, description }] }
+
+undoChanges(userId, undoSequence)
+→ { success, undoneCount, conflicts: [{ column, modifiedBy, at }] }
+```
+
+#### 26.14.7 Requirements
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|----|------------|-------------------|----------|
+| WF-21 | Every mutation logged to bim_changelog | INSERT/UPDATE/DELETE on Designer tables → changelog row with old/new values, user, timestamp | P1 |
+| WF-22 | Atomic undo by undo_sequence | `undoChanges(user, seq)` reverts all rows in sequence, logs the undo | P1 |
+| WF-23 | Multi-user conflict detection | Undo blocked if another user modified the same record+column after the original change | P1 |
+| WF-24 | Session-based user identity | Each Blender session has ad_session_id, all verbs carry it, changelog links to user | P1 |
+| WF-25 | Changelog linked to Change Request | Mutations from a CR carry r_request_id. CR rejection undoes all linked changes. | P2 |
+
+#### 26.14.8 Witnesses
+
+| Witness | Tests | Requirement |
+|---|---|---|
+| W-WF-LOG | Move item → changelog row with old/new pos_x, correct ad_user_id | WF-21 |
+| W-WF-UNDO | Undo sequence → item returns to original position, undo logged as new entry | WF-22 |
+| W-WF-CONFLICT | User A moves item, User B moves same item, User A undo → conflict error with B's details | WF-23 |
+| W-WF-SESSION | Connect with user credentials → ad_session_id in all subsequent changelog entries | WF-24 |
+| W-WF-CR-LOG | CR rejection → all changelog entries with that r_request_id undone | WF-25 |
 
 ---
 

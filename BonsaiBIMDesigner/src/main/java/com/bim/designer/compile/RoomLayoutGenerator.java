@@ -1,7 +1,7 @@
 package com.bim.designer.compile;
 
 import com.bim.designer.api.CreateNewRequest;
-import com.bim.designer.api.DesignBBox;
+import com.bim.backoffice.model.DesignBBox;
 
 import java.util.ArrayList;
 import java.util.List;

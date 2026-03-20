@@ -1,6 +1,6 @@
 package com.bim.designer.protocol;
 
-import com.bim.designer.api.DesignBBox;
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.compile.ChangeSet.ChangeType;
 import com.google.gson.*;
@@ -99,6 +99,11 @@ public class JsonProtocol {
 
         public JsonElement field(String name) {
             return obj.get(name);
+        }
+
+        /** Return the raw JsonObject for complex request parsing. */
+        public JsonObject raw() {
+            return obj;
         }
     }
 }

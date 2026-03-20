@@ -1,5 +1,6 @@
 package com.bim.designer;
 
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.api.*;
 import com.bim.designer.api.DesignerAPI.*;
 import com.bim.designer.dao.DesignerDAO;

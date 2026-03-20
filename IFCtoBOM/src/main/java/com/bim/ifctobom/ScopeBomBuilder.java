@@ -140,16 +140,10 @@ public class ScopeBomBuilder {
                 // Insert leaf children with LBD offset relative to SET BOM LBD (§4 tack convention)
                 // setMinX/Y/Z = SET AABB minimum corner (computed above at lines 116-121)
                 // NOT scope box origin (ox,oy,oz) — that is a containment filter only (§4.1)
-                int seq = 10;
-                for (ExtractionElement e : assigned) {
-                    double dx = e.minX() - minX;
-                    double dy = e.minY() - minY;
-                    double dz = e.minZ() - minZ;
-
-                    insertLeafLine(bomConn, space.templateBom(), e, seq, dx, dy, dz);
-                    seq += 10;
-                    totalSetLines++;
-                }
+                // FACTORIZE-v2: verb-compressed LEAF writes via VerbFactorizer.
+                VerbFactorizer.FactorResult vfr = VerbFactorizer.factorize(
+                        bomConn, space.templateBom(), assigned, minX, minY, minZ, 10);
+                totalSetLines += vfr.linesWritten();
             }
 
             excludeByStorey.put(storeyName, excludedRefs);

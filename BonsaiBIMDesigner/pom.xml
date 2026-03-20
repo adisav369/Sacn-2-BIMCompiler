@@ -28,6 +28,10 @@
         </dependency>
         <dependency>
             <groupId>com.bim</groupId>
+            <artifactId>bim-backoffice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.bim</groupId>
             <artifactId>orm-sandbox</artifactId>
         </dependency>
         <dependency>

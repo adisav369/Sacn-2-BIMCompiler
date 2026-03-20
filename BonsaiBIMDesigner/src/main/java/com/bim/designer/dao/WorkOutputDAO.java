@@ -1,6 +1,6 @@
 package com.bim.designer.dao;
 
-import com.bim.designer.api.DesignBBox;
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.api.DesignerAPI.VariantInfo;
 
 import com.bim.orm.BIMLogger;

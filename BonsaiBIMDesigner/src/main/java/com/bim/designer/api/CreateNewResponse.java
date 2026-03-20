@@ -1,5 +1,6 @@
 package com.bim.designer.api;
 
+import com.bim.backoffice.model.DesignBBox;
 import java.util.List;
 
 /**

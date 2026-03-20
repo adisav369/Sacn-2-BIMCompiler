@@ -1,5 +1,6 @@
 package com.bim.designer;
 
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.api.*;
 import com.bim.designer.dao.WorkOutputDAO;
 import com.bim.designer.validation.PlacementValidator;
@@ -263,7 +264,7 @@ class WorkOutputDAOTest {
                 "IfcSpace", "GF", "FLOOR_GF",
                 0, 0, 0, 3100, 3100, 3000);
 
-        var resp = api.snap(List.of(bbox), "MY", 250);
+        var resp = api.snap(List.of(bbox), new DesignerAPI.SnapOptions("MY", 250));
         assertTrue(resp.success());
         assertEquals(1, resp.bboxes().size());
 

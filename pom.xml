@@ -21,6 +21,7 @@
         <module>TopologyMaker</module>
         <module>BIM_COBOL</module>
         <module>IFCtoBOM</module>
+        <module>BIMBackOffice</module>
         <module>BonsaiBIMDesigner</module>
     </modules>
 
@@ -62,6 +63,11 @@
             <dependency>
                 <groupId>com.bim</groupId>
                 <artifactId>ifc-to-bom</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bim</groupId>
+                <artifactId>bim-backoffice</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

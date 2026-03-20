@@ -60,7 +60,7 @@ public class BuildingRegistryTest {
     }
 
     /** Active gate scope — RE + ST for SH/DX assertions enforced. Others skip. */
-    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "ST_SH", "ST_DX", "CO_TE", "IN_BR", "RE_FK");
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "ST_SH", "ST_DX", "CO_TE", "IN_BR", "RE_FK", "RE_IN");
 
     private void runPipeline(BuildingEntry entry) throws Exception {
         assumeTrue(GATE_SCOPE.contains(entry.docTypeId()),

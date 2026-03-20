@@ -304,17 +304,30 @@ public class VerbDetector {
         // actual centroids within exact threshold. Without this, elements that
         // happen to form a complete grid (xLines*yLines==count) but have centroids
         // offset from their nearest gridline by >5mm cause fidelity gate failures.
+        // Also check Z-uniformity: FRAME encodes one Z for all elements, so reject
+        // groups where elements span different Z levels (fall through to CLUSTER).
+        double minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
         for (ExtractionElement e : elements) {
             double nearestX = xLines.get(findNearest(xLines, e.centroidX()));
             double nearestY = yLines.get(findNearest(yLines, e.centroidY()));
             double errX = Math.abs(e.centroidX() - nearestX);
             double errY = Math.abs(e.centroidY() - nearestY);
             if (errX > TOL || errY > TOL) return null;  // too imprecise for exact verb
+            minZ = Math.min(minZ, e.minZ());
+            maxZ = Math.max(maxZ, e.minZ());
         }
+        if (maxZ - minZ > TOL) return null;  // Z spread too large — fall through to CLUSTER
 
-        double[] xArr = xLines.stream().mapToDouble(v -> v - floorMinX).toArray();
-        double[] yArr = yLines.stream().mapToDouble(v -> v - floorMinY).toArray();
-        double originZ = elements.get(0).centroidZ() - floorMinZ;
+        // Implementing BBC.md §4 — Witness: W-FRAME-FIDELITY
+        // Gridlines are clustered from centroids. Convert to LBD offsets by subtracting
+        // half the element dimensions (all elements in a FRAME group share the same product).
+        // Without this, PlacementCollectorVisitor adds halfW/halfD again (§4 tack convention
+        // assumes LBD offsets), double-counting and shifting every element by +halfW/+halfD.
+        double halfW = (elements.get(0).maxX() - elements.get(0).minX()) / 2.0;
+        double halfD = (elements.get(0).maxY() - elements.get(0).minY()) / 2.0;
+        double[] xArr = xLines.stream().mapToDouble(v -> v - floorMinX - halfW).toArray();
+        double[] yArr = yLines.stream().mapToDouble(v -> v - floorMinY - halfD).toArray();
+        double originZ = elements.get(0).minZ() - floorMinZ;  // LBD Z, not centroid Z
 
         return new FrameResult(xArr, yArr, 0, 0, originZ);
     }
@@ -503,8 +516,8 @@ public class VerbDetector {
                 expPositions[i][2] = gMinZ + dz + h / 2;
             }
         } else {
-            // TILE/ROUTE/FRAME: formula-based positions are origin-relative centroids
-            // For these, expansion produces centroid positions directly
+            // TILE/ROUTE/FRAME: formula-based positions are origin-relative LBD offsets
+            // Expansion produces LBD positions; add half-extents to recover centroids
             // Use same expansion logic as PlacementCollectorVisitor
             double originDx = gMinX - floorMinX;
             double originDy = gMinY - floorMinY;
@@ -589,7 +602,7 @@ public class VerbDetector {
             int idx = 0;
             for (String xs : xStrs) {
                 for (String ys : yStrs) {
-                    // FRAME positions are floor-relative (already subtracted floorMin)
+                    // FRAME positions are floor-relative LBD offsets; +halfW recovers centroid
                     pos[idx][0] = floorMinX + Double.parseDouble(xs) + halfW;
                     pos[idx][1] = floorMinY + Double.parseDouble(ys) + halfD;
                     pos[idx][2] = floorMinZ + originDz + halfH;

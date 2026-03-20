@@ -1,6 +1,6 @@
 package com.bim.designer;
 
-import com.bim.designer.api.DesignBBox;
+import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.api.DesignerAPI.SnapOptions;
 import com.bim.designer.api.DesignerAPI.SnapResponse;
 import com.bim.designer.api.DesignerAPI.Adjustment;

@@ -1,11 +1,16 @@
 # BIM Designer — User Guide
 
-**Version:** 0.4 (2026-03-19, session 27)
+**Version:** 0.8 (2026-03-20, session 39d)
 **Status:** Draft — updated each session as features are built and tested.
 
 > This guide covers the BIM Designer addon for Blender (Bonsai), the Java
 > DesignerServer, and the validation engine. It is written for developers
 > and testers setting up the system for the first time.
+>
+> **Two-tier architecture:** The Bonsai addon is the **single-user, single-project**
+> design client. The [BIM Back Office](BackOfficeUserGuide.md) is the **multi-user,
+> multi-project** ERP layer (reports, print config, portfolio). Both share the same
+> databases. The Bonsai client calls back-office APIs via the BlenderBridge.
 
 ---
 
@@ -19,8 +24,12 @@ BIM Designer is Item A of the IfcOpenShell Federation Suite. It adds
 - **Design Mode** — edit draft bboxes with snap, save/recall, and ambient compliance
 - **BOM Chooser** — search-first product browser with container fit check
 - **Validate** placements against building codes (UBBL, IRC, NDSS, NCC, BCA)
+- **Assembly Builder** — layer-by-layer wall/floor construction with U-value calculation
+- **Infrastructure** — terrain-following placement for roads, bridges, railways
+- **Reports** — 4D schedule, 5D cost, 6D carbon, 7D facility management (via Back Office)
 
 The addon is a thin Python layer. All logic lives in the Java server.
+**5 Rosetta Stone buildings** prove the pipeline: SH (55), FK (82), IN (699), DX (1099), TE (48,428 elements).
 
 ```
 User clicks button in Blender
@@ -58,40 +67,44 @@ User clicks button in Blender
 │  Java DesignerServer                  │                  │
 │  ┌────────────────────────────────────┘                  │
 │  │                                                      │
-│  │  compile → CompilationPipeline → output.db           │
-│  │  createNew → BOM generation → validate → compile     │
-│  │  snap → PlacementValidator + grid alignment          │
-│  │  save/recall → work_output.db persistence            │
-│  │  browseItems → product search + container fit check  │
-│  │  verb → VerbRegistry dispatch                        │
-│  │  listBuildings → BuildingRegistry query              │
+│  │  34 wire actions (compile, createNew, snap, save,    │
+│  │  browseItems, placeItem, addRoom, carbonFootprint,   │
+│  │  costBreakdown, constructionSchedule, portfolio...)   │
 │  │                                                      │
-│  │  PlacementValidator ←── validation.db (32 rules)     │
+│  │  PlacementValidator ←── disc_validation.db (63 rules)│
 │  │  BomValidator ←── 9 checks + verb fidelity           │
-│  └──────────────────────────────────────────────────────┘
+│  │  AssemblyBuilder ←── thermal U-value calculation     │
+│  └─────────────────────────┬────────────────────────────┘
+│                             │ depends on                  │
+│  ┌──────────────────────────▼───────────────────────────┐ │
+│  │  BIMBackOffice (multi-user, multi-project)           │ │
+│  │  ReportDAO (4D-7D) │ PrintConfig │ PortfolioDAO     │ │
+│  │  ChangelogDAO      │ CostDAO     │ SustainabilityDAO│ │
+│  └──────────────────────────────────────────────────────┘ │
 │                                                          │
 │  Databases:                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │ component_   │ │ {PREFIX}_    │ │ validation.db    │ │
-│  │ library.db   │ │ BOM.db       │ │ (rules)          │ │
-│  │ (products)   │ │ (recipes)    │ │                  │ │
+│  │ component_   │ │ {PREFIX}_    │ │ disc_validation  │ │
+│  │ library.db   │ │ BOM.db       │ │ .db (63 rules)   │ │
+│  │ (800 prods)  │ │ (recipes)    │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 │  ┌──────────────┐                                       │
-│  │ work_output  │  ← Design Mode persistence            │
-│  │ .db          │    (C_Order, C_OrderLine, W_Variant)   │
+│  │ work_output  │  ← Design Mode + audit trail          │
+│  │ .db          │    (C_Order, W_Variant, bim_changelog) │
 │  └──────────────┘                                       │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Five Databases
+### Six Databases
 
 | DB | What | Size |
 |----|------|------|
-| `component_library.db` | Product catalog (608 products, meshes, materials, dimensions) | ~500 MB |
-| `{PREFIX}_BOM.db` | Assembly recipes (BOM hierarchy, placement offsets) | ~10 MB |
-| `validation.db` | Building code rules (UBBL, IRC, NDSS, NCC, BCA) | ~50 KB |
-| `output.db` | Compiled result (element positions, R-tree index) | varies |
-| `work_output.db` | Design Mode persistence (C_Order, C_OrderLine, W_Variant) | per-building |
+| `component_library.db` | Product catalog (800 products, meshes, materials, thermal properties) | ~500 MB |
+| `{PREFIX}_BOM.db` | Assembly recipes per building (BOM hierarchy, tack offsets, verb patterns) | ~10 MB |
+| `disc_validation.db` | Validation rules (63 rules: residential + infrastructure bridge/road/rail) | ~100 KB |
+| `output_*.db` | Compiled result (elements, R-tree index, QTO, spatial structure) | varies |
+| `work_output.db` | Design Mode persistence (C_Order, C_OrderLine, W_Variant, bim_changelog) | per-building |
+| `AD_PrintFormat` | Print configurator (in work_output.db — which output tables to include) | per-building |
 
 ---
 
@@ -109,8 +122,9 @@ User clicks button in Blender
 
 ```bash
 cd /home/red1/bim-compiler
-mvn compile -q                    # Compile all modules
-mvn test -pl BonsaiBIMDesigner    # Run tests (87 tests, all GREEN)
+mvn compile -q                    # Compile all modules (9 modules)
+mvn test -pl BIMBackOffice        # Back Office tests (5 tests)
+mvn test -pl BonsaiBIMDesigner    # Designer tests (248 tests)
 ```
 
 ### 3.3 Install the Blender Addon
@@ -326,7 +340,7 @@ Response includes `items` (with `fitStatus`), `totalCount`, and `categories`
 
 ## 6. Validation Rules
 
-The system validates placements against building codes from `validation.db`.
+The system validates placements against building codes from `disc_validation.db`.
 Rules are **data, not code** — adding a jurisdiction = SQL INSERTs.
 
 ### 6.1 Supported Jurisdictions
@@ -338,7 +352,12 @@ Rules are **data, not code** — adding a jurisdiction = SQL INSERTs.
 | UK | United Kingdom | NDSS 2015 / Building Regs | 4 |
 | AU | Australia | NCC 2022 | 4 |
 | SG | Singapore | BCA Approved Document | 3 |
-| INTL | International | NFPA 13 (sprinkler spacing) | 5 |
+| INTL | International | NFPA 13 (sprinkler spacing) | 6 |
+| Infra_Bridge | Infrastructure | Bridge structural rules | 13 |
+| Infra_Road | Infrastructure | Road layer stacking | 10 |
+| Infra_Rail | Infrastructure | Rail geometry + sleeper spacing | 7 |
+
+**Total: 63 rules** (33 residential + 30 infrastructure).
 
 ### 6.2 Malaysian Rules (UBBL 2012)
 
@@ -454,25 +473,38 @@ Total: 25 BOM lines, 19 leaf elements
 
 Location: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/`
 
-### 8.2 Java Server Files
+### 8.2 Java Server Files (BonsaiBIMDesigner)
 
 | File | What |
 |------|------|
-| `DesignerServer.java` | TCP socket server (port 9876, ndjson, 20 action dispatch) |
-| `DesignerAPI.java` | Interface: 20 actions + 20 records (401 lines) |
-| `DesignerAPIImpl.java` | Implementation: orchestrates DAO + PlacementValidator + WorkOutputDAO + InferenceEngine (1194 lines) |
-| `InferenceEngine.java` | Dependency-ordered rule evaluation, topological sort, proof tree builder |
-| `DesignerDAO.java` | BOM.db + M_Product queries (building types, categories, product browse) |
+| `DesignerServer.java` | TCP socket server (port 9876, ndjson, **34 action dispatch**) |
+| `DesignerAPI.java` | Interface: 34 actions + records |
+| `DesignerAPIImpl.java` | Implementation: orchestrates DAOs + validators + reports |
+| `InferenceEngine.java` | Dependency-ordered rule evaluation, topological sort, proof tree |
+| `DesignerDAO.java` | BOM.db + M_Product queries (building types, categories, browse) |
 | `WorkOutputDAO.java` | work_output.db persistence (save/recall/listVariants) |
-| `DesignBBox.java` | 13-field record: bbox coords + IFC/BOM metadata |
-| `CreateNewRequest.java` | Immutable record for generative requests |
-| `CompileRequest.java` | Immutable record for compile requests |
-| `RoomLayoutGenerator.java` | Deterministic site → storey → room partitioning |
-| `PlacementValidator.java` | Interface (OSGi-style, verb-aware) |
-| `PlacementValidatorImpl.java` | Implementation (reads validation.db, caches rules) |
+| `AssemblyAPI.java` | Assembly builder interface (G-7) |
+| `PlacementValidator.java` | Interface (dual-mode: building + infrastructure) |
+| `PlacementValidatorImpl.java` | Implementation (reads disc_validation.db, FacilityType routing) |
 | `JsonProtocol.java` | Gson codec for ndjson wire format |
 
 Location: `BonsaiBIMDesigner/src/main/java/com/bim/designer/`
+
+### 8.3 Java Back Office Files (BIMBackOffice)
+
+| File | What |
+|------|------|
+| `ReportDAO.java` | Interface: 8 report methods (4D-7D + KPI + compliance) |
+| `CostDAO.java` | 5D: BOM cost rollup (material + labour + equipment) |
+| `ScheduleDAO.java` | 4D: CIDB construction sequence → Gantt tasks |
+| `SustainabilityDAO.java` | 6D: Embodied carbon per product × qty |
+| `FacilityMgmtDAO.java` | 7D: Asset register + maintenance scheduling |
+| `PortfolioDAO.java` | Cross-project: portfolio table, Kanban board, balanced scorecard |
+| `ChangelogDAO.java` | Audit trail: per-field change history with undo |
+| `PrintConfig.java` | Print configurator: AD_PrintFormat + table chooser |
+| `DesignBBox.java` | Shared domain model: 13-field bbox record |
+
+Location: `BIMBackOffice/src/main/java/com/bim/backoffice/`
 
 ### 8.3 Database Files
 
@@ -485,20 +517,37 @@ Location: `BonsaiBIMDesigner/src/main/java/com/bim/designer/`
 
 ### 8.4 Test Files
 
+**BonsaiBIMDesigner** (248 tests, 25 test classes):
+
 | Test | Witnesses | What |
 |------|-----------|------|
 | `DesignerServerTest` | W-DS-1..26 (18) | DAO, API, TCP, createNew, bbox geometry |
-| `InferenceEngineTest` | W-INF-DEP/TOPO/CYCLE/CACHE, W-APPROVE-1..2 (12) | Dependency order, SKIP, cycle detect, approve gate |
-| `BrowseItemsTest` | W-BROWSE-1..11 (11) | Product search, fit check, pagination, categories |
-| `DesignEditingTest` | W-PLACE-1..4, W-LAYOUT-1..4 (7) | Place item, add/remove room, add storey |
-| `WorkOutputDAOTest` | W-WO-DAO-1..6, W-SNAP-1 (7) | Schema init, save/recall round-trip |
-| `PlacementValidatorImplTest` | W-PV-1..7 (7) | MY/US validation, BLOCK/PASS |
-| `PatternRuleTest` | W-PR-1..7 (7) | Window spacing, sprinkler grid, resize |
-| `HelloWorldJourneyTest` | W-JOURNEY-1..6 (6) | YAML++ end-to-end: create→snap→save→recall |
-| `DemoHouseTest` | W-DH-1..6 (6) | BOM structure, UBBL compliance |
-| `NonDisturbanceTest` | W-ND-1..6 (6) | Mined rules vs source buildings |
+| `AssemblyBuilderTest` | W-ASM-1..16 (16) | Layer TACK, U-value, swap, template browse |
+| `Tier1Test` | W-AUDIT/CARBON/MAINT (14) | 6D/7D DAOs + changelog audit trail |
+| `InferenceEngineTest` | W-INF-DEP/TOPO/CYCLE (12) | Dependency order, SKIP, cycle, approve gate |
+| `Schedule5DCostTest` | W-SCHED/COST (11) | 4D Gantt + 5D cost 3-component breakdown |
+| `BrowseItemsTest` | W-BROWSE-1..11 (11) | Product search, fit check, pagination |
+| `InfraRulesTest` | W-ROAD/RAIL/INFRA (8) | Road layer, rail gauge, infra scoping |
+| `InfraUIFilterTest` | W-INFRA-FILTER (7) | FacilityType mode switching, listFacilityTypes |
+| `DesignEditingTest` | W-PLACE/LAYOUT (7) | Place item, add/remove room, add storey |
+| `WorkOutputDAOTest` | W-WO-DAO (7) | Schema init, save/recall round-trip |
+| `PlacementValidatorImplTest` | W-PV/SNAP (11) | MY/US validation, infra snap, terrain snap |
+| `HelloWorldJourneyTest` | W-JOURNEY (6) | YAML++ end-to-end: create→snap→save→recall |
+| `PortfolioTest` | W-PORTFOLIO (6) | Multi-project, Kanban, balanced scorecard |
+| `BridgeRulesTest` | W-BRIDGE (5) | Bridge structural rules, cross-validation |
+| `CutFillTerrainSnapTest` | (13) | CutFill, GradingStrategy, terrain-aware snap |
 
-Run all: `mvn test -pl BonsaiBIMDesigner` → **87/87 GREEN**
+Run: `mvn test -pl BonsaiBIMDesigner` → **248/248 GREEN**
+
+**BIMBackOffice** (5 tests, 1 test class):
+
+| Test | Witnesses | What |
+|------|-----------|------|
+| `PrintConfigTest` | W-PRINT-1..5 (5) | Discover, defaults, save/load, list, update |
+
+Run: `mvn test -pl BIMBackOffice` → **5/5 GREEN**
+
+**Total: 253 tests across both modules.**
 
 ---
 
@@ -531,54 +580,104 @@ Run all: `mvn test -pl BonsaiBIMDesigner` → **87/87 GREEN**
 
 ---
 
-## 10. What's Next
+## 10. Assembly Builder (G-7)
+
+Build wall/floor/roof assemblies layer-by-layer with thermal performance:
+
+| Action | What | Wire action |
+|--------|------|-------------|
+| List templates | Browse pre-defined assembly types (external wall, internal wall, flat roof...) | `listAssemblyTemplates` |
+| View detail | See layers with materials, thicknesses, thermal conductivity | `getAssemblyDetail` |
+| Swap layer | Replace a material layer (e.g., mineral wool → PIR foam) | `swapLayer` |
+| U-value | Automatic BS EN ISO 6946 calculation after each change | included in response |
+
+29 materials with thermal properties seeded in `component_library.db`.
+
+---
+
+## 11. Infrastructure Designer
+
+Design roads, bridges, and railways with terrain-following placement:
+
+| Feature | Status | What |
+|---------|--------|------|
+| Facility types | DONE | BUILDING / BRIDGE / ROAD / RAILWAY mode switching |
+| Infra snap | DONE | Elements snap to terrain Z via contour/straight/blend grading |
+| Cut-and-fill | DONE | Volume calculation: cut vs fill for terrain vs design level |
+| Terrain context | DONE | 689-point real survey data, AlignmentContext + TerrainSnap |
+| Infra rules | DONE | 30 rules: 13 bridge + 10 road + 7 rail |
+| BlenderBridge terrain | PLANNED | Wire terrain context to Blender viewport |
+
+---
+
+## 12. Reports (via Back Office)
+
+The Bonsai client calls Back Office report APIs for the active project:
+
+| Wire action | Report | What you get |
+|-------------|--------|-------------|
+| `constructionSchedule` | 4D Schedule | Gantt tasks with CIDB phase ordering |
+| `costBreakdown` | 5D Cost | Material + labour + equipment per discipline |
+| `carbonFootprint` | 6D Carbon | Embodied carbon per element, material passport |
+| `maintenanceSchedule` | 7D Maintenance | Asset register + replacement intervals |
+| `lifecycleCost` | 7D Lifecycle | Whole-life cost with replacement cycles |
+| `portfolio` | Portfolio | All projects at a glance (multi-project) |
+| `kanban` | Kanban board | Projects by DocStatus (Draft→IP→CO→AP) |
+| `balancedScorecard` | Scorecard | Financial / Client / Process / Learning KPIs |
+
+See [BackOfficeUserGuide.md](BackOfficeUserGuide.md) for the full multi-project view.
+
+---
+
+## 13. What's Next
 
 ### Beta Readiness Checklist
 
-The engine is proven (87/87 GREEN, 23/28 UX requirements). The GUI needs
-Blender integration testing before beta release.
+The engine is proven (253 tests GREEN, 5 Rosetta Stone buildings). The GUI
+needs Blender integration testing before beta release.
 
 | Priority | Task | Status | Effort |
 |----------|------|--------|--------|
-| **1** | **Standalone server launcher** (`main()` in DesignerServer) | NOT DONE | Trivial |
-| **2** | **Blender visual test** — install addon, screenshot every panel state, fix breaks | NOT DONE | 1 session |
-| **3** | **Seed generative products** — furniture/fixtures for DemoHouse in component_library.db | NOT DONE | Small |
-| **4** | **placeItem persistence** — write C_OrderLine to work_output.db on place | NOT DONE | Small |
-| 5 | Wire compile to real pipeline (createNew → DM_BOM.db → compile → output.db) | NOT DONE | Medium |
-| 6 | Federation integration test (Design Mode grey-out + Full Load after compile) | NOT DONE | 1 session |
-| 7 | First-time user walkthrough vs SRS Journey 1 (§5.1: "3 minutes to first building") | NOT DONE | 1 session |
+| **1** | **Blender visual test** — install addon, screenshot every panel state | NOT DONE | 1 session |
+| **2** | **Wire compile to real pipeline** (createNew → DM_BOM.db → compile → output.db) | NOT DONE | Medium |
+| **3** | **Federation integration test** (Design Mode + Full Load after compile) | NOT DONE | 1 session |
+| **4** | **Back Office UI** — web dashboard for portfolio/reports | NOT DONE | Multi-session |
+| 5 | First-time user walkthrough vs SRS Journey 1 ("3 minutes to first building") | NOT DONE | 1 session |
 
-### Remaining Feature Gates
+### Feature Gates
 
-| Priority | Task | Gate | Status |
-|----------|------|------|--------|
-| 1 | Assembly builder (layer-by-layer MAKE path) | G-7 | Planned |
-| 2 | BlenderBridge pipe (Snap + incremental viewport) | G-8 | Planned |
-| 3 | ORDER View + BOM Outliner (tabular + tree editors) | G-9 | Planned |
-| 4 | Promote writes m_bom/m_bom_line to BOM.db | G-10 | Planned |
-| 5 | ParametricMesh UI (crafted MAKE path) | G-11 | Planned |
-| 6 | Text Mode (search + NL input) | G-12 | Planned |
-| 7 | W_BuildingConfig, CO_EmptySpaceLine, PP_Order_Node, ASI | G-4 remaining | Planned |
-
-### Completed Gates
-
-| Gate | What | Session | Tests |
-|------|------|---------|-------|
-| G-1 | BonsaiBIMDesigner module (server + addon) | 15 | 14/14 |
-| G-2 | DocValidate + DemoHouse + pattern rules | 16 | 43/43 |
-| G-3 | Design Mode wire + bbox renderer + UI strategy | 17 | 44/44 |
-| G-4 | work_output.db Save/Recall + YAML++ journey | 26 | 57/57 |
-| G-5 | BOM Chooser + Place + Layout Editing + Inference Engine | 27 | 87/87 |
+| Gate | What | Status |
+|------|------|--------|
+| G-1 | BonsaiBIMDesigner module | **DONE** (s15, 14 tests) |
+| G-2 | DocValidate + DemoHouse | **DONE** (s16, 43 tests) |
+| G-3 | Design Mode + bbox renderer | **DONE** (s17, 44 tests) |
+| G-4 | work_output.db Save/Recall | **DONE** (s26, 57 tests) |
+| G-5 | BOM Chooser + Place + Inference | **DONE** (s27, 87 tests) |
+| G-6 | Compile Bridge (real pipeline) | **DONE** (s29) |
+| G-7 | Assembly Builder (MAKE path) | **DONE** (s35, 16 witnesses) |
+| G-8 | BlenderBridge pipe (Snap + incremental) | planned |
+| G-9 | ORDER View + BOM Outliner | planned |
+| G-10 | Promote to BOM (governance gate) | planned |
+| G-11 | ParametricMesh UI | planned |
+| G-12 | Text Mode (search + NL) | planned |
+| G-13 | Click-to-Place (interactive placement) | planned |
+| BO-1 | Back Office print configurator | **DONE** (s39d, 5 witnesses) |
+| BO-2 | AD_Process report execution queue | planned |
+| I-1..4 | Infrastructure Designer | **DONE** (snap, terrain, cut-fill) |
+| I-5 | BlenderBridge terrain viewport | planned |
 
 ---
 
 *Related docs:
-[BIM_Designer.md](BIM_Designer.md) (full spec, §17.18 BOM Chooser, §17.10 Save/Recall, §18 UX strategy) |
-[G4_SRS.md](G4_SRS.md) (work_output.db, master-detail DocStatus, AP gate) |
-[DocValidate.md](DocValidate.md) (validation engine, AD_Val_Rule schema) |
-[BlenderBridge.md](BlenderBridge.md) (incremental viewport updates) |
-[BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements, user journeys, latency contracts) |
+[BIM_Designer.md](BIM_Designer.md) (full spec) |
+[BackOfficeUserGuide.md](BackOfficeUserGuide.md) (multi-project ERP guide) |
+[BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) (Back Office SRS) |
+[G4_SRS.md](G4_SRS.md) (work_output.db) |
+[ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md) (G-7 assembly) |
+[INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) (infrastructure) |
+[BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements) |
+[CORE_SRS.md](CORE_SRS.md) (scale research, report engine, compliance) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
 
 ---
-*v0.4 — 2026-03-19, session 27. Updated as features are built and tested.*
+*v0.8 — 2026-03-20, session 39d. Updated as features are built and tested.*
