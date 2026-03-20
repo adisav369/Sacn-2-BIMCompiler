@@ -64,9 +64,21 @@ Include expected gate results for different building scales.
 
 **Delivered (session 42):**
 - [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md) — self-service 9-step runbook with commands, expected output, troubleshooting, checklist
-- `NewBuildingGenerator.java` — Java template generator in IFCtoBOM module, auto-detects storeys from reference DB
-- Updated: `SYSTEMS_INSTALLER_GUIDE.md` §5.2, `INDEX.md`, `SourceCodeGuide.md` §12, `YAMLGuide.md`
-- IFC source files live in `DAGCompiler/lib/input/IFC/` (14 source IFCs, 7 onboarded)
+- `NewBuildingGenerator.java` (`IFCtoBOM/src/main/java/com/bim/ifctobom/`) — Java template generator, auto-detects storeys from reference DB. Usage: `mvn exec:java -pl IFCtoBOM -Dexec.mainClass="com.bim.ifctobom.NewBuildingGenerator" -Dexec.args="--prefix XX --type BuildingType --name 'Name'" -q`
+- `YAMLGuide.md` §File Convention — complete IFC source inventory (14 IFCs in `DAGCompiler/lib/input/IFC/`, 9 classify_*.yaml files, 7 buildings fully onboarded)
+- Updated: `SYSTEMS_INSTALLER_GUIDE.md` §5.2, `INDEX.md`, `SourceCodeGuide.md` §12
+
+**What was proven:**
+- Generator tested against SH reference DB — correctly detects 3 storeys, generates valid YAML+DSL skeletons with conventional codes (GF, ROOF, MISC)
+- Full compile clean (`mvn compile -q`) with NewBuildingGenerator in module
+- Pipeline itself proven on 5 Rosetta Stones (SH 55, FK 82, IN 699, DX 1099, TE 48428) — same steps the runbook documents
+
+**What remains (next session):**
+- Test on un-onboarded IFCs: FJK_Project, Smiley_West, Vogel_Gesamt (no extracted DB yet), PCERT_Building_* and Infra_Plumbing (have extracted DBs, need YAML)
+- End-to-end proof: generate skeleton → edit → run pipeline → gates pass — on a fresh IFC
+
+**Session 42 discovery — AABB Qualifier:**
+The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions lack a semantic qualifier. The same `aabb_width_mm` column means different things depending on context: INNER (room clear volume), STRUCTURAL (centerline grid), OUTER (full object extent), OPENING (clear door/window opening). Proposed fix: `aabb_qualifier TEXT DEFAULT 'OUTER'` on `m_bom`. See [`INNER_SURFACE_ANALYSIS.md`](INNER_SURFACE_ANALYSIS.md) for full analysis. This connects to WF-BB (wireframe = AABB visualization), PHANTOM (G-13 Click-to-Place uses INNER), and R21 (host_element_ref eliminates AABB-vs-opening ambiguity).
 
 **Gate:** A new building can be onboarded by following the runbook without code changes. ✓
 
@@ -191,6 +203,7 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 | R22 | Extract I_Element_Connectivity | MED | TODO |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO |
 | BBC-002 | BomValidator verb fidelity in compliance report | LOW | TODO |
+| AABB-Q | AABB qualifier column (`INNER`/`STRUCTURAL`/`OUTER`/`OPENING`) on `m_bom` | MED | NEW (S42) — see `INNER_SURFACE_ANALYSIS.md` |
 | R18 | DROP dead ad_bom/ad_bom_child tables | LOW | TODO |
 | R19 | Update ConstructionAsERP.md dual architecture | DOC | TODO |
 | VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | Known limit |
