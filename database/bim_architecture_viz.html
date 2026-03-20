@@ -20,24 +20,28 @@ h1 span { color: #60a5fa; }
 
 /* --- DB Architecture --- */
 .db-layout { display: flex; gap: 0; justify-content: center; align-items: stretch; padding: 0 32px 32px; }
-.db-box { width: 280px; border-radius: 12px; padding: 16px; position: relative; }
+.db-box { width: 220px; border-radius: 12px; padding: 14px; position: relative; }
 .db-box.comp { background: #1c1a10; border: 2px solid #854d0e; }
+.db-box.disc { background: #2a1a0f; border: 2px solid #d97706; }
 .db-box.bom  { background: #0f172a; border: 2px solid #1d4ed8; }
 .db-box.out  { background: #0f2310; border: 2px solid #166534; }
 .db-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
 .db-box.comp .db-title { color: #fbbf24; }
+.db-box.disc .db-title { color: #f59e0b; }
 .db-box.bom  .db-title { color: #60a5fa; }
 .db-box.out  .db-title { color: #4ade80; }
 .db-sub { font-size: 0.7rem; color: #64748b; margin-bottom: 12px; }
 .tbl { padding: 5px 8px; margin: 3px 0; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
 .comp .tbl { background: #292110; color: #fde68a; border: 1px solid transparent; }
 .comp .tbl:hover, .comp .tbl.sel { background: #3d2f0c; border-color: #f59e0b; color: #fff; }
+.disc .tbl { background: #2a1f10; color: #fcd34d; border: 1px solid transparent; }
+.disc .tbl:hover, .disc .tbl.sel { background: #3d2a0c; border-color: #d97706; color: #fff; }
 .bom  .tbl { background: #1e2d4a; color: #93c5fd; border: 1px solid transparent; }
 .bom  .tbl:hover, .bom  .tbl.sel { background: #253c60; border-color: #3b82f6; color: #fff; }
 .out  .tbl { background: #1a2e1a; color: #86efac; border: 1px solid transparent; }
 .out  .tbl:hover, .out  .tbl.sel { background: #1f3d1f; border-color: #22c55e; color: #fff; }
 
-.db-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 60px; flex-shrink: 0; gap: 6px; }
+.db-arrow { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 50px; flex-shrink: 0; gap: 6px; }
 .db-arrow svg { opacity: 0.5; }
 .db-arrow .lbl { font-size: 0.62rem; color: #475569; text-align: center; line-height: 1.3; }
 
@@ -139,17 +143,41 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <div class="tbl" onclick="showDetail('place_rules')">placement_rules</div>
       <div class="tbl" onclick="showDetail('lod_gmap')">I_Geometry_Map</div>
       <div class="tbl" onclick="showDetail('m_prod_img')">M_Product_Image</div>
-      <div class="tbl" onclick="showDetail('lod_obj')">LOD_Object</div>
-      <div class="tbl" onclick="showDetail('lod_ep')">I_Element_Extraction</div>
-      <div class="tbl" onclick="showDetail('lod_param')">lod_parametric_mesh</div>
       <div class="tbl" onclick="showDetail('surface')">surface_styles</div>
+      <div class="tbl" onclick="showDetail('cl_m_product')">M_Product</div>
+      <div class="tbl" onclick="showDetail('cl_mat_layers')">material_layers</div>
+      <div class="tbl" onclick="showDetail('cl_mat_thermal')">ad_material_thermal</div>
+      <div class="tbl" onclick="showDetail('cl_room_boundary')">ad_room_boundary</div>
+      <div class="tbl" onclick="showDetail('cl_product_dim')">ad_product_dim</div>
+    </div>
+
+    <div class="db-arrow">
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#d97706" stroke-width="1.5" fill="none"/></svg>
+      <div class="lbl">placement_rules<br>shared reference</div>
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
+      <div class="lbl">material_layers<br>thermal props</div>
+    </div>
+
+    <!-- disc_validation.db -->
+    <div class="db-box disc">
+      <div class="db-title">disc_validation.db</div>
+      <div class="db-sub">Discipline Validation Rules + Calibration</div>
+      <div class="tbl" onclick="showDetail('dv_element_mep')">ad_element_mep</div>
+      <div class="tbl" onclick="showDetail('dv_space_mep_bom')">ad_space_type_mep_bom</div>
+      <div class="tbl" onclick="showDetail('dv_fp_coverage')">ad_fp_coverage</div>
+      <div class="tbl" onclick="showDetail('dv_space_type')">ad_space_type</div>
+      <div class="tbl" onclick="showDetail('dv_asm_manifest')">ad_assembly_manifest</div>
+      <div class="tbl" onclick="showDetail('dv_wall_face')">ad_wall_face</div>
+      <div class="tbl" onclick="showDetail('dv_place_rules')">placement_rules</div>
+      <div class="tbl" onclick="showDetail('dv_sysconfig')">AD_SysConfig</div>
+      <div class="tbl" onclick="showDetail('dv_cal_result')">W_Calibration_Result</div>
     </div>
 
     <div class="db-arrow">
       <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#60a5fa" stroke-width="1.5" fill="none"/></svg>
-      <div class="lbl">I_Geometry_Map<br>resolves mesh hash</div>
+      <div class="lbl">validation rules<br>drive BOM resolver</div>
       <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
-      <div class="lbl">component_definitions<br>up/forward axis</div>
+      <div class="lbl">M_Product refs<br>cross-DB lookup</div>
     </div>
 
     <!-- {PREFIX}_BOM.db -->
@@ -159,18 +187,16 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <div class="tbl" onclick="showDetail('m_bom')">m_bom (M_BOM)</div>
       <div class="tbl" onclick="showDetail('m_bom_line')">m_bom_line (M_BOM_Line)</div>
       <div class="tbl" onclick="showDetail('ad_prod')">M_Product</div>
-      <div class="tbl" onclick="showDetail('m_bom_cat')">M_BomCategory</div>
-      <div class="tbl" onclick="showDetail('m_bom_catline')">M_BomCategoryLine</div>
       <div class="tbl" onclick="showDetail('c_doctype')">C_DocType</div>
-      <div class="tbl" onclick="showDetail('m_prod_cat')">M_Product_Category</div>
-      <div class="tbl" onclick="showDetail('m_attrset')">M_AttributeSet</div>
-      <div class="tbl" onclick="showDetail('c_bpartner')">C_BPartner</div>
-      <div class="tbl" onclick="showDetail('m_attr')">m_attribute</div>
+      <div class="tbl" onclick="showDetail('bom_line_ma')">m_bom_line_ma</div>
+      <div class="tbl" onclick="showDetail('bom_sysconfig')">ad_sysconfig</div>
     </div>
 
     <div class="db-arrow">
       <svg width="40" height="20" viewBox="0 0 40 20"><path d="M4 10 L36 10 M28 4 L36 10 L28 16" stroke="#4ade80" stroke-width="1.5" fill="none"/></svg>
       <div class="lbl">BOM dictionary<br>→ order + compile</div>
+      <svg width="40" height="20" viewBox="0 0 40 20"><path d="M36 10 L4 10 M12 4 L4 10 L12 16" stroke="#60a5fa" stroke-width="1.5" fill="none" stroke-dasharray="3,2"/></svg>
+      <div class="lbl">c_order refs<br>DocType lookup</div>
     </div>
 
     <!-- output.db -->
@@ -200,23 +226,13 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
 
 <!-- ERD: Cross-Database Relationships -->
 <div style="margin:0 32px 40px;">
-  <div id="erd-hdr" onclick="toggleERD()" style="cursor:pointer;background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 16px;color:#94a3b8;font-size:0.85rem;display:flex;align-items:center;gap:8px;user-select:none;">
-    <span id="erd-arr" style="font-size:0.75rem;">▶</span>
-    <strong style="color:#e2e8f0;">ERD — Cross-Database Relationships</strong>
-    <span style="color:#475569;font-size:0.75rem;margin-left:auto;">click to expand</span>
-  </div>
-  <div id="erd-wrap" style="display:none;overflow-x:auto;margin-top:8px;">
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:4px;padding:10px 14px;margin-bottom:8px;font-size:0.75rem;color:#64748b;line-height:1.7;">
-      <strong style="color:#f59e0b;">Key finding:</strong>
-      <strong style="color:#60a5fa;">M_Product</strong> (formerly <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#94a3b8;">ad_product_dim</code>) is the iDempiere product master — <strong>renamed in NORM-1</strong>.
-      Holds intrinsic dimensions for BUY leaves + assembly stubs (is_active=0) for MAKE BOMs.
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">component_id</code> (FK → component_library.component_definitions) populated by name-match for 16 BUY products.
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">bom_id</code> FK populated for 31 assembly stub rows.
-      The BOM leaf→mesh chain:
-      <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#4ade80;">m_bom_line.child_product_id → M_Product → M_Product_Image [geometry_hash] → LOD_Object [mesh BLOB]</code>
-      — <strong style="color:#f59e0b;">NORM-2:</strong> <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#94a3b8;">child_bom_id / product_ref / child_ifc_class</code> collapsed to single <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">child_product_id → M_Product</code> FK. <code style="background:#1e293b;border:1px solid #334155;border-radius:3px;padding:0 4px;color:#60a5fa;">component_type</code> (BUY/MAKE/PHANTOM) dispatches resolver path.
-    </div>
-    <svg id="erd-svg" viewBox="0 0 970 860" style="width:100%;min-width:820px;height:auto;background:#080d18;border-radius:10px;display:block;"></svg>
+  <div style="background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px 16px;color:#94a3b8;font-size:0.85rem;">
+    <strong style="color:#e2e8f0;">ERD — Cross-Database Relationships</strong><br>
+    <span style="font-size:0.8rem;color:#64748b;line-height:1.8;">
+      See <code>docs/DATA_MODEL.md</code> for full cross-database relationship mapping.<br>
+      Key chain: <code style="color:#60a5fa;">m_bom_line.child_product_id</code> → <code style="color:#60a5fa;">M_Product</code> → <code style="color:#fbbf24;">M_Product_Image [geometry_hash]</code> → <code style="color:#4ade80;">component_geometries [mesh BLOB]</code><br>
+      4 databases: <span style="color:#fbbf24;">component_library.db</span> (geometry), <span style="color:#f59e0b;">disc_validation.db</span> (rules), <span style="color:#60a5fa;">{PREFIX}_BOM.db</span> (dictionary), <span style="color:#4ade80;">output.db</span> (orders + compiled result).
+    </span>
   </div>
 </div>
 
@@ -689,24 +705,31 @@ const details = {
   place_rules: '<span class="key">placement_rules</span> — host-relative component constraints.<br>Holds: <span class="val">host_type</span> (CEILING/WALL/FLOOR), <span class="val">offset_from_host</span> (mm), <span class="val">grid_spacing</span>, <span class="val">clearance_radius</span>.<br><span class="note">E.g. sprinkler: host=CEILING, offset=0, grid_spacing=4600mm.</span>',
   lod_gmap:    '<span class="key">I_Geometry_Map</span> (renamed from lod_geometry_map / ad_geometry_map, 2026-03-07) — element→geometry hash mapping.<br>Holds: <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">ordinal</span>, <span class="val">geometry_hash</span>, <span class="val">provenance</span> (LIBRARY/EXTRACTED/PARAMETRIC).<br><span class="note">iDempiere I_ = Import table. Superseded by M_Product_Image for product-level lookups. Terminal still uses for legacy path.</span>',
   m_prod_img:  '<span class="key">M_Product_Image</span> (P0.2: renamed from LOD_key) — canonical product → geometry mapping.<br>Holds: <span class="val">M_Product_ID</span> (PK, FK → {PREFIX}_BOM.db M_Product), <span class="val">geometry_hash</span> (FK → LOD_Object), <span class="val">up_axis</span>, <span class="val">forward_axis</span>, <span class="val">attachment_face</span>.<br><span class="note">115 rows. One row per product type. iDempiere M_Product_Image = product representation. Chain: m_bom_line.child_product_id → M_Product → M_Product_Image → LOD_Object.</span>',
-  lod_obj:     '<span class="key">LOD_Object</span> — canonical mesh blob store (the "image file" itself).<br>Holds: <span class="val">geometry_hash</span> (PK, content-addressed), <span class="val">vertices BLOB</span>, <span class="val">faces BLOB</span>, <span class="val">normals BLOB</span>, counts.<br><span class="note">107 rows. Deduplicated from 23,888 legacy component_definitions. Content-addressed — same mesh shared by multiple products.</span>',
-  lod_ep:      '<span class="key">I_Element_Extraction</span> (renamed from ad_element_placement, 2026-03-07) — IFC extraction archive.<br>Holds: <span class="val">min/max xyz</span>, <span class="val">orientation</span> (NS/EW/POINT for walls), <span class="val">building_type</span>, <span class="val">storey</span>, <span class="val">M_Product_ID</span>.<br><span class="note">iDempiere I_ = Import table. SH/DX deactivated (is_active=0). Terminal 51K rows still active for Phase B. PlacementLoader now reads from {PREFIX}_BOM.db m_bom_line instead.</span>',
-  lod_param:   '<span class="key">lod_parametric_mesh</span> — procedural geometry generators.<br>Holds: <span class="val">mesh_type</span> (GABLE_ROOF_MY, HIP_ROOF_UK…), <span class="val">generator_class</span>, <span class="val">params</span> (pitch_deg, span_mm, overhang_mm).<br><span class="note">Roofs cannot be pre-extracted — they are generated at compile time from these parameters.</span>',
   surface:     '<span class="key">surface_styles</span> — material definitions.<br>Holds: <span class="val">style_name</span>, RGBA colour, specular properties, <span class="val">reflectance_method</span>.<br><span class="note">Referenced by element_instances in output.db for Blender/IFC export.</span>',
+  cl_m_product:'<span class="key">M_Product</span> (component_library copy) — product master for geometry resolution.<br>Holds: <span class="val">product_id</span>, <span class="val">Name</span>, <span class="val">component_id</span> (FK to component_definitions), <span class="val">width/depth/height</span>.<br><span class="note">Cross-referenced from {PREFIX}_BOM.db via product_id. Links products to their geometry chain.</span>',
+  cl_mat_layers:'<span class="key">material_layers</span> — composite material layer definitions.<br>Holds: <span class="val">material_id</span>, <span class="val">layer_index</span>, <span class="val">thickness_mm</span>, <span class="val">material_name</span>.<br><span class="note">Used for wall/slab/roof assemblies with multiple material layers (e.g. brick + insulation + plasterboard).</span>',
+  cl_mat_thermal:'<span class="key">ad_material_thermal</span> — thermal properties for materials.<br>Holds: <span class="val">material_id</span>, <span class="val">conductivity</span>, <span class="val">density</span>, <span class="val">specific_heat</span>, <span class="val">r_value</span>.<br><span class="note">Supports energy compliance checks. Linked from material_layers for composite U-value calculations.</span>',
+  cl_room_boundary:'<span class="key">ad_room_boundary</span> — room boundary geometry definitions.<br>Holds: <span class="val">space_type</span>, <span class="val">boundary_type</span> (WALL/FLOOR/CEILING), <span class="val">min/max dimensions</span>.<br><span class="note">Used by spatial validation to check room boundaries against design constraints.</span>',
+  cl_product_dim:'<span class="key">ad_product_dim</span> — extended product dimension attributes.<br>Holds: <span class="val">product_id</span>, <span class="val">dim_type</span>, <span class="val">value_mm</span>, <span class="val">tolerance_mm</span>.<br><span class="note">Supplements M_Product with additional dimensional attributes (clearance zones, connection offsets).</span>',
+  dv_element_mep:'<span class="key">ad_element_mep</span> — MEP element validation rules per discipline.<br>Holds: <span class="val">ifc_class</span>, <span class="val">discipline</span> (PLB/ELE/MEC/FPR), <span class="val">spacing_mm</span>, <span class="val">coverage_m2</span>.<br><span class="note">Drives MEP BOM resolution — e.g. sprinkler spacing = 4600mm, one per 21m2.</span>',
+  dv_space_mep_bom:'<span class="key">ad_space_type_mep_bom</span> — maps space types to required MEP BOMs.<br>Holds: <span class="val">space_type</span>, <span class="val">mep_bom_id</span>, <span class="val">discipline</span>, <span class="val">is_mandatory</span>.<br><span class="note">E.g. BATHROOM requires PLB_COLD + PLB_HOT + ELE_LIGHTING. Validation checks completeness.</span>',
+  dv_fp_coverage:'<span class="key">ad_fp_coverage</span> — fire protection coverage rules.<br>Holds: <span class="val">building_class</span>, <span class="val">max_coverage_m2</span>, <span class="val">max_spacing_mm</span>, <span class="val">min_flow_rate</span>.<br><span class="note">Code compliance for fire sprinkler and alarm coverage. Referenced by ROUTE SPRINKLERS verb.</span>',
+  dv_space_type:'<span class="key">ad_space_type</span> — space type definitions and constraints.<br>Holds: <span class="val">space_type</span>, <span class="val">min/max_area_m2</span>, <span class="val">min_height_mm</span>, <span class="val">ventilation_req</span>.<br><span class="note">Defines what constitutes a valid BEDROOM, BATHROOM, KITCHEN etc. Used by discipline validation.</span>',
+  dv_asm_manifest:'<span class="key">ad_assembly_manifest</span> — assembly validation manifests.<br>Holds: <span class="val">assembly_type</span>, <span class="val">required_components</span>, <span class="val">min_count</span>, <span class="val">validation_rule</span>.<br><span class="note">Ensures assemblies contain all required sub-components before compilation proceeds.</span>',
+  dv_wall_face:'<span class="key">ad_wall_face</span> — wall face classification for placement.<br>Holds: <span class="val">wall_id</span>, <span class="val">face_direction</span> (N/S/E/W), <span class="val">surface_area_m2</span>, <span class="val">has_opening</span>.<br><span class="note">Used by placement_rules to determine which wall face receives mounted elements (cabinets, fixtures).</span>',
+  dv_place_rules:'<span class="key">placement_rules</span> (disc_validation copy) — discipline-specific placement constraints.<br>Holds: <span class="val">discipline</span>, <span class="val">ifc_class</span>, <span class="val">host_type</span>, <span class="val">clearance_mm</span>, <span class="val">grid_spacing_mm</span>.<br><span class="note">Validation-side placement rules. Checked against compiled output to verify code compliance.</span>',
+  dv_sysconfig:'<span class="key">AD_SysConfig</span> — system configuration key-value pairs for validation.<br>Holds: <span class="val">Name</span> (config key), <span class="val">Value</span>, <span class="val">Description</span>.<br><span class="note">Thresholds, tolerances, and feature flags for discipline validation (e.g. MAX_SPRINKLER_SPACING=4600).</span>',
+  dv_cal_result:'<span class="key">W_Calibration_Result</span> — calibration test results and witness data.<br>Holds: <span class="val">test_name</span>, <span class="val">expected</span>, <span class="val">actual</span>, <span class="val">pass_fail</span>, <span class="val">timestamp</span>.<br><span class="note">Records calibration runs. W_ prefix = iDempiere workbench/temporary table convention.</span>',
+  bom_line_ma: '<span class="key">m_bom_line_ma</span> — BOM line material attributes (many-to-many).<br>Holds: <span class="val">bom_line_id</span> (FK to m_bom_line), <span class="val">M_AttributeSetInstance_ID</span>, <span class="val">material_name</span>, <span class="val">qty</span>.<br><span class="note">Attaches specific material instances to BOM lines. Supports multi-material leaves (e.g. composite wall layers).</span>',
+  bom_sysconfig:'<span class="key">ad_sysconfig</span> — BOM-level system configuration.<br>Holds: <span class="val">Name</span> (config key), <span class="val">Value</span>, <span class="val">Description</span>, <span class="val">EntityType</span>.<br><span class="note">Per-building configuration overrides (e.g. DEFAULT_WALL_THICKNESS, SLAB_DEPTH_MM). Read by compiler at build time.</span>',
   c_order:     '<span class="key">c_order</span> (C_Order = Construction Order) — the building IS a C_Order. Lives in <strong>output.db</strong> (transaction data, not dictionary).<br>Key fields: <span class="val">C_Order_ID</span> (building identifier), <span class="val">C_DocType_ID</span> (→ C_DocType: RE_SH/RE_DX/CO_TE), <span class="val">aabb_width/depth/height_mm</span> (HOW BIG), <span class="val">doc_status</span> (DR→IP→CO).<br><span class="note">{PREFIX}_BOM.db = pure dictionary (no orders). output.db = self-contained with orders + production + compiled result. §11.9.</span>',
   c_orderline: '<span class="key">c_orderline</span> (C_OrderLine = WHAT to build — order topics ONLY).<br>Key fields: <span class="val">building_type</span>, <span class="val">element_ref</span>, <span class="val">ifc_class</span>, <span class="val">discipline</span>, <span class="val">family_ref</span> (→ M_BOM.bom_id), <span class="val">is_active</span>.<br><strong style="color:#a855f7;">No placement columns.</strong> HOW (position, orientation) lives in <span class="val">PP_Order_Node</span> + <span class="val">PP_Order_NodeProduct</span>. WHERE lives in <span class="val">co_empty_space_line</span>. Material dims already in <span class="val">M_Product</span>.<br><span class="note">iDempiere parallel: C_OrderLine says "customer wants 100 chairs." PP_Order_Node says how to produce them. §11.9.</span>',
   m_bom:       '<span class="key">m_bom</span> (M_BOM) — an assembly definition (the "recipe").<br>Key fields: <span class="val">bom_id</span>, <span class="val">doc_base_type</span> (RE/CO/IN — Prime Rule DocType), <span class="val">doc_sub_type</span> (SH/DX/TB/ST — Prime Rule DocSubType), <span class="val">bom_category</span> (LI/BD/KT — functional role → M_BomCategory), <span class="val">origin_x/y/z</span> (always (0,0,0) — world position set in CO_EmptySpace, output.db).<br>Prime Rule: <span class="val">C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)</span> — three-key match → singularity.<br><span class="note">Children in m_bom_line; child_product_id → M_Product (NORM-2). component_type=PHANTOM rows are inline-expanded buffer fillers. Tack convention: child dx/dy/dz always ≥ 0 relative to parent origin. BOM is one hierarchy — compiler decides EN-BLOC vs WALK THRU traversal.</span>',
   m_bom_line:  '<span class="key">m_bom_line</span> (M_BOM_Line) — a child entry in a BOM.<br>Key fields: <span class="val">child_product_id</span> (→ M_Product; NORM-2), <span class="val">component_type</span> (BUY/MAKE/PHANTOM), <span class="val">dx/dy/dz</span> (§3.4 parent-relative offset, always ≥ 0), <span class="val">rotation_rule</span> (abstract: FACE_INTO_ROOM), <span class="val">allocated_width/depth/height_mm</span> (AABB).<br><span class="note">Instance columns (storey, element_ref, ordinal, orientation, material_name, material_rgba) are NULL in {PREFIX}_BOM.db dictionary — populated in output.db from I_Element_Extraction at compile time. EN-BLOC vs WALK THRU = compiler traversal modes, not {PREFIX}_BOM.db data distinctions. Tack convention guard: X_M_BOMLine.setDx() rejects negative values.</span>',
-  m_attr:      '<span class="key">m_attribute</span> — leaf-level attributes.<br>Holds: ports, clearances, parametric properties for MEP and structural elements.',
   ad_prod:     '<span class="key">M_Product</span> (NORM-1: renamed from ad_product_dim) — iDempiere product master.<br>Key fields: <span class="val">product_id</span>, <span class="val">Name</span>, <span class="val">Description</span>, <span class="val">M_Product_Category_ID</span> (→M_Product_Category), <span class="val">M_AttributeSet_ID</span>, <span class="val">width/depth/height</span> (metres).<br>198 rows. 79 DX + 11 SH products. IFC class lives on M_Product_Category, not product.<br><span class="note">BOM leaf→mesh chain: m_bom_line.child_product_id → M_Product → M_Product_Image [geometry_hash] → LOD_Object [mesh BLOB]. Replaces legacy component_definitions chain.</span>',
-  m_bom_cat:   '<span class="key">M_BomCategory</span> — functional type lookup + template AABB records.<br>Functional roles: <span class="val">RE</span> (Residential root), <span class="val">GF/L1/L2</span> (Floors), <span class="val">SL</span> (Slab), <span class="val">RF</span> (Roof), <span class="val">LI/BD/KT/BT/DN</span> (room types), <span class="val">FR</span> (Furniture).<br>Template records: <span class="val">ST-SH</span> (AABB=16868×8668×3945), <span class="val">ST-DX</span> (AABB=9215×26565×7885) — matched by C_Order AABB when DocSubType=ST.<br>New columns: <span class="val">doc_sub_type</span> (SH/DX), <span class="val">aabb_width/depth/height_mm</span>.',
-  m_prod_cat:  '<span class="key">M_Product_Category</span> (P0.1-CAT) — IFC classification hierarchy.<br>36 rows: 4 discipline parents (<span class="val">STR/MEP/ARC/ASM</span>) + 29 IFC class leaves + 3 assembly types.<br><span class="note">M_Product.M_Product_Category_ID FK. IFC class name lives on category, not product.</span>',
-  m_attrset:   '<span class="key">M_AttributeSet</span> (P0.1-DEDUP) — attribute templates for products.<br>5 rows: <span class="val">BIM_Pipe</span>, <span class="val">BIM_Conduit</span>, <span class="val">BIM_Wall</span>, <span class="val">BIM_Slab</span>, <span class="val">BIM_Component</span>. IsInstanceAttribute flag.',
   c_doctype:   '<span class="key">C_DocType</span> — document type classification (borrowed from iDempiere).<br>Columns: <span class="val">C_DocType_ID</span> (PK), <span class="val">DocBaseType</span> (RE/CO/IN), <span class="val">DocSubType</span> (SH/DX/TB/TE/ST).<br>DocBaseType classifies (RE/CO/IN). DocSubType drives BOM scoping + compilation path: ST=template (M_BomCategory AABB match).<br>Prime Rule: <span class="val">C_Order.(AABB + DocType + DocSubType) == m_bom.(AABB + DocType + DocSubType)</span> — three-key match, singularity → EN-BLOC.<br><span class="note">Seed: RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX. C_BPartner to be repurposed for real business partners.</span>',
-  c_bpartner:  '<span class="key">C_BPartner</span> — iDempiere: business partner (customer/vendor).<br>The customer who placed the construction order (contractor, architect, client). Active at release — not a placeholder.<br>SH/DX/TB pattern scoping has migrated to <span class="val">C_DocType.DocSubType</span> (§11.37) and <span class="val">m_bom.doc_sub_type</span>.<br><span class="note">c_order.c_bpartner column retained for backward compat. C_DocType_ID is the authoritative document type reference.</span>',
   verb_line:   '<span class="key">PP_Order_Node</span> — iDempiere Manufacturing table (not custom). One row per production operation.<br>Key fields: <span class="val">C_Order_ID</span> (→ c_order), <span class="val">SeqNo</span> (execution order), <span class="val">Name</span> (BIM: verb keyword — TILE SURFACE, ARRAY, ROUTE…), <span class="val">Description</span> (BIM: COBOL source line), <span class="val">S_Resource_ID</span> (BIM: → ESLine = WHERE), <span class="val">DocStatus</span> (DR→IP→CO→VO).<br><span class="note">Standard iDempiere name, BIM semantics in column usage. Multiple operations target the same S_Resource (ESLine). §15.6.</span>',
   verb_param:  '<span class="key">PP_Order_NodeProduct</span> — iDempiere Manufacturing table. Structured parameters per operation.<br>Key fields: <span class="val">PP_Order_Node_ID</span> (→ PP_Order_Node), <span class="val">Name</span> (BIM: param name — ORIGIN_X, GRID_NX, SPACING_MM…), <span class="val">Value</span>, <span class="val">ValueType</span> (TEXT/REAL/INTEGER).<br><span class="note">Description = COBOL source (human-readable). NodeProduct rows = same data in structured form (GUI-editable). Both in sync.</span>',
-  m_bom_catline:'<span class="key">M_BomCategoryLine</span> — Standard Mode template decomposition recipe.<br>Holds: <span class="val">parent BOMCategory</span>, <span class="val">child BOMCategory</span>, <span class="val">seq_no</span>, <span class="val">dZ ratio</span>.<br><span class="note">Used in ST mode (no pre-built BOM): C_Order → look up recipe → create CO_EmptySpaceLines from template ratios.</span>',
   elements_meta:'<span class="key">elements_meta</span> — final compiled IFC elements.<br>Key fields: <span class="val">guid</span>, <span class="val">ifc_class</span>, <span class="val">storey</span>, <span class="val">world_x/y/z</span> (mm, absolute).<br><span class="note">Written ONLY after CO_EmptySpaceLine alignment is resolved. This is the IFC-ready output.</span>',
   elem_inst:   '<span class="key">element_instances</span> — geometry transform + material.<br>Key fields: <span class="val">transform matrix</span> (4×4), <span class="val">geometry_hash</span> (→ component_library), <span class="val">material_name</span>.',
   elem_asm:    '<span class="key">element_assemblies</span> — parent/child grouping for IFC IfcRelAggregates.<br>Mirrors the M_BOM tree structure but in world-coordinate output space.',
@@ -749,402 +772,6 @@ document.querySelectorAll('.tree .toggle').forEach(t => {
 });
 </script>
 
-<script>
-// ══════════════════════════════════════════════════════════
-// ERD renderer
-// ══════════════════════════════════════════════════════════
-function toggleERD() {
-  const wrap = document.getElementById('erd-wrap');
-  const arr  = document.getElementById('erd-arr');
-  const open = wrap.style.display !== 'none';
-  wrap.style.display = open ? 'none' : 'block';
-  arr.textContent = open ? '▶' : '▼';
-  if (!open) renderERD();
-}
-
-let _erdDone = false;
-function renderERD() {
-  if (_erdDone) return;
-  _erdDone = true;
-
-  const NS  = 'http://www.w3.org/2000/svg';
-  const svg = document.getElementById('erd-svg');
-
-  function e(tag, attrs, txt) {
-    const el = document.createElementNS(NS, tag);
-    for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
-    if (txt !== undefined) el.textContent = txt;
-    return el;
-  }
-
-  // ── Arrowhead markers ──────────────────────────────────
-  const defs = e('defs', {});
-  function mkArrow(id, col) {
-    const m = e('marker', { id, markerWidth:'7', markerHeight:'5', refX:'6', refY:'2.5', orient:'auto' });
-    m.appendChild(e('polygon', { points:'0 0,7 2.5,0 5', fill:col }));
-    defs.appendChild(m);
-  }
-  mkArrow('fk-arr',   '#3b82f6');
-  mkArrow('cross-arr','#f59e0b');
-  mkArrow('conv-arr', '#64748b');
-  svg.appendChild(defs);
-
-  // ── DB layout constants ────────────────────────────────
-  const ROW  = 18;
-  const HDR  = 26;
-  const PAD  = 7;
-  const GAP  = 13;
-  const YOFF = 58;    // tables start y
-
-  const DB = {
-    comp: { x:12,  w:258, col:'#854d0e', tc:'#fbbf24', bg:'#1c1a10', lbl:'component_library.db' },
-    bom:  { x:318, w:280, col:'#1d4ed8', tc:'#60a5fa', bg:'#0f172a', lbl:'{PREFIX}_BOM.db' },
-    out:  { x:648, w:268, col:'#166534', tc:'#4ade80', bg:'#0f2310', lbl:'output.db' },
-  };
-
-  // ── Table definitions ──────────────────────────────────
-  // col fields: name, pk(bool), fk(bool), note, warn(bool)
-  const RAW = [
-    // ── component_library.db ──
-    { id:'cg',  db:'comp', title:'component_geometries', cols:[
-      { name:'geometry_hash', pk:true },
-      { name:'vertices', note:'BLOB' },
-      { name:'faces',    note:'BLOB' },
-    ]},
-    { id:'cd',  db:'comp', title:'component_definitions', cols:[
-      { name:'id', pk:true },
-      { name:'name', note:'UNIQUE — linked via M_Product.component_id (NORM-1)', warn:true },
-      { name:'geometry_hash', fk:true },
-      { name:'up_axis',        note:'default Z' },
-      { name:'forward_axis',   note:'default Y' },
-      { name:'attachment_face',note:'TOP/BOTTOM/SIDE' },
-      { name:'orientation',    note:'PENDANT/UPRIGHT/WALL_MOUNT' },
-    ]},
-    { id:'pr',  db:'comp', title:'placement_rules', cols:[
-      { name:'id', pk:true },
-      { name:'component_id', fk:true },
-      { name:'host_type',        note:'CEILING/WALL/FLOOR' },
-      { name:'offset_from_host', note:'mm' },
-    ]},
-    { id:'lgm', db:'comp', title:'I_Geometry_Map', cols:[
-      { name:'id', pk:true },
-      { name:'element_ref' },
-      { name:'ifc_class' },
-      { name:'geometry_hash', fk:true },
-      { name:'provenance',   note:'LIBRARY/EXTRACTED/PARAMETRIC' },
-    ]},
-    { id:'mpi', db:'comp', title:'M_Product_Image  (P0.2)', cols:[
-      { name:'M_Product_ID', pk:true, note:'cross-DB → {PREFIX}_BOM.db M_Product' },
-      { name:'geometry_hash', fk:true, note:'→ LOD_Object' },
-      { name:'up_axis / forward_axis' },
-      { name:'attachment_face', note:'TOP/BOTTOM/SIDE/CENTER' },
-    ]},
-    { id:'lob', db:'comp', title:'LOD_Object', cols:[
-      { name:'geometry_hash', pk:true, note:'content-addressed' },
-      { name:'vertices / faces / normals', note:'BLOB' },
-      { name:'vertex_count / face_count' },
-    ]},
-
-    // ── {PREFIX}_BOM.db (per-building dictionary — no transaction data) ──
-    { id:'mb',  db:'bom',  title:'m_bom', cols:[
-      { name:'bom_id', pk:true },
-      { name:'doc_base_type', note:'RE/CO/IN (Prime Rule: DocType)' },
-      { name:'doc_sub_type', note:'SH/DX/TB/TE/ST (Prime Rule: DocSubType)' },
-      { name:'bom_category', note:'LI/BD/KT/BT/DN/FR (functional role → M_BomCategory)' },
-      { name:'aabb_width/depth/height_mm' },
-      { name:'origin_x / origin_y / origin_z', note:'Always (0,0,0) — world position in CO_EmptySpace (output.db)' },
-    ]},
-    { id:'mbl', db:'bom',  title:'m_bom_line  ✓ NORM-2', cols:[
-      { name:'bom_child_id', pk:true },
-      { name:'bom_id',        fk:true },
-      { name:'child_product_id', fk:true, note:'→ M_Product (NORM-2: was child_bom_id / product_ref / child_ifc_class)' },
-      { name:'component_type', note:'BUY / MAKE / PHANTOM' },
-      { name:'dx / dy / dz', note:'§3.4 offset from parent tack (always ≥ 0)' },
-      { name:'qty',          note:'instance count (1=unfactored, N=verb recipe)' },
-      { name:'verb_ref',     note:'TILE:nx:ny:sx:sy / ROUTE:X:s:n|Y:s:n / SPRAY:sx:sy' },
-      { name:'rotation_rule',note:'FACE_INTO_ROOM…' },
-      { name:'allocated_width/depth/height_mm', note:'was space_*_mm (NORM-2)' },
-      { name:'locator_ref',  note:'NORTH_WALL/CENTRE/FLOAT' },
-    ]},
-    { id:'apd', db:'bom',  title:'M_Product  ✓ NORM-1+2', cols:[
-      { name:'product_id', pk:true },
-      { name:'Name / Description', note:'P0.1-DEDUP' },
-      { name:'M_Product_Category_ID', fk:true, note:'→ M_Product_Category (IFC class)' },
-      { name:'M_AttributeSet_ID', fk:true, note:'→ M_AttributeSet' },
-      { name:'width / depth / height', note:'metres (0.001 for MAKE stubs)' },
-      { name:'component_id', fk:true, note:'→ component_library.component_definitions' },
-      { name:'bom_id', fk:true, note:'→ m_bom (MAKE stubs only)' },
-      { name:'is_active',   note:'0 = stub, 1 = placeable' },
-    ]},
-    { id:'mpc', db:'bom',  title:'M_Product_Category', cols:[
-      { name:'M_Product_Category_ID', pk:true },
-      { name:'IFC_Class',   note:'IfcWall / IfcDoor / ...' },
-      { name:'Parent_ID',   fk:true, note:'STR/MEP/ARC/ASM discipline' },
-    ]},
-    { id:'cdt', db:'bom',  title:'C_DocType  (§11.36)', cols:[
-      { name:'C_DocType_ID', pk:true, note:'RE_SH / RE_DX / RE_TB / CO_TE / ST_SH / ST_DX' },
-      { name:'DocBaseType',  note:'RE (Residential) / CO (Commercial) / IN (Industrial)' },
-      { name:'DocSubType',   note:'SH / DX / TB / TE — replaces c_bpartner scoping' },
-      { name:'Name' },
-      { name:'Description' },
-    ]},
-
-    // ── output.db (self-contained: orders + production + spatial + compiled) ──
-    // ORDER layer (WHAT)
-    { id:'cor', db:'out',  title:'c_order (C_Order)', cols:[
-      { name:'building_id', pk:true },
-      { name:'C_DocType_ID', fk:true, note:'→ C_DocType (cross-DB)' },
-      { name:'aabb_width/depth/height_mm' },
-      { name:'compiled_at',           note:'timestamp' },
-      { name:'spatial_digest',        note:'DigestStage' },
-      { name:'expected_elements' },
-      { name:'doc_status',            note:'DR→IP→CO' },
-    ]},
-    { id:'col', db:'out',  title:'c_orderline  (WHAT only)', cols:[
-      { name:'id', pk:true },
-      { name:'building_type', fk:true, note:'→ c_order' },
-      { name:'element_ref',   note:'UNIQUE per building+storey' },
-      { name:'ifc_class',     note:'IfcDoor/IfcPlate/...' },
-      { name:'discipline',    note:'ARC/FURN/STR/MEP/PLB' },
-      { name:'family_ref',  fk:true, note:'→ m_bom.bom_id (cross-DB)' },
-      { name:'is_active' },
-    ]},
-    // PRODUCTION layer (HOW) — iDempiere Manufacturing names
-    { id:'vl',  db:'out',  title:'PP_Order_Node  (HOW)', cols:[
-      { name:'PP_Order_Node_ID', pk:true },
-      { name:'C_Order_ID',    fk:true, note:'→ c_order (which building)' },
-      { name:'SeqNo',         note:'execution order' },
-      { name:'Name',          note:'BIM: verb keyword (TILE / ARRAY / ROUTE)' },
-      { name:'Description',   note:'BIM: COBOL source line' },
-      { name:'S_Resource_ID', fk:true, note:'BIM: → ESLine (WHERE)' },
-      { name:'M_Product_ID',  fk:true, note:'BIM: → m_bom (cross-DB)' },
-      { name:'DocStatus',     note:'DR→IP→CO→VO' },
-      { name:'element_count', note:'BIM: elements generated' },
-    ]},
-    { id:'vp',  db:'out',  title:'PP_Order_NodeProduct', cols:[
-      { name:'PP_Order_NodeProduct_ID', pk:true },
-      { name:'PP_Order_Node_ID', fk:true, note:'→ PP_Order_Node' },
-      { name:'Name',         note:'BIM: param (ORIGIN_X / GRID_NX / SPACING_MM)' },
-      { name:'Value' },
-      { name:'ValueType',    note:'TEXT / REAL / INTEGER' },
-    ]},
-    // SPATIAL layer (WHERE) — S_Resource model
-    { id:'ces',  db:'out', title:'co_empty_space', cols:[
-      { name:'co_emptyspace_id', pk:true },
-      { name:'c_order_id', fk:true, note:'→ c_order' },
-      { name:'origin_x/y/z_mm', note:'RTREE-measured' },
-      { name:'aabb_*_mm' },
-      { name:'is_available', note:'Y → N after tests' },
-      { name:'doc_status' },
-    ]},
-    { id:'cesl', db:'out', title:'co_empty_space_line', cols:[
-      { name:'id', pk:true },
-      { name:'co_emptyspace_id', fk:true },
-      { name:'before_x/y/z',    note:'mm GPD anchor' },
-      { name:'next_x/y/z' },
-      { name:'orientation_rad' },
-      { name:'remaining_mm' },
-    ]},
-    { id:'em',   db:'out', title:'elements_meta', cols:[
-      { name:'id', pk:true },
-      { name:'guid' },
-      { name:'ifc_class' },
-      { name:'world_x / y / z', note:'mm absolute' },
-    ]},
-    { id:'ei',   db:'out', title:'element_instances', cols:[
-      { name:'id', pk:true },
-      { name:'element_id',    fk:true },
-      { name:'geometry_hash', note:'cross-DB hash → cg', warn:true },
-      { name:'transform_matrix' },
-    ]},
-  ];
-
-  // ── Compute positions ──────────────────────────────────
-  const T = {};
-  const cur = { comp:YOFF, bom:YOFF, out:YOFF };
-  RAW.forEach(t => {
-    const db = DB[t.db];
-    const tw = db.w - 20;
-    const h  = HDR + PAD + t.cols.length * ROW + PAD;
-    T[t.id] = { ...t, x: db.x + 10, y: cur[t.db], w: tw, h };
-    cur[t.db] += h + GAP;
-  });
-
-  const svgH = Math.max(cur.comp, cur.bom, cur.out) + 46;
-  svg.setAttribute('viewBox', `0 0 970 ${svgH}`);
-
-  // ── DB regions ──────────────────────────────────────────
-  for (const [dbId, db] of Object.entries(DB)) {
-    const rgH = cur[dbId] - GAP + 14;
-    svg.appendChild(e('rect', { x:db.x, y:34, width:db.w, height:rgH, rx:'9',
-      fill:db.bg, stroke:db.col, 'stroke-width':'1.5' }));
-    svg.appendChild(e('text', { x:db.x+db.w/2, y:25, 'text-anchor':'middle',
-      fill:db.tc, 'font-size':'10.5', 'font-weight':'700', 'font-family':'system-ui' }, db.lbl));
-  }
-
-  // ── Draw tables ────────────────────────────────────────
-  RAW.forEach(raw => {
-    const t  = T[raw.id];
-    const db = DB[raw.db];
-    const g  = e('g', {});
-
-    // box
-    g.appendChild(e('rect', { x:t.x, y:t.y, width:t.w, height:t.h, rx:'5',
-      fill:'#1a2236', stroke:db.col, 'stroke-width':'0.8' }));
-    // header bg
-    g.appendChild(e('rect', { x:t.x, y:t.y, width:t.w, height:HDR, rx:'5',
-      fill:db.col, opacity:'0.4' }));
-    // header text — orange warning tint for renamed table
-    const hc = raw.title.includes('⚠') ? '#fbbf24' : db.tc;
-    g.appendChild(e('text', { x:t.x+7, y:t.y+17, fill:hc,
-      'font-size':'10', 'font-weight':'700', 'font-family':'monospace' }, raw.title));
-
-    // columns
-    raw.cols.forEach((col, i) => {
-      const ry = t.y + HDR + PAD + i * ROW;
-      const cy = ry + ROW * 0.65;
-      if (i % 2 === 1)
-        g.appendChild(e('rect', { x:t.x+1, y:ry, width:t.w-2, height:ROW,
-          fill:'#fff', opacity:'0.025' }));
-
-      // name
-      const nc = col.pk ? '#fbbf24' : col.fk ? '#f87171' : col.warn ? '#fb923c' : '#cbd5e1';
-      g.appendChild(e('text', { x:t.x+7, y:cy, fill:nc,
-        'font-size':'9', 'font-family':'monospace' }, col.name));
-
-      // right-side badge (PK / FK)
-      const badge = col.pk ? 'PK' : col.fk ? 'FK' : '';
-      if (badge) {
-        const bc = col.pk ? '#92400e' : '#1e3a5f';
-        const tc2 = col.pk ? '#fbbf24' : '#60a5fa';
-        g.appendChild(e('rect', { x:t.x+t.w-22, y:ry+3, width:20, height:ROW-6, rx:'3',
-          fill:bc }));
-        g.appendChild(e('text', { x:t.x+t.w-12, y:cy, 'text-anchor':'middle', fill:tc2,
-          'font-size':'7.5', 'font-weight':'700', 'font-family':'system-ui' }, badge));
-      }
-
-      // note — only if no badge and name is short enough
-      if (col.note && !badge && col.name.length < 22) {
-        g.appendChild(e('text', { x:t.x+t.w-4, y:cy, 'text-anchor':'end',
-          fill:'#475569', 'font-size':'8', 'font-family':'system-ui' }, col.note));
-      }
-    });
-
-    svg.appendChild(g);
-  });
-
-  // ── Connection helper ──────────────────────────────────
-  function rowY(tableId, colName) {
-    const t = T[tableId];
-    const i = t.cols.findIndex(c => c.name.startsWith(colName.split('/')[0].trim()));
-    const ci = i < 0 ? -1 : i;
-    return t.y + HDR + PAD + (ci < 0 ? t.cols.length/2 : ci) * ROW + ROW * 0.65;
-  }
-
-  function connect(fTbl, fCol, tTbl, tCol, type, lbl) {
-    const ft = T[fTbl], tt = T[tTbl];
-    const fy = rowY(fTbl, fCol);
-    const ty = rowY(tTbl, tCol);
-
-    let fx, tx, pathD;
-    const sameDB = ft.db === tt.db;
-    const fRight  = ft.x + ft.w;
-    const tRight  = tt.x + tt.w;
-
-    if (sameDB) {
-      // Loop around right side of the DB column
-      const rx = Math.max(fRight, tRight) + 28;
-      fx = fRight; tx = tRight;
-      pathD = `M${fx},${fy} C${rx},${fy} ${rx},${ty} ${tx},${ty}`;
-    } else if (ft.x < tt.x) {
-      // left DB → right DB: right→left
-      fx = fRight; tx = tt.x;
-      const mx = (fx + tx) / 2;
-      pathD = `M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
-    } else {
-      // right DB → left DB: left→right
-      fx = ft.x; tx = tRight;
-      const mx = (fx + tx) / 2;
-      pathD = `M${fx},${fy} C${mx},${fy} ${mx},${ty} ${tx},${ty}`;
-    }
-
-    const colMap = { fk:'#3b82f6', cross:'#f59e0b', conv:'#94a3b8' };
-    const arrMap = { fk:'url(#fk-arr)', cross:'url(#cross-arr)', conv:'url(#conv-arr)' };
-    const dashMap = { fk:'none', cross:'6,3', conv:'3,3' };
-
-    svg.appendChild(e('path', { d:pathD, stroke:colMap[type]||'#3b82f6',
-      'stroke-width': type==='fk' ? '1.2' : '0.9',
-      fill:'none',
-      'stroke-dasharray': dashMap[type]||'none',
-      'marker-end': arrMap[type]||'url(#fk-arr)',
-      opacity: type==='fk' ? '0.65' : '0.5' }));
-
-    if (lbl) {
-      const lx = sameDB ? Math.max(fRight, tRight) + 32 : (fx+tx)/2;
-      const ly = Math.min(fy, ty) - 3;
-      svg.appendChild(e('rect', { x:lx-28, y:ly-10, width:56, height:12, rx:'3', fill:'#0a0e1a' }));
-      svg.appendChild(e('text', { x:lx, y:ly, 'text-anchor':'middle',
-        fill:colMap[type], 'font-size':'7.5', 'font-family':'system-ui' }, lbl));
-    }
-  }
-
-  // ── Declare all connections ────────────────────────────
-
-  // comp_library.db internals
-  connect('cd',  'geometry_hash', 'cg',  'geometry_hash', 'fk');
-  connect('pr',  'component_id',  'cd',  'id',            'fk');
-  connect('lgm', 'geometry_hash', 'cg',  'geometry_hash', 'fk');
-
-  // {PREFIX}_BOM.db internals (dictionary)
-  connect('mbl', 'bom_id',           'mb',  'bom_id',     'fk');
-  connect('mbl', 'child_product_id', 'apd', 'product_id', 'fk');
-  connect('apd', 'M_Product_Category_ID', 'mpc', 'M_Product_Category_ID', 'fk');
-
-  // output.db internals — Order layer
-  connect('col', 'building_type','cor', 'building_id',    'fk');
-  connect('vl',  'C_Order_ID',  'cor', 'building_id',    'fk');
-  connect('ces', 'c_order_id',  'cor', 'building_id',    'fk');
-
-  // output.db internals — Production layer (PP_ model)
-  connect('vp',  'PP_Order_Node_ID', 'vl', 'PP_Order_Node_ID', 'fk');
-  connect('vl',  'S_Resource_ID', 'cesl', 'id',           'fk');    // verb targets ESLine (S_Resource)
-
-  // output.db internals — Spatial + Compiled
-  connect('cesl','co_emptyspace_id','ces','co_emptyspace_id','fk');
-  connect('ei',  'element_id',   'em',  'id',             'fk');
-
-  // Cross-DB: output.db → {PREFIX}_BOM.db dictionary lookups
-  connect('cor', 'C_DocType_ID', 'cdt', 'C_DocType_ID',   'cross', 'DocType');
-  connect('col', 'family_ref',   'mb',  'bom_id',         'cross', 'order→BOM');
-  connect('vl',  'M_Product_ID','mb',  'bom_id',         'cross', 'verb→BOM');
-
-  // Cross-DB: {PREFIX}_BOM.db M_Product → component_library.db M_Product_Image (canonical geometry)
-  connect('apd', 'product_id',  'mpi', 'M_Product_ID',    'cross', 'product→geo');
-
-  // component_library.db: M_Product_Image → LOD_Object (mesh lookup)
-  connect('mpi', 'geometry_hash','lob', 'geometry_hash',   'fk');
-
-  // Cross-DB (name-match convention — NORM-1 gap; child_product_id→M_Product→component_id is the clean path)
-  connect('apd', 'component_id', 'cd',  'component_id',   'conv',  'name match');
-
-  // Cross-DB hash reference (output → comp_library)
-  connect('ei',  'geometry_hash','cg',  'geometry_hash',  'cross', 'hash ref');
-
-  // ── Legend ─────────────────────────────────────────────
-  const legY = svgH - 28;
-  const legs = [
-    { col:'#3b82f6', dash:'none', lbl:'FK constraint (declared, same DB)' },
-    { col:'#f59e0b', dash:'6,3',  lbl:'cross-DB reference' },
-    { col:'#94a3b8', dash:'3,3',  lbl:'name-match convention (NO FK declared)' },
-  ];
-  legs.forEach((l, i) => {
-    const lx = 18 + i * 300;
-    svg.appendChild(e('line', { x1:lx, y1:legY, x2:lx+28, y2:legY,
-      stroke:l.col, 'stroke-width':'1.5', 'stroke-dasharray':l.dash }));
-    svg.appendChild(e('text', { x:lx+33, y:legY+4, fill:'#64748b',
-      'font-size':'9', 'font-family':'system-ui' }, l.lbl));
-  });
-}
-</script>
+<!-- ERD renderer removed — see docs/DATA_MODEL.md for cross-database relationship mapping -->
 </body>
 </html>

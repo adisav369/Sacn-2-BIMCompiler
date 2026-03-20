@@ -179,7 +179,7 @@ SPRINKLER, it:
 `migration/DV003_element_mep_alias.sql` (alias cascade).
 Schemas match the actual column layout in component_library.db source tables.
 
-### 4.1 Table Summary (21 tables)
+### 4.1 Table Summary (20 tables)
 
 | Table | PK | Rows | Purpose |
 |-------|----|------|---------|
@@ -349,7 +349,7 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 
 ### Phase 3: Remove tables from component_library.db — DONE (session 41)
 - Dropped 58 tables (16 duplicated + 42 legacy/dead) from component_library.db
-- 81 tables → 23 tables (9 core + 13 actively-used ad_ + sqlite_sequence)
+- 81 tables → 21 tables (9 core + 11 actively-used ad_ + sqlite_sequence)
 - 232 MB → 214 MB (18 MB reclaimed)
 - Schema snapshot: `library/schema_snapshot_component_library.sql` (292 lines, clean)
 - Pre-cleanup snapshot: `library/schema_snapshot_component_library_before_cleanup.sql`
@@ -363,7 +363,7 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 
 ### Current (4 DBs, Phase 3 complete)
 ```
-CompilationPipeline     → component_library.db (LOD only — 23 tables)
+CompilationPipeline     → component_library.db (LOD only — 21 tables)
 PlacementValidator      → validation.db (rules)
 CalibrationDAO          → disc_validation.db + validation.db + TE_BOM.db
 MEPAD/MEPBOMResolver    → disc_validation.db (discipline metadata)

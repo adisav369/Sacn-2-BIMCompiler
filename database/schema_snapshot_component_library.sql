@@ -172,16 +172,6 @@ CREATE TABLE ad_covering_type (
     profile            TEXT,
     is_active          INTEGER DEFAULT 1
 );
-CREATE TABLE IF NOT EXISTS "ad_geometry_map" (
-    id INTEGER PRIMARY KEY,
-    building_type TEXT,
-    element_ref TEXT NOT NULL,
-    ifc_class TEXT NOT NULL,
-    storey TEXT,
-    ordinal INTEGER,
-    geometry_hash TEXT NOT NULL REFERENCES component_geometries(geometry_hash),
-    source TEXT
-, provenance TEXT DEFAULT 'LIBRARY' CHECK(provenance IN ('LIBRARY','EXTRACTED','PARAMETRIC')));
 CREATE TABLE surface_styles (style_name TEXT PRIMARY KEY, surface_r REAL, surface_g REAL, surface_b REAL, transparency REAL DEFAULT 0.0, specular_r REAL, specular_g REAL, specular_b REAL, specular_ratio REAL, specular_exponent REAL, reflectance_method TEXT DEFAULT 'NOTDEFINED', side TEXT DEFAULT 'BOTH', source TEXT);
 CREATE TABLE material_layers (layer_set_name TEXT NOT NULL, sequence INTEGER NOT NULL, material_name TEXT, thickness_m REAL, is_ventilated INTEGER DEFAULT 0, PRIMARY KEY (layer_set_name, sequence));
 CREATE TABLE ad_building_grid (
@@ -222,20 +212,6 @@ CREATE TABLE ad_building (
     has_ifc_ref     INTEGER DEFAULT 0,     -- 1 = extracted from IFC (Rosetta stones), 0 = generative
     is_active       INTEGER DEFAULT 1
 );
-CREATE TABLE ad_building_registry (
-    building_id       TEXT PRIMARY KEY,
-    building_name     TEXT NOT NULL,
-    building_type     TEXT NOT NULL,       -- RESIDENTIAL, INSTITUTIONAL, COMMERCIAL
-    dsl_content       TEXT NOT NULL,       -- full DSL text (opaque manifest)
-    output_db_path    TEXT NOT NULL,       -- relative to runtime base dir
-    reference_db_path TEXT,                -- NULL for generative buildings
-    is_active         INTEGER DEFAULT 1,
-    seq_no            INTEGER DEFAULT 10,
-    expected_elements INTEGER,
-    spatial_digest    TEXT,                -- expected MD5 (NULL = don't check)
-    provenance        TEXT DEFAULT 'EXTRACTED',  -- EXTRACTED | GENERATIVE
-    description       TEXT
-, geometry_fail_threshold INTEGER DEFAULT 0);
 CREATE TABLE ad_building_assertions (
     building_id   TEXT NOT NULL REFERENCES ad_building_registry(building_id),
     assertion_id  TEXT NOT NULL,
@@ -284,9 +260,3 @@ CREATE TABLE ad_material_thermal (
 CREATE INDEX idx_threshold_check
     ON ad_check_threshold(check_id, occupancy_group, storey_type)
     ;
-CREATE UNIQUE INDEX idx_geom_instance
-    ON ad_geometry_map(building_type, ifc_class, storey, ordinal)
-    WHERE ordinal IS NOT NULL;
-CREATE UNIQUE INDEX idx_geom_type
-    ON ad_geometry_map(element_ref, ifc_class)
-    WHERE ordinal IS NULL;

@@ -24,7 +24,7 @@ At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_D
 **Note:** Discipline metadata migration complete (session 41). All discipline tables
 (ad_space_type, ad_element_mep, ad_wall_face, placement_rules, etc.) now live exclusively
 in disc_validation.db. Java code (MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO)
-reads from disc_validation.db. component_library.db reduced from 81→23 tables (LOD catalog only).
+reads from disc_validation.db. component_library.db reduced from 81→21 tables (LOD catalog only).
 See DISC_VALIDATION_DB_SRS.md §6.
 
 ---

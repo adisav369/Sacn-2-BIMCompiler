@@ -5,12 +5,12 @@
 **Version:** 1.0 | **Date:** 2026-03-20
 **Scope:** Complete table inventory across all 4 databases with purpose, Java access, and review status.
 
-**Interactive ERDs:** [`erd_spatial_mrp.html`](erd_spatial_mrp.html) · [`bim_designer_erd.html`](bim_designer_erd.html) · [`terminal_erd.html`](terminal_erd.html)
+**Interactive ERD:** [`bim_architecture_viz.html`](bim_architecture_viz.html) — clickable 4-DB architecture, compilation pipeline, BOM tree
 **Live browser:** Datasette at `http://localhost:8001/` (see [Systems Installer Guide §4.3](../docs/SYSTEMS_INSTALLER_GUIDE.md))
 
 ---
 
-## 1. component_library.db — LOD Catalog (23 tables, ~214 MB)
+## 1. component_library.db — LOD Catalog (21 tables, ~214 MB)
 
 Read-only geometry oracle. Populated by IFC extraction (Python + IfcOpenShell). Java never writes during compilation.
 
@@ -53,13 +53,11 @@ Read-only geometry oracle. Populated by IFC extraction (Python + IfcOpenShell). 
 
 | Table | Rows | Purpose | Status |
 |-------|------|---------|--------|
-| **ad_building_registry** | varies | Building registry entries | **UNUSED** — 0 Java references. Candidate for removal. |
-| **ad_geometry_map** | varies | Geometry mapping | **UNUSED** — 0 Java references. Candidate for removal. |
 | **sqlite_sequence** | auto | SQLite AUTOINCREMENT tracking | System table — auto-managed |
 
 ---
 
-## 2. disc_validation.db — Discipline Metadata (21 tables, ~1 MB)
+## 2. disc_validation.db — Discipline Metadata (20 tables, ~1 MB)
 
 Migration-seeded, read-only at runtime. Populated by `migration/DV*.sql` scripts. All discipline metadata migrated here from component_library.db in session 41 (Phase 2b+3).
 
@@ -87,7 +85,6 @@ Migration-seeded, read-only at runtime. Populated by `migration/DV*.sql` scripts
 | **ad_space_dim** | varies | Space dimension contracts (min area, min dimension, proportions) | SpaceDimResolver.loadContracts() (R) | ACTIVE — 2 files |
 | **ad_space_adjacency** | varies | Adjacency rules between space types | DiscValidationDBTest seed check (R) | ACTIVE — 1 file (test only) |
 | **ad_space_exterior_rule** | varies | Exterior wall requirements per space type | ExteriorRuleAD.ensureLoaded() (R) | ACTIVE — 1 file |
-| **ad_space_type_furniture** | varies | Furniture requirements per space type | FurnitureTypeResolver (archived) | LOW USE — deprecated path |
 | **ad_space_type_opening** | varies | Door/window count rules per space type | OpeningBomAD, SpaceContractCheck (R) | ACTIVE — 2 files |
 
 ### Assembly & Placement Tables
@@ -112,10 +109,9 @@ Migration-seeded, read-only at runtime. Populated by `migration/DV*.sql` scripts
 
 | Table | Status | Notes |
 |-------|--------|-------|
-| **ad_ifc_class_map** (46 rows) | **UNUSED** — 0 Java references across entire codebase | Seeded by DV005 migration but never queried by Java code. May be used by Python extraction pipeline — verify before dropping. |
+| **ad_ifc_class_map** (46 rows) | Used by Python `tools/extract.py` only — 0 Java references | Seeded by DV005 migration. Python extraction pipeline reads at startup (`_load_ifc_class_map()`). Keep for now. |
 | **ad_space_adjacency** | LOW USE — only referenced in seed count test | No runtime Java queries. May be reserved for future adjacency validation. |
 | **ad_assembly_connector** | LOW USE — only referenced in seed count test | No runtime Java queries. Used by assembly builder (future). |
-| **ad_space_type_furniture** | DEPRECATED — only referenced in archived backup code | Consider removing if FurnitureTypeResolver is fully retired. |
 
 ---
 
@@ -188,17 +184,22 @@ Written fresh each compile. Schema created from `output_template.db`.
 | DISC_VALIDATION_DB_SRS.md §6 | Phase 2b/3 marked as "future" | Fixed: all phases marked DONE |
 | DATA_MODEL.md §0.2 | Said tables "currently exist in BOTH" | Fixed: migration complete note |
 
-### Tables Needing Review
+### Tables Dropped (session 41)
 
-| Table | Database | Issue | Action |
-|-------|----------|-------|--------|
-| **ad_building_registry** | component_library.db | 0 Java references | Consider dropping in next cleanup |
-| **ad_geometry_map** | component_library.db | 0 Java references | Consider dropping in next cleanup |
-| **ad_ifc_class_map** | disc_validation.db | 0 Java references (46 rows, seeded by DV005) | Verify if Python pipeline uses it before dropping |
-| **ad_space_type_furniture** | disc_validation.db | Only referenced in archived code | Drop when FurnitureTypeResolver is confirmed retired |
-| **ad_space_adjacency** | disc_validation.db | Only in seed count test | OK to keep — reserved for future adjacency validation |
-| **ad_assembly_connector** | disc_validation.db | Only in seed count test | OK to keep — assembly builder feature in progress |
-| **M_Product (BOM copy)** | {PREFIX}_BOM.db | Transitional — target: read from library only | Tracked in DATA_MODEL.md |
+| Table | Database | Reason |
+|-------|----------|--------|
+| ad_building_registry | component_library.db | 0 Java references — orphaned schema |
+| ad_geometry_map | component_library.db | Renamed to I_Geometry_Map — old name was orphan |
+| ad_space_type_furniture | disc_validation.db | Only in archived FurnitureTypeResolver — deprecated |
+
+### Remaining Low-Use Tables
+
+| Table | Database | Status |
+|-------|----------|--------|
+| **ad_ifc_class_map** | disc_validation.db | Used by Python `tools/extract.py` only — keep |
+| **ad_space_adjacency** | disc_validation.db | Test seed only — reserved for future adjacency validation |
+| **ad_assembly_connector** | disc_validation.db | Test seed only — assembly builder feature in progress |
+| **M_Product (BOM copy)** | {PREFIX}_BOM.db | Transitional — target: read from library only |
 
 ---
 

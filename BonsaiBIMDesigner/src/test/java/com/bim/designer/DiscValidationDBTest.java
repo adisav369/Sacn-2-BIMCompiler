@@ -51,18 +51,17 @@ class DiscValidationDBTest {
         EXPECTED_COUNTS.put("ad_space_dim", 37);
         EXPECTED_COUNTS.put("ad_space_exterior_rule", 24);
         EXPECTED_COUNTS.put("ad_space_type_opening", 103);
-        EXPECTED_COUNTS.put("ad_space_type_furniture", 37);
         EXPECTED_COUNTS.put("ad_space_type_mep", 22);
     }
 
-    /** All 20 tables expected in disc_validation.db. */
+    /** All 19 tables expected in disc_validation.db. */
     static final List<String> ALL_TABLES = List.of(
             "ad_space_type", "ad_element_mep", "ad_space_type_mep_bom",
             "ad_fp_coverage", "ad_assembly_connector", "ad_assembly_manifest",
             "ad_wall_face", "placement_rules", "ad_space_adjacency",
             "ad_fp_trigger", "ad_code_requirement", "ad_room_slot",
             "ad_space_dim", "ad_space_exterior_rule", "ad_space_type_opening",
-            "ad_space_type_furniture", "ad_space_type_mep",
+            "ad_space_type_mep",
             "ad_element_mep_alias",
             "W_Calibration_Result", "AD_SysConfig"
     );

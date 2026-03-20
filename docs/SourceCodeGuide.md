@@ -50,7 +50,7 @@ The Prime Rule ("Extract or Compile Only") is enforced by 6 verification gates, 
 | Database | Analogy | Role | Mutability |
 |----------|---------|------|------------|
 | `*_BOM.db` | The **menu** | Per-building BOM dictionary. Built by IFCtoBOM pipeline | Read-only at compile time |
-| `component_library.db` | The **pantry** | LOD catalog: product geometry, meshes, materials (23 tables) | Read-only (external tool output) |
+| `component_library.db` | The **pantry** | LOD catalog: product geometry, meshes, materials (21 tables) | Read-only (external tool output) |
 | `disc_validation.db` | The **recipe book** | Discipline metadata: schedules, types, placement rules, alias cascade | Read-only (migration-seeded) |
 | `output.db` | The **plated dish** | Compiled output: elements, instances, spatial structure | Written fresh each compile |
 

@@ -66,7 +66,7 @@ The `library/` directory contains all SQLite databases. These ship with the repo
 | File | Size | Purpose |
 |------|------|---------|
 | `component_library.db` | ~5 MB | Master product catalog: 608 products, 23.9K geometries, thermal properties |
-| `disc_validation.db` | ~1 MB | Discipline validation rules, IFC class mapping, MEP metadata (21 tables) |
+| `disc_validation.db` | ~1 MB | Discipline validation rules, IFC class mapping, MEP metadata (20 tables) |
 | `validation.db` | ~100 KB | Compliance thresholds and verdicts |
 
 ### 3.2 Per-Building BOM Databases (one per building)
@@ -459,47 +459,43 @@ immediately.
 | URL | What it shows |
 |-----|---------------|
 | `http://localhost:8001/` | All databases, table counts |
-| `http://localhost:8001/component_library` | All 23 tables with row counts and schema |
+| `http://localhost:8001/component_library` | All 21 tables with row counts and schema |
 | `http://localhost:8001/disc_validation` | All 21 discipline metadata tables |
 | `http://localhost:8001/SH_BOM` | Sample House BOM structure |
 | `http://localhost:8001/component_library/M_Product` | Paginated product catalog rows |
 
-### 14.2 Static ERD Diagrams (HTML files)
+### 14.2 Interactive Architecture Viz (HTML)
 
-Three interactive ERD diagrams in `database/` show **relationship structure** (not raw data):
+One interactive ERD in `database/` — clickable tables with detail panels, compilation pipeline, BOM tree:
 
 | File | Content | How to View |
 |------|---------|-------------|
-| `database/bim_designer_erd.html` | BIM Designer entity map: data layers, wire protocol, WF-BB | Open in any browser |
-| `database/erd_spatial_mrp.html` | Spatial MRP model: 4-DB architecture, all table groups | Open in any browser |
-| `database/terminal_erd.html` | Terminal building model: TE-specific BOM hierarchy, verbs | Open in any browser |
+| `database/bim_architecture_viz.html` | 4-DB architecture, clickable tables, pipeline steps, BOM tree | Open in any browser |
 
 **Full schema reference:** `database/DATABASE_SCHEMA.md` — complete table inventory with purpose, Java access, and review status.
 
 **Serving on a network:**
 
 ```bash
-# Simple static server (Python)
 cd database && python3 -m http.server 8080
-# Browse: http://localhost:8080/erd_spatial_mrp.html
+# Browse: http://localhost:8080/bim_architecture_viz.html
 ```
 
-### When to refresh static ERDs
+### When to refresh
 
-The static HTML ERDs are **hand-authored** — update them when tables are added/dropped,
-foreign keys change, or new entity groups appear. For live schema inspection, use Datasette instead.
+The architecture viz is **hand-authored HTML** — update when tables are added/dropped.
+For live schema inspection, use Datasette instead (§4.3).
 
 ```bash
 # Schema snapshot for comparison
-sqlite3 library/component_library.db ".schema" > library/schema_snapshot_component_library.sql
-sqlite3 library/disc_validation.db ".schema" > library/schema_snapshot_disc_validation.sql
+sqlite3 library/component_library.db ".schema" > database/schema_snapshot_component_library.sql
 ```
 
 ---
 
 ## 15. Database Schema Reference
 
-### 15.1 component_library.db — LOD Catalog (23 tables)
+### 15.1 component_library.db — LOD Catalog (21 tables)
 
 Product geometry oracle. Read-only at compile time.
 
@@ -524,7 +520,7 @@ Product geometry oracle. Read-only at compile time.
 
 **Schema snapshot:** `library/schema_snapshot_component_library.sql` (292 lines)
 
-### 15.2 disc_validation.db — Discipline Metadata (21 tables)
+### 15.2 disc_validation.db — Discipline Metadata (20 tables)
 
 Discipline validation rules, MEP metadata, IFC class mapping. Seeded by `migration/DV*.sql` scripts.
 
