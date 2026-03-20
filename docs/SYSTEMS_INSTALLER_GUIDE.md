@@ -408,6 +408,193 @@ curl -s http://localhost:9877/api/health 2>/dev/null | grep -q "UP" && echo "BAC
 
 ---
 
+## 14. ERD Diagrams (Interactive HTML)
+
+Three interactive ERD diagrams are available as standalone HTML files in `docs/`:
+
+| File | Content | How to View |
+|------|---------|-------------|
+| `bim_designer_erd.html` | BIM Designer entity map: M_Product, component_geometries, placement_rules, assembly connectors | Open in any browser |
+| `erd_spatial_mrp.html` | Spatial MRP model: BOM→Product→Geometry pipeline (Mermaid-based) | Open in any browser (loads Mermaid CDN) |
+| `terminal_erd.html` | Terminal building model: TE-specific BOM structure, storey hierarchy | Open in any browser |
+
+### Serving ERDs on a network
+
+```bash
+# Simple static server (Python, any directory)
+cd docs && python3 -m http.server 8080
+# Browse: http://localhost:8080/bim_designer_erd.html
+
+# Or via nginx in the Docker stack — add to deploy/nginx.conf:
+# location /erd/ { alias /data/docs/; }
+```
+
+### When to refresh ERDs
+
+The ERDs are **hand-authored HTML** — they are not auto-generated from database schema. Update them when:
+- Tables are added/dropped (e.g., Phase 3 component_library.db cleanup)
+- Foreign key relationships change
+- New entity groups appear (e.g., assembly builder tables)
+
+To regenerate a schema snapshot for comparison:
+```bash
+sqlite3 library/component_library.db ".schema" > library/schema_snapshot_component_library.sql
+sqlite3 library/disc_validation.db ".schema" > library/schema_snapshot_disc_validation.sql
+```
+
+---
+
+## 15. Database Schema Reference
+
+### 15.1 component_library.db — LOD Catalog (23 tables)
+
+Product geometry oracle. Read-only at compile time.
+
+**Core tables:**
+| Table | Rows (approx) | Purpose |
+|-------|---------------|---------|
+| `M_Product` | 608 | Product catalog (ifc_class, name, dimensions) |
+| `M_Product_Image` | 608 | LOD file paths per product |
+| `component_types` | ~50 | IFC class → category → discipline mapping |
+| `component_definitions` | ~600 | Geometry bounds, attachment face, orientation |
+| `component_geometries` | 23,900 | Vertex/face BLOBs keyed by geometry_hash |
+| `I_Geometry_Map` | ~600 | Product → geometry linkage |
+| `material_layers` | ~200 | Wall/slab material layer stacks |
+| `ad_material_thermal` | ~40 | Thermal conductivity (U-value calculation) |
+| `surface_styles` | ~100 | Material surface appearance |
+| `placement_rules` | ~50 | Host type, offset, spacing, clearance |
+
+**Spatial reference tables (ad_*):**
+`ad_building`, `ad_building_grid`, `ad_building_registry`, `ad_building_assertions`,
+`ad_check_applicability`, `ad_check_threshold`, `ad_covering_type`, `ad_fire_compartment`,
+`ad_geometry_map`, `ad_opening_family`, `ad_product_dim`, `ad_room_boundary`
+
+**Schema snapshot:** `library/schema_snapshot_component_library.sql` (292 lines)
+
+### 15.2 disc_validation.db — Discipline Metadata (21 tables)
+
+Discipline validation rules, MEP metadata, IFC class mapping. Seeded by `migration/DV*.sql` scripts.
+
+| Table | Purpose |
+|-------|---------|
+| `ad_space_type` | Space classification (office, corridor, etc.) with code requirements |
+| `ad_element_mep` | MEP element definitions (host_type, mount_height, clearance, ports) |
+| `ad_element_mep_alias` | IFC version-agnostic alias cascade (84 entries) |
+| `ad_space_type_mep_bom` | Space → MEP product BOM (qty per area, placement rule) |
+| `ad_fp_coverage` | Fire protection coverage rules (NFPA 13) |
+| `ad_fp_trigger` | Fire protection trigger conditions |
+| `ad_ifc_class_map` | IFC class extraction authority (46 entries) |
+| `ad_assembly_connector` | Assembly face connectors (position, diameter, type) |
+| `ad_assembly_manifest` | Assembly version manifests |
+| `ad_wall_face` | Wall face placement rules |
+| `ad_code_requirement` | Building code requirements per space type |
+| `ad_room_slot` | Room slot definitions |
+| `ad_space_adjacency` | Space adjacency rules |
+| `ad_space_dim` | Space dimension constraints |
+| `ad_space_exterior_rule` | Exterior space rules |
+| `ad_space_type_furniture` | Furniture requirements per space type |
+| `ad_space_type_opening` | Opening requirements per space type |
+| `placement_rules` | Discipline placement rules (spacing, offsets) |
+| `AD_SysConfig` | System configuration key-value pairs |
+| `W_Calibration_Result` | Calibration test results |
+
+### 15.3 {PREFIX}_BOM.db — Per-Building BOM (6 tables)
+
+One per building (SH, DX, TE, BR, RD, RL, IN, DM). Built by IFCtoBOM pipeline.
+
+| Table | Purpose |
+|-------|---------|
+| `m_bom` | BOM headers: building, storey, discipline groupings |
+| `m_bom_line` | BOM lines: one per element with dx/dy/dz tack offsets |
+| `m_bom_line_ma` | BOM line material assignments |
+| `M_Product` | Product snapshot (transitional copy for BOMWalker) |
+| `C_DocType` | Document type definitions |
+| `ad_sysconfig` | Per-building configuration |
+
+### 15.4 output.db — Compilation Output
+
+Written fresh each compile. Schema created from `output_template.db`.
+
+---
+
+## 16. Docker — What to Containerize
+
+### What Docker is for
+
+Docker wraps the **Back Office HTTP server** for WAN deployment. This is the only component that needs containerization — it's a stateless API server with SQLite databases mounted as a volume.
+
+### What Docker is NOT for
+
+| Component | Why not Docker |
+|-----------|---------------|
+| Blender + BIM Designer | Desktop GUI, needs OpenGL/GPU, user interaction |
+| IFCtoBOM extraction | Batch CLI, runs once per building, needs local IFC files |
+| DAGCompiler pipeline | Batch CLI, runs once per compile, development tool |
+| Test suites | Development-time only, need full Maven + JDK |
+| Migration scripts | One-shot `sqlite3` commands, run locally |
+
+### Docker architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                  WAN / Internet                  │
+└────────────────────┬────────────────────────────┘
+                     │
+         ┌───────────▼───────────┐
+         │   nginx:443 (TLS)     │  ← docker-compose service
+         │   SSL termination     │
+         └───────────┬───────────┘
+                     │
+         ┌───────────▼───────────┐
+         │  BackOfficeServer     │  ← docker-compose service
+         │  :9877 (HTTP)         │
+         │  HMAC session tokens  │
+         └───────────┬───────────┘
+                     │
+         ┌───────────▼───────────┐
+         │  /data/library/       │  ← bind-mounted volume
+         │  component_library.db │
+         │  disc_validation.db   │
+         │  *_BOM.db files       │
+         └───────────────────────┘
+```
+
+### Quick start
+
+```bash
+# 1. Build
+docker-compose build
+
+# 2. Set HMAC secret (production — don't skip this)
+export BIM_SESSION_SECRET="$(openssl rand -hex 32)"
+
+# 3. Generate TLS certs (if not using Let's Encrypt)
+./deploy/generate-certs.sh
+
+# 4. Launch
+docker-compose up -d
+
+# 5. Verify
+curl -k https://localhost/api/health
+docker-compose logs -f backoffice
+```
+
+### Updating databases in Docker
+
+The `library/` directory is bind-mounted, so database updates are live:
+
+```bash
+# Run a migration against the mounted volume
+sqlite3 ./library/disc_validation.db < migration/DV008_infra_rail_rules.sql
+
+# Recompile a building (output goes to same library/)
+./scripts/run_RosettaStones.sh classify_sh.yaml
+
+# No container restart needed — SQLite reads see changes immediately
+```
+
+---
+
 *For the project overview paper, see [BIMERPPaper.md](BIMERPPaper.md).*
 *For the end-user installer specification, see [INSTALLER_SPEC.md](INSTALLER_SPEC.md).*
 *For the WAN/Docker deployment guide, see [DEPLOYMENT.md](DEPLOYMENT.md).*
