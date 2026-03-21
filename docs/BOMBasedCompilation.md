@@ -964,6 +964,74 @@ mined from 20 buildings. False-positive rate decreases with each new
 building because the observed ranges widen to accommodate legitimate
 variation (thin partitions, large warehouses, unusual structural members).
 
+### 9.1 Layer 2 — Building Profile Validation (session 47)
+
+Layer 1 asks "is this element a plausible size?" Layer 2 asks a higher
+question: **"does this building's element composition make sense?"**
+
+Every building has a signature — the percentage distribution of its IFC
+classes. Residential buildings are 30–40% IfcWall. MEP-only files are
+90%+ flow elements. Structural models are dominated by IfcBeam or
+IfcReinforcingBar. This signature is the **building profile.**
+
+```
+Residential:  IfcWall 35%  IfcWindow 15%  IfcDoor 10%  IfcSlab 8%  ...
+MEP (plumb):  IfcFlowFitting 50%  IfcFlowSegment 44%  IfcFlowController 4%
+Structural:   IfcBeam 69%  IfcColumn 12%  IfcSlab 8%  IfcFooting 5%
+```
+
+The profile validator answers questions Layer 1 cannot:
+
+| Check | What it catches |
+|-------|----------------|
+| "Architecture file with 0 walls" | Mis-labelled or corrupt IFC |
+| "Residential building with 90% IfcReinforcingBar" | Structural file mis-classified |
+| "MEP file with 0 flow elements" | Wrong discipline tagging |
+| "13 IFC classes when typical for this size is 7" | Unusually rich or fragmented model |
+
+The profile is mined from the same corpus as Layer 1 — the 34 onboarded
+buildings. Each building contributes one profile row per IFC class. The
+validator aggregates profiles by building archetype (ARC-dominant,
+STR-dominant, MEP-dominant) and compares the new building against the
+nearest archetype.
+
+**Flywheel effect:** Each new building refines the archetype profiles.
+A hospital with unusual element ratios (high IfcFurnishingElement, low
+IfcWall) teaches the system what "institutional" looks like. The next
+hospital benefits from that knowledge.
+
+**Storage:** `ad_building_profile` table in disc_validation.db.
+One row per (building, ifc_class) — same pattern as ad_val_rule.
+
+**Integration:** `BuildingProfileValidator` runs as a second pre-flight
+in IFCtoBOMPipeline, immediately after DimensionRangeValidator. Advisory
+only — logs profile anomalies but never blocks.
+
+### 9.2 The Emergence Pattern
+
+Each layer emerges from the data the previous layer collected:
+
+```
+Layer 0: EXTRACTION          "Here are 97,000 elements"
+         → creates the corpus
+
+Layer 1: DIMENSION RANGES    "Walls are typically 800–10,000mm"
+         → mines per-element statistics from the corpus
+
+Layer 2: BUILDING PROFILES   "Residential buildings are 35% wall, 15% window"
+         → mines per-building composition from the corpus
+
+Layer 3: SEQUENCE PATTERNS   (future) "Plumbing before electrical in 80% of buildings"
+         → mines cross-discipline ordering from BOM build sequence
+
+Layer 4: ARCHETYPE CLUSTERS  (future) "These 5 buildings cluster as 'European residential'"
+         → mines building-level similarity from profiles
+```
+
+Each layer uses the same mechanism — query the corpus, aggregate, compare.
+The code stays simple. The intelligence comes from the questions asked.
+No neural networks. No training. Just SQL aggregation on real data.
+
 ---
 
 ## 10. The Compilation End State

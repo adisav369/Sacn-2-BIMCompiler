@@ -132,11 +132,20 @@ public class IFCtoBOMPipeline {
                 Path discDbPath = Path.of("library/disc_validation.db");
                 if (Files.exists(discDbPath)) {
                     try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + discDbPath)) {
+                        // Layer 1: Dimension range check (DV010)
                         DimensionRangeValidator drv = DimensionRangeValidator.load(discConn);
                         if (drv.hasRules()) {
                             DimensionRangeValidator.Report report =
                                     drv.validate(allElements, config.buildingType());
                             report.print();
+                        }
+
+                        // Layer 2: Building profile check (DV011)
+                        BuildingProfileValidator bpv = BuildingProfileValidator.load(discConn);
+                        if (bpv.hasProfiles()) {
+                            BuildingProfileValidator.Report profileReport =
+                                    bpv.validate(allElements, config.buildingType());
+                            profileReport.print();
                         }
                     } catch (Exception e) {
                         BIMLogger.warn("IFCtoBOM", "Dimension range check skipped: {}", e.getMessage());
@@ -372,6 +381,20 @@ public class IFCtoBOMPipeline {
                     + composition.halfUnitLines() + composition.pairLines());
             System.out.println("[IFCtoBOM] Committed to " + bomDbPath.getFileName());
 
+            // ── POST-COMMIT: Mine this building's profile back into the flywheel ──
+            // DV011: Each building both uses and enriches the validation pool.
+            // This makes the pipeline self-improving — no separate script needed.
+            {
+                Path discDbPath = Path.of("library/disc_validation.db");
+                if (Files.exists(discDbPath)) {
+                    try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + discDbPath)) {
+                        mineProfile(discConn, allElements, config.buildingType());
+                    } catch (Exception e) {
+                        BIMLogger.warn("IFCtoBOM", "Profile mining skipped: {}", e.getMessage());
+                    }
+                }
+            }
+
             return new PipelineResult(
                     config.buildingType(),
                     products,
@@ -583,5 +606,51 @@ public class IFCtoBOMPipeline {
                 )
                 """);
         }
+    }
+
+    /**
+     * Mine this building's element profile back into disc_validation.db.
+     * Part of the data flywheel — each compiled building enriches the
+     * validation pool for the next one. Idempotent (INSERT OR REPLACE).
+     *
+     * // Implementing BBC.md §9.1 — Witness: W-DV-PROFILE-MINE
+     */
+    private static void mineProfile(Connection discConn,
+                                     List<ExtractionReader.ExtractionElement> elements,
+                                     String buildingType) throws SQLException {
+        int total = elements.size();
+        if (total == 0) return;
+
+        // Count per IFC class
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (var e : elements) {
+            counts.merge(e.ifcClass(), 1, Integer::sum);
+        }
+        int classCount = counts.size();
+
+        // Check if table exists
+        try (ResultSet rs = discConn.getMetaData().getTables(null, null, "ad_building_profile", null)) {
+            if (!rs.next()) return;  // table doesn't exist yet
+        }
+
+        String sql = "INSERT OR REPLACE INTO ad_building_profile "
+                   + "(building_type, ifc_class, element_count, element_ratio, total_elements, class_count) "
+                   + "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (PreparedStatement ps = discConn.prepareStatement(sql)) {
+            for (var entry : counts.entrySet()) {
+                ps.setString(1, buildingType);
+                ps.setString(2, entry.getKey());
+                ps.setInt(3, entry.getValue());
+                ps.setDouble(4, 100.0 * entry.getValue() / total);
+                ps.setInt(5, total);
+                ps.setInt(6, classCount);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+
+        BIMLogger.info("PIPELINE", "Mined profile: {} — {} classes, {} elements → disc_validation.db",
+                buildingType, classCount, total);
     }
 }
