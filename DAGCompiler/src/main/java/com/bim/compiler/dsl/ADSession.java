@@ -30,7 +30,7 @@ import java.util.function.Supplier;
  */
 public class ADSession implements AutoCloseable {
 
-    private static final String DEFAULT_DB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     private final Connection conn;
     private final String dbPath;
@@ -51,7 +51,7 @@ public class ADSession implements AutoCloseable {
      * Open a session with default database path.
      */
     public static ADSession open() throws SQLException {
-        return new ADSession(DEFAULT_DB_PATH);
+        return new ADSession(bomDbPath());
     }
 
     /**

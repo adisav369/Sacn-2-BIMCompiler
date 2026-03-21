@@ -15,8 +15,9 @@ import java.util.*;
  */
 class CompilerConfig {
 
-    /** Main working database — ad_* config + m_* BOM tables. */
-    static final String DB_PATH = System.getProperty("bom.db");
+    /** Main working database — ad_* config + m_* BOM tables. Read lazily so
+     *  tests can set bom.db between class-loads without stale caching. */
+    static String dbPath() { return System.getProperty("bom.db"); }
 
     /** LOD geometry store — meshes, materials, element instances. */
     static final String LIBRARY_DB_PATH = "library/component_library.db";
@@ -61,7 +62,7 @@ class CompilerConfig {
     private void load() {
         loaded = true;
         String sql = "SELECT config_key, config_value FROM ad_sysconfig WHERE is_active = 1";
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {

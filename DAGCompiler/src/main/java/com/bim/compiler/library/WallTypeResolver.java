@@ -17,7 +17,7 @@ import java.util.*;
  */
 public class WallTypeResolver {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     /** Phase RM/A4: Default wall material when no rule matches (was hardcoded "Metal Deck") */
     public static final String DEFAULT_WALL_MATERIAL = "Metal Deck";
@@ -205,7 +205,7 @@ public class WallTypeResolver {
     private synchronized void ensureLoaded() {
         if (loaded) return;
         loaded = true;
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             // Check if table exists
             try (ResultSet rs = conn.getMetaData().getTables(null, null, "ad_wall_type", null)) {
                 if (!rs.next()) {

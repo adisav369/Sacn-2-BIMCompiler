@@ -37,7 +37,7 @@ import java.util.*;
  */
 public class BuildingBOM {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private static Connection connection = null;
 
     // =========================================================================
@@ -466,10 +466,10 @@ public class BuildingBOM {
             return connection;
         }
 
-        java.io.File dbFile = new java.io.File(DB_PATH);
+        java.io.File dbFile = new java.io.File(dbPath());
         if (!dbFile.exists()) return null;
 
-        connection = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+        connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
         return connection;
     }
 

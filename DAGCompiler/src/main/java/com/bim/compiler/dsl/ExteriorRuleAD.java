@@ -12,7 +12,7 @@ import java.util.*;
  */
 class ExteriorRuleAD {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private static ExteriorRuleAD instance;
 
     record ExteriorRule(
@@ -72,7 +72,7 @@ class ExteriorRuleAD {
             FROM ad_space_exterior_rule
             WHERE is_active = 1
             """;
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {

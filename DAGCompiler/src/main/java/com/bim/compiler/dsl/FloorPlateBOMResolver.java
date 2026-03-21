@@ -22,7 +22,7 @@ import java.util.*;
  */
 public class FloorPlateBOMResolver {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     // --- Records ---
 
@@ -77,7 +77,7 @@ public class FloorPlateBOMResolver {
 
     private void loadBOMTree() {
         try {
-            this.bomTree = BOMTreeLoader.load(LIB_PATH,
+            this.bomTree = BOMTreeLoader.load(bomDbPath(),
                 "TYPICAL_CONDO_FLOOR", "CORE_ASSEMBLY");
         } catch (SQLException e) {
             System.err.println("[FLOOR-BOM] Failed to load: " + e.getMessage());

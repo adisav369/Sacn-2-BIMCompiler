@@ -22,14 +22,13 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Metadata Integrity — referential integrity of ad_* tables")
 public class MetadataIntegrityTest {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
-    private static final String BOM_DB  = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static Connection conn;
 
     @BeforeAll
     static void openConnection() throws SQLException {
-        conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
-        conn.createStatement().execute("ATTACH DATABASE '" + BOM_DB + "' AS bom_db");
+        conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath());
+        conn.createStatement().execute("ATTACH DATABASE '" + bomDbPath() + "' AS bom_db");
         conn.createStatement().execute("ATTACH DATABASE 'library/component_library.db' AS lod");
     }
 

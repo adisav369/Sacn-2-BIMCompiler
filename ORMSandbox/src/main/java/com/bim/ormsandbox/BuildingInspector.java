@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  */
 public class BuildingInspector {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private static final String LIBRARY_DB_PATH = "library/component_library.db";
 
     private final Connection conn;

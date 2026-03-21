@@ -1,5 +1,6 @@
 package com.bim.designer;
 
+import com.bim.compiler.dsl.PlacementLoader;
 import com.bim.designer.api.*;
 
 import org.junit.jupiter.api.*;
@@ -43,10 +44,13 @@ class CompileBridgeTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        // Skip if SH_BOM.db not generated yet
-        Assumptions.assumeTrue(new File(SH_BOM_DB).exists(),
+        // Reset singletons to prevent cross-test pollution
+        PlacementLoader.resetInstance();
+
+        // Fail visibly if SH_BOM.db or DSL file not available
+        assertTrue(new File(SH_BOM_DB).exists(),
                 "SH_BOM.db not found — run IFCtoBOM pipeline first");
-        Assumptions.assumeTrue(new File(DSL_FILE).exists(),
+        assertTrue(new File(DSL_FILE).exists(),
                 "dsl_sh.bim not found");
 
         // Create temp directory for compile DB and output
@@ -71,6 +75,9 @@ class CompileBridgeTest {
     @AfterAll
     static void tearDown() throws Exception {
         if (apiConn != null && !apiConn.isClosed()) apiConn.close();
+        // Clear stale bom.db pointer before deleting temp directory
+        System.clearProperty("bom.db");
+        PlacementLoader.resetInstance();
         // Clean up temp files
         if (tempDir != null) {
             Files.walk(tempDir)

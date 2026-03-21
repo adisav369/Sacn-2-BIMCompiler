@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ExtractedBOMWalkTest {
 
-    private static final String BOM_DB = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String BUILDING_SH = "BUILDING_SH_STD";
     private static final String BUILDING_DX = "BUILDING_DX_STD";
 
@@ -55,7 +55,7 @@ class ExtractedBOMWalkTest {
     @Test
     @DisplayName("W-BOM-EB-1: BUILDING_SH_STD walk = 55 onLeaf, 3 onSubAssembly (3 floor STRs)")
     void w_bom_eb_1_sh_count() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk(BUILDING_SH, List.of(v), "SH");
@@ -72,7 +72,7 @@ class ExtractedBOMWalkTest {
     @Test
     @DisplayName("W-BOM-EB-2: BUILDING_DX_STD walk = 1099 onLeaf, 5 onSubAssembly (5 floor STRs)")
     void w_bom_eb_2_dx_count() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk(BUILDING_DX, List.of(v), "DX");
@@ -89,7 +89,7 @@ class ExtractedBOMWalkTest {
     @Test
     @DisplayName("W-BOM-EB-3: Every leaf has non-null product and non-zero AABB")
     void w_bom_eb_3_buy_integrity() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
 
             for (var entry : Map.of(BUILDING_SH, "SH", BUILDING_DX, "DX").entrySet()) {
@@ -118,7 +118,7 @@ class ExtractedBOMWalkTest {
     @Test
     @DisplayName("W-BOM-EB-4: All 8 SH IFC classes represented as leaf roles")
     void w_bom_eb_4_sh_ifc_classes() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk(BUILDING_SH, List.of(v), "SH");
@@ -137,7 +137,7 @@ class ExtractedBOMWalkTest {
     @Test
     @DisplayName("W-BOM-EB-5: bom_category = RE for BUILDING BOMs")
     void w_bom_eb_5_category() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             for (String bomId : List.of(BUILDING_SH, BUILDING_DX)) {
                 MBOM bom = MBOM.get(conn, bomId);
                 assertNotNull(bom, bomId + " must exist and be active");

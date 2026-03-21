@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Furniture Geometry — Z elevation and room containment")
 class FurnitureGeometryTest {
 
-    private static final String LIB  = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String SH_DB = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String DX_DB = "DAGCompiler/lib/output/ifc2x3_duplex.db";
 
@@ -338,7 +338,7 @@ class FurnitureGeometryTest {
                          double minX, double maxX, double minY, double maxY) {}
         List<RoomBound> rooms = new ArrayList<>();
 
-        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:" + LIB)) {
+        try (Connection lib = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             String sql = """
                 SELECT room_name, room_type,
                        min_x_mm/1000.0, max_x_mm/1000.0,

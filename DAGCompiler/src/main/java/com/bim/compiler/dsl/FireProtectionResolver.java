@@ -29,7 +29,7 @@ import java.util.*;
  */
 public class FireProtectionResolver {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
 
     private final FireProtectionAD fpAD;
     private final ADSession.FireProtectionADFacade sessionFP;  // Phase 57B
@@ -54,7 +54,7 @@ public class FireProtectionResolver {
     }
 
     public FireProtectionResolver(String jurisdiction) {
-        this(DB_PATH, jurisdiction);
+        this(dbPath(), jurisdiction);
     }
 
     /**

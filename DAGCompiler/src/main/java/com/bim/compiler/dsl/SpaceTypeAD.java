@@ -21,7 +21,7 @@ import java.util.*;
  */
 public class SpaceTypeAD {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private static Connection connection = null;
     private static boolean connectionFailed = false;
 
@@ -201,14 +201,14 @@ public class SpaceTypeAD {
         // Try to establish connection
         try {
             // Check if database file exists
-            java.io.File dbFile = new java.io.File(DB_PATH);
+            java.io.File dbFile = new java.io.File(dbPath());
             if (!dbFile.exists()) {
-                System.err.println("[SpaceTypeAD] Database not found: " + DB_PATH);
+                System.err.println("[SpaceTypeAD] Database not found: " + dbPath());
                 connectionFailed = true;
                 return null;
             }
 
-            connection = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+            connection = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
 
             // Verify AD tables exist
             if (!verifyAdTables(connection)) {

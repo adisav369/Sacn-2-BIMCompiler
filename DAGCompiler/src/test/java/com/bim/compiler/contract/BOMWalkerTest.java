@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class BOMWalkerTest {
 
-    private static final String BOM_DB = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     /** Simple counting visitor for test assertions. */
     static class CountingVisitor implements BOMVisitor {
@@ -56,7 +56,7 @@ class BOMWalkerTest {
     @Test
     @DisplayName("W-WALKER-1: BED_SET fires 5 leaf + 1 PHANTOM events")
     void w_walker_1_bed_set() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk("BED_SET", List.of(v), "SH");
@@ -75,7 +75,7 @@ class BOMWalkerTest {
     @Test
     @DisplayName("W-WALKER-2: DINING_SET fires 7 leaf + 1 PHANTOM events")
     void w_walker_2_dining_set() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk("DINING_SET", List.of(v), "SH");
@@ -94,7 +94,7 @@ class BOMWalkerTest {
     @Test
     @DisplayName("W-WALKER-3: FLOOR_SH_GF_STD fires at least 1 onSubAssembly (recursive FLOOR→SET)")
     void w_walker_3_floor_has_subassembly() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v = new CountingVisitor();
             walker.walk("FLOOR_SH_GF_STD", List.of(v), "SH");
@@ -113,7 +113,7 @@ class BOMWalkerTest {
     void w_walker_4_subassembly_balanced() throws Exception {
         String[] bomsToCheck = {"FLOOR_SH_GF_STD", "FLOOR_DX_L1_STD", "DINING_SET", "BED_SET"};
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             for (String bomId : bomsToCheck) {
                 CountingVisitor v = new CountingVisitor();
@@ -130,7 +130,7 @@ class BOMWalkerTest {
     @Test
     @DisplayName("W-WALKER-5: two visitors on BED_SET receive identical event counts")
     void w_walker_5_multi_visitor() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             CountingVisitor v1 = new CountingVisitor();
             CountingVisitor v2 = new CountingVisitor();

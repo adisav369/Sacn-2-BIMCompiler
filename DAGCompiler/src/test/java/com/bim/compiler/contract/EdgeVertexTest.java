@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Edge Vertex — Extracted Stone vs Compiled Output (SH + DX)")
 class EdgeVertexTest {
 
-    private static final String LIB      = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String SH_IN    = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
     private static final String SH_OUT   = "DAGCompiler/lib/output/ifc4_samplehouse.db";
     private static final String DX_IN    = "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db";
@@ -51,7 +51,7 @@ class EdgeVertexTest {
     private static Connection lib;
 
     @BeforeAll static void open() throws SQLException {
-        lib = DriverManager.getConnection("jdbc:sqlite:" + LIB);
+        lib = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath());
     }
     @AfterAll  static void close() throws SQLException {
         if (lib != null) lib.close();

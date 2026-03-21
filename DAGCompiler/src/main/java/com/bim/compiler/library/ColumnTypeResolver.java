@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class ColumnTypeResolver {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     private static ColumnTypeResolver instance;
 
@@ -86,7 +86,7 @@ public class ColumnTypeResolver {
     private synchronized void ensureLoaded() {
         if (loaded) return;
         loaded = true;
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             // Check if table exists
             try (ResultSet rs = conn.getMetaData().getTables(null, null, "ad_column_type", null)) {
                 if (!rs.next()) {

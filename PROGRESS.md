@@ -110,14 +110,26 @@
   DATA_MODEL.md, BIM_Designer.md, TestArchitecture.md, SourceCodeGuide.md, BIM_COBOL.md).
   BIM_Designer_SRS.md deferred — under review in separate session.
 
-**Next: S54 — Wire BOM Drop Model into Code:**
-  1. PlacementLoader isolation fix (resetInstance in CompileBridgeTest + DemoHouseCompileTest)
-  2. Populate doc_sub_type on SET/FLOOR BOMs (provenance — all 33 buildings, IFCtoBOM fix)
-  3. TC-1 test: 1 C_OrderLine(BUILDING_SH_STD), AP creates m_bom, CO compiles → 55 elements
-  4. Wire run_RosettaStones.sh through C_OrderLine path (same engine, no shortcuts)
-  5. BOM Drop chooser: swap products by bom_category + AABB fit
-  EN-BLOC for promoted groups: verb formula + ASI resolution. No zone BOMs needed
-  if validation rules define the boundaries implicitly.
+**[DONE] S54a — Wire BOM Drop Model into Code (Phase 1):**
+  1. PlacementLoader isolation fix: 40+ `static final String DB_PATH = System.getProperty("bom.db")`
+     changed to lazy `dbPath()` / `bomDbPath()` methods across DAGCompiler, TopologyMaker, ORMSandbox,
+     BIM_COBOL. `PlacementLoader.resetInstance()` in CompileBridgeTest + DemoHouseCompileTest @BeforeAll.
+     `@Tag("isolated")` removed from DemoHouseCompileTest. Both tests pass together: 9/9 GREEN.
+  2. W002 migration: `M_Product_ID TEXT` added to C_OrderLine (iDempiere alignment).
+     `insertBomDropLine()` populates M_Product_ID alongside family_ref. Idempotent schema upgrade.
+  3. TC-1 end-to-end: BomDropCompileTest — 1 C_OrderLine(BUILDING_SH_STD) → bomDrop() → compile()
+     → 55 elements. 4 witnesses (W-TC1-1..4). Equivalence proof: bomDrop leaves = compiled elements.
+  BonsaiBIMDesigner: 330/330 GREEN (was 304). +4 BomDropCompileTest, +6 BomDropTest, +9 ASIAuthoring, +7 SelectionCascade.
+  doc_sub_type on SET/FLOOR BOMs: DROPPED — per user direction, no more BOMCategory/DocType/SubType
+  on OrderLine level. All is simple OrderLine → Product → BOM explosion.
+
+**Next: S54b — Wire RosettaStones + Remove EN-BLOC/WALK-THRU:**
+  1. Wire run_RosettaStones.sh through C_OrderLine + explodeBOM path (replace ENBLOC/WALKTHRU)
+  2. Single compilation mode: 1 C_OrderLine per building → bomDrop → compile
+  3. Same element counts: 55/82/699/1099/48428 (gate: Rosetta Stones unchanged)
+  4. Remove bom.mode system property and ENBLOC/WALKTHRU code paths
+  5. Frontend sends 1 parent line (thin pipe) OR fully exploded tree (if user modified)
+  6. Backend MUST explode before processing — iDempiere prepareIt() pattern
   Also: generative pipeline end-to-end —
 
 **S53 Track 2 — Generative Pipeline End-to-End (BOM DROP paradigm):**

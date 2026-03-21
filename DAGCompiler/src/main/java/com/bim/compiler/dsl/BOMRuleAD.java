@@ -288,7 +288,7 @@ public class BOMRuleAD {
         }
     }
 
-    private static final String LIBRARY_DB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     /**
      * Load placement parameters for a BOM child role from component_library.db.
@@ -312,7 +312,7 @@ public class BOMRuleAD {
         double dropOffset = 0.0;
         String routing = "MANHATTAN";
 
-        try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIBRARY_DB_PATH);
+        try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath());
              PreparedStatement ps = libConn.prepareStatement(sql)) {
 
             ps.setString(1, bomId);

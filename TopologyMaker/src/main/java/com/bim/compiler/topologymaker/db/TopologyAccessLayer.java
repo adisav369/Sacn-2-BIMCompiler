@@ -17,7 +17,7 @@ import java.util.*;
  */
 public final class TopologyAccessLayer implements AutoCloseable {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
 
     /**
      * Typology template row from ad_typology_pattern — outbound DTO.
@@ -45,7 +45,7 @@ public final class TopologyAccessLayer implements AutoCloseable {
     }
 
     public TopologyAccessLayer() throws SQLException {
-        this(DB_PATH);
+        this(dbPath());
     }
 
     /**

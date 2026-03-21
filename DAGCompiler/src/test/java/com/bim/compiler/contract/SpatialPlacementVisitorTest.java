@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SpatialPlacementVisitorTest {
 
-    private static final String BOM_DB = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     @BeforeEach
     void resetSingleton() {
@@ -98,7 +98,7 @@ class SpatialPlacementVisitorTest {
     @Test
     @DisplayName("W-SPV-4: SpatialPlacementVisitor tracks BUILDING BOM context via BOMWalker")
     void w_spv_4_unit_bom_context() throws Exception {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             BOMWalker walker = new BOMWalker(conn);
             SpatialPlacementVisitor visitor = new SpatialPlacementVisitor();
             // Walk BUILDING_SH_STD — visitor tracks hierarchy via onSubAssembly events

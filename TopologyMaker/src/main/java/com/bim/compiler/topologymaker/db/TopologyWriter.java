@@ -33,7 +33,7 @@ import java.util.List;
  */
 public final class TopologyWriter implements AutoCloseable {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
 
     private final Connection conn;
 
@@ -43,7 +43,7 @@ public final class TopologyWriter implements AutoCloseable {
     }
 
     public TopologyWriter() throws SQLException {
-        this(DB_PATH);
+        this(dbPath());
     }
 
     // ── Public API ─────────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ import java.util.List;
  */
 public class BuildingRegistry {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
 
     /**
      * Building type definition from C_DocType.
@@ -102,7 +102,7 @@ public class BuildingRegistry {
         List<BuildingAssertion> result = new ArrayList<>();
         String sql = "SELECT building_id, assertion_id, element_match, property, operator, expected, tolerance "
                    + "FROM ad_building_assertions WHERE building_id = ? ORDER BY assertion_id";
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, buildingId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -141,7 +141,7 @@ public class BuildingRegistry {
                    + "  AND b.doc_base_type = d.DocBaseType "
                    + "  AND b.bom_type = 'BUILDING' AND b.is_active = 1 "
                    + qualifyWhereClause(whereClause);
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
              PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.length; i++) {
                 ps.setString(i + 1, params[i]);

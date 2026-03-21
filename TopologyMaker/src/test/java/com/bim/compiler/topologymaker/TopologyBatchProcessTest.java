@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("TopologyBatchProcess — TERRACE_MY_1S generation")
 class TopologyBatchProcessTest {
 
-    private static final String SOURCE_DB  = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String MIGRATION  = "migration/archive/migration_topology_maker_bootstrap.sql";
 
     private static Path tempDb;
@@ -34,7 +34,7 @@ class TopologyBatchProcessTest {
     static void setupTestDb() throws Exception {
         // Copy canonical BOM.db (unified working database) to temp file
         tempDb = Files.createTempFile("topology_test_", ".db");
-        Files.copy(Path.of(SOURCE_DB), tempDb, StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Path.of(bomDbPath()), tempDb, StandardCopyOption.REPLACE_EXISTING);
         tempDbPath = tempDb.toAbsolutePath().toString();
 
         // Apply migration

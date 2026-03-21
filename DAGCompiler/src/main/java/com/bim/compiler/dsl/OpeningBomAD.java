@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class OpeningBomAD {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private static Connection conn;
 
     // Caches
@@ -78,7 +78,7 @@ public class OpeningBomAD {
 
     private static Connection getConnection() throws SQLException {
         if (conn == null || conn.isClosed()) {
-            conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+            conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
         }
         return conn;
     }

@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class BOMDigestVerifyTest {
 
-    private static final String BOM_DB = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     /** BUILDING BOM ids — tree roots for EXTRACTED buildings. */
     private static final String BUILDING_SH = "BUILDING_SH_STD";
@@ -50,7 +50,7 @@ class BOMDigestVerifyTest {
     @Test
     @DisplayName("W-VERIFY-1: SH BOM digest is stable (55 elements, 8 classes)")
     void w_verify_1_sh_digest_stable() throws Exception {
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             DigestReport bom = SpatialDigest.computeFromBOMTree(bomConn, BUILDING_SH);
             assertEquals(55, bom.elementCount(),
                 "SH BOM tree must have 55 BUY elements");
@@ -66,7 +66,7 @@ class BOMDigestVerifyTest {
     @Test
     @DisplayName("W-VERIFY-2: DX BOM digest is stable (1099 elements, 13 classes)")
     void w_verify_2_dx_digest_stable() throws Exception {
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             DigestReport bom = SpatialDigest.computeFromBOMTree(bomConn, BUILDING_DX);
             assertEquals(1099, bom.elementCount(),
                 "DX BOM tree must have 1099 BUY elements");
@@ -82,7 +82,7 @@ class BOMDigestVerifyTest {
     @Test
     @DisplayName("W-VERIFY-3: Per-class counts correct (SH: 8, DX: 13 classes)")
     void w_verify_3_class_counts() throws Exception {
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             // SH
             DigestReport bomSH = SpatialDigest.computeFromBOMTree(bomConn, BUILDING_SH);
             assertEquals(8, bomSH.classCounts().size(),
@@ -100,7 +100,7 @@ class BOMDigestVerifyTest {
     @Test
     @DisplayName("W-VERIFY-4: 55 SH BOM lines active, 0 NULL storey")
     void w_verify_4_sh_bom_integrity() throws Exception {
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             int[] result = countBuyLinesAndNullStorey(bomConn, SH_FLOORS);
             assertEquals(55, result[0], "SH BUILDING BOM tree must have 55 active BUY lines");
             assertEquals(0, result[1], "SH BOM must have 0 NULL storey (all backfilled)");
@@ -112,7 +112,7 @@ class BOMDigestVerifyTest {
     @Test
     @DisplayName("W-VERIFY-5: 1099 DX BOM lines active, 0 NULL storey")
     void w_verify_5_dx_bom_integrity() throws Exception {
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             int[] result = countBuyLinesAndNullStorey(bomConn, DX_FLOORS);
             assertEquals(1099, result[0], "DX BUILDING BOM tree must have 1099 active BUY lines");
             assertEquals(0, result[1], "DX BOM must have 0 NULL storey (all backfilled)");

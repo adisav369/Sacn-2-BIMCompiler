@@ -20,14 +20,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("ORMSandbox — PO layer smoke tests")
 class BuildingInspectorTest {
 
-    private static final String DB_PATH  = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String LOD_DB   = "library/component_library.db";
     private Connection conn;
     private Connection lodConn;
 
     @BeforeEach
     void open() throws SQLException {
-        conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+        conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath());
         lodConn = DriverManager.getConnection("jdbc:sqlite:" + LOD_DB);
     }
 

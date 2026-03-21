@@ -19,7 +19,7 @@ import java.util.*;
  */
 public class StandardsResolver {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private static final String LOD_PATH = "library/component_library.db";
 
     /** Minimum room area for smoke detector placement (m²) */
@@ -61,7 +61,7 @@ public class StandardsResolver {
      */
     public void evaluateTriggers(int storeyCount, double heightM,
                                   double floorAreaM2, String occupancy, String jurisdiction) {
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath())) {
             // Check ad_fp_trigger for SMOKE_DETECTION and FIRE_ALARM triggers
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT trigger_id, element_type, code_id, clause " +

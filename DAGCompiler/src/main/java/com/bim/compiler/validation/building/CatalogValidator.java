@@ -36,7 +36,7 @@ import java.util.*;
  */
 public class CatalogValidator implements CatalogContract {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     private final BuildingDefinition def;
 
@@ -50,7 +50,7 @@ public class CatalogValidator implements CatalogContract {
         int resolved = 0;
         int total = 0;
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
 
             // 1. Check floor_bom references → m_bom
             Set<String> bomRefs = collectFloorBomRefs();

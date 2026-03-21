@@ -32,7 +32,7 @@ import java.util.*;
  */
 public class BOMTierResolver {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final double BIG_ROOM_AREA = 80.0;
     private static final double BIG_ROOM_MIN_DIM = 3.0;
     private static final double WALL_OFFSET = 0.5;
@@ -81,10 +81,10 @@ public class BOMTierResolver {
     private void loadBOMTree() {
         try {
             // ① BOM tree — delegated to shared AD loader
-            this.bomTree = BOMTreeLoader.load(LIB_PATH);
+            this.bomTree = BOMTreeLoader.load(bomDbPath());
 
             // ② Product dims + materials — BOMTierResolver-specific
-            try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+            try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
                 List<MProduct> allDims = new ModelQuery<>(
                         libConn, MProduct::new, MProduct.Table_Name)
                     .where("is_active = ?", 1)

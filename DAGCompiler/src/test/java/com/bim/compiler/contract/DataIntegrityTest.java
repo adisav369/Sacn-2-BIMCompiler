@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("Data Integrity — cross-database guards against data fraud")
 public class DataIntegrityTest {
 
-    private static final String BOM_DB = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String COMP_DB = "library/component_library.db";
 
     /** AABB tolerance in mm — sub-millimetre rounding from REAL storage. */
@@ -61,7 +61,7 @@ public class DataIntegrityTest {
 
     @BeforeAll
     static void openConnection() throws SQLException {
-        conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB);
+        conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath());
         conn.createStatement().execute(
             "ATTACH DATABASE '" + COMP_DB + "' AS lod");
     }

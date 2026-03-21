@@ -41,7 +41,7 @@ import java.util.List;
  */
 public class AllModelsReportGenerator {
 
-    private static final String BOM_DB = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final String TB_OUTPUT_DB = "output/tb_lktn.db";
     private static final String TE_INPUT_DB = "DAGCompiler/lib/input/Terminal_Extracted.db";
     private static final String OUTPUT_PATH = "reporting/AllModelsReport.xlsx";
@@ -51,7 +51,7 @@ public class AllModelsReportGenerator {
 
         System.out.println("AllModelsReport: generating " + outputPath);
 
-        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             Connection tbConn = null;
             try {
                 tbConn = DriverManager.getConnection("jdbc:sqlite:" + TB_OUTPUT_DB);

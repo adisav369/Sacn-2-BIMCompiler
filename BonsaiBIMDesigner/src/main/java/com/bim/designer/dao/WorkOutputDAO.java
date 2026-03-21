@@ -53,6 +53,20 @@ public class WorkOutputDAO {
             BIMLogger.warn(TAG, "W001 migration file not found, using inline DDL");
             executeDDL(INLINE_DDL);
         }
+        // W002: Add M_Product_ID to C_OrderLine (iDempiere alignment)
+        // ALTER TABLE ADD COLUMN is not idempotent in SQLite — catch duplicate error
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE C_OrderLine ADD COLUMN M_Product_ID TEXT");
+        } catch (SQLException e) {
+            // "duplicate column name" = already applied — safe to ignore
+            if (!e.getMessage().contains("duplicate column")) throw e;
+        }
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("UPDATE C_OrderLine SET M_Product_ID = family_ref WHERE M_Product_ID IS NULL");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_orderline_product ON C_OrderLine(M_Product_ID)");
+        } catch (SQLException ignored) {
+            // Backfill/index may fail on empty table — safe to ignore
+        }
     }
 
     /**
@@ -549,6 +563,141 @@ public class WorkOutputDAO {
         }
     }
 
+    // ── BOM Drop — Tree Explosion into C_OrderLine (§28) ──────────
+
+    /**
+     * Create a C_Order for BOM Drop with DocStatus DR (draft).
+     * iDempiere pattern: C_Order is the sales/manufacturing order header.
+     *
+     * @param buildingProductId  the BUILDING product ID (e.g. BUILDING_SH_STD)
+     * @param widthMm            site envelope width
+     * @param depthMm            site envelope depth
+     * @param heightMm           site envelope height
+     * @return the C_Order_ID
+     *
+     * // Implementing BIM_Designer_SRS.md §28.1 — Witness: W-DROP-1
+     */
+    public String createBomDropOrder(String buildingProductId,
+                                      double widthMm, double depthMm, double heightMm)
+            throws SQLException {
+        String orderId = "DROP_" + buildingProductId + "_" + System.currentTimeMillis();
+        String sql = """
+                INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
+                    DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                VALUES (?, NULL, 'BOM_DROP', ?, 'DR', ?, ?, ?)
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            ps.setString(2, buildingProductId);
+            ps.setDouble(3, widthMm);
+            ps.setDouble(4, depthMm);
+            ps.setDouble(5, heightMm);
+            ps.executeUpdate();
+        }
+        BIMLogger.info(TAG, "BOM_DROP order created: {} for product {}", orderId, buildingProductId);
+        return orderId;
+    }
+
+    /**
+     * Insert a C_OrderLine for a BOM Drop tree node.
+     * iDempiere pattern: C_OrderLine references M_Product_ID (family_ref)
+     * and M_Product_Category (bom_category). Only IsBOM products (those with
+     * a matching m_bom entry) have children — this is the BOM tree structure.
+     *
+     * @param orderId           C_Order_ID (from createBomDropOrder)
+     * @param parentLineId      Parent_OrderLine_ID (0 = root)
+     * @param familyRef         M_Product_ID — the product (or bom_id for assemblies)
+     * @param hostType          BUILDING | FLOOR | ROOM | LEAF
+     * @param bomCategory       M_Product_Category — for BOM chooser swap browsing
+     * @param dx                tack X offset in parent LBD (metres)
+     * @param dy                tack Y offset in parent LBD (metres)
+     * @param dz                tack Z offset in parent LBD (metres)
+     * @param widthMm           AABB width (mm)
+     * @param depthMm           AABB depth (mm)
+     * @param heightMm          AABB height (mm)
+     * @param qty               quantity
+     * @return the C_OrderLine_ID (auto-increment)
+     */
+    public int insertBomDropLine(String orderId, int parentLineId,
+                                  String familyRef, String hostType, String bomCategory,
+                                  double dx, double dy, double dz,
+                                  double widthMm, double depthMm, double heightMm,
+                                  int qty) throws SQLException {
+        // Find next Line sequence for this order
+        int nextLine = 10;
+        String maxLine = "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = ?";
+        try (PreparedStatement ps = conn.prepareStatement(maxLine)) {
+            ps.setString(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) nextLine = rs.getInt(1) + 10;
+            }
+        }
+
+        String sql = """
+                INSERT INTO C_OrderLine (C_Order_ID, Parent_OrderLine_ID, Line,
+                    family_ref, host_type, bom_category, M_Product_ID,
+                    dx, dy, dz,
+                    aabb_width_mm, aabb_depth_mm, aabb_height_mm, Qty)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql,
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, orderId);
+            if (parentLineId > 0) {
+                ps.setInt(2, parentLineId);
+            } else {
+                ps.setNull(2, java.sql.Types.INTEGER);
+            }
+            ps.setInt(3, nextLine);
+            ps.setString(4, familyRef);
+            ps.setString(5, hostType);
+            ps.setString(6, bomCategory);
+            ps.setString(7, familyRef);  // M_Product_ID = family_ref (iDempiere alignment)
+            ps.setDouble(8, dx);
+            ps.setDouble(9, dy);
+            ps.setDouble(10, dz);
+            ps.setDouble(11, widthMm);
+            ps.setDouble(12, depthMm);
+            ps.setDouble(13, heightMm);
+            ps.setInt(14, qty);
+            ps.executeUpdate();
+
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) return keys.getInt(1);
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Count C_OrderLine rows for a given order (for totalElements reporting).
+     */
+    public int countOrderLines(String orderId, String hostType) throws SQLException {
+        String sql = hostType != null
+                ? "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = ? AND host_type = ? AND IsActive = 1"
+                : "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = ? AND IsActive = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            if (hostType != null) ps.setString(2, hostType);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    /**
+     * Count C_OrderLine rows that have M_Product_ID set (iDempiere alignment check).
+     */
+    public int countOrderLinesWithProductId(String orderId) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = ? AND M_Product_ID IS NOT NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
     // ── DocStatus (Promote governance gate §17.10.4) ────────────────
 
     /**
@@ -580,6 +729,292 @@ public class WorkOutputDAO {
             ps.setString(1, newStatus);
             ps.setString(2, buildingId);
             return ps.executeUpdate() > 0;
+        }
+    }
+
+    // ── ASI — AttributeSetInstance CRUD (BBC.md §3.5.1) ─────────────
+
+    /** ASI DDL — called from initASISchema(). */
+    private static final String ASI_DDL = """
+            CREATE TABLE IF NOT EXISTS M_AttributeSet (
+                M_AttributeSet_ID   TEXT PRIMARY KEY,
+                Name                TEXT NOT NULL,
+                IsInstanceAttribute INTEGER NOT NULL DEFAULT 0,
+                Description         TEXT
+            );
+            CREATE TABLE IF NOT EXISTS M_AttributeSetInstance (
+                M_AttributeSetInstance_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                M_AttributeSet_ID          TEXT REFERENCES M_AttributeSet(M_AttributeSet_ID),
+                Description                TEXT
+            );
+            CREATE TABLE IF NOT EXISTS M_AttributeInstance (
+                M_AttributeInstance_ID     INTEGER PRIMARY KEY AUTOINCREMENT,
+                M_AttributeSetInstance_ID  INTEGER NOT NULL
+                    REFERENCES M_AttributeSetInstance(M_AttributeSetInstance_ID),
+                Name                       TEXT NOT NULL,
+                Value                      TEXT NOT NULL,
+                ValueType                  TEXT NOT NULL DEFAULT 'NUM'
+                    CHECK(ValueType IN ('NUM','TEXT','BOOL')),
+                UNIQUE(M_AttributeSetInstance_ID, Name)
+            );
+            """;
+
+    /** ASI seed — product-type templates from ASI_001. */
+    private static final String ASI_SEED = """
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Pipe',      'Pipe',      1, 'length/angle vary per instance');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Conduit',   'Conduit',   1, 'length varies per instance');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Duct',      'Duct',      1, 'length/cross-section vary');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Wall',      'Wall',      1, 'thickness fixed, length/height vary');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Slab',      'Slab',      1, 'thickness fixed, area varies');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Beam',      'Beam',      1, 'section fixed, span varies');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Column',    'Column',    1, 'section fixed, height varies');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Door',      'Door',      1, 'width/height fixed, swing/anchor vary');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Window',    'Window',    1, 'width/height fixed, sill/anchor vary');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Component', 'Component', 0, 'identical everywhere');
+            INSERT OR IGNORE INTO M_AttributeSet VALUES
+                ('BIM_Fitting',   'Fitting',   0, 'angle is type, not instance');
+            """;
+
+    /**
+     * Ensure ASI schema + seed exists. Safe to call repeatedly.
+     *
+     * // Implementing BBC.md §3.5.1 — Witness: W-ASI-READ-1
+     */
+    public void initASISchema() throws SQLException {
+        executeDDL(ASI_DDL);
+        executeDDL(ASI_SEED);
+    }
+
+    /**
+     * Create a new M_AttributeSetInstance with name/value pairs.
+     * Returns the auto-generated ASI ID.
+     *
+     * @param attributeSetId  template ID (e.g. "BIM_Wall")
+     * @param values          name→value pairs (e.g. "length_mm"→"6000")
+     * @return M_AttributeSetInstance_ID
+     */
+    public int createASI(String attributeSetId, java.util.Map<String, String> values)
+            throws SQLException {
+        String desc = values.entrySet().stream()
+                .map(e -> e.getKey() + "=" + e.getValue())
+                .reduce((a, b) -> a + ", " + b)
+                .orElse("");
+
+        String insertHeader = """
+                INSERT INTO M_AttributeSetInstance (M_AttributeSet_ID, Description)
+                VALUES (?, ?)
+                """;
+        int asiId;
+        try (PreparedStatement ps = conn.prepareStatement(insertHeader,
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, attributeSetId);
+            ps.setString(2, desc);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (!keys.next()) throw new SQLException("No key for ASI insert");
+                asiId = keys.getInt(1);
+            }
+        }
+
+        String insertValue = """
+                INSERT INTO M_AttributeInstance (M_AttributeSetInstance_ID, Name, Value, ValueType)
+                VALUES (?, ?, ?, ?)
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(insertValue)) {
+            for (var entry : values.entrySet()) {
+                ps.setInt(1, asiId);
+                ps.setString(2, entry.getKey());
+                ps.setString(3, entry.getValue());
+                ps.setString(4, inferValueType(entry.getValue()));
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+
+        BIMLogger.info(TAG, "CREATE_ASI id={} set={} attrs={}", asiId, attributeSetId, values.size());
+        return asiId;
+    }
+
+    /**
+     * Read all attribute values for an ASI instance.
+     * Returns empty list if ASI does not exist.
+     */
+    public List<ASIFieldRow> readASI(int asiId) throws SQLException {
+        String sql = """
+                SELECT ai.Name, ai.Value, ai.ValueType,
+                       aset.M_AttributeSet_ID, aset.Name AS set_name,
+                       aset.IsInstanceAttribute
+                FROM M_AttributeInstance ai
+                JOIN M_AttributeSetInstance asi
+                  ON ai.M_AttributeSetInstance_ID = asi.M_AttributeSetInstance_ID
+                JOIN M_AttributeSet aset
+                  ON asi.M_AttributeSet_ID = aset.M_AttributeSet_ID
+                WHERE ai.M_AttributeSetInstance_ID = ?
+                ORDER BY ai.Name
+                """;
+        List<ASIFieldRow> result = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, asiId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new ASIFieldRow(
+                            rs.getString("Name"),
+                            rs.getString("Value"),
+                            rs.getString("ValueType"),
+                            rs.getString("M_AttributeSet_ID"),
+                            rs.getString("set_name"),
+                            rs.getInt("IsInstanceAttribute") == 1
+                    ));
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Update a single ASI attribute value. Creates the attribute if it
+     * doesn't exist yet (upsert).
+     */
+    public boolean updateASIAttribute(int asiId, String name, String value)
+            throws SQLException {
+        String update = """
+                UPDATE M_AttributeInstance SET Value = ?, ValueType = ?
+                WHERE M_AttributeSetInstance_ID = ? AND Name = ?
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(update)) {
+            ps.setString(1, value);
+            ps.setString(2, inferValueType(value));
+            ps.setInt(3, asiId);
+            ps.setString(4, name);
+            if (ps.executeUpdate() > 0) return true;
+        }
+
+        String insert = """
+                INSERT INTO M_AttributeInstance
+                    (M_AttributeSetInstance_ID, Name, Value, ValueType)
+                VALUES (?, ?, ?, ?)
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(insert)) {
+            ps.setInt(1, asiId);
+            ps.setString(2, name);
+            ps.setString(3, value);
+            ps.setString(4, inferValueType(value));
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Link an ASI to a C_OrderLine (set the FK).
+     */
+    public boolean linkASI(int orderLineId, int asiId) throws SQLException {
+        String sql = "UPDATE C_OrderLine SET M_AttributeSetInstance_ID = ?, "
+                + "updated = datetime('now') WHERE C_OrderLine_ID = ? AND IsActive = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, asiId);
+            ps.setInt(2, orderLineId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Read the ASI ID linked to a C_OrderLine. Returns -1 if none.
+     */
+    public int getASIForOrderLine(int orderLineId) throws SQLException {
+        String sql = "SELECT M_AttributeSetInstance_ID FROM C_OrderLine "
+                + "WHERE C_OrderLine_ID = ? AND IsActive = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderLineId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    int val = rs.getInt(1);
+                    return rs.wasNull() ? -1 : val;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * List all M_AttributeSet templates.
+     */
+    public List<AttributeSetRow> listAttributeSets() throws SQLException {
+        String sql = "SELECT M_AttributeSet_ID, Name, IsInstanceAttribute, Description "
+                + "FROM M_AttributeSet ORDER BY Name";
+        List<AttributeSetRow> result = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                result.add(new AttributeSetRow(
+                        rs.getString("M_AttributeSet_ID"),
+                        rs.getString("Name"),
+                        rs.getInt("IsInstanceAttribute") == 1,
+                        rs.getString("Description")
+                ));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Resolve M_AttributeSet_ID for a product family_ref.
+     * Convention: WALL_* → BIM_Wall, PIPE_* → BIM_Pipe, etc.
+     */
+    public String resolveAttributeSetForProduct(String familyRef) {
+        String prefix = familyRef.split("_")[0].toUpperCase();
+        return switch (prefix) {
+            case "WALL" -> "BIM_Wall";
+            case "PIPE" -> "BIM_Pipe";
+            case "DUCT" -> "BIM_Duct";
+            case "CONDUIT" -> "BIM_Conduit";
+            case "SLAB" -> "BIM_Slab";
+            case "BEAM" -> "BIM_Beam";
+            case "COLUMN", "COL" -> "BIM_Column";
+            case "DOOR" -> "BIM_Door";
+            case "WINDOW", "WIN" -> "BIM_Window";
+            default -> "BIM_Component";
+        };
+    }
+
+    /**
+     * Check if a product type needs per-instance attributes.
+     */
+    public boolean isInstanceAttribute(String attributeSetId) throws SQLException {
+        String sql = "SELECT IsInstanceAttribute FROM M_AttributeSet "
+                + "WHERE M_AttributeSet_ID = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, attributeSetId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) == 1;
+            }
+        }
+    }
+
+    // ASI row records
+    public record ASIFieldRow(String name, String value, String valueType,
+                               String attributeSetId, String attributeSetName,
+                               boolean isInstanceAttribute) {}
+
+    public record AttributeSetRow(String id, String name,
+                                   boolean isInstanceAttribute, String description) {}
+
+    private static String inferValueType(String value) {
+        if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value))
+            return "BOOL";
+        try {
+            Double.parseDouble(value);
+            return "NUM";
+        } catch (NumberFormatException e) {
+            return "TEXT";
         }
     }
 
@@ -655,6 +1090,7 @@ public class WorkOutputDAO {
                 family_ref            TEXT NOT NULL,
                 host_type             TEXT NOT NULL,
                 bom_category          TEXT,
+                M_Product_ID          TEXT,
                 dx                    REAL NOT NULL DEFAULT 0,
                 dy                    REAL NOT NULL DEFAULT 0,
                 dz                    REAL NOT NULL DEFAULT 0,

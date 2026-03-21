@@ -13,7 +13,7 @@ import java.util.*;
  */
 public final class ViewAccessLayer implements AutoCloseable {
 
-    private static final String LIBRARY_DB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     private static final String QUALIFIED_BOM =
         "SELECT * FROM v_qualified_bom " +
@@ -43,7 +43,7 @@ public final class ViewAccessLayer implements AutoCloseable {
     }
 
     public ViewAccessLayer() throws SQLException {
-        this(LIBRARY_DB_PATH);
+        this(bomDbPath());
     }
 
     /** §7 — exact signature. Returns empty list when view returns zero rows. */

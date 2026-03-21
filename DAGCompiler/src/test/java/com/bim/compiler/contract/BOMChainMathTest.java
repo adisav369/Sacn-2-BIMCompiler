@@ -34,15 +34,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("BOM Chain — Math Truth Tests (SH + DX)")
 class BOMChainMathTest {
 
-    private static final String DB      = System.getProperty("bom.db");
-    private static final String BOM_DB  = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
     private static final double EPS  = 1.0;   // 1mm tolerance for boundary agreement
     private static Connection conn;
 
     @BeforeAll
     static void open() throws SQLException {
-        conn = DriverManager.getConnection("jdbc:sqlite:" + DB);
-        conn.createStatement().execute("ATTACH DATABASE '" + BOM_DB + "' AS bom_db");
+        conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath());
+        conn.createStatement().execute("ATTACH DATABASE '" + bomDbPath() + "' AS bom_db");
     }
 
     @AfterAll

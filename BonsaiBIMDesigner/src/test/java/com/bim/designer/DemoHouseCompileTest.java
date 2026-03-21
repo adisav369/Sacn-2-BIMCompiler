@@ -1,9 +1,9 @@
 package com.bim.designer;
 
+import com.bim.compiler.dsl.PlacementLoader;
 import com.bim.designer.api.*;
 
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.Tag;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @DisplayName("DemoHouse Compile — Generative End-to-End")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Tag("isolated")  // Requires clean JVM — CompileBridgeTest leaks global state via PlacementLoader
 class DemoHouseCompileTest {
 
     private static final String DSL_FILE = "IFCtoBOM/src/main/resources/dsl_dm.bim";
@@ -49,6 +48,9 @@ class DemoHouseCompileTest {
 
     @BeforeAll
     static void setUp() throws Exception {
+        // Reset singletons to prevent cross-test pollution
+        PlacementLoader.resetInstance();
+
         assertTrue(new File(DSL_FILE).exists(), "dsl_dm.bim not found");
         assertTrue(new File(COMP_LIB).exists(), "component_library.db not found");
 

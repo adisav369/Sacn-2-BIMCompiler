@@ -13,7 +13,7 @@ import java.util.*;
  */
 class UnitInteriorResolver {
 
-    private static final String LIB_PATH = System.getProperty("bom.db");
+    private static String bomDbPath() { return System.getProperty("bom.db"); }
 
     record UnitRoom(String name, String type,
                     double minX, double minY, double maxX, double maxY,
@@ -34,7 +34,7 @@ class UnitInteriorResolver {
     private void ensureLoaded() {
         if (loaded) return;
         loaded = true;
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + LIB_PATH)) {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             String sql = "SELECT unit_type_id, room_key, room_type, " +
                 "frac_min_x, frac_min_y, frac_max_x, frac_max_y, " +
                 "needs_window, opens_to FROM ad_unit_type_room WHERE is_active = 1";

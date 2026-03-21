@@ -18,7 +18,7 @@ import java.util.*;
  */
 public class VerticalCirculationValidator {
 
-    private static final String DB_PATH = System.getProperty("bom.db");
+    private static String dbPath() { return System.getProperty("bom.db"); }
     private final VerticalCirculationAD ad;
 
     public VerticalCirculationValidator(String dbPath) {
@@ -35,7 +35,7 @@ public class VerticalCirculationValidator {
             // Reuse session's delegate (shared instance within session)
             this.ad = session.verticalCirculation().getDelegate();
         } else {
-            this.ad = new VerticalCirculationAD(DB_PATH);
+            this.ad = new VerticalCirculationAD(dbPath());
         }
     }
 
