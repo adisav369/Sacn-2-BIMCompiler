@@ -8,7 +8,7 @@
 |------|----|----|--------|----|----|
 | G1-COUNT | PASS (55) | PASS (82) | **PASS (699)** | PASS (1099) | PASS (48428) |
 | G2-VOLUME | PASS (+0.00%) | PASS | **PASS** | -0.16% (MIRROR) | PASS |
-| G3-DIGEST | PASS | PASS | **FAIL (120 window SHIFT)** | FAIL (G2 drift) | FAIL (FRAME) |
+| G3-DIGEST | PASS | PASS | **FAIL (120 window SHIFT)** | FAIL (G2 drift) | FAIL (re-baseline needed) |
 | G4-TAMPER | PASS | PASS | **PASS** | PASS | PASS |
 | G5-PROVENANCE | PASS (0 GEO_) | PASS | **PASS** | PASS (7 checks) | PASS (0 GEO_) |
 | G6-ISOLATION | PASS | PASS | **PASS** | PASS | PASS |
@@ -19,7 +19,7 @@
 **Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (22+20+6+output).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
-**BonsaiBIMDesigner:** 285/285 GREEN (37 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 304/304 GREEN (38 test classes). SelectionCascadeTest: W-GEN-1 (7 witnesses).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
@@ -31,6 +31,54 @@
 **FL-5 (S50):** EYES integration — ShapeAdvisoryWriter. SH: 19 shape advisories. BIMEyes Phase 1-3 DONE (41 files, 26 proofs).
 
 ## What's Next
+
+**[DONE] S51-AUDIT: Focused Audit + Generative Architecture (session 51):**
+  Audit: 8 P0 fixes (security auth wiring, geometry proofs, test integrity, migrations).
+  BackOffice: 20/20 GREEN (+1 new 401 test). BIMEyes: geometry proofs fixed.
+  Tests: assumeTrue→fail() in 4 files, assertTrue(true) removed in 2 files.
+  Migrations: DV006 broken version deleted, V011/V012 renumbered, DV003 idempotent.
+  DemoHouseTest: rewritten as self-contained 12-witness POC (BOM + UBBL + BIMEyes).
+  BonsaiBIMDesigner: 297/297 GREEN (was 285 with DemoHouse skipping).
+  Generative Architecture: GENERATIVE_ROOM_SRS.md rewritten — no new compilation code.
+  Selection Cascade (BBC.md §3.5) IS the room populator. YAML defines rooms with
+  bom_category + AABB → cascade finds matching BOMs from library → same compiler path.
+  GenerativeRoomPopulator deleted (wrong: wrote m_bom_line directly).
+  RoomContentSuggester deleted (wrong: over-engineered domain-specific code).
+  The generative path is a data problem, not a code problem.
+
+**[DONE] S52 — WALK-THRU Selection Cascade proof:**
+  SelectionCascadeTest: 7 witnesses (W-GEN-1a..g) exercising BBC.md §3.5.
+  Cascade queries real SH_BOM.db + FK_BOM.db via ATTACH → unified SET view.
+  Results: 3/5 slots matched (2× BEDROOM→FK_BEDROOM_SET, 1× BATHROOM→SH_TOILET_BLOCK).
+  LIVING/KITCHEN correctly rejected (oversized SETs, AABB fit enforced).
+  Volume ranking proven (largest fitting SET wins). AABB=0 = universal fit.
+  DesignerDAO.findMatchingSets() — cascade query: category + AABB fit + volume rank.
+  DesignerAPI.suggestRoomContents() — auto-suggest wired into Designer API.
+  Full projection: 39 elements from 5 YAML room entries + library (zero new code).
+  Deferred fixes: TotalityContractTest assumeTrue(false)→fail(),
+  TerminalSandboxTest assumeTrue(file.exists)→assertTrue (6 occurrences).
+  BonsaiBIMDesigner: 304/304 GREEN (was 297). +7 from SelectionCascadeTest.
+
+**[DONE] S51b — FRAME/ROUTE LBD fix + ClusterReclassifier:**
+  FRAME verb: LBD clustering (minX/minY) replaces centroid-halfW[0]. Fidelity 1.08m→1.4mm.
+  FRAME promoted back to EXACT_VERBS (gating at ≤5mm). TE 9/10 (was 8/10).
+  ROUTE verb: origin switched from centroids to LBD (same pattern).
+  GeometricFingerprint.java facade deleted (zero consumers). Test migrated to BIMEyes imports.
+  ClusterReclassifier: analyses 345 CLUSTER groups (47,157 instances) for pattern promotion.
+  ASI-aware detection: uniform nominal dims (median W/D/H) — dimension variance is
+  M_AttributeSetInstance (ERP pattern: T-shirt sizes), not spatial pattern.
+  Z-band sub-grouping: splits mixed-height MEP into per-elevation patterns.
+  **Key architectural insight:** Validation rules are the inverse of generative constraints.
+  Rules over-fitted to Terminal (34 buildings) become general through cross-building
+  qualification. Each new building that passes a rule strengthens it; each failure spawns
+  a qualified sub-rule. The rule tree (disc_validation.db) is the reusable asset — not
+  the CLUSTER offset tables. See CALIBRATION_SRS.md for calibration loop.
+
+**Next: S53 — Cascade data enrichment + LIVING/KITCHEN coverage:**
+  LIVING/KITCHEN have no fitting SETs — library needs smaller room BOMs or
+  SET AABB re-measurement. Options: (1) curate DM-specific room SETs,
+  (2) relax cascade to try rotated AABB, (3) accept gaps — validation rules flag them.
+  Also: populate bom.db so TotalityContractTest passes (empty DB exposed by fail() fix).
 
 **[DONE] FL-5: EYES Integration — Shape-Aware Advisories (session 50):**
   `ShapeAdvisoryWriter` — uses BIMEyes `ShapeClassifier` + `ProductCategory` for per-element
