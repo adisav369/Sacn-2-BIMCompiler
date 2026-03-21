@@ -1015,22 +1015,43 @@ Each layer emerges from the data the previous layer collected:
 Layer 0: EXTRACTION          "Here are 97,000 elements"
          → creates the corpus
 
-Layer 1: DIMENSION RANGES    "Walls are typically 800–10,000mm"
+Layer 1: DIMENSION RANGES    "Walls are typically 800–10,000mm"        ← DONE (s47)
          → mines per-element statistics from the corpus
 
-Layer 2: BUILDING PROFILES   "Residential buildings are 35% wall, 15% window"
+Layer 2: BUILDING PROFILES   "Residential buildings are 35% wall"      ← DONE (s47)
          → mines per-building composition from the corpus
 
-Layer 3: SEQUENCE PATTERNS   (future) "Plumbing before electrical in 80% of buildings"
+Layer 3: SHAPE COMPREHENSION "This IfcWall is shaped like a beam"      ← EYES module
+         → geometric fingerprinting classifies what elements ARE
+         → 26 proofs verify spatial relationships are valid
+         → spec: EYES_SRS.md. Phase 1 ready to build
+
+Layer 4: RELATIONAL PATTERNS "Bathrooms always have toilet + sink"     ← FL-4
+         → mines element-to-space containment from the corpus
+
+Layer 5: SEQUENCE PATTERNS   (future) "Plumbing before electrical"
          → mines cross-discipline ordering from BOM build sequence
 
-Layer 4: ARCHETYPE CLUSTERS  (future) "These 5 buildings cluster as 'European residential'"
+Layer 6: ARCHETYPE CLUSTERS  (future) "European residential cluster"
          → mines building-level similarity from profiles
 ```
 
 Each layer uses the same mechanism — query the corpus, aggregate, compare.
 The code stays simple. The intelligence comes from the questions asked.
 No neural networks. No training. Just SQL aggregation on real data.
+
+Layer 3 (EYES) is different in kind: it introduces **geometric comprehension**
+— the system doesn't just compare numbers, it understands shapes. A wall
+must be planar (thin in one dimension). A column must be elongated (thin
+in two dimensions). Furniture must be compact (similar in all three).
+These are mathematical invariants derived from dimensionless ratios, not
+heuristics or ML. When combined with the flywheel, EYES advisories tell
+the Designer: "This element is labelled IfcWall but its shape says beam.
+Check the IFC source." That's a qualitatively stronger signal than
+"dimension outside range."
+
+See [EYES_SRS.md](EYES_SRS.md) for the full specification (26 proofs,
+3 tiers, 10 product categories, 4 shape archetypes).
 
 ---
 

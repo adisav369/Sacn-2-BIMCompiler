@@ -201,7 +201,7 @@ The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions
 |------|------|--------|
 | **FL-2** | **Advisory Output for Designer** — W_Validation_Advisory table + listAdvisories API + Blender panel. Structured flywheel output. Spec: ACTION_ROADMAP.md §FL-2. | — |
 | **FL-3** | **CALIBRATE verb** — suggestDimensions(ifcClass) returns typical W/D/H + nearest products. Auto-fill in Designer. | FL-2 |
-| **G-10** | **Promote to BOM** — C_OrderLine → m_bom + m_bom_line. Dangles check, owner sign-off, entity_type='U', provenance='GENERATIVE'. | — |
+| **G-10** | **Promote to BOM** — C_OrderLine → m_bom + m_bom_line. Dangles check, owner sign-off, entity_type='U', provenance='GENERATIVE'. **DONE (session 47).** | — |
 | **G-11** | **ParametricMesh UI** — Blender panel exposing slider params. Construction-grade: BOM sub-assembly with tack I/O. | — |
 | **G-12** | **Text Mode** — Search box + future NL → OrderLine + ASI. | — |
 | **G-13** | **Click-to-Place** — Interactive discipline placement. User selects discipline, clicks area, rules auto-place. Spec: `BIM_Designer.md` §18.8. | — |
@@ -209,7 +209,7 @@ The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions
 ### Dependency Chain
 
 ```
-G-1..G-9 (DONE) ─── G-10 (Promote) ─── G-11 (ParametricMesh)
+G-1..G-10 (DONE) ─── G-11 (ParametricMesh)
                      │                    G-12 (Text Mode)
                      │                    G-13 (Auto-chain)
                      │
@@ -344,6 +344,34 @@ averages 1 per 15m²."
 **Effort:** 1 session. Depends on: buildings with IfcSpace + containment
 data (IN, SC, ES have this).
 
+### FL-5: EYES Integration — Shape-Aware Advisories
+
+**Problem:** The flywheel currently checks dimensions (Layer 1) and
+composition (Layer 2). But it cannot say "this IfcWall is actually
+shaped like a column" — that requires geometric fingerprinting.
+
+**Solution:** Wire BIMEyes (EYES_SRS.md) into the advisory pipeline.
+The EYES module provides 26 proofs across 3 tiers. The key additions:
+
+| EYES Capability | Advisory Value |
+|----------------|---------------|
+| Shape archetype (PLANAR/ELONGATED/COMPACT) | "This IfcWall is ELONGATED — it's shaped like a beam, not a wall" |
+| ProductCategory (10 domain categories) | "This element is classified ARC but its geometry is MEP_ROUTING" |
+| P25 ROOM_VALIDITY | "Room 'Kitchen' has 3 walls but no floor slab and no door" |
+| P26 BUILDING_COMPLETENESS | "Building has no roof element and no external door" |
+
+**Integration with FL-2 advisory table:**
+- EYES proofs write to same `W_Validation_Advisory` table
+- Shape mismatches → SUGGESTION severity (with correct category)
+- Room/building violations → WARNING severity
+- Designer panel shows EYES advisories alongside dimension/profile ones
+
+**Depends on:** EYES_SRS.md Phase 1 (module creation + core types).
+The spec defines 3 phases — Phase 1 is 1 session. FL-5 wiring is
+an additional session after EYES Phase 1 ships.
+
+**Effort:** 2 sessions total (1 for EYES Phase 1, 1 for FL-5 wiring).
+
 ### FL Dependency Chain
 
 ```
@@ -352,6 +380,10 @@ FL-1 (DONE) → FL-2 (advisory table + Designer panel)
               FL-3 (CALIBRATE verb — uses same advisory data)
                 ↓
               FL-4 (relational mining — enriches MEP schedules)
+                ↓
+              FL-5 (EYES integration — shape-aware advisories)
+                    ↑
+              EYES Phase 1 (module creation — EYES_SRS.md)
 ```
 
 ### FL Designer Development Note
