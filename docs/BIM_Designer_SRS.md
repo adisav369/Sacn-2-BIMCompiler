@@ -2469,6 +2469,77 @@ undoChanges(userId, undoSequence)
 
 ---
 
+---
+
+## 27. Flywheel Advisory Panel (FL-2)
+
+**Version:** 1.0 (2026-03-21)
+**Depends on:** §17 Design Mode, `PlacementValidatorImpl`, BBC.md §9
+
+### 27.1 Purpose
+
+The Data Flywheel (BBC.md §9) produces structured validation advisories
+during IFC onboarding — dimension outliers, profile anomalies, novel
+classes. These advisories must be surfaced in the BIM Designer so the
+user can act on them, not just read log files.
+
+### 27.2 Requirements
+
+| ID | Requirement | Acceptance Criteria |
+|----|-------------|---------------------|
+| FL-F-01 | **Advisory list.** `listAdvisories(buildingId)` returns all advisories for a building. | JSON array of {layer, severity, message, suggestion, element_ref} |
+| FL-F-02 | **Advisory panel.** Blender panel shows advisories colour-coded by severity. | INFO=blue, WARNING=amber, SUGGESTION=green. Scrollable list. |
+| FL-F-03 | **Click-to-highlight.** Clicking an advisory highlights the flagged element in the 3D viewport. | `focus_section(element_ref)` bridges advisory → viewport object. |
+| FL-F-04 | **Apply suggestion.** SUGGESTION-type advisories offer "Apply" button. | Calls `updateOrderLine(orderLineId, field, suggestedValue)`. Dimension updates immediately in viewport. |
+| FL-F-05 | **CALIBRATE auto-fill.** When placing a new element, dimension fields are pre-populated with typical values from the mined pool. | `suggestDimensions(ifcClass)` → returns {typicalW, typicalD, typicalH, nearestProducts[]}. |
+| FL-F-06 | **Refresh on load.** Advisories refresh when a building is loaded or after compilation. | Panel clears and re-queries on `loadBuilding` or `compile`. |
+
+### 27.3 Advisory Severities
+
+| Severity | Meaning | User Action | Example |
+|----------|---------|-------------|---------|
+| INFO | Observation from mined data | None required | "8 IFC classes detected (typical: 7-12)" |
+| WARNING | Element dimension outside observed range | Review element | "IfcWall W=95mm (range [800-10269]mm)" |
+| SUGGESTION | System can auto-correct | Click "Apply" | "Nearest typical: 5000mm (from Esplanades)" |
+
+### 27.4 Data Flow
+
+```
+IFC onboarding (IFCtoBOMPipeline)
+  → DimensionRangeValidator.validate()
+  → BuildingProfileValidator.validate()
+  → Writes to W_Validation_Advisory table in disc_validation.db
+
+BIM Designer loads building
+  → listAdvisories(buildingId)
+  → Reads W_Validation_Advisory
+  → Renders in Advisory Panel
+
+User clicks "Apply" on SUGGESTION
+  → updateOrderLine(orderLineId, 'aabb_width_mm', suggestedValue)
+  → Viewport updates via sync timer (UX-F-26)
+```
+
+### 27.5 Implementation Notes
+
+- **Java:** DesignerAPIImpl +1 method (`listAdvisories`), DesignerServer +1 dispatch case
+- **Python:** client.py +1 verb (`list_advisories`), panel.py +1 section
+- **Schema:** DV012 migration creates `W_Validation_Advisory` table
+- **No new validation logic on Python side** — all intelligence stays in Java
+- **Backward compatible:** advisory panel is additive, existing panels unchanged
+
+### 27.6 Witness Claims
+
+| Witness | Claim |
+|---------|-------|
+| W-FL-ADVISORY-1 | listAdvisories returns advisories for known building |
+| W-FL-ADVISORY-2 | SUGGESTION-type advisory includes suggested value |
+| W-FL-ADVISORY-3 | Empty advisory list for building with no outliers |
+| W-FL-CALIBRATE-1 | suggestDimensions(IfcWall) returns typical range |
+| W-FL-CALIBRATE-2 | suggestDimensions(unknown) returns empty |
+
+---
+
 *References:
 [BIM_Designer.md](BIM_Designer.md) (architecture, §17 Design Mode, §18 UI Strategy) |
 [G4_SRS.md](G4_SRS.md) (work_output.db, Save/Recall/Promote sequences) |

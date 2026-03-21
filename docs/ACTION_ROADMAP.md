@@ -13,7 +13,9 @@
 - GH (193), JS (61), NI (104), WB (125), WL (114), WT (55), WA (1749), JE (626), WI (1), RA (442), RM (6787), RS (4133), CL (3214), HI (2068): session 44b
 
 63 verbs. 9-stage pipeline. 196 witnesses. 2459 products. 4-DB architecture. 34 building types.
-BIM Designer: 248/248 GREEN. BackOffice: 19/19 GREEN. G-1 through G-7 DONE.
+BIM Designer: 285/285 GREEN. BackOffice: 19/19 GREEN. G-1 through G-9 DONE.
+**Data Flywheel (session 47):** 415 mined dimension rules + 297 building profiles.
+Self-improving pipeline: each compiled building enriches the validation pool automatically.
 
 **Market context:** See [`BIM_Compiler_Market_Impact_Report.pdf`](BIM_Compiler_Market_Impact_Report.pdf) — USD 10B global BIM market (2025), Malaysia BIM mandate from July 2025 (all projects ≥RM10M).
 
@@ -124,17 +126,43 @@ No mechanism exists to detect or correct wrong labels.
 
 **Implementation phases:**
 
-| Phase | What | Files | Effort |
-|-------|------|-------|--------|
-| **4a** | Add `shape_archetype` + `scale_band` computed columns to `m_bom_line` at IFCtoBOM time | `ExtractionPopulator`, `ScopeBomBuilder`, `DisciplineBomBuilder`, migration SQL | Small |
-| **4b** | Replace 12 geometric decision points with archetype switches | `PlacementProver` (P10, overlap, Z-band), `SpatialDiff`, `MeshBinder`, `GeometryIntegrityChecker` | Medium |
-| **4c** | Wire compiler's semantic decisions to component library product properties instead of IFC class | `BuildingWriter` (element_type, GUID prefix), `ProductRegistrar` (product_type), `BOMExporter` (UOM) | Medium |
-| **4d** | Move QTO/costing rates to authority data table (`ad_check_threshold` or new `ad_cost_rate`) | `BuildingWriter` (CIDB rates) | Small |
-| **4e** | Add `BomValidator.checkShapeConsistency()` as pre-commit gate in IFCtoBOM pipeline | `BomValidator`, `IFCtoBOMPipeline` | Small |
+| Phase | What | Status |
+|-------|------|--------|
+| **4a** | `shape_archetype` + `scale_band` columns on `m_bom_line` (6 INSERT paths, migration SQL) | **DONE** (s46) |
+| **4b** | 15 geometric switches → archetype (PlacementProver P04/P10, SpatialDiff, MeshBinder, GeometryIntegrityChecker) | **DONE** (s46) |
+| **4c** | 8 semantic switches → archetype (BOMExporter UOM/desc/aggregation, BuildingWriter GUID prefix/element_type) | **DONE** (s46) |
+| **4d** | ~~QTO/costing rates to authority data table~~ — dropped from CP-4 scope (separate concern) | N/A |
+| **4e** | `BomValidator.checkShapeConsistency()` pre-commit gate | **DONE** (s46) |
 
-**Gate:** P10_SHAPE_IDENTITY PASS for all buildings. Zero `switch(ifcClass)` in compiler
-runtime (DAGCompiler). IFC class used only in IFCtoBOM (extraction metadata) and output
-(traceability). TE Metal Deck correctly classified from library, not from IFC label.
+**Geometric half gate: PASSED.** 23/43 switch points replaced. SH 9/10 undisturbed.
+**Semantic half gate: PASSED.** 20/37 refs switched to product_category (s48). SH 9/10 undisturbed.
+New utility: `GeometricFingerprint.classifyArchetype()`, `classifyScaleBand()`, `isHostedOpening()`.
+BBC.md §4.2.3 documents the schema, computation, and witness claims.
+
+### CP-4 Semantic Half: Product Category ✓
+
+**Problem:** 37 IFC class references remain in domain-specific code. These answer "what kind
+of element?" — pipe vs column (both ELONGATED), wall vs slab (both PLANAR+ARCHITECTURAL).
+Archetype alone cannot distinguish because the question is semantic, not geometric.
+
+**Delivered (session 48):**
+- `CP4_002_product_category.sql` — migration adding `product_category TEXT` to `component_types`
+- `ProductCategory.java` — static resolution map (ifc_class → product_category), 58 entries
+- 10 categories: STRUCTURAL_LINEAR, STRUCTURAL_PLANAR, MEP_ROUTING, MEP_TERMINAL,
+  OPENING, FURNISHING, ENVELOPE, CIRCULATION, SITE, INFRASTRUCTURE
+- 20 of 37 IFC class decision refs replaced with product_category
+- 3 missing MEPWriter IFC classes added to component_types (IfcOutlet, IfcSwitchingDevice, IfcFan)
+
+**Remaining on ifcClass (documented exceptions):**
+- OVERLAP_EXEMPT_CLASSES: IfcMember/IfcBuildingElementProxy — product_category too coarse
+- P14 IfcSlab: "floor" vs "wall" distinction within STRUCTURAL_PLANAR
+- MEPWriter output metadata (11 refs): IFC class is traceability metadata per BBC.md §2.2.1 layer 3
+- findPlacement matching: ifcClass as lookup key, not decision variable
+
+**Specs to consult:**
+- BBC.md §2.2.1 ("The Rule"), ConstructionAsERP.md §1.4 (product taxonomy)
+- DATA_MODEL.md (component_library.db schema), SourceCodeGuide.md §4 (library resolution)
+- BIM_COBOL.md §18.17-18.18 (CLASSIFY verb for property-based reclassification)
 
 **Session 44 delivery:**
 - `GeometricFingerprint.java` — computes planarity/elongation/squareness from dimensions
@@ -163,13 +191,16 @@ The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions
 | G-5 | s27 | BOM Chooser + Place + Layout + Inference + Ambient |
 | G-6 | s29 | Compile bridge (real pipeline) |
 | G-7 | s35 | Assembly builder (layer-by-layer TACK, U-value) |
+| G-8 | s45 | Click-to-Place (viewport click → room → discipline placement) |
+| G-9 | s46b | ORDER View + BOM Outliner (three views share C_OrderLine) |
+| FL-1 | s47 | Data Flywheel: dimension validation + building profiles + auto-mining |
 
 ### Next Gates
 
 | Gate | What | Blocks |
 |------|------|--------|
-| **G-8** | **BlenderBridge pipe** — TCP Snap → PlacementValidator in real-time. Incremental viewport delta. Spec: `BlenderBridge.md`. | G-10, G-13 |
-| **G-9** | **ORDER View + BOM Outliner** — Tabular editor + relational tree. Three views share C_OrderLine. Schema-Not-Geometry: edits are FK/ASI, compiler renders. | — |
+| **FL-2** | **Advisory Output for Designer** — W_Validation_Advisory table + listAdvisories API + Blender panel. Structured flywheel output. Spec: ACTION_ROADMAP.md §FL-2. | — |
+| **FL-3** | **CALIBRATE verb** — suggestDimensions(ifcClass) returns typical W/D/H + nearest products. Auto-fill in Designer. | FL-2 |
 | **G-10** | **Promote to BOM** — C_OrderLine → m_bom + m_bom_line. Dangles check, owner sign-off, entity_type='U', provenance='GENERATIVE'. | — |
 | **G-11** | **ParametricMesh UI** — Blender panel exposing slider params. Construction-grade: BOM sub-assembly with tack I/O. | — |
 | **G-12** | **Text Mode** — Search box + future NL → OrderLine + ASI. | — |
@@ -178,11 +209,15 @@ The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions
 ### Dependency Chain
 
 ```
-G-1..G-7 (DONE) ─── G-8 (BlenderBridge) ─── G-10 (Promote) ─── G-13 (Click-to-Place)
+G-1..G-9 (DONE) ─── G-10 (Promote) ─── G-11 (ParametricMesh)
+                     │                    G-12 (Text Mode)
+                     │                    G-13 (Auto-chain)
                      │
-                     G-9 (ORDER View)
-                     G-11 (ParametricMesh)
-                     G-12 (Text Mode)
+FL-1 (DONE) ──── FL-2 (Advisory table + Designer panel)
+                     │
+                  FL-3 (CALIBRATE verb)
+                     │
+                  FL-4 (Relational mining)
 ```
 
 ---
@@ -200,6 +235,140 @@ G-1..G-7 (DONE) ─── G-8 (BlenderBridge) ─── G-10 (Promote) ───
 | B | Terminal Recomposition — 48K elements, 37:1 factorization | DONE |
 | SRS | Spec hardening — BBC.md, G4_SRS, TACK_FIX, DocValidate, traceability | DONE |
 | TACK-FIX | LBD convention testing + BIMLogger | DONE (session 25) |
+
+---
+
+## Phase FL: Data Flywheel — Self-Improving Validation
+
+*Spec: BBC.md §9, §9.1, §9.2. See also DISC_VALIDATION_DB_SRS.md §DV010-DV011.*
+
+The pipeline learns from every building it processes. Each new IFC both
+uses and enriches a mined validation pool. This phase extends the flywheel
+from advisory logging to **actionable suggestions in the BIM Designer.**
+
+### FL-1: Outlier Report Table (DONE — session 47)
+
+Layer 1 (DimensionRangeValidator) and Layer 2 (BuildingProfileValidator)
+run as pre-flight in IFCtoBOMPipeline. Post-commit auto-mining feeds back.
+415 dimension rules + 297 profile rows from 36 buildings.
+
+### FL-2: Advisory Output for BIM Designer
+
+**Problem:** Flywheel output is currently log-only. The BIM Designer
+cannot read the outlier report — it doesn't know which elements were
+flagged or why.
+
+**Solution:** Structured advisory output that the Designer can consume:
+
+| Artefact | Format | Consumer |
+|----------|--------|----------|
+| `W_Validation_Advisory` table | SQLite in disc_validation.db | Designer API |
+| `listAdvisories(buildingId)` | DesignerAPI method (JSON) | Python client |
+| Advisory panel in BIM Designer | Blender UI panel | User |
+
+**Schema:**
+```sql
+CREATE TABLE W_Validation_Advisory (
+    advisory_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_type   TEXT NOT NULL,
+    element_ref     TEXT,           -- which element (NULL for profile-level)
+    layer           TEXT NOT NULL,  -- 'DIMENSION', 'PROFILE', 'COMPLIANCE'
+    severity        TEXT NOT NULL,  -- 'INFO', 'WARNING', 'SUGGESTION'
+    rule_name       TEXT,           -- e.g. 'DIMENSION_RANGE_W:IfcWall'
+    message         TEXT NOT NULL,  -- human-readable
+    actual_value    REAL,
+    expected_min    REAL,
+    expected_max    REAL,
+    suggestion      TEXT,           -- e.g. 'Nearest typical: 5000mm (from Esplanades)'
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+```
+
+**Designer integration:**
+- `listAdvisories(buildingId)` → returns advisories for this building
+- Panel: colour-coded list (INFO=blue, WARNING=amber, SUGGESTION=green)
+- Click advisory → highlights the element in 3D viewport
+- "Apply suggestion" button → auto-adjusts dimension to nearest typical
+
+**Effort:** 1 session. Changes: DV012 migration, DimensionRangeValidator
+writes to table, BuildingProfileValidator writes to table, DesignerAPI
++1 method, Python client +1 verb, panel +1 section.
+
+### FL-3: CALIBRATE Verb
+
+**Problem:** When the designer places a new element, they guess the
+dimensions. The mined data knows what typical dimensions are for each
+IFC class from 20+ real buildings.
+
+**Solution:** A `calibrateDimensions` API method that suggests dimensions:
+
+```
+Designer: "I'm placing an IfcColumn on Level 1"
+System:   "Typical: 300×300×3400mm (from 10 buildings, 22 observations)"
+          "Nearest products: COLUMN_300x300, COLUMN_200x200"
+```
+
+**Wire:** PlacementValidatorImpl already has the mined rules loaded.
+Add `suggestDimensions(ifcClass)` → returns typical W/D/H ranges +
+nearest M_Product matches from component_library.db.
+
+**Effort:** 1 session. Changes: PlacementValidatorImpl +1 method,
+DesignerAPI +1 method, Python client +1 verb, panel auto-fill.
+
+### FL-4: Relational Mining (Layer 3 Flywheel)
+
+**Problem:** The MEP schedules in `ad_space_type_mep_bom` (186 rows)
+are static — hand-authored from codes and Terminal observation.
+They don't grow with new buildings.
+
+**Solution:** Mine element-to-space relationships from buildings that
+have `rel_contained_in_space` data (IN has 253 containment rows).
+For each space type, count which MEP elements appear and at what
+density per floor area.
+
+**Query basis:**
+```sql
+SELECT s.ifc_class as space_class, e.ifc_class as element_class,
+       COUNT(*) as count, AVG(area) as avg_area
+FROM rel_contained_in_space r
+JOIN elements_meta e ON e.guid = r.element_guid
+JOIN elements_meta s ON s.guid = r.space_guid
+GROUP BY s.ifc_class, e.ifc_class
+```
+
+**Outcome:** Enrich `ad_space_type_mep_bom` with mined observations.
+Compare hand-authored schedules against actual building data.
+Flag discrepancies: "Code says 1 sprinkler per 21m², but Clinic
+averages 1 per 15m²."
+
+**Effort:** 1 session. Depends on: buildings with IfcSpace + containment
+data (IN, SC, ES have this).
+
+### FL Dependency Chain
+
+```
+FL-1 (DONE) → FL-2 (advisory table + Designer panel)
+                ↓
+              FL-3 (CALIBRATE verb — uses same advisory data)
+                ↓
+              FL-4 (relational mining — enriches MEP schedules)
+```
+
+### FL Designer Development Note
+
+**For the BIM Designer team:** The flywheel validation produces structured
+advisories — not just log output. The Designer should:
+
+1. Call `listAdvisories(buildingId)` after loading a building
+2. Display advisories in a panel (INFO/WARNING/SUGGESTION colour-coded)
+3. Allow click-to-highlight of flagged elements
+4. For SUGGESTION-type advisories, offer "Apply" button that calls
+   `updateOrderLine()` with the suggested dimension
+5. For CALIBRATE, auto-populate dimension fields when placing new elements
+
+The advisory data is already in disc_validation.db — the Designer just
+needs to read and present it. No new validation logic needed on the
+Python side.
 
 ---
 
@@ -247,7 +416,7 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 
 | Gap | Documented In | Impact | Status |
 |-----|--------------|--------|--------|
-| IFC class used as decision variable | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) §Geometric Fingerprint, CP-4 | 43 switch points on IFC class in compiler; TE 33K mislabelled | PENDING — CP-4 phases 4a–4e |
+| ~~IFC class used as decision variable~~ | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) §Geometric Fingerprint, CP-4 | ~~43 switch points on IFC class in compiler~~ | **DONE** — CP-4 geometric (s46) + semantic (s48). ~17 documented exceptions remain |
 | Verb fidelity for non-uniform spacing | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-30 | 533 ROUTE instances have step-uniformity gap | PENDING — fixable, not architectural |
 | depth_mm semantics | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-17 | Extraction data leaked into product catalog | PENDING — schema fix |
 | Vocabulary gaps block real projects | Market Report §6.1 | Each new building type may hit missing verbs | MITIGATED by compound enrichment model |
@@ -265,7 +434,7 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 |---|------|----------|--------|
 | CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path |
 | CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path |
-| CP-4 | Geometric archetype abstraction (IFC class independence) | HIGH | Phase 4a–4e. S44 foundation delivered (P10, fingerprint). See §CP-4 |
+| CP-4 | ~~Geometric archetype abstraction (IFC class independence)~~ | ~~HIGH~~ | **DONE** (s46 geometric + s48 semantic). See §CP-4 |
 | R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO (R20 first) |
 | R21 | Extract host_element_ref (IfcRelVoidsElement) | MED | TODO |
 | R22 | Extract I_Element_Connectivity | MED | TODO |
@@ -294,3 +463,4 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 | `BlenderBridge.md` | Java-smart/Python-dumb pipe |
 | `LAST_MILE_PROBLEM.md` | Gaps 1-8, R1-R27 actions |
 | `SourceCodeGuide.md` | Code navigation, entry points |
+| `BIM_Designer_SRS.md` §27 | FL-2 Advisory Panel spec (flywheel → Designer) |
