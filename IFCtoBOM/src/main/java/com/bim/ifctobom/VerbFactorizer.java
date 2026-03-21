@@ -159,6 +159,13 @@ public class VerbFactorizer {
                     insertMaRows(conn, parentBomId, leafSeq, group, expansionOrder);
                 }
 
+                // ASI: Per-instance dimension variants (BBC.md §3.5.1)
+                // Nominal = first element dims (on BOM line). Variants = ASI rows.
+                if (group.size() > 1) {
+                    writeASI(conn, parentBomId, leafSeq, group,
+                            first.widthMm(), first.depthMm(), first.heightMm());
+                }
+
                 leafSeq += 10;
                 linesWritten++;
             } else {
@@ -354,4 +361,110 @@ public class VerbFactorizer {
             stmt.executeUpdate();
         }
     }
+
+    // ── ASI: Per-Instance Attribute Set (BBC.md §3.5.1) ──────────────
+
+    /**
+     * Seed M_AttributeSet taxonomy for a factored group.
+     *
+     * <p>Extraction confirms the taxonomy — which attributes are instance-varying
+     * (IsInstanceAttribute=1) vs fixed per product type. Like discovering that
+     * T-shirts come in sizes S/M/L/XL — the taxonomy is "size varies", not the
+     * specific sizes themselves.
+     *
+     * <p>The actual ASI values are filled by the designer (generative path) or
+     * carried in CLUSTER verb_ref dims (extraction path). Extraction doesn't write
+     * M_AttributeSetInstance rows — it only confirms the M_AttributeSet definition.
+     *
+     * <p>Reports dimension variance as diagnostic for pattern promotion analysis.
+     */
+    static void writeASI(Connection conn, String bomId, int sequence,
+                         List<ExtractionElement> elements,
+                         double nomW, double nomD, double nomH) throws SQLException {
+        // Ensure ASI taxonomy tables exist and are seeded (idempotent)
+        ensureASITables(conn);
+
+        String attrSetId = resolveAttributeSet(elements.get(0).ifcClass());
+        // IsInstanceAttribute=0 → no per-instance variation expected
+        if ("BIM_Component".equals(attrSetId) || "BIM_Fitting".equals(attrSetId)) return;
+
+        // Count how many instances differ from nominal — diagnostic only
+        int variantCount = 0;
+        for (ExtractionElement e : elements) {
+            if (Math.abs(e.widthMm() - nomW) > 1.0
+                    || Math.abs(e.depthMm() - nomD) > 1.0
+                    || Math.abs(e.heightMm() - nomH) > 1.0) {
+                variantCount++;
+            }
+        }
+
+        if (variantCount > 0) {
+            System.out.printf("  [ASI] %s seq=%d: %d/%d instances have dimension variants (%s)%n",
+                bomId, sequence, variantCount, elements.size(), attrSetId);
+        }
+    }
+
+    /** Resolve M_AttributeSet_ID from IFC class. */
+    static String resolveAttributeSet(String ifcClass) {
+        if (ifcClass == null) return "BIM_Component";
+        return switch (ifcClass) {
+            case "IfcPipeSegment", "IfcPipeFitting" -> "BIM_Pipe";
+            case "IfcCableSegment", "IfcCableCarrierSegment" -> "BIM_Conduit";
+            case "IfcDuctSegment", "IfcDuctFitting" -> "BIM_Duct";
+            case "IfcWall", "IfcWallStandardCase", "IfcCurtainWall" -> "BIM_Wall";
+            case "IfcSlab", "IfcRoof", "IfcPlate" -> "BIM_Slab";
+            case "IfcBeam" -> "BIM_Beam";
+            case "IfcColumn" -> "BIM_Column";
+            default -> "BIM_Component";
+        };
+    }
+
+    /** Compute median of an array. */
+    static double median(double[] arr) {
+        double[] sorted = arr.clone();
+        Arrays.sort(sorted);
+        return sorted[sorted.length / 2];
+    }
+
+    private static void ensureASITables(Connection conn) throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS M_AttributeSet (
+                    M_AttributeSet_ID TEXT PRIMARY KEY,
+                    Name TEXT NOT NULL,
+                    IsInstanceAttribute INTEGER NOT NULL DEFAULT 0,
+                    Description TEXT
+                )""");
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS M_AttributeSetInstance (
+                    M_AttributeSetInstance_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_AttributeSet_ID TEXT REFERENCES M_AttributeSet(M_AttributeSet_ID),
+                    Description TEXT
+                )""");
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS M_AttributeInstance (
+                    M_AttributeInstance_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_AttributeSetInstance_ID INTEGER NOT NULL
+                        REFERENCES M_AttributeSetInstance(M_AttributeSetInstance_ID),
+                    Name TEXT NOT NULL,
+                    Value TEXT NOT NULL,
+                    ValueType TEXT NOT NULL DEFAULT 'NUM',
+                    UNIQUE(M_AttributeSetInstance_ID, Name)
+                )""");
+            // Seed attribute sets
+            stmt.executeUpdate("""
+                INSERT OR IGNORE INTO M_AttributeSet VALUES
+                    ('BIM_Pipe','Pipe',1,'Cross-section product, length/angle vary'),
+                    ('BIM_Conduit','Conduit',1,'Length varies'),
+                    ('BIM_Duct','Duct',1,'Length/cross-section vary'),
+                    ('BIM_Wall','Wall',1,'Length/height vary'),
+                    ('BIM_Slab','Slab',1,'Area varies'),
+                    ('BIM_Beam','Beam',1,'Span varies'),
+                    ('BIM_Column','Column',1,'Height varies'),
+                    ('BIM_Component','Component',0,'Identical everywhere'),
+                    ('BIM_Fitting','Fitting',0,'Identical per type')
+                """);
+        }
+    }
+
 }
