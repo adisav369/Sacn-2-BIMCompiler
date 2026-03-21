@@ -2,7 +2,7 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
-*Updated: 2026-03-20 (session 41). Previous version archived in git history.*
+*Updated: 2026-03-21 (session 44). Previous version archived in git history.*
 
 ## Current Position
 
@@ -87,6 +87,62 @@ Include expected gate results for different building scales.
 **What remains:**
 - Category 1 (no extracted DB): FJK_Project, Smiley_West, Vogel_Gesamt — need `extract.py` run first
 - Category 3 (partially onboarded): FK, BR, RD, RL already have YAML but are not new — validated in prior sessions
+
+### CP-4: Geometric Archetype Abstraction (IFC Class Independence)
+
+**Problem:** The compiler has 43 decision points that switch on IFC class strings
+(`case "IfcPlate" → "CURTAIN_PANEL"`, overlap tolerances, GUID prefixes, etc.).
+This violates BBC.md §2.2.1 ("code must never branch on component_type") and the
+same principle applied to IFC class — the compiler should be class-agnostic.
+AUDIT_PIPELINE.md flagged this as a **CRITICAL layer boundary breach**.
+
+**Evidence (session 44):** Geometric fingerprint test (P10_SHAPE_IDENTITY) found:
+- TE: 33,380/48,428 IfcPlate elements are "Metal Deck" (107×150×500mm) — not planar,
+  mislabelled by Revit's IFC export. Compiler treats all as CURTAIN_PANEL.
+- DX: 12 IfcWindow elements have 417mm depth (planarity=0.51) — extraction AABB
+  captures full window assembly. Traced to M_BOM row `DUPLEX_SINGLE_UNIT_STD (#60, #64)`.
+- DX: 1 IfcWall (Foundation 435mm) is a short stub pier, not planar.
+- SH: 55/55 clean. FK: 2 pitched roof slabs. AC: 1 merged double door.
+
+**Root cause:** The IFC class label is assigned by the BIM authoring tool's export
+mapping, not by geometry. The pipeline trusts it end-to-end without verification.
+No mechanism exists to detect or correct wrong labels.
+
+**Spec authority:**
+- BBC.md §2.2.1 "The Rule" — compiler decides by BOM structure, not type labels
+- BBC.md §1.1 — disciplines follow iDempiere pattern: no `switch(docBaseType)`
+- AUDIT_PIPELINE.md — hardcoded `"IfcFurnishingElement"` in resolver = CRITICAL
+- TestArchitecture.md §Anti-Drift Rule 1 — "No Magic Coordinates" (extends to no magic class strings)
+- BIM_COBOL.md §18.17-18.18 — CLASSIFY verb for property-based reclassification
+
+**The three-layer solution:**
+
+| Layer | Source of truth | Decides | Example |
+|-------|----------------|---------|---------|
+| **Geometric archetype** | Computed from `allocated_width/depth/height_mm` (dimensionless ratios: planarity, elongation, squareness) | Placement validation, overlap tolerance, Z-band, mesh binding relaxation | PLANAR element gets thin-face tolerance regardless of whether labelled IfcPlate or IfcSlab |
+| **Component library** | `component_definitions`, `component_types`, `M_Product`, `placement_rules` in `component_library.db` | Semantic identity, attachment convention, product type, orientation | Library knows "Metal Deck" is structural floor, not curtain panel |
+| **IFC class** | `m_bom_line.role` / `elements_meta.ifc_class` | Traceability metadata only — where the element came from | Carried through for audit trail, never used as decision variable |
+
+**Implementation phases:**
+
+| Phase | What | Files | Effort |
+|-------|------|-------|--------|
+| **4a** | Add `shape_archetype` + `scale_band` computed columns to `m_bom_line` at IFCtoBOM time | `ExtractionPopulator`, `ScopeBomBuilder`, `DisciplineBomBuilder`, migration SQL | Small |
+| **4b** | Replace 12 geometric decision points with archetype switches | `PlacementProver` (P10, overlap, Z-band), `SpatialDiff`, `MeshBinder`, `GeometryIntegrityChecker` | Medium |
+| **4c** | Wire compiler's semantic decisions to component library product properties instead of IFC class | `BuildingWriter` (element_type, GUID prefix), `ProductRegistrar` (product_type), `BOMExporter` (UOM) | Medium |
+| **4d** | Move QTO/costing rates to authority data table (`ad_check_threshold` or new `ad_cost_rate`) | `BuildingWriter` (CIDB rates) | Small |
+| **4e** | Add `BomValidator.checkShapeConsistency()` as pre-commit gate in IFCtoBOM pipeline | `BomValidator`, `IFCtoBOMPipeline` | Small |
+
+**Gate:** P10_SHAPE_IDENTITY PASS for all buildings. Zero `switch(ifcClass)` in compiler
+runtime (DAGCompiler). IFC class used only in IFCtoBOM (extraction metadata) and output
+(traceability). TE Metal Deck correctly classified from library, not from IFC label.
+
+**Session 44 delivery:**
+- `GeometricFingerprint.java` — computes planarity/elongation/squareness from dimensions
+- `PlacementProver.java` P10_SHAPE_IDENTITY — per-element shape consistency proof with M_BOM trace
+- `GeometricFingerprintTest.java` — W-SHAPE, W-EQUIV, W-CENSUS, P10 pipeline witnesses
+- `LAST_MILE_PROBLEM.md` §Geometric Fingerprint — formula, theory, results
+- Results: SH 55/55 PASS, DX 1086/1099 (13 traced to BOM data), 5 buildings tested
 
 **Session 42 discovery — AABB Qualifier:**
 The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions lack a semantic qualifier. The same `aabb_width_mm` column means different things depending on context: INNER (room clear volume), STRUCTURAL (centerline grid), OUTER (full object extent), OPENING (clear door/window opening). Proposed fix: `aabb_qualifier TEXT DEFAULT 'OUTER'` on `m_bom`. See [`INNER_SURFACE_ANALYSIS.md`](INNER_SURFACE_ANALYSIS.md) for full analysis. This connects to WF-BB (wireframe = AABB visualization), PHANTOM (G-13 Click-to-Place uses INNER), and R21 (host_element_ref eliminates AABB-vs-opening ambiguity).
@@ -192,6 +248,7 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 
 | Gap | Documented In | Impact | Status |
 |-----|--------------|--------|--------|
+| IFC class used as decision variable | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) §Geometric Fingerprint, CP-4 | 43 switch points on IFC class in compiler; TE 33K mislabelled | PENDING — CP-4 phases 4a–4e |
 | Verb fidelity for non-uniform spacing | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-30 | 533 ROUTE instances have step-uniformity gap | PENDING — fixable, not architectural |
 | depth_mm semantics | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-17 | Extraction data leaked into product catalog | PENDING — schema fix |
 | Vocabulary gaps block real projects | Market Report §6.1 | Each new building type may hit missing verbs | MITIGATED by compound enrichment model |
@@ -209,6 +266,7 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 |---|------|----------|--------|
 | CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path |
 | CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path |
+| CP-4 | Geometric archetype abstraction (IFC class independence) | HIGH | Phase 4a–4e. S44 foundation delivered (P10, fingerprint). See §CP-4 |
 | R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO (R20 first) |
 | R21 | Extract host_element_ref (IfcRelVoidsElement) | MED | TODO |
 | R22 | Extract I_Element_Connectivity | MED | TODO |

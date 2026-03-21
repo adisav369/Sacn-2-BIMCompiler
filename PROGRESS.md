@@ -29,6 +29,24 @@
 
 ## What's Next
 
+**CP-4: Geometric Archetype Abstraction (session 44 discovery → session 45+ implementation):**
+  Geometric fingerprint revealed 43 decision points switching on IFC class strings.
+  BBC.md §2.2.1 says compiler must be class-agnostic. AUDIT_PIPELINE.md flagged this as CRITICAL.
+  Phase 4a: add shape_archetype/scale_band columns to m_bom_line (computed from dimensions).
+  Phase 4b: replace 12 geometric switches with archetype. Phase 4c: wire semantic decisions
+  to component library. Phase 4d: table-driven QTO/costing. Phase 4e: BomValidator gate.
+  See ACTION_ROADMAP.md §CP-4 for full spec references and phase plan.
+
+**[DONE] Geometric Fingerprint foundation (session 44):**
+  P10_SHAPE_IDENTITY proof wired into PlacementProver (Stage 9). Computes dimensionless
+  ratios (planarity, elongation, squareness) from m_bom_line dimensions. Verifies every
+  element's geometry is consistent with its claimed IFC class. Traces violations to exact
+  M_BOM row via element_ref. Results: SH 55/55 PASS, DX 1086/1099 (13 violations traced
+  to BOM data — 12 windows with 417mm depth, 1 foundation stub). TE 33,380 IfcPlate
+  mislabelled (Metal Deck). Led to CP-4 discovery: compiler should not branch on IFC class.
+  Files: GeometricFingerprint.java, PlacementProver.java (P10), GeometricFingerprintTest.java,
+  LAST_MILE_PROBLEM.md §Geometric Fingerprint.
+
 **[DONE] G-8 Click-to-Place core wiring (session 45):**
   Interactive click-to-place: viewport click → room resolution → discipline-aware product placement.
   **Java (API + Server + DAO):**

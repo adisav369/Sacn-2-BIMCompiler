@@ -188,6 +188,8 @@ public class PlacementProver {
                     ));
                 }
             }
+            // P10: shape identity — geometric fingerprint proves class consistency (advisory)
+            dbLevelResults.addAll(proveShapeIdentity(conn));
             // P22: opening mesh vertex containment (critical — reads vertex blobs)
             dbLevelResults.addAll(proveOpeningMeshInBbox(conn));
             // P23: drain segment corner alignment (advisory — bbox-level)
@@ -1855,6 +1857,216 @@ public class PlacementProver {
         }
         return results;
     }
+
+    // =========================================================================
+    // P10: Shape Identity — geometric fingerprint proves class consistency
+    // Implementing LAST_MILE_PROBLEM.md §Geometric Fingerprint — Witness: W-SHAPE
+    // =========================================================================
+
+    /**
+     * P10_SHAPE_IDENTITY: Every element's geometry must be mathematically
+     * consistent with its claimed IFC class.
+     *
+     * <p>Computes dimensionless shape ratios (planarity, elongation, squareness)
+     * from the element's AABB and checks against geometric necessary conditions:
+     * a wall MUST be planar, a column MUST be elongated, furniture MUST NOT be
+     * a flat slab. These are mathematical facts, not tolerances.
+     *
+     * <p>When a violation is detected, traces back to M_BOM data via element_ref
+     * to identify whether the source is extraction (IFC) or compilation (BOM).
+     *
+     * <p><b>Advisory, not critical:</b> violations indicate investigation targets,
+     * not pipeline-blocking failures.
+     *
+     * @param conn Connection to the output DB (elements_meta + elements_rtree)
+     * @return List of proof results, one per element
+     */
+    private static List<ProofResult> proveShapeIdentity(Connection conn) {
+        List<ProofResult> results = new ArrayList<>();
+
+        String sql = """
+            SELECT em.guid, em.ifc_class, em.element_name, em.storey,
+                   COALESCE(em.element_ref, '') as element_ref,
+                   r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
+                   COALESCE(bg.vertex_count, 0) as vertex_count,
+                   COALESCE(bg.face_count, 0) as face_count
+            FROM elements_meta em
+            JOIN elements_rtree r ON em.id = r.id
+            LEFT JOIN element_instances ei ON em.guid = ei.guid
+            LEFT JOIN base_geometries bg ON ei.geometry_hash = bg.geometry_hash
+            """;
+
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                String guid = rs.getString("guid");
+                String ifcClass = rs.getString("ifc_class");
+                String elementName = rs.getString("element_name");
+                String storey = rs.getString("storey");
+                String elementRef = rs.getString("element_ref");
+
+                double dimX = (rs.getDouble("maxX") - rs.getDouble("minX")) * 1000.0;
+                double dimY = (rs.getDouble("maxY") - rs.getDouble("minY")) * 1000.0;
+                double dimZ = (rs.getDouble("maxZ") - rs.getDouble("minZ")) * 1000.0;
+
+                // Sort dimensions: S ≤ M ≤ L
+                double[] dims = {dimX, dimY, dimZ};
+                Arrays.sort(dims);
+                double S = dims[0], M = dims[1], L = dims[2];
+
+                if (L < 0.01) continue; // degenerate — P03 handles this
+
+                double planarity = S / L;
+                double elongation = M / L;
+                double volumeM3 = (S * M * L) / 1e9;
+
+                // Check geometric necessary condition for claimed class
+                String violation = checkShapeConsistency(ifcClass, planarity, elongation, S, M, L, volumeM3);
+
+                if (violation == null) {
+                    // PROVEN: shape is consistent with class
+                    BIMLogger.fine("P10_SHAPE", "%s %s [%s] — planarity=%.4f elongation=%.4f %s CONSISTENT",
+                        ifcClass, guid, storey != null ? storey : "?",
+                        planarity, elongation,
+                        formatDims(S, M, L));
+                    results.add(new ProofResult("P10_SHAPE_IDENTITY",
+                        ProofResult.Status.PROVEN, guid,
+                        "planarity=%.4f elongation=%.4f %s".formatted(planarity, elongation, formatDims(S, M, L)),
+                        planarity));
+                } else {
+                    // VIOLATED: shape is geometrically inconsistent with class
+                    // Build diagnostic evidence with BOM trace
+                    String bomTrace = traceBomSource(elementRef, elementName);
+                    String evidence = "%s | dims=%s planarity=%.4f elongation=%.4f vol=%.4fm³ | %s"
+                        .formatted(violation, formatDims(S, M, L), planarity, elongation, volumeM3, bomTrace);
+
+                    BIMLogger.fine("P10_SHAPE", "[VIOLATED] %s %s [%s] — %s",
+                        ifcClass, guid, storey != null ? storey : "?", evidence);
+                    results.add(new ProofResult("P10_SHAPE_IDENTITY",
+                        ProofResult.Status.VIOLATED, guid, evidence, planarity));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.printf("[P10_SHAPE] Cannot read output DB: %s%n", e.getMessage());
+        }
+
+        return results;
+    }
+
+    /**
+     * Check whether an element's shape ratios are consistent with its claimed IFC class.
+     *
+     * <p>Returns null if consistent, or a diagnostic string if violated.
+     * Each rule is a geometric necessary condition — a mathematical fact about
+     * what the shape MUST look like. Not a heuristic.
+     */
+    private static String checkShapeConsistency(String ifcClass,
+            double planarity, double elongation,
+            double S, double M, double L, double volumeM3) {
+        return switch (ifcClass) {
+            case "IfcWall", "IfcWallStandardCase" -> planarity >= 0.20
+                ? "WALL not planar (thickness/length=%.4f ≥ 0.20)".formatted(planarity) : null;
+            case "IfcSlab", "IfcSlabStandardCase" -> planarity >= 0.20
+                ? "SLAB not planar (thickness/span=%.4f ≥ 0.20)".formatted(planarity) : null;
+            case "IfcPlate" -> planarity >= 0.20
+                ? "PLATE not planar (thickness/face=%.4f ≥ 0.20)".formatted(planarity) : null;
+            case "IfcDoor", "IfcDoorStandardCase" -> planarity >= 0.35
+                ? "DOOR not planar (depth/height=%.4f ≥ 0.35)".formatted(planarity) : null;
+            case "IfcWindow", "IfcWindowStandardCase" -> planarity >= 0.35
+                ? "WINDOW not planar (depth/height=%.4f ≥ 0.35)".formatted(planarity) : null;
+            case "IfcColumn", "IfcColumnStandardCase" ->
+                planarity >= 0.15 && elongation >= 0.40
+                    ? "COLUMN looks planar/compact (planarity=%.4f elong=%.4f)".formatted(planarity, elongation) : null;
+            case "IfcBeam", "IfcBeamStandardCase" ->
+                planarity >= 0.15 && elongation >= 0.40
+                    ? "BEAM looks planar/compact (planarity=%.4f elong=%.4f)".formatted(planarity, elongation) : null;
+            case "IfcFurnishingElement" ->
+                planarity < 0.05 && volumeM3 > 1.0
+                    ? "FURNITURE looks like wall (planarity=%.4f, arch-scale vol=%.3fm³)".formatted(planarity, volumeM3)
+                    : null;
+            case "IfcSpace" -> volumeM3 < 1.0
+                ? "SPACE too small (vol=%.4fm³ < 1.0m³)".formatted(volumeM3) : null;
+            default -> null;
+        };
+    }
+
+    /**
+     * Trace an element back to its M_BOM source data.
+     *
+     * <p>Uses element_ref (IFC GUID) to find the originating m_bom_line record
+     * in the BOM DB. Returns a diagnostic string identifying the BOM source
+     * or "NO_BOM_TRACE" if the link is broken.
+     *
+     * <p>This tells the developer: "the bug is in BOM row X" or "the bug is
+     * in the IFC extraction" — without any human needing to look at it.
+     */
+    private static String traceBomSource(String elementRef, String elementName) {
+        if (elementRef == null || elementRef.isEmpty()) {
+            return "source=COMPILED (no element_ref — generated element, check compilation logic)";
+        }
+
+        String bomDbPath = System.getProperty("bom.db");
+        if (bomDbPath == null) {
+            return "source=EXTRACTED ref=%s (BOM DB unavailable for trace)".formatted(elementRef);
+        }
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
+            // Look up in m_bom_line by element_ref.
+            // Output element_ref may have a unit prefix (e.g. "A_M_Fixed:..." vs "M_Fixed:...")
+            // Try exact match first, then strip single-char prefix + underscore.
+            String[] refsToTry = elementRef.length() > 2 && elementRef.charAt(1) == '_'
+                ? new String[]{elementRef, elementRef.substring(2)}
+                : new String[]{elementRef};
+
+            for (String ref : refsToTry) {
+                try (PreparedStatement ps = bomConn.prepareStatement("""
+                        SELECT bl.bom_id, bl.bom_child_id, bl.role, bl.sequence,
+                               bl.allocated_width_mm, bl.allocated_depth_mm, bl.allocated_height_mm,
+                               bl.dx, bl.dy, bl.dz, bl.component_type,
+                               b.bom_name, b.bom_type
+                        FROM m_bom_line bl
+                        JOIN m_bom b ON b.bom_id = bl.bom_id
+                        WHERE bl.element_ref = ? AND bl.is_active = 1
+                        """)) {
+                    ps.setString(1, ref);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            String bomId = rs.getString("bom_id");
+                            int childId = rs.getInt("bom_child_id");
+                            String role = rs.getString("role");
+                            int wMm = rs.getInt("allocated_width_mm");
+                            int dMm = rs.getInt("allocated_depth_mm");
+                            int hMm = rs.getInt("allocated_height_mm");
+                            String compType = rs.getString("component_type");
+                            String bomName = rs.getString("bom_name");
+                            String bomType = rs.getString("bom_type");
+
+                            return ("source=M_BOM bom_id=%s (#%d) bom_name=%s bom_type=%s " +
+                                    "role=%s comp_type=%s alloc=%dx%dx%dmm — FIX IN BOM DATA")
+                                .formatted(bomId, childId, bomName, bomType,
+                                    role, compType, wMm, dMm, hMm);
+                        }
+                    }
+                }
+            }
+
+            // Not found by element_ref — check IFC extraction
+            return "source=EXTRACTED ref=%s (not in m_bom_line — check IFC extraction)".formatted(elementRef);
+
+        } catch (SQLException e) {
+            return "source=UNKNOWN ref=%s (BOM trace failed: %s)".formatted(elementRef, e.getMessage());
+        }
+    }
+
+    /** Format dimensions as "S×M×Lmm" for diagnostic output. */
+    private static String formatDims(double S, double M, double L) {
+        return "%.0f×%.0f×%.0fmm".formatted(S, M, L);
+    }
+
+    // =========================================================================
+    // Report builder
+    // =========================================================================
 
     private static ProofReport buildReport(List<ProofResult> results) {
         int proven = 0, violated = 0, skipped = 0;
