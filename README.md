@@ -40,11 +40,23 @@ The fingerprint engine (BIMEyes) powers 26 proofs across three tiers:
 
 The result: **97% of 90,310 elements across 32 buildings pass both shape AND position proof.** 22 buildings score 100% — every element is the right shape at the right place, verified by pure arithmetic. The remaining 3% are known BOM relationship issues (mirror dimensions, MEP expansion), not test bugs.
 
-No visual inspection. No AI. No tolerances to tune. Just mathematics.
 
-There is no AI inside this system. Every proof is deterministic — same input, same result, every time. You can download it, disconnect from the Internet, point it at any IFC file produced from thin air, and it will tell you exactly what is right and what is wrong. No cloud. No model. No magic. Arithmetic.
+## No AI inside
+Not just freedom from slow human visual inspection, rigged with human errors. We are not using AI. No tolerances to tune. Just mathematics.
+
+No call home to an alien AI API or embedded as a booby trap. Every proof is deterministic — same input, same result, every time. You can download it, disconnect from the Internet, point it at any IFC file or produce it via the BONSAI Designer from thin air, and it will tell you exactly what is right and what is wrong. No cloud. No model. No magic. No surprise. No backdoor. No trap. Pure arithmetic.
 
 See [EYES_SRS.md](docs/EYES_SRS.md) for the full specification.
+
+## BIM Designer — Design in Blender, Compile from BOM
+
+The compiler is not a command-line-only tool. It powers a live GUI inside [Blender](https://www.blender.org/) via the [Bonsai](https://bonsaibim.org/) addon. A Java Design Server (TCP :9876) handles all BIM logic; Blender is just the viewport and interaction layer. Thin Python client, fat Java brain.
+
+What you can do today: create a building from a single click ("Create New" with defaults → valid 3D building in under 200ms), edit room dimensions with sliders, switch jurisdictions (Malaysia UBBL, Singapore BCA), save/recall design versions, and promote a design to a construction-ready work order. The same 26 geometric proofs that validate compiled output run in real-time as you place elements — a door that lands outside its wall is flagged before you let go of the mouse.
+
+42 wire protocol actions. 258 passing tests. The full BOM→compile→output pipeline runs behind the GUI — what the user sees IS what the compiler produces, deterministically.
+
+See [BIM_Designer_SRS.md](docs/BIM_Designer_SRS.md) for UX requirements and [BIM_Designer_UserGuide.md](docs/BIM_Designer_UserGuide.md) for the walkthrough.
 
 ## Key Numbers
 
