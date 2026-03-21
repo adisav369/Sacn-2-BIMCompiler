@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BIM Intent Compiler — Project Overview</title>
+<style>
+:root {
+  --bg: #0a0e17; --surface: #131a2b; --card: #1a2340;
+  --border: #2a3a5c; --text: #e0e6f0; --dim: #7a8ba8;
+  --accent: #4fc3f7; --green: #66bb6a; --red: #ef5350;
+  --orange: #ffa726; --purple: #ab47bc; --yellow: #ffee58;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'SF Mono','Fira Code','Consolas',monospace; background:var(--bg); color:var(--text); line-height:1.5; }
+h1,h2,h3 { font-weight:600; }
+h1 { font-size:1.4rem; color:var(--accent); }
+h2 { font-size:1.1rem; color:var(--accent); margin-bottom:.5rem; }
+h3 { font-size:.95rem; color:var(--dim); margin-bottom:.3rem; }
+
+/* NAV */
+nav { position:fixed; top:0; left:0; right:0; z-index:100;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:1rem; padding:.6rem 1.5rem; }
+nav h1 { white-space:nowrap; }
+nav .tabs { display:flex; gap:.3rem; flex-wrap:wrap; }
+nav button { background:none; border:1px solid var(--border); color:var(--dim);
+  padding:.3rem .7rem; border-radius:4px; cursor:pointer; font-family:inherit; font-size:.75rem; }
+nav button.active, nav button:hover { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+
+/* MAIN */
+main { margin-top:3.5rem; padding:1.5rem; }
+section { display:none; }
+section.active { display:block; }
+
+/* CARDS */
+.grid { display:grid; gap:1rem; }
+.grid-3 { grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); }
+.grid-2 { grid-template-columns: repeat(auto-fill, minmax(420px,1fr)); }
+.card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1rem; }
+.card:hover { border-color:var(--accent); }
+.card h3 { color:var(--text); font-size:1rem; margin-bottom:.5rem; }
+.card .meta { color:var(--dim); font-size:.75rem; }
+.card .stat { font-size:1.8rem; font-weight:700; color:var(--accent); }
+
+/* TABLES */
+table { width:100%; border-collapse:collapse; font-size:.8rem; margin-top:.5rem; }
+th { text-align:left; color:var(--accent); padding:.4rem .6rem; border-bottom:1px solid var(--border); font-weight:600; }
+td { padding:.4rem .6rem; border-bottom:1px solid rgba(42,58,92,.4); }
+tr:hover td { background:rgba(79,195,247,.05); }
+
+/* BADGES */
+.badge { display:inline-block; padding:.15rem .5rem; border-radius:3px; font-size:.7rem; font-weight:600; }
+.badge-pass { background:rgba(102,187,106,.15); color:var(--green); }
+.badge-fail { background:rgba(239,83,80,.15); color:var(--red); }
+.badge-re { background:rgba(79,195,247,.15); color:var(--accent); }
+.badge-co { background:rgba(255,167,38,.15); color:var(--orange); }
+.badge-in { background:rgba(171,71,188,.15); color:var(--purple); }
+
+/* PIPELINE */
+.pipeline { display:flex; gap:0; flex-wrap:wrap; margin:1rem 0; }
+.stage { background:var(--card); border:1px solid var(--border); padding:.6rem .8rem;
+  position:relative; min-width:140px; flex:1; text-align:center; cursor:pointer; }
+.stage:not(:last-child)::after { content:'→'; position:absolute; right:-12px; top:50%;
+  transform:translateY(-50%); color:var(--dim); font-size:1.2rem; z-index:1; }
+.stage:hover, .stage.active { border-color:var(--accent); background:rgba(79,195,247,.08); }
+.stage .num { font-size:.65rem; color:var(--dim); }
+.stage .name { font-size:.75rem; font-weight:600; color:var(--text); }
+
+/* BAR CHART */
+.bar-row { display:flex; align-items:center; gap:.5rem; margin:.3rem 0; }
+.bar-label { width:160px; text-align:right; font-size:.75rem; color:var(--dim); white-space:nowrap; overflow:hidden; }
+.bar-track { flex:1; height:20px; background:var(--surface); border-radius:3px; overflow:hidden; }
+.bar-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .6s ease; display:flex; align-items:center; padding-left:6px; }
+.bar-fill span { font-size:.65rem; color:var(--bg); font-weight:700; white-space:nowrap; }
+
+/* GATE DETAIL */
+.gate-box { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.2rem; margin:.8rem 0; }
+.gate-box h3 { font-size:1rem; color:var(--accent); }
+.gate-box p { font-size:.8rem; color:var(--dim); margin:.3rem 0; }
+.tamper-list { columns:2; font-size:.75rem; }
+.tamper-list li { margin:.2rem 0; color:var(--dim); }
+
+/* HERO STATS */
+.hero { display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1.5rem; }
+.hero .card { text-align:center; min-width:150px; flex:1; }
+.hero .card .label { font-size:.7rem; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+
+/* DISCIPLINE CHIPS */
+.disc-chips { display:flex; gap:.4rem; flex-wrap:wrap; margin:.4rem 0; }
+.chip { padding:.2rem .5rem; border-radius:3px; font-size:.65rem; font-weight:600; }
+.chip-arc { background:rgba(79,195,247,.15); color:var(--accent); }
+.chip-str { background:rgba(255,167,38,.15); color:var(--orange); }
+.chip-fp { background:rgba(239,83,80,.15); color:var(--red); }
+.chip-acmv { background:rgba(102,187,106,.15); color:var(--green); }
+.chip-elec { background:rgba(255,238,88,.15); color:var(--yellow); }
+.chip-sp { background:rgba(171,71,188,.15); color:var(--purple); }
+.chip-cw { background:rgba(79,195,247,.3); color:var(--accent); }
+
+/* DESC PANEL */
+.desc { background:var(--surface); border-left:3px solid var(--accent); padding:.8rem 1rem; margin:.8rem 0; font-size:.8rem; color:var(--dim); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* WALKTHROUGH PANEL */
+.wt-toggle { position:fixed; bottom:1.2rem; right:1.2rem; z-index:200;
+  background:var(--accent); color:var(--bg); border:none; padding:.5rem 1rem;
+  border-radius:6px; cursor:pointer; font-family:inherit; font-size:.8rem; font-weight:700; }
+.wt-toggle:hover { background:#81d4fa; }
+
+.wt-panel { position:fixed; bottom:0; left:0; right:0; z-index:150;
+  background:var(--surface); border-top:2px solid var(--accent);
+  max-height:0; overflow:hidden; transition:max-height .3s ease; }
+.wt-panel.open { max-height:45vh; overflow-y:auto; }
+
+.wt-header { display:flex; align-items:center; justify-content:space-between;
+  padding:.6rem 1.2rem; border-bottom:1px solid var(--border); }
+.wt-header h2 { margin:0; font-size:.95rem; }
+.wt-nav { display:flex; gap:.4rem; }
+.wt-nav button { background:var(--card); border:1px solid var(--border); color:var(--text);
+  padding:.3rem .6rem; border-radius:4px; cursor:pointer; font-family:inherit; font-size:.75rem; }
+.wt-nav button:hover { border-color:var(--accent); }
+.wt-nav button:disabled { opacity:.3; cursor:default; }
+
+.wt-steps { padding:.8rem 1.2rem; }
+.wt-step { display:none; }
+.wt-step.active { display:block; }
+
+.wt-step .step-num { font-size:.65rem; color:var(--accent); text-transform:uppercase; letter-spacing:.1em; margin-bottom:.3rem; }
+.wt-step .step-title { font-size:1.1rem; font-weight:700; color:var(--text); margin-bottom:.5rem; }
+.wt-step .step-tab { font-size:.7rem; color:var(--dim); margin-bottom:.6rem; }
+.wt-step .step-tab span { background:var(--accent); color:var(--bg); padding:.1rem .4rem; border-radius:3px; font-weight:600; }
+
+.wt-say { background:rgba(79,195,247,.06); border-left:3px solid var(--accent);
+  padding:.6rem .8rem; margin:.4rem 0; font-size:.82rem; color:var(--text); line-height:1.6; }
+.wt-say em { color:var(--accent); font-style:normal; }
+
+.wt-do { background:rgba(102,187,106,.06); border-left:3px solid var(--green);
+  padding:.5rem .8rem; margin:.4rem 0; font-size:.75rem; color:var(--green); }
+
+.wt-time { display:inline-block; background:var(--card); border:1px solid var(--border);
+  padding:.15rem .5rem; border-radius:3px; font-size:.65rem; color:var(--dim); margin-left:.5rem; }
+
+.wt-progress { display:flex; gap:3px; padding:.4rem 1.2rem; }
+.wt-dot { width:100%; height:4px; background:var(--border); border-radius:2px; cursor:pointer; }
+.wt-dot.done { background:var(--green); }
+.wt-dot.current { background:var(--accent); }
+
+/* CAPTION OVERLAY */
+.caption-bar { position:fixed; bottom:0; left:0; right:0; z-index:300;
+  background:rgba(0,0,0,.88); padding:.8rem 2rem; text-align:center;
+  font-size:1.1rem; color:#fff; line-height:1.6; min-height:3.5rem;
+  display:none; border-top:2px solid var(--accent);
+  max-height:30vh; overflow-y:auto; }
+.caption-bar.visible { display:block; }
+.caption-bar .caption-step { font-size:.65rem; color:var(--accent);
+  text-transform:uppercase; letter-spacing:.15em; margin-bottom:.3rem; }
+.caption-bar .caption-text { font-size:1rem; max-width:900px; margin:0 auto; }
+.caption-bar .caption-text em { color:var(--accent); font-style:normal; font-weight:700; }
+.caption-bar .caption-action { font-size:.8rem; color:var(--green); margin-top:.4rem;
+  border-top:1px solid rgba(255,255,255,.15); padding-top:.4rem; }
+.caption-nav { position:fixed; bottom:.5rem; right:1rem; z-index:310; display:none; gap:.3rem; }
+.caption-nav.visible { display:flex; }
+.caption-nav button { background:rgba(79,195,247,.2); border:1px solid var(--accent); color:var(--accent);
+  padding:.3rem .7rem; border-radius:4px; cursor:pointer; font-family:inherit; font-size:.75rem; }
+.caption-nav button:hover { background:var(--accent); color:var(--bg); }
+</style>
+</head>
+<body>
+
+<nav>
+  <h1>⬡ BIM Intent Compiler</h1>
+  <div class="tabs">
+    <button class="active" onclick="show('overview')">Overview</button>
+    <button onclick="show('buildings')">Buildings</button>
+    <button onclick="show('pipeline')">Pipeline</button>
+    <button onclick="show('rosetta')">Rosetta Stone</button>
+    <button onclick="show('library')">Component Library</button>
+    <button onclick="show('bom')">BOM Output</button>
+    <button onclick="show('disciplines')">Disciplines</button>
+  </div>
+</nav>
+
+<main>
+
+<!-- ==================== OVERVIEW ==================== -->
+<section id="overview" class="active">
+  <div class="hero">
+    <div class="card"><div class="stat">34</div><div class="label">Buildings Onboarded</div></div>
+    <div class="card"><div class="stat">97,017</div><div class="label">Total Elements</div></div>
+    <div class="card"><div class="stat">2,459</div><div class="label">Library Products</div></div>
+    <div class="card"><div class="stat">6</div><div class="label">Verification Gates</div></div>
+    <div class="card"><div class="stat">9</div><div class="label">Pipeline Stages</div></div>
+    <div class="card"><div class="stat">415</div><div class="label">Mined Validation Rules</div></div>
+  </div>
+
+  <div class="desc">
+    <strong>What this is:</strong> An open-source compiler that reads IFC building models and produces
+    verified Bills of Materials in ERP format. No geometry invention — 100% extraction with SHA256 proof.
+    Construction treated as manufacturing: intent in, material orders out.
+  </div>
+
+  <h2>Buildings by Element Count</h2>
+  <div id="overview-bars"></div>
+
+  <h2 style="margin-top:1.5rem;">Architecture</h2>
+  <div class="grid grid-3" style="margin-top:.5rem;">
+    <div class="card">
+      <h3>4 Databases</h3>
+      <p class="meta">component_library.db → LOD catalog (2,459 products, 44K geometries)<br>
+      *_BOM.db → Per-building BOM dictionary<br>
+      disc_validation.db → Discipline rules + 415 mined dimension rules<br>
+      output.db → Compiled result (fresh each run)</p>
+    </div>
+    <div class="card">
+      <h3>Prime Rule</h3>
+      <p class="meta">EXTRACT OR COMPILE ONLY. Query the database. Copy patterns you find.
+      Compute positions via verbs. Never invent. Every element traces to a library source.</p>
+    </div>
+    <div class="card">
+      <h3>ERP Pattern</h3>
+      <p class="meta">iDempiere-native tables: M_Product, M_BOM, M_BOM_Line, C_Order, C_OrderLine.
+      Output is ready for procurement, scheduling, and costing — no translation layer needed.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== BUILDINGS ==================== -->
+<section id="buildings">
+  <h2>Building Registry — 34 Onboarded Buildings</h2>
+  <p class="meta" style="margin-bottom:1rem;">Each building is extracted from a real IFC file. No synthetic data. Same pipeline, same gates — only configuration changes. New IFCs are validated against 415 mined dimension rules from 20 buildings.</p>
+  <div class="grid grid-3" id="building-cards"></div>
+
+  <h2 style="margin-top:2rem;">Element Class Distribution</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>SampleHouse (55 elements)</h3>
+      <div id="bars-sh"></div>
+    </div>
+    <div class="card">
+      <h3>Duplex (1,099 elements)</h3>
+      <div id="bars-dx"></div>
+    </div>
+    <div class="card">
+      <h3>AC11 Institute (699 elements)</h3>
+      <div id="bars-in"></div>
+    </div>
+    <div class="card">
+      <h3>Terminal (48,428 elements)</h3>
+      <div id="bars-te"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== PIPELINE ==================== -->
+<section id="pipeline">
+  <h2>9-Stage Deterministic Compilation Pipeline</h2>
+  <p class="meta" style="margin-bottom:.5rem;">Same input → same output, every time. No randomness. No generation. Each stage is independent and auditable.</p>
+
+  <div class="pipeline" id="pipeline-viz"></div>
+  <div id="stage-detail"></div>
+
+  <h2 style="margin-top:2rem;">Pipeline Flow</h2>
+  <div class="card" style="font-size:.8rem; line-height:1.8;">
+    <span style="color:var(--accent)">IFC File</span> →
+    <span style="color:var(--dim)">extract.py</span> →
+    <span style="color:var(--accent)">*_extracted.db</span> →
+    <span style="color:var(--dim)">classify_*.yaml</span> →
+    <span style="color:var(--accent)">dsl_*.bim</span> →
+    <span style="color:var(--dim)">CompilationPipeline (9 stages)</span> →
+    <span style="color:var(--accent)">*_output.db</span> →
+    <span style="color:var(--dim)">RosettaStone (6 gates)</span> →
+    <span style="color:var(--green)">✓ Verified BOM</span>
+  </div>
+</section>
+
+<!-- ==================== ROSETTA STONE ==================== -->
+<section id="rosetta">
+  <h2>Rosetta Stone — 6 Verification Gates</h2>
+  <p class="meta" style="margin-bottom:1rem;">Not testing. Proof of extraction. The reference IFC is gospel — the compiler must reproduce it exactly.</p>
+
+  <div id="gate-details"></div>
+
+  <h2 style="margin-top:2rem;">Gate Results by Building</h2>
+  <table>
+    <thead><tr><th>Building</th><th>Elements</th><th>G1 COUNT</th><th>G2 VOLUME</th><th>G3 DIGEST</th><th>G4 TAMPER</th><th>G5 PROVENANCE</th><th>G6 ISOLATION</th></tr></thead>
+    <tbody id="gate-matrix"></tbody>
+  </table>
+
+  <h2 style="margin-top:2rem;">G4 Tamper Seal — 21 Rules</h2>
+  <div class="card">
+    <p class="meta" style="margin-bottom:.5rem;">Scans source code AND git history. If anyone — including the author — cheats, this gate fails.</p>
+    <ol class="tamper-list" id="tamper-rules"></ol>
+  </div>
+</section>
+
+<!-- ==================== COMPONENT LIBRARY ==================== -->
+<section id="library">
+  <h2>Component Library — 2,459 Products</h2>
+  <p class="meta" style="margin-bottom:1rem;">Every output element traces to a library product. No parametric mesh — LODs only. ASI controls sizing.</p>
+
+  <div class="hero">
+    <div class="card"><div class="stat">2,459</div><div class="label">Products</div></div>
+    <div class="card"><div class="stat">44,125</div><div class="label">Geometries</div></div>
+    <div class="card"><div class="stat">55</div><div class="label">Component Types</div></div>
+    <div class="card"><div class="stat">80</div><div class="label">Surface Styles</div></div>
+    <div class="card"><div class="stat">4,801</div><div class="label">Placement Rules</div></div>
+  </div>
+
+  <h2>Products by IFC Class</h2>
+  <div id="bars-products"></div>
+
+  <h2 style="margin-top:1.5rem;">Products by Source Building</h2>
+  <div id="bars-buildings"></div>
+
+  <h2 style="margin-top:1.5rem;">Surface Styles Sample</h2>
+  <table>
+    <thead><tr><th>Style</th><th>Color</th><th>R</th><th>G</th><th>B</th><th>Transparency</th></tr></thead>
+    <tbody id="styles-table"></tbody>
+  </table>
+
+  <h2 style="margin-top:1.5rem;">Product Schema</h2>
+  <div class="card" style="font-size:.75rem;">
+    <code style="color:var(--accent)">product_id</code> · <code>product_type</code> · <code>width</code> · <code>depth</code> · <code>height</code> · <code>ifc_class</code> · <code>extracted_from</code> ·
+    <code style="color:var(--green)">carbon_kg_per_unit</code> · <code style="color:var(--green)">recyclability</code> · <code style="color:var(--green)">lifespan_years</code> ·
+    <code style="color:var(--orange)">unit_cost_rm</code> · <code style="color:var(--orange)">labor_resource</code> · <code style="color:var(--orange)">labor_rate_rm_per_day</code> · <code style="color:var(--orange)">labor_crew_size</code> ·
+    <code style="color:var(--purple)">equipment_type</code> · <code style="color:var(--purple)">equipment_rate_rm_per_day</code> ·
+    <code style="color:var(--accent)">construction_phase</code> · <code style="color:var(--accent)">construction_sequence</code>
+  </div>
+</section>
+
+<!-- ==================== BOM OUTPUT ==================== -->
+<section id="bom">
+  <h2>BOM Output — Sample House</h2>
+  <p class="meta" style="margin-bottom:1rem;">iDempiere ERP-native format. Ready for procurement, scheduling, costing.</p>
+
+  <h2>Output Database Tables</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <h3>Core Element Tables</h3>
+      <p class="meta">elements_meta · element_instances · element_transforms · base_geometries · elements_rtree · spatial_structure · surface_styles</p>
+    </div>
+    <div class="card">
+      <h3>BOM / Order Tables</h3>
+      <p class="meta">c_order · c_orderline · co_empty_space · co_empty_space_line · element_assemblies · assembly_components</p>
+    </div>
+    <div class="card">
+      <h3>Analytics Tables</h3>
+      <p class="meta">building_summary · area_by_storey · area_by_type · room_areas · simple_qto · element_properties</p>
+    </div>
+    <div class="card">
+      <h3>MEP Systems</h3>
+      <p class="meta">mep_systems · system_nodes · system_edges · material_layers</p>
+    </div>
+    <div class="card">
+      <h3>Production Orders</h3>
+      <p class="meta">PP_Order_Node · PP_Order_NodeProduct — Manufacturing execution, iDempiere-native</p>
+    </div>
+  </div>
+
+  <h2 style="margin-top:1.5rem;">BOM Hierarchy — Sample House</h2>
+  <div class="card" id="bom-tree" style="font-size:.8rem; line-height:2;"></div>
+
+  <h2 style="margin-top:1.5rem;">Export Formats</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h3>Detailed BOM (CSV)</h3>
+      <p class="meta">Every component with GUID, material, dimensions, position. For engineering review.</p>
+    </div>
+    <div class="card">
+      <h3>Aggregated BOM (CSV)</h3>
+      <p class="meta">Grouped by material + size with quantities. For procurement orders.</p>
+    </div>
+    <div class="card">
+      <h3>Cut List (CSV)</h3>
+      <p class="meta">Linear members with lengths. For fabrication shop.</p>
+    </div>
+    <div class="card">
+      <h3>Assembly BOM (CSV)</h3>
+      <p class="meta">Parent-child hierarchy. For on-site assembly sequence.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== DISCIPLINES ==================== -->
+<section id="disciplines">
+  <h2>8 Discipline Classifications</h2>
+  <p class="meta" style="margin-bottom:1rem;">Each discipline routes to BOM (compiled), DocEvent (validated), or absent. No code changes — configuration only.</p>
+
+  <div class="grid grid-2" id="disc-cards"></div>
+
+  <h2 style="margin-top:2rem;">Discipline Routing by Building</h2>
+  <table>
+    <thead><tr><th>Building</th><th>ARC</th><th>STR</th><th>FP</th><th>ACMV</th><th>ELEC</th><th>SP</th><th>CW</th><th>LPG</th></tr></thead>
+    <tbody id="disc-routing"></tbody>
+  </table>
+</section>
+
+</main>
+
+<!-- WALKTHROUGH TOGGLE -->
+<button class="wt-toggle" onclick="toggleWalkthrough()" style="right:10rem;">Presenter Guide</button>
+<button class="wt-toggle" onclick="toggleCaptions()">Captions</button>
+
+<!-- CAPTION OVERLAY -->
+<div class="caption-bar" id="caption-bar">
+  <div class="caption-step" id="caption-label"></div>
+  <div class="caption-text" id="caption-text"></div>
+  <div class="caption-action" id="caption-action"></div>
+</div>
+<div class="caption-nav" id="caption-nav">
+  <button onclick="captionStep(-1)">Prev</button>
+  <button onclick="captionStep(1)">Next</button>
+</div>
+
+<!-- WALKTHROUGH PANEL -->
+<div class="wt-panel" id="wt-panel">
+  <div class="wt-progress" id="wt-progress"></div>
+  <div class="wt-header">
+    <h2>Demo Walkthrough</h2>
+    <div class="wt-nav">
+      <button onclick="wtStep(-1)" id="wt-prev">Previous</button>
+      <button onclick="wtStep(1)" id="wt-next">Next</button>
+    </div>
+  </div>
+  <div class="wt-steps" id="wt-steps"></div>
+</div>
+
+<script>
+// ===== DATA =====
+const buildings = [
+  {id:'RE_SH', prefix:'SH', name:'Sample House', project:'Ifc4_SampleHouse', base:'RE', sub:'SH', elements:55, schema:'IFC4', storeys:['Ground Floor','Roof']},
+  {id:'RE_DX', prefix:'DX', name:'Duplex', project:'Ifc2x3_Duplex', base:'RE', sub:'DX', elements:1099, schema:'IFC2x3', storeys:['Level 1','Level 2','Roof','T/FDN']},
+  {id:'RE_IN', prefix:'IN', name:'AC11 Institute', project:'Ifc2x3_AC11Institute', base:'RE', sub:'IN', elements:699, schema:'IFC2x3', storeys:['Keller','Erdgeschoss','1. OG','2. OG','Dachgeschoss']},
+  {id:'RE_FK', prefix:'FK', name:'FZK-Haus', project:'Ifc4_FZKHaus', base:'RE', sub:'FK', elements:82, schema:'IFC4', storeys:['Ground Floor','Upper Floor']},
+  {id:'CO_TE', prefix:'TE', name:'Airport Terminal', project:'SJTII_Terminal', base:'CO', sub:'TE', elements:48428, schema:'IFC4', storeys:['Foundation','Ground Floor','Level 1-4','Roof']},
+  {id:'IN_BR', prefix:'BR', name:'Bridge', project:'Infra_Bridge', base:'IN', sub:'BR', elements:48, schema:'IFC4X3', storeys:['Superstructure']},
+  {id:'IN_RD', prefix:'RD', name:'Road', project:'Infra_Road', base:'IN', sub:'RD', elements:53, schema:'IFC4X3', storeys:['Carriageway']},
+  {id:'IN_RL', prefix:'RL', name:'Rail', project:'Infra_Rail', base:'IN', sub:'RL', elements:73, schema:'IFC4X3', storeys:['Track']},
+  {id:'RE_BA', prefix:'BA', name:'PCERT Architecture', project:'Building_Architecture', base:'RE', sub:'BA', elements:11, schema:'IFC4X3', storeys:['Ground Floor']},
+  {id:'RE_BH', prefix:'BH', name:'PCERT HVAC', project:'Building_Hvac', base:'RE', sub:'BH', elements:5, schema:'IFC4X3', storeys:['Ground Floor']},
+  {id:'RE_BS', prefix:'BS', name:'PCERT Structural', project:'Building_Structural', base:'RE', sub:'BS', elements:16, schema:'IFC4X3', storeys:['Ground Floor']},
+  {id:'IN_IP', prefix:'IP', name:'PCERT Plumbing', project:'Infra_Plumbing', base:'IN', sub:'IP', elements:27, schema:'IFC4X3', storeys:['-']},
+  // S44: 8 new buildings
+  {id:'RE_SC', prefix:'SC', name:'Schependomlaan', project:'Schependomlaan', base:'RE', sub:'SC', elements:3214, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_CA', prefix:'CA', name:'Clinic Architecture', project:'Clinic_Architecture', base:'RE', sub:'CA', elements:2586, schema:'IFC2x3', storeys:['Level 1','Level 2']},
+  {id:'RE_CS', prefix:'CS', name:'Clinic Structural', project:'Clinic_Structural', base:'RE', sub:'CS', elements:1078, schema:'IFC2x3', storeys:['Level 1','Level 2']},
+  {id:'RE_CH', prefix:'CH', name:'Clinic HVAC', project:'Clinic_HVAC', base:'RE', sub:'CH', elements:3693, schema:'IFC2x3', storeys:['Level 1','Level 2']},
+  {id:'RE_CE', prefix:'CE', name:'Clinic Electrical', project:'Clinic_Electrical', base:'RE', sub:'CE', elements:2110, schema:'IFC2x3', storeys:['Level 1','Level 2']},
+  {id:'RE_CP', prefix:'CP', name:'Clinic Plumbing', project:'Clinic_Plumbing', base:'RE', sub:'CP', elements:6584, schema:'IFC2x3', storeys:['Level 1','Level 2','TOF Footing']},
+  {id:'RE_ES', prefix:'ES', name:'Esplanades', project:'Esplanades', base:'RE', sub:'ES', elements:1941, schema:'IFC2x3', storeys:['1-5.korrus','Katus','Vundament']},
+  {id:'RE_MO', prefix:'MO', name:'Molio', project:'Molio', base:'RE', sub:'MO', elements:3114, schema:'IFC2x3', storeys:['Multi-storey']},
+  // S44b: 14 new buildings
+  {id:'RE_GH', prefix:'GH', name:'AC9 Haus G-H', project:'AC9_HausGH', base:'RE', sub:'GH', elements:193, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_JS', prefix:'JS', name:'AC90 Jasmin', project:'AC90_Jasmin', base:'RE', sub:'JS', elements:61, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_NI', prefix:'NI', name:'AC90 Niedriha', project:'AC90_Niedriha', base:'RE', sub:'NI', elements:104, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_WB', prefix:'WB', name:'BimWhale Basic', project:'BimWhale_Basic', base:'RE', sub:'WB', elements:125, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_WL', prefix:'WL', name:'BimWhale Large', project:'BimWhale_Large', base:'RE', sub:'WL', elements:114, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_WT', prefix:'WT', name:'BimWhale Tall', project:'BimWhale_Tall', base:'RE', sub:'WT', elements:55, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_WA', prefix:'WA', name:'BimWhale Advanced', project:'BimWhale_Advanced', base:'RE', sub:'WA', elements:1749, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_JE', prefix:'JE', name:'Jesse', project:'Jesse', base:'RE', sub:'JE', elements:626, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_WI', prefix:'WI', name:'Wilfer', project:'Wilfer', base:'RE', sub:'WI', elements:1, schema:'IFC2x3', storeys:['-']},
+  {id:'RE_RA', prefix:'RA', name:'Revit ARC', project:'Revit_ARC', base:'RE', sub:'RA', elements:442, schema:'IFC2x3', storeys:['Level 1-3']},
+  {id:'RE_RM', prefix:'RM', name:'Revit MEP', project:'Revit_MEP', base:'RE', sub:'RM', elements:6787, schema:'IFC2x3', storeys:['Level 1-3','Roof']},
+  {id:'RE_RS', prefix:'RS', name:'Revit STR', project:'Revit_STR', base:'RE', sub:'RS', elements:4133, schema:'IFC2x3', storeys:['Level 1-3']},
+  {id:'RE_CL', prefix:'CL', name:'SampleCastle', project:'SampleCastle', base:'RE', sub:'CL', elements:3214, schema:'IFC2x3', storeys:['Multi-storey']},
+  {id:'RE_HI', prefix:'HI', name:'HITOS', project:'HITOS', base:'RE', sub:'HI', elements:2068, schema:'IFC2x3', storeys:['Multi-storey']},
+];
+
+const stages = [
+  {num:1, name:'Metadata\nValidator', desc:'Verify referential integrity between BOM DB, component library, and DSL file. Checks foreign keys, missing products, orphan references.'},
+  {num:2, name:'Parse\nDSL', desc:'Parse BIM COBOL DSL (.bim file) into a BuildingDefinition AST. Extracts storeys, rooms, placements, grids, and static children.'},
+  {num:3, name:'Compile to\nBuildingSpec', desc:'Expand BOM templates, resolve absolute positions from relative offsets. AABB-based space allocation. Skipped for commercial (CO) buildings.'},
+  {num:4, name:'Template\nComposition', desc:'WALK-THRU mode only. M_BomCategory tree walk selects variant BOMs by AABB fit — finds the best matching furniture/fixture set for each room size.'},
+  {num:5, name:'Write\nto DB', desc:'Write compiled elements to output SQLite: elements_meta, elements_rtree, element_instances, spatial_structure, co_empty_space. Fresh database each run.'},
+  {num:6, name:'BIM COBOL\nVerbs', desc:'Execute verb scripts (.bimcobol): SET, FACTORIZE, QUALIFY, PHANTOM. Every mutation is logged with full audit trail. Skipped if no verb file exists.'},
+  {num:7, name:'Spatial\nDigest', desc:'Compute SHA256 hash of every element\'s spatial coordinates. Produces a per-element fingerprint and an aggregate building digest for G3 verification.'},
+  {num:8, name:'Geometry\nIntegrity', desc:'Cross-reference compiled output against reference (extracted) database. Verify mesh presence, vertex/face counts, material assignments, bounding box alignment.'},
+  {num:9, name:'Placement\nProver', desc:'Mathematical proof of placement correctness: adjacent rooms share walls, no element overlap, containment within storey bounds. Skipped for ST mode.'},
+];
+
+const gates = [
+  {id:'G1', name:'COUNT', icon:'#', desc:'Element count: reference = output. Delta must be zero. If the compiler produces more or fewer elements than the IFC source, something was invented or dropped.', spec:'BBC.md §2.1.6'},
+  {id:'G2', name:'VOLUME', icon:'◻', desc:'Total AABB volume comparison within ±0.1% tolerance. Catches systematic scaling errors, missing storeys, or duplicated elements that G1 might miss.', spec:'BBC.md §4.2'},
+  {id:'G3', name:'DIGEST', icon:'⌗', desc:'Per-element SHA256 spatial digest. Every element\'s XYZ coordinates are hashed individually. The aggregate digest must match. Catches any positional drift, even sub-millimetre.', spec:'BBC.md §4.1'},
+  {id:'G4', name:'TAMPER', icon:'🔒', desc:'Self-inspection: 21 regex rules scan source code AND git diff history. Detects disabled tests, hardcoded coordinates, bypass patterns, non-determinism. The compiler audits its own codebase.', spec:'TestArchitecture.md'},
+  {id:'G5', name:'PROVENANCE', icon:'⟐', desc:'Every output element must trace to a library product with valid mesh data and material assignment. 7 sub-checks. Proves nothing was generated — only extracted and placed.', spec:'BBC.md §2'},
+  {id:'G6', name:'ISOLATION', icon:'⊡', desc:'Spatial containment verification. Elements must be within their declared storey bounds. No cross-building data leakage. Metadata isolation between compilation runs.', spec:'BBC.md §2.2'},
+];
+
+const gateResults = [
+  {bld:'SampleHouse', el:55, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'Duplex', el:1099, g1:'PASS',g2:'PASS',g3:'KNOWN',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'AC11 Institute', el:699, g1:'PASS',g2:'PASS',g3:'KNOWN',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'FZK-Haus', el:82, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'Terminal', el:48428, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'PCERT Arch', el:11, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'PCERT HVAC', el:5, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'PCERT Struct', el:16, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+  {bld:'PCERT Plumbing', el:27, g1:'PASS',g2:'PASS',g3:'PASS',g4:'PASS',g5:'PASS',g6:'PASS'},
+];
+
+const tamperRules = [
+  'T1: @Disabled/@Ignore added to tests (GIT_DIFF)',
+  'T2: No-op assertions like assertTrue(true) (GIT_DIFF)',
+  'T3: Thread.sleep or System.exit in pipeline (GIT_DIFF)',
+  'T4: skipTests flag in pom.xml (GIT_DIFF)',
+  'T5: --no-verify or hook bypass (GIT_DIFF)',
+  'T6: @Disabled on contract tests (SOURCE_SCAN)',
+  'T7: @Disabled on architecture tests (SOURCE_SCAN)',
+  'T8: Stub/mock methods in validators (SOURCE_SCAN)',
+  'T9: Random/non-determinism in pipeline (SOURCE_SCAN)',
+  'T10: TODO/FIXME in pipeline code (SOURCE_SCAN)',
+  'T11: Empty test methods (SOURCE_SCAN)',
+  'T12: Hardcoded coordinates > 1000 (SOURCE_SCAN)',
+  'T13: assumeTrue(false) self-disable (SOURCE_SCAN)',
+  'T14: catch(Exception ignored) swallow (SOURCE_SCAN)',
+  'T15: assertNotNull as sole assertion (SOURCE_SCAN)',
+  'T16: Raw SQL on protected BOM tables (SOURCE_SCAN)',
+  'T17: Raw UPDATE on element tables (SOURCE_SCAN)',
+  'T18: I_Element_Extraction in compiler path (SOURCE_SCAN)',
+  'T19: Hardcoded building names (SOURCE_SCAN)',
+  'T20: Hardcoded zero origin (SOURCE_SCAN)',
+  'T21: bindParametric in compilation (SOURCE_SCAN)',
+];
+
+const classBreakdowns = {
+  sh: [['IfcMember',20],['IfcFurnishingElement',14],['IfcPlate',6],['IfcWall',5],['IfcWindow',4],['IfcDoor',3],['IfcSlab',2],['IfcRoof',1]],
+  dx: [['IfcFlowSegment',427],['IfcFlowFitting',358],['IfcFlowTerminal',105],['IfcFurnishingElement',61],['IfcWall',57],['IfcWindow',24],['IfcSlab',21],['IfcFlowController',14],['IfcDoor',14],['IfcBeam',8],['IfcRailing',4],['IfcMember',4],['IfcStairFlight',2]],
+  'in': [['IfcFurnishingElement',253],['IfcWindow',206],['IfcWall',119],['IfcDoor',77],['IfcSlab',26],['IfcRailing',12],['IfcStair',4],['IfcColumn',2]],
+  te: [['IfcPlate',33324],['IfcPipeFitting',4243],['IfcPipeSegment',3821],['IfcFireSuppression',909],['IfcLightFixture',814],['IfcDuctFitting',713],['IfcSlab',705],['IfcDuctSegment',568],['IfcProxy',486],['IfcMember',442],['IfcBeam',432],['IfcWall',333],['IfcAirTerminal',289],['IfcWindow',236],['IfcFurniture',176],['IfcColumn',158],['IfcDoor',135]],
+};
+
+const productsByType = [['ELEMENT',420],['MEMBER',310],['PROXY',180],['WALL',160],['WINDOW',130],['SLAB',120],['DOOR',110],['STAIR',95],['BEAM',80],['RAILING',60],['COLUMN',50],['PLATE',40],['ROOF',20],['FlowTerminal',150],['FlowFitting',140],['FlowSegment',130],['DuctFitting',90],['DuctSegment',80],['AirTerminal',50],['Other',244]];
+const productsByBuilding = [['SJTII_Terminal',505],['Revit_MEP',166],['Schependomlaan',135],['Clinic_Plumbing',117],['Clinic_Electrical',133],['AC11Institute',87],['FZKHaus',81],['Duplex',78],['Esplanades',51],['Clinic_Architecture',48],['BimWhale_Advanced',189],['SampleCastle',348],['HITOS',447],['SampleHouse',18],['Other (20)',456]];
+
+const surfaceStyles = [
+  {name:'Brick, Common',r:0.667,g:0.392,b:0.412,t:0},
+  {name:'Aluminium',r:0.969,g:0.969,b:0.969,t:0},
+  {name:'Wood - Birch',r:0.835,g:0.643,b:0.404,t:0},
+  {name:'Glass',r:0.0,g:0.502,b:0.753,t:0.9},
+  {name:'Laminate, Ivory',r:0.969,g:0.969,b:0.937,t:0},
+  {name:'Metal - Chrome',r:0.067,g:0.067,b:0.067,t:0},
+  {name:'Window Frame',r:0.976,g:0.976,b:0.976,t:0},
+  {name:'Door - Handle',r:0.0,g:0.0,b:0.0,t:0},
+];
+
+const disciplines = [
+  {code:'ARC', name:'Architecture', color:'chip-arc', types:'IfcWall · IfcSlab · IfcRoof · IfcDoor · IfcWindow · IfcCurtainWall · IfcStair · IfcRailing · IfcCovering'},
+  {code:'STR', name:'Structural', color:'chip-str', types:'IfcColumn · IfcBeam · IfcFooting · IfcPlate · IfcReinforcingBar · IfcMember'},
+  {code:'FP', name:'Fire Protection', color:'chip-fp', types:'IfcFireSuppressionTerminal · IfcAlarm · IfcFlowTerminal (sprinkler)'},
+  {code:'ACMV', name:'Mechanical/HVAC', color:'chip-acmv', types:'IfcDuctSegment · IfcDuctFitting · IfcAirTerminal · IfcFlowController'},
+  {code:'ELEC', name:'Electrical', color:'chip-elec', types:'IfcLightFixture · IfcElectricAppliance · IfcSwitchingDevice · IfcOutlet'},
+  {code:'SP', name:'Sanitary/Plumbing', color:'chip-sp', types:'IfcPipeSegment · IfcPipeFitting · IfcSanitaryTerminal · IfcValve'},
+  {code:'CW', name:'Curtain Wall', color:'chip-cw', types:'IfcCurtainWall · IfcPlate (glazing) · IfcMember (framing)'},
+  {code:'LPG', name:'LPG Systems', color:'chip-fp', types:'LPG piping · terminals · regulators'},
+];
+
+const discRouting = [
+  {bld:'SH',arc:'BOM',str:'BOM',fp:'DocEvent',acmv:'DocEvent',elec:'-',sp:'-',cw:'BOM',lpg:'-'},
+  {bld:'DX',arc:'BOM',str:'BOM',fp:'DocEvent',acmv:'BOM',elec:'BOM',sp:'BOM',cw:'-',lpg:'-'},
+  {bld:'IN',arc:'BOM',str:'BOM',fp:'DocEvent',acmv:'DocEvent',elec:'-',sp:'-',cw:'-',lpg:'-'},
+  {bld:'TE',arc:'BOM',str:'BOM',fp:'BOM',acmv:'BOM',elec:'BOM',sp:'BOM',cw:'BOM',lpg:'-'},
+  {bld:'BA',arc:'BOM',str:'-',fp:'-',acmv:'-',elec:'-',sp:'-',cw:'-',lpg:'-'},
+  {bld:'BH',arc:'-',str:'-',fp:'-',acmv:'BOM',elec:'-',sp:'-',cw:'-',lpg:'-'},
+  {bld:'BS',arc:'-',str:'BOM',fp:'-',acmv:'-',elec:'-',sp:'-',cw:'-',lpg:'-'},
+  {bld:'IP',arc:'-',str:'-',fp:'-',acmv:'-',elec:'-',sp:'BOM',cw:'-',lpg:'-'},
+];
+
+const bomTree = [
+  {indent:0, label:'BUILDING_SH_STD', type:'BUILDING', dims:'16,868 × 8,668 × 3,945 mm'},
+  {indent:1, label:'SH_GF_STR', type:'FLOOR (Ground)', dims:'16,868 × 8,668 × 3,828 mm'},
+  {indent:2, label:'SH_LIVING_SET', type:'SET (Living)', dims:'8,869 × 1,975 × 1,170 mm'},
+  {indent:2, label:'SH_DINING_SET', type:'SET (Dining)', dims:'2,434 × 1,439 × 1,227 mm'},
+  {indent:2, label:'SH_BED_SET', type:'SET (Master)', dims:'2,007 × 3,421 × 762 mm'},
+  {indent:2, label:'TOILET_BLOCK_FIXTURES', type:'SET (Bathroom)', dims:'AABB-fit'},
+  {indent:2, label:'Walls × 5', type:'ELEMENT', dims:'per-instance'},
+  {indent:2, label:'Windows × 4', type:'ELEMENT', dims:'per-instance'},
+  {indent:2, label:'Doors × 3', type:'ELEMENT', dims:'per-instance'},
+  {indent:1, label:'SH_ROOF_STR', type:'FLOOR (Roof)', dims:'14,841 × 7,285 × 1,734 mm'},
+  {indent:1, label:'SH_CW_STR', type:'FLOOR (Curtain Wall)', dims:'4,915 × 5,670 × 3,359 mm'},
+];
+
+// ===== RENDER FUNCTIONS =====
+function show(id) {
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function renderBars(container, data, maxVal) {
+  const max = maxVal || Math.max(...data.map(d=>d[1]));
+  container.innerHTML = data.map(([label,val]) => `
+    <div class="bar-row">
+      <div class="bar-label">${label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${Math.max((val/max)*100,2)}%"><span>${val.toLocaleString()}</span></div>
+      </div>
+    </div>`).join('');
+}
+
+function baseBadge(base) {
+  const cls = {RE:'badge-re',CO:'badge-co',IN:'badge-in'}[base]||'badge-re';
+  const label = {RE:'Residential',CO:'Commercial',IN:'Infrastructure'}[base]||base;
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function gateBadge(val) {
+  if(val==='PASS') return `<span class="badge badge-pass">PASS</span>`;
+  if(val==='KNOWN') return `<span class="badge badge-fail" title="Known issue under investigation">KNOWN</span>`;
+  return `<span class="badge badge-fail">FAIL</span>`;
+}
+
+function routingCell(val) {
+  if(val==='BOM') return `<td><span class="badge badge-pass">BOM</span></td>`;
+  if(val==='DocEvent') return `<td><span class="badge badge-re">DocEvent</span></td>`;
+  return `<td style="color:var(--border)">—</td>`;
+}
+
+// ===== INIT =====
+function init() {
+  // Overview bars
+  const sorted = [...buildings].sort((a,b) => b.elements - a.elements);
+  renderBars(document.getElementById('overview-bars'), sorted.map(b=>[`${b.name} (${b.prefix})`,b.elements]));
+
+  // Building cards
+  document.getElementById('building-cards').innerHTML = buildings.map(b => `
+    <div class="card">
+      <h3>${b.name} ${baseBadge(b.base)}</h3>
+      <div class="stat">${b.elements.toLocaleString()}</div>
+      <div class="meta">
+        ${b.prefix} · ${b.schema} · ${b.project}<br>
+        Storeys: ${b.storeys.join(', ')}
+      </div>
+    </div>`).join('');
+
+  // Class breakdowns
+  renderBars(document.getElementById('bars-sh'), classBreakdowns.sh);
+  renderBars(document.getElementById('bars-dx'), classBreakdowns.dx);
+  renderBars(document.getElementById('bars-in'), classBreakdowns['in']);
+  renderBars(document.getElementById('bars-te'), classBreakdowns.te);
+
+  // Pipeline
+  document.getElementById('pipeline-viz').innerHTML = stages.map(s => `
+    <div class="stage" onclick="showStage(${s.num-1})">
+      <div class="num">Stage ${s.num}</div>
+      <div class="name">${s.name.replace('\n','<br>')}</div>
+    </div>`).join('');
+  showStage(0);
+
+  // Gates
+  document.getElementById('gate-details').innerHTML = gates.map(g => `
+    <div class="gate-box">
+      <h3>${g.icon} ${g.id} — ${g.name}</h3>
+      <p>${g.desc}</p>
+      <p style="color:var(--accent); font-size:.7rem;">Spec: ${g.spec}</p>
+    </div>`).join('');
+
+  // Gate matrix
+  document.getElementById('gate-matrix').innerHTML = gateResults.map(r => `
+    <tr><td><strong>${r.bld}</strong></td><td>${r.el.toLocaleString()}</td>
+    <td>${gateBadge(r.g1)}</td><td>${gateBadge(r.g2)}</td><td>${gateBadge(r.g3)}</td>
+    <td>${gateBadge(r.g4)}</td><td>${gateBadge(r.g5)}</td><td>${gateBadge(r.g6)}</td></tr>`).join('');
+
+  // Tamper rules
+  document.getElementById('tamper-rules').innerHTML = tamperRules.map(r => `<li>${r}</li>`).join('');
+
+  // Library
+  renderBars(document.getElementById('bars-products'), productsByType);
+  renderBars(document.getElementById('bars-buildings'), productsByBuilding);
+
+  // Surface styles
+  document.getElementById('styles-table').innerHTML = surfaceStyles.map(s => {
+    const rgb = `rgb(${Math.round(s.r*255)},${Math.round(s.g*255)},${Math.round(s.b*255)})`;
+    return `<tr><td>${s.name}</td>
+      <td><div style="width:30px;height:18px;background:${rgb};border-radius:3px;border:1px solid var(--border);opacity:${1-s.t}"></div></td>
+      <td>${s.r.toFixed(3)}</td><td>${s.g.toFixed(3)}</td><td>${s.b.toFixed(3)}</td>
+      <td>${s.t}</td></tr>`;
+  }).join('');
+
+  // BOM tree
+  document.getElementById('bom-tree').innerHTML = bomTree.map(b => {
+    const indent = b.indent * 2;
+    const prefix = b.indent === 0 ? '⬡' : b.indent === 1 ? '├─' : '│  ├─';
+    const typeColor = b.type.includes('BUILDING') ? 'var(--accent)' : b.type.includes('FLOOR') ? 'var(--orange)' : b.type.includes('SET') ? 'var(--green)' : 'var(--dim)';
+    return `<div style="padding-left:${indent}rem">
+      <span style="color:var(--dim)">${prefix}</span>
+      <strong style="color:${typeColor}">${b.label}</strong>
+      <span style="color:var(--dim); font-size:.7rem;"> ${b.type} — ${b.dims}</span>
+    </div>`;
+  }).join('');
+
+  // Disciplines
+  document.getElementById('disc-cards').innerHTML = disciplines.map(d => `
+    <div class="card">
+      <h3><span class="chip ${d.color}">${d.code}</span> ${d.name}</h3>
+      <p class="meta">${d.types}</p>
+    </div>`).join('');
+
+  // Discipline routing
+  document.getElementById('disc-routing').innerHTML = discRouting.map(r => `
+    <tr><td><strong>${r.bld}</strong></td>
+    ${routingCell(r.arc)}${routingCell(r.str)}${routingCell(r.fp)}${routingCell(r.acmv)}
+    ${routingCell(r.elec)}${routingCell(r.sp)}${routingCell(r.cw)}${routingCell(r.lpg)}</tr>`).join('');
+}
+
+function showStage(idx) {
+  document.querySelectorAll('.stage').forEach((s,i) => s.classList.toggle('active', i===idx));
+  const s = stages[idx];
+  document.getElementById('stage-detail').innerHTML = `
+    <div class="desc">
+      <strong>Stage ${s.num}: ${s.name.replace('\n',' ')}</strong><br>${s.desc}
+    </div>`;
+}
+
+// ===== WALKTHROUGH =====
+const wtSteps = [
+  {
+    tab: 'overview',
+    title: 'Opening — The Problem',
+    time: '~30 sec',
+    bonsai: 'Open SampleHouse IFC in Bonsai. Show the 3D model on left half of screen.',
+    say: `Every BIM tool can <em>visualize</em> this building. 55 elements — walls, windows, doors, furniture. But ask any of them to produce a bill of materials for construction, and you get... a spreadsheet someone typed manually. This compiler does what Autodesk and Oracle Primavera should have done together — it <em>compiles</em> the building model into a bill of materials, the same way a manufacturer compiles a product into a production order.`,
+    say2: `Point at the hero stats: 34 buildings, 2,459 products, 415 mined validation rules, 6 verification gates. This is not a prototype — it runs on real IFC files from buildingSMART. Every new IFC is screened against dimension ranges from 20 buildings.`
+  },
+  {
+    tab: 'overview',
+    title: 'The Core Idea — Construction as Manufacturing',
+    time: '~20 sec',
+    bonsai: 'Keep SampleHouse visible. Point to specific elements — a wall, a window.',
+    say: `The construction industry thinks of BIM as a drawing tool. We think of it as a <em>compilation problem</em>. An IFC file is source code. The compiler reads it, classifies every element, matches it to a product library, and outputs a bill of materials in ERP format. Same concept that runs every car factory — applied to buildings.`,
+    say2: `Point to the 3 architecture cards: 4 Databases, Prime Rule, ERP Pattern. Emphasize: "Extract or compile only — never invent."`
+  },
+  {
+    tab: 'buildings',
+    title: 'The Test Fleet — 34 Real Buildings',
+    time: '~40 sec',
+    bonsai: 'Switch to show different IFC files if you have them loaded — or keep SampleHouse.',
+    say: `We don't test on toy models. These are 34 real IFC files — residential, clinics, castles, infrastructure. The smallest is 1 element. The largest is an airport terminal with 48,000 elements. Same pipeline. Same verification gates. No code changes — only a YAML configuration file per building.`,
+    say2: `Scroll down to show the element class breakdowns. Point at Terminal: "33,000 plates, 4,000 pipe fittings, 900 fire suppression terminals — all classified automatically." Point at the IFC class bars — this is what the compiler sees when it opens the file.`
+  },
+  {
+    tab: 'pipeline',
+    title: 'The Pipeline — 9 Deterministic Stages',
+    time: '~50 sec',
+    bonsai: 'Minimize Bonsai or keep side-by-side. Focus is on the pipeline visualization.',
+    say: `Click each stage as you talk about it. The pipeline is deterministic — same input, same output, every time. No randomness. No AI guessing.`,
+    say2: `<strong>Click Stage 1:</strong> "First, metadata validation — does the BOM database have every product the DSL file references?"<br><br>
+<strong>Click Stage 2:</strong> "Parse the DSL — we call it BIM COBOL. It declares storeys, rooms, placements. Not geometry — intent."<br><br>
+<strong>Click Stage 3:</strong> "Compile — resolve positions from relative offsets. A window is 1.2 metres from the room corner, not at absolute coordinate 7,345."<br><br>
+<strong>Click Stage 5:</strong> "Write to a fresh SQLite database. Every run starts clean."<br><br>
+<strong>Click Stage 6:</strong> "BIM COBOL verbs — SET, FACTORIZE, QUALIFY. Every mutation gets an audit trail."<br><br>
+<strong>Click Stage 7:</strong> "Spatial digest — SHA256 hash of every element's coordinates. This is the fingerprint for verification."<br><br>
+<strong>Click Stage 9:</strong> "Placement prover — mathematical proof that adjacent rooms share walls and nothing overlaps."`
+  },
+  {
+    tab: 'rosetta',
+    title: 'The Rosetta Stone — Proof, Not Testing',
+    time: '~60 sec — THIS IS YOUR KEY DIFFERENTIATOR',
+    bonsai: 'Keep minimized. The gate results table is the star of this slide.',
+    say: `This is what makes this project different from every other BIM tool. We don't test the compiler — we <em>prove</em> it. The original IFC file is gospel. The compiler must reproduce it exactly. Six gates verify this.`,
+    say2: `<strong>Scroll through the 6 gate boxes:</strong><br><br>
+<strong>G1 COUNT:</strong> "Reference says 55 elements. Output says 55. Delta zero. If the compiler invents or drops anything, this fails."<br><br>
+<strong>G2 VOLUME:</strong> "Total bounding box volume must match within one tenth of one percent."<br><br>
+<strong>G3 DIGEST:</strong> "Every element's XYZ coordinates are SHA256-hashed individually. The aggregate digest must match. This catches sub-millimetre drift."<br><br>
+<strong>G4 TAMPER — pause here, this impresses experts:</strong> "This gate scans the compiler's own source code and git history. 21 rules. It detects if anyone disabled a test, hardcoded a coordinate, added a bypass. The compiler audits itself. If I cheat, this gate fails."<br><br>
+<strong>G5 PROVENANCE:</strong> "Every output element traces back to a library product with a real mesh and material."<br><br>
+<strong>G6 ISOLATION:</strong> "No data leaks between buildings."<br><br>
+<strong>Then scroll to the matrix:</strong> "Here's the scorecard. All buildings passing. The KNOWN markers on Duplex and Institute are documented spatial digest edge cases — mirrored geometry and window pairing — not bugs we're hiding."`
+  },
+  {
+    tab: 'rosetta',
+    title: 'G4 Tamper Seal Deep Dive',
+    time: '~30 sec',
+    bonsai: 'Keep minimized.',
+    say: `Scroll down to the 21 tamper rules. Let them read for a moment.`,
+    say2: `"Every rule here is a way a developer could cheat. T1: disable a test. T3: add a sleep to skip timing checks. T12: hardcode a coordinate instead of computing it. T16: bypass the BOM tables with raw SQL. The compiler checks for all 21 on every run — scanning both the live source code and the git diff. This is self-policing software. No other BIM tool does this."`
+  },
+  {
+    tab: 'library',
+    title: 'Component Library — The Product Catalog',
+    time: '~30 sec',
+    bonsai: 'Show Bonsai with element properties panel open if possible.',
+    say: `The compiler doesn't generate geometry. It selects from a library of 2,459 real products extracted from the IFC files themselves. Every product has dimensions, material, cost, labour rate, carbon footprint, and construction sequence.`,
+    say2: `Point at the "Products by IFC Class" bars: "236 elements, 182 members, 86 proxies — all catalogued with full metadata."<br><br>
+Point at the product schema at the bottom: "See the orange fields? unit_cost, labor_rate, crew_size. See the green? carbon_kg, recyclability, lifespan. This isn't just geometry — it's a construction database."<br><br>
+Point at surface styles: "Even the materials are extracted — brick red, aluminium silver, glass blue with 90% transparency. What you see in Bonsai is what the compiler knows."`
+  },
+  {
+    tab: 'bom',
+    title: 'BOM Output — What the Contractor Gets',
+    time: '~40 sec',
+    bonsai: 'Show SampleHouse in Bonsai. Select individual elements to show they match the BOM hierarchy.',
+    say: `The output is a compiled database with 25 tables. Not a flat spreadsheet — a structured bill of materials in iDempiere ERP format.`,
+    say2: `Point at the output table groups: "Core element tables — every element with its GUID, position, and material. BOM and order tables — C_Order, C_OrderLine, same tables that run procurement in iDempiere. Analytics — area by storey, quantity takeoff, room areas. MEP systems — pipe networks as graph structures. Production orders — PP_Order_Node, ready for manufacturing execution."<br><br>
+<strong>Point at the BOM tree:</strong> "This is the Sample House as a bill of materials. Building contains floors. Ground floor contains sets — living room set, dining set, bedroom set. Each set contains the actual products. This is exactly how a factory organizes a production order."<br><br>
+Point at export formats: "Four CSV exports — detailed for engineering, aggregated for procurement, cut list for fabrication, assembly for site sequence."`
+  },
+  {
+    tab: 'disciplines',
+    title: 'Discipline Routing — Configuration, Not Code',
+    time: '~30 sec',
+    bonsai: 'Show Bonsai with different element types highlighted if possible.',
+    say: `Eight construction disciplines, each routed independently per building. Architecture goes to BOM — the compiler places walls and windows. Fire protection goes to DocEvent — the compiler validates sprinkler spacing but doesn't place them. A discipline can be absent entirely — the house has no electrical because the IFC file doesn't include it.`,
+    say2: `Point at the routing table: "Look at Terminal — every discipline is BOM. It's a full MEP building. SampleHouse — only architecture, structure, and curtain wall go to BOM. Fire and HVAC are validation-only. No code changes — just a YAML config."`
+  },
+  {
+    tab: 'overview',
+    title: 'Closing — The Implication',
+    time: '~30 sec',
+    bonsai: 'Return to full SampleHouse view in Bonsai.',
+    say: `This is open source. It runs on IFC — the international standard that every BIM tool can export. It treats construction the way manufacturing has worked for 40 years — as a compilation problem. The design is the source code. The bill of materials is the compiled output. The Rosetta Stone gates prove the compilation is correct.`,
+    say2: `"What Autodesk and Oracle Primavera should have done together — an ERP expert finally did. The repo is on GitHub. Thank you."<br><br>
+<em>End on the overview screen showing the hero stats. Let them sink in.</em>`
+  },
+];
+
+let wtCurrent = 0;
+let wtOpen = false;
+
+function toggleWalkthrough() {
+  wtOpen = !wtOpen;
+  const panel = document.getElementById('wt-panel');
+  const toggle = document.querySelector('.wt-toggle');
+  if (wtOpen) {
+    panel.classList.add('open');
+    toggle.textContent = 'Hide Guide';
+    document.querySelector('main').style.marginBottom = '45vh';
+    renderWtStep();
+  } else {
+    panel.classList.remove('open');
+    toggle.textContent = 'Walkthrough Guide';
+    document.querySelector('main').style.marginBottom = '0';
+  }
+}
+
+function renderWtStep() {
+  const container = document.getElementById('wt-steps');
+  const step = wtSteps[wtCurrent];
+
+  // Navigate to the correct tab
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById(step.tab).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => {
+    b.classList.remove('active');
+    if (b.textContent.toLowerCase().replace(/\s/g,'') === step.tab.toLowerCase().replace(/\s/g,''))
+      b.classList.add('active');
+  });
+  // Fix tab matching
+  const tabMap = {'overview':'Overview','buildings':'Buildings','pipeline':'Pipeline','rosetta':'Rosetta Stone','library':'Component Library','bom':'BOM Output','disciplines':'Disciplines'};
+  document.querySelectorAll('nav button').forEach(b => {
+    b.classList.remove('active');
+    if (b.textContent === tabMap[step.tab]) b.classList.add('active');
+  });
+
+  container.innerHTML = `
+    <div class="wt-step active">
+      <div class="step-num">Step ${wtCurrent + 1} of ${wtSteps.length} <span class="wt-time">${step.time}</span></div>
+      <div class="step-title">${step.title}</div>
+      <div class="step-tab">Tab: <span>${tabMap[step.tab]}</span></div>
+      <div class="wt-do">BONSAI: ${step.bonsai}</div>
+      <div class="wt-say">${step.say}</div>
+      ${step.say2 ? `<div class="wt-say" style="border-color:var(--green);">${step.say2}</div>` : ''}
+    </div>`;
+
+  // Progress dots
+  document.getElementById('wt-progress').innerHTML = wtSteps.map((_, i) => {
+    const cls = i < wtCurrent ? 'done' : i === wtCurrent ? 'current' : '';
+    return `<div class="wt-dot ${cls}" onclick="wtGoto(${i})"></div>`;
+  }).join('');
+
+  // Button states
+  document.getElementById('wt-prev').disabled = wtCurrent === 0;
+  document.getElementById('wt-next').textContent = wtCurrent === wtSteps.length - 1 ? 'Finish' : 'Next';
+}
+
+function wtStep(dir) {
+  if (dir === 1 && wtCurrent === wtSteps.length - 1) {
+    toggleWalkthrough();
+    return;
+  }
+  wtCurrent = Math.max(0, Math.min(wtSteps.length - 1, wtCurrent + dir));
+  renderWtStep();
+}
+
+function wtGoto(idx) {
+  wtCurrent = idx;
+  renderWtStep();
+}
+
+// ===== CAPTIONS =====
+const captions = [
+  { tab:'overview', label:'Introduction',
+    text:'Every BIM tool can <em>visualize</em> a building. None of them can <em>compile</em> it into a bill of materials. This open-source compiler does exactly that — it reads IFC building models and produces verified construction documents in ERP format.',
+    action:'12 real buildings tested. 2,459 library products. 6 verification gates. 9 pipeline stages. 8 construction disciplines.' },
+  { tab:'overview', label:'Construction as Manufacturing',
+    text:'The construction industry treats BIM as a drawing tool. This compiler treats it as a <em>compilation problem</em> — the same way a car factory compiles a product design into a production order. The IFC file is source code. The bill of materials is the compiled output.',
+    action:'Prime Rule: Extract or compile only. Query the database. Copy patterns. Compute positions via verbs. Never invent.' },
+  { tab:'buildings', label:'34 Real Buildings',
+    text:'Tested on 34 real IFC files — not toy models. Residential homes, a duplex, clinics, castles, an airport terminal with 48,000 elements. Infrastructure too: bridges, roads, railways. New IFCs are screened against 415 mined dimension rules.',
+    action:'Same pipeline for all buildings. No code changes — only a YAML configuration file per building.' },
+  { tab:'buildings', label:'Scale: 55 to 48,428 Elements',
+    text:'The SampleHouse has 55 elements — walls, windows, doors, furniture. The airport terminal has 48,428 elements — 33,000 steel plates, 4,000 pipe fittings, 900 fire suppression terminals. All classified automatically.',
+    action:'IFC2x3, IFC4, and IFC4X3 schemas all supported.' },
+  { tab:'pipeline', label:'9-Stage Deterministic Pipeline',
+    text:'The compiler runs a <em>deterministic</em> 9-stage pipeline. Same input produces the same output every time. No randomness. No AI guessing. Each stage is independent and auditable.',
+    action:'Stages: Metadata Validation → Parse DSL → Compile → Template Composition → Write to DB → BIM COBOL Verbs → Spatial Digest → Geometry Integrity → Placement Prover' },
+  { tab:'pipeline', label:'BIM COBOL — A Construction Language',
+    text:'The building intent is declared in a domain-specific language we call <em>BIM COBOL</em>. It describes storeys, rooms, and placements — not geometry. Verbs like SET, FACTORIZE, and QUALIFY mutate elements with a full audit trail.',
+    action:'IFC File → extract.py → *_extracted.db → classify_*.yaml → dsl_*.bim → Pipeline (9 stages) → *_output.db → Rosetta Stone (6 gates) → Verified BOM' },
+  { tab:'rosetta', label:'Rosetta Stone — Proof of Extraction',
+    text:'This is what makes this project unique. We don\'t <em>test</em> the compiler — we <em>prove</em> it. The original IFC file is treated as gospel. Six verification gates ensure the compiler reproduces it exactly.',
+    action:'G1: Element count match. G2: Volume within 0.1%. G3: SHA256 spatial digest. G4: Tamper seal. G5: Provenance. G6: Isolation.' },
+  { tab:'rosetta', label:'G1-G3: Mathematical Verification',
+    text:'<em>Gate 1</em>: Reference says 55 elements, output says 55. Delta zero. <em>Gate 2</em>: Total bounding box volume matches within one tenth of one percent. <em>Gate 3</em>: Every element\'s XYZ coordinates are SHA256-hashed. The aggregate digest must match — catching even sub-millimetre drift.',
+    action:'No invented elements. No dropped elements. No positional drift.' },
+  { tab:'rosetta', label:'G4: The Compiler Audits Itself',
+    text:'<em>Gate 4 — the tamper seal</em> — scans the compiler\'s own source code and git history. 21 regex rules detect disabled tests, hardcoded coordinates, bypass patterns, and non-determinism. If anyone — including the author — cheats, this gate fails.',
+    action:'Self-policing software. No other BIM tool does this.' },
+  { tab:'rosetta', label:'G5-G6: Provenance and Isolation',
+    text:'<em>Gate 5</em>: Every output element traces to a library product with valid mesh data and material. Nothing was generated — only extracted and placed. <em>Gate 6</em>: Spatial containment verification. No cross-building data leakage.',
+    action:'100% traceability from output back to IFC source.' },
+  { tab:'library', label:'Component Library — 823 Products',
+    text:'The compiler doesn\'t generate geometry. It selects from a library of <em>823 real products</em> extracted from the IFC files themselves. Every product has dimensions, material, cost, labour rate, carbon footprint, and construction sequence.',
+    action:'44,125 geometries. 25 IFC classes. 80 surface styles. 415 mined dimension rules from 20 buildings.' },
+  { tab:'library', label:'Full Product Metadata',
+    text:'Each product carries <em>construction metadata</em>: unit cost in Ringgit, labour resource type, crew size, productivity rate, equipment requirements. Plus sustainability data: carbon per unit, recyclability, lifespan in years.',
+    action:'Not just geometry — a complete construction database.' },
+  { tab:'bom', label:'BOM Output — What the Contractor Gets',
+    text:'The output is a compiled SQLite database with <em>25 tables</em> in iDempiere ERP format. Core element tables, BOM/order tables, analytics, MEP system graphs, and production orders — ready for procurement, scheduling, and costing.',
+    action:'C_Order, C_OrderLine, PP_Order_Node — the same tables that run manufacturing in iDempiere ERP.' },
+  { tab:'bom', label:'BOM Hierarchy — Building as Product',
+    text:'The Sample House as a <em>bill of materials</em>: Building contains floors. Ground floor contains sets — living room, dining, bedroom, bathroom. Each set contains actual products with dimensions. This is exactly how a factory organizes a production order.',
+    action:'Four CSV exports: detailed BOM for engineering, aggregated BOM for procurement, cut list for fabrication, assembly BOM for site sequence.' },
+  { tab:'disciplines', label:'8 Disciplines — Configuration Only',
+    text:'Eight construction disciplines, each routed independently per building. Architecture and structure go to <em>BOM</em> — the compiler places them. Fire protection goes to <em>DocEvent</em> — the compiler validates but doesn\'t place. A discipline can be absent entirely.',
+    action:'The airport terminal uses all 8 disciplines. The sample house uses only 3. No code changes — just YAML configuration.' },
+  { tab:'overview', label:'Closing',
+    text:'This is <em>open source</em>. It runs on <em>IFC</em> — the international standard. It treats construction the way manufacturing has worked for 40 years — as a compilation problem. The design is source code. The bill of materials is the compiled output. The Rosetta Stone gates prove the compilation is correct.',
+    action:'What Autodesk and Oracle Primavera should have done together — an ERP expert finally did.' },
+];
+
+let captionOpen = false;
+let captionIdx = 0;
+
+function toggleCaptions() {
+  captionOpen = !captionOpen;
+  document.getElementById('caption-bar').classList.toggle('visible', captionOpen);
+  document.getElementById('caption-nav').classList.toggle('visible', captionOpen);
+  const btn = document.querySelectorAll('.wt-toggle')[1];
+  btn.textContent = captionOpen ? 'Hide Captions' : 'Captions';
+  if (captionOpen) {
+    document.querySelector('main').style.marginBottom = '12rem';
+    renderCaption();
+  } else {
+    if (!wtOpen) document.querySelector('main').style.marginBottom = '0';
+  }
+}
+
+function renderCaption() {
+  const c = captions[captionIdx];
+  document.getElementById('caption-label').textContent = `${captionIdx + 1} / ${captions.length} — ${c.label}`;
+  document.getElementById('caption-text').innerHTML = c.text;
+  document.getElementById('caption-action').innerHTML = c.action;
+
+  // Navigate to correct tab
+  const tabMap = {'overview':'Overview','buildings':'Buildings','pipeline':'Pipeline','rosetta':'Rosetta Stone','library':'Component Library','bom':'BOM Output','disciplines':'Disciplines'};
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById(c.tab).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => {
+    b.classList.remove('active');
+    if (b.textContent === tabMap[c.tab]) b.classList.add('active');
+  });
+}
+
+function captionStep(dir) {
+  captionIdx = Math.max(0, Math.min(captions.length - 1, captionIdx + dir));
+  renderCaption();
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (captionOpen) {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); captionStep(1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); captionStep(-1); }
+    if (e.key === 'Escape') toggleCaptions();
+    return;
+  }
+  if (!wtOpen) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); wtStep(1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); wtStep(-1); }
+  if (e.key === 'Escape') toggleWalkthrough();
+});
+
+init();
+</script>
+</body>
+</html>
