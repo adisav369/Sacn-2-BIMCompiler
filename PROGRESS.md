@@ -19,23 +19,67 @@
 **Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (21+20+6+output).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
-**BonsaiBIMDesigner:** 249/249 GREEN (33 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 256/256 GREEN (34 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
 **Scorecard: 31/36** (was 27). 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
-**Wire actions:** 39 total (was 38). +1: clickToPlace.
+**Wire actions:** 42 total (was 39). +3: listOrderLines, updateOrderLine, getBomTree.
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
+**G-9 (S46b):** ORDER View + BOM Outliner. 3 API actions, 7 witnesses. UX-F-26 (sync) + UX-F-27 (three views) → IMPLEMENTED.
 
 ## What's Next
 
-**CP-4: Geometric Archetype Abstraction (session 44 discovery → session 45+ implementation):**
-  Geometric fingerprint revealed 43 decision points switching on IFC class strings.
-  BBC.md §2.2.1 says compiler must be class-agnostic. AUDIT_PIPELINE.md flagged this as CRITICAL.
-  Phase 4a: add shape_archetype/scale_band columns to m_bom_line (computed from dimensions).
-  Phase 4b: replace 12 geometric switches with archetype. Phase 4c: wire semantic decisions
-  to component library. Phase 4d: table-driven QTO/costing. Phase 4e: BomValidator gate.
+**[DONE] G-9 ORDER View + BOM Outliner (session 46b):**
+  Three views share one truth (UX-F-27): BBox Design (3D), ORDER View (tabular),
+  BOM Outliner (tree). All read/write C_OrderLine in work_output.db.
+  **Java (API + Server + DAO):**
+  - `listOrderLines(buildingId)` — flat tabular C_OrderLine for ORDER View (§17.11)
+  - `updateOrderLine(orderLineId, field, value)` — inline edit with whitelist guard
+    (aabb_width_mm, aabb_depth_mm, aabb_height_mm, dx, dy, dz, Qty)
+  - `getBomTree(buildingId)` — hierarchical BUILDING→FLOOR→ROOM from Parent_OrderLine_ID (§17.19)
+  - WorkOutputDAO: OrderLineRow record, listOrderLines, updateOrderLine, getOrderLine,
+    findLatestSubOrder. Field whitelist prevents injection.
+  - DesignerAPI: 5 records (OrderLineInfo, ListOrderLinesResponse, UpdateOrderLineResponse,
+    BomTreeNode, BomTreeResponse). DesignerServer: 3 dispatch cases.
+  **Python (Blender addon):**
+  - client.py: 3 methods (list_order_lines, update_order_line, get_bom_tree)
+  - operator.py: 3 operators (list_order_lines, update_order_line, get_bom_tree)
+  - props.py: design_view EnumProperty (BBOX/ORDER/TREE) + edit props
+  - panel.py: view tab selector + ORDER View table (ID/Category/BOM Ref/WxDxH/Qty/Status)
+    + BOM Outliner recursive tree with indentation + host_type icons
+  **7 witnesses** (OrderViewTest): W-OV-LIST-1..2, W-OV-UPDATE-1..2, W-OV-TREE-1..2, W-OV-SYNC-1.
+  256/256 GREEN. Rosetta Stones undisturbed.
+
+**CP-4: Geometric Archetype Abstraction — Phase 4c next:**
+  Phase 4a DONE (session 46): shape_archetype + scale_band columns on m_bom_line.
+  Phase 4b DONE (session 46): 15 geometric switches replaced with archetype in 5 files.
+  Phase 4c: wire semantic decisions to component library (BOMExporter UOM, BuildingWriter
+  GUID prefix/element_type, PlacementCollectorVisitor deriveDiscipline, MeshBinder findClosestFit).
+  Phase 4e: BomValidator.checkShapeConsistency() gate.
   See ACTION_ROADMAP.md §CP-4 for full spec references and phase plan.
+
+**[DONE] CP-4 Phase 4b: geometric switches → archetype (session 46):**
+  15 IFC class switch points replaced with archetype-based logic across 5 files:
+  - PlacementProver P04 (Z-band): IfcRoof/IfcSlab/IfcFlow* → archetype + scale_band checks
+  - PlacementProver P10 (checkShapeConsistency): 9-case IFC switch → delegates to GeometricFingerprint
+  - SpatialDiff (HOSTED_ELEMENTS): IfcWindow/IfcDoor set → isHostedOpening() geometric test
+  - MeshBinder (isOpening): IfcDoor/IfcWindow → isHostedOpening()
+  - GeometryIntegrityChecker (isOpening): IfcDoor/IfcWindow → isHostedOpening()
+  New utility methods on GeometricFingerprint: classifyArchetype(), classifyScaleBand(), isHostedOpening().
+  SH 9/10 undisturbed. Full compile clean.
+
+**[DONE] CP-4 Phase 4a: shape_archetype + scale_band on m_bom_line (session 46):**
+  Every LEAF row now carries computed geometric identity from allocated dimensions.
+  Archetype: PLANAR/ELONGATED/COMPACT/MIXED (dimensionless ratios: planarity=S/L, elongation=M/L).
+  Scale band: ARCHITECTURAL/FURNITURE/FITTING/TINY (volume in m³).
+  Classification logic in VerbFactorizer (IFCtoBOM module) mirrors GeometricFingerprint (DAGCompiler).
+  All 6 INSERT paths updated: VerbFactorizer, ScopeBomBuilder, StructuralBomBuilder,
+  DisciplineBomBuilder, FloorRoomBomBuilder, CompositionBomBuilder.
+  DDL: m_bom_line + 2 columns (shape_archetype, scale_band). Migration: CP4_001_bom_line_archetype.sql.
+  SH distribution: 11 PLANAR, 21 ELONGATED, 5 COMPACT, 9 MIXED. 46/47 classified (1 static/0-dim).
+  4 witnesses (W-ARCHETYPE-BOM ×2, W-ARCHETYPE-DIST, W-ARCHETYPE-COMPUTE). SH 9/10 undisturbed.
+  BBC.md §4.2.3 documents the schema, computation, and witness claims.
 
 **[DONE] Geometric Fingerprint foundation (session 44):**
   P10_SHAPE_IDENTITY proof wired into PlacementProver (Stage 9). Computes dimensionless
@@ -397,6 +441,8 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 46b | 2026-03-21 | G-9 ORDER View + BOM Outliner: listOrderLines + updateOrderLine + getBomTree. View tab selector (BBOX/ORDER/TREE). 7 witnesses (OrderViewTest). UX-F-26 + UX-F-27 IMPLEMENTED | 256/256 |
+| 46 | 2026-03-21 | CP-4 Phase 4a+4b: shape_archetype + scale_band on m_bom_line (6 INSERT paths). 15 geometric switches → archetype in PlacementProver/SpatialDiff/MeshBinder/GeometryIntegrityChecker. isHostedOpening() replaces IfcDoor/IfcWindow. 4 witnesses | 249/249 |
 | 45 | 2026-03-21 | G-8 Click-to-Place: clickToPlace API + viewport ray-cast + discipline selector + placeItem persistence + MEPBOMQuery + multi-item placement + coverage tracking + computePlacementOffset (16 placement rules). 15 witnesses | 249/249 |
 | 44b | 2026-03-21 | CP-3 batch: 14 more IFCs (20→34 buildings). BimWhale(4), AC9/AC90(3), Revit(3), SampleCastle, HITOS, Jesse, Wilfer. 1326→2459 products. 4 failed extraction (FJ/SW/VG/ET) | — |
 | 44 | 2026-03-21 | CP-3 scale-up: 12 IFCs onboarded (8→20 buildings). Scripts: onboard_ifc.sh, ifc_recon.py, rosetta_report.sh. Cross-class geometry fallback. 823→1326 products. Clinic federated (5 disciplines), Schependomlaan, Esplanades, Molio | — |
@@ -457,7 +503,7 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — Phases 0–H, G-1..G-12.
 | G-6 | Compile bridge (real pipeline) | **DONE** (s29) |
 | G-7 | Assembly builder (MAKE path) | **DONE** (s35) |
 | G-8 | Click-to-Place (viewport click → room → discipline placement) | **DONE** (s45) |
-| G-9 | ORDER View + BOM Outliner | planned |
+| G-9 | ORDER View + BOM Outliner | **DONE** (s46b) |
 | G-10 | Promote to BOM (governance gate) | planned |
 | G-11..12 | ParametricMesh UI, Text Mode | planned |
 | G-13 | Auto-chain (seed → connectors → pipes) + live coverage | planned |
