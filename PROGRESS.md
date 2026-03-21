@@ -59,15 +59,47 @@
   TerminalSandboxTest assumeTrue(file.exists)→assertTrue (6 occurrences).
   BonsaiBIMDesigner: 304/304 GREEN (was 297). +7 from SelectionCascadeTest.
 
-**Next: S53 — Generative Pipeline End-to-End:**
-  Wire full YAML → rules auto-populate OrderLines → compile → output.db.
+**[DONE] S52b — ASI Authoring Backend (BBC.md §3.5.1 + BIM_Designer_SRS.md §28):**
+  WorkOutputDAO: 8 new ASI CRUD methods — createASI, readASI, updateASIAttribute,
+  linkASI, getASIForOrderLine, listAttributeSets, resolveAttributeSetForProduct,
+  isInstanceAttribute. ASI schema + 11 product-type templates seeded (BIM_Wall,
+  BIM_Pipe, BIM_Door, BIM_Window, BIM_Slab, BIM_Beam, BIM_Column, BIM_Conduit,
+  BIM_Duct, BIM_Component, BIM_Fitting).
+  DesignerAPI: 3 new methods — autoPopulate(), readASI(), updateASI().
+  DesignerAPIImpl: Full implementation with computeASIDefaults() — stretch factors
+  per product type (walls scale to room width, pipes to run length, slabs compute
+  area, etc.). Auto-populate flow: cascade → expand SET → create C_OrderLine →
+  compute ASI for IsInstanceAttribute=1 products → link ASI to order line.
+  ASIAuthoringTest: 9 witnesses (W-ASI-AUTO-1..3, W-ASI-READ-1, W-ASI-EDIT-1,
+  W-ASI-LINK-1, W-ASI-PUMP-1). Full pump pattern demo: 6 items, 5 with ASI
+  (walls, pipe, door, window), 1 without (light fixture).
+  BIM_Designer_SRS.md §28: New section — Interactive Selection Cascade + ASI
+  Authoring (progressive drill-down, auto-populate + readjust flow, ASI field
+  resolution matrix, 8 witness claims, full traceability).
+  BonsaiBIMDesigner: 313/313 GREEN (was 304). +9 from ASIAuthoringTest.
+
+**Next: S53 — Terminal CLUSTER Promotion + Generative Pipeline:**
+  Terminal CLUSTER groups (47,157 instances) need promotion to abstract patterns.
+  ClusterPatternAnalyser (S51b) confirmed: sprinklers, lights, beams = ZONE
+  (rule-governed, M1/M4/M6); pipes = MIXED (routing networks, compliance rules).
+  Task: promote ZONE groups to TILE/FRAME with ASI. Pipes stay CLUSTER — their
+  pattern is the routing rule (M2 branch length, M3 diameter), not a spatial grid.
+  ASI taxonomy seeded (9 templates). Generative path uses same M_AttributeSet.
+  EN-BLOC for promoted groups: verb formula + ASI resolution. No zone BOMs needed
+  if validation rules define the boundaries implicitly.
+  Also: generative pipeline end-to-end —
+
+**S53 Track 2 — Generative Pipeline End-to-End:**
+  DemoHouseTest already tests YAML → BOM → placement → UBBL + BIMEyes proofs.
+  ASIAuthoringTest proves the C_OrderLine + ASI pump pattern.
+  Next: connect the two — autoPopulate DemoHouse rooms with cascade + ASI,
+  then compile through real pipeline. Gate: G1-COUNT + G5-PROVENANCE.
   Track 1: Pipeline GENERATIVE skip (no DSL). BOMWalker drives flat emission.
     Populate DM_BOM.db from YAML + cascade. Gate: G1-COUNT + G5-PROVENANCE.
   Track 2: Rules expand 5 YAML rooms → 50+ OrderLines (ad_space_type_opening,
     ad_space_type_mep_bom, AD_Val_Rule). Topological: doors→circulation,
     no landlocked rooms, bedroom privacy. Room orientation defaults from rules.
-  Track 3: ASI wiring (converges with TE extraction session).
-    WorkOutputDAO ASI read/write. Compiler effective = ASI ?? catalog.
+  Track 3: Compiler effective_dimension resolution (ASI > allocated > catalog).
     Building-level orientation_deg. Per-instance wall length/door swing/material.
   All rules are pure metadata (AD_Val_Rule rows). Code is generic engine.
 
