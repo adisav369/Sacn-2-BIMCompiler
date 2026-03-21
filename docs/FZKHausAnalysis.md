@@ -606,8 +606,7 @@ rm -f library/FK_BOM.db
 **Outputs:**
 - `library/FK_BOM.db` — BOM recipe (m_bom + m_bom_line + ad_sysconfig)
 - `library/component_library.db` — updated with FK products and geometry
-- `DAGCompiler/lib/output/Ifc4_FZKHaus_enbloc.db` — EN-BLOC compilation
-- `DAGCompiler/lib/output/Ifc4_FZKHaus_walkthru.db` — WALK-THRU compilation
+- `DAGCompiler/lib/output/ifc4_fzkhaus.db` — compiled output
 
 ### Step 6 — Verify: Delta checks (automated)
 
@@ -615,20 +614,20 @@ The script automatically runs 7 delta checks:
 
 | # | Check | Expected |
 |---|-------|----------|
-| 1 | EN-BLOC element count == WALK-THRU count | ~82 |
-| 2 | Geometry hash match | 0 diffs |
-| 3 | Position match (dx/dy/dz) | 0 diffs |
+| 1 | G1-COUNT: element count matches expected | 82 |
+| 2 | G3-DIGEST: spatial digest matches reference | PASS |
+| 3 | G4-TAMPER: no anti-patterns in source | PASS |
 | 4 | Singularity: BUILDING BOM is root | 1 root |
 | 5 | Rule 8: all offsets within parent AABB | 0 violations |
-| 6 | Clash: no furniture AABB overlaps | 0 clashes |
-| 7 | Space contract: all elements assigned | 0 orphans |
+| 6 | C8: geometry diversity preserved | 0 losses |
+| 7 | C9: per-axis dimension match | 0 mismatches |
 
 **Target:** `7/7 PASS` before proceeding to rule mining.
 
 ### Step 7 — Mine validation rules from the output
 
 ```bash
-DB=DAGCompiler/lib/output/Ifc4_FZKHaus_enbloc.db
+DB=DAGCompiler/lib/output/ifc4_fzkhaus.db
 
 # 8a. Structural dimensions per element type
 sqlite3 "$DB" "

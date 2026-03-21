@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * Bridge Rules Test — validates DV006b infrastructure bridge rules in validation.db.
  *
  * <p>Cross-validates mined dimensional/ratio/placement rules against the
- * infra_bridge_enbloc.db extraction. Proves that the rules accurately capture
+ * infra_bridge.db extraction. Proves that the rules accurately capture
  * the reference model's structural invariants.
  *
  * <p>Witness claims:
@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 class BridgeRulesTest {
 
     static final Path VALIDATION_DB = Path.of("library/validation.db");
-    static final Path BRIDGE_DB = Path.of("DAGCompiler/lib/output/infra_bridge_enbloc.db");
+    static final Path BRIDGE_DB = Path.of("DAGCompiler/lib/output/infra_bridge.db");
 
     static Connection valConn;
     static Connection brConn;
@@ -142,7 +142,7 @@ class BridgeRulesTest {
     @Order(10)
     @DisplayName("W-BR-XVAL-DIM: Dimension rules match extraction averages")
     void crossValidateDimensions() throws Exception {
-        assumeTrue(brConn != null, "infra_bridge_enbloc.db required for cross-validation");
+        assumeTrue(brConn != null, "infra_bridge.db required for cross-validation");
 
         // Query extraction: per-class, per-segment average dimensions
         String sql = """
@@ -268,7 +268,7 @@ class BridgeRulesTest {
     @Order(30)
     @DisplayName("W-BR-Z-CONTINUITY: Z params consistent with extraction")
     void zContinuity() throws Exception {
-        assumeTrue(brConn != null, "infra_bridge_enbloc.db required for Z validation");
+        assumeTrue(brConn != null, "infra_bridge.db required for Z validation");
 
         // Check pier Z ranges from extraction
         String sql = """

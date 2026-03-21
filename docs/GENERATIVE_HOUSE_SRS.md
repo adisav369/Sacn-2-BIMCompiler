@@ -391,6 +391,36 @@ Expected:
 starting point. The OrderLine picks the template. ASI customizes it. Validation
 ensures the result is compliant. The engine is the same for all.
 
+### Next Step: DM (DemoHouse) — TC-4 + TC-5 Combined
+
+The `classify_dm.yaml` currently fails IFCtoBOM because DM has no extracted reference DB.
+DM is not an extraction path — it is the **generative** path using BOM Drop.
+
+**Implementation:** DM = SH BOM Drop + swap roof to pitched (TC-4) + add FP discipline (TC-5).
+
+```
+C_OrderLine: M_Product_ID = BUILDING_SH_STD       ← start from SH template
+
+BOM Drop:
+  Navigate to SH_ROOF_STR → swap with pitched roof (ProductCategory choice)
+  Add C_OrderLine: discipline = FP                 ← fire protection sprinklers
+
+Compile → SH structure + pitched roof + sprinklers
+```
+
+This bypasses IFCtoBOM entirely — the compiler works from C_OrderLine → BOM explosion.
+The `run_RosettaStones.sh` script should skip DM (no extraction) or route it through
+the BOM Drop compile path. Gate verification: G1-COUNT (element count), G5-PROVENANCE
+(all geometry from library).
+
+**Outstanding issues from pipeline run (S56b):**
+- IN G3: 120 window SHIFTs — SpatialDiff mis-pairing across rooms, not compilation bug.
+  See [`ACInstituteAnalysis.md`](ACInstituteAnalysis.md) and `memory/project_envelope_qualification.md`.
+- DX G3/C9: 87 axis mismatches — mirror rotation swaps W↔D, output is correct.
+  See [`DuplexAnalysis.md`](DuplexAnalysis.md) §Walker Rotation.
+- TE G3/W-TOT: 92 FRAME verb LBD offset.
+  See [`TerminalAnalysis.md`](TerminalAnalysis.md) and [`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) §Gap 6.
+
 ### Note: Topology Maker — Future Phase
 
 TC-1 through TC-8 cover the immediate generative use cases using **existing library

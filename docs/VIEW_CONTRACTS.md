@@ -16,15 +16,15 @@
 - §10: Phase 4 product_ref FK step marked DONE. Remaining Phase 4 items listed explicitly.
 
 **Changes from v1.8:**
-- §5.4 v_proven_geometry: corrected to live SQL — removed broken `JOIN ad_geometry_map ON
+- §5.4 v_proven_geometry: corrected to live SQL — removed broken `JOIN I_Geometry_Map ON
   gm.element_ref = cd.name` (namespace mismatch: Revit family:type vs library component name).
   Now filters directly on `cd.vertex_count > 8` and `cd.geometry_hash IS NOT NULL`.
   `ifc_class` sourced via correlated subquery on `gm.geometry_hash = cd.geometry_hash`.
-- §5.6 v_component_leaf: same correction — `ad_geometry_map` join dropped; `cd.vertex_count`
+- §5.6 v_component_leaf: same correction — `I_Geometry_Map` join dropped; `cd.vertex_count`
   and `cd.geometry_hash` used directly. Live view retains `ifc_class` column and `pd.height > 0`.
 - §8: View Execution Results updated — v_proven_geometry 0→22,013; v_component_leaf 0→28.
 - Root cause recorded: original join assumed `gm.element_ref` and `cd.name` share a namespace
-  — they do not. `ad_geometry_map.element_ref` = Revit family:type (building elements);
+  — they do not. `I_Geometry_Map.element_ref` = Revit family:type (building elements);
   `component_definitions.name` = library component names.
 
 **Changes from v1.7:**
@@ -51,7 +51,7 @@
 **Changes from v1.4:**
 - §4.1 migration block replaced with intent guidelines — Code guards against current schema state
 - §4.2 migration block replaced with intent guidelines — DEFAULT/CHECK consistency enforced by Code
-- §4.2 ad_geometry_map ALTER TABLE removed — column provenance already exists (DEFAULT 'LIBRARY')
+- §4.2 I_Geometry_Map ALTER TABLE removed — column provenance already exists (DEFAULT 'LIBRARY')
 - Version bumped to 1.5
 
 **Changes from v1.3:**
@@ -108,7 +108,7 @@ M_Product          m_bom / component_          (no rename needed)   catalog tabl
 | `m_bom_line` | M_BOMLine | NO | `is_active = 1` |
 | `component_definitions` | M_Product leaf | NO | `extracted_from NOT LIKE '%PENDING%'` |
 | `ad_product_dim` | M_Product attr | NO | `extracted_from NOT LIKE '%PENDING%'` |
-| `ad_geometry_map` | M_Product geom | NO | `provenance NOT LIKE '%PENDING%'` |
+| `I_Geometry_Map` | M_Product geom | NO | `provenance NOT LIKE '%PENDING%'` |
 
 ### 1.2 C_Order (Construction Order) — Future DocStatus Lifecycle
 
@@ -294,7 +294,7 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 -- the DEFAULT value must pass the CHECK. Code to confirm existing defaults
 -- on both tables and align accordingly.
 --
--- INTENT: ad_geometry_map already has provenance TEXT DEFAULT 'LIBRARY' (confirmed).
+-- INTENT: I_Geometry_Map already has provenance TEXT DEFAULT 'LIBRARY' (confirmed).
 -- No migration needed. Views use gm.provenance as-is.
 -- Guard all ADD COLUMN operations against current schema state.
 ```
@@ -430,7 +430,7 @@ All Phase 1→2 migrations applied and verified:
 ```
 Phase 1:  doc_status on exactly one table confirmed — c_orderline only ✓
 Phase 1b: extracted_from added to component_definitions and ad_product_dim ✓
-          ad_geometry_map.provenance already existed — no migration applied ✓
+          I_Geometry_Map.provenance already existed — no migration applied ✓
 Phase 1c: bom_type added to m_bom
           Seeded: 9 ROOM-tier (FLOOR_*/BUILDING_*), 26 SET-tier (all others)
           NOTE: document seed list (BEDROOM_STD, LIVING_STD etc.) does not match
@@ -607,7 +607,7 @@ SELECT
     cd.id,
     cd.name,
     (SELECT MIN(gm.ifc_class)
-     FROM ad_geometry_map gm
+     FROM I_Geometry_Map gm
      WHERE gm.geometry_hash = cd.geometry_hash) AS ifc_class,
     cd.geometry_hash,
     cd.vertex_count,
@@ -618,19 +618,19 @@ WHERE cd.vertex_count > 8
   AND cd.geometry_hash IS NOT NULL;
 ```
 
-**Design note — why not `JOIN ad_geometry_map ON gm.element_ref = cd.name`:**
-`ad_geometry_map.element_ref` is keyed on Revit family:type strings (e.g.,
+**Design note — why not `JOIN I_Geometry_Map ON gm.element_ref = cd.name`:**
+`I_Geometry_Map.element_ref` is keyed on Revit family:type strings (e.g.,
 `"Doors_IntSgl:810x2110mm"`). `component_definitions.name` is keyed on library
 component names (e.g., `"Base_Cabinet"`, `"jkrME18_spr_sprinkler head_pendent"`).
 These namespaces never intersect. The geometry_hash bridge is the correct path.
-`MIN()` deduplicates where multiple `ad_geometry_map` rows share a hash (~2.8× avg).
+`MIN()` deduplicates where multiple `I_Geometry_Map` rows share a hash (~2.8× avg).
 
 **What this eliminates:**
 - BBox placeholders in IFC output (vertex_count > 8)
 - The LodGeometryXRayTest X1-X4 detection class (prevention replaces detection)
 
 > **Execution note (2026-02-23): LIVE — 22,013 rows** after Phase 3h seed.
-> Root cause of earlier zero-row result: `ad_geometry_map JOIN ON element_ref = cd.name`
+> Root cause of earlier zero-row result: `I_Geometry_Map JOIN ON element_ref = cd.name`
 > was a namespace mismatch — zero hits. Corrected view + `extracted_from` seed together
 > unblocked the view. Verified: `SELECT COUNT(*) FROM v_proven_geometry` → 22,013.
 
@@ -667,7 +667,7 @@ SELECT
     cd.id,
     cd.name,
     (SELECT MIN(gm.ifc_class)
-     FROM ad_geometry_map gm
+     FROM I_Geometry_Map gm
      WHERE gm.geometry_hash = cd.geometry_hash) AS ifc_class,
     pd.width                        AS width_mm,
     pd.depth                        AS depth_mm,
@@ -687,7 +687,7 @@ WHERE cd.vertex_count > 8
   AND cd.name NOT IN (SELECT bom_id FROM m_bom WHERE is_active = 1);
 ```
 
-**Design note:** same namespace correction as §5.4 — `ad_geometry_map JOIN ON
+**Design note:** same namespace correction as §5.4 — `I_Geometry_Map JOIN ON
 element_ref = cd.name` was wrong (zero hits). Dimensions come from `ad_product_dim`
 via `pd.product_id = cd.name` which is the correct shared namespace (28 hits confirmed).
 
@@ -801,8 +801,8 @@ v_component_leaf               28   LIVE — Phase 3h seed + view SQL correction
 All six views LIVE. Phase 4 product_ref FK migration applied. Tests: 119/117/2 RED (G8 calibration — intentional).
 
 **Phase 3h root cause note:** both v_proven_geometry and v_component_leaf returned zero rows
-because the original view SQL joined `ad_geometry_map ON gm.element_ref = cd.name` —
-a namespace mismatch. `ad_geometry_map.element_ref` uses Revit family:type strings;
+because the original view SQL joined `I_Geometry_Map ON gm.element_ref = cd.name` —
+a namespace mismatch. `I_Geometry_Map.element_ref` uses Revit family:type strings;
 `component_definitions.name` uses library component names. Zero intersection.
 Fix: filter on `cd.vertex_count > 8` and `cd.geometry_hash IS NOT NULL` directly;
 `ifc_class` retrieved via correlated subquery on `gm.geometry_hash = cd.geometry_hash`.
@@ -863,7 +863,7 @@ Create before views — view performance depends entirely on base table indexes.
 CREATE INDEX IF NOT EXISTS idx_bom_bom_type           ON m_bom(bom_type);
 CREATE INDEX IF NOT EXISTS idx_bom_child_bom_id       ON m_bom_line(bom_id);
 CREATE INDEX IF NOT EXISTS idx_bom_child_role         ON m_bom_line(role);
-CREATE INDEX IF NOT EXISTS idx_geometry_map_ref       ON ad_geometry_map(element_ref);
+CREATE INDEX IF NOT EXISTS idx_geometry_map_ref       ON I_Geometry_Map(element_ref);
 CREATE INDEX IF NOT EXISTS idx_product_dim_id         ON ad_product_dim(product_id);
 CREATE INDEX IF NOT EXISTS idx_element_rule_ref       ON c_orderline(element_ref, building_type);
 CREATE INDEX IF NOT EXISTS idx_room_boundary_type     ON ad_room_boundary(building_type, room_type);

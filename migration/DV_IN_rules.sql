@@ -1,0 +1,347 @@
+-- ════════════════════════════════════════════════════════
+-- IN: AC11 Institute (Ifc2x3_AC11Institute)
+-- Source: DAGCompiler/lib/output/ifc2x3_ac11institute.db
+-- Generated: 2026-03-22 06:24
+-- ════════════════════════════════════════════════════════
+
+-- §1: Structural dimensions per (ifc_class, storey)
+-- Use: identify typical element sizes for validation rules
+
+-- ifc_class             storey           cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- --------------------  ---------------  ---  --------  --------  --------  --------  --------
+-- IfcFurnishingElement  Erdgeschoss      76   764.0     942.0     682.0     300.0     1724.0  
+-- IfcFurnishingElement  Keller           76   571.0     550.0     587.0     300.0     1600.0  
+-- IfcWindow             1. Obergeschoss  54   966.0     106.0     1500.0    75.0      1000.0  
+-- IfcWindow             2. Obergeschoss  54   966.0     106.0     1500.0    75.0      1000.0  
+-- IfcWindow             Erdgeschoss      54   930.0     136.0     1537.0    75.0      1000.0  
+-- IfcFurnishingElement  2. Obergeschoss  51   618.0     900.0     653.0     300.0     1600.0  
+-- IfcFurnishingElement  1. Obergeschoss  50   578.0     850.0     638.0     300.0     1600.0  
+-- IfcWindow             Keller           44   1000.0    75.0      1500.0    1000.0    1000.0  
+-- IfcWall               1. Obergeschoss  29   5738.0    3948.0    2700.0    200.0     42000.0 
+-- IfcWall               2. Obergeschoss  29   5738.0    3948.0    2700.0    200.0     42000.0 
+-- IfcWall               Erdgeschoss      29   5538.0    3703.0    2700.0    200.0     18300.0 
+-- IfcWall               Keller           24   5908.0    4146.0    2700.0    200.0     42000.0 
+-- IfcDoor               1. Obergeschoss  22   877.0     295.0     2100.0    100.0     1000.0  
+-- IfcSlab               Dachgeschoss     22   16545.0   2702.0    877.0     8000.0    42000.0 
+-- IfcDoor               2. Obergeschoss  21   914.0     262.0     2100.0    100.0     1000.0  
+-- IfcDoor               Erdgeschoss      18   956.0     400.0     2100.0    100.0     2000.0  
+-- IfcDoor               Keller           16   831.0     419.0     2100.0    100.0     1000.0  
+-- IfcWall               Dachgeschoss     8    10650.0   6575.0    1510.0    300.0     42000.0 
+-- IfcRailing            1. Obergeschoss  3    772.0     1638.0    800.0     15.0      2285.0  
+-- IfcRailing            2. Obergeschoss  3    772.0     1638.0    800.0     15.0      2285.0  
+-- IfcRailing            Dachgeschoss     3    772.0     1638.0    800.0     15.0      2285.0  
+-- IfcRailing            Erdgeschoss      3    772.0     1638.0    800.0     15.0      2285.0  
+-- IfcColumn             Erdgeschoss      2    200.0     200.0     2700.0    200.0     200.0   
+
+-- §2: Material distribution
+
+
+-- §3: Spacing patterns (adjacent element gaps)
+-- Elements of the same ifc_class on the same storey, sorted by X
+
+
+-- §4: IFC class inventory
+
+-- ifc_class             discipline  cnt
+-- --------------------  ----------  ---
+-- IfcFurnishingElement  ARC         253
+-- IfcWindow             ARC         206
+-- IfcWall               ARC         89 
+-- IfcDoor               ARC         77 
+-- IfcWall               STR         30 
+-- IfcSlab               STR         20 
+-- IfcRailing            ARC         12 
+-- IfcSlab               ARC         6  
+-- IfcStair              ARC         4  
+-- IfcColumn             STR         2  
+
+-- §5: Candidate validation rules for disc_validation.db
+-- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcFurnishingElement_Erdgeschoss (76 instances, avg 764.0x942.0x682.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Erdgeschoss', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Erdgeschoss: 76 instances, avg W=764.0 D=942.0 H=682.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '764.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '942.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '682.0');
+
+-- Rule: IfcFurnishingElement_Keller (76 instances, avg 571.0x550.0x587.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Keller', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Keller: 76 instances, avg W=571.0 D=550.0 H=587.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '571.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '550.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '587.0');
+
+-- Rule: IfcWindow_1._Obergeschoss (54 instances, avg 966.0x106.0x1500.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_1._Obergeschoss', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 1. Obergeschoss: 54 instances, avg W=966.0 D=106.0 H=1500.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '966.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '106.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1500.0');
+
+-- Rule: IfcWindow_2._Obergeschoss (54 instances, avg 966.0x106.0x1500.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_2._Obergeschoss', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 2. Obergeschoss: 54 instances, avg W=966.0 D=106.0 H=1500.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '966.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '106.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1500.0');
+
+-- Rule: IfcWindow_Erdgeschoss (54 instances, avg 930.0x136.0x1537.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Erdgeschoss', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Erdgeschoss: 54 instances, avg W=930.0 D=136.0 H=1537.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '930.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '136.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1537.0');
+
+-- Rule: IfcFurnishingElement_2._Obergeschoss (51 instances, avg 618.0x900.0x653.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_2._Obergeschoss', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 2. Obergeschoss: 51 instances, avg W=618.0 D=900.0 H=653.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '618.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '900.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '653.0');
+
+-- Rule: IfcFurnishingElement_1._Obergeschoss (50 instances, avg 578.0x850.0x638.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_1._Obergeschoss', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 1. Obergeschoss: 50 instances, avg W=578.0 D=850.0 H=638.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '578.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '850.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '638.0');
+
+-- Rule: IfcWindow_Keller (44 instances, avg 1000.0x75.0x1500.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Keller', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Keller: 44 instances, avg W=1000.0 D=75.0 H=1500.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1000.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '75.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1500.0');
+
+-- Rule: IfcWall_1._Obergeschoss (29 instances, avg 5738.0x3948.0x2700.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_1._Obergeschoss', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 1. Obergeschoss: 29 instances, avg W=5738.0 D=3948.0 H=2700.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5738.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3948.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2700.0');
+
+-- Rule: IfcWall_2._Obergeschoss (29 instances, avg 5738.0x3948.0x2700.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_2._Obergeschoss', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 2. Obergeschoss: 29 instances, avg W=5738.0 D=3948.0 H=2700.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5738.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3948.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2700.0');
+
+-- Rule: IfcWall_Erdgeschoss (29 instances, avg 5538.0x3703.0x2700.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Erdgeschoss', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Erdgeschoss: 29 instances, avg W=5538.0 D=3703.0 H=2700.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5538.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3703.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2700.0');
+
+-- Rule: IfcWall_Keller (24 instances, avg 5908.0x4146.0x2700.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Keller', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Keller: 24 instances, avg W=5908.0 D=4146.0 H=2700.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5908.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4146.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2700.0');
+
+-- Rule: IfcDoor_1._Obergeschoss (22 instances, avg 877.0x295.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_1._Obergeschoss', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 1. Obergeschoss: 22 instances, avg W=877.0 D=295.0 H=2100.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '877.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '295.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcSlab_Dachgeschoss (22 instances, avg 16545.0x2702.0x877.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Dachgeschoss', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Dachgeschoss: 22 instances, avg W=16545.0 D=2702.0 H=877.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '16545.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2702.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '877.0');
+
+-- Rule: IfcDoor_2._Obergeschoss (21 instances, avg 914.0x262.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_2._Obergeschoss', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 2. Obergeschoss: 21 instances, avg W=914.0 D=262.0 H=2100.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '914.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '262.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcDoor_Erdgeschoss (18 instances, avg 956.0x400.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Erdgeschoss', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Erdgeschoss: 18 instances, avg W=956.0 D=400.0 H=2100.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '956.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '400.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcDoor_Keller (16 instances, avg 831.0x419.0x2100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Keller', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Keller: 16 instances, avg W=831.0 D=419.0 H=2100.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '831.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '419.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2100.0');
+
+-- Rule: IfcWall_Dachgeschoss (8 instances, avg 10650.0x6575.0x1510.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Dachgeschoss', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Dachgeschoss: 8 instances, avg W=10650.0 D=6575.0 H=1510.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '10650.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6575.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1510.0');
+
+-- Rule: IfcRailing_1._Obergeschoss (3 instances, avg 772.0x1638.0x800.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_1._Obergeschoss', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 1. Obergeschoss: 3 instances, avg W=772.0 D=1638.0 H=800.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '772.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1638.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '800.0');
+
+-- Rule: IfcRailing_2._Obergeschoss (3 instances, avg 772.0x1638.0x800.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_2._Obergeschoss', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 2. Obergeschoss: 3 instances, avg W=772.0 D=1638.0 H=800.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '772.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1638.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '800.0');
+
+-- Rule: IfcRailing_Dachgeschoss (3 instances, avg 772.0x1638.0x800.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Dachgeschoss', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Dachgeschoss: 3 instances, avg W=772.0 D=1638.0 H=800.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '772.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1638.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '800.0');
+
+-- Rule: IfcRailing_Erdgeschoss (3 instances, avg 772.0x1638.0x800.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Erdgeschoss', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Erdgeschoss: 3 instances, avg W=772.0 D=1638.0 H=800.0mm',
+--     'Ifc2x3_AC11Institute');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '772.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1638.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '800.0');
+
+

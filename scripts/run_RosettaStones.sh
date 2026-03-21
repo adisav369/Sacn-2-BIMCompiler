@@ -50,6 +50,13 @@ init_log "run_RosettaStones"
 
 YAML_DIR="IFCtoBOM/src/main/resources"
 
+# ── Pre-flight: ensure component_library.db schema is current ──
+comp_db="library/component_library.db"
+if sqlite3 "$comp_db" "SELECT 1 FROM ad_geometry_map LIMIT 1" 2>/dev/null; then
+    echo "  [pre-flight] Applying rename: ad_geometry_map → I_Geometry_Map"
+    sqlite3 "$comp_db" < migration/migration_rename_geometry_map.sql
+fi
+
 # ── Parse arguments ─────────────────────────────────────────
 YAML_FILES=()
 DELTA_ONLY=false
@@ -615,13 +622,15 @@ for yaml_file in "${YAML_FILES[@]}"; do
     if [ "$DELTA_ONLY" != "true" ]; then
         section "IFCtoBOM Pipeline (${PREFIX})"
 
-        # ── Populate product catalog (skip if products already exist) ──
-        # R13: No I_Element_Extraction — check M_Product_Image count instead
+        # ── Populate product catalog (skip if geometry AND product images exist) ──
+        # Both I_Geometry_Map (geometry) and M_Product_Image (product→geometry link) must be populated.
         comp_db="library/component_library.db"
-        existing=$(sqlite3 "$comp_db" \
+        geom_count=$(sqlite3 "$comp_db" \
             "SELECT COUNT(*) FROM I_Geometry_Map WHERE building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
+        image_count=$(sqlite3 "$comp_db" \
+            "SELECT COUNT(*) FROM M_Product_Image i JOIN M_Product p ON i.M_Product_ID = p.product_id WHERE p.building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
 
-        if [ "$existing" = "0" ]; then
+        if [ "$geom_count" = "0" ] || [ "$image_count" = "0" ]; then
             echo "  [populate] Populating component_library.db for ${BUILDING_TYPE}..."
             POP_OUTPUT=""
             POP_RC=0
@@ -638,7 +647,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
                 verdict "POPULATE_${PREFIX}" "PASS" "component_library.db populated"
             fi
         else
-            echo "  [populate] Already populated: ${existing} elements for ${BUILDING_TYPE} — skipping"
+            echo "  [populate] Already populated: ${geom_count} geometries, ${image_count} images for ${BUILDING_TYPE} — skipping"
         fi
 
         # Run IFCtoBOM via CLI (YAML-driven, produces *_BOM.db)
@@ -672,6 +681,21 @@ for yaml_file in "${YAML_FILES[@]}"; do
     # Reference DB path: DAGCompiler/lib/input/{BUILDING_TYPE}_extracted.db
     REF_DB="DAGCompiler/lib/input/${BUILDING_TYPE}_extracted.db"
     run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$REF_DB"
+done
+
+# ── Validation rule extraction (idempotent — INSERT OR IGNORE) ──
+for yaml_file in "${YAML_FILES[@]}"; do
+    PREFIX=$(parse_yaml "$yaml_file" "prefix")
+    OUTPUT_BASE="DAGCompiler/lib/output/$(parse_yaml "$yaml_file" "building_type" | tr '[:upper:]' '[:lower:]')"
+    if [ -f "${OUTPUT_BASE}.db" ] && [ -f "scripts/extract_validation_rules.sh" ]; then
+        RULES_FILE="migration/DV_${PREFIX}_rules.sql"
+        ./scripts/extract_validation_rules.sh "$PREFIX" > "$RULES_FILE" 2>/dev/null
+        rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null || echo "0")
+        if [ "$rule_count" -gt 0 ]; then
+            sqlite3 library/disc_validation.db < "$RULES_FILE" 2>/dev/null || true
+            echo "  [validation] ${PREFIX}: ${rule_count} rules extracted + applied"
+        fi
+    fi
 done
 
 # ── Summary ──────────────────────────────────────────────────

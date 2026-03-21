@@ -88,7 +88,7 @@ class TerminalSandboxTest {
     private static final String TE_BOM_DB = "library/TE_BOM.db";
     private static final String COMP_LIB = "library/component_library.db";
     private static final String TE_EXTRACTED = "DAGCompiler/lib/input/SJTII_Terminal_extracted.db";
-    private static final String TE_OUTPUT_WT = "DAGCompiler/lib/output/sjtii_terminal_walkthru.db";
+    private static final String TE_OUTPUT_WT = "DAGCompiler/lib/output/sjtii_terminal.db";
 
     private static final String BUILDING_BOM = "BUILDING_TE_STD";
     private static final String BUILDING_TYPE = "SJTII_Terminal";

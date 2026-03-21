@@ -133,18 +133,50 @@ pip install datasette
 datasette library/*.db --port 8001      # Browse: http://localhost:8001
 ```
 
+## Pipeline — How Buildings Flow Through the System
+
+```
+IFC file → extract → classify_XX.yaml → IFCtoBOM → {XX}_BOM.db → compile → output.db → gates
+           (once)     (human intent)     (once)     (recipe)      (repeat)  (elements)   (proof)
+```
+
+**Three phases, two scripts:**
+
+| Phase | What | Script | Run when |
+|-------|------|--------|----------|
+| **Onboard** | IFC → extraction → YAML → BOM | `./scripts/onboard_ifc.sh` | Once per new IFC file |
+| **Compile** | BOM + library → output elements | `./scripts/run_RosettaStones.sh` | After any code change |
+| **Validate** | G1-G6 gates + C8/C9 fidelity | (included in above) | Automatic |
+
+```bash
+# Onboard a new building (one-time)
+./scripts/onboard_ifc.sh --prefix SC --type Schependomlaan \
+    --name "Schependomlaan Residential" --base RE \
+    --ifc DAGCompiler/lib/input/IFC/Schependomlaan_IFC2x3.ifc
+
+# Run pipeline for one building (repeatable)
+./scripts/run_RosettaStones.sh classify_sh.yaml
+
+# Run pipeline for all buildings
+./scripts/run_RosettaStones.sh
+```
+
+**Detailed walkthrough:** [YAMLGuide.md](docs/YAMLGuide.md) — step-by-step pipeline with code links.
+**Onboarding recipe:** [IFC_ONBOARDING_RUNBOOK.md](docs/IFC_ONBOARDING_RUNBOOK.md) — 8-step self-service guide.
+
 ## Documentation
 
 Start here, in order:
 
-| Document | What |
-|----------|------|
-| [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | **Master spec** — tack convention, BOM walker, compilation gospel |
-| [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
-| [BIM_COBOL.md](docs/BIM_COBOL.md) | Verb language: 63 verbs, 5 tiers, grammar, witness engine |
-| [ConstructionAsERP.md](docs/ConstructionAsERP.md) | iDempiere mapping, C_Order model, 4-DB architecture |
-| [DATABASE_SCHEMA.md](database/DATABASE_SCHEMA.md) | Full table inventory with purpose and Java access |
-| [docs/INDEX.md](docs/INDEX.md) | Complete documentation index (39 active docs by tier) |
+| # | Document | What |
+|---|----------|------|
+| 1 | [YAMLGuide.md](docs/YAMLGuide.md) | **Start here** — pipeline walkthrough, invention boundary, troubleshooting |
+| 2 | [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | Master spec — tack convention, BOM walker, compilation gospel |
+| 3 | [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
+| 4 | [ConstructionAsERP.md](docs/ConstructionAsERP.md) | iDempiere mapping, C_Order model, 4-DB architecture |
+| 5 | [IFC_ONBOARDING_RUNBOOK.md](docs/IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline |
+| 6 | [DATABASE_SCHEMA.md](database/DATABASE_SCHEMA.md) | Full table inventory with purpose and Java access |
+| 7 | [docs/INDEX.md](docs/INDEX.md) | Complete documentation index (39 active docs by tier) |
 
 Interactive database ERD: [`database/bim_architecture_viz.html`](database/bim_architecture_viz.html) — open in any browser.
 

@@ -904,7 +904,7 @@ The GUI emits BIM COBOL verbs, never direct SQL. 63 verbs in 5 tiers:
 | Utility | VALIDATE AABB, SNAP TO GRID, EXTRACT AABB | Validation + transform |
 | L1 Convenience | CREATE ROOM, FURNISH ROOM, RESIZE ROOM, STRIP ROOM | Room-level composed verbs |
 | Data | SELECT, LIST, DESCRIBE, COUNT, AGGREGATE, EXPORT, CLONE, SUMMARIZE BOM | Query + export |
-| Original | PLACE BOM, EN BLOC, WIRE LIGHTING, ROUTE SPRINKLERS, TILE SURFACE, CHECK BOM, ... | Geometry + inspection |
+| Original | PLACE BOM, WIRE LIGHTING, ROUTE SPRINKLERS, TILE SURFACE, CHECK BOM, ... | Geometry + inspection |
 
 **Layered composition:** L1 verbs call P0 primitives. L2 (floor-level) will call
 L1. Never skip layers. Each verb = one file, one keyword, one payload record.
@@ -1266,7 +1266,7 @@ Rosetta Stone, not just FK.
 
 `BuildingRegistryTest.java` line ~63 has a `GATE_SCOPE` set. **New buildings must be
 added to this set** — otherwise the compilation test silently *skips*, Maven exits 0,
-and no output DB is produced. Symptom: `[enbloc] !! NO OUTPUT DB produced` even though
+and no output DB is produced. Symptom: `!! NO OUTPUT DB produced` even though
 IFCtoBOM passed. See `SourceCodeGuide.md` §Chapter 10 Extension Recipe step 4.
 
 ### G2. DSL `level:` field is integer (storey index), not elevation

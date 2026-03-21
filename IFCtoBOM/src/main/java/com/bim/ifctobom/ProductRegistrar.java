@@ -266,7 +266,7 @@ public class ProductRegistrar {
                 SELECT p.product_id, g.geometry_hash
                 FROM M_Product p
                 JOIN I_Geometry_Map g ON g.element_ref = p.product_id
-                WHERE p.extracted_from = ?
+                WHERE p.building_type = ?
                     AND p.is_active = 1
                 GROUP BY p.product_id
                 """;
@@ -296,7 +296,7 @@ public class ProductRegistrar {
                 SELECT COUNT(DISTINCT p.product_id)
                 FROM M_Product p
                 LEFT JOIN M_Product_Image i ON p.product_id = i.M_Product_ID
-                WHERE p.extracted_from = ?
+                WHERE p.building_type = ?
                     AND p.is_active = 1
                     AND i.M_Product_ID IS NULL
                 """;

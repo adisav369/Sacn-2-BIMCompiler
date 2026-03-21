@@ -440,7 +440,7 @@ fi
 step 7 "Validation rules"
 
 RULES_FILE="migration/DV_${PREFIX_LOWER}_rules.sql"
-if [ -f "${OUTPUT_BASE}_enbloc.db" ]; then
+if [ -f "${OUTPUT_BASE}.db" ]; then
     ./scripts/extract_validation_rules.sh "$PREFIX" > "$RULES_FILE" 2>/dev/null
     rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null || echo "0")
     ok "Extracted $rule_count candidate rules → $RULES_FILE"
@@ -472,8 +472,8 @@ printf "${B}║${R}    ${G}✓${R} %-50s  (classification)\n" "$YAML_FILE"
 printf "${B}║${R}    ${G}✓${R} %-50s  (BIM COBOL)\n" "$DSL_FILE"
 [ -f "$BOM_DB" ] && \
 printf "${B}║${R}    ${G}✓${R} %-50s  (BOM dictionary)\n" "$BOM_DB"
-[ -f "${OUTPUT_BASE}_enbloc.db" ] && \
-printf "${B}║${R}    ${G}✓${R} %-50s  (compiled output)\n" "${OUTPUT_BASE}_enbloc.db"
+[ -f "${OUTPUT_BASE}.db" ] && \
+printf "${B}║${R}    ${G}✓${R} %-50s  (compiled output)\n" "${OUTPUT_BASE}.db"
 [ -f "$RULES_FILE" ] && \
 printf "${B}║${R}    ${G}✓${R} %-50s  (validation rules)\n" "$RULES_FILE"
 printf "${B}║${R}\n"

@@ -318,7 +318,7 @@ All four buildings route through MeshBinder — there is a single unified geomet
 
 ### Geometry Provenance
 
-Each geometry entry in `ad_geometry_map` has a provenance:
+Each geometry entry in `I_Geometry_Map` has a provenance:
 
 | Provenance | Meaning |
 |------------|---------|

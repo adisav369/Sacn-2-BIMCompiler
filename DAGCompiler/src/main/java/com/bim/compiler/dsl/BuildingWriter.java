@@ -1017,7 +1017,7 @@ public class BuildingWriter {
             boolean isRoof = hMm2 > 0 && p.minZ() > 2.5
                     && (arch2 == ShapeArchetype.PLANAR
                         || arch2 == ShapeArchetype.MIXED)
-                    && "IfcRoof".equals(p.ifcClass()); // TODO: remove IFC class check once roof detection is fully geometric
+                    && "IfcRoof".equals(p.ifcClass()); // Belt-and-suspenders: geometric filter + IFC class guard prevents high-Z slab misclassification
             if (isRoof) {
                 dispatchOverrideRoof(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;

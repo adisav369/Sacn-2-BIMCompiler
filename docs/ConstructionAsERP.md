@@ -528,7 +528,8 @@ construction space. **The actual coordinate translation happens when the compile
 writes to the output DB** (elements_meta, element_instances) for Blender viewport
 or IFC export:
 
-**EN-BLOC mode (SH/DX — exact AABB match → ONE ESLine for whole furniture set):**
+**Single compilation path (S54b):** C_OrderLine references M_Product_ID. IsBOM products
+explode recursively via BOMWalker. One path for all buildings — no mode selection.
 
 ```
 {PREFIX}_BOM.db construct (abstract)
@@ -537,8 +538,9 @@ or IFC export:
     M_BOM_Line: Sofa      dx=1500 dy=0   rotation_rule=FACE_INTO_ROOM
     M_BOM_Line: Buffer_NW  (variable, fills remainder)
 
-CO_EmptySpaceLine (alignment) — ONE line for the whole set
-  Line #7: LIVING_SET box → origin=(208, -5246, 0)  orient=π  (north wall room)
+C_OrderLine: M_Product_ID = BUILDING_SH_STD
+  → BOMWalker explodes tree: BUILDING → FLOOR → SET → LEAF elements
+  → PlacementCollectorVisitor resolves world coordinates from tack chain
 
 Translation to output DB (concrete world coordinates)
   Piano:      world_xyz = origin + rotated(dx=0, dy=0)     = (208, -5246, 0)     orient=π
@@ -546,24 +548,8 @@ Translation to output DB (concrete world coordinates)
   Buffer_NW:  (no geometry — spatial placeholder, but space accounted for)
 ```
 
-**WALK THRU mode (TB-LKTN / new buildings — no exact AABB match → one ESLine per slot):**
-
-```
-M_BomCategoryLine slots (from M_BomCategory for this room AABB):
-  Seq=10  Child=DN (Dining)   slot_aabb=2000×1000mm
-  Seq=20  Child=FR (Sofa)     slot_aabb=2500×900mm
-  Seq=30  Child=FR (Piano)    slot_aabb=1371×600mm
-
-For each slot that fits (priority order):
-  New C_OrderLine #N:  family_ref = 'DINING_SET'   host_type=ROOM  room_ref=Rm_Living
-  CO_EmptySpaceLine #N:  DINING_SET → before=(x0,y0) next=(x0+2000, y0)  orient=0
-  New C_OrderLine #M:  family_ref = 'SOFA_SET'     host_type=ROOM  room_ref=Rm_Living
-  CO_EmptySpaceLine #M:  SOFA_SET   → before=(x1,y1) next=(x1+2500, y1)  orient=0
-  [Piano slot: fits? if yes → same pattern; if not → slot skipped]
-```
-
-The CO_EmptySpaceLine gives the room-level anchor. The {PREFIX}_BOM.db dx/dy/dz offsets —
-including buffer gaps — are then rotated and translated relative to that anchor.
+The {PREFIX}_BOM.db dx/dy/dz offsets — including buffer gaps — are rotated and
+translated relative to the parent BOM origin via the tack chain (§4).
 This is the step where abstract BOM offsets become world coordinates.
 
 **After this translation, tests run.** If all witness gates pass (G8 centroids, F4
@@ -1039,14 +1025,11 @@ The BOM tree unfolds deterministically. The translation from {PREFIX}_BOM.db's a
 offsets (dx/dy/dz, rotation_rule) to construction coordinates is a pure function
 of the accepted structural tiers. No branching, no fallthrough, no iteration.
 
-**Furniture sets use EN-BLOC (§3.3) — no extra ESLines for SH/DX.** When the
-compiler reaches a room-level BOM (LIVING_SET, BED_SET, etc.), the room AABB
-matches an M_BomCategory template exactly (e.g. `LI_SH` = 8869×4690mm for SH
-Living Room). The compiler places the entire set as one block — ONE additional
-ESLine — and uses the BOM's dx/dy/dz values to position each item. No new
-C_OrderLines are written, no WALK THRU traversal occurs. This is why the SH/DX
-spatial digest is stable: the same BOM offsets produce the same world coordinates
-on every compile.
+**Furniture sets are BOM-exploded from the parent SET BOM.** When the compiler
+reaches a room-level BOM (LIVING_SET, BED_SET, etc.), BOMWalker recurses into
+the SET's children and uses the BOM's dx/dy/dz values to position each item.
+This is why the SH/DX spatial digest is stable: the same BOM offsets produce
+the same world coordinates on every compile.
 
 **Nothing should be amiss for SH/DX.** If placement errors occur, the bug is in
 the translation function itself (BOM offset → world coordinate), not in variant
@@ -2262,48 +2245,40 @@ floor, and structural container (PAIR). The line count scales with
 
 ## 11. Design Decisions — Q&A1 Consolidation (2026-03-02)
 
-> **Compilation methodology:** For the concise standalone description of EN-BLOC,
-> WALK THRU, and the Rosetta Stone verification approach, see
-> [BOMBasedCompilation.md](BOMBasedCompilation.md).
+> **Compilation methodology:** Single path — C_OrderLine → BOM explosion → elements.
+> See [BOMBasedCompilation.md](BOMBasedCompilation.md) for the full spec.
 
 Decisions confirmed through structured Q&A. Each resolves a model ambiguity.
 
-### 11.1 EN-BLOC = Singularity (mathematical result, not optimisation)
+### 11.1 Single Compilation Path (S54b)
 
-EN-BLOC occurs when the compiler's selection narrows to exactly one BOM. This
-is a mathematical singularity — the answer is unique, so the compiler takes it
-whole. The selection cascade:
+> **Historical note:** Prior to S54b, two compilation modes existed: EN-BLOC
+> (singularity — one BOM taken whole) and WALK THRU (progressive slot filling).
+> These were unified into a single path: C_OrderLine → BOM explosion → elements.
+> The distinction was unnecessary — BOM Drop (§11.1.1) handles both cases.
 
-1. **DocSubType + AABB** narrows the catalog to candidates
-2. **C_OrderLine DSL specs** further narrow (room type, furniture preferences, constraints)
-3. **If exactly one remains = singularity** (EN-BLOC, taken whole)
-4. **If multiple remain = WALK THRU** (walk BomCategoryLine slots in sequence)
-5. **User reviews in Bonsai GUI** — edits OrderLines if result isn't desired, recompiles
+The compilation path is now uniform for all buildings:
 
-As the catalog grows, multiple BOMs will share the exact same AABB. Step 1 alone
-will no longer guarantee singularity — richer DSL input from C_OrderLines (step 2)
-becomes the discriminant. **This is not a blocking problem:** the Bonsai GUI user
-always has final say by editing Orders/Lines. The compiler proposes; the user disposes.
+1. **C_OrderLine** references `M_Product_ID` (a BUILDING product, e.g. `BUILDING_SH_STD`)
+2. **BOMWalker** explodes the BOM tree recursively (IsBOM products expand)
+3. **PlacementCollectorVisitor** resolves world coordinates from the tack chain
+4. **BuildingWriter** emits elements with geometry from `component_library.db`
 
-- **Same AABB, different DocSubType = WALK THRU.** ST_SH has SH's AABB but
-  DocSubType='ST' — no match, so the compiler walks.
-- **Current POC is trivially simple:** step 1 alone produces singularity (one SH
-  BOM, one DX BOM). Deliberate — prove the pipeline before the catalog gets richer.
-  Do not add more house BOMs yet; it will get noisy.
-- **Who triggers:** CompilationPipeline. It generates C_OrderLines (if no user
-  DSL specs) and ESLines on the fly, saves them, then proceeds to compilation.
-
-### 11.2 WALK THRU writes C_OrderLines to output.db
-
-WALK THRU-generated C_OrderLines are **transactional instance data** — they go to
-`output.db`, not {PREFIX}_BOM.db. {PREFIX}_BOM.db holds only the user's pre-existing design-time
-specs. The compiler generates new C_OrderLines during WALK THRU walk (one per
-BomCategoryLine slot found) and writes them alongside CO_EmptySpaceLines.
+The user creates or modifies C_OrderLines via BOM Drop in the Bonsai Designer
+(see [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §28). The compiler compiles
+whatever the order contains. No mode selection, no DocSubType routing.
 
 - **{PREFIX}_BOM.db has no c_orderline** (dropped 2026-03-04 — redundant with M_BOM + M_Product)
-- **output.db c_orderline** = what the compiler decided (compile-time, generated)
-- In EN-BLOC (singularity), DX has ONE top orderline — the first basic
-  regression test ("can this plane take off?").
+- **output.db c_orderline** = what the compiler produced (compile-time, from BOM explosion)
+- **BOM Drop configurator:** user navigates the BOM tree, swaps products by
+  ProductCategory, adds/removes OrderLines. See [GENERATIVE_HOUSE_SRS.md](GENERATIVE_HOUSE_SRS.md) TC-1..TC-8.
+
+### 11.2 C_OrderLine generation in output.db
+
+Compiler-generated C_OrderLines are **transactional instance data** — they go to
+`output.db`, not {PREFIX}_BOM.db. {PREFIX}_BOM.db holds only the BOM recipe
+(m_bom + m_bom_line). The compiler expands the BOM tree into C_OrderLines
+and writes them alongside CO_EmptySpaceLines.
 
 #### 11.2.1 The M_BomCategoryLine → C_OrderLine generation mechanism
 
@@ -2765,8 +2740,8 @@ When a parent room's AABB **exactly fits** a BOM template (M_BomCategory AABB), 
 compiler takes ALL furniture sets wholesale — one ESLine for the entire room. This is
 the **wholesale port** optimisation. No individual furniture placement calculation needed.
 
-- **SH living room:** AABB exact match → take dining set, sofa set, piano set with
-  their buffer fillers EN-BLOC. One C_OrderLine, one ESLine.
+- **SH living room:** AABB exact match → BOM explosion takes dining set, sofa set, piano set with
+  their buffer fillers as one BOM tree. One C_OrderLine, BOMWalker recurses.
 - **This is not hardcoded** — it's a feature: parent AABB fit triggers wholesale,
   non-fit triggers individual placement.
 
@@ -2835,14 +2810,14 @@ tolerance. This ensures:
 - Engineering precision is the hallmark — not approximation
 
 If a real room is 4695mm and the template is 4690mm, that is **NOT** a match. The
-BOM template must be updated to match the actual room, or the room triggers WALK THRU
-walk instead of wholesale port.
+BOM template must be updated to match the actual room, or the cascade selects
+a different BOM that fits.
 
 ### 11.26 Priority ordering: M_BomCategoryLine.Sequence (user-defined)
 
 Furniture set priority (dining→sofa→piano) is encoded in
 **M_BomCategoryLine.Sequence** — user-defined defaults that the user can override.
-The Sequence column already exists; it controls the order of WALK THRU walk slots.
+The Sequence column already exists; it controls BOM explosion order within each level.
 
 Priority is per-room-type (via BomCategory). Different room types can have different
 ordering: a bedroom prioritises bed→wardrobe→desk; a kitchen prioritises
@@ -2938,7 +2913,7 @@ MEP excluded. Furniture matched by sorted BBox vertices (orientation-independent
 
 ### 11.33 Wholesale port: trust BOM, digest checks elements_meta
 
-EN-BLOC wholesale port applies the same spatial transformation to all children — like
+BOM explosion applies the same spatial transformation to all children — like
 transporting a prefab room to the right spot facing correctly. Individual furniture
 positions are computed from BOM-relative offsets (m_bom_line dx/dy/dz) and written to
 elements_meta/RTREE.
