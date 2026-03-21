@@ -947,6 +947,115 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
     }
 
+    // ── ORDER View + BOM Outliner — G-9 (§17.11, §17.19) ──────────
+
+    // Implementing BIM_Designer.md §17.11 — Witness: W-OV-LIST-1
+    @Override
+    public ListOrderLinesResponse listOrderLines(String buildingId) {
+        try {
+            BIMLogger.info(TAG, "LIST_ORDER_LINES building={}", buildingId);
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            var rows = woDao.listOrderLines(buildingId);
+
+            var lines = rows.stream().map(r -> new OrderLineInfo(
+                    r.orderLineId(), r.familyRef(), r.hostType(), r.bomCategory(),
+                    r.dx(), r.dy(), r.dz(),
+                    r.widthMm(), r.depthMm(), r.heightMm(),
+                    r.qty(), r.validationStatus(), r.parentOrderLineId()
+            )).toList();
+
+            BIMLogger.info(TAG, "LIST_ORDER_LINES → {} lines", lines.size());
+            return new ListOrderLinesResponse(true, lines, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "listOrderLines failed", e);
+            BIMLogger.error(TAG, "LIST_ORDER_LINES failed: {}", e.getMessage());
+            return new ListOrderLinesResponse(false, List.of(), e.getMessage());
+        }
+    }
+
+    // Implementing BIM_Designer.md §17.11, UX-F-26 — Witness: W-OV-UPDATE-1
+    @Override
+    public UpdateOrderLineResponse updateOrderLine(int orderLineId, String buildingId,
+                                                    String field, String value) {
+        try {
+            BIMLogger.info(TAG, "UPDATE_ORDER_LINE id={} field={} value={}", orderLineId, field, value);
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+
+            boolean updated = woDao.updateOrderLine(orderLineId, field, value);
+            if (!updated) {
+                return new UpdateOrderLineResponse(false, null,
+                        "Field not editable or line not found: " + field);
+            }
+
+            var row = woDao.getOrderLine(orderLineId);
+            if (row == null) {
+                return new UpdateOrderLineResponse(false, null,
+                        "OrderLine not found after update: " + orderLineId);
+            }
+
+            var info = new OrderLineInfo(
+                    row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
+                    row.dx(), row.dy(), row.dz(),
+                    row.widthMm(), row.depthMm(), row.heightMm(),
+                    row.qty(), row.validationStatus(), row.parentOrderLineId());
+
+            BIMLogger.info(TAG, "UPDATE_ORDER_LINE → ok, id={}", orderLineId);
+            return new UpdateOrderLineResponse(true, info, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "updateOrderLine failed", e);
+            BIMLogger.error(TAG, "UPDATE_ORDER_LINE failed: {}", e.getMessage());
+            return new UpdateOrderLineResponse(false, null, e.getMessage());
+        }
+    }
+
+    // Implementing BIM_Designer.md §17.19 — Witness: W-OV-TREE-1
+    @Override
+    public BomTreeResponse getBomTree(String buildingId) {
+        try {
+            BIMLogger.info(TAG, "GET_BOM_TREE building={}", buildingId);
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            var rows = woDao.listOrderLines(buildingId);
+
+            // Build tree from flat list using Parent_OrderLine_ID
+            java.util.Map<Integer, java.util.List<WorkOutputDAO.OrderLineRow>> childrenMap
+                    = new java.util.LinkedHashMap<>();
+            java.util.List<WorkOutputDAO.OrderLineRow> roots = new java.util.ArrayList<>();
+
+            for (var row : rows) {
+                if (row.parentOrderLineId() == 0) {
+                    roots.add(row);
+                } else {
+                    childrenMap.computeIfAbsent(row.parentOrderLineId(),
+                            k -> new java.util.ArrayList<>()).add(row);
+                }
+            }
+
+            var treeRoots = roots.stream()
+                    .map(r -> buildTreeNode(r, childrenMap))
+                    .toList();
+
+            BIMLogger.info(TAG, "GET_BOM_TREE → {} roots, {} total nodes",
+                    treeRoots.size(), rows.size());
+            return new BomTreeResponse(true, treeRoots, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "getBomTree failed", e);
+            BIMLogger.error(TAG, "GET_BOM_TREE failed: {}", e.getMessage());
+            return new BomTreeResponse(false, List.of(), e.getMessage());
+        }
+    }
+
+    private BomTreeNode buildTreeNode(WorkOutputDAO.OrderLineRow row,
+                                       java.util.Map<Integer, java.util.List<WorkOutputDAO.OrderLineRow>> childrenMap) {
+        var childRows = childrenMap.getOrDefault(row.orderLineId(), List.of());
+        var children = childRows.stream()
+                .map(c -> buildTreeNode(c, childrenMap))
+                .toList();
+        return new BomTreeNode(
+                row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
+                row.widthMm(), row.depthMm(), row.heightMm(),
+                row.qty(), row.validationStatus(), children);
+    }
+
     // ── Place Item + Layout Editing (§15, §16) ─────────────────────
 
     // Implementing BIM_Designer_SRS.md §15 — Witness: W-PLACE-1, W-CTP-3

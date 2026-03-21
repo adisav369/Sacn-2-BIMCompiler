@@ -324,6 +324,45 @@ class DesignerClient:
             "guid": guid,
         })
 
+    # ── G-9 ORDER View + BOM Outliner (§17.11, §17.19) ──────────────
+
+    def list_order_lines(self, building_id: str) -> dict:
+        """List all C_OrderLine rows for ORDER View tabular display (§17.11).
+
+        Returns: { success: bool, lines: [...], error: str|null }
+        """
+        return self._send({
+            "action": "listOrderLines",
+            "buildingId": building_id,
+        })
+
+    def update_order_line(self, order_line_id: int, building_id: str,
+                          field: str, value: str) -> dict:
+        """Update a single field on a C_OrderLine — inline table edit (§17.11).
+
+        Only whitelisted fields: aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+        dx, dy, dz, Qty.
+
+        Returns: { success: bool, updated: {...}, error: str|null }
+        """
+        return self._send({
+            "action": "updateOrderLine",
+            "orderLineId": order_line_id,
+            "buildingId": building_id,
+            "field": field,
+            "value": value,
+        })
+
+    def get_bom_tree(self, building_id: str) -> dict:
+        """Get hierarchical BOM tree for BOM Outliner (§17.19).
+
+        Returns: { success: bool, roots: [{..., children: [...]}], error: str|null }
+        """
+        return self._send({
+            "action": "getBomTree",
+            "buildingId": building_id,
+        })
+
     def _send(self, request: dict) -> dict:
         """Send a request and read the response (synchronous)."""
         if not self._sock:

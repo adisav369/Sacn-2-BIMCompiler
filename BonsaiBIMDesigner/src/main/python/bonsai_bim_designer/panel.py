@@ -108,8 +108,19 @@ class BIM_PT_bim_designer(Panel):
             else:
                 box.label(text="Phase 1 — Wireframe BBox", icon='MESH_GRID')
 
-            # ── Section Chooser (Design Mode) ──────────────────────────
-            self._draw_section_chooser(context, box, props)
+            # ── G-9 View Tab Selector (UX-F-27) ─────────────────────
+            row = box.row(align=True)
+            row.prop(props, "design_view", expand=True)
+
+            view = props.design_view
+
+            if view == 'BBOX':
+                # ── Section Chooser (Design Mode) ────────────────────
+                self._draw_section_chooser(context, box, props)
+            elif view == 'ORDER':
+                self._draw_order_view(context, box, props)
+            elif view == 'TREE':
+                self._draw_bom_outliner(context, box, props)
         else:
             # ── Create New form (Real Mode) ────────────────────────────
             box.label(text="A.3  Create New", icon='ADD')
@@ -146,6 +157,116 @@ class BIM_PT_bim_designer(Panel):
 
             if props.verb_result:
                 box.label(text=props.verb_result, icon='INFO')
+
+    # ── G-9 ORDER View (§17.11) ─────────────────────────────────────
+
+    def _draw_order_view(self, context, box, props):
+        """Draw the ORDER View — flat tabular C_OrderLine editor."""
+        order_box = box.box()
+        order_box.label(text="ORDER View", icon='SPREADSHEET')
+
+        # Refresh button
+        row = order_box.row(align=True)
+        row.operator("bim.designer_list_order_lines", icon='FILE_REFRESH')
+        row.enabled = props.is_connected
+
+        # Parse cached order lines
+        raw = context.scene.get("_order_lines", "")
+        lines = json.loads(raw) if raw else []
+
+        if not lines:
+            order_box.label(text="No order lines — refresh or save a design",
+                            icon='INFO')
+            return
+
+        # Table header
+        header = order_box.row()
+        header.label(text="ID")
+        header.label(text="Category")
+        header.label(text="BOM Ref")
+        header.label(text="W x D x H")
+        header.label(text="Qty")
+        header.label(text="Status")
+
+        # Table rows
+        for line in lines:
+            row = order_box.row(align=True)
+            row.label(text=str(line.get("orderLineId", "")))
+            row.label(text=line.get("bomCategory", line.get("hostType", "")))
+            row.label(text=line.get("familyRef", ""))
+
+            w = line.get("widthMm", 0)
+            d = line.get("depthMm", 0)
+            h = line.get("heightMm", 0)
+            row.label(text=f"{w:.0f}x{d:.0f}x{h:.0f}")
+
+            row.label(text=str(line.get("qty", 1)))
+
+            status = line.get("validationStatus", "UNCHECKED")
+            icon = 'CHECKMARK' if status == "PASS" else (
+                'ERROR' if status == "FAIL" else 'QUESTION')
+            row.label(text=status, icon=icon)
+
+    # ── G-9 BOM Outliner (§17.19) ────────────────────────────────────
+
+    def _draw_bom_outliner(self, context, box, props):
+        """Draw the BOM Outliner — hierarchical BUILDING>FLOOR>ROOM tree."""
+        tree_box = box.box()
+        tree_box.label(text="BOM Outliner", icon='OUTLINER')
+
+        # Refresh button
+        row = tree_box.row(align=True)
+        row.operator("bim.designer_get_bom_tree", icon='FILE_REFRESH')
+        row.enabled = props.is_connected
+
+        # Parse cached tree
+        raw = context.scene.get("_bom_tree", "")
+        roots = json.loads(raw) if raw else []
+
+        if not roots:
+            tree_box.label(text="No BOM tree — refresh or save a design",
+                           icon='INFO')
+            return
+
+        # Render tree recursively
+        self._draw_tree_nodes(tree_box, roots, indent=0)
+
+    def _draw_tree_nodes(self, layout, nodes, indent):
+        """Recursively draw BOM tree nodes with indentation."""
+        for node in nodes:
+            host_type = node.get("hostType", "")
+
+            # Icon based on host_type
+            icon = {
+                "BUILDING": 'HOME',
+                "FLOOR": 'MOD_ARRAY',
+                "ROOM": 'CUBE',
+            }.get(host_type, 'DOT')
+
+            # Indentation via split factor
+            row = layout.row()
+            if indent > 0:
+                split = row.split(factor=indent * 0.05)
+                split.label(text="")  # spacer
+                row = split
+
+            w = node.get("widthMm", 0)
+            d = node.get("depthMm", 0)
+            h = node.get("heightMm", 0)
+            label = node.get("familyRef", "?")
+            dims = f"  {w:.0f}x{d:.0f}x{h:.0f}" if w > 0 else ""
+
+            row.label(text=f"{label}{dims}", icon=icon)
+
+            status = node.get("validationStatus", "")
+            if status and status != "UNCHECKED":
+                s_icon = 'CHECKMARK' if status == "PASS" else 'ERROR'
+                row.label(text=status, icon=s_icon)
+
+            # Recurse into children
+            children = node.get("children", [])
+            if children:
+                self._draw_tree_nodes(layout, children, indent + 1)
 
     def _draw_section_chooser(self, context, box, props):
         """Draw the clickable BOM tree section chooser in Design Mode."""

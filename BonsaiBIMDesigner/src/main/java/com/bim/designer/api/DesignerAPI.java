@@ -189,6 +189,34 @@ public interface DesignerAPI extends AssemblyAPI {
      */
     CompareVariantsResponse compareVariants(String buildingId, List<String> variantIds);
 
+    // ── ORDER View + BOM Outliner — G-9 (§17.11, §17.19) ──────────────
+
+    /**
+     * List all C_OrderLine rows for a building's active sub-order.
+     * Returns flat tabular data for the ORDER View (§17.11).
+     *
+     * // Implementing BIM_Designer.md §17.11 — Witness: W-OV-LIST-1
+     */
+    ListOrderLinesResponse listOrderLines(String buildingId);
+
+    /**
+     * Update a single field on a C_OrderLine (ORDER View inline edit).
+     * Only whitelisted dimension/position/qty fields are editable.
+     * Triggers re-validation after update.
+     *
+     * // Implementing BIM_Designer.md §17.11, UX-F-26 — Witness: W-OV-UPDATE-1
+     */
+    UpdateOrderLineResponse updateOrderLine(int orderLineId, String buildingId,
+                                             String field, String value);
+
+    /**
+     * Get the BOM tree for a building — hierarchical BUILDING→FLOOR→ROOM→ITEM.
+     * Built from C_OrderLine Parent_OrderLine_ID relationships.
+     *
+     * // Implementing BIM_Designer.md §17.19 — Witness: W-OV-TREE-1
+     */
+    BomTreeResponse getBomTree(String buildingId);
+
     // ── Place Item + Layout Editing (§15, §16) ─────────────────────────
 
     /**
@@ -378,6 +406,32 @@ public interface DesignerAPI extends AssemblyAPI {
             int orderLineCount,
             String complianceStatus
     ) {}
+
+    // ── ORDER View + BOM Outliner records (G-9) ─────────────────────
+
+    /** ORDER View row — flat tabular representation of a C_OrderLine. */
+    record OrderLineInfo(int orderLineId, String familyRef, String hostType,
+                         String bomCategory, double dx, double dy, double dz,
+                         double widthMm, double depthMm, double heightMm,
+                         int qty, String validationStatus, int parentOrderLineId) {}
+
+    /** Response for listOrderLines. */
+    record ListOrderLinesResponse(boolean success, java.util.List<OrderLineInfo> lines,
+                                   String error) {}
+
+    /** Response for updateOrderLine — returns the updated row. */
+    record UpdateOrderLineResponse(boolean success, OrderLineInfo updated,
+                                    String error) {}
+
+    /** BOM Outliner tree node — hierarchical BUILDING→FLOOR→ROOM→ITEM. */
+    record BomTreeNode(int orderLineId, String familyRef, String hostType,
+                       String bomCategory, double widthMm, double depthMm,
+                       double heightMm, int qty, String validationStatus,
+                       java.util.List<BomTreeNode> children) {}
+
+    /** Response for getBomTree. */
+    record BomTreeResponse(boolean success, java.util.List<BomTreeNode> roots,
+                            String error) {}
 
     /** Promote request — governance gate metadata. */
     record PromoteRequest(

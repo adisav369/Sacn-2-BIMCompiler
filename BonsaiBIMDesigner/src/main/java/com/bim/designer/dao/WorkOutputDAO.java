@@ -395,6 +395,160 @@ public class WorkOutputDAO {
         }
     }
 
+    // ── ORDER View — list + update (§17.11) ─────────────────────────
+
+    /**
+     * Row shape for ORDER View tabular display.
+     * // Implementing BIM_Designer.md §17.11 — Witness: W-OV-LIST-1
+     */
+    public record OrderLineRow(int orderLineId, String familyRef, String hostType,
+                                String bomCategory, double dx, double dy, double dz,
+                                double widthMm, double depthMm, double heightMm,
+                                int qty, String validationStatus, int parentOrderLineId) {}
+
+    /**
+     * List all C_OrderLine rows for a building's most recent sub-order.
+     * Returns flat tabular data for ORDER View (§17.11).
+     * Falls back to most recent CO sub-order if no DR/IP exists.
+     */
+    public List<OrderLineRow> listOrderLines(String buildingId) throws SQLException {
+        // Try active sub-order first, then fall back to latest CO
+        String subOrderId = findActiveSubOrder(buildingId);
+        if (subOrderId == null) {
+            subOrderId = findLatestSubOrder(buildingId);
+        }
+        if (subOrderId == null) return List.of();
+
+        return queryOrderLines(subOrderId);
+    }
+
+    /**
+     * Query C_OrderLine rows for a specific sub-order.
+     */
+    private List<OrderLineRow> queryOrderLines(String subOrderId) throws SQLException {
+        String sql = """
+                SELECT C_OrderLine_ID, family_ref, host_type, bom_category,
+                       dx, dy, dz,
+                       aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                       Qty, validation_status,
+                       COALESCE(Parent_OrderLine_ID, 0) AS parent_id
+                FROM C_OrderLine
+                WHERE C_Order_ID = ? AND IsActive = 1
+                ORDER BY Line
+                """;
+
+        List<OrderLineRow> result = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, subOrderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.add(new OrderLineRow(
+                            rs.getInt("C_OrderLine_ID"),
+                            rs.getString("family_ref"),
+                            rs.getString("host_type"),
+                            rs.getString("bom_category"),
+                            rs.getDouble("dx"),
+                            rs.getDouble("dy"),
+                            rs.getDouble("dz"),
+                            rs.getDouble("aabb_width_mm"),
+                            rs.getDouble("aabb_depth_mm"),
+                            rs.getDouble("aabb_height_mm"),
+                            rs.getInt("Qty"),
+                            rs.getString("validation_status"),
+                            rs.getInt("parent_id")
+                    ));
+                }
+            }
+        }
+        return result;
+    }
+
+    /** Whitelist of fields editable via ORDER View inline editing. */
+    private static final java.util.Set<String> EDITABLE_FIELDS = java.util.Set.of(
+            "aabb_width_mm", "aabb_depth_mm", "aabb_height_mm",
+            "dx", "dy", "dz", "Qty");
+
+    /**
+     * Update a single field on a C_OrderLine (ORDER View inline edit).
+     * Only whitelisted fields are allowed. Returns true if a row was updated.
+     *
+     * // Implementing BIM_Designer.md §17.11 — Witness: W-OV-UPDATE-1
+     */
+    public boolean updateOrderLine(int orderLineId, String field, String value)
+            throws SQLException {
+        if (!EDITABLE_FIELDS.contains(field)) {
+            return false;
+        }
+
+        // Use parameterised value but field name is whitelisted (safe from injection)
+        String sql = "UPDATE C_OrderLine SET " + field + " = ?, "
+                + "updated = datetime('now') WHERE C_OrderLine_ID = ? AND IsActive = 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            if ("Qty".equals(field)) {
+                ps.setInt(1, Integer.parseInt(value));
+            } else {
+                ps.setDouble(1, Double.parseDouble(value));
+            }
+            ps.setInt(2, orderLineId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Get a single OrderLineRow by ID (for returning updated row after edit).
+     */
+    public OrderLineRow getOrderLine(int orderLineId) throws SQLException {
+        String sql = """
+                SELECT C_OrderLine_ID, family_ref, host_type, bom_category,
+                       dx, dy, dz,
+                       aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                       Qty, validation_status,
+                       COALESCE(Parent_OrderLine_ID, 0) AS parent_id
+                FROM C_OrderLine
+                WHERE C_OrderLine_ID = ? AND IsActive = 1
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, orderLineId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new OrderLineRow(
+                            rs.getInt("C_OrderLine_ID"),
+                            rs.getString("family_ref"),
+                            rs.getString("host_type"),
+                            rs.getString("bom_category"),
+                            rs.getDouble("dx"),
+                            rs.getDouble("dy"),
+                            rs.getDouble("dz"),
+                            rs.getDouble("aabb_width_mm"),
+                            rs.getDouble("aabb_depth_mm"),
+                            rs.getDouble("aabb_height_mm"),
+                            rs.getInt("Qty"),
+                            rs.getString("validation_status"),
+                            rs.getInt("parent_id")
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find the most recent sub-order for a building (any status, for fallback).
+     */
+    private String findLatestSubOrder(String buildingId) throws SQLException {
+        String sql = """
+                SELECT C_Order_ID FROM C_Order
+                WHERE Parent_Order_ID = ?
+                ORDER BY created DESC LIMIT 1
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private int countVariants(String buildingId) throws SQLException {

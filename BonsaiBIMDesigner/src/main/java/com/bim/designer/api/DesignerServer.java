@@ -272,6 +272,25 @@ public class DesignerServer implements AutoCloseable {
                             bboxes));
                     yield JsonProtocol.toJson(resp);
                 }
+                // ── G-9 ORDER View + BOM Outliner (§17.11, §17.19) ──
+                case "listOrderLines" -> {
+                    var resp = api.listOrderLines(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "updateOrderLine" -> {
+                    var resp = api.updateOrderLine(
+                            request.intField("orderLineId", 0),
+                            request.stringField("buildingId"),
+                            request.stringField("field"),
+                            request.stringField("value"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "getBomTree" -> {
+                    var resp = api.getBomTree(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
                 case "addRoom" -> {
                     var resp = api.addRoom(
                             request.stringField("buildingId"),

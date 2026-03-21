@@ -195,6 +195,35 @@ class BIMDesignerProperties(PropertyGroup):
         default='ARC',
     )
 
+    # -- G-9 ORDER View + BOM Outliner (§17.11, §17.19) ----------------------
+    design_view: EnumProperty(
+        name="Design View",
+        description="Active design view tab (UX-F-27: three views, one truth)",
+        items=[
+            ('BBOX', "BBox Design", "3D viewport with coloured bboxes"),
+            ('ORDER', "ORDER View", "Tabular C_OrderLine editor"),
+            ('TREE', "BOM Outliner", "Hierarchical BUILDING>FLOOR>ROOM tree"),
+        ],
+        default='BBOX',
+    )
+
+    edit_order_line_id: IntProperty(
+        name="Edit Line ID",
+        description="C_OrderLine_ID being edited in ORDER View",
+        default=0,
+        min=0,
+    )
+
+    edit_field: StringProperty(
+        name="Edit Field",
+        description="Field name being edited (e.g. aabb_width_mm)",
+    )
+
+    edit_value: StringProperty(
+        name="Edit Value",
+        description="New value for the field being edited",
+    )
+
     # -- Verb console --------------------------------------------------------
     verb_line: StringProperty(
         name="Verb",
@@ -241,6 +270,10 @@ class BIMDesignerProperties(PropertyGroup):
         browse_search: str
         browse_offset: int
         browse_total: int
+        design_view: str
+        edit_order_line_id: int
+        edit_field: str
+        edit_value: str
         verb_line: str
         verb_result: str
         compile_status: str

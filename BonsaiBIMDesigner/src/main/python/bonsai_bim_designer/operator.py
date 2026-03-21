@@ -1212,6 +1212,134 @@ class BIM_OT_designer_execute_verb(Operator):
 
 
 # =============================================================================
+# G-9 ORDER View + BOM Outliner (§17.11, §17.19)
+# =============================================================================
+
+class BIM_OT_designer_list_order_lines(Operator):
+    """Fetch C_OrderLine data for ORDER View tabular display"""
+    bl_idname = "bim.designer_list_order_lines"
+    bl_label = "Refresh ORDER View"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.building_id:
+            self.report({'ERROR'}, "No building ID set")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.list_order_lines(props.building_id)
+            if result.get("success"):
+                lines = result.get("lines", [])
+                context.scene["_order_lines"] = json.dumps(lines)
+                props.compile_status = f"ORDER View: {len(lines)} lines"
+                self.report({'INFO'}, f"Loaded {len(lines)} order lines")
+            else:
+                error = result.get("error", "Unknown error")
+                props.compile_status = f"ORDER View error: {error}"
+                self.report({'WARNING'}, error)
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_update_order_line(Operator):
+    """Update a single field on a C_OrderLine (inline ORDER View edit)"""
+    bl_idname = "bim.designer_update_order_line"
+    bl_label = "Update Order Line"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.building_id or not props.edit_order_line_id:
+            self.report({'ERROR'}, "No building or order line selected")
+            return {'CANCELLED'}
+
+        if not props.edit_field or not props.edit_value:
+            self.report({'ERROR'}, "No field or value specified")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.update_order_line(
+                props.edit_order_line_id,
+                props.building_id,
+                props.edit_field,
+                props.edit_value,
+            )
+            if result.get("success"):
+                # Refresh ORDER View data
+                bpy.ops.bim.designer_list_order_lines()
+                props.compile_status = f"Updated line {props.edit_order_line_id}"
+                self.report({'INFO'}, f"Updated {props.edit_field} = {props.edit_value}")
+            else:
+                error = result.get("error", "Update failed")
+                props.compile_status = f"Update error: {error}"
+                self.report({'WARNING'}, error)
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_get_bom_tree(Operator):
+    """Fetch hierarchical BOM tree for BOM Outliner display"""
+    bl_idname = "bim.designer_get_bom_tree"
+    bl_label = "Refresh BOM Outliner"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.building_id:
+            self.report({'ERROR'}, "No building ID set")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.get_bom_tree(props.building_id)
+            if result.get("success"):
+                roots = result.get("roots", [])
+                context.scene["_bom_tree"] = json.dumps(roots)
+                # Count total nodes recursively
+                def count_nodes(nodes):
+                    n = len(nodes)
+                    for node in nodes:
+                        n += count_nodes(node.get("children", []))
+                    return n
+                total = count_nodes(roots)
+                props.compile_status = f"BOM Outliner: {total} nodes"
+                self.report({'INFO'}, f"Loaded BOM tree ({total} nodes)")
+            else:
+                error = result.get("error", "Unknown error")
+                props.compile_status = f"BOM tree error: {error}"
+                self.report({'WARNING'}, error)
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+# =============================================================================
 # Registration
 # =============================================================================
 
@@ -1240,6 +1368,9 @@ _classes = (
     BIM_OT_designer_update_room_dims,
     BIM_OT_designer_peek_metadata,
     BIM_OT_designer_execute_verb,
+    BIM_OT_designer_list_order_lines,
+    BIM_OT_designer_update_order_line,
+    BIM_OT_designer_get_bom_tree,
 )
 
 
