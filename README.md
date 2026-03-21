@@ -10,6 +10,20 @@ The AEC industry has a productivity problem. CAD tools model geometry. BIM tools
 
 The data model is [iDempiere](https://idempiere.org/) ERP: `M_Product`, `M_BOM`, `C_Order`, `C_DocType` — repurposed for construction. Adding a new building type means adding BOM data, not writing Java code.
 
+## The Data Flywheel
+
+The compiler gets smarter with every building it processes. Each onboarded IFC file contributes dimension patterns to a mined validation pool. Each new IFC is checked against that pool before compilation. This is an emergent property — not designed, but a natural consequence of three architectural decisions:
+
+1. **"Extract or compile only"** — forces the pipeline to read real buildings, building a corpus of real-world data
+2. **34 buildings onboarded** — creates enough statistical mass for meaningful dimensional ranges
+3. **disc_validation.db** — gives the mined rules a clean home, separate from product geometry
+
+The result: **415 validation rules mined from 20 real buildings** across 25 IFC classes. When a new IFC arrives, every element's dimensions are checked against observed ranges. A wall at 3,000mm passes silently. A wall at 500,000mm is flagged before the pipeline invests effort in BOM compilation. After compilation, the new building's patterns feed back into the pool — widening the ranges and reducing false positives for the next one.
+
+No BIM tool in the industry does this. They validate against fixed, hand-authored rules. This system validates against empirical evidence from its own corpus — like a spell-checker built from real documents, not just grammar rules.
+
+See [BOMBasedCompilation.md §9](docs/BOMBasedCompilation.md) for the full specification.
+
 ## Key Numbers
 
 | Metric | Value |

@@ -762,6 +762,61 @@ Zero-cost foam: sits in the BOM, walker skips it, enables spatial queries.
 - W-WALKTHRU-DIFFERS-1: PENDING — WALK-THRU output differs from EN-BLOC for
   multi-candidate slots. Requires WALK-THRU implementation (G-4+).
 
+#### 4.2.3 Shape Archetype + Scale Band (CP-4 §4a, session 46)
+
+Every `m_bom_line` LEAF row carries two computed columns derived from its
+`allocated_width/depth/height_mm` dimensions:
+
+| Column | Values | Derivation |
+|--------|--------|------------|
+| `shape_archetype` | PLANAR, ELONGATED, COMPACT, MIXED | Dimensionless ratios: planarity = S/L, elongation = M/L (S ≤ M ≤ L sorted dims) |
+| `scale_band` | ARCHITECTURAL, FURNITURE, FITTING, TINY | Volume bands: S×M×L / 1e9 m³ |
+
+**Purpose:** These columns replace IFC class as the geometric decision variable.
+Phase 4b will switch PlacementProver, SpatialDiff, MeshBinder, and BuildingWriter
+from `case "IfcWall"` to `case "PLANAR"` — making the compiler class-agnostic
+per BBC.md §2.2.1.
+
+**Computation (identical to GeometricFingerprint.java):**
+- Sort (W, D, H) → (S, M, L). If L < 0.01: MIXED.
+- PLANAR: planarity < 0.15 AND elongation ≥ 0.40
+- ELONGATED: planarity < 0.15 AND elongation < 0.40
+- COMPACT: planarity ≥ 0.25 AND elongation ≥ 0.50
+- Otherwise: MIXED
+
+**Witness claims:**
+- W-ARCHETYPE-BOM: IMPLEMENTED — every LEAF row with dimensions has non-null
+  shape_archetype and scale_band. SH: 46/47 classified (1 static child with 0 dims).
+- W-ARCHETYPE-COMPUTE: IMPLEMENTED — unit tests verify known shapes (wall→PLANAR,
+  column→ELONGATED, furniture→COMPACT).
+- W-ARCHETYPE-DIST: IMPLEMENTED — SH distribution: 11 PLANAR, 21 ELONGATED,
+  5 COMPACT, 9 MIXED. Building has expected mix of structural + furnishing elements.
+
+#### 4.2.4 Product Category (CP-4 semantic half, session 48)
+
+`component_types.product_category` in `component_library.db` provides the semantic
+identity that shape archetype cannot: pipe vs column (both ELONGATED), wall vs slab
+(both PLANAR). Runtime code switches on product_category instead of IFC class strings.
+
+| Category | IFC classes | Semantic role |
+|----------|-------------|---------------|
+| STRUCTURAL_LINEAR | Beam, Column, Member, ReinforcingBar | Primary/secondary framing |
+| STRUCTURAL_PLANAR | Slab, Wall, WallStandardCase, Plate, Footing | Horizontal/vertical planar |
+| MEP_ROUTING | PipeSegment, DuctSegment, FlowSegment, FlowFitting | Distribution network |
+| MEP_TERMINAL | LightFixture, Alarm, SanitaryTerminal, Outlet | End devices |
+| OPENING | Door, Window, OpeningElement | Wall penetrations |
+| FURNISHING | Furniture, FurnishingElement, BuildingElementProxy | Movable items |
+| ENVELOPE | Roof, Covering, Chimney | Building skin |
+| CIRCULATION | StairFlight, Railing, RampFlight | Vertical movement |
+| SITE | EarthworksFill, GeographicElement | Terrain |
+| INFRASTRUCTURE | Rail, TrackElement, Course, Sign | Civil works |
+
+**Resolution:** `ProductCategory.resolve(ifcClass)` — static map mirroring the DB.
+Used by PlacementProver (proof rules), PlacementCollectorVisitor (discipline fallback),
+MEPWriter (furniture detection), WitnessBuilder (grid/wall-mount validation).
+
+**Migration:** `CP4_002_product_category.sql` — ALTER TABLE + UPDATE + INSERT.
+
 ### 4.3 Centroid Drift — Historical Note (FIXED)
 
 **Status (2026-03-19):** All four builders now use LBD offsets:
@@ -847,7 +902,71 @@ All 6 gates GREEN for SH (55 elements) and DX (1099 elements).
 
 ---
 
-## 9. The End State
+## 9. The Data Flywheel — Emergent Intelligence
+
+The compiler was designed to extract and compile — never to invent. But an
+unintended consequence of processing 34 real buildings is that the system
+**learns what buildings look like.** Each onboarded IFC enriches a pool of
+mined dimensional observations. Each new IFC is validated against that pool.
+The more buildings the system processes, the better it gets at catching
+problems in the next one.
+
+This is a **data flywheel:**
+
+```
+New IFC file arrives
+  ↓
+DimensionRangeValidator checks every element's W/D/H
+against typical ranges mined from 20+ previous buildings
+  ↓
+Pipeline compiles the building into BOM
+  ↓
+extract_validation_rules.sh mines new dimension patterns
+  ↓
+apply_mined_rules.sh feeds them back into disc_validation.db
+  ↓
+The validation pool grows — better ranges for the next IFC
+```
+
+**Nobody in the AEC industry has this.** BIM tools validate against fixed,
+hand-authored rules (building codes, clash detection thresholds). This system
+validates against **empirical evidence from its own corpus** — the same way a
+spell-checker learns from a dictionary built from real documents, not from
+grammar rules alone.
+
+Three design decisions in the original specs created the conditions for this
+emergent property — none of them intended it:
+
+1. **"Extract or compile only, never invent"** (§1 Prime Rule) — forced the
+   pipeline to read real buildings, building a corpus of real-world data.
+
+2. **CP-3: "Scale up the corpus"** (session 44) — onboarded 34 buildings,
+   creating enough statistical mass for meaningful ranges.
+
+3. **disc_validation.db architecture** (DISC_VALIDATION_DB_SRS) — established
+   a clean separation between product geometry and discipline metadata,
+   giving the mined rules a natural home.
+
+The result is three layers of validation that work together:
+
+| Layer | Question | Source | When |
+|-------|----------|--------|------|
+| **Dimensional** (DV010) | "Is this wall a plausible size?" | Mined from 20 buildings (415 rules) | IFC onboarding |
+| **Compliance** | "Does this room meet building code?" | Researched from UBBL/IRC/NFPA (63 rules) | Design time |
+| **Relational** | "Does this bathroom have the right MEP?" | Mined + researched (186 schedules, 4,801 placement rules) | MEP placement |
+
+Layer 1 is statistical and self-improving. Layer 2 is prescriptive and
+stable. Layer 3 is contextual and domain-rich. No single BIM tool combines
+all three — and Layer 1's self-improving nature is entirely novel.
+
+**Current state (session 47):** 415 rules, 25 IFC classes, 1,245 parameters
+mined from 20 buildings. False-positive rate decreases with each new
+building because the observed ranges widen to accommodate legitimate
+variation (thin partitions, large warehouses, unusual structural members).
+
+---
+
+## 10. The Compilation End State
 
 The compiler runs without human assistance. Given a `.bim` DSL file and two source
 databases (`{PREFIX}_BOM.db` + component_library.db), it produces a complete, verified output.
@@ -860,7 +979,7 @@ Adding a new building = adding BOM data. The compiler is the constant.
 
 ---
 
-## 10. Dynamic Building Registration
+## 11. Dynamic Building Registration
 
 Adding a building type in the Java compiler requires zero code changes — `BuildingRegistry.loadActive()`
 reads C_DocType from `{PREFIX}_BOM.db` and compiles every active row. But the Python and shell tooling that
