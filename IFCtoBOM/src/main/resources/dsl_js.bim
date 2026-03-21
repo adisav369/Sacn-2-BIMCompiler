@@ -1,0 +1,25 @@
+// AC90_Jasmin — Rosetta Stone
+// AC90 Jasmin Sun
+// Reference: DAGCompiler/lib/input/AC90_Jasmin_extracted.db
+// Envelope: 9.0m × 9.0m × 10.4m
+
+BUILDING "AC90_Jasmin" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 9.0 / 9.0
+    }
+
+    STOREY "Keller" level:0 height:3.0m {
+        // 13 elements
+    }
+
+    STOREY "Erdgeschoss" level:1 height:3.0m {
+        // 31 elements
+    }
+
+    STOREY "Dachgeschoss" level:2 height:3.0m {
+        // 17 elements
+    }
+
+}

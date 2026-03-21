@@ -860,8 +860,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-21 (v25: session 44, 12 IFCs onboarded, cross-class geometry fallback, 74 files)
-**Super-hash:** `0694c53f56e0493dfd64f6786b4f7bd5ee21ff65893b108315ff28816940d981`
+**Sealed:** 2026-03-21 (v26: session 44b, 34 buildings total, GATE_SCOPE expanded, 74 files)
+**Super-hash:** `af2fb4f6c249dcf2082c3b33a2b04178b12458b32735c19b1ccd6e5ece65a9c6`
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

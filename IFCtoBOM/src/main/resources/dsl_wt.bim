@@ -1,0 +1,33 @@
+// BimWhale_Tall — Rosetta Stone
+// BimWhale Tall Building
+// Reference: DAGCompiler/lib/input/BimWhale_Tall_extracted.db
+// Envelope: 8.3m × 8.2m × 16.6m
+
+BUILDING "BimWhale_Tall" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 8.3 / 8.2
+    }
+
+    STOREY "Level 1" level:0 height:3.0m {
+        // 18 elements
+    }
+
+    STOREY "Level 2" level:1 height:3.0m {
+        // 14 elements
+    }
+
+    STOREY "Level 4" level:2 height:3.0m {
+        // 11 elements
+    }
+
+    STOREY "Level 5" level:3 height:3.0m {
+        // 11 elements
+    }
+
+    STOREY "Unknown" level:4 height:3.0m {
+        // 1 elements
+    }
+
+}

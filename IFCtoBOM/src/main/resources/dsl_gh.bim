@@ -1,0 +1,29 @@
+// AC9_HausGH — Rosetta Stone
+// AC9 Haus G-H
+// Reference: DAGCompiler/lib/input/AC9_HausGH_extracted.db
+// Envelope: 15.5m × 12.9m × 12.3m
+
+BUILDING "AC9_HausGH" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 15.5 / 12.9
+    }
+
+    STOREY "Dachgeschoss" level:0 height:3.0m {
+        // 27 elements
+    }
+
+    STOREY "Obergeschoss" level:1 height:3.0m {
+        // 54 elements
+    }
+
+    STOREY "Erdgeschoss" level:2 height:3.0m {
+        // 58 elements
+    }
+
+    STOREY "Keller" level:3 height:3.0m {
+        // 54 elements
+    }
+
+}

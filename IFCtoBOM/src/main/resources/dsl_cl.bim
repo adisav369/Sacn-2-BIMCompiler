@@ -1,0 +1,37 @@
+// SampleCastle — Rosetta Stone
+// Sample Castle
+// Reference: DAGCompiler/lib/input/SampleCastle_extracted.db
+// Envelope: 23.9m × 24.5m × 15.1m
+
+BUILDING "SampleCastle" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 23.9 / 24.5
+    }
+
+    STOREY "-1 fundering" level:0 height:3.0m {
+        // 133 elements
+    }
+
+    STOREY "00 begane grond" level:1 height:3.0m {
+        // 862 elements
+    }
+
+    STOREY "01 eerste verdieping" level:2 height:3.0m {
+        // 884 elements
+    }
+
+    STOREY "02 tweede verdieping" level:3 height:3.0m {
+        // 670 elements
+    }
+
+    STOREY "03 derde verdieping" level:4 height:3.0m {
+        // 474 elements
+    }
+
+    STOREY "04 dak" level:5 height:3.0m {
+        // 191 elements
+    }
+
+}

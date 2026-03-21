@@ -53,7 +53,7 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 class RosettaStoneGateTest {
 
     /** Active gate scope — only SH/DX/TE assertions enforced. Others skip. */
-    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE", "RE_IN", "RE_BA", "IN_IP", "RE_BH", "RE_BS", "RE_SC", "RE_CA", "RE_CS", "RE_CH", "RE_CE", "RE_CP", "RE_ES", "RE_MO");
+    private static final Set<String> GATE_SCOPE = Set.of("RE_SH", "RE_DX", "CO_TE", "RE_IN", "RE_BA", "IN_IP", "RE_BH", "RE_BS", "RE_SC", "RE_CA", "RE_CS", "RE_CH", "RE_CE", "RE_CP", "RE_ES", "RE_MO", "RE_GH", "RE_JS", "RE_NI", "RE_WB", "CO_WL", "CO_WT", "CO_WA", "RE_JE", "RE_WI", "RE_RA", "RE_RM", "RE_RS", "RE_CL", "RE_HI");
 
     /** G3-DIGEST skip: reference DB has metadata-only elements absent from output.
      *  (2026-03-18: CO_TE removed — 4 IfcSensor deleted from reference. Sensors are Federation.) */

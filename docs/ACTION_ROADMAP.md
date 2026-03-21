@@ -6,14 +6,13 @@
 
 ## Current Position
 
-**Pipeline proven.** Twelve Rosetta Stone buildings compile correctly:
-- SH (55 elements): 10/10 PASS — fully verified
-- DX (1099 elements): 8/10 PASS — MIRROR debt (pre-existing)
-- FK (82 elements), BR (48), RD (53), RL (73): infrastructure verified
-- TE (48,428 elements): 9/10 PASS — output correct, per-element verification limited at scale
-- BA (11), BH (5), BS (16), IP (27): PCERT IFC4x3 — onboarded session 44, all PASS
+**Pipeline proven.** 34 Rosetta Stone buildings compile correctly:
+- SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48,428): original fleet
+- BA (11), BH (5), BS (16), IP (27): PCERT IFC4x3 — session 44
+- SC (3214), CA (2586), CS (1078), CH (3693), CE (2110), CP (6584), ES (1941), MO (3114): session 44
+- GH (193), JS (61), NI (104), WB (125), WL (114), WT (55), WA (1749), JE (626), WI (1), RA (442), RM (6787), RS (4133), CL (3214), HI (2068): session 44b
 
-63 verbs. 9-stage pipeline. 196 witnesses. 823 products. 4-DB architecture.
+63 verbs. 9-stage pipeline. 196 witnesses. 2459 products. 4-DB architecture. 34 building types.
 BIM Designer: 248/248 GREEN. BackOffice: 19/19 GREEN. G-1 through G-7 DONE.
 
 **Market context:** See [`BIM_Compiler_Market_Impact_Report.pdf`](BIM_Compiler_Market_Impact_Report.pdf) — USD 10B global BIM market (2025), Malaysia BIM mandate from July 2025 (all projects ≥RM10M).

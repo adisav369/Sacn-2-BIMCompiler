@@ -1,0 +1,33 @@
+// Revit_MEP — Rosetta Stone
+// Revit MEP
+// Reference: DAGCompiler/lib/input/Revit_MEP_extracted.db
+// Envelope: 188.5m × 165.9m × 19.9m
+
+BUILDING "Revit_MEP" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 188.5 / 165.9
+    }
+
+    STOREY "Level 2" level:0 height:3.0m {
+        // 1783 elements
+    }
+
+    STOREY "Level 1" level:1 height:3.0m {
+        // 1411 elements
+    }
+
+    STOREY "Level 3" level:2 height:3.0m {
+        // 1411 elements
+    }
+
+    STOREY "Roof Level" level:3 height:3.0m {
+        // 66 elements
+    }
+
+    STOREY "Unknown" level:4 height:3.0m {
+        // 2116 elements
+    }
+
+}

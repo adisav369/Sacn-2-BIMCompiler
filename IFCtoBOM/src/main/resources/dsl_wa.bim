@@ -1,0 +1,53 @@
+// BimWhale_Advanced — Rosetta Stone
+// BimWhale Advanced Project
+// Reference: DAGCompiler/lib/input/BimWhale_Advanced_extracted.db
+// Envelope: 235.8m × 161.1m × 49.4m
+
+BUILDING "BimWhale_Advanced" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 235.8 / 161.1
+    }
+
+    STOREY "Level 1" level:0 height:3.0m {
+        // 495 elements
+    }
+
+    STOREY "1 - First Floor" level:1 height:3.0m {
+        // 735 elements
+    }
+
+    STOREY "Level 2" level:2 height:3.0m {
+        // 7 elements
+    }
+
+    STOREY "-1 - Garage" level:3 height:3.0m {
+        // 165 elements
+    }
+
+    STOREY "6 - Sixth Floor" level:4 height:3.0m {
+        // 46 elements
+    }
+
+    STOREY "Unknown" level:5 height:3.0m {
+        // 113 elements
+    }
+
+    STOREY "2 - Second Floor" level:6 height:3.0m {
+        // 47 elements
+    }
+
+    STOREY "3 - Third Floor" level:7 height:3.0m {
+        // 47 elements
+    }
+
+    STOREY "4 - Fourth Floor" level:8 height:3.0m {
+        // 47 elements
+    }
+
+    STOREY "5 - Fifth Floor" level:9 height:3.0m {
+        // 47 elements
+    }
+
+}

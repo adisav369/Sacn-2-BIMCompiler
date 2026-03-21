@@ -1,0 +1,37 @@
+// HITOS — Rosetta Stone
+// HITOS Building
+// Reference: DAGCompiler/lib/input/HITOS_extracted.db
+// Envelope: 61.7m × 74.4m × 23.5m
+
+BUILDING "HITOS" type:SINGLE_UNIT profile:"Default" {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: 61.7 / 74.4
+    }
+
+    STOREY "u.etg" level:0 height:3.0m {
+        // 534 elements
+    }
+
+    STOREY "2.etg" level:1 height:3.0m {
+        // 659 elements
+    }
+
+    STOREY "1.etg" level:2 height:3.0m {
+        // 458 elements
+    }
+
+    STOREY "3.etg" level:3 height:3.0m {
+        // 323 elements
+    }
+
+    STOREY "kjeller" level:4 height:3.0m {
+        // 90 elements
+    }
+
+    STOREY "fundamentetasje" level:5 height:3.0m {
+        // 4 elements
+    }
+
+}

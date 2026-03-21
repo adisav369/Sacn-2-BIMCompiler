@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 44. 20 buildings onboarded. SH 10/10, FK 10/10, IN 9/10, DX 8/10, TE 9/10. New: BA 6/6, BH 6/6, BS 6/6, IP 6/6, SC 6/6, CA 6/6, CS 6/6, CH 6/6, CE 6/6, CP 6/6, ES 6/6, MO 4/6.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 44b. 34 buildings onboarded (was 20). 14 new: GH, JS, NI, WB, WL, WT, WA, JE, WI, RA, RM, RS, CL, HI. 4 failed extraction (FJ, SW, VG, ET).**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
@@ -16,8 +16,8 @@
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | PASS (centroid fix S43) | 48336/48428 |
 
-**Pipeline:** 9 stages. 63 verbs. 1326 products. 4-DB architecture (21+20+6+output).
-**Rosetta Stones:** 20 buildings — SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48428), BA (11), BH (5), BS (16), IP (27), SC (3214), CA (2586), CS (1078), CH (3693), CE (2110), CP (6584), ES (1941), MO (3114).
+**Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (21+20+6+output).
+**Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 249/249 GREEN (33 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
@@ -398,6 +398,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 | Session | Date | What | Tests |
 |---------|------|------|-------|
 | 45 | 2026-03-21 | G-8 Click-to-Place: clickToPlace API + viewport ray-cast + discipline selector + placeItem persistence + MEPBOMQuery + multi-item placement + coverage tracking + computePlacementOffset (16 placement rules). 15 witnesses | 249/249 |
+| 44b | 2026-03-21 | CP-3 batch: 14 more IFCs (20→34 buildings). BimWhale(4), AC9/AC90(3), Revit(3), SampleCastle, HITOS, Jesse, Wilfer. 1326→2459 products. 4 failed extraction (FJ/SW/VG/ET) | — |
 | 44 | 2026-03-21 | CP-3 scale-up: 12 IFCs onboarded (8→20 buildings). Scripts: onboard_ifc.sh, ifc_recon.py, rosetta_report.sh. Cross-class geometry fallback. 823→1326 products. Clinic federated (5 disciplines), Schependomlaan, Esplanades, Molio | — |
 | 43 | 2026-03-21 | AABB qualifier (INNER/OUTER/STRUCTURAL/OPENING) on m_bom. PHANTOM spatial index (66 lines across 82 IN SET BOMs). SpatialDiff centroid for IfcWindow/IfcDoor. Tack chain algebra proven correct. DX 7→8/10. BBC.md §4.2.1-4.2.2 | — |
 | 42 | 2026-03-21 | LAST_MILE checklist: C8 SQL blank element_name fix (R32). IN C8 FAIL→PASS, DX C8 FAIL→PASS. IN G3 diagnosed (120 window SHIFTs). Remedy sections added to checklist for newbies | — |
