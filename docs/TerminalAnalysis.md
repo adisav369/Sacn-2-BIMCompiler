@@ -593,6 +593,39 @@ establishes the pattern for GPU instancing: FRAME elements at grid intersections
 natural candidates for hardware instanced rendering, since they share the same product
 geometry placed at known grid positions.
 
+### S51b: Validation Rules ARE the Patterns — ClusterPatternAnalyser
+
+ClusterPatternAnalyser confirms that mined validation rules (M1-M17) describe
+the actual spatial patterns in CLUSTER groups. The data:
+
+| Product Type | Groups | Verdict | Rule Match |
+|-------------|--------|---------|------------|
+| Sprinkler heads (pendent) | 5 storeys | ZONE (rule-governed) | M1 NN spacing 3.0-4.5m |
+| Sprinkler heads (upright) | 5 storeys | ZONE (rule-governed) | M1 NN spacing |
+| Light fixtures (LED T8) | 5 storeys | ZONE (rule-governed) | M4 grid ~3964mm |
+| RC Beams (300×750, 500×700) | 4 storeys | ZONE + FRAME | M6/M7 bay span |
+| RC Columns | 3 storeys | ZONE | M14 vertical continuity |
+| Waiting room seats | GF | ZONE | Furniture distribution |
+
+**Key finding:** Pipes/fittings (Poly Steel, UPVC) are MIXED — multi-Z, irregular
+positions, 100-200+ ASI size variants. These are MEP routing networks, not grid
+patterns. Their "pattern" is the routing rule (M2 branch max length, M3 riser
+diameter), not a spatial formula. The validation rule IS the placement constraint:
+"max 12m branch, min 50mm main riser, 150mm clearance from electrical."
+
+**Implication for EN-BLOC:** Sprinklers, lights, beams, columns form ZONE patterns
+describable by validation rules. Pipes don't — they're routing networks governed
+by compliance rules, not spatial grids. EN-BLOC for pipes stays as CLUSTER (lossless
+replay). EN-BLOC for grid elements can be promoted to TILE/FRAME with ASI.
+
+**ASI taxonomy (BBC.md §3.5.1):** Extraction seeds `M_AttributeSet` tables — confirms
+which product attributes are instance-varying (pipe length, beam span) vs fixed
+(pipe diameter, beam section). Per-instance values are designer decisions (generative
+path), not extraction data. The taxonomy is the reusable asset.
+
+Tools: `ClusterReclassifier` (promotion analysis), `ClusterPatternAnalyser` (rule
+confirmation). Run: `java ClusterPatternAnalyser library/TE_BOM.db`.
+
 **ENCLOSE** is wall perimeter placement. Follows a 2D closed path, inserts
 wall segments (BIM_Wall, IsInstance=1 — length varies) and openings at
 specified positions. Needed for ARC walls (~330) + openings (~236 windows,
