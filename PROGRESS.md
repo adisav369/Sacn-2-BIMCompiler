@@ -30,6 +30,35 @@
 
 ## What's Next
 
+**[DONE] BIMEyes Phase 1: Standalone Module (session 49):**
+  New module `BIMEyes/` — 12 source files, 4 packages (shape, compare, diff, proof).
+  Canonical types: ShapeArchetype, ScaleBand, Fingerprint, FingerprintComputer, ShapeClassifier.
+  Comparison: MultisetComparator, BomTracedComparator. Diff: SpatialDiff.
+  EyesConstants (17 thresholds), ProductCategory (10 categories, 37 IFC mappings).
+  DAGCompiler facades (GeometricFingerprint, ProductCategory, SpatialDiff) delegate to Eyes.
+  Full 10-module reactor compiles. EYES_SRS.md written (26 proofs, 8 witnesses).
+  **Phase 2 next:** Extract proof methods from PlacementProver → individual proof classes.
+  **Phase 3 next:** Implement P25 ROOM_VALIDITY, P26 BUILDING_COMPLETENESS, remove wrappers.
+
+**[DONE] CP-4 Semantic Half: Product Category (session 48):**
+  `product_category TEXT` added to `component_types` (CP4_002 migration). 58 rows mapped.
+  10 categories: STRUCTURAL_LINEAR, STRUCTURAL_PLANAR, MEP_ROUTING, MEP_TERMINAL,
+  OPENING, FURNISHING, ENVELOPE, CIRCULATION, SITE, INFRASTRUCTURE.
+  `ProductCategory.java` — static resolution map (ifc_class → product_category).
+  **Switches replaced (20 of 37 refs):**
+  - PlacementProver: P06 overlap (FURNISHING cross-product, STRUCTURAL_PLANAR tolerance),
+    P07 opening (OPENING), P08 furniture (FURNISHING), P15 pipe (MEP_ROUTING),
+    P18 vent (MEP_ROUTING + ENVELOPE), P20 wall (STRUCTURAL_PLANAR), P21 element-in-room (FURNISHING)
+  - PlacementCollectorVisitor: deriveDiscipline → ProductCategory.deriveDiscipline()
+  - MEPWriter: isFurniture → ProductCategory.FURNISHING, exhaust fan sizing → domain type
+  - WitnessBuilder: grid validation → STRUCTURAL_LINEAR, wall-mount → MEP_TERMINAL
+  **Kept on ifcClass (documented exceptions):**
+  - P06 OVERLAP_EXEMPT_CLASSES (IfcMember, IfcBuildingElementProxy) — too coarse at category level
+  - P14 IfcSlab — floor-area needs "floor" not "wall", both STRUCTURAL_PLANAR
+  - MEPWriter output metadata (11 refs) — IFC class is traceability metadata per BBC.md §2.2.1
+  - findPlacement matching (ifcClass as lookup key, not decision variable)
+  SH 9/10 PASS (undisturbed). CompilerContractTest prover/P06: 7/7 PASS.
+
 **[DONE] DV010: Mined Dimension Rules + validation wiring (session 47):**
   415 DIMENSION_RANGE rules mined from 20 buildings (of 34 onboarded).
   ad_val_rule + ad_val_rule_param tables in disc_validation.db (DV010 migration).
