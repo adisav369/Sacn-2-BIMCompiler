@@ -1,5 +1,6 @@
 package com.bim.ifctobom;
 
+import com.bim.eyes.EyesConstants;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.orm.BIMLogger;
 
@@ -31,7 +32,8 @@ public class DimensionRangeValidator {
     private static final String TAG = "DimRangeValidator";
 
     /** Deviation ratio threshold: flag if actual/typical > RATIO or < 1/RATIO. */
-    private static final double RATIO = 5.0;
+    // Implementing EYES_SRS.md §3.5 — P24 alignment: threshold from EyesConstants
+    private static final double RATIO = EyesConstants.DIM_RANGE_RATIO;
 
     /** Aggregated range per IFC class: [minW, maxW, minD, maxD, minH, maxH]. */
     private final Map<String, double[]> rangeByClass;

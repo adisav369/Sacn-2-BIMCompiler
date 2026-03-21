@@ -1,6 +1,8 @@
 package com.bim.compiler.export;
 
-import com.bim.compiler.validation.GeometricFingerprint;
+import com.bim.eyes.shape.ScaleBand;
+import com.bim.eyes.shape.ShapeArchetype;
+import com.bim.eyes.shape.ShapeClassifier;
 
 import java.io.*;
 import java.sql.*;
@@ -125,13 +127,13 @@ public class BOMExporter {
                 double totalArea = 0;
 
                 // CP-4 §4c: aggregate by archetype, not IFC class
-                var arch = GeometricFingerprint.classifyArchetype(
+                var arch = ShapeClassifier.classifyArchetype(
                         width * 1000, depth * 1000, height * 1000);
-                if (arch == GeometricFingerprint.ShapeArchetype.ELONGATED) {
+                if (arch == ShapeArchetype.ELONGATED) {
                     // Linear member - length is the longest dimension
                     double length = Math.max(Math.max(width, depth), height);
                     totalLength = length * qty;
-                } else if (arch == GeometricFingerprint.ShapeArchetype.PLANAR) {
+                } else if (arch == ShapeArchetype.PLANAR) {
                     // Sheet/slab - area calculation (two largest dimensions)
                     double[] dims = {width, depth, height};
                     Arrays.sort(dims);
@@ -284,11 +286,11 @@ public class BOMExporter {
      * PLANAR + ARCHITECTURAL → cubic (M3, concrete). PLANAR → sheet (M2).
      */
     private String determineUOM(String ifcClass, double w, double d, double h) {
-        var arch = GeometricFingerprint.classifyArchetype(w, d, h);
-        var band = GeometricFingerprint.classifyScaleBand(w, d, h);
+        var arch = ShapeClassifier.classifyArchetype(w, d, h);
+        var band = ShapeClassifier.classifyScaleBand(w, d, h);
         return switch (arch) {
             case ELONGATED -> "EA";      // Each (linear cut to length)
-            case PLANAR -> band == GeometricFingerprint.ScaleBand.ARCHITECTURAL ? "M3" : "M2";
+            case PLANAR -> band == ScaleBand.ARCHITECTURAL ? "M3" : "M2";
             default -> "EA";
         };
     }
@@ -299,13 +301,13 @@ public class BOMExporter {
      * <p>CP-4 §4c: description template based on shape, not label.
      */
     private String formatDescription(String ifcClass, String type, double w, double d, double h) {
-        var arch = GeometricFingerprint.classifyArchetype(w, d, h);
-        var band = GeometricFingerprint.classifyScaleBand(w, d, h);
+        var arch = ShapeClassifier.classifyArchetype(w, d, h);
+        var band = ShapeClassifier.classifyScaleBand(w, d, h);
         return switch (arch) {
             case ELONGATED -> String.format("Linear member %.0fx%.0f L=%.0fmm",
                 Math.min(w, d), Math.max(Math.min(w, d), Math.min(d, h)), Math.max(Math.max(w, d), h));
             case PLANAR -> {
-                if (band == GeometricFingerprint.ScaleBand.ARCHITECTURAL) {
+                if (band == ScaleBand.ARCHITECTURAL) {
                     yield String.format("Planar element %.0fx%.0fx%.0fmm", w, d, h);
                 }
                 double[] dims = {w, d, h};

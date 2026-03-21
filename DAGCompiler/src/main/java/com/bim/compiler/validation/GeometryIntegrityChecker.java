@@ -2,6 +2,7 @@ package com.bim.compiler.validation;
 
 import com.bim.compiler.geometry.Mesh;
 import com.bim.compiler.geometry.Point3D;
+import com.bim.eyes.shape.ShapeClassifier;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -140,7 +141,7 @@ public class GeometryIntegrityChecker {
                 double elemW = (rMaxX - rMinX) * 1000;
                 double elemD = (rMaxY - rMinY) * 1000;
                 double elemH = (rMaxZ - rMinZ) * 1000;
-                boolean isOpening = GeometricFingerprint.isHostedOpening(elemW, elemD, elemH);
+                boolean isOpening = ShapeClassifier.isHostedOpening(elemW, elemD, elemH);
 
                 List<String> elementWarnings = new ArrayList<>();
 

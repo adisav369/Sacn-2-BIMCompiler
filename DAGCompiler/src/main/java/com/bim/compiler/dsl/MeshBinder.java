@@ -2,7 +2,7 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.geometry.*;
 import com.bim.compiler.library.ComponentLibrary;
-import com.bim.compiler.validation.GeometricFingerprint;
+import com.bim.eyes.shape.ShapeClassifier;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -94,7 +94,7 @@ public class MeshBinder {
 
         // Step 3: Compute scale factors
         // CP-4 §4b: detect opening from geometry, not IFC class
-        boolean isOpening = closestFit && GeometricFingerprint.isHostedOpening(
+        boolean isOpening = closestFit && ShapeClassifier.isHostedOpening(
                 (p.maxX() - p.minX()) * 1000, (p.maxY() - p.minY()) * 1000, (p.maxZ() - p.minZ()) * 1000);
         // Rotation detection: compare mesh X extent to both bbox axes.
         // If meshW aligns better with bboxW (no rotation) → isNS=false.

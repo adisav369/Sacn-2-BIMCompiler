@@ -1,7 +1,9 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
-import com.bim.compiler.validation.GeometricFingerprint;
+import com.bim.eyes.shape.ShapeArchetype;
+import com.bim.eyes.shape.ScaleBand;
+import com.bim.eyes.shape.ShapeClassifier;
 import com.bim.compiler.bom.walker.AssemblyStructureVisitor;
 import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.contract.AssemblerFactory;
@@ -986,7 +988,7 @@ public class BuildingWriter {
                 double wMm = (p.maxX() - p.minX()) * 1000;
                 double dMm = (p.maxY() - p.minY()) * 1000;
                 double hMm = (p.maxZ() - p.minZ()) * 1000;
-                var arch = GeometricFingerprint.classifyArchetype(wMm, dMm, hMm);
+                var arch = ShapeClassifier.classifyArchetype(wMm, dMm, hMm);
                 guidPrefix = switch (arch) {
                     case ELONGATED -> "FRAME_MD_";
                     case PLANAR    -> "SLAB_MD_";
@@ -1002,10 +1004,10 @@ public class BuildingWriter {
             double wMm2 = (p.maxX() - p.minX()) * 1000;
             double dMm2 = (p.maxY() - p.minY()) * 1000;
             double hMm2 = (p.maxZ() - p.minZ()) * 1000;
-            var arch2 = GeometricFingerprint.classifyArchetype(wMm2, dMm2, hMm2);
-            var band2 = GeometricFingerprint.classifyScaleBand(wMm2, dMm2, hMm2);
+            var arch2 = ShapeClassifier.classifyArchetype(wMm2, dMm2, hMm2);
+            var band2 = ShapeClassifier.classifyScaleBand(wMm2, dMm2, hMm2);
             String type = switch (arch2) {
-                case PLANAR -> band2 == GeometricFingerprint.ScaleBand.ARCHITECTURAL ? "FLOOR" : "CURTAIN_PANEL";
+                case PLANAR -> band2 == ScaleBand.ARCHITECTURAL ? "FLOOR" : "CURTAIN_PANEL";
                 case ELONGATED -> "FRAME";
                 case COMPACT -> "FITTING";
                 default -> p.ifcClass();
@@ -1013,8 +1015,8 @@ public class BuildingWriter {
 
             // Roof detection: PLANAR or MIXED elements at roof storey height
             boolean isRoof = hMm2 > 0 && p.minZ() > 2.5
-                    && (arch2 == GeometricFingerprint.ShapeArchetype.PLANAR
-                        || arch2 == GeometricFingerprint.ShapeArchetype.MIXED)
+                    && (arch2 == ShapeArchetype.PLANAR
+                        || arch2 == ShapeArchetype.MIXED)
                     && "IfcRoof".equals(p.ifcClass()); // TODO: remove IFC class check once roof detection is fully geometric
             if (isRoof) {
                 dispatchOverrideRoof(p, roofOverrides, furnitureLibrary);
@@ -1252,7 +1254,7 @@ public class BuildingWriter {
                 double rwMm = (p.maxX() - p.minX()) * 1000;
                 double rdMm = (p.maxY() - p.minY()) * 1000;
                 double rhMm = (p.maxZ() - p.minZ()) * 1000;
-                var rArch = GeometricFingerprint.classifyArchetype(rwMm, rdMm, rhMm);
+                var rArch = ShapeClassifier.classifyArchetype(rwMm, rdMm, rhMm);
                 guidPrefix = switch (rArch) {
                     case ELONGATED -> "FRAME_MD_";
                     case PLANAR    -> "SLAB_MD_";
