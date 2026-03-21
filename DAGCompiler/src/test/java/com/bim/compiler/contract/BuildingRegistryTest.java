@@ -38,8 +38,8 @@ public class BuildingRegistryTest {
     @TestFactory
     Collection<DynamicTest> compilationPipeline() {
         // doc.base.type property filters which DocBaseType to compile:
-        //   RE → ENBLOC (direct BUILDING BOM match, singularity)
-        //   ST → WALKTHRU (template path, M_BomCategory tree walk)
+        //   RE → direct BUILDING BOM match (singularity)
+        //   ST → template path (M_BomCategory tree walk)
         //   null → all active (default)
         String docBaseType = System.getProperty("doc.base.type");
         List<BuildingEntry> buildings = docBaseType != null

@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * HelloWorld Verb — Permanent Dual-Path Proof.
+ * HelloWorld Verb — Compilation Proof.
  *
  * <p>"Can this plane even take off?" (Q&amp;A1.txt Round 1 Q1).
  *
@@ -20,13 +20,13 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * <ul>
  *   <li>W-HW-1: Singularity rule holds for SH</li>
  *   <li>W-HW-2: Singularity rule holds for DX</li>
- *   <li>W-HW-3: SH enbloc=55, walkthru=55, ref=55</li>
- *   <li>W-HW-4: DX enbloc=1099, ref=1099</li>
- *   <li>W-HW-5: SH digest: enbloc == walkthru == reference</li>
- *   <li>W-HW-6: DX digest: enbloc == reference</li>
+ *   <li>W-HW-3: SH compiled=55, ref=55</li>
+ *   <li>W-HW-4: DX compiled=1099, ref=1099</li>
+ *   <li>W-HW-5: SH digest: compiled == reference</li>
+ *   <li>W-HW-6: DX digest: compiled == reference</li>
  * </ul>
  */
-@DisplayName("HELLO WORLD — Dual-Path Proof")
+@DisplayName("HELLO WORLD — Compilation Proof")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class HelloWorldVerbTest {
 
@@ -92,104 +92,77 @@ class HelloWorldVerbTest {
         assertTrue(s.bomWidthMm() > 0, "BOM AABB must be computed from data");
     }
 
-    // ── W-HW-3: SH element counts ─────────────────────────────────
+    // ── W-HW-3: SH element counts ──────────────────────────────────
 
     @Test
     @Order(3)
-    @DisplayName("W-HW-3: SH enbloc=55, walkthru=55, ref=55")
+    @DisplayName("W-HW-3: SH compiled=55, ref=55")
     void w_hw_3_sh_counts() {
         DbInventory ref = shResult.reference();
         assumeTrue(ref != null && ref.exists(),
                 "SH reference DB must exist");
         assertEquals(55, ref.elements(), "SH reference elements");
 
-        DbInventory eb = shResult.enbloc();
-        assumeTrue(eb != null && eb.exists(),
-                "SH enbloc DB must exist (run run_RosettaStones.sh first)");
-        assertEquals(55, eb.elements(), "SH enbloc elements");
-
-        DbInventory wt = shResult.walkthru();
-        assumeTrue(wt != null && wt.exists(),
-                "SH walkthru DB must exist (run run_RosettaStones.sh first)");
-        assertEquals(55, wt.elements(), "SH walkthru elements");
+        DbInventory out = shResult.compiled();
+        assumeTrue(out != null && out.exists(),
+                "SH output DB must exist (run run_RosettaStones.sh first)");
+        assertEquals(55, out.elements(), "SH compiled elements");
     }
 
-    // ── W-HW-4: DX element counts ─────────────────────────────────
+    // ── W-HW-4: DX element counts ──────────────────────────────────
 
     @Test
     @Order(4)
-    @DisplayName("W-HW-4: DX enbloc=1099, ref=1099")
+    @DisplayName("W-HW-4: DX compiled=1099, ref=1099")
     void w_hw_4_dx_counts() {
         DbInventory ref = dxResult.reference();
         assumeTrue(ref != null && ref.exists(),
                 "DX reference DB must exist");
         assertEquals(1099, ref.elements(), "DX reference elements");
 
-        DbInventory eb = dxResult.enbloc();
-        assumeTrue(eb != null && eb.exists(),
-                "DX enbloc DB must exist (run run_RosettaStones.sh first)");
-        assertEquals(1099, eb.elements(), "DX enbloc elements");
-
-        // DX walkthru: known gap — WT_DX produces fewer elements
-        // until M_BomCategoryLine slot selection + MIRROR are wired.
-        // When fixed, assert: assertEquals(1099, wt.elements())
-        DbInventory wt = dxResult.walkthru();
-        if (wt != null && wt.exists()) {
-            assertTrue(wt.elements() > 0,
-                    "DX walkthru should produce some elements");
-        }
+        DbInventory out = dxResult.compiled();
+        assumeTrue(out != null && out.exists(),
+                "DX output DB must exist (run run_RosettaStones.sh first)");
+        assertEquals(1099, out.elements(), "DX compiled elements");
     }
 
-    // ── W-HW-5: SH digest match ───────────────────────────────────
+    // ── W-HW-5: SH digest match ────────────────────────────────────
 
     @Test
     @Order(5)
-    @DisplayName("W-HW-5: SH digest — enbloc == walkthru == reference")
+    @DisplayName("W-HW-5: SH digest — compiled == reference")
     void w_hw_5_sh_digest() {
-        assumeTrue(shResult.enbloc() != null && shResult.enbloc().exists(),
-                "SH enbloc DB must exist");
-        assumeTrue(shResult.walkthru() != null && shResult.walkthru().exists(),
-                "SH walkthru DB must exist");
+        assumeTrue(shResult.compiled() != null && shResult.compiled().exists(),
+                "SH output DB must exist");
         assumeTrue(shResult.reference() != null && shResult.reference().exists(),
                 "SH reference DB must exist");
 
-        String ebDigest = shResult.enbloc().digest();
-        String wtDigest = shResult.walkthru().digest();
+        String outDigest = shResult.compiled().digest();
         String refDigest = shResult.reference().digest();
 
-        assertNotNull(ebDigest, "enbloc digest must not be null");
-        assertNotNull(wtDigest, "walkthru digest must not be null");
+        assertNotNull(outDigest, "compiled digest must not be null");
         assertNotNull(refDigest, "reference digest must not be null");
 
-        assertEquals(ebDigest, wtDigest, "enbloc vs walkthru digest");
-        assertEquals(ebDigest, refDigest, "enbloc vs reference digest");
+        assertEquals(outDigest, refDigest, "compiled vs reference digest");
     }
 
-    // ── W-HW-6: DX digest match ───────────────────────────────────
+    // ── W-HW-6: DX digest match ────────────────────────────────────
 
     @Test
     @Order(6)
-    @DisplayName("W-HW-6: DX digest — enbloc == reference")
+    @DisplayName("W-HW-6: DX digest — compiled == reference")
     void w_hw_6_dx_digest() {
-        assumeTrue(dxResult.enbloc() != null && dxResult.enbloc().exists(),
-                "DX enbloc DB must exist");
+        assumeTrue(dxResult.compiled() != null && dxResult.compiled().exists(),
+                "DX output DB must exist");
         assumeTrue(dxResult.reference() != null && dxResult.reference().exists(),
                 "DX reference DB must exist");
 
-        String ebDigest = dxResult.enbloc().digest();
+        String outDigest = dxResult.compiled().digest();
         String refDigest = dxResult.reference().digest();
 
-        assertNotNull(ebDigest, "enbloc digest must not be null");
+        assertNotNull(outDigest, "compiled digest must not be null");
         assertNotNull(refDigest, "reference digest must not be null");
 
-        assertEquals(ebDigest, refDigest, "DX enbloc vs reference digest");
-
-        // DX walkthru digest: known gap — will differ until WT_DX is complete
-        DbInventory wt = dxResult.walkthru();
-        if (wt != null && wt.exists() && wt.digest() != null
-                && wt.elements() == 1099) {
-            assertEquals(ebDigest, wt.digest(),
-                    "DX walkthru vs enbloc digest (when complete)");
-        }
+        assertEquals(outDigest, refDigest, "DX compiled vs reference digest");
     }
 }

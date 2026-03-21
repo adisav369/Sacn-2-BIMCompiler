@@ -74,12 +74,11 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
                 <!-- Forward CLI -D properties to the forked JVM.
-                     Shell passes: -Dbom.db=... -Dbom.mode=... -Ddoc.base.type=...
+                     Shell passes: -Dbom.db=... -Ddoc.base.type=...
                      Without this, System.getProperty() returns null in tests. -->
                 <configuration>
                     <systemPropertyVariables>
                         <bom.db>${bom.db}</bom.db>
-                        <bom.mode>${bom.mode}</bom.mode>
                         <doc.base.type>${doc.base.type}</doc.base.type>
                         <bim.log.level>${bim.log.level}</bim.log.level>
                     </systemPropertyVariables>

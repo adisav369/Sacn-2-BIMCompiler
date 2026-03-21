@@ -54,16 +54,16 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
     fi
 
     output_base="DAGCompiler/lib/output/$(echo "$building_type" | tr '[:upper:]' '[:lower:]')"
-    enbloc_db="${output_base}_enbloc.db"
+    output_db="${output_base}.db"
 
-    if [ ! -f "$enbloc_db" ]; then
-        echo "-- SKIP ${prefix} (${name}): no output DB at ${enbloc_db}" >&2
+    if [ ! -f "$output_db" ]; then
+        echo "-- SKIP ${prefix} (${name}): no output DB at ${output_db}" >&2
         continue
     fi
 
     echo "-- ════════════════════════════════════════════════════════"
     echo "-- ${prefix}: ${name} (${building_type})"
-    echo "-- Source: ${enbloc_db}"
+    echo "-- Source: ${output_db}"
     echo "-- Generated: $(date '+%Y-%m-%d %H:%M')"
     echo "-- ════════════════════════════════════════════════════════"
     echo ""
@@ -73,7 +73,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
     echo "-- §1: Structural dimensions per (ifc_class, storey)"
     echo "-- Use: identify typical element sizes for validation rules"
     echo ""
-    sqlite3 "$enbloc_db" -header -column "
+    sqlite3 "$output_db" -header -column "
         SELECT em.ifc_class, em.storey, COUNT(*) as cnt,
                ROUND(AVG((r.maxX-r.minX)*1000)) as avg_W_mm,
                ROUND(AVG((r.maxY-r.minY)*1000)) as avg_D_mm,
@@ -90,7 +90,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
 
     echo "-- §2: Material distribution"
     echo ""
-    sqlite3 "$enbloc_db" -header -column "
+    sqlite3 "$output_db" -header -column "
         SELECT em.ifc_class, em.material_name, COUNT(*) as cnt
         FROM elements_meta em
         WHERE em.material_name IS NOT NULL AND em.material_name != ''
@@ -104,7 +104,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
     echo "-- §3: Spacing patterns (adjacent element gaps)"
     echo "-- Elements of the same ifc_class on the same storey, sorted by X"
     echo ""
-    sqlite3 "$enbloc_db" -header -column "
+    sqlite3 "$output_db" -header -column "
         WITH ranked AS (
             SELECT em.ifc_class, em.storey,
                    r.minX, r.minY, r.minZ,
@@ -134,7 +134,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
 
     echo "-- §4: IFC class inventory"
     echo ""
-    sqlite3 "$enbloc_db" -header -column "
+    sqlite3 "$output_db" -header -column "
         SELECT ifc_class, discipline, COUNT(*) as cnt
         FROM elements_meta
         GROUP BY ifc_class, discipline
@@ -149,7 +149,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
     echo ""
 
     # Generate INSERT stubs for element types with ≥3 instances
-    sqlite3 "$enbloc_db" "
+    sqlite3 "$output_db" "
         SELECT em.ifc_class, em.storey, COUNT(*) as cnt,
                ROUND(AVG((r.maxX-r.minX)*1000)) as avg_W,
                ROUND(AVG((r.maxY-r.minY)*1000)) as avg_D,

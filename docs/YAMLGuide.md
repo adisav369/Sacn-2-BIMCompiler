@@ -377,15 +377,15 @@ The same `run_RosettaStones.sh` invocation continues after BOM creation:
 
 | Step | Code | What it does |
 |------|------|--------------|
-| Prepare compile DB | [`run_RosettaStones.sh:116`](../scripts/run_RosettaStones.sh) | Copies `*_BOM.db` → temp `_XX_compile.db`, injects `C_DocType` with AABB + DSL |
-| Compile EN-BLOC | [`CompilationPipeline.java`](../DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | Singularity proof — takes BOM lines as-is, emits elements |
-| Compile WALKTHRU | [`CompilationPipeline.java`](../DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | Mechanism proof — walks BOM hierarchy (BUILDING→FLOOR→SET→LEAF) |
-| Delta: count | [`run_RosettaStones.sh:304`](../scripts/run_RosettaStones.sh) | EN-BLOC element count == WALKTHRU element count |
-| Delta: geometry | [`run_RosettaStones.sh:374`](../scripts/run_RosettaStones.sh) | 0 elements with different `geometry_hash` |
-| Rule 8 | [`run_RosettaStones.sh:390`](../scripts/run_RosettaStones.sh) | All `M_BOM_Line` offsets within parent AABB envelope |
-| Clash check | [`run_RosettaStones.sh:412`](../scripts/run_RosettaStones.sh) | 0 furniture AABB overlaps |
+| Prepare compile DB | [`run_RosettaStones.sh:116`](../scripts/run_RosettaStones.sh) | Copies `*_BOM.db` → temp `_XX_compile.db` |
+| Compile | [`CompilationPipeline.java`](../DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | C_OrderLine → BOM explosion → elements |
+| Contracts | [`RosettaStoneGateTest.java`](../DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java) | G1-G6 gate tests |
+| Rule 8 | [`run_RosettaStones.sh`](../scripts/run_RosettaStones.sh) | All `M_BOM_Line` offsets within parent AABB envelope |
+| Clash check | [`run_RosettaStones.sh`](../scripts/run_RosettaStones.sh) | 0 furniture AABB overlaps |
+| C8 Diversity | [`run_RosettaStones.sh`](../scripts/run_RosettaStones.sh) | Per-instance mesh uniqueness preserved |
+| C9 Axis | [`run_RosettaStones.sh`](../scripts/run_RosettaStones.sh) | W/D/H match per axis vs reference |
 
-**Expected result:** `7/7 PASS` — all delta checks green.
+**Expected result:** All checks PASS.
 
 Compilation internals: [`SourceCodeGuide.md`](SourceCodeGuide.md), [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §4.
 Test architecture: [`TestArchitecture.md`](TestArchitecture.md).
@@ -398,7 +398,7 @@ This is the same mining approach used for Terminal (NFPA13 sprinkler spacing fro
 **7a. Query the output DB for patterns:**
 ```bash
 # Structural dimensions per (ifc_class, segment)
-sqlite3 DAGCompiler/lib/output/{building_type}_enbloc.db "
+sqlite3 DAGCompiler/lib/output/{building_type}.db "
   SELECT em.ifc_class, em.storey, COUNT(*) as cnt,
          ROUND(AVG((r.maxX-r.minX)*1000)) as avg_W_mm,
          ROUND(AVG((r.maxY-r.minY)*1000)) as avg_D_mm,

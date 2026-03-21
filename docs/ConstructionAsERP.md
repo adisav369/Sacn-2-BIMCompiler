@@ -92,9 +92,8 @@ and _e independently match the reference in `run_RosettaStones.sh`. See Rule 8.
 > `X_M_BOMLine.setDx()` rejects negative values at write time. ✓
 > PlacementLoader.loadFromBOM() computes world coords from BOM offsets. ✓
 >
-> _s is the hello-world singularity POC (EN-BLOC, single C_OrderLine/ESLine).
-> _e is the real-world WALK THRU proof (C_OrderLine per slot, ESLine per slot).
-> When both match the reference, the BOM model is proven at both levels.
+> Single compilation path: C_OrderLine → M_Product → BOM explosion.
+> Output verified against reference via Rosetta Stone contract tests (G1-G6).
 
 **Buffer space (BOMCategory='ST') is part of the BOM construct.** Buffer children
 are explicit M_BOM_Lines in {PREFIX}_BOM.db — not computed at compile time, not inferred from
@@ -2803,7 +2802,7 @@ for downstream tracking:
 
 - **Date** — when the order was compiled/processed
 - **Description** — human-readable compilation context
-- **Source** — USER (from Bonsai GUI) vs WALK_THRU (compiler-generated)
+- **Source** — USER (from Bonsai GUI) vs COMPILED (compiler-generated)
 - **compilation_id** — links to the compilation run that produced the line
 
 This is not a minimal "compiled order" schema — it's a proper ERP document that

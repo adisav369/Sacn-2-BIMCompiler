@@ -794,8 +794,7 @@ Zero-cost foam: sits in the BOM, walker skips it, enables spatial queries.
   Root cause: discipline SET AABBs are computed from element centroids; CLUSTER
   offset-table expansions can exceed the centroid-based envelope. BUFFER invariant
   is structurally valid but requires exact verb fidelity to enforce.
-- W-WALKTHRU-DIFFERS-1: PENDING — WALK-THRU output differs from EN-BLOC for
-  multi-candidate slots. Requires WALK-THRU implementation (G-4+).
+- W-WALKTHRU-DIFFERS-1: RESOLVED — single compilation path (S54b). No mode dichotomy.
 
 #### 4.2.3 Shape Archetype + Scale Band (CP-4 §4a, session 46)
 
@@ -864,7 +863,7 @@ MEPWriter (furniture detection), WitnessBuilder (grid/wall-mount validation).
 See `TACK_FIX_SPEC.md` for the full method specifications and test plan.
 
 **Root cause:** Commit `1399128` (2026-03-10) introduced centroid-floorMin as
-"parent-relative" — it passed EN-BLOC tests because centroid offsets round-trip
+"parent-relative" — it passed compilation tests because centroid offsets round-trip
 correctly when there is no stacking.
 
 **Why centroid breaks:** Centroid offsets cannot tile. If child A is 1m wide and
@@ -889,10 +888,9 @@ its own half-width — the formula becomes context-dependent. LBD offsets are al
 | 8 | **Geometry** | Mesh integrity validation |
 | 9 | **Prove** | Mathematical placement proofs |
 
-Both compilation modes follow the same data flow: element positions are read from
-m_bom_line (tack offsets per §4) and accumulated through the BOM chain into
-world coordinates. EN-BLOC takes the BUILDING BOM as-is; WALK THRU recalculates
-by re-walking each BOM layer.
+Single compilation path: element positions are read from m_bom_line (tack
+offsets per §4) and accumulated through the BOM chain into world coordinates.
+C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).
 
 ---
 

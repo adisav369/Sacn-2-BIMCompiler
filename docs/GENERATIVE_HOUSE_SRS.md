@@ -1,6 +1,6 @@
 # Generative Compilation — SRS
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) §1 (Three BOM Dimensions) · §3.4 (WALK-THRU) · §3.5 (Selection Cascade)
+> **Foundation:** [BBC](BOMBasedCompilation.md) §1 (Three BOM Dimensions) · §3.4 (BOM Explosion) · §3.5 (Selection Cascade)
 > **Traces:** BBC.md §3.6 (Rosetta Stone proves machinery, generative uses it)
 
 *Date: 2026-03-21. Session: S51. Replaces: GenerativeRoomPopulator (deleted — wrong architecture).*
@@ -175,7 +175,7 @@ After promotion, DM compiles through the same 9-stage pipeline as SH/DX/TE:
 | G2-VOLUME | Total volume conserved |
 | G4-TAMPER | No extraction data read at compile time |
 | G5-PROVENANCE | All geometry from library (no GEO_ fallback) |
-| G6-ISOLATION | EN-BLOC == WALK-THRU element counts |
+| G6-ISOLATION | Output DB is self-contained (no cross-DB leaks) |
 
 G3-DIGEST (spatial hash) requires a reference DB. For GENERATIVE buildings,
 there is no reference — DM defines the reference. G3 can be used for

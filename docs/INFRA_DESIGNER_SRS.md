@@ -67,7 +67,7 @@ disciplines:
 subgrade (250mm) → base (120mm) → binder (80mm) → surface (40mm) = 490mm total.
 20 line markings along road surface.
 
-**DSL pattern (`dsl_rd.bim`):** EN-BLOC only — extracted, not generative.
+**DSL pattern (`dsl_rd.bim`):** Extracted (singularity), not generative.
 ```
 BUILDING "Infra_Road" type:INFRASTRUCTURE profile:"IFC4X3_Road" {
     SEGMENT "road  - carriageway" { ... }
@@ -713,7 +713,7 @@ VerbDetector cascade for all infrastructure.
 | `BlenderBridge.md` | Java-smart/Python-dumb pipe protocol |
 | `classify_rd.yaml` | Road Rosetta Stone: 4 carriageways, PAV/MARK/GEO disciplines |
 | `classify_rl.yaml` | Rail Rosetta Stone: 66 sleepers @ 606mm, TRK/GEO disciplines |
-| `dsl_rd.bim` / `dsl_rl.bim` | Infrastructure DSL scripts (EN-BLOC) |
+| `dsl_rd.bim` / `dsl_rl.bim` | Infrastructure DSL scripts (extracted singularity) |
 | `V011_facility_type.sql` | facility_type column on AD_Val_Rule |
 | `ReportDAO.java` | 4D-7D report engine interface |
 | Federation `pdf_terrain/samples/survey_highres_extracted.json` | 689-point terrain (real survey) |

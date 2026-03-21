@@ -55,9 +55,9 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
        sources (YAML, DSL, bimcobol, BIMConstants, authority data, library)?
        **Session 42:** R4 confirmed. 7 spec sources audited. BOMWalker reads from compConn (R7).
        **Remedy:** Gap 4 table (7 sources) + R7 BOMWalker migration.
-6. [x] **Output path?** Is the output having both _enbloc and walkthru similar compile but in different approach to BOM stacking?
-       **Session 42:** G6-ISOLATION all PASS. enbloc==walkthru element counts: SH 55, FK 82, IN 699, DX 1099, TE 48428.
-       **Remedy:** Delta check in `run_RosettaStones.sh` — per-class count comparison + geometry hash divergence.
+6. [x] **Output path?** Single compilation path: C_OrderLine → M_Product → BOM explosion (S54b).
+       **Session 54b:** Element counts verified: SH 55, FK 82, IN 699, DX 1099, TE 48428.
+       **Remedy:** Contract tests (G1-G6) + fidelity (C8/C9) in `run_RosettaStones.sh`.
 7. [x] **Separate from input?** Is there reference to input/ DB, invention of data, intercept, fixing by manual or AI agents during compilation to falsely return success?
        **Session 42:** T18 guards this proactively. R11-R15 all DONE (world origin in BOM, extraction removed from compiler).
        **Remedy:** T18 tamper rule + R13 (ExtractionPopulator returns in-memory, no DB persistence).
@@ -95,7 +95,7 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
 | 3 | Compiler only | **PASS** | T18/T19/T20 all 0 violations |
 | 4 | Openings/furniture | **PASS** | W-ROT PASS, P05/P06 0 violations. DX C9 87 = wall axis swaps, not openings |
 | 5 | Spec fidelity | **PASS** | 7 sources audited, no others found |
-| 6 | Output path | **PASS** | enbloc==walkthru counts for all 5 buildings |
+| 6 | Output path | **PASS** | Single compilation path (S54b). Element counts verified for all 5 buildings |
 | 7 | Separate from input | **PASS** | T18 guards. R11-R15 all DONE |
 | 8 | Visual fidelity | **PASS** | C8+C9+P06 triangulate. Log-based triage working |
 | 9 | Orientation | **PASS** | W-ROT for doors/windows. M16/M17 pending R21 |
@@ -192,7 +192,7 @@ X-extent to AABB width vs depth.
 > 3. For `IfcPlate`: change thin-wall tolerance from `COVERAGE_TOLERANCE` (10mm) to 50mm
 > 4. All other classes: unchanged (flag any overlap > OVERLAP_VOLUME_THRESHOLD)
 >
-> **Evidence (SH walkthru 2026-03-19):** 7 P06 VIOLATED — 1× glazed panel corner
+> **Evidence (SH 2026-03-19):** 7 P06 VIOLATED — 1× glazed panel corner
 > junction (vol=0.0017 m³, minOverlap=20mm — cross-panel, same product), 6× dining
 > chairs overlapping table AABB (vol=0.069 m³ each — cross-product, different elementRef).
 > All diagnosed from log output without visual inspection (BIMLogger FINE-level proofing).
@@ -379,7 +379,7 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R15 | Delete deprecated ComponentLibrary rank-based extraction query | Gap 7 | DONE — subquery removed, comment updated |
 | R16 | Coordinate double-counting in PlacementCollectorVisitor | Gap 7 | DONE — child BOM origins zeroed (session 17) |
 | R25 | P06 cross-product furniture exemption + IfcPlate 50mm tolerance | Gap 3c | **TODO** — spec written (P06 Exemption Spec above). Sharp: same-product overlap still flagged, only cross-product (composition) exempt |
-| R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH enbloc | Gap 3a | **TODO** — G5 PROVENANCE fails: 1/55 instances use parametric bbox |
+| R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH output | Gap 3a | **TODO** — G5 PROVENANCE fails: 1/55 instances use parametric bbox |
 | R27 | C_DocType spec/code drift: spec says it belongs in `{PREFIX}_BOM.db`, but IFCtoBOM doesn't write it — shell script injects into temp compile DB | Gap 8 | **DONE** — IFCtoBOM writes C_DocType + DSLContent during extraction. Shell injection removed. StubDataSeeder kept for unit test in-memory DBs |
 | CP-1 | TE per-element identity via `m_bom_line_ma` (M_InOutLineMA pattern) | Gap 5 | **DONE** — 48336/48428 exact, 0 missing/extra. Remaining 92 = FRAME verb coordinate mismatch (Gap 6) |
 | R28 | VerbFactorizer material uniformity guard | Gap 9 | **DONE** — reject groups with mixed material_rgba before verb detection. SH G5: 22→4 missing (matches reference) |
@@ -486,7 +486,7 @@ remove BOM-side M_Product when all consumers use compConn.
 ad_floor_type, ad_unit_type_room, ad_building_storey from component_library.db via
 direct JDBC connections in StoreyCompiler, MultiUnitCompiler, WallTypeResolver,
 UnitInteriorResolver, SpaceTypeAD, FloorTypeAD, SlabSpecAD, BuildingBOM. These are
-DSL-compiler paths (TB-LKTN, condo_mid) — not the BOM-based EN-BLOC path used by
+DSL-compiler paths (TB-LKTN, condo_mid) — not the BOM-based compilation path used by
 Rosetta Stones. The BOM path (PlacementLoader → BOMWalker) is clean.
 
 **Risk assessment:** V2 is a legacy architecture concern, not an active drift. The

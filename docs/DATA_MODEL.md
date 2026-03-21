@@ -128,10 +128,10 @@ compile time.
 > `COUNT(m_bom_line)` << element count. See `BOMBasedCompilation.md` §2.1.6 for the
 > full recipe-vs-placement contract.
 >
-> **Known debt (TE):** `TE_BOM.db` currently stores **unfactored instance placements**
-> (48,485 rows with per-element dx/dy/dz) instead of factored type lines (~943 rows).
-> This was an EN-BLOC extraction shortcut. SH/DX are trivially factored (most products
-> appear once). TE-6/TE-7 verb compression will fix this.
+> **TE factorization DONE (sessions 8-11):** `TE_BOM.db` stores **1,131 factored
+> recipe lines** (505 products × verb formulas) expanding to 48,428 placement
+> instances at compile time. CLUSTER/TILE/FRAME/ROUTE verbs encode 97.6% of
+> the BOM. See `TerminalAnalysis.md` §BOM Factorization for details.
 
 ### 1.5 Integrity Hash
 

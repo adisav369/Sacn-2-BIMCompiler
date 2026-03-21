@@ -11,27 +11,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * HELLO WORLD [SH|DX] — permanent dual-path HelloWorld proof.
+ * HELLO WORLD [SH|DX] — permanent HelloWorld proof.
  *
  * <p>"Can this plane even take off?" The most basic regression test.
- * Proves that both compilation paths (EN-BLOC singularity and WALK THRU
- * progressive stacking) produce identical output matching the reference.
+ * Proves that compilation output matches the reference extracted DB.
  *
  * <h3>The Singularity Rule</h3>
  * <pre>
  *   IF   C_DocType.DocSubType = M_BOM.doc_sub_type   -- same building type
  *   AND  C_DocType.AABB       = BOM envelope AABB     -- same envelope
- *   THEN result count = 1  →  SINGULARITY  →  EN-BLOC
- *   ELSE                   →  EXPLODE      →  WALK THRU
+ *   THEN result count = 1  →  SINGULARITY
  * </pre>
  *
  * <h3>Steps</h3>
  * <ol>
  *   <li>Singularity check (BOM.db query)</li>
- *   <li>Inventory EN-BLOC output ({@code *_enbloc.db})</li>
- *   <li>Inventory WALK THRU output ({@code *_walkthru.db})</li>
+ *   <li>Inventory compilation output</li>
  *   <li>Inventory reference extracted DB</li>
- *   <li>Three-way comparison (count, volume, digest)</li>
+ *   <li>Comparison (count, volume, digest)</li>
  * </ol>
  *
  * <p>Grammar: {@code HELLO WORLD}, {@code HELLO WORLD SH}, {@code HELLO WORLD DX}
@@ -121,7 +118,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
                 docSubTypeMatch, buildingCount, singularity);
     }
 
-    // ── Steps 2-4: Inventory ───────────────────────────────────────
+    // ── Steps 2-3: Inventory ────────────────────────────────────────
 
     private DbInventory inventoryDb(String dbPath, String label) {
         File f = new File(dbPath);
@@ -141,7 +138,6 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
             int spatial = safeCount(conn, "SELECT COUNT(*) FROM spatial_structure");
             int geom = safeCount(conn, "SELECT COUNT(*) FROM base_geometries");
 
-            // Spatial digest (without geometry_hash for cross-mode comparison)
             String digest = null;
             if (elements > 0) {
                 SpatialDigest.DigestReport report =
@@ -149,7 +145,6 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
                 digest = report.digest();
             }
 
-            // Total AABB volume from elements_rtree
             double volume = computeVolume(conn);
 
             return new DbInventory(dbPath, label, true, elements,
@@ -181,7 +176,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         }
     }
 
-    // ── Step 5: Compare ────────────────────────────────────────────
+    // ── Step 4: Compare ─────────────────────────────────────────────
 
     private Comparison compare(String label, DbInventory a, DbInventory b) {
         if (a == null || b == null || !a.exists || !b.exists)
@@ -205,7 +200,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
                 digestMatch, pass, null);
     }
 
-    // ── Orchestrate ────────────────────────────────────────────────
+    // ── Orchestrate ─────────────────────────────────────────────────
 
     private BuildingResult proveBuilding(Connection bomConn, String docSubType) {
         try {
@@ -228,38 +223,26 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
             if (outputPath == null || refPath == null)
                 return new BuildingResult(docSubType, singularity,
-                        null, null, null, null, null, null, false);
+                        null, null, null, false);
 
-            // Derive enbloc/walkthru paths: strip .db, append _enbloc.db/_walkthru.db
-            String basePath = outputPath.replaceAll("\\.db$", "");
-            String ebPath = basePath + "_enbloc.db";
-            String wtPath = basePath + "_walkthru.db";
-
-            // Steps 2-4
-            DbInventory enbloc = inventoryDb(ebPath,
-                    "ENBLOC_" + docSubType);
-            DbInventory walkthru = inventoryDb(wtPath,
-                    "WALKTHRU_" + docSubType);
+            // Steps 2-3: inventory output and reference
+            DbInventory compiled = inventoryDb(outputPath,
+                    "OUT_" + docSubType);
             DbInventory reference = inventoryDb(refPath,
                     "REF_" + docSubType);
 
-            // Step 5
-            Comparison ebVsRef = compare("enbloc vs ref", enbloc, reference);
-            Comparison wtVsRef = compare("walkthru vs ref", walkthru, reference);
-            Comparison ebVsWt = compare("enbloc vs walkthru", enbloc, walkthru);
-
-            boolean pass = ebVsRef.pass && wtVsRef.pass && ebVsWt.pass;
+            // Step 4: compare output vs reference
+            Comparison outVsRef = compare("output vs ref", compiled, reference);
 
             return new BuildingResult(docSubType, singularity,
-                    enbloc, walkthru, reference,
-                    ebVsRef, wtVsRef, ebVsWt, pass);
+                    compiled, reference, outVsRef, outVsRef.pass);
         } catch (Exception e) {
             return new BuildingResult(docSubType, null,
-                    null, null, null, null, null, null, false);
+                    null, null, null, false);
         }
     }
 
-    // ── Formatting ─────────────────────────────────────────────────
+    // ── Formatting ──────────────────────────────────────────────────
 
     private String formatResult(String docSubType, BuildingResult br) {
         StringBuilder sb = new StringBuilder();
@@ -279,16 +262,13 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
                     s.buildingCount, s.singularity ? "SINGULARITY" : "EXPLODE"));
         }
 
-        // Steps 2-4
-        formatInventory(sb, "Step 2 — EN-BLOC:", br.enbloc);
-        formatInventory(sb, "Step 3 — WALK THRU:", br.walkthru);
-        formatInventory(sb, "Step 4 — Reference:", br.reference);
+        // Steps 2-3
+        formatInventory(sb, "Step 2 — Compiled output:", br.compiled);
+        formatInventory(sb, "Step 3 — Reference:", br.reference);
 
-        // Step 5
-        sb.append("  Step 5 — Comparison:\n");
-        formatComparison(sb, br.ebVsRef);
-        formatComparison(sb, br.wtVsRef);
-        formatComparison(sb, br.ebVsWt);
+        // Step 4
+        sb.append("  Step 4 — Comparison:\n");
+        formatComparison(sb, br.outVsRef);
         sb.append(String.format("%n  HELLO WORLD %s: %s%n",
                 docSubType, br.pass ? "PASS" : "FAIL"));
         sb.append("══════════════════════════════════════════════════════════════\n");
@@ -331,7 +311,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
                 c.pass ? "PASS" : "FAIL"));
     }
 
-    // ── Records ────────────────────────────────────────────────────
+    // ── Records ─────────────────────────────────────────────────────
 
     public record SingularityCheck(
             String docSubType,
@@ -367,12 +347,9 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
     public record BuildingResult(
             String docSubType,
             SingularityCheck singularity,
-            DbInventory enbloc,
-            DbInventory walkthru,
+            DbInventory compiled,
             DbInventory reference,
-            Comparison ebVsRef,
-            Comparison wtVsRef,
-            Comparison ebVsWt,
+            Comparison outVsRef,
             boolean pass
     ) {}
 

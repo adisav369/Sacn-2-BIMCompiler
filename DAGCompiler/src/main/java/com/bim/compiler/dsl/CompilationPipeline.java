@@ -112,17 +112,17 @@ public class CompilationPipeline {
     /**
      * Template composition stage — activated when DocSubType='ST'.
      *
-     * <p>This is the WALK THRU path of the Prime Rule. When the three-key match
-     * (AABB + DocBaseType + DocSubType) finds no BUILDING BOM, the template path
-     * takes over. It queries M_BomCategory WHERE doc_type='RE' AND doc_sub_type='ST'
-     * to find Standard Template entries (ST-SH, ST-DX), AABB-matches to pick the
-     * right one, then delegates to {@link BomTemplateComposer} which walks the
+     * <p>When the three-key match (AABB + DocBaseType + DocSubType) finds no
+     * BUILDING BOM, the template path takes over. It queries M_BomCategory
+     * WHERE doc_type='RE' AND doc_sub_type='ST' to find Standard Template
+     * entries (ST-SH, ST-DX), AABB-matches to pick the right one, then
+     * delegates to {@link BomTemplateComposer} which walks the
      * M_BomCategoryLine template tree to select best-fit BOMs at every level.
      *
      * <p>The composition report is stored in context so WriteStage can populate
      * CO_EmptySpaceLines at L2+ (room level from template leaf selections).
      *
-     * <p>Skipped for all non-ST buildings — those take the EN-BLOC singularity path.
+     * <p>Skipped for all non-ST buildings — those use the direct BUILDING BOM path.
      *
      * @see BomTemplateComposer
      * @see <a href="scripts/run_RosettaStones.sh">Prime Rule data set</a>

@@ -138,25 +138,13 @@ public class PlacementLoader {
     /**
      * Walk BOMs via BOMWalker + PlacementCollectorVisitor.
      *
-     * <p>Mode selection via {@code bom.mode} system property — maps to BIM COBOL verbs:
-     * <ul>
-     *   <li>{@code ENBLOC} (default) — <b>HelloWorld POC only.</b> BOM lines are
-     *       already tacked. DocType flag: when AABB and DocType are consistent
-     *       throughout, take each as-is without recalculating through layers.
-     *       One C_OrderLine, one CO_EmptySpaceLine.
-     *       Output suffix: _s (singular).</li>
-     *   <li>{@code WALKTHRU} — the proper normal path. Recalculates by tacking
-     *       through each BOM layer (UNIT → FLOOR → SET → BUY).
-     *       C_OrderLine per slot, CO_EmptySpaceLine per slot.
-     *       Precursor to production.
-     *       Output suffix: _e (exploded).</li>
-     * </ul>
+     * <p>Single compilation path: C_OrderLine → M_Product → BOM explosion.
+     * BOM walker traverses the BUILDING BOM tree, collecting placements
+     * at each leaf level. No mode selection — one path for all buildings.
      *
-     * <p>Both produce the same result when the data stack is consistent.
-     * EN-BLOC proves data correctness. WALK THRU proves the compilation mechanism.
+     * @see com.bim.designer.api.DesignerAPIImpl#bomDrop BOM explosion entry point
      */
     private void loadFromBOM() {
-        String mode = System.getProperty("bom.mode", "ENBLOC");
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
              Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
@@ -164,7 +152,7 @@ public class PlacementLoader {
 
             // Load all BUILDING BOMs — the top-level finished goods BOM per building type
             List<MBOM> roots = MBOM.getByType(conn, "BUILDING");
-            System.out.printf("[PlacementLoader] %s — %d BUILDING BOMs%n", mode, roots.size());
+            System.out.printf("[PlacementLoader] %d BUILDING BOMs%n", roots.size());
 
             for (MBOM bom : roots) {
                 String docSubType = bom.getDocSubType();
@@ -186,9 +174,9 @@ public class PlacementLoader {
                 List<Placement> placements = visitor.getPlacements();
                 cache.computeIfAbsent(buildingType, k -> new ArrayList<>()).addAll(placements);
 
-                System.out.printf("[PlacementLoader] %s (%s) → %d placements, worldOrigin=(%.3f,%.3f,%.3f) [%s]%n",
+                System.out.printf("[PlacementLoader] %s (%s) → %d placements, worldOrigin=(%.3f,%.3f,%.3f)%n",
                     bom.getBomId(), buildingType, placements.size(),
-                    worldOrigin[0], worldOrigin[1], worldOrigin[2], mode);
+                    worldOrigin[0], worldOrigin[1], worldOrigin[2]);
             }
         } catch (SQLException e) {
             System.err.println("[PlacementLoader] Failed to load placements: " + e.getMessage());

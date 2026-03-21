@@ -46,7 +46,7 @@ import java.util.Map;
  *
  * <h3>Template entry point (M_BomCategory)</h3>
  * <p>M_BomCategory entries with {@code doc_type='RE'} and {@code doc_sub_type='ST'}
- * are the Standard Template AABB entries (ST-SH, ST-DX). When the WALKTHRU path
+ * are the Standard Template AABB entries (ST-SH, ST-DX). When the template path
  * enters this composer, it queries these entries and AABB-matches to determine
  * which building variant (SH or DX) to compose. The AABB alone distinguishes
  * the variant — both entries share {@code doc_sub_type='ST'}.

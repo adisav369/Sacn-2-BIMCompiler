@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS C_OrderLine (
     -- WHAT: which BOM template or leaf product
     family_ref            TEXT NOT NULL,          -- m_bom.bom_id or M_Product.M_Product_ID
     host_type             TEXT NOT NULL,          -- BUILDING | FLOOR | DISCIPLINE | ROOM | LEAF
-    bom_category          TEXT,                   -- discipline/room category (from m_bom.bom_category)
+    bom_category          TEXT,                   -- M_Product_Category (discipline/room, denormalized from m_bom)
 
     -- WHERE: tack position (LBD convention, BBC.md §4)
     dx                    REAL NOT NULL DEFAULT 0,  -- child LBD X offset in parent (metres)

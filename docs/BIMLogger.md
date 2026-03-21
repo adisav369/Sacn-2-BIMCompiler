@@ -36,8 +36,8 @@ Set via: `BIMLogger.setLevel(BIMLogger.Level.FINE)` or `-Dbim.log.level=FINE`.
 
 ```java
 // Auto-timestamped file (recommended — called by CompilationPipeline.run())
-BIMLogger.initForRun("SH_enbloc");
-// → creates logs/pipeline_SH_enbloc_20260319_143201.log
+BIMLogger.initForRun("SH");
+// → creates logs/pipeline_SH_20260319_143201.log
 
 // Explicit path
 BIMLogger.init("logs/custom.log", BIMLogger.Level.FINE);
@@ -127,8 +127,8 @@ grep 'STEP.*starting' logs/pipeline_*.log
 grep '\[QA\]' logs/pipeline_*.log
 
 # Compare two runs
-diff <(grep '\[GATE\]' logs/pipeline_SH_enbloc_20260319_*.log) \
-     <(grep '\[GATE\]' logs/pipeline_SH_enbloc_20260320_*.log)
+diff <(grep '\[GATE\]' logs/pipeline_SH_20260319_*.log) \
+     <(grep '\[GATE\]' logs/pipeline_SH_20260320_*.log)
 ```
 
 ---
@@ -140,7 +140,7 @@ diff <(grep '\[GATE\]' logs/pipeline_SH_enbloc_20260319_*.log) \
 | 1 | Input=Output? | `grep 'G1-COUNT.*PASS' logs/pipeline_*.log` |
 | 2 | LOD400 geometry? | `grep 'G5-PROVENANCE.*PASS' logs/pipeline_*.log` |
 | 3 | Compiler only? | `grep 'G4-TAMPER.*T18' logs/pipeline_*.log` |
-| 6 | Both paths? | `diff pipeline_*_enbloc_*.log pipeline_*_walkthru_*.log` |
+| 6 | Output path? | Single compilation path (S54b) — verified via G1-G6 gates |
 | 8 | Visual fidelity? | `grep 'PROVER.*VIOLATED' logs/pipeline_*.log` (expect 0) |
 | 10 | Who checks tests? | `grep 'SEAL' logs/run_RosettaStones_*.txt` |
 

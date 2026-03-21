@@ -33,7 +33,8 @@ IFC file ──→ recon ──→ extract ──→ classify_XX.yaml ──→ 
    │           │          │              │                  │              │
    ▼           ▼          ▼              ▼                  ▼              ▼
  source    benefits   extracted.db   config only      *_BOM.db +      G1-G6 + C8/C9
-                                                     enbloc/walkthru  + DV rules
+                                                     *_BOM.db +       + DV rules
+                                                     output.db
 ```
 
 **No Java code changes required.** The entire pipeline is configuration-driven.
@@ -309,7 +310,7 @@ private static final Set<String> GATE_SCOPE = Set.of(
 # Clean any previous BOM (optional but recommended for first run)
 rm -f library/{XX}_BOM.db
 
-# Run full pipeline: IFCtoBOM → compile EN-BLOC + WALKTHRU → delta verification
+# Run full pipeline: IFCtoBOM → compile → contract tests → fidelity
 ./scripts/run_RosettaStones.sh classify_{prefix}.yaml
 ```
 
@@ -318,9 +319,10 @@ rm -f library/{XX}_BOM.db
 | Phase | What | Output |
 |-------|------|--------|
 | IFCtoBOM | YAML → BOM hierarchy + verb detection | `library/{XX}_BOM.db` |
-| EN-BLOC | Full-tree singularity compile | `{type}_enbloc.db` |
-| WALKTHRU | Progressive hierarchy compile | `{type}_walkthru.db` |
-| Delta | EN-BLOC vs WALKTHRU comparison | 7 delta checks |
+| Compile | C_OrderLine → BOM explosion → elements | `{type}.db` |
+| Contracts | G1-G6 gate tests | PASS/FAIL per gate |
+| Integrity | Rule 8 + clash check | PASS/FAIL |
+| Fidelity | C8 diversity + C9 axis dimension | PASS/FAIL |
 
 **Expected terminal output (success):**
 
@@ -328,16 +330,15 @@ rm -f library/{XX}_BOM.db
 === IFCtoBOM: classify_{prefix}.yaml ===
   ... BOM creation ...
   QA: 9/9 PASS
-=== EN-BLOC compile ===
-  ... 9 stages ...
-=== WALKTHRU compile ===
-  ... 9 stages ...
-=== Delta Verification ===
-  Count match:     PASS
-  Geometry match:  PASS
+=== COMPILE {XX} ===
+  ... 9 pipeline stages ...
+  VERDICT: PASS — compiled OK
+=== INTEGRITY ===
   Rule 8:          PASS
   Clash check:     PASS
-  7/7 PASS
+=== FIDELITY ===
+  C8-DIVERSITY:    PASS
+  C9-AXIS:         PASS
 ```
 
 ---

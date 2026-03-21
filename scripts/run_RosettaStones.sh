@@ -4,9 +4,8 @@
 #
 # PURPOSE: Compile buildings from classification YAML, producing:
 #   *_BOM.db   = clean per-building BOM dictionary (IFCtoBOM pipeline)
-#   *_enbloc   = EN-BLOC compilation (singularity — takes one BOM whole)
-#   *_walkthru = WALK THRU compilation (progressive stacking through hierarchy)
-# Then run delta comparison between enbloc and walkthru.
+#   *.db       = compilation output (C_OrderLine → BOM explosion → elements)
+# Then run contract tests and fidelity checks against reference.
 #
 # ── ANTI-DRIFT: READ BEFORE EDITING ──────────────────────────
 #
@@ -57,7 +56,7 @@ DELTA_ONLY=false
 
 for arg in "$@"; do
     case "$arg" in
-        delta) DELTA_ONLY=true ;;
+        delta) DELTA_ONLY=true ;;  # kept for backward compat (skips compile)
         *.yaml|*.yml)
             if [ -f "$arg" ]; then
                 YAML_FILES+=("$arg")
@@ -197,39 +196,36 @@ compile_building() {
     print_header "COMPILE ${label}"
 
     echo ""
-    echo "  [enbloc] Compiling EN-BLOC (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
-    local EB_OUTPUT EB_RC
-    EB_OUTPUT=$(mvn test -pl DAGCompiler \
+    echo "  Compiling (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
+    local CC_OUTPUT CC_RC
+    CC_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
-        -Dbom.mode=ENBLOC \
         -Dbom.db="${compile_db}" \
         -Ddoc.base.type="${doc_base_type}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
-        -q 2>&1) && EB_RC=0 || EB_RC=$?
-    echo "$EB_OUTPUT" | tail -3
+        -q 2>&1) && CC_RC=0 || CC_RC=$?
+    echo "$CC_OUTPUT" | tail -3
 
-    if [ "$EB_RC" -ne 0 ]; then
-        verdict "COMPILE_${label}_ENBLOC" "FAIL" "Maven exited ${EB_RC}"
-        echo "$EB_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailedError" | head -5 | sed 's/^/    /'
+    if [ "$CC_RC" -ne 0 ]; then
+        verdict "COMPILE_${label}" "FAIL" "Maven exited ${CC_RC}"
+        echo "$CC_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailedError" | head -5 | sed 's/^/    /'
     else
-        verdict "COMPILE_${label}_ENBLOC" "PASS" "compiled OK"
+        verdict "COMPILE_${label}" "PASS" "compiled OK"
     fi
 
     if [ -f "${base}.db" ]; then
-        cp "${base}.db" "${base}_enbloc.db"
-        echo "  [enbloc] → ${base}_enbloc.db"
+        echo "  → ${base}.db"
     else
-        echo "  [enbloc] !! NO OUTPUT DB produced"
+        echo "  !! NO OUTPUT DB produced"
     fi
 
-    singularity_check "$label" "${base}_enbloc.db" "$bom_db" "$doc_base_type"
+    singularity_check "$label" "${base}.db" "$bom_db" "$doc_base_type"
 
     # Contract tests — run AFTER compilation, output DB exists on disk
     echo "  [contracts] Running G3/G6/Totality/Rotation gates..."
     local CT_OUTPUT CT_RC
     CT_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="RosettaStoneGateTest,TotalityContractTest,RotationContractTest" \
-        -Dbom.mode=ENBLOC \
         -Dbom.db="${compile_db}" \
         -Ddoc.base.type="${doc_base_type}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
@@ -244,121 +240,19 @@ compile_building() {
         CT_SUMMARY=$(echo "$CT_OUTPUT" | grep -E "Tests run:" | tail -1) || true
         verdict "CONTRACTS_${label}" "PASS" "$CT_SUMMARY"
     fi
-
-    echo "  [walkthru] Compiling WALK THRU (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
-    rm -f "${base}.db"
-    local WT_OUTPUT WT_RC
-    WT_OUTPUT=$(mvn test -pl DAGCompiler \
-        -Dtest="BuildingRegistryTest" \
-        -Dbom.mode=WALKTHRU \
-        -Dbom.db="${compile_db}" \
-        -Ddoc.base.type="${doc_base_type}" \
-        -Dsurefire.failIfNoSpecifiedTests=false \
-        -q 2>&1) && WT_RC=0 || WT_RC=$?
-    echo "$WT_OUTPUT" | tail -5
-
-    if [ "$WT_RC" -ne 0 ]; then
-        verdict "COMPILE_${label}_WALKTHRU" "FAIL" "Maven exited ${WT_RC}"
-        echo "$WT_OUTPUT" | grep -E "<<< FAILURE|<<< ERROR|AssertionFailedError" | head -5 | sed 's/^/    /'
-    else
-        verdict "COMPILE_${label}_WALKTHRU" "PASS" "compiled OK"
-    fi
-
-    if [ -f "${base}.db" ]; then
-        cp "${base}.db" "${base}_walkthru.db"
-        rm -f "${base}.db"
-        echo "  [walkthru] → ${base}_walkthru.db"
-        singularity_check "$label" "${base}_walkthru.db" "$bom_db" "$doc_base_type"
-    else
-        echo "  [walkthru] SKIP — structured BOM pipeline did not produce output"
-    fi
 }
 
-# ── Step 2: Delta Test ───────────────────────────────────────
-run_delta() {
+# ── Step 2: Integrity checks (Rule 8 + Clash) ───────────────
+run_integrity() {
     local label="$1"
-    local eb_db="$2"
-    local wt_db="$3"
-    local bom_db="$4"
+    local output_db="$2"
+    local bom_db="$3"
 
-    print_header "DELTA ${label}: enbloc vs walkthru consistency"
+    print_header "INTEGRITY ${label}"
 
-    if [ ! -f "$eb_db" ] || [ ! -f "$wt_db" ]; then
-        echo "  SKIP — missing DB file(s)"
+    if [ ! -f "$output_db" ]; then
+        echo "  SKIP — output DB not found: ${output_db}"
         return
-    fi
-
-    # Count comparison
-    EB_COUNT=$(sqlite3 "$eb_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
-    WT_COUNT=$(sqlite3 "$wt_db" "SELECT COUNT(*) FROM elements_meta" 2>/dev/null || echo "0")
-    local DELTA=$((WT_COUNT - EB_COUNT))
-    echo "  Element count: enbloc=${EB_COUNT}  walkthru=${WT_COUNT}  delta=${DELTA}"
-
-    if [ "$DELTA" -eq 0 ] && [ "$EB_COUNT" -gt 0 ]; then
-        verdict "DELTA_${label}_COUNT" "PASS" "enbloc=${EB_COUNT} == walkthru=${WT_COUNT}"
-    else
-        verdict "DELTA_${label}_COUNT" "FAIL" "enbloc=${EB_COUNT} != walkthru=${WT_COUNT} (delta=${DELTA})"
-    fi
-
-    # Per-class count comparison
-    echo ""
-    echo "  Per-class breakdown:"
-    sqlite3 "$eb_db" "
-        ATTACH '${wt_db}' AS wt;
-        SELECT ifc_class,
-               COALESCE(eb_count, 0) as eb_count,
-               COALESCE(wt_count, 0) as wt_count,
-               COALESCE(wt_count, 0) - COALESCE(eb_count, 0) as delta
-        FROM (
-            SELECT ifc_class, SUM(eb_cnt) as eb_count, SUM(wt_cnt) as wt_count
-            FROM (
-                SELECT ifc_class, COUNT(*) as eb_cnt, 0 as wt_cnt FROM elements_meta GROUP BY ifc_class
-                UNION ALL
-                SELECT ifc_class, 0 as eb_cnt, COUNT(*) as wt_cnt FROM wt.elements_meta GROUP BY ifc_class
-            )
-            GROUP BY ifc_class
-        )
-        ORDER BY ifc_class;
-        DETACH wt;
-    " -header -column 2>/dev/null | sed 's/^/    /'
-
-    # AABB centroid delta
-    echo ""
-    echo "  AABB centroid delta (top 10 worst):"
-    sqlite3 "$eb_db" "
-        ATTACH '${wt_db}' AS wt;
-        SELECT
-            s.guid,
-            s.ifc_class,
-            ROUND(ABS((s.minX+s.maxX)/2.0 - (wr.minX+wr.maxX)/2.0)*1000, 1) as dx_mm,
-            ROUND(ABS((s.minY+s.maxY)/2.0 - (wr.minY+wr.maxY)/2.0)*1000, 1) as dy_mm,
-            ROUND(ABS((s.minZ+s.maxZ)/2.0 - (wr.minZ+wr.maxZ)/2.0)*1000, 1) as dz_mm
-        FROM elements_meta sm
-        JOIN elements_rtree s ON sm.guid = s.id
-        JOIN wt.elements_meta wm ON sm.guid = wm.guid
-        JOIN wt.elements_rtree wr ON wm.guid = wr.id
-        WHERE dx_mm > 0.5 OR dy_mm > 0.5 OR dz_mm > 0.5
-        ORDER BY (dx_mm*dx_mm + dy_mm*dy_mm + dz_mm*dz_mm) DESC
-        LIMIT 10;
-        DETACH wt;
-    " -header -column 2>/dev/null | sed 's/^/    /'
-
-    # Geometry divergence
-    echo ""
-    echo "  Geometry divergence (different geometry_hash):"
-    GEOM_DIFF=$(sqlite3 "$eb_db" "
-        ATTACH '${wt_db}' AS wt;
-        SELECT COUNT(*)
-        FROM element_instances si
-        JOIN wt.element_instances wi ON si.guid = wi.guid
-        WHERE si.geometry_hash != wi.geometry_hash;
-        DETACH wt;
-    " 2>/dev/null || echo "N/A")
-    echo "    ${GEOM_DIFF} elements with different geometry_hash"
-    if [ "$GEOM_DIFF" = "0" ]; then
-        verdict "DELTA_${label}_GEOM" "PASS" "0 geometry divergences"
-    else
-        verdict "DELTA_${label}_GEOM" "FAIL" "${GEOM_DIFF} geometry divergences"
     fi
 
     # Rule 8: world-absolute coordinates (reads from building-specific *_BOM.db)
@@ -384,7 +278,7 @@ run_delta() {
     # Clash check
     echo ""
     echo "  Clash check (furniture AABB overlap):"
-    CLASH=$(sqlite3 "$eb_db" "
+    CLASH=$(sqlite3 "$output_db" "
         SELECT COUNT(*) FROM (
             SELECT a.id as a_id, b.id as b_id
             FROM elements_meta am
@@ -401,10 +295,10 @@ run_delta() {
     " 2>/dev/null || echo "N/A")
     if [ "$CLASH" = "0" ]; then
         echo "    PASS — 0 furniture clashes"
-        verdict "DELTA_${label}_CLASH" "PASS" "0 furniture clashes"
+        verdict "CLASH_${label}" "PASS" "0 furniture clashes"
     else
-        verdict "DELTA_${label}_CLASH" "FAIL" "${CLASH} furniture AABB overlaps"
-        sqlite3 "$eb_db" "
+        verdict "CLASH_${label}" "FAIL" "${CLASH} furniture AABB overlaps"
+        sqlite3 "$output_db" "
             SELECT am.element_name as elem_a, bm.element_name as elem_b,
                    ROUND((MIN(a.maxX,b.maxX)-MAX(a.minX,b.minX))
                         *(MIN(a.maxY,b.maxY)-MAX(a.minY,b.minY))
@@ -432,13 +326,13 @@ run_delta() {
 # @Traces LAST_MILE_PROBLEM.md Checklist #8, #9
 run_fidelity() {
     local label="$1"
-    local eb_db="$2"
+    local output_db="$2"
     local ref_db="$3"
 
     print_header "FIDELITY ${label}: reference vs output geometry"
 
-    if [ ! -f "$eb_db" ]; then
-        echo "  SKIP — output DB not found: ${eb_db}"
+    if [ ! -f "$output_db" ]; then
+        echo "  SKIP — output DB not found: ${output_db}"
         return
     fi
     if [ ! -f "$ref_db" ]; then
@@ -455,7 +349,7 @@ run_fidelity() {
     echo "  C8: Geometry diversity (per-instance mesh uniqueness):"
 
     local C8_VIOLATIONS
-    C8_VIOLATIONS=$(sqlite3 "$eb_db" "
+    C8_VIOLATIONS=$(sqlite3 "$output_db" "
         ATTACH '${ref_db}' AS ref;
         SELECT COUNT(*) FROM (
             SELECT ref_groups.product_type, ref_groups.ref_unique, out_groups.out_unique
@@ -499,7 +393,7 @@ run_fidelity() {
     else
         verdict "C8_GEODIV_${label}" "FAIL" "${C8_VIOLATIONS} product type(s) lost mesh diversity"
         # Show details
-        sqlite3 "$eb_db" "
+        sqlite3 "$output_db" "
             ATTACH '${ref_db}' AS ref;
             SELECT ref_groups.product_type,
                    ref_groups.ref_unique AS ref_meshes,
@@ -546,7 +440,7 @@ run_fidelity() {
     echo "  C9: Per-element axis dimension (W/D/H per axis, 1mm tolerance):"
 
     local C9_SWAPS
-    C9_SWAPS=$(sqlite3 "$eb_db" "
+    C9_SWAPS=$(sqlite3 "$output_db" "
         ATTACH '${ref_db}' AS ref;
         SELECT COUNT(*) FROM (
             WITH ref_ranked AS (
@@ -603,7 +497,7 @@ run_fidelity() {
     else
         verdict "C9_AXISDIM_${label}" "FAIL" "${C9_SWAPS} element(s) with axis dimension mismatch"
         # Show worst offenders
-        sqlite3 "$eb_db" "
+        sqlite3 "$output_db" "
             ATTACH '${ref_db}' AS ref;
             WITH ref_ranked AS (
                 SELECT rem.ifc_class, rem.element_name,
@@ -765,32 +659,27 @@ for yaml_file in "${YAML_FILES[@]}"; do
 
         # Prepare per-building compile DB (e.g. library/_SH_compile.db)
         if prepare_compile_db "$PREFIX" "$BUILDING_TYPE" "$DOC_SUB_TYPE" "$DOC_BASE_TYPE" "$BLDG_NAME" "$BUILDING_BOM_ID" "$yaml_file"; then
-            # Run compilation (enbloc + walkthru) — passes -Dbom.db to Maven
+            # Run compilation — passes -Dbom.db to Maven
             compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB" "$DOC_BASE_TYPE"
             cleanup_compile_db
         fi
     fi
 
-    # Delta test (reads from output DBs + *_BOM.db — no library/BOM.db needed)
-    run_delta "$DOC_SUB_TYPE" "${OUTPUT_BASE}_enbloc.db" "${OUTPUT_BASE}_walkthru.db" "$BOM_DB"
+    # Integrity checks (Rule 8, clash)
+    run_integrity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$BOM_DB"
 
     # Fidelity test — reference (input) vs output (C8/C9)
     # Reference DB path: DAGCompiler/lib/input/{BUILDING_TYPE}_extracted.db
     REF_DB="DAGCompiler/lib/input/${BUILDING_TYPE}_extracted.db"
-    run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}_enbloc.db" "$REF_DB"
+    run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$REF_DB"
 done
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
-echo "  Pipeline: YAML → IFCtoBOM → *_BOM.db → DAGCompiler → _enbloc + _walkthru"
+echo "  Pipeline: YAML → IFCtoBOM → *_BOM.db → DAGCompiler → *.db"
 echo ""
-echo "  _enbloc   = EN-BLOC — singularity proof. BOM lines already tacked,"
-echo "      takes each as-is when AABB and DocType consistent."
-echo "  _walkthru = WALK THRU — mechanism proof. Recalculates by tacking"
-echo "      through each BOM layer (BUILDING → FLOOR → SET → LEAF)"
-echo ""
-echo "  Both produce the same result when the data stack is consistent."
-echo "  EN-BLOC proves data correctness. WALK THRU proves the mechanism."
+echo "  Single compilation path: C_OrderLine → BOM explosion → elements."
+echo "  Contract tests (G1-G6) + fidelity (C8/C9) verify correctness."
 echo ""
 echo "  YAMLs processed:"
 for yf in "${YAML_FILES[@]}"; do

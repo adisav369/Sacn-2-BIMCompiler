@@ -76,8 +76,7 @@ for yf in "$YAML_DIR"/classify_*.yaml; do
     ob="DAGCompiler/lib/output/$(echo "$bt" | tr '[:upper:]' '[:lower:]')"
     PFX[$idx]="$p";  NM[$idx]="$nm";  TYP[$idx]="$bt"
     BOM_DB[$idx]="library/${p}_BOM.db"
-    EB_DB[$idx]="${ob}_enbloc.db"
-    WT_DB[$idx]="${ob}_walkthru.db"
+    OUT_DB[$idx]="${ob}.db"
     RF_DB[$idx]="DAGCompiler/lib/input/${bt}_extracted.db"
     idx=$((idx + 1))
 done
@@ -114,7 +113,7 @@ declare -a SUM_LINES
 
 for ((i=0; i<N; i++)); do
     p="${PFX[$i]}"; nm="${NM[$i]}"; bt="${TYP[$i]}"
-    bom="${BOM_DB[$i]}"; eb="${EB_DB[$i]}"; wt="${WT_DB[$i]}"; rf="${RF_DB[$i]}"
+    bom="${BOM_DB[$i]}"; out="${OUT_DB[$i]}"; rf="${RF_DB[$i]}"
 
     pass=0; fail=0; skip=0
 
@@ -123,12 +122,11 @@ for ((i=0; i<N; i++)); do
     # ── Availability ─────────────────────────────────────────
 
     has_bom=$( [ -f "$bom" ] && echo Y || echo N)
-    has_eb=$(  [ -f "$eb"  ] && echo Y || echo N)
-    has_wt=$(  [ -f "$wt"  ] && echo Y || echo N)
+    has_out=$( [ -f "$out" ] && echo Y || echo N)
     has_rf=$(  [ -f "$rf"  ] && echo Y || echo N)
 
-    if [ "$has_bom" = "N" ] || [ "$has_eb" = "N" ] || [ "$has_rf" = "N" ]; then
-        printf "    ${S}Not fully built${R} — BOM=%s enbloc=%s ref=%s\n" "$has_bom" "$has_eb" "$has_rf"
+    if [ "$has_bom" = "N" ] || [ "$has_out" = "N" ] || [ "$has_rf" = "N" ]; then
+        printf "    ${S}Not fully built${R} — BOM=%s output=%s ref=%s\n" "$has_bom" "$has_out" "$has_rf"
         printf "    Run: ${D}./scripts/run_RosettaStones.sh classify_%s.yaml${R}\n" "$(echo "$p" | tr '[:upper:]' '[:lower:]')"
         SUM_LINES[$i]=$(printf "  %-4s %-30s  ${S}NOT BUILT${R}" "$p" "$nm")
         T_SKIP=$((T_SKIP + 1))
@@ -139,22 +137,20 @@ for ((i=0; i<N; i++)); do
     # ── 1. Gates ─────────────────────────────────────────────
 
     ref_n=$(qry0 "$rf" "SELECT COUNT(*) FROM elements_meta")
-    eb_n=$(qry0 "$eb" "SELECT COUNT(*) FROM elements_meta")
-    wt_n="—"
-    [ "$has_wt" = "Y" ] && wt_n=$(qry0 "$wt" "SELECT COUNT(*) FROM elements_meta")
+    out_n=$(qry0 "$out" "SELECT COUNT(*) FROM elements_meta")
 
     # G1
-    if [ "$ref_n" = "$eb_n" ]; then
+    if [ "$ref_n" = "$out_n" ]; then
         gate "G1-COUNT" "PASS" "${ref_n} elements"
         pass=$((pass + 1))
     else
-        gate "G1-COUNT" "FAIL" "ref=${ref_n} out=${eb_n} Δ=$((eb_n - ref_n))"
+        gate "G1-COUNT" "FAIL" "ref=${ref_n} out=${out_n} Δ=$((out_n - ref_n))"
         fail=$((fail + 1))
     fi
 
     # G2
     rv=$(qry0 "$rf" "SELECT COALESCE(SUM((r.maxX-r.minX)*(r.maxY-r.minY)*(r.maxZ-r.minZ)),0) FROM elements_rtree r JOIN elements_meta m ON r.id=m.id")
-    ov=$(qry0 "$eb" "SELECT COALESCE(SUM((r.maxX-r.minX)*(r.maxY-r.minY)*(r.maxZ-r.minZ)),0) FROM elements_rtree r JOIN elements_meta m ON r.id=m.id")
+    ov=$(qry0 "$out" "SELECT COALESCE(SUM((r.maxX-r.minX)*(r.maxY-r.minY)*(r.maxZ-r.minZ)),0) FROM elements_rtree r JOIN elements_meta m ON r.id=m.id")
     if [ "$rv" != "0" ] && [ -n "$rv" ]; then
         vpct=$(awk "BEGIN { printf \"%.4f\", ($ov - $rv) / $rv * 100 }" 2>/dev/null || echo "?")
         vabs=$(echo "$vpct" | sed 's/-//')
@@ -169,35 +165,8 @@ for ((i=0; i<N; i++)); do
         gate "G2-VOLUME" "SKIP" "no volume data"; skip=$((skip + 1))
     fi
 
-    # Delta count
-    if [ "$has_wt" = "Y" ] && [ "$wt_n" != "—" ]; then
-        if [ "$eb_n" = "$wt_n" ]; then
-            gate "DELTA" "PASS" "enbloc=${eb_n} = walkthru=${wt_n}"
-            pass=$((pass + 1))
-        else
-            gate "DELTA" "FAIL" "enbloc=${eb_n} ≠ walkthru=${wt_n}"
-            fail=$((fail + 1))
-        fi
-    else
-        gate "DELTA" "SKIP" ""; skip=$((skip + 1))
-    fi
-
-    # Delta geom
-    if [ "$has_wt" = "Y" ]; then
-        gd=$(qry "$eb" "ATTACH '${wt}' AS wt; SELECT COUNT(*) FROM main.element_instances e JOIN wt.element_instances w ON e.guid=w.guid WHERE e.geometry_hash!=w.geometry_hash")
-        if [ "$gd" = "0" ]; then
-            gate "DELTA-GEOM" "PASS" ""; pass=$((pass + 1))
-        elif [ "$gd" = "?" ]; then
-            gate "DELTA-GEOM" "SKIP" ""; skip=$((skip + 1))
-        else
-            gate "DELTA-GEOM" "FAIL" "${gd} divergences"; fail=$((fail + 1))
-        fi
-    else
-        gate "DELTA-GEOM" "SKIP" ""; skip=$((skip + 1))
-    fi
-
     # C8
-    c8=$(qry "$eb" "ATTACH '${rf}' AS ref;
+    c8=$(qry "$out" "ATTACH '${rf}' AS ref;
         SELECT COUNT(*) FROM (
             SELECT ifc_class, COUNT(DISTINCT geometry_hash) as d FROM main.element_instances ei JOIN main.elements_meta em ON ei.guid=em.guid GROUP BY ifc_class
         ) o JOIN (
@@ -208,7 +177,7 @@ for ((i=0; i<N; i++)); do
     else gate "C8-DIVERSITY" "WARN" "${c8} types (cosmetic — cross-class geometry)"; pass=$((pass + 1)); fi
 
     # C9
-    c9=$(qry "$eb" "ATTACH '${rf}' AS ref;
+    c9=$(qry "$out" "ATTACH '${rf}' AS ref;
         SELECT COUNT(*) FROM (
             SELECT em.guid, ROUND((r.maxX-r.minX)*1000) W, ROUND((r.maxY-r.minY)*1000) D, ROUND((r.maxZ-r.minZ)*1000) H
             FROM main.elements_meta em JOIN main.elements_rtree r ON em.id=r.id
@@ -295,11 +264,11 @@ for ((i=0; i<N; i++)); do
     printf "    ${B}Validation Rule Potential${R}\n"
 
     # Count element groups with ≥3 instances (minable for rules)
-    minable=$(qry0 "$eb" "SELECT COUNT(*) FROM (
+    minable=$(qry0 "$out" "SELECT COUNT(*) FROM (
         SELECT em.ifc_class, em.storey FROM elements_meta em
         JOIN elements_rtree r ON em.id=r.id
         GROUP BY em.ifc_class, em.storey HAVING COUNT(*)>=3)")
-    minable_instances=$(qry0 "$eb" "SELECT COALESCE(SUM(cnt),0) FROM (
+    minable_instances=$(qry0 "$out" "SELECT COALESCE(SUM(cnt),0) FROM (
         SELECT COUNT(*) as cnt FROM elements_meta em
         JOIN elements_rtree r ON em.id=r.id
         GROUP BY em.ifc_class, em.storey HAVING COUNT(*)>=3)")
@@ -308,7 +277,7 @@ for ((i=0; i<N; i++)); do
     printf "      Covered elements: %s  (of %s total)\n" "$minable_instances" "$ref_n"
 
     # Spacing uniformity (potential TILE/CLUSTER rules)
-    spacing_groups=$(qry0 "$eb" "
+    spacing_groups=$(qry0 "$out" "
         WITH ranked AS (
             SELECT em.ifc_class, em.storey, r.minX,
                    ROW_NUMBER() OVER (PARTITION BY em.ifc_class, em.storey ORDER BY r.minX, r.minY) as rn
