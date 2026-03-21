@@ -58,6 +58,16 @@ What you can do today: create a building from a single click ("Create New" with 
 
 See [BIM_Designer_SRS.md](docs/BIM_Designer_SRS.md) for UX requirements and [BIM_Designer_UserGuide.md](docs/BIM_Designer_UserGuide.md) for the walkthrough.
 
+## Other Highlights
+
+- **2D Architectural Drawings** — Floor plans, elevations, sections, and roof plans derived directly from the compiled 3D output. A horizontal section cut at 1.0m above each storey produces architect-grade floor plans with wall outlines, door swings, and window gaps — no manual drafting. SVG output, one drawing sheet per storey. *(Coming soon — [2D_ARCHITECTURAL_LAYOUT.md](2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md))*
+
+- **Reporting Engine (4D–7D)** — The compiled BOM is not just geometry. It is a cost database (5D: elemental cost plans, material takeoffs from BOM lines × product costs), a schedule database (4D: verb execution sequence → Gantt chart, critical path from construction phasing), a sustainability database (6D: carbon footprint per product, embodied energy), and a facility management database (7D: asset registry, maintenance schedules). Six live DAOs, 31 witnesses. *(See [CORE_SRS.md](docs/CORE_SRS.md))*
+
+- **ERP Integration** — The data model IS [iDempiere](https://idempiere.org/) ERP: `M_Product`, `M_BOM`, `C_Order`, `C_DocType`. A compiled building is a manufacturing work order. Promoting a design (`DocStatus DR→CO`) triggers the same document lifecycle that iDempiere uses for purchase orders and invoicing. Portfolio analysis, Kanban boards, and balanced scorecards come free from the ERP pattern — they are just views over `C_Order` data. *(See [ConstructionAsERP.md](docs/ConstructionAsERP.md))*
+
+- **Back Office Server** — HTTP server (:9877) for portfolio management, session handling, and reporting. Browse all projects, view KPIs, run cost/schedule reports. 19 passing tests. *(See [BACK_OFFICE_SRS.md](docs/BACK_OFFICE_SRS.md))*
+
 ## Key Numbers
 
 | Metric | Value |
