@@ -36,13 +36,13 @@ def _get_cached_bboxes(context) -> list:
 
 class BIM_PT_bim_designer(Panel):
     """A. BIM Designer — compiler-driven building design"""
-    bl_label = "A. BIM Designer"
+    bl_label = "1D. BIM Designer"
     bl_idname = "BIM_PT_bim_designer"
     bl_space_type = "PROPERTIES"
     bl_region_type = "WINDOW"
     bl_context = "scene"
     bl_parent_id = "BIM_PT_tabs"
-    bl_order = 15
+    bl_order = 1
 
     def draw(self, context):
         layout = self.layout
@@ -214,9 +214,12 @@ class BIM_PT_bim_designer(Panel):
         tree_box = box.box()
         tree_box.label(text="BOM Outliner", icon='OUTLINER')
 
-        # Refresh button
+        # BOM Drop buttons — popup (full view) or inline
         row = tree_box.row(align=True)
-        row.operator("bim.designer_get_bom_tree", icon='FILE_REFRESH')
+        row.scale_y = 1.3
+        row.operator("bim.designer_bom_drop_popup", text="BOM Drop", icon='WINDOW')
+        row.operator("bim.designer_bom_drop", text="Create", icon='ADD')
+        row.operator("bim.designer_get_bom_tree", text="Refresh", icon='FILE_REFRESH')
         row.enabled = props.is_connected
 
         # Parse cached tree
@@ -224,12 +227,20 @@ class BIM_PT_bim_designer(Panel):
         roots = json.loads(raw) if raw else []
 
         if not roots:
-            tree_box.label(text="No BOM tree — refresh or save a design",
+            tree_box.label(text="No BOM tree — pick a building and click Create",
                            icon='INFO')
             return
 
         # Render tree recursively
         self._draw_tree_nodes(tree_box, roots, indent=0)
+
+        # DocAction buttons: Save → Approve → Complete
+        action_row = tree_box.row(align=True)
+        action_row.scale_y = 1.2
+        action_row.operator("bim.designer_save", text="Save", icon='FILE_TICK')
+        action_row.operator("bim.designer_approve", text="Approve", icon='CHECKMARK')
+        action_row.operator("bim.designer_compile", text="Complete", icon='PLAY')
+        action_row.enabled = props.is_connected
 
     def _draw_tree_nodes(self, layout, nodes, indent):
         """Recursively draw BOM tree nodes with indentation."""

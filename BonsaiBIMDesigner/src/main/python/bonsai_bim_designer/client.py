@@ -388,6 +388,30 @@ class DesignerClient:
             "buildingId": building_id,
         })
 
+    def bom_drop(self, building_product_id: str) -> dict:
+        """BOM Drop: explode a building product into a BOM tree (§28.1).
+
+        Creates a C_Order with a single C_OrderLine referencing the building
+        product, then recursively explodes the BOM tree into child OrderLines.
+
+        Returns: { success, orderId, orderLineId, tree: {BomTreeNode}, totalElements, error }
+        // Implementing BIM_Designer_SRS.md §28.1 — Witness: W-DROP-1
+        """
+        return self._send({
+            "action": "bomDrop",
+            "buildingProductId": building_product_id,
+        })
+
+    def approve(self, building_id: str) -> dict:
+        """Approve: compliance validation gate (DR → AP transition).
+
+        Returns: { success, complianceStatus, error }
+        """
+        return self._send({
+            "action": "approve",
+            "buildingId": building_id,
+        })
+
     def _send(self, request: dict) -> dict:
         """Send a request and read the response (synchronous)."""
         if not self._sock:

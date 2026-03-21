@@ -291,6 +291,11 @@ public class DesignerServer implements AutoCloseable {
                             request.stringField("buildingId"));
                     yield JsonProtocol.toJson(resp);
                 }
+                case "bomDrop" -> {
+                    var resp = api.bomDrop(
+                            request.stringField("buildingProductId"));
+                    yield JsonProtocol.toJson(resp);
+                }
                 case "addRoom" -> {
                     var resp = api.addRoom(
                             request.stringField("buildingId"),

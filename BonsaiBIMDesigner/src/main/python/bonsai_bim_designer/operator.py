@@ -1339,6 +1339,203 @@ class BIM_OT_designer_get_bom_tree(Operator):
         return {'FINISHED'}
 
 
+# ── BOM Drop (§28.1) ─────────────────────────────────────────────────────────
+
+
+class BIM_OT_designer_bom_drop(Operator):
+    """BOM Drop: explode building product into BOM tree"""
+    bl_idname = "bim.designer_bom_drop"
+    bl_label = "Create (BOM Drop)"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.building_id:
+            self.report({'ERROR'}, "No building ID set")
+            return {'CANCELLED'}
+
+        try:
+            # Implementing BIM_Designer_SRS.md §28.1 — Witness: W-DROP-1
+            result = _client.bom_drop(props.building_id)
+            if result.get("success"):
+                tree = result.get("tree")
+                roots = [tree] if tree else []
+                context.scene["_bom_tree"] = json.dumps(roots)
+                total = result.get("totalElements", 0)
+                order_id = result.get("orderId", "")
+                props.compile_status = f"BOM Drop: {total} elements (order: {order_id})"
+                self.report({'INFO'}, f"BOM Drop → {total} elements")
+            else:
+                error = result.get("error", "Unknown error")
+                props.compile_status = f"BOM Drop failed: {error}"
+                self.report({'WARNING'}, error)
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+class BIM_OT_designer_approve(Operator):
+    """Approve: compliance validation gate"""
+    bl_idname = "bim.designer_approve"
+    bl_label = "Approve"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.building_id:
+            self.report({'ERROR'}, "No building ID set")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.approve(props.building_id)
+            if result.get("success"):
+                status = result.get("complianceStatus", "Approved")
+                props.compile_status = f"Approved: {status}"
+                self.report({'INFO'}, f"Approved: {status}")
+            else:
+                error = result.get("error", "Unknown error")
+                props.compile_status = f"Approve failed: {error}"
+                self.report({'WARNING'}, error)
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
+# ── BOM Drop Floating Panel (§17.19) ─────────────────────────────────────────
+
+
+class BIM_OT_designer_bom_drop_popup(Operator):
+    """Open BOM Drop configurator as a floating panel"""
+    bl_idname = "bim.designer_bom_drop_popup"
+    bl_label = "BOM Drop Configurator"
+    bl_options = {'REGISTER'}
+
+    def invoke(self, context, event):
+        # First, perform the BOM Drop if no tree is cached
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected — connect first in A.1")
+            return {'CANCELLED'}
+
+        if not props.building_id:
+            self.report({'ERROR'}, "No building ID set in A.2")
+            return {'CANCELLED'}
+
+        # BOM Drop — explode the tree
+        try:
+            result = _client.bom_drop(props.building_id)
+            if result.get("success"):
+                tree = result.get("tree")
+                roots = [tree] if tree else []
+                context.scene["_bom_tree"] = json.dumps(roots)
+                total = result.get("totalElements", 0)
+                order_id = result.get("orderId", "")
+                props.compile_status = f"BOM Drop: {total} elements (order: {order_id})"
+            else:
+                error = result.get("error", "Unknown error")
+                props.compile_status = f"BOM Drop failed: {error}"
+                self.report({'WARNING'}, error)
+                return {'CANCELLED'}
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return context.window_manager.invoke_popup(self, width=700)
+
+    def draw(self, context):
+        layout = self.layout
+        props = _get_props(context)
+
+        raw = context.scene.get("_bom_tree", "")
+        roots = json.loads(raw) if raw else []
+
+        # Header
+        header = layout.row()
+        header.label(text=f"BOM Drop — {props.building_id}", icon='OUTLINER')
+        header.label(text=props.compile_status)
+
+        layout.separator()
+
+        if not roots:
+            layout.label(text="No BOM tree loaded", icon='ERROR')
+            return
+
+        # Tree area — draw recursively with good indentation
+        tree_box = layout.box()
+        self._draw_nodes(tree_box, roots, depth=0)
+
+        layout.separator()
+
+        # DocAction row
+        action_box = layout.box()
+        action_box.label(text="DocAction: Save → Approve → Complete", icon='PLAY')
+        row = action_box.row(align=True)
+        row.scale_y = 1.4
+        row.operator("bim.designer_save", text="Save", icon='FILE_TICK')
+        row.operator("bim.designer_approve", text="Approve", icon='CHECKMARK')
+        row.operator("bim.designer_compile", text="Complete", icon='PLAY')
+
+        # Browse / swap hint
+        layout.separator()
+        hint = layout.row()
+        hint.label(text="Use BOM Chooser (A.3 BBOX view) to swap items", icon='INFO')
+
+    def _draw_nodes(self, layout, nodes, depth):
+        """Recursively draw BOM tree nodes with indentation."""
+        for node in nodes:
+            host_type = node.get("hostType", "")
+            icon = {
+                "BUILDING": 'HOME', "FLOOR": 'MOD_ARRAY',
+                "ROOM": 'CUBE',
+            }.get(host_type, 'DOT')
+
+            row = layout.row()
+            if depth > 0:
+                split = row.split(factor=min(depth * 0.04, 0.3))
+                split.label(text="")
+                row = split
+
+            family = node.get("familyRef", "?")
+            w = node.get("widthMm", 0)
+            d = node.get("depthMm", 0)
+            h = node.get("heightMm", 0)
+            cat = node.get("bomCategory", "")
+            dims = f"  {w:.0f}x{d:.0f}x{h:.0f}" if w > 0 else ""
+            cat_tag = f"  [{cat}]" if cat else ""
+
+            row.label(text=f"{family}{dims}{cat_tag}", icon=icon)
+
+            status = node.get("validationStatus", "")
+            if status and status != "UNCHECKED":
+                s_icon = 'CHECKMARK' if status == "PASS" else 'ERROR'
+                row.label(text=status, icon=s_icon)
+
+            children = node.get("children", [])
+            if children:
+                self._draw_nodes(layout, children, depth + 1)
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+
 # ── FL-2: Flywheel Advisory Panel (§27) ─────────────────────────────────────
 
 
@@ -1416,6 +1613,9 @@ _classes = (
     BIM_OT_designer_list_order_lines,
     BIM_OT_designer_update_order_line,
     BIM_OT_designer_get_bom_tree,
+    BIM_OT_designer_bom_drop,
+    BIM_OT_designer_approve,
+    BIM_OT_designer_bom_drop_popup,
     BIM_OT_designer_list_advisories,
 )
 

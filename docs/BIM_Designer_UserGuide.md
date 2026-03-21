@@ -1,7 +1,7 @@
 # BIM Designer — User Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
-**Version:** 0.8 (2026-03-20, session 39d)
+**Version:** 0.9 (2026-03-22, session 55)
 **Status:** Draft — updated each session as features are built and tested.
 
 > This guide covers the BIM Designer addon for Blender (Bonsai), the Java
@@ -22,6 +22,7 @@ BIM Designer is Item A of the IfcOpenShell Federation Suite. It adds
 
 - **Compile** existing buildings (YAML + BOM → output.db → 3D viewport)
 - **Create New** generative buildings (dialog → BOM → validate → compile)
+- **BOM Drop** — pick a building template, explode BOM tree, navigate/swap/compile (§5.11)
 - **Design Mode** — edit draft bboxes with snap, save/recall, and ambient compliance
 - **BOM Chooser** — search-first product browser with container fit check
 - **Validate** placements against building codes (UBBL, IRC, NDSS, NCC, BCA)
@@ -55,13 +56,18 @@ User clicks button in Blender
 │  │ #2 Visualization     │←─│   A.1 Connection         │  │
 │  │ #3 MEP Coordination  │  │   A.2 Building Selector  │  │
 │  │ #4 Clash Detection   │  │   A.3 Create New/Design  │  │
-│  │ ...                  │  │     Section Chooser      │  │
-│  │                      │  │     BOM Chooser          │  │
-│  │                      │  │     Snap/Save/Promote    │  │
-│  │                      │  │     Status Strip         │  │
-│  │                      │  │   A.4 Verb Console       │  │
+│  │ #5 Structural Works  │  │     Section Chooser      │  │
+│  │ #6 4D Scheduling  ⚡ │  │     BOM Chooser          │  │
+│  │ #7 5D Cost Mgmt   ⚡ │  │     Snap/Save/Promote    │  │
+│  │ #8 6D/7D DigiTwin ⚡ │  │     Status Strip         │  │
+│  │ #9 NLP Query         │  │   A.4 Verb Console       │  │
+│  │ #10 Viz Settings     │  │                          │  │
+│  │ #11 River Equipment  │  │                          │  │
+│  │ #12 PDF Terrain      │  │                          │  │
+│  │ #13 BOM Outliner  ✓  │──│   designer_bridge.py     │  │
 │  └─────────────────────┘  └───────────┬──────────────┘  │
-│                                       │ TCP 9876         │
+│  ⚡ = local Python (migration pending)│ TCP 9876         │
+│  ✓ = bridged to DesignerServer        │                  │
 └───────────────────────────────────────┼─────────────────┘
                                         │
 ┌───────────────────────────────────────┼─────────────────┐
@@ -192,10 +198,32 @@ Expected response: JSON array of building types.
 
 ### 5.1 Panel Location
 
-The BIM Designer panel appears in:
-**Properties → Scene → A. BIM Designer**
+The BIM Designer has two panel locations:
 
-It sits alongside the Federation addon's numbered panels (1-10).
+1. **Properties → Scene → A. BIM Designer** (standalone addon, panels A.1–A.4)
+2. **Properties → Scene → 13. BOM Outliner** (inside Federation addon, S55)
+
+Panel A sits alongside the Federation addon's numbered panels (#1–#12).
+The BOM Outliner (#13) is a Federation panel that bridges to the same
+DesignerServer via `designer_bridge.py` (TCP NDJSON on port 9876).
+
+**Panel numbering and bridge status:**
+
+| # | Panel | Status |
+|---|-------|--------|
+| **1D** | BIM Designer (BOM Drop, compile, validate) | Bridged to DesignerServer (44 wire actions) |
+| 2D | Import/Export | Pending |
+| **3D** | Federation (IFC Extract / IFCtoBOM / Preview / Full Load) | Local Python |
+| **4D** | Scheduling | Local Python — migration pending (server has `constructionSchedule`) |
+| **5D** | Costing | Local Python — migration pending (server has `costBreakdown`) |
+| **6D** | Asset Maintenance | Local Python — migration pending (server has `carbonFootprint`, `maintenanceSchedule`) |
+| **7D** | Tandem IoT | Local Python |
+| 8 | ERP Reporting | Pending |
+| **9** | NLP Query | Local Python |
+| **10** | Color Studio | Local Python |
+
+**Future:** Data/control panels (1D, 4D-9) will migrate to a **Web UI** frontend
+talking directly to DesignerServer. Bonsai stays as viewport-only (3D, Preview/Full Load).
 
 ### 5.2 Connection (A.1)
 
