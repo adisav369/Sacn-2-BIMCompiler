@@ -17,6 +17,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,6 +56,12 @@ public class WebUIServer implements AutoCloseable {
     private HttpServer httpServer;
     private volatile boolean running;
 
+    // ── Bidirectional sync state (Bonsai ↔ Web UI) ──────────
+    private volatile Map<String, String> currentSelection = Map.of();
+    private final Set<OutputStream> sseClients = ConcurrentHashMap.newKeySet();
+    private final java.util.concurrent.ConcurrentLinkedQueue<Map<String, Object>> pendingCommands =
+            new java.util.concurrent.ConcurrentLinkedQueue<>();
+
     public WebUIServer(DesignerServer designer, Path webRoot, Path libDir, int httpPort) {
         this.designer = designer;
         this.webRoot = webRoot;
@@ -77,6 +84,7 @@ public class WebUIServer implements AutoCloseable {
         httpServer = HttpServer.create(new InetSocketAddress(httpPort), 0);
         httpServer.setExecutor(Executors.newFixedThreadPool(8));
         httpServer.createContext("/api", this::handleApi);
+        httpServer.createContext("/events", this::handleSSE);
         httpServer.createContext("/", this::handleStatic);
         httpServer.start();
         running = true;
@@ -190,10 +198,22 @@ public class WebUIServer implements AutoCloseable {
 
             String response = switch (action) {
                 case "scanLibrary" -> scanLibrary();
+                case "scanBomProducts" -> scanBomProducts();
                 case "loadBuildingDetail" -> loadBuildingDetail(
                         obj.has("dbFile") ? obj.get("dbFile").getAsString() : null);
+                // ── Bidirectional sync (Bonsai ↔ Web UI) ────────────
+                case "selectionChanged" -> handleSelectionChanged(obj);
+                case "applyScheme" -> handleApplyScheme(obj);
+                case "pollCommands" -> handlePollCommands();
+                case "getSelection" -> JsonProtocol.toJson(currentSelection);
+                case "launchBonsai" -> handleLaunchBonsai();
                 default -> designer.dispatch(jsonLine);
             };
+
+            // ── Post-dispatch: detect compile completion → push to Bonsai ──
+            if (("compile".equals(action) || "completeIt".equals(action)) && response != null) {
+                afterCompile(action, response);
+            }
 
             if (callId != null && response != null) {
                 response = injectCallId(response, callId);
@@ -297,6 +317,206 @@ public class WebUIServer implements AutoCloseable {
             detail.put("error", e.getMessage());
         }
         return JsonProtocol.toJson(detail);
+    }
+
+    // ── SSE (Server-Sent Events) — push to browser ─────────────────────
+    // Implementing BIM_Designer_SRS.md §29.5 — Bonsai ↔ Web UI sync
+
+    private void handleSSE(HttpExchange exchange) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+        exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+        exchange.getResponseHeaders().set("Connection", "keep-alive");
+        exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+        exchange.sendResponseHeaders(200, 0); // chunked
+
+        OutputStream os = exchange.getResponseBody();
+        sseClients.add(os);
+        LOG.info("SSE client connected (" + sseClients.size() + " total)");
+
+        // Send initial selection state
+        if (!currentSelection.isEmpty()) {
+            sseWrite(os, "selectionChanged", JsonProtocol.toJson(currentSelection));
+        }
+
+        // Keep alive — block this thread until client disconnects
+        try {
+            while (running) {
+                Thread.sleep(15000);
+                sseWrite(os, "ping", "{\"ts\":" + System.currentTimeMillis() + "}");
+            }
+        } catch (InterruptedException | IOException ignored) {
+        } finally {
+            sseClients.remove(os);
+            LOG.info("SSE client disconnected (" + sseClients.size() + " remaining)");
+        }
+    }
+
+    private void sseWrite(OutputStream os, String event, String data) throws IOException {
+        String msg = "event: " + event + "\ndata: " + data + "\n\n";
+        synchronized (os) {
+            os.write(msg.getBytes(StandardCharsets.UTF_8));
+            os.flush();
+        }
+    }
+
+    private void sseBroadcast(String event, String data) {
+        for (OutputStream os : sseClients) {
+            try {
+                sseWrite(os, event, data);
+            } catch (IOException e) {
+                sseClients.remove(os);
+            }
+        }
+    }
+
+    // ── Bonsai ↔ Web UI sync actions ──────────────────────────────────
+
+    /**
+     * Bonsai sends this when viewport selection changes.
+     * Stores current selection and SSE-broadcasts to all browser clients.
+     */
+    private String handleSelectionChanged(JsonObject obj) {
+        Map<String, String> sel = new LinkedHashMap<>();
+        for (String key : new String[]{"objectName", "ifcClass", "guid", "discipline",
+                                        "material", "productId", "hostType"}) {
+            if (obj.has(key) && !obj.get(key).isJsonNull()) {
+                sel.put(key, obj.get(key).getAsString());
+            }
+        }
+        currentSelection = Map.copyOf(sel);
+        String json = JsonProtocol.toJson(sel);
+        sseBroadcast("selectionChanged", json);
+        LOG.fine("Selection changed: " + json);
+        return "{\"success\":true,\"event\":\"selectionChanged\"}";
+    }
+
+    /**
+     * Web UI sends this to apply a color scheme to the selected object(s) in Bonsai.
+     * Queues a command that Bonsai picks up via pollCommands.
+     */
+    private String handleApplyScheme(JsonObject obj) {
+        Map<String, Object> cmd = new LinkedHashMap<>();
+        cmd.put("command", "applyScheme");
+        if (obj.has("schemeName")) cmd.put("schemeName", obj.get("schemeName").getAsString());
+        if (obj.has("color")) cmd.put("color", obj.get("color").toString());
+        if (obj.has("guid")) cmd.put("guid", obj.get("guid").getAsString());
+        if (obj.has("objectName")) cmd.put("objectName", obj.get("objectName").getAsString());
+        if (obj.has("filterDiscipline")) cmd.put("filterDiscipline", obj.get("filterDiscipline").getAsString());
+        if (obj.has("filterIfcType")) cmd.put("filterIfcType", obj.get("filterIfcType").getAsString());
+        pendingCommands.add(cmd);
+        // Also broadcast to any other browser tabs
+        sseBroadcast("schemeApplied", JsonProtocol.toJson(cmd));
+        return "{\"success\":true,\"queued\":true}";
+    }
+
+    /**
+     * Bonsai polls this to get pending commands (color changes, etc.).
+     * Returns and clears the queue.
+     */
+    private String handlePollCommands() {
+        List<Map<String, Object>> commands = new ArrayList<>();
+        Map<String, Object> cmd;
+        while ((cmd = pendingCommands.poll()) != null) {
+            commands.add(cmd);
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("commands", commands);
+        result.put("count", commands.size());
+        return JsonProtocol.toJson(result);
+    }
+
+    // ── Launch Bonsai from Web UI ───────────────────────────────────────
+
+    private String handleLaunchBonsai() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("blender", "--python-expr",
+                    "import bpy; print('Bonsai ready')");
+            pb.redirectErrorStream(true);
+            pb.start(); // fire and forget — don't wait
+            return "{\"success\":true,\"message\":\"Blender launched\"}";
+        } catch (Exception e) {
+            return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    // ── Post-compile: auto-push to Bonsai viewport ─────────────────────
+
+    private void afterCompile(String action, String response) {
+        try {
+            JsonObject resp = JsonParser.parseString(response).getAsJsonObject();
+            boolean success = resp.has("success") && resp.get("success").getAsBoolean();
+            if (!success) return;
+
+            String outputDbPath = resp.has("outputDbPath") ? resp.get("outputDbPath").getAsString() : null;
+            int elementCount = resp.has("elementCount") ? resp.get("elementCount").getAsInt() : 0;
+
+            // 1. SSE broadcast compileComplete to browser
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("event", "compileComplete");
+            event.put("outputDbPath", outputDbPath);
+            event.put("elementCount", elementCount);
+            sseBroadcast("compileComplete", JsonProtocol.toJson(event));
+
+            // 2. Queue loadOutput command for Bonsai to pick up
+            if (outputDbPath != null && !outputDbPath.isBlank()) {
+                Map<String, Object> cmd = new LinkedHashMap<>();
+                cmd.put("command", "loadOutput");
+                cmd.put("outputDbPath", outputDbPath);
+                cmd.put("elementCount", elementCount);
+                pendingCommands.add(cmd);
+                LOG.info("Compile complete → queued loadOutput for Bonsai: " +
+                        outputDbPath + " (" + elementCount + " elements)");
+            }
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "afterCompile parse error (non-fatal)", e);
+        }
+    }
+
+    // ── scanBomProducts — BUILDING-level BOM headers from each *_BOM.db ──
+    // Implementing BIM_Designer_SRS.md §29.5 — new wire action for 1D Order Configurator
+
+    private String scanBomProducts() {
+        List<Map<String, Object>> products = new ArrayList<>();
+        try {
+            File[] dbFiles = libDir.toFile().listFiles((dir, name) -> name.endsWith("_BOM.db"));
+            if (dbFiles == null) dbFiles = new File[0];
+            Arrays.sort(dbFiles);
+
+            for (File dbFile : dbFiles) {
+                String code = dbFile.getName().replace("_BOM.db", "");
+                try (Connection conn = DriverManager.getConnection(
+                        "jdbc:sqlite:" + dbFile.getAbsolutePath());
+                     Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                             "SELECT bom_id, bom_name, bom_category, " +
+                             "aabb_width_mm, aabb_depth_mm, aabb_height_mm, " +
+                             "(SELECT COUNT(*) FROM m_bom_line bl WHERE bl.bom_id = b.bom_id) AS element_count " +
+                             "FROM m_bom b WHERE b.bom_type = 'BUILDING' AND b.is_active = 1")) {
+                    while (rs.next()) {
+                        Map<String, Object> entry = new LinkedHashMap<>();
+                        entry.put("bomId", rs.getString("bom_id"));
+                        entry.put("name", rs.getString("bom_name"));
+                        entry.put("category", rs.getString("bom_category"));
+                        entry.put("source", code);
+                        entry.put("dbFile", dbFile.getAbsolutePath());
+                        entry.put("elementCount", rs.getInt("element_count"));
+                        entry.put("widthMm", rs.getDouble("aabb_width_mm"));
+                        entry.put("depthMm", rs.getDouble("aabb_depth_mm"));
+                        entry.put("heightMm", rs.getDouble("aabb_height_mm"));
+                        products.add(entry);
+                    }
+                } catch (Exception e) {
+                    LOG.log(Level.FINE, "scanBomProducts skip " + code, e);
+                }
+            }
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "scanBomProducts failed", e);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("products", products);
+        result.put("count", products.size());
+        return JsonProtocol.toJson(result);
     }
 
     // ── Main ────────────────────────────────────────────────

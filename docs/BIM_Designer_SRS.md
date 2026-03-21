@@ -3032,7 +3032,7 @@ Web UI-primary tabs that show a brief description + launch button in Bonsai.
 
 **Operator:** `BIM_OT_launch_web_ui` — `webbrowser.open(url)`, `tab` StringProperty.
 
-### 29.5 1D Order Configurator (S57 — next iteration)
+### 29.5 1D Order Configurator (S57)
 
 The 1D tab is the **Order + OrderLine + ASI editor** — the YAML maker.
 
@@ -3060,7 +3060,57 @@ BUILDING-level BOM headers (`bom_id`, `name`, `element_count`) from each `*_BOM.
 └───────────────────────────────────────────────────────────┘
 ```
 
-### 29.6 Witnesses
+### 29.6 Bidirectional Sync — Bonsai ↔ Web UI (S57)
+
+**Architecture:** SSE (Server-Sent Events) pushes from server to browser.
+HTTP POST + command polling provides Bonsai→server→browser and browser→server→Bonsai.
+
+```
+Bonsai (viewport)         WebUIServer (:9878)         Browser (Web UI)
+  │ selectionChanged ──→  │ ── SSE push ──────────→  │ highlights in tab 10
+  │ pollCommands ←──────  │ ←── applyScheme ────────  │ user picks color
+  │ pollCommands ←──────  │ ←── compile complete ───  │ user clicks Complete
+  │ auto-load viewport    │                            │
+```
+
+**Endpoints:**
+
+| Endpoint | Direction | Purpose |
+|----------|-----------|---------|
+| `GET /events` | Server → Browser | SSE stream (selectionChanged, compileComplete, schemeApplied) |
+| `POST /api selectionChanged` | Bonsai → Server | Push viewport selection metadata |
+| `POST /api applyScheme` | Browser → Server | Queue color command for Bonsai |
+| `POST /api pollCommands` | Bonsai → Server | Pull pending commands (color, loadOutput) |
+| `POST /api getSelection` | Browser → Server | Get current Bonsai selection state |
+| `POST /api scanBomProducts` | Browser → Server | List BUILDING-level BOMs from all *_BOM.db |
+| `POST /api launchBonsai` | Browser → Server | Fire `blender` process |
+
+**Compile → Auto-Load flow:**
+1. Browser sends `compile` or `completeIt`
+2. WebUIServer dispatches to DesignerServer, gets CompileResponse with `outputDbPath`
+3. WebUIServer SSE-broadcasts `compileComplete` event to browser
+4. WebUIServer queues `loadOutput` command with `outputDbPath`
+5. Bonsai timer polls `pollCommands`, receives `loadOutput`
+6. Bonsai sets `federation_database_path` and calls viewport loader
+7. Geometry appears in Bonsai — zero manual steps
+
+**Bonsai addon layout:**
+- `BIM_PT_webui_sync` — top panel (`bl_order=0`), always first. "Start Sync + Open Web UI" button.
+  Starts 0.5s timer (selection watch + command poll) and opens browser.
+- Color Studio (tab 10) — "Start/Stop Sync" buttons, discipline color apply, scheme management.
+
+**Files:**
+
+| File | Role |
+|------|------|
+| `WebUIServer.java` | SSE endpoint, sync actions, afterCompile hook, launchBonsai |
+| `webui/app.js` | EventSource connection, tab 10 sync UI, compileComplete listener |
+| `webui/index.html` | Bonsai Selection card, Apply to Bonsai buttons, Launch Bonsai header button |
+| `webui/style.css` | sync-card, sync-dot, sync-object styles |
+| `webui_sync.py` | Bonsai timer, selection watcher, command poller, loadOutput handler |
+| `ui_federation_project.py` | BIM_PT_webui_sync top panel, Color Studio sync buttons |
+
+### 29.7 Witnesses
 
 | Witness | Claim | Test |
 |---------|-------|------|

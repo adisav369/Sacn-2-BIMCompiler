@@ -320,6 +320,38 @@ public class DesignerServer implements AutoCloseable {
                             request.stringField("buildingId"));
                     yield JsonProtocol.toJson(resp);
                 }
+                // ── ASI Authoring (§28, S52b) ──────────────────────────
+                case "readASI" -> {
+                    var resp = api.readASI(
+                            request.stringField("buildingId"),
+                            request.intField("orderLineId", 0));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "updateASI" -> {
+                    var resp = api.updateASI(
+                            request.stringField("buildingId"),
+                            request.intField("orderLineId", 0),
+                            request.stringField("attributeName"),
+                            request.stringField("value"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                // ── DocAction (§29.5) ──────────────────────────────────
+                case "prepareIt" -> {
+                    var resp = api.approve(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "completeIt" -> {
+                    // Complete = compile (same as "compile" action)
+                    CompileRequest req = new CompileRequest(
+                            request.stringField("buildingId"),
+                            request.stringField("bomDbPath"),
+                            request.stringField("libraryPath"),
+                            request.stringField("outputDir")
+                    );
+                    CompileResponse resp = api.compile(req);
+                    yield JsonProtocol.toJson(resp);
+                }
                 // ── WF-BB §26 verbs ──────────────────────────────
                 case "getElementMetadata" -> {
                     String bId = request.stringField("buildingId");

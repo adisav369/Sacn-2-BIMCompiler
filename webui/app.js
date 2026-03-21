@@ -12,6 +12,9 @@ const BIM = (() => {
 
     let currentBuilding = '';
     let buildingDb = {};
+    let selectedOrderLineId = 0;
+    let bomProducts = [];
+    let currentOrderLines = [];
 
     // ── HTTP API ────────────────────────────────────────────
 
@@ -111,9 +114,25 @@ const BIM = (() => {
     function onBuildingSelected() {
         loadBomTree();
         loadOrderLines();
+        scanBomProducts();
     }
 
-    // ── 1D: BOM Designer ────────────────────────────────────
+    // ── 1D: Order Configurator (§29.5) ───────────────────────
+
+    function scanBomProducts() {
+        send('scanBomProducts').then(data => {
+            bomProducts = data.products || [];
+            const select = document.getElementById('bomProductSelect');
+            select.innerHTML = '<option value="">Select BOM Template...</option>';
+            bomProducts.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.bomId;
+                opt.textContent = esc(p.name || p.bomId) +
+                    ' [' + esc(p.source) + '] (' + (p.elementCount || 0) + ' lines)';
+                select.appendChild(opt);
+            });
+        }).catch(() => {});
+    }
 
     function loadBomTree() {
         if (!currentBuilding) return;
@@ -125,7 +144,7 @@ const BIM = (() => {
         const tree = data.tree || data.children || data;
         if (!tree || (Array.isArray(tree) && tree.length === 0)) {
             container.innerHTML = '<div class="placeholder"><div class="icon">&#9776;</div>' +
-                '<h3>Empty BOM</h3><p>Use BOM Drop to populate the tree.</p></div>';
+                '<h3>Empty BOM</h3><p>Select a BOM template and click BOM Drop.</p></div>';
             document.getElementById('bomCount').textContent = '0 items';
             return;
         }
@@ -135,21 +154,22 @@ const BIM = (() => {
     }
 
     function renderNode(node) {
-        const name = node.name || node.bomId || node.productId || '?';
-        const type = node.type || node.bomType || '';
+        const name = node.name || node.bomId || node.familyRef || node.productId || '?';
+        const type = node.type || node.hostType || node.bomType || '';
         const qty = node.qty !== undefined ? node.qty : '';
         const icon = getNodeIcon(type);
         const children = node.children || [];
+        const lineId = node.orderLineId || 0;
 
         if (children.length === 0) {
-            return '<div class="leaf">' +
+            return '<div class="leaf" data-line-id="' + lineId + '" onclick="BIM.selectLine(' + lineId + ')">' +
                 '<span class="node-icon">' + icon + '</span>' +
                 '<span class="node-name">' + esc(name) + '</span>' +
                 (qty ? '<span class="node-qty">' + qty + '</span>' : '') +
                 (type ? '<span class="node-type">' + esc(type) + '</span>' : '') +
                 '</div>';
         }
-        return '<details open><summary>' +
+        return '<details open><summary data-line-id="' + lineId + '" onclick="BIM.selectLine(' + lineId + ')">' +
             '<span class="node-icon">' + icon + '</span>' +
             '<span class="node-name">' + esc(name) + '</span>' +
             (qty ? '<span class="node-qty">' + qty + '</span>' : '') +
@@ -165,41 +185,247 @@ const BIM = (() => {
 
     function getNodeIcon(type) {
         const icons = { 'BUILDING':'&#127970;', 'FLOOR':'&#9632;', 'ROOM':'&#9633;',
-                        'SET':'&#9654;', 'ITEM':'&#9679;', 'COMPONENT':'&#9675;' };
+                        'SET':'&#9654;', 'ITEM':'&#9679;', 'LEAF':'&#9679;', 'COMPONENT':'&#9675;' };
         return icons[(type || '').toUpperCase()] || '&#8226;';
     }
 
     function loadOrderLines() {
         if (!currentBuilding) return;
         send('listOrderLines', { buildingId: currentBuilding }).then(data => {
-            const lines = data.lines || data.orderLines || [];
-            document.getElementById('orderLinesBody').innerHTML = lines.map((l, i) =>
-                '<tr><td>' + (i+1) + '</td><td>' + esc(l.productId || l.familyRef || '') +
-                '</td><td>' + esc(l.category || l.bomCategory || '') +
-                '</td><td class="num">' + (l.qty || 1) +
-                '</td><td>' + esc(l.status || 'DR') + '</td></tr>'
-            ).join('');
+            currentOrderLines = data.lines || data.orderLines || [];
+            renderOrderLines(currentOrderLines);
         }).catch(() => {});
     }
 
+    function renderOrderLines(lines) {
+        const count = document.getElementById('orderLineCount');
+        if (count) count.textContent = lines.length + ' lines';
+        document.getElementById('orderLinesBody').innerHTML = lines.map((l, i) => {
+            const lineId = l.orderLineId || l.lineId || (i+1);
+            const status = (l.validationStatus || l.status || 'DR').toUpperCase();
+            const statusClass = status === 'KICKBACK' ? 'kickback' : status.toLowerCase().slice(0,2);
+            const sel = lineId === selectedOrderLineId ? ' selected' : '';
+            return '<tr class="order-line-row' + sel + '" data-line-id="' + lineId +
+                '" onclick="BIM.selectLine(' + lineId + ')">' +
+                '<td>' + (i+1) + '</td>' +
+                '<td>' + esc(l.familyRef || l.productId || '') + '</td>' +
+                '<td>' + esc(l.hostType || '') + '</td>' +
+                '<td>' + esc(l.bomCategory || l.category || '') + '</td>' +
+                '<td class="num editable" ondblclick="BIM.editCell(this,' + lineId + ',\'widthMm\')">' +
+                    fmt(l.widthMm || 0) + '</td>' +
+                '<td class="num editable" ondblclick="BIM.editCell(this,' + lineId + ',\'depthMm\')">' +
+                    fmt(l.depthMm || 0) + '</td>' +
+                '<td class="num editable" ondblclick="BIM.editCell(this,' + lineId + ',\'heightMm\')">' +
+                    fmt(l.heightMm || 0) + '</td>' +
+                '<td class="num editable" ondblclick="BIM.editCell(this,' + lineId + ',\'qty\')">' +
+                    (l.qty || 1) + '</td>' +
+                '<td><span class="status-badge ' + statusClass + '">' + esc(status) + '</span></td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    function selectLine(lineId) {
+        selectedOrderLineId = lineId;
+        // Highlight selected row
+        document.querySelectorAll('.order-line-row').forEach(r => r.classList.remove('selected'));
+        const row = document.querySelector('.order-line-row[data-line-id="' + lineId + '"]');
+        if (row) row.classList.add('selected');
+        // Load ASI for this line
+        loadASI(lineId);
+    }
+
+    function loadASI(lineId) {
+        if (!currentBuilding || !lineId) return;
+        const ref = document.getElementById('asiLineRef');
+        ref.textContent = 'Line #' + lineId;
+        send('readASI', { buildingId: currentBuilding, orderLineId: lineId }).then(data => {
+            renderASI(data, lineId);
+        }).catch(() => {
+            document.getElementById('asiPanel').innerHTML =
+                '<div style="padding:12px;color:var(--text-dim)">Failed to load ASI.</div>';
+        });
+    }
+
+    function renderASI(data, lineId) {
+        const panel = document.getElementById('asiPanel');
+        if (!data.success && data.error) {
+            panel.innerHTML = '<div style="padding:12px;color:var(--danger)">' + esc(data.error) + '</div>';
+            return;
+        }
+
+        const fields = data.fields || [];
+        const setName = data.attributeSetName || '';
+        const isInstance = data.isInstanceAttribute;
+
+        if (fields.length === 0 && !setName) {
+            panel.innerHTML = '<div style="padding:12px;color:var(--text-dim)">' +
+                'No attribute set defined for this product.</div>';
+            return;
+        }
+
+        let html = '';
+        if (setName) {
+            html += '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">' +
+                'Set: <strong>' + esc(setName) + '</strong>' +
+                (isInstance ? ' <span style="color:var(--accent)">(instance)</span>' : ' (shared)') +
+                '</div>';
+        }
+
+        if (fields.length === 0) {
+            html += '<div style="padding:8px 0;color:var(--text-dim)">' +
+                'No values set. Edit dimensions below or use auto-populate.</div>';
+            // Show default dimension fields for instance attributes
+            if (isInstance) {
+                html += renderASIForm([
+                    { name: 'width_mm', value: '', valueType: 'NUMBER', overridden: false },
+                    { name: 'depth_mm', value: '', valueType: 'NUMBER', overridden: false },
+                    { name: 'height_mm', value: '', valueType: 'NUMBER', overridden: false },
+                    { name: 'material', value: '', valueType: 'TEXT', overridden: false },
+                    { name: 'finish', value: '', valueType: 'TEXT', overridden: false }
+                ], lineId);
+            }
+        } else {
+            html += renderASIForm(fields, lineId);
+        }
+
+        panel.innerHTML = '<div class="asi-form">' + html + '</div>';
+    }
+
+    function renderASIForm(fields, lineId) {
+        return fields.map(f => {
+            const cls = f.overridden ? ' overridden' : '';
+            return '<div class="asi-field' + cls + '">' +
+                '<label>' + esc(f.name) + '</label>' +
+                '<input type="' + (f.valueType === 'NUMBER' ? 'number' : 'text') + '"' +
+                ' value="' + esc(f.value || '') + '"' +
+                ' data-field="' + esc(f.name) + '"' +
+                ' data-line-id="' + lineId + '"' +
+                ' onchange="BIM.onASIChange(this)"' +
+                ' placeholder="' + esc(f.name) + '">' +
+                (f.overridden ? '<span class="asi-hint">User override</span>' : '') +
+                '</div>';
+        }).join('');
+    }
+
+    function onASIChange(input) {
+        const field = input.dataset.field;
+        const lineId = parseInt(input.dataset.lineId, 10);
+        const value = input.value;
+        if (!currentBuilding || !lineId || !field) return;
+        send('updateASI', {
+            buildingId: currentBuilding,
+            orderLineId: lineId,
+            attributeName: field,
+            value: value
+        }).then(data => {
+            if (data.success) {
+                renderASI(data, lineId);
+            }
+        }).catch(() => {});
+    }
+
+    function editCell(td, lineId, field) {
+        if (td.querySelector('input')) return; // already editing
+        const currentVal = td.textContent.trim().replace(/,/g, '');
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.value = currentVal;
+        input.style.width = '100%';
+        td.textContent = '';
+        td.appendChild(input);
+        input.focus();
+        input.select();
+
+        function commit() {
+            const newVal = input.value.trim();
+            if (newVal !== currentVal && newVal !== '') {
+                send('updateOrderLine', {
+                    buildingId: currentBuilding,
+                    orderLineId: lineId,
+                    field: field,
+                    value: newVal
+                }).then(() => {
+                    loadOrderLines();
+                }).catch(() => {
+                    td.textContent = currentVal;
+                });
+            } else {
+                td.textContent = currentVal;
+            }
+        }
+
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') { td.textContent = currentVal; }
+        });
+    }
+
     function bomDrop() {
-        const id = currentBuilding || prompt('Building product ID (e.g. BUILDING_SH_STD):');
-        if (!id) return;
+        const select = document.getElementById('bomProductSelect');
+        let id = select.value;
+        if (!id) {
+            id = currentBuilding;
+        }
+        if (!id) {
+            alert('Select a BOM template from the dropdown first.');
+            return;
+        }
+        document.getElementById('docStatus').textContent = 'Dropping...';
         send('bomDrop', { buildingProductId: id }).then(data => {
-            currentBuilding = data.buildingId || currentBuilding;
-            document.getElementById('docStatus').textContent = 'Dropped';
-            loadBomTree();
+            if (!data.success) {
+                document.getElementById('docStatus').textContent = 'Drop failed';
+                alert('BOM Drop failed: ' + (data.error || 'Unknown error'));
+                return;
+            }
+            currentBuilding = data.orderId || currentBuilding;
+            document.getElementById('docStatus').textContent =
+                'Dropped (' + (data.totalElements || 0) + ' elements)';
+            // Render returned tree directly
+            if (data.tree) {
+                renderBomTree({ tree: data.tree });
+            }
             loadOrderLines();
-        }).catch(e => alert('BOM Drop failed: ' + e.message));
+        }).catch(e => {
+            document.getElementById('docStatus').textContent = 'Drop failed';
+            alert('BOM Drop failed: ' + e.message);
+        });
     }
 
     function save() {
         if (!currentBuilding) { alert('Select a building first'); return; }
+        document.getElementById('docStatus').textContent = 'Saving...';
         send('save', { buildingId: currentBuilding, bboxes: [],
             variantLabel: 'WebUI-' + new Date().toISOString().slice(0,16)
         }).then(() => {
-            document.getElementById('docStatus').textContent = 'Saved';
+            document.getElementById('docStatus').textContent = 'Saved (IP)';
         }).catch(e => alert('Save failed: ' + e.message));
+    }
+
+    function completeOrder() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        document.getElementById('docStatus').textContent = 'Validating...';
+        // prepareIt → validate, then completeIt → compile
+        send('prepareIt', { buildingId: currentBuilding }).then(data => {
+            if (data.success === false) {
+                document.getElementById('docStatus').textContent = 'Kickback';
+                loadOrderLines(); // reload to show kickback status
+                return;
+            }
+            document.getElementById('docStatus').textContent = 'Compiling...';
+            send('completeIt', { buildingId: currentBuilding }).then(cdata => {
+                document.getElementById('docStatus').textContent =
+                    'Complete (CO) — ' + (cdata.elementCount || '?') + ' elements';
+                loadBomTree();
+                loadOrderLines();
+            }).catch(e => {
+                document.getElementById('docStatus').textContent = 'Compile failed';
+                alert('Complete failed: ' + e.message);
+            });
+        }).catch(e => {
+            document.getElementById('docStatus').textContent = 'Validation failed';
+            alert('Prepare failed: ' + e.message);
+        });
     }
 
     function compile() {
@@ -390,7 +616,169 @@ const BIM = (() => {
         }).catch(() => {});
     }
 
-    // ── 10: Color Studio ────────────────────────────────────
+    // ── SSE: Server-Sent Events (Bonsai → Web UI) ───────────
+
+    let sseSource = null;
+    let bonsaiSelection = {};
+
+    function connectSSE() {
+        if (sseSource) sseSource.close();
+        sseSource = new EventSource('/events');
+
+        sseSource.addEventListener('selectionChanged', e => {
+            try {
+                bonsaiSelection = JSON.parse(e.data);
+                renderSyncSelection(bonsaiSelection);
+            } catch (err) { console.warn('SSE parse error:', err); }
+        });
+
+        sseSource.addEventListener('compileComplete', e => {
+            try {
+                const data = JSON.parse(e.data);
+                const ds = document.getElementById('docStatus');
+                if (ds) ds.textContent = 'Compiled → Loading in Bonsai (' +
+                    (data.elementCount || '?') + ' el)';
+                const fb = document.getElementById('applyFeedback');
+                if (fb) fb.textContent = 'Compile output sent to Bonsai: ' +
+                    (data.outputDbPath || '');
+            } catch (err) {}
+        });
+
+        sseSource.addEventListener('schemeApplied', e => {
+            try {
+                const cmd = JSON.parse(e.data);
+                const fb = document.getElementById('applyFeedback');
+                if (fb) fb.textContent = 'Scheme sent to Bonsai: ' + (cmd.schemeName || cmd.command);
+            } catch (err) {}
+        });
+
+        sseSource.onopen = () => {
+            const st = document.getElementById('syncStatus');
+            if (st) st.innerHTML = '<span class="sync-dot live"></span>Live';
+        };
+
+        sseSource.onerror = () => {
+            const st = document.getElementById('syncStatus');
+            if (st) st.innerHTML = '<span class="sync-dot offline"></span>Reconnecting...';
+        };
+    }
+
+    function renderSyncSelection(sel) {
+        const container = document.getElementById('syncSelection');
+        if (!container) return;
+
+        if (!sel || !sel.objectName) {
+            container.innerHTML = '<div class="placeholder" style="padding:20px 10px">' +
+                '<div class="icon" style="font-size:28px">&#128065;</div>' +
+                '<p>Select an object in Bonsai viewport.</p></div>';
+            return;
+        }
+
+        const fields = [
+            ['Object', sel.objectName],
+            ['IFC Class', sel.ifcClass],
+            ['GUID', sel.guid],
+            ['Discipline', sel.discipline],
+            ['Material', sel.material],
+            ['Product', sel.productId],
+            ['Host', sel.hostType]
+        ].filter(f => f[1]);
+
+        container.innerHTML = '<div class="sync-object active">' +
+            fields.map(([label, value]) =>
+                '<span class="sync-label">' + esc(label) + '</span>' +
+                '<span class="sync-value">' + esc(value) + '</span>'
+            ).join('') + '</div>';
+
+        // Auto-switch to tab 10 if user has something selected
+        // (only if not already on tab 10 or 1d)
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab && activeTab.dataset.tab !== '10' && activeTab.dataset.tab !== '1d') {
+            // Don't auto-switch — user might be on another tab intentionally
+        }
+    }
+
+    // ── 10: Color Studio (Bonsai sync) ────────────────────────
+
+    function applySchemeToSelected() {
+        if (!bonsaiSelection.objectName) {
+            alert('No object selected in Bonsai. Select something in the 3D viewport first.');
+            return;
+        }
+        const palette = document.getElementById('paletteSelect').value;
+        const colors = PALETTES[palette] || PALETTES.realistic;
+        send('applyScheme', {
+            schemeName: palette,
+            objectName: bonsaiSelection.objectName,
+            guid: bonsaiSelection.guid || '',
+            color: JSON.stringify(colors[0][1])  // first color as default
+        }).then(() => {
+            document.getElementById('applyFeedback').textContent =
+                'Sent "' + palette + '" scheme to Bonsai for "' + bonsaiSelection.objectName + '"';
+        }).catch(e => {
+            document.getElementById('applyFeedback').textContent = 'Failed: ' + e.message;
+        });
+    }
+
+    function applySchemeToAll() {
+        const palette = document.getElementById('paletteSelect').value;
+        send('applyScheme', {
+            schemeName: palette,
+            objectName: '*',
+            guid: '*'
+        }).then(() => {
+            document.getElementById('applyFeedback').textContent =
+                'Sent "' + palette + '" scheme to all objects in Bonsai';
+        }).catch(e => {
+            document.getElementById('applyFeedback').textContent = 'Failed: ' + e.message;
+        });
+    }
+
+    function applyDisciplineColor(disc) {
+        const discColors = {
+            'ARC':'#8B9DC3', 'STR':'#D4A574', 'MEP':'#6BB5E0', 'ELEC':'#F5D76E',
+            'PLB':'#5DADE2', 'FP':'#E74C3C', 'HVAC':'#48C9B0', 'CW':'#BB8FCE'
+        };
+        send('applyScheme', {
+            schemeName: 'discipline',
+            filterDiscipline: disc,
+            color: discColors[disc] || '#888888',
+            objectName: bonsaiSelection.objectName || '*'
+        }).then(() => {
+            document.getElementById('applyFeedback').textContent =
+                'Applied ' + disc + ' color to Bonsai';
+        }).catch(() => {});
+    }
+
+    function resetBonsaiColors() {
+        send('applyScheme', {
+            schemeName: 'reset',
+            objectName: '*',
+            guid: '*'
+        }).then(() => {
+            document.getElementById('applyFeedback').textContent = 'Reset all colors in Bonsai';
+        }).catch(() => {});
+    }
+
+    function launchBonsai() {
+        // Try to launch Blender/Bonsai via server command
+        send('launchBonsai', {}).then(data => {
+            if (data.success) {
+                document.getElementById('applyFeedback').textContent = 'Bonsai launching...';
+            } else {
+                // Fallback: show instructions
+                alert('To launch Bonsai:\n\n' +
+                    '1. Open Blender\n' +
+                    '2. Enable Federation + BIM Designer addons\n' +
+                    '3. Click "Start Sync + Open Web UI" in the panel\n\n' +
+                    'Or run: blender --python-expr "import bpy"');
+            }
+        }).catch(() => {
+            alert('Launch Bonsai:\n\n' +
+                'Open Blender with Federation addon enabled.\n' +
+                'Click "Start Sync" in the Web UI Sync panel.');
+        });
+    }
 
     const PALETTES = {
         realistic: [['Concrete Lt','#C8C0B8'],['Concrete Md','#A89E94'],['Concrete Dk','#7A7068'],
@@ -442,13 +830,19 @@ const BIM = (() => {
     document.addEventListener('DOMContentLoaded', () => {
         initTabs();
         loadBuildings();
+        scanBomProducts();
         selectPalette('realistic');
+        connectSSE();
     });
 
     return {
-        send, bomDrop, save, compile, loadBuildings, selectBuilding, loadDetail,
+        send, bomDrop, save, compile, completeOrder,
+        loadBuildings, selectBuilding, loadDetail,
+        selectLine, loadASI, onASIChange, editCell,
         loadSchedule, loadCost, loadCarbon, loadMaintenance, loadPortfolio,
         searchProducts, setQuery, executeQuery, clearQueryResults,
-        selectPalette, filterDiscipline
+        selectPalette, filterDiscipline,
+        applySchemeToSelected, applySchemeToAll, applyDisciplineColor, resetBonsaiColors,
+        launchBonsai
     };
 })();

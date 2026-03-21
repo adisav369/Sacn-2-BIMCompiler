@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 56b. From-scratch pipeline verified. 26/34 buildings ran (9 pending). SH/FK 7/7 GREEN. run_RosettaStones.sh now includes validation rule extraction. Log: `logs/run_RosettaStones_20260322_063438.txt`**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 57. 1D Order Configurator + Bonsai ↔ Web UI bidirectional sync. 331/333 GREEN (2 pre-existing PortfolioTest). DesignerServerTest 21/21.**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
@@ -24,7 +24,7 @@
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
 **Scorecard: 31/36** (was 27). 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
-**Wire actions:** 44 total (was 42). +2: listAdvisories, suggestDimensions.
+**Wire actions:** 51 total (was 44). +7: scanBomProducts, readASI, updateASI, prepareIt, completeIt, selectionChanged, applyScheme.
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 **G-9 (S46b):** ORDER View + BOM Outliner. 3 API actions, 7 witnesses. UX-F-26 (sync) + UX-F-27 (three views) → IMPLEMENTED.
 **FL-2 (S50):** Advisory output — 3-layer W_Validation_Advisory (DIMENSION/PROFILE/SHAPE). 9 witnesses.
@@ -153,10 +153,33 @@
   **Pre-existing debt (unchanged):** IN G3 120 window SHIFTs (S39c), DX G2/G3/C9 87 MIRROR (S25),
   TE G3+W-TOT 48336/48428 (re-baseline).
 
-**Next: S57 — Remaining pipeline + DM generative path:**
+**[DONE] S57 — 1D Order Configurator + Bonsai ↔ Web UI Bidirectional Sync:**
+  **1D Order Configurator (§29.5):**
+  - `scanBomProducts` wire action: queries `m_bom WHERE bom_type='BUILDING'` from each `*_BOM.db`
+  - BOM product dropdown → BOM Drop → C_Order + OrderLine hierarchy
+  - Editable OrderLine table (inline edit W/D/H/Qty via `updateOrderLine`)
+  - ASI panel: click line → `readASI` → form fields → `updateASI` on change
+  - DocAction: Save (IP) → Complete (prepareIt → completeIt → compile)
+  - Split-pane layout: BOM tree (left) + ASI panel (right), order lines below
+  - `readASI`/`updateASI`/`prepareIt`/`completeIt` wired into DesignerServer dispatch
+
+  **Bidirectional Sync (§29.6):**
+  - `GET /events` SSE endpoint — server pushes selectionChanged, compileComplete to browser
+  - Bonsai timer (0.5s): watches `context.active_object`, POSTs `selectionChanged` to WebUI
+  - Same timer: `pollCommands` pulls pending color/load commands from server
+  - Compile → auto-load: `afterCompile()` queues `loadOutput` → Bonsai auto-loads viewport
+  - `applyScheme` from browser → queued → Bonsai applies discipline/custom colors
+  - `BIM_PT_webui_sync` top panel (`bl_order=0`): "Start Sync + Open Web UI" button
+  - "Launch Bonsai" button in Web UI header — fires `blender` process
+  - `webui_sync.py`: selection watcher, command poller, loadOutput/applyScheme handlers
+  - Tab 10 Color Studio: SSE listener, Bonsai Selection card, Apply to Bonsai buttons
+
+  **Tests:** DesignerServerTest 21/21 GREEN. BomDropTest 6/6. ASIAuthoringTest 9/9.
+  BonsaiBIMDesigner 331/333 (2 pre-existing PortfolioTest).
+
+**Next: S58 — Remaining pipeline + DM generative path:**
   1. Run remaining 9 buildings (RA, JE, ES, MO, HI, RM, RS, SC, WA)
   2. DM generative path + outstanding gate issues: [GENERATIVE_HOUSE_SRS.md](docs/GENERATIVE_HOUSE_SRS.md) §"Next Step: DM"
-  3. 1D Order Configurator: [BIM_Designer_SRS.md](docs/BIM_Designer_SRS.md) §28 + §29.5
 
 **Deferred: Rosetta Stone wiring (Track 2 from S55):**
 
