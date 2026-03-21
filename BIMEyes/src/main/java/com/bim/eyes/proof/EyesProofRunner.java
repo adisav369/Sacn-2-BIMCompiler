@@ -126,6 +126,9 @@ public class EyesProofRunner {
             dbLevelResults.addAll(ShapeIdentityProof.prove(conn));
             dbLevelResults.addAll(OpeningMeshInBboxProof.prove(conn));
             dbLevelResults.addAll(DrainCornerAlignmentProof.prove(conn));
+            // P25/P26: aggregate building-level proofs (Phase 3)
+            dbLevelResults.addAll(RoomValidityProof.prove(conn));
+            dbLevelResults.addAll(BuildingCompletenessProof.prove(conn));
         } catch (SQLException e) {
             System.err.printf("[PROOF] Cannot read DB %s: %s%n", dbPath, e.getMessage());
             return buildReport(List.of());

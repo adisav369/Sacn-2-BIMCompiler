@@ -579,6 +579,14 @@ are waste.
 | LAST_MILE §3c, BBC.md §2 | P06 cross-product furniture overlap exempt, same-product flagged; IfcPlate 50mm tolerance | PlacementProver | W-P06-SHARP-1 / PlacementProver | **SPEC ONLY** (C11, session 28) |
 | LAST_MILE §3a, R26 | GEO_ slab fallback resolved — M_Product_Image chain complete for IfcSlab | MeshBinder | G5-PROVENANCE | **SPEC ONLY** (C12, session 28) |
 
+### BIMEyes — Geometric Comprehension (P25/P26)
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| EYES_SRS §4.4 | P25 ROOM_VALIDITY: room has walls≥2, floor, ceiling, door | RoomValidityProof | W-ROOM-VALID / EyesProofRunner | **IMPLEMENTED** (advisory, session 50) |
+| EYES_SRS §4.5 | P26 BUILDING_COMPLETENESS: rooms, roof, external door, circulation if multi-storey | BuildingCompletenessProof | W-BLDG-COMPLETE / EyesProofRunner | **IMPLEMENTED** (advisory, session 50) |
+| EYES_SRS §10 Phase 2 | 24 proofs extracted to individual classes, PlacementProver thin facade | EyesProofRunner | W-EYES-NONDISTURB / CompilerContractTest 7/7 | **IMPLEMENTED** (session 50) |
+
 ### BIM_Designer — BOM Outliner + YAML v3
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |

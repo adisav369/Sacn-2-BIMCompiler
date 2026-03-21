@@ -30,19 +30,26 @@
 
 ## What's Next
 
+**[DONE] BIMEyes Phase 3: New Proofs P25/P26 (session 50):**
+  P25 ROOM_VALIDITY: room has walls≥2, floor, ceiling, door (DB-level, advisory).
+  P26 BUILDING_COMPLETENESS: rooms, roof, external door, circulation if multi-storey (advisory).
+  Wired into EyesProofRunner.proveFromDB. TestArchitecture.md traceability updated.
+  SH: P25 SKIPPED (no IfcSpace in output), P26 roof PROVEN. DX: external door + circulation PROVEN.
+  Wrapper removal deferred — wrappers harmless, deprecated, flagged.
+  **Next:** DimensionRangeValidator ShapeClassifier wiring (P24 alignment), wrapper removal.
+
 **[DONE] BIMEyes Phase 2: Extract Proof Methods (session 50):**
   24 proof classes extracted from PlacementProver → individual classes under proof/tier1/2/3.
   Tier 1 (4): PositiveExtentProof, FiniteCoordsProof, MinDimensionProof, StoreyZBandProof.
   Tier 2 (10): DuplicatePosition, SameClassOverlap, OpeningContainment, FurnitureInRoom,
     FixtureOnSurface, PipeInHost, WallOrientation, ElementInRoom, OpeningMeshInBbox, DrainCornerAlignment.
-  Tier 3 (10): ShapeIdentity, PerimeterClosure, WallCoverage, RoomHasDoor, PerimeterLength,
-    FloorArea, WasteGradient, SystemConnected, VentAboveRoof, LodGeometry.
+  Tier 3 (12): ShapeIdentity, PerimeterClosure, WallCoverage, RoomHasDoor, PerimeterLength,
+    FloorArea, WasteGradient, SystemConnected, VentAboveRoof, LodGeometry, RoomValidity, BuildingCompleteness.
   EyesProofRunner orchestrator with RelationalContext. PlacementData + RelationalData records.
   PlacementProver → thin facade delegating to EyesProofRunner (data loading stays in facade).
   EyesConstants: +5 thresholds (containment, coverage, plate, area conservation, wall thickness).
-  BIMEyes: 39 source files (was 12). CompilerContractTest prover 7/7 PASS.
+  BIMEyes: 41 source files (was 12). CompilerContractTest prover 7/7 PASS.
   BonsaiBIMDesigner 285/285 GREEN. SH 9/10 undisturbed.
-  **Phase 3 next:** Implement P25 ROOM_VALIDITY, P26 BUILDING_COMPLETENESS, remove wrappers.
 
 **[DONE] BIMEyes Phase 1: Standalone Module (session 49):**
   New module `BIMEyes/` — 12 source files, 4 packages (shape, compare, diff, proof).
