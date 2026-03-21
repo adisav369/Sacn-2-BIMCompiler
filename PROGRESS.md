@@ -123,11 +123,15 @@
   doc_sub_type on SET/FLOOR BOMs: DROPPED — per user direction, no more BOMCategory/DocType/SubType
   on OrderLine level. All is simple OrderLine → Product → BOM explosion.
 
-**Next: S54b — Complete BOM Drop wiring:**
-  S54a PARTIAL: bomDrop() API + BomDropTest (6 witnesses, W-DROP-1..6) DONE.
-  Still needed from S54a: PlacementLoader isolation fix, W002 M_Product_ID migration,
-  BomDropCompileTest (bomDrop→compile→55 elements end-to-end equivalence proof).
-  Then S54b:
+**Next: S55 — BOM Drop Frontend (Blender BOM Outliner):**
+  Backend DONE: bomDrop() API explodes BOM tree into C_OrderLine hierarchy (6 witnesses GREEN).
+  Frontend: wire BOM Outliner into Blender addon (BIM Designer panel).
+  1. Call bomDrop(buildingProductId) from Blender "Create" button → receive BomTreeNode
+  2. Render tree in Blender Outliner — expand/collapse per node (BUILDING→FLOOR→ROOM→LEAF)
+  3. Click node → show swap candidates by M_Product_Category (browseItems by bom_category)
+  4. DocAction buttons: Save (validate+adjust) → Approve (new product config) → Complete (compile+viewport)
+  5. Thin pipe: if user doesn't modify, fold back to parent line; if modified, send all child lines
+  6. On Complete → compile() → load solid geometry in viewport
   1. Wire run_RosettaStones.sh through C_OrderLine + explodeBOM path (replace ENBLOC/WALKTHRU)
   2. Single compilation mode: 1 C_OrderLine per building → bomDrop → compile
   3. Same element counts: 55/82/699/1099/48428 (gate: Rosetta Stones unchanged)
