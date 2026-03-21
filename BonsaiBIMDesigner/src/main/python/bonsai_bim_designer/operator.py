@@ -705,6 +705,137 @@ class BIM_OT_designer_place_item(Operator):
         return {'FINISHED'}
 
 
+class BIM_OT_designer_click_to_place(Operator):
+    """Click-to-Place: click viewport to place discipline item in resolved room (§18.8)"""
+    bl_idname = "bim.designer_click_to_place"
+    bl_label = "Click to Place"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def invoke(self, context, event):
+        """Start modal — wait for user click in 3D viewport."""
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.design_mode:
+            self.report({'ERROR'}, "Enter Design Mode first")
+            return {'CANCELLED'}
+
+        context.window.cursor_set('CROSSHAIR')
+        context.window_manager.modal_handler_add(self)
+        self.report({'INFO'}, "Click in viewport to place item...")
+        return {'RUNNING_MODAL'}
+
+    def modal(self, context, event):
+        if event.type == 'LEFTMOUSE' and event.value == 'PRESS':
+            context.window.cursor_set('DEFAULT')
+            return self._do_place(context, event)
+        elif event.type in {'RIGHTMOUSE', 'ESC'}:
+            context.window.cursor_set('DEFAULT')
+            self.report({'INFO'}, "Click-to-Place cancelled")
+            return {'CANCELLED'}
+
+        return {'PASS_THROUGH'}
+
+    def _do_place(self, context, event):
+        """Ray-cast from mouse into viewport, compute world position, send to server."""
+        import bpy_extras.view3d_utils as v3d
+        from mathutils import Vector
+
+        props = _get_props(context)
+        region = context.region
+        rv3d = context.space_data.region_3d
+
+        # Ray from mouse position through viewport
+        coord = (event.mouse_region_x, event.mouse_region_y)
+        ray_origin = v3d.region_2d_to_origin_3d(region, rv3d, coord)
+        ray_direction = v3d.region_2d_to_vector_3d(region, rv3d, coord)
+
+        # Intersect with the ground plane (Z = 0) or focused storey plane
+        # Default: intersect with Z=0 plane
+        floor_z = 0.0
+        bbox_json = context.scene.get("_design_bboxes", "")
+        if bbox_json and props.active_section:
+            for bb in json.loads(bbox_json):
+                if bb.get("bomId") == props.active_section:
+                    floor_z = bb.get("minZ", 0)
+                    break
+
+        # Plane intersection: solve ray_origin + t * ray_direction = (x, y, floor_z)
+        if abs(ray_direction.z) < 1e-6:
+            self.report({'WARNING'}, "Cannot ray-cast at this angle")
+            return {'CANCELLED'}
+
+        t = (floor_z - ray_origin.z) / ray_direction.z
+        if t < 0:
+            self.report({'WARNING'}, "Click behind camera")
+            return {'CANCELLED'}
+
+        hit = ray_origin + t * ray_direction
+        # Blender uses metres; server expects mm
+        click_x = hit.x * 1000.0
+        click_y = hit.y * 1000.0
+        click_z = hit.z * 1000.0
+
+        # Get current bboxes and discipline
+        if not bbox_json:
+            self.report({'ERROR'}, "No design data")
+            return {'CANCELLED'}
+
+        bboxes = json.loads(bbox_json)
+        discipline = props.click_discipline if hasattr(props, 'click_discipline') else "ARC"
+
+        try:
+            result = _client.click_to_place(
+                building_id=props.building_name or "untitled",
+                click_x=click_x,
+                click_y=click_y,
+                click_z=click_z,
+                discipline=discipline,
+                current_bboxes=bboxes,
+            )
+
+            if result.get("success"):
+                placed = result.get("placedItems", [])
+                room_id = result.get("resolvedRoomBomId", "?")
+                mep_reqs = result.get("mepRequirements", [])
+                if placed:
+                    for item in placed:
+                        bboxes.append(item)
+                    context.scene["_design_bboxes"] = json.dumps(bboxes)
+                    design_bbox.enable(bboxes)
+
+                # Build coverage summary
+                if mep_reqs:
+                    total_needed = sum(r.get("qtyNormal", 0) for r in mep_reqs)
+                    total_placed = sum(r.get("qtyPlaced", 0) for r in mep_reqs)
+                    coverage_pct = int(100 * total_placed / max(total_needed, 1))
+                    # Store MEP coverage for panel display
+                    context.scene["_mep_coverage"] = json.dumps(mep_reqs)
+                    props.compile_status = (
+                        f"{room_id}: {len(placed)} items, "
+                        f"coverage {total_placed}/{total_needed} ({coverage_pct}%)"
+                    )
+                elif placed:
+                    props.compile_status = f"Placed {len(placed)} item(s) in {room_id}"
+                else:
+                    props.compile_status = f"Room {room_id}: no fitting products"
+                self.report({'INFO'}, props.compile_status)
+            else:
+                props.compile_status = f"Click-to-Place: {result.get('error', '')}"
+                self.report({'WARNING'}, props.compile_status)
+                return {'CANCELLED'}
+        except Exception as e:
+            props.compile_status = f"Click-to-Place error: {e}"
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
 class BIM_OT_designer_find_similar(Operator):
     """Find products similar to a selected item — JEPA embedding similarity (§25.3)"""
     bl_idname = "bim.designer_find_similar"
@@ -1099,6 +1230,7 @@ _classes = (
     BIM_OT_designer_browse_next,
     BIM_OT_designer_browse_prev,
     BIM_OT_designer_place_item,
+    BIM_OT_designer_click_to_place,
     BIM_OT_designer_find_similar,
     BIM_OT_designer_add_room,
     BIM_OT_designer_remove_room,

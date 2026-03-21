@@ -311,6 +311,90 @@ public class WorkOutputDAO {
         return result;
     }
 
+    // ── Insert single OrderLine (for placeItem persistence) ─────────
+
+    /**
+     * Insert a single C_OrderLine for a placed item into the active sub-order.
+     * If no active sub-order exists, creates one (auto-save behaviour).
+     *
+     * @return the C_OrderLine_ID (auto-incremented)
+     */
+    public int insertOrderLine(String buildingId, DesignBBox itemBbox) throws SQLException {
+        // Find active sub-order (most recent CO for this building)
+        String activeSubOrder = findActiveSubOrder(buildingId);
+        if (activeSubOrder == null) {
+            // No active sub-order — create one as an auto-save
+            activeSubOrder = buildingId + "_auto_" + System.currentTimeMillis();
+            String insertOrder = """
+                    INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
+                        DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                    VALUES (?, ?, 'GENERATIVE', ?, 'DR', 0, 0, 0)
+                    """;
+            try (PreparedStatement ps = conn.prepareStatement(insertOrder)) {
+                ps.setString(1, activeSubOrder);
+                ps.setString(2, buildingId);
+                ps.setString(3, "auto-place");
+                ps.executeUpdate();
+            }
+            BIMLogger.info(TAG, "Created auto sub-order {} for placeItem", activeSubOrder);
+        }
+
+        // Find next Line sequence
+        int nextLine = 10;
+        String maxLine = "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = ?";
+        try (PreparedStatement ps = conn.prepareStatement(maxLine)) {
+            ps.setString(1, activeSubOrder);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) nextLine = rs.getInt(1) + 10;
+            }
+        }
+
+        // Insert the C_OrderLine
+        String insertLine = """
+                INSERT INTO C_OrderLine (C_Order_ID, Line, family_ref, host_type,
+                    bom_category, dx, dy, dz,
+                    aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(insertLine,
+                Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, activeSubOrder);
+            ps.setInt(2, nextLine);
+            ps.setString(3, itemBbox.bomId());
+            ps.setString(4, itemBbox.bomType());
+            ps.setString(5, itemBbox.category());
+            ps.setDouble(6, itemBbox.minX() / 1000.0);  // mm → metres
+            ps.setDouble(7, itemBbox.minY() / 1000.0);
+            ps.setDouble(8, itemBbox.minZ() / 1000.0);
+            ps.setDouble(9, itemBbox.maxX() - itemBbox.minX());
+            ps.setDouble(10, itemBbox.maxY() - itemBbox.minY());
+            ps.setDouble(11, itemBbox.maxZ() - itemBbox.minZ());
+            ps.executeUpdate();
+
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) return keys.getInt(1);
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Find the most recent active sub-order for a building (DR or IP status).
+     */
+    private String findActiveSubOrder(String buildingId) throws SQLException {
+        String sql = """
+                SELECT C_Order_ID FROM C_Order
+                WHERE Parent_Order_ID = ? AND DocStatus IN ('DR', 'IP')
+                ORDER BY created DESC LIMIT 1
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private int countVariants(String buildingId) throws SQLException {

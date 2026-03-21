@@ -19,15 +19,41 @@
 **Pipeline:** 9 stages. 63 verbs. 1326 products. 4-DB architecture (21+20+6+output).
 **Rosetta Stones:** 20 buildings — SH (55), FK (82), IN (699), BR (48), RD (53), RL (73), DX (1099), TE (48428), BA (11), BH (5), BS (16), IP (27), SC (3214), CA (2586), CS (1078), CH (3693), CE (2110), CP (6584), ES (1941), MO (3114).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
-**BonsaiBIMDesigner:** 248/248 GREEN (31 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 249/249 GREEN (33 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
 **Scorecard: 31/36** (was 27). 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
-**Wire actions:** 38 total (was 28). +10: carbonFootprint, maintenanceSchedule, lifecycleCost, changelog, undoChanges, constructionSchedule, costBreakdown, portfolio, kanban, balancedScorecard.
+**Wire actions:** 39 total (was 38). +1: clickToPlace.
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 
 ## What's Next
+
+**[DONE] G-8 Click-to-Place core wiring (session 45):**
+  Interactive click-to-place: viewport click → room resolution → discipline-aware product placement.
+  **Java (API + Server + DAO):**
+  - `clickToPlace(ClickToPlaceRequest)` — resolves viewport (x,y,z) to containing room bbox,
+    queries `ad_space_type_mep_bom` from disc_validation.db for MEP disciplines (FP/ELEC/SP/ACMV),
+    falls back to keyword browse for ARC (furniture). Places seed item at click offset.
+  - `placeItem` persistence — now writes `C_OrderLine` to `work_output.db` via `insertOrderLine()`,
+    auto-creates sub-order if none exists. Returns real `orderLineId > 0`.
+  - `MEPBOMQuery` DAO — queries `ad_space_type_mep_bom` by (space_type, discipline),
+    maps discipline → MEP product IDs (FP=SPRINKLER/EMERGENCY_LIGHT, ELEC=LIGHT/OUTLET/SWITCH/etc,
+    SP=TOILET/SINK/FLOOR_TRAP, ACMV=SUPPLY_DIFFUSER/EXHAUST_FAN/AIRCON_POINT).
+  - `ClickToPlaceResponse` carries `mepRequirements` list with qty, placement_rule,
+    host_surface, building_code provenance from disc_validation.db.
+  **Python (Blender addon):**
+  - `BIM_OT_designer_click_to_place` — modal operator: CROSSHAIR cursor, viewport ray-cast
+    via `bpy_extras.view3d_utils`, ground-plane intersection → world mm → server call.
+  - `click_discipline` EnumProperty (ARC/FP/ELEC/SP/ACMV) in panel with Place button.
+  - `click_to_place()` client method wired to `"clickToPlace"` server action.
+  **15 witnesses** (2 test classes): ClickToPlaceTest (9) + MEPBOMQueryTest (6).
+  Multi-item placement: MEP disciplines place ALL required products per room (e.g., BATHROOM+ELEC
+  = LIGHT + OUTLET_GFCI + SWITCH). Coverage tracking: qtyPlaced vs qtyNormal per requirement.
+  `computePlacementOffset()` positions items by rule: CEILING_CENTER, WALL_ENTRY, WALL_SPACED,
+  CEILING_GRID (grid distribution for qty>1), FLOOR_LOW, WALL_BACK, WALL_HIGH, etc.
+  Panel shows per-product coverage (GREEN=met, AMBER=partial, RED=missing).
+  249/249 GREEN. Rosetta Stones undisturbed.
 
 **[DONE] DB migration + doc consolidation + market report (session 41b):**
   Phase 2b: MEPAD, MEPBOMResolver, ManifestResolver → disc_validation.db (was bom.db).
@@ -353,6 +379,7 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 45 | 2026-03-21 | G-8 Click-to-Place: clickToPlace API + viewport ray-cast + discipline selector + placeItem persistence + MEPBOMQuery + multi-item placement + coverage tracking + computePlacementOffset (16 placement rules). 15 witnesses | 249/249 |
 | 44 | 2026-03-21 | CP-3 scale-up: 12 IFCs onboarded (8→20 buildings). Scripts: onboard_ifc.sh, ifc_recon.py, rosetta_report.sh. Cross-class geometry fallback. 823→1326 products. Clinic federated (5 disciplines), Schependomlaan, Esplanades, Molio | — |
 | 43 | 2026-03-21 | AABB qualifier (INNER/OUTER/STRUCTURAL/OPENING) on m_bom. PHANTOM spatial index (66 lines across 82 IN SET BOMs). SpatialDiff centroid for IfcWindow/IfcDoor. Tack chain algebra proven correct. DX 7→8/10. BBC.md §4.2.1-4.2.2 | — |
 | 42 | 2026-03-21 | LAST_MILE checklist: C8 SQL blank element_name fix (R32). IN C8 FAIL→PASS, DX C8 FAIL→PASS. IN G3 diagnosed (120 window SHIFTs). Remedy sections added to checklist for newbies | — |
@@ -410,11 +437,11 @@ Full roadmap: `docs/ACTION_ROADMAP.md` — Phases 0–H, G-1..G-12.
 | G-5 | BOM Chooser + Place + Layout + Inference + Ambient | **DONE** (s27) |
 | G-6 | Compile bridge (real pipeline) | **DONE** (s29) |
 | G-7 | Assembly builder (MAKE path) | **DONE** (s35) |
-| G-8 | BlenderBridge pipe (Snap + incremental) | planned |
+| G-8 | Click-to-Place (viewport click → room → discipline placement) | **DONE** (s45) |
 | G-9 | ORDER View + BOM Outliner | planned |
 | G-10 | Promote to BOM (governance gate) | planned |
 | G-11..12 | ParametricMesh UI, Text Mode | planned |
-| G-13 | Click-to-Place (interactive discipline placement) | planned |
+| G-13 | Auto-chain (seed → connectors → pipes) + live coverage | planned |
 | C–H | Drawing Export, Synthetic Stone, BIM COBOL, ERP | planned |
 
 ## Pre-existing Failures (not bugs)

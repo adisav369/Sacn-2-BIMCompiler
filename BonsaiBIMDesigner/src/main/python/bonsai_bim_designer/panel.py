@@ -266,6 +266,39 @@ class BIM_PT_bim_designer(Panel):
         # ── Status Strip — per-rule compliance (UX-F-18/19) ────────────
         self._draw_status_strip(context, box, props)
 
+        # ── Click-to-Place (§18.8) ────────────────────────────────────────
+        ctp_box = box.box()
+        ctp_box.label(text="Click-to-Place", icon='CURSOR')
+        ctp_row = ctp_box.row(align=True)
+        ctp_row.prop(props, "click_discipline", text="")
+        ctp_row.operator("bim.designer_click_to_place", text="Place",
+                         icon='EYEDROPPER')
+        ctp_row.enabled = props.is_connected
+
+        # MEP Coverage display (from last clickToPlace result)
+        cov_json = context.scene.get("_mep_coverage", "")
+        if cov_json:
+            reqs = json.loads(cov_json)
+            if reqs:
+                for req in reqs:
+                    pid = req.get("mepProductId", "?")
+                    needed = req.get("qtyNormal", 0)
+                    placed = req.get("qtyPlaced", 0)
+                    rule = req.get("placementRule", "")
+                    if needed <= 0:
+                        continue
+                    # Coverage icon
+                    if placed >= needed:
+                        icon = 'CHECKMARK'
+                    elif placed > 0:
+                        icon = 'ERROR'
+                    else:
+                        icon = 'CANCEL'
+                    row = ctp_box.row(align=True)
+                    row.label(text=f"{pid}", icon=icon)
+                    row.label(text=f"{placed}/{needed}")
+                    row.label(text=rule)
+
         # ── BOM Chooser (§17.18) ─────────────────────────────────────────
         self._draw_bom_chooser(context, box, props)
 

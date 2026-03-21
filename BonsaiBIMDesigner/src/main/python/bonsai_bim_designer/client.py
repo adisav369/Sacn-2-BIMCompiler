@@ -230,6 +230,23 @@ class DesignerClient:
             req["currentBboxes"] = current_bboxes
         return self._send(req)
 
+    def click_to_place(self, building_id: str,
+                       click_x: float, click_y: float, click_z: float,
+                       discipline: str = "ARC",
+                       current_bboxes: list = None) -> dict:
+        """Interactive click-to-place: resolve click → room → place seed (§18.8)."""
+        req = {
+            "action": "clickToPlace",
+            "buildingId": building_id,
+            "clickXMm": click_x,
+            "clickYMm": click_y,
+            "clickZMm": click_z,
+            "discipline": discipline,
+        }
+        if current_bboxes:
+            req["currentBboxes"] = current_bboxes
+        return self._send(req)
+
     def add_room(self, building_id: str, category: str, storey: str = "GF") -> dict:
         """Add a room of the given category to the building layout (§16)."""
         return self._send({

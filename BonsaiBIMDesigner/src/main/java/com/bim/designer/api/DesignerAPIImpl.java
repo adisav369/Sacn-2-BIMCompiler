@@ -17,6 +17,7 @@ import com.bim.backoffice.model.DesignBBox;
 import com.bim.designer.dao.DesignerDAO;
 import com.bim.designer.dao.DesignerDAO.BuildingTypeRow;
 import com.bim.designer.dao.DesignerDAO.CategoryRow;
+import com.bim.designer.dao.MEPBOMQuery;
 import com.bim.designer.dao.WorkOutputDAO;
 import com.bim.designer.validation.FacilityType;
 import com.bim.designer.validation.GradingStrategy;
@@ -81,6 +82,12 @@ public class DesignerAPIImpl implements DesignerAPI {
 
     /** Lazily initialised changelog DAOs, keyed by buildingId. */
     private final java.util.Map<String, ChangelogDAO> changelogDaos = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Lazily opened disc_validation.db for MEP BOM queries (Click-to-Place §18.8). */
+    private volatile Connection discValConn;
+
+    /** Lazily initialised MEP BOM query (reads ad_space_type_mep_bom). */
+    private volatile MEPBOMQuery mepBomQuery;
 
     /**
      * @param bomConn  JDBC connection to BOM.db (caller owns lifecycle)
@@ -942,7 +949,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
     // ── Place Item + Layout Editing (§15, §16) ─────────────────────
 
-    // Implementing BIM_Designer_SRS.md §15 — Witness: W-PLACE-1
+    // Implementing BIM_Designer_SRS.md §15 — Witness: W-PLACE-1, W-CTP-3
     @Override
     public PlaceItemResponse placeItem(PlaceItemRequest request) {
         long t0 = System.currentTimeMillis();
@@ -997,18 +1004,295 @@ public class DesignerAPIImpl implements DesignerAPI {
                     itemMinX, itemMinY, itemMinZ,
                     itemMaxX, itemMaxY, itemMaxZ);
 
+            // 5. Persist to work_output.db as C_OrderLine (§15 persistence)
+            int orderLineId = 0;
+            try {
+                WorkOutputDAO woDao = getWorkOutputDAO(request.buildingId());
+                orderLineId = woDao.insertOrderLine(
+                        request.buildingId(), itemBbox);
+                BIMLogger.info(TAG, "PLACE_ITEM persisted orderLineId={}", orderLineId);
+            } catch (Exception ex) {
+                // Persistence is best-effort — item still placed in viewport
+                BIMLogger.warn(TAG, "PLACE_ITEM persistence failed (non-fatal): {}",
+                        ex.getMessage());
+            }
+
             long elapsed = System.currentTimeMillis() - t0;
             BIMLogger.info(TAG, "PLACE_ITEM → {} at ({},{},{}) size {}x{}x{} in {}ms",
                     itemBomId, itemMinX, itemMinY, itemMinZ,
                     product.widthMm(), product.depthMm(), product.heightMm(), elapsed);
 
-            // orderLineId = 0 for now (not persisted to work_output.db yet)
-            return new PlaceItemResponse(true, 0, itemBbox, null);
+            return new PlaceItemResponse(true, orderLineId, itemBbox, null);
         } catch (Exception e) {
             LOG.log(Level.WARNING, "placeItem failed", e);
             BIMLogger.error(TAG, "PLACE_ITEM failed: {}", e.getMessage());
             return new PlaceItemResponse(false, 0, null, e.getMessage());
         }
+    }
+
+    // ── Click-to-Place — G-8 Interactive Discipline Placement (§18.8) ──
+
+    // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-1, W-CTP-2, W-CTP-MEP-1, W-CTP-MULTI-1
+    @Override
+    public ClickToPlaceResponse clickToPlace(ClickToPlaceRequest request) {
+        long t0 = System.currentTimeMillis();
+        try {
+            double cx = request.clickXMm(), cy = request.clickYMm(), cz = request.clickZMm();
+            String discipline = request.discipline() != null ? request.discipline() : "ARC";
+
+            BIMLogger.info(TAG, "CLICK_TO_PLACE at ({},{},{}) discipline={}",
+                    cx, cy, cz, discipline);
+
+            // 1. Resolve click to room: find the ROOM bbox containing (cx, cy, cz)
+            DesignBBox targetRoom = null;
+            if (request.currentBboxes() != null) {
+                for (DesignBBox bb : request.currentBboxes()) {
+                    if (!"ROOM".equals(bb.bomType())) continue;
+                    if (cx >= bb.minX() && cx <= bb.maxX()
+                            && cy >= bb.minY() && cy <= bb.maxY()
+                            && cz >= bb.minZ() && cz <= bb.maxZ()) {
+                        targetRoom = bb;
+                        break;
+                    }
+                }
+            }
+
+            if (targetRoom == null) {
+                BIMLogger.warn(TAG, "CLICK_TO_PLACE no room at ({},{},{})", cx, cy, cz);
+                return new ClickToPlaceResponse(false, null, discipline, List.of(),
+                        "No room found at click position (" + cx + ", " + cy + ", " + cz + ")");
+            }
+
+            BIMLogger.info(TAG, "CLICK_TO_PLACE resolved room={} category={}",
+                    targetRoom.bomId(), targetRoom.category());
+
+            double contW = targetRoom.maxX() - targetRoom.minX();
+            double contD = targetRoom.maxY() - targetRoom.minY();
+            double contH = targetRoom.maxZ() - targetRoom.minZ();
+
+            // 2. Query MEP requirements from disc_validation.db (data-driven)
+            List<MEPRequirementInfo> mepReqs = List.of();
+            if (!"ARC".equals(discipline)) {
+                mepReqs = queryMEPRequirements(targetRoom.category(), discipline);
+            }
+
+            // 3. Place items — multi-item for MEP, single for ARC
+            List<DesignBBox> placedItems = new ArrayList<>();
+            List<MEPRequirementInfo> updatedReqs = new ArrayList<>();
+
+            if (!mepReqs.isEmpty()) {
+                // MEP discipline: place ALL required products for this discipline
+                for (MEPRequirementInfo req : mepReqs) {
+                    int qtyToPlace = Math.max(req.qtyNormal(), 1);
+                    int placed = 0;
+
+                    // Browse catalog for this MEP product
+                    var browseResult = browseItems(new BrowseItemsRequest(
+                            req.mepProductId(), null, null,
+                            contW, contD, contH, 0, 5));
+
+                    if (browseResult.success() && !browseResult.items().isEmpty()) {
+                        BrowseItem catalogItem = browseResult.items().get(0);
+
+                        for (int i = 0; i < qtyToPlace; i++) {
+                            // Compute position from placement_rule + host_surface
+                            double[] offset = computePlacementOffset(
+                                    req.placementRule(), req.hostSurface(),
+                                    contW, contD, contH, i, qtyToPlace);
+
+                            PlaceItemResponse placeResp = placeItem(new PlaceItemRequest(
+                                    request.buildingId(), targetRoom.bomId(),
+                                    catalogItem.productId(),
+                                    offset[0], offset[1], offset[2],
+                                    request.currentBboxes()));
+
+                            if (placeResp.success() && placeResp.bbox() != null) {
+                                placedItems.add(placeResp.bbox());
+                                placed++;
+                            }
+                        }
+                    }
+
+                    // Track coverage: qtyPlaced vs qtyNormal
+                    updatedReqs.add(new MEPRequirementInfo(
+                            req.mepProductId(), req.qtyNormal(), placed,
+                            req.placementRule(), req.hostSurface(),
+                            req.buildingCode(), req.codeClause()));
+                }
+
+                BIMLogger.info(TAG, "CLICK_TO_PLACE MEP: {} requirements, {} items placed for {}/{}",
+                        mepReqs.size(), placedItems.size(), targetRoom.category(), discipline);
+            } else {
+                // ARC discipline or no MEP data: browse by keyword, single item
+                String productTypeFilter = arcProductKeyword(targetRoom.category());
+                double offsetX = cx - targetRoom.minX();
+                double offsetY = cy - targetRoom.minY();
+                double offsetZ = cz - targetRoom.minZ();
+
+                var browseResult = browseItems(new BrowseItemsRequest(
+                        productTypeFilter, null, null,
+                        contW, contD, contH, 0, 5));
+
+                if (!browseResult.success() || browseResult.items().isEmpty()) {
+                    browseResult = browseItems(new BrowseItemsRequest(
+                            "", null, null, contW, contD, contH, 0, 5));
+                }
+
+                if (browseResult.success() && !browseResult.items().isEmpty()) {
+                    BrowseItem seedItem = browseResult.items().get(0);
+                    PlaceItemResponse placeResp = placeItem(new PlaceItemRequest(
+                            request.buildingId(), targetRoom.bomId(),
+                            seedItem.productId(),
+                            offsetX, offsetY, offsetZ,
+                            request.currentBboxes()));
+                    if (placeResp.success() && placeResp.bbox() != null) {
+                        placedItems.add(placeResp.bbox());
+                    }
+                }
+            }
+
+            long elapsed = System.currentTimeMillis() - t0;
+            BIMLogger.info(TAG, "CLICK_TO_PLACE → {} items in room={} discipline={} in {}ms",
+                    placedItems.size(), targetRoom.bomId(), discipline, elapsed);
+
+            return new ClickToPlaceResponse(true, targetRoom.bomId(), discipline,
+                    placedItems, updatedReqs.isEmpty() ? mepReqs : updatedReqs, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "clickToPlace failed", e);
+            BIMLogger.error(TAG, "CLICK_TO_PLACE failed: {}", e.getMessage());
+            return new ClickToPlaceResponse(false, null,
+                    request.discipline(), List.of(), e.getMessage());
+        }
+    }
+
+    /**
+     * Compute placement offset (relative to room origin) from placement_rule + host_surface.
+     *
+     * <p>Placement rules define WHERE in the room the item goes:
+     * <ul>
+     *   <li>CEILING_CENTER → centre of room at ceiling height</li>
+     *   <li>CEILING_GRID → evenly distributed grid at ceiling (for qty > 1)</li>
+     *   <li>WALL_ENTRY → near the room entry (minX wall, centred Y, handle height)</li>
+     *   <li>WALL_SPACED → evenly spaced along the longest wall</li>
+     *   <li>WALL_BACK → against the back wall (maxY)</li>
+     *   <li>WALL_SIDE → against a side wall (minX or maxX)</li>
+     *   <li>WALL_HIGH → high on wall (for aircon points)</li>
+     *   <li>WALL_SINK → near counter (mid-Y, counter height)</li>
+     *   <li>FLOOR_LOW → at floor level, low point (for floor traps)</li>
+     *   <li>AUTO → centred in room at appropriate height for host_surface</li>
+     * </ul>
+     *
+     * @param rule       placement_rule from ad_space_type_mep_bom
+     * @param surface    host_surface: CEILING, WALL, FLOOR
+     * @param roomW      room width (X extent) in mm
+     * @param roomD      room depth (Y extent) in mm
+     * @param roomH      room height (Z extent) in mm
+     * @param index      item index (0-based) within this product's qty
+     * @param totalQty   total quantity being placed
+     * @return [offsetX, offsetY, offsetZ] relative to room origin
+     */
+    public static double[] computePlacementOffset(String rule, String surface,
+                                            double roomW, double roomD, double roomH,
+                                            int index, int totalQty) {
+        double cx = roomW / 2, cy = roomD / 2;
+
+        return switch (rule != null ? rule : "AUTO") {
+            case "CEILING_CENTER" -> new double[]{cx, cy, roomH - 50};  // 50mm below ceiling
+            case "CEILING_GRID" -> {
+                // Distribute items in a grid pattern across the ceiling
+                int cols = (int) Math.ceil(Math.sqrt(totalQty));
+                int row = index / cols, col = index % cols;
+                double spacingX = roomW / (cols + 1);
+                double spacingY = roomD / (Math.ceil((double) totalQty / cols) + 1);
+                yield new double[]{spacingX * (col + 1), spacingY * (row + 1), roomH - 50};
+            }
+            case "WALL_ENTRY" -> new double[]{100, cy, 1200};  // near entry wall, handle height
+            case "WALL_EXIT" -> new double[]{roomW - 100, cy, 1200};
+            case "WALL_SPACED" -> {
+                // Evenly spaced along the longest wall
+                double spacing = roomW / (totalQty + 1);
+                yield new double[]{spacing * (index + 1), 100, 300};  // 300mm = outlet height
+            }
+            case "WALL_BACK" -> new double[]{cx, roomD - 200, 0};  // against back wall, on floor
+            case "WALL_SIDE" -> new double[]{100, cy, 800};  // against side wall, counter height
+            case "WALL_HIGH" -> new double[]{cx, 100, roomH - 300};  // high on wall
+            case "WALL_SINK", "COUNTER_SINK", "COUNTER_BACK" -> new double[]{cx, 100, 900};  // counter height
+            case "WALL_COOKER" -> new double[]{roomW - 200, 100, 900};
+            case "WALL_LOW" -> new double[]{cx, 100, 300};
+            case "WALL_ANY" -> new double[]{roomW / (totalQty + 1) * (index + 1), 100, 1200};
+            case "FLOOR_LOW" -> new double[]{cx, cy, 0};  // floor level
+            default -> {
+                // AUTO: use host_surface to determine Z
+                double z = switch (surface != null ? surface : "WALL") {
+                    case "CEILING" -> roomH - 50;
+                    case "FLOOR" -> 0;
+                    default -> 1200;  // mid-wall height
+                };
+                yield new double[]{cx, cy, z};
+            }
+        };
+    }
+
+    /**
+     * Query MEP requirements from disc_validation.db ad_space_type_mep_bom.
+     * Returns empty list if disc_validation.db is unavailable (graceful degradation).
+     */
+    private List<MEPRequirementInfo> queryMEPRequirements(String roomCategory, String discipline) {
+        try {
+            MEPBOMQuery query = getMEPBOMQuery();
+            if (query == null) return List.of();
+
+            var reqs = query.queryForDiscipline(roomCategory, discipline);
+            List<MEPRequirementInfo> result = new ArrayList<>(reqs.size());
+            for (var r : reqs) {
+                result.add(new MEPRequirementInfo(
+                        r.mepProductId(), r.qtyNormal(),
+                        r.placementRule(), r.hostSurface(),
+                        r.buildingCode(), r.codeClause()));
+            }
+            return result;
+        } catch (Exception e) {
+            BIMLogger.warn(TAG, "MEP BOM query failed (non-fatal): {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * Lazily open disc_validation.db and create MEPBOMQuery.
+     * Returns null if the DB file doesn't exist (graceful degradation).
+     */
+    private MEPBOMQuery getMEPBOMQuery() {
+        if (mepBomQuery != null) return mepBomQuery;
+        synchronized (this) {
+            if (mepBomQuery != null) return mepBomQuery;
+            try {
+                String dbPath = "library/disc_validation.db";
+                if (!new File(dbPath).exists()) {
+                    BIMLogger.warn(TAG, "disc_validation.db not found at {}", dbPath);
+                    return null;
+                }
+                discValConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+                mepBomQuery = new MEPBOMQuery(discValConn);
+                BIMLogger.info(TAG, "Opened disc_validation.db for MEP BOM queries");
+                return mepBomQuery;
+            } catch (Exception e) {
+                BIMLogger.warn(TAG, "Failed to open disc_validation.db: {}", e.getMessage());
+                return null;
+            }
+        }
+    }
+
+    /**
+     * ARC discipline keyword for room category (furniture from M_Product catalog).
+     */
+    private static String arcProductKeyword(String roomCategory) {
+        return switch (roomCategory != null ? roomCategory : "") {
+            case "BEDROOM" -> "BED";
+            case "KITCHEN" -> "SINK";
+            case "BATHROOM" -> "TOILET";
+            case "LIVING" -> "SOFA";
+            default -> "";
+        };
     }
 
     // Implementing BIM_Designer_SRS.md §16 — Witness: W-LAYOUT-1

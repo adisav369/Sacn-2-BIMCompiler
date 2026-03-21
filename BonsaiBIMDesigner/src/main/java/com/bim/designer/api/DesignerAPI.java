@@ -194,11 +194,35 @@ public interface DesignerAPI extends AssemblyAPI {
     /**
      * Place a product item into a room at a given offset.
      * Creates a new DesignBBox for the placed item.
+     * Persists C_OrderLine to work_output.db if a master order exists.
      *
      * @see PlaceItemRequest
      * @see PlaceItemResponse
      */
     PlaceItemResponse placeItem(PlaceItemRequest request);
+
+    // ── Click-to-Place — G-8 Interactive Discipline Placement (§18.8) ──
+
+    /**
+     * Interactive click-to-place: resolve viewport click to a room,
+     * look up discipline-appropriate products, and place a seed item.
+     *
+     * <p>Data flow (BIM_Designer.md §18.8):
+     * <ol>
+     *   <li>Resolve (clickX, clickY, clickZ) → which room bbox contains the point</li>
+     *   <li>Look up discipline products for that room category</li>
+     *   <li>Place the first fitting product at the click offset within the room</li>
+     * </ol>
+     *
+     * <p>The discipline determines what category of products are placed:
+     * ARC = furniture, FP = fire protection, ELEC = electrical, SP = sanitary, ACMV = mechanical.
+     *
+     * // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-1, W-CTP-2
+     *
+     * @see ClickToPlaceRequest
+     * @see ClickToPlaceResponse
+     */
+    ClickToPlaceResponse clickToPlace(ClickToPlaceRequest request);
 
     /**
      * Add a room of the given category to the building layout.
@@ -465,6 +489,51 @@ public interface DesignerAPI extends AssemblyAPI {
             DesignBBox bbox,
             String error
     ) {}
+
+    /** Click-to-place request — viewport coordinates + discipline context. */
+    record ClickToPlaceRequest(
+            String buildingId,
+            double clickXMm,        // viewport X in world mm
+            double clickYMm,        // viewport Y in world mm
+            double clickZMm,        // viewport Z in world mm
+            String discipline,      // ARC, FP, ELEC, SP, ACMV
+            List<DesignBBox> currentBboxes
+    ) {}
+
+    /** Click-to-place response — resolved room + placed items + MEP requirements. */
+    record ClickToPlaceResponse(
+            boolean success,
+            String resolvedRoomBomId,
+            String discipline,
+            List<DesignBBox> placedItems,
+            List<MEPRequirementInfo> mepRequirements,
+            String error
+    ) {
+        /** Backward-compatible constructor without MEP requirements. */
+        ClickToPlaceResponse(boolean success, String resolvedRoomBomId, String discipline,
+                             List<DesignBBox> placedItems, String error) {
+            this(success, resolvedRoomBomId, discipline, placedItems, List.of(), error);
+        }
+    }
+
+    /** MEP product requirement from ad_space_type_mep_bom. */
+    record MEPRequirementInfo(
+            String mepProductId,
+            int qtyNormal,
+            int qtyPlaced,
+            String placementRule,
+            String hostSurface,
+            String buildingCode,
+            String codeClause
+    ) {
+        /** Constructor without qtyPlaced (defaults to 0). */
+        MEPRequirementInfo(String mepProductId, int qtyNormal,
+                           String placementRule, String hostSurface,
+                           String buildingCode, String codeClause) {
+            this(mepProductId, qtyNormal, 0, placementRule, hostSurface,
+                 buildingCode, codeClause);
+        }
+    }
 
     /** Layout editing response — updated bboxes after add/remove room or storey. */
     record LayoutResponse(

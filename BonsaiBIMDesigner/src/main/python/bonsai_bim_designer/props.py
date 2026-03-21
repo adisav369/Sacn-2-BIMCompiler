@@ -181,6 +181,20 @@ class BIMDesignerProperties(PropertyGroup):
         min=0,
     )
 
+    # -- Click-to-Place (§18.8) ----------------------------------------------
+    click_discipline: EnumProperty(
+        name="Discipline",
+        description="Active discipline for Click-to-Place mode",
+        items=[
+            ('ARC', "Architectural", "Furniture, doors, windows, finishes"),
+            ('FP', "Fire Protection", "Sprinkler heads, extinguishers"),
+            ('ELEC', "Electrical", "Lights, switches, outlets"),
+            ('SP', "Sanitary", "Toilets, sinks, showers, pipes"),
+            ('ACMV', "Mechanical", "Diffusers, ducts, units"),
+        ],
+        default='ARC',
+    )
+
     # -- Verb console --------------------------------------------------------
     verb_line: StringProperty(
         name="Verb",
