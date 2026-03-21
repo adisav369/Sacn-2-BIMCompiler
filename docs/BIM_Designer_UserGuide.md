@@ -273,7 +273,33 @@ After Snap, the **Status Strip** shows per-rule compliance:
 - Red X with delta: "ROOM_BD: 2800mm < 3000mm (need +200mm)"
 - Grid adjustments: "width: 2850 → 3000mm (grid)"
 
-### 5.7 Save / Recall / Promote
+### 5.7 Flywheel Advisories (FL-2)
+
+The **Flywheel Advisory Panel** surfaces findings from the Data Flywheel
+(mined dimension ranges and building profiles) directly in the Design Mode UI.
+
+| Severity | Icon | Meaning |
+|----------|------|---------|
+| INFO | Blue info | Observation from mined data ("8 IFC classes detected") |
+| WARNING | Amber error | Element dimension outside observed range |
+| SUGGESTION | Green light | System can suggest a correction — click element to review |
+
+**Three advisory layers:**
+
+| Layer | Source | Example |
+|-------|--------|---------|
+| DIMENSION | DimensionRangeValidator (DV010, 415 rules from 20 buildings) | "IfcWall W=95mm outside typical [800–10269]mm" |
+| PROFILE | BuildingProfileValidator (DV011, 36 building profiles) | "NOVEL_CLASS: IfcZzz never seen in 36 buildings" |
+| SHAPE | ShapeAdvisoryWriter (FL-5/EYES) | "IfcWall is COMPACT — shaped like furniture, not a wall" |
+
+**Usage:**
+1. Click **Refresh** in the Flywheel Advisories section (or advisories auto-load after compilation).
+2. Review colour-coded list. Click an element-level advisory to focus it in the viewport.
+3. SUGGESTION advisories include a recommended value — review and apply as needed.
+
+**Wire protocol:** `{"action":"listAdvisories","buildingId":"..."}` → `ListAdvisoriesResponse`
+
+### 5.8 Save / Recall / Promote
 
 | Action | Wire protocol | What it does |
 |--------|--------------|-------------|
@@ -299,7 +325,7 @@ After Snap, the **Status Strip** shows per-rule compliance:
    - Freezes master C_Order AP → CO. Design mode is now read-only for this building.
 3. Promoted BOM entries are immediately available as templates for new buildings.
 
-### 5.8 BOM Chooser — Search-First Product Browser (§17.18)
+### 5.9 BOM Chooser — Search-First Product Browser (§17.18)
 
 The BOM Chooser is a search-first product browser for adding items to a room.
 
@@ -339,7 +365,7 @@ resize the room to accommodate them.
 Response includes `items` (with `fitStatus`), `totalCount`, and `categories`
 (with `count` and `fitsCount` per category).
 
-### 5.9 Verb Console (A.4)
+### 5.10 Verb Console (A.4)
 
 | Field | Description |
 |-------|-------------|

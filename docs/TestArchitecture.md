@@ -618,6 +618,21 @@ are waste.
 | §22.3 | compile() unknown building → failure | CompileBridgeTest | W-COMPILE-5 | PASS |
 | §22.5 | Short-circuit compile from work_output.db | — | W-COMPILE-BETA-1 | **SPEC ONLY** |
 
+### BIM_Designer_SRS §27 — Flywheel Advisory Panel (FL-2/FL-5)
+
+| Spec Section | Requirement | Test Class | Witness/Gate | Status |
+|---|---|---|---|---|
+| §27.5 DV012 | W_Validation_Advisory schema (DIMENSION/PROFILE/COMPLIANCE/SHAPE) | FlyAdvisoryTest | W-FL-ADVISORY-1 | PASS |
+| §27.5 FL-F-01 | listAdvisories returns advisories for known building | FlyAdvisoryTest | W-FL-ADVISORY-1 | PASS |
+| §27.5 FL-F-01 | SUGGESTION advisory includes suggested value | FlyAdvisoryTest | W-FL-ADVISORY-2 | PASS |
+| §27.5 FL-F-01 | Empty advisory list for building with no outliers | FlyAdvisoryTest | W-FL-ADVISORY-3 | PASS |
+| §27.5 write | DimensionRangeValidator.writeAdvisories creates WARNING + SUGGESTION | FlyAdvisoryTest | W-FL-ADVISORY-4 | PASS |
+| §27.5 write | BuildingProfileValidator.writeAdvisories creates WARNING rows | FlyAdvisoryTest | W-FL-ADVISORY-5 | PASS |
+| §27 FL-F-05 | suggestDimensions(IfcWall) returns typical range | FlyAdvisoryTest | W-FL-CALIBRATE-1 | PASS |
+| §27 FL-F-05 | suggestDimensions(unknown) returns empty | FlyAdvisoryTest | W-FL-CALIBRATE-2 | PASS |
+| ACTION_ROADMAP §FL-5 | ShapeAdvisoryWriter detects class-shape mismatch | FlyAdvisoryTest | W-FL-SHAPE-1 | PASS |
+| ACTION_ROADMAP §FL-5 | No shape advisories for geometrically consistent elements | FlyAdvisoryTest | W-FL-SHAPE-2 | PASS |
+
 ### DISC_VALIDATION_DB_SRS — Database Split
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
@@ -633,7 +648,7 @@ are waste.
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 27 | Spec → test → green. Proven. +4 W-DV-DB (session 36b). |
+| PASS | 36 | Spec → test → green. Proven. +9 FL-2/FL-5 advisory witnesses (session 50). |
 | IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
 | SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. +2 disc_validation Phase 2b/3. |
