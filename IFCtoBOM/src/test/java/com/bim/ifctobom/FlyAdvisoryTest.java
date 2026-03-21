@@ -243,4 +243,79 @@ class FlyAdvisoryTest {
                     "Unknown IFC class should have 0 mined rules");
         }
     }
+
+    // ── W-FL-SHAPE-1: Shape advisory detects class-shape mismatch ──
+
+    @Test
+    @Order(8)
+    void w_fl_shape_1_detectsClassShapeMismatch() throws Exception {
+        // An IfcWall that is ELONGATED (shaped like a beam: 100x100x3000mm)
+        // planarity = 100/3000 = 0.033 < 0.15 ✓
+        // elongation = 100/3000 = 0.033 < 0.40 → ELONGATED
+        // But verifyClassConsistency for IfcWall checks planarity >= 0.20 → null (wall IS planar here)
+        // So let's use a wall that isn't planar: 800x800x1000mm
+        // planarity = 800/1000 = 0.80 >= 0.20 → violation!
+        List<ExtractionElement> elements = List.of(
+                new ExtractionElement("GF", "IfcWall", "WALL_THICK", 1,
+                        0, 0.8, 0, 0.8, 0, 1.0, "N", "STR", null, null, null, "GUID_001"),
+                new ExtractionElement("GF", "IfcColumn", "COL_FLAT", 2,
+                        0, 2.0, 0, 0.05, 0, 3.0, "N", "STR", null, null, null, "GUID_002")
+        );
+
+        ShapeAdvisoryWriter.Report report =
+                ShapeAdvisoryWriter.analyze(discConn, elements, "TEST_FL2");
+
+        assertTrue(report.mismatchCount() > 0,
+                "Should detect shape-class mismatches for thick wall or flat column");
+
+        // Verify advisory rows were written with layer='SHAPE'
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT severity, rule_name, suggestion "
+              + "FROM W_Validation_Advisory "
+              + "WHERE building_type = 'TEST_FL2' AND layer = 'SHAPE'")) {
+            ResultSet rs = ps.executeQuery();
+            assertTrue(rs.next(), "Should have at least one SHAPE advisory row");
+            assertEquals("SUGGESTION", rs.getString("severity"),
+                    "Shape advisories should be SUGGESTION severity");
+            assertNotNull(rs.getString("suggestion"),
+                    "Shape advisory should include correction suggestion");
+        }
+    }
+
+    // ── W-FL-SHAPE-2: No shape advisories for geometrically consistent elements ──
+
+    @Test
+    @Order(9)
+    void w_fl_shape_2_noMismatchForConsistentElements() throws Exception {
+        // A proper thin IfcWall: 5000x200x3000mm → planarity = 200/5000 = 0.04 < 0.20 ✓
+        // A proper IfcDoor: 900x100x2100mm → planarity = 100/2100 = 0.048 < 0.35 ✓
+        List<ExtractionElement> elements = List.of(
+                new ExtractionElement("GF", "IfcWall", "WALL_OK", 1,
+                        0, 5.0, 0, 0.2, 0, 3.0, "N", "STR", null, null, null, "GUID_003"),
+                new ExtractionElement("GF", "IfcDoor", "DOOR_OK", 2,
+                        0, 0.9, 0, 0.1, 0, 2.1, "N", "ARC", null, null, null, "GUID_004")
+        );
+
+        // Clear previous test data first
+        try (PreparedStatement del = discConn.prepareStatement(
+                "DELETE FROM W_Validation_Advisory WHERE building_type = 'TEST_FL2_CLEAN'")) {
+            del.executeUpdate();
+        }
+
+        ShapeAdvisoryWriter.Report report =
+                ShapeAdvisoryWriter.analyze(discConn, elements, "TEST_FL2_CLEAN");
+
+        assertEquals(0, report.mismatchCount(),
+                "Geometrically consistent elements should have 0 shape mismatches");
+
+        // Verify no SHAPE rows written
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM W_Validation_Advisory "
+              + "WHERE building_type = 'TEST_FL2_CLEAN' AND layer = 'SHAPE'")) {
+            ResultSet rs = ps.executeQuery();
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt(1),
+                    "No SHAPE advisories should be written for consistent elements");
+        }
+    }
 }

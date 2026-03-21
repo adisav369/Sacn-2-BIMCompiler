@@ -161,6 +161,16 @@ public class IFCtoBOMPipeline {
                                 BIMLogger.warn("IFCtoBOM", "Profile advisory write skipped: {}", e.getMessage());
                             }
                         }
+
+                        // Layer 3: Shape-aware advisories (FL-5/EYES)
+                        // Implementing ACTION_ROADMAP.md §FL-5 — Witness: W-FL-SHAPE-1
+                        try {
+                            ShapeAdvisoryWriter.Report shapeReport =
+                                    ShapeAdvisoryWriter.analyze(discConn, allElements, config.buildingType());
+                            shapeReport.print();
+                        } catch (SQLException e) {
+                            BIMLogger.warn("IFCtoBOM", "Shape advisory write skipped: {}", e.getMessage());
+                        }
                     } catch (Exception e) {
                         BIMLogger.warn("IFCtoBOM", "Dimension range check skipped: {}", e.getMessage());
                     }

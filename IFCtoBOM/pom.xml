@@ -26,6 +26,12 @@
             <groupId>com.bim</groupId>
             <artifactId>orm-sandbox</artifactId>
         </dependency>
+        <!-- BIMEyes: shape classification for FL-5 shape advisories -->
+        <dependency>
+            <groupId>com.bim</groupId>
+            <artifactId>bim-eyes</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
