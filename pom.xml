@@ -22,6 +22,7 @@
         <module>BIM_COBOL</module>
         <module>IFCtoBOM</module>
         <module>BIMBackOffice</module>
+        <module>BIMEyes</module>
         <module>BonsaiBIMDesigner</module>
     </modules>
 
@@ -53,6 +54,11 @@
             <dependency>
                 <groupId>com.bim</groupId>
                 <artifactId>orm-sandbox</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.bim</groupId>
+                <artifactId>bim-eyes</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

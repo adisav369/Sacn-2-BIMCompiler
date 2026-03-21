@@ -48,6 +48,11 @@
             <groupId>com.bim</groupId>
             <artifactId>orm-sandbox</artifactId>
         </dependency>
+        <!-- BIMEyes: geometric comprehension engine (Phase 1) -->
+        <dependency>
+            <groupId>com.bim</groupId>
+            <artifactId>bim-eyes</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

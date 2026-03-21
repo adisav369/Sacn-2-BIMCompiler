@@ -1,0 +1,326 @@
+package com.bim.eyes.diff;
+
+import com.bim.eyes.EyesConstants;
+import com.bim.eyes.shape.ShapeClassifier;
+
+import java.sql.*;
+import java.util.*;
+
+/**
+ * Per-element spatial diff between two output DBs.
+ * // Implementing EYES_SRS.md §6 — moved from DAGCompiler
+ */
+public class SpatialDiff {
+
+    public enum Band { EXACT, DRIFT, SHIFT, MISSING, EXTRA }
+
+    public record ElementDelta(
+        String ifcClass, int indexInClass,
+        double deltaMinX_mm, double deltaMaxX_mm,
+        double deltaMinY_mm, double deltaMaxY_mm,
+        double deltaMinZ_mm, double deltaMaxZ_mm,
+        Band band
+    ) {
+        public double maxDelta() {
+            return Math.max(Math.abs(deltaMinX_mm),
+                   Math.max(Math.abs(deltaMaxX_mm),
+                   Math.max(Math.abs(deltaMinY_mm),
+                   Math.max(Math.abs(deltaMaxY_mm),
+                   Math.max(Math.abs(deltaMinZ_mm),
+                            Math.abs(deltaMaxZ_mm))))));
+        }
+    }
+
+    public record DiffReport(
+        List<ElementDelta> deltas, Map<String, int[]> classCounts,
+        int exact, int drift, int shift, int missing, int extra
+    ) {
+        public boolean isClean() {
+            return drift == 0 && shift == 0 && missing == 0 && extra == 0;
+        }
+
+        public String summary() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("SpatialDiff: %d exact, %d drift, %d shift, %d missing, %d extra%n",
+                exact, drift, shift, missing, extra));
+            if (isClean()) {
+                sb.append("All elements match within 1mm.\n");
+                return sb.toString();
+            }
+            List<ElementDelta> issues = deltas.stream()
+                .filter(d -> d.band != Band.EXACT)
+                .sorted((a, b) -> Double.compare(b.maxDelta(), a.maxDelta()))
+                .toList();
+            int shown = 0;
+            for (ElementDelta d : issues) {
+                if (shown >= 20) {
+                    sb.append(String.format("  ... and %d more%n", issues.size() - 20));
+                    break;
+                }
+                sb.append(String.format("  %s [%s] #%d: dX=(%.1f,%.1f) dY=(%.1f,%.1f) dZ=(%.1f,%.1f) max=%.1fmm%n",
+                    d.band, d.ifcClass, d.indexInClass,
+                    d.deltaMinX_mm, d.deltaMaxX_mm,
+                    d.deltaMinY_mm, d.deltaMaxY_mm,
+                    d.deltaMinZ_mm, d.deltaMaxZ_mm,
+                    d.maxDelta()));
+                shown++;
+            }
+            for (var e : classCounts.entrySet()) {
+                int rc = e.getValue()[0], oc = e.getValue()[1];
+                if (rc != oc) {
+                    sb.append(String.format("  CLASS %s: ref=%d out=%d (delta=%d)%n",
+                        e.getKey(), rc, oc, oc - rc));
+                }
+            }
+            return sb.toString();
+        }
+    }
+
+    /**
+     * Compare two output DBs element-by-element.
+     * Tries identity-based matching first, falls back to position-based.
+     */
+    public static DiffReport diff(String refDbPath, String outDbPath) {
+        Map<String, double[]> refById = loadElementsByIdentity(refDbPath, "guid");
+        Map<String, double[]> outById = loadElementsByIdentity(outDbPath, "element_ref");
+
+        if (!refById.isEmpty() && !outById.isEmpty()) {
+            long overlap = refById.keySet().stream().filter(outById::containsKey).count();
+            if (overlap > refById.size() / 4) {
+                return diffByIdentity(refById, outById, refDbPath, outDbPath);
+            }
+        }
+
+        return diffByPosition(refDbPath, outDbPath);
+    }
+
+    private static DiffReport diffByIdentity(
+            Map<String, double[]> refById, Map<String, double[]> outById,
+            String refDbPath, String outDbPath) {
+
+        Map<String, String> refClassById = loadClassByIdentity(refDbPath, "guid");
+        Map<String, String> outClassById = loadClassByIdentity(outDbPath, "element_ref");
+
+        List<ElementDelta> deltas = new ArrayList<>();
+        Map<String, int[]> classCounts = new TreeMap<>();
+        int exact = 0, drift = 0, shift = 0, missing = 0, extra = 0;
+
+        Set<String> matchedRefIds = new HashSet<>();
+        Set<String> matchedOutIds = new HashSet<>();
+
+        for (String id : refById.keySet()) {
+            double[] o = outById.get(id);
+            if (o != null) {
+                double[] r = refById.get(id);
+                String cls = refClassById.getOrDefault(id, "Unknown");
+                classCounts.computeIfAbsent(cls, k -> new int[]{0, 0});
+                classCounts.get(cls)[0]++;
+                classCounts.get(cls)[1]++;
+
+                double dMinX = (o[0] - r[0]) * 1000, dMaxX = (o[1] - r[1]) * 1000;
+                double dMinY = (o[2] - r[2]) * 1000, dMaxY = (o[3] - r[3]) * 1000;
+                double dMinZ = (o[4] - r[4]) * 1000, dMaxZ = (o[5] - r[5]) * 1000;
+                Band band = classifyForClass(cls, r, o);
+                deltas.add(new ElementDelta(cls, 0, dMinX, dMaxX, dMinY, dMaxY, dMinZ, dMaxZ, band));
+                switch (band) {
+                    case EXACT -> exact++;
+                    case DRIFT -> drift++;
+                    case SHIFT -> shift++;
+                    default -> {}
+                }
+                matchedRefIds.add(id);
+                matchedOutIds.add(id);
+            }
+        }
+
+        // Position-based fallback for unmatched
+        Map<String, List<double[]>> unmatchedRef = new TreeMap<>();
+        for (var e : refById.entrySet()) {
+            if (!matchedRefIds.contains(e.getKey())) {
+                String cls = refClassById.getOrDefault(e.getKey(), "Unknown");
+                unmatchedRef.computeIfAbsent(cls, k -> new ArrayList<>()).add(e.getValue());
+            }
+        }
+        Map<String, List<double[]>> unmatchedOut = new TreeMap<>();
+        for (var e : outById.entrySet()) {
+            if (!matchedOutIds.contains(e.getKey())) {
+                String cls = outClassById.getOrDefault(e.getKey(), "Unknown");
+                unmatchedOut.computeIfAbsent(cls, k -> new ArrayList<>()).add(e.getValue());
+            }
+        }
+
+        Set<String> remainClasses = new TreeSet<>();
+        remainClasses.addAll(unmatchedRef.keySet());
+        remainClasses.addAll(unmatchedOut.keySet());
+
+        for (String cls : remainClasses) {
+            List<double[]> refList = unmatchedRef.getOrDefault(cls, List.of());
+            List<double[]> outList = unmatchedOut.getOrDefault(cls, List.of());
+            refList.sort(SpatialDiff::compareCoords);
+            outList.sort(SpatialDiff::compareCoords);
+
+            classCounts.computeIfAbsent(cls, k -> new int[]{0, 0});
+            classCounts.get(cls)[0] += refList.size();
+            classCounts.get(cls)[1] += outList.size();
+
+            int paired = Math.min(refList.size(), outList.size());
+            for (int i = 0; i < paired; i++) {
+                double[] r = refList.get(i), o = outList.get(i);
+                double dMinX = (o[0]-r[0])*1000, dMaxX = (o[1]-r[1])*1000;
+                double dMinY = (o[2]-r[2])*1000, dMaxY = (o[3]-r[3])*1000;
+                double dMinZ = (o[4]-r[4])*1000, dMaxZ = (o[5]-r[5])*1000;
+                Band band = classifyForClass(cls, r, o);
+                deltas.add(new ElementDelta(cls, i, dMinX, dMaxX, dMinY, dMaxY, dMinZ, dMaxZ, band));
+                switch (band) { case EXACT -> exact++; case DRIFT -> drift++; case SHIFT -> shift++; default -> {} }
+            }
+            for (int i = paired; i < refList.size(); i++) {
+                deltas.add(new ElementDelta(cls, i, 0, 0, 0, 0, 0, 0, Band.MISSING)); missing++;
+            }
+            for (int i = paired; i < outList.size(); i++) {
+                deltas.add(new ElementDelta(cls, i, 0, 0, 0, 0, 0, 0, Band.EXTRA)); extra++;
+            }
+        }
+
+        return new DiffReport(deltas, classCounts, exact, drift, shift, missing, extra);
+    }
+
+    private static DiffReport diffByPosition(String refDbPath, String outDbPath) {
+        Map<String, List<double[]>> refElements = loadElements(refDbPath);
+        Map<String, List<double[]>> outElements = loadElements(outDbPath);
+
+        Set<String> allClasses = new TreeSet<>();
+        allClasses.addAll(refElements.keySet());
+        allClasses.addAll(outElements.keySet());
+
+        List<ElementDelta> deltas = new ArrayList<>();
+        Map<String, int[]> classCounts = new TreeMap<>();
+        int exact = 0, drift = 0, shift = 0, missing = 0, extra = 0;
+
+        for (String cls : allClasses) {
+            List<double[]> refList = refElements.getOrDefault(cls, List.of());
+            List<double[]> outList = outElements.getOrDefault(cls, List.of());
+            classCounts.put(cls, new int[]{ refList.size(), outList.size() });
+
+            int paired = Math.min(refList.size(), outList.size());
+            for (int i = 0; i < paired; i++) {
+                double[] r = refList.get(i), o = outList.get(i);
+                double dMinX = (o[0]-r[0])*1000, dMaxX = (o[1]-r[1])*1000;
+                double dMinY = (o[2]-r[2])*1000, dMaxY = (o[3]-r[3])*1000;
+                double dMinZ = (o[4]-r[4])*1000, dMaxZ = (o[5]-r[5])*1000;
+                Band band = classifyForClass(cls, r, o);
+                deltas.add(new ElementDelta(cls, i, dMinX, dMaxX, dMinY, dMaxY, dMinZ, dMaxZ, band));
+                switch (band) { case EXACT -> exact++; case DRIFT -> drift++; case SHIFT -> shift++; default -> {} }
+            }
+            for (int i = paired; i < refList.size(); i++) {
+                deltas.add(new ElementDelta(cls, i, 0, 0, 0, 0, 0, 0, Band.MISSING)); missing++;
+            }
+            for (int i = paired; i < outList.size(); i++) {
+                deltas.add(new ElementDelta(cls, i, 0, 0, 0, 0, 0, 0, Band.EXTRA)); extra++;
+            }
+        }
+
+        return new DiffReport(deltas, classCounts, exact, drift, shift, missing, extra);
+    }
+
+    private static int compareCoords(double[] a, double[] b) {
+        int cmp = Long.compare(Math.round(a[0] * 100), Math.round(b[0] * 100));
+        if (cmp != 0) return cmp;
+        cmp = Long.compare(Math.round(a[2] * 100), Math.round(b[2] * 100));
+        if (cmp != 0) return cmp;
+        cmp = Long.compare(Math.round(a[4] * 100), Math.round(b[4] * 100));
+        if (cmp != 0) return cmp;
+        cmp = Long.compare(Math.round((a[1]-a[0]) * 1000), Math.round((b[1]-b[0]) * 1000));
+        if (cmp != 0) return cmp;
+        cmp = Long.compare(Math.round((a[3]-a[2]) * 1000), Math.round((b[3]-b[2]) * 1000));
+        if (cmp != 0) return cmp;
+        return Long.compare(Math.round((a[5]-a[4]) * 1000), Math.round((b[5]-b[4]) * 1000));
+    }
+
+    private static Band classify(double... deltas_mm) {
+        double max = 0;
+        for (double d : deltas_mm) max = Math.max(max, Math.abs(d));
+        if (max <= EyesConstants.SPATIAL_EXACT_MM) return Band.EXACT;
+        if (max <= EyesConstants.SPATIAL_DRIFT_MM) return Band.DRIFT;
+        return Band.SHIFT;
+    }
+
+    private static Band classifyForClass(String ifcClass, double[] ref, double[] out) {
+        double dMinX = (out[0]-ref[0])*1000, dMaxX = (out[1]-ref[1])*1000;
+        double dMinY = (out[2]-ref[2])*1000, dMaxY = (out[3]-ref[3])*1000;
+        double dMinZ = (out[4]-ref[4])*1000, dMaxZ = (out[5]-ref[5])*1000;
+
+        double wMm = (ref[1] - ref[0]) * 1000;
+        double depthMm = (ref[3] - ref[2]) * 1000;
+        double hMm = (ref[5] - ref[4]) * 1000;
+        if (ShapeClassifier.isHostedOpening(wMm, depthMm, hMm)) {
+            double dCx = ((out[0]+out[1])/2 - (ref[0]+ref[1])/2) * 1000;
+            double dCy = ((out[2]+out[3])/2 - (ref[2]+ref[3])/2) * 1000;
+            double dCz = ((out[4]+out[5])/2 - (ref[4]+ref[5])/2) * 1000;
+            double centroidDist = Math.sqrt(dCx*dCx + dCy*dCy + dCz*dCz);
+            if (centroidDist <= EyesConstants.SPATIAL_EXACT_MM) return Band.EXACT;
+            if (centroidDist <= EyesConstants.SPATIAL_DRIFT_MM) return Band.DRIFT;
+            return Band.SHIFT;
+        }
+
+        return classify(dMinX, dMaxX, dMinY, dMaxY, dMinZ, dMaxZ);
+    }
+
+    private static Map<String, double[]> loadElementsByIdentity(String dbPath, String idColumn) {
+        if (!"guid".equals(idColumn) && !"element_ref".equals(idColumn)) return Collections.emptyMap();
+        String sql = String.format("""
+            SELECT em.%s, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+            FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+            WHERE em.%s IS NOT NULL AND em.%s != ''
+            """, idColumn, idColumn, idColumn);
+
+        Map<String, double[]> result = new HashMap<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+             Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String id = rs.getString(1);
+                if (id == null || id.isEmpty()) continue;
+                result.putIfAbsent(id, new double[]{
+                    rs.getDouble(2), rs.getDouble(3), rs.getDouble(4),
+                    rs.getDouble(5), rs.getDouble(6), rs.getDouble(7)});
+            }
+        } catch (SQLException e) { return Collections.emptyMap(); }
+        return result;
+    }
+
+    private static Map<String, String> loadClassByIdentity(String dbPath, String idColumn) {
+        if (!"guid".equals(idColumn) && !"element_ref".equals(idColumn)) return Collections.emptyMap();
+        String sql = String.format("SELECT em.%s, em.ifc_class FROM elements_meta em WHERE em.%s IS NOT NULL AND em.%s != ''",
+            idColumn, idColumn, idColumn);
+        Map<String, String> result = new HashMap<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+             Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) { result.putIfAbsent(rs.getString(1), rs.getString(2)); }
+        } catch (SQLException e) { return Collections.emptyMap(); }
+        return result;
+    }
+
+    private static Map<String, List<double[]>> loadElements(String dbPath) {
+        String sql = """
+            SELECT em.ifc_class, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+            FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+            ORDER BY em.ifc_class,
+                     ROUND(r.minX * 100), ROUND(r.minY * 100), ROUND(r.minZ * 100),
+                     ROUND((r.maxX - r.minX) * 1000), ROUND((r.maxY - r.minY) * 1000),
+                     ROUND((r.maxZ - r.minZ) * 1000),
+                     ROUND(r.maxX * 1000), ROUND(r.maxY * 1000), ROUND(r.maxZ * 1000)
+            """;
+        Map<String, List<double[]>> result = new TreeMap<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+             Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                String cls = rs.getString(1);
+                result.computeIfAbsent(cls, k -> new ArrayList<>()).add(new double[]{
+                    rs.getDouble(2), rs.getDouble(3), rs.getDouble(4),
+                    rs.getDouble(5), rs.getDouble(6), rs.getDouble(7)});
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("SpatialDiff failed on " + dbPath + ": " + e.getMessage(), e);
+        }
+        return result;
+    }
+}

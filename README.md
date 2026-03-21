@@ -48,7 +48,7 @@ No call home to an alien AI API or embedded as a booby trap. Every proof is dete
 
 See [EYES_SRS.md](docs/EYES_SRS.md) for the full specification.
 
-## BIM Designer — Design in Blender, Compile from BOM
+## Design in Blender BIM (BONSAI), Compile from BOM
 
 The compiler is not a command-line-only tool. It powers a live GUI inside [Blender](https://www.blender.org/) via the [Bonsai](https://bonsaibim.org/) addon. A Java Design Server (TCP :9876) handles all BIM logic; Blender is just the viewport and interaction layer. Thin Python client, fat Java brain.
 
@@ -80,7 +80,7 @@ See [BIM_Designer_SRS.md](docs/BIM_Designer_SRS.md) for UX requirements and [BIM
 | **Mined validation rules** | 415 dimension rules from 20 buildings — IFC quality gate |
 | **Largest building** | Terminal (48,428 elements, 505 products, 8 disciplines) |
 | **Databases** | 4-DB architecture: component_library (21 tables), disc_validation (22), per-building BOM (6), output |
-| **Java source** | 728 files across 9 Maven modules |
+| **Java source** | 740 files across 10 Maven modules |
 
 ## Project Overview
 
@@ -105,6 +105,7 @@ bim-compiler/
 ├── 2D_Layout/             # Floor plan generation
 ├── TopologyMaker/         # Grid strategy, production order lifecycle
 ├── BIM_COBOL/             # 63 domain verbs, witness engine
+├── BIMEyes/               # Geometric comprehension: shape proofs, fingerprints, diff
 ├── IFCtoBOM/              # IFC extraction → BOM database pipeline
 ├── BIMBackOffice/         # ERP reporting, sessions, portfolio (HTTP :9877)
 ├── BonsaiBIMDesigner/     # GUI server, validation, assembly (TCP :9876)
