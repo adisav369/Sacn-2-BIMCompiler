@@ -194,10 +194,10 @@ SH doors and windows — per-axis AABB extents compared (ref vs output, 4 decima
 | Windows_Sgl_Plain (×4) | 1.8600 | 1.8600 | 0.3525 | 0.3525 | 1.2100 | 1.2100 | 0.0mm |
 
 **Verdict:** No axis swap detected for SH. All per-axis dimensions match exactly.
-The feared axis-swap scenario (W↔D) does not occur in SH because the EN-BLOC
+The feared axis-swap scenario (W↔D) does not occur in SH because the BOM tree
 pipeline copies AABB directly from extraction. The test is still valuable as a
-regression guard — axis swaps could appear when GENERATIVE or WALK-THRU paths
-produce geometry from rules rather than copying positions. Asserts (not advisory).
+regression guard — axis swaps could appear when generative paths (BOM Drop +
+modifications) produce geometry from rules rather than copying positions. Asserts (not advisory).
 
 **Fix:**
 1. Match reference elements to output elements by `element_name` pattern (strip
@@ -290,7 +290,7 @@ but the storey path never queried it.
 
 **Fix applied:**
 1. StoreyCompiler: don't `markConsumed()` for slab (still creates SlabSpec for boundaries)
-2. BuildingWriter: skip storey slab write when `hasMetadata` (EN-BLOC mode)
+2. BuildingWriter: skip storey slab write when `hasMetadata` (BOM tree mode)
 3. Slab flows through emitGlobalPlacementElements → MeshBinder → LOD_ library geometry
 
 **Result:** `LOD_653b0f0936304af7` — WYSIWYG with stone.
@@ -344,7 +344,7 @@ parametric fallback = immediate gate failure.
 - MEPWriter.java: diffusers, electrical, alarms, pipes, fixtures (3)
 - MeshBinder.java: bindParametric fallback
 
-**Status:** SPEC WRITTEN. EN-BLOC already works (MeshBinder path). Generative
+**Status:** SPEC WRITTEN. BOM tree path already works (MeshBinder path). Generative
 sub-writers still emit parametric — to be replaced with library LOD resolution.
 
 **Traces:** BBC.md §2 No Parametric Mesh in Pipeline
@@ -479,7 +479,7 @@ or document why custom executions are necessary.
 - C8 (geometry diversity) — IMPLEMENTED advisory. SH: 4/11 product types lose diversity.
   Known limitation: compiler assigns one mesh per product type. Real finding, not false positive.
 - C9 (per-element axis dimension) — IMPLEMENTED asserts. SH: 0 violations, all axes match exactly.
-  EN-BLOC copies AABB directly; regression guard for GENERATIVE/WALK-THRU paths.
+  BOM tree copies AABB directly; regression guard for generative/BOM Drop paths.
 - C10 (mesh centroid fingerprint) — IMPLEMENTED advisory. Downstream of C8: same base mesh →
   same centroid offset. Violations correlate with C8 diversity losses. Promote after C8 fix.
 - All three in `GeometryFidelityTest.java`. Needs compile DB from `run_RosettaStones.sh` to run.
@@ -514,8 +514,8 @@ are waste.
 | §2.1.6 Count invariant | SUM(non-PHANTOM qty) = output count | ExtractedBOMWalkTest | G1-COUNT | PASS (SH/DX/TE) |
 | §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
 | §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER (structural) | PASS |
-| §3.3 EN-BLOC | Single BOM per singularity, no selection cascade | RosettaStoneGateTest | G1-G6 | PASS (SH/DX/TE) |
-| §3.4 WALK-THRU | Multi-candidate selection per slot | SelectionCascadeTest | W-GEN-1b | PASS (3/5 slots) |
+| §3.3 Instant Drop | 1 C_OrderLine, BOM tree explosion, no modifications | RosettaStoneGateTest | G1-G6 | PASS (SH/DX/TE) |
+| §3.4 BOM Drop | Interactive tree navigation, swap/add by bom_category | SelectionCascadeTest | W-GEN-1b | PASS (3/5 slots) |
 | §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS (7 witnesses) |
 | §3.5 AABB fit | Oversized SETs rejected | SelectionCascadeTest | W-GEN-1d | PASS |
 | §3.5 Volume ranking | Largest fitting SET wins | SelectionCascadeTest | W-GEN-1c | PASS |
@@ -545,7 +545,7 @@ are waste.
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| §3.2 ESLine tack_from | ESLine.tack_from = m_bom_line.dx/dy/dz | — | W-ESLINE-TACK-1 | **PENDING** (needed before WALK-THRU) |
+| §3.2 ESLine tack_from | ESLine.tack_from = m_bom_line.dx/dy/dz | — | W-ESLINE-TACK-1 | **PENDING** |
 | §3.2 extends to work_output | CO_EmptySpaceLine.tack_from = C_OrderLine.dx/dy/dz | — | — | **PENDING** |
 
 ### G4_SRS — work_output.db
@@ -589,6 +589,9 @@ are waste.
 |---|---|---|---|---|
 | EYES_SRS §4.4 | P25 ROOM_VALIDITY: room has walls≥2, floor, ceiling, door | RoomValidityProof | W-ROOM-VALID / EyesProofRunner | **IMPLEMENTED** (advisory, session 50) |
 | EYES_SRS §4.5 | P26 BUILDING_COMPLETENESS: rooms, roof, external door, circulation if multi-storey | BuildingCompletenessProof | W-BLDG-COMPLETE / EyesProofRunner | **IMPLEMENTED** (advisory, session 50) |
+| EYES_SRS §4.6 | P27 WALL_ROOF_INTERSECTION: wall maxZ ≤ roof surface at wall position | WallRoofIntersectionProof | W-DH-ROOF-1, W-DH-ROOF-3 / DemoHouseTest | **IMPLEMENTED** (session 53) |
+| EYES_SRS §4.6 | P28 ROOF_COVERAGE: roof footprint covers building footprint in plan | RoofCoverageProof | W-DH-ROOF-2 / DemoHouseTest | **IMPLEMENTED** (session 53) |
+| BIM_COBOL §17.3 | TRIM WALLS TO ROOF: clip wall heights to roof surface profile | TrimWallsToRoofVerb | W-TRIM-1..6 / TrimWallsToRoofVerbTest | **IMPLEMENTED** (session 53) |
 | EYES_SRS §10 Phase 2 | 24 proofs extracted to individual classes, PlacementProver thin facade | EyesProofRunner | W-EYES-NONDISTURB / CompilerContractTest 7/7 | **IMPLEMENTED** (session 50) |
 
 ### BIM_Designer — BOM Outliner + YAML v3
@@ -656,7 +659,7 @@ are waste.
 | IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
 | SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. +2 disc_validation Phase 2b/3. |
-| PENDING | 3 | Spec exists, no test spec yet. Needed before WALK-THRU. |
+| PENDING | 3 | Spec exists, no test spec yet. |
 
 **Rule:** No code change without checking this matrix first. If the change
 touches a PASS row, run the test. If it touches a SPEC ONLY row, write the

@@ -281,8 +281,8 @@ List<CompilerStage> STAGES = List.of(
 
 | Mode | Trigger | Behaviour |
 |------|---------|-----------|
-| **EN-BLOC** | Building has a BUILDING BOM | Entire BOM tree compiled in one pass |
-| **WALK-THRU** | DocSubType = 'ST' (template) | AABB matching selects best-fit BOMs level by level |
+| **Instant Drop** | 1 C_OrderLine, no modifications | BOM tree exploded in one pass (BBC.md §3.3) |
+| **BOM Drop** | User navigates tree, swaps/adds products | Modified order compiled through same pipeline (BBC.md §3.4) |
 
 **CO mode (Terminal/Institutional):** CompileStage is skipped for `DocBaseType=CO`. All elements come from BOM extraction — no DSL compilation path needed.
 
@@ -582,7 +582,7 @@ VERIFIED ✓ (or drift detected ✗)
 | **BIM COBOL** | Domain-specific verb language for construction mutations |
 | **BOM** | Bill of Materials — hierarchical tree of parts and sub-assemblies |
 | **C_DocType** | iDempiere document type — building type identity (DocBaseType + DocSubType) |
-| **EN-BLOC** | Compilation mode: entire BOM tree compiled in one pass |
+| **Instant Drop** | No modifications — 1 C_OrderLine, compile explodes BOM tree (BBC.md §3.3) |
 | **EntityType** | Data provenance: D=Dictionary (read-only), U=User (verb-created), A=Application |
 | **G1-G6** | Six verification gates in RosettaStoneGateTest |
 | **LEAF** | Component type: full LOD exists in component_library.db |
@@ -590,7 +590,7 @@ VERIFIED ✓ (or drift detected ✗)
 | **Prime Rule** | "Extract or Compile Only" — no data invention |
 | **Rosetta Stone** | Reference building with known-good IFC data for verification |
 | **Tack Point (LBD)** | Left-Back-Down corner = (minX, minY, minZ) = (0,0,0) in own frame |
-| **WALK-THRU** | Compilation mode: AABB matching selects best-fit BOMs level by level |
+| **BOM Drop** | Interactive tree navigation — swap/add products by bom_category (BBC.md §3.4) |
 | **Witness** | Test proving a verb/DAO produces correct output |
 
 ---

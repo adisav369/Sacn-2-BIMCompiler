@@ -132,7 +132,7 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 11 | `TILE SURFACE` | original | W-49..52 | 2D parametric grid fill |
 | 12 | `ARRAY` | original | W-53..56 | 1D linear repetition + code compliance |
 | 13 | `PLACE BOM` | data | — | BOM walk → output.db emission |
-| 14 | `EN-BLOC` / `WALK THRU` | data | — | Compilation mode dispatch |
+| 14 | `INSTANT DROP` / `BOM DROP` | data | — | BOM tree processing mode (BBC.md §3.3-3.4) |
 | 15-22 | `SELECT`/`LIST`/`DESCRIBE`/`COUNT`/`AGGREGATE`/`EXPORT`/`CLONE`/`SUMMARIZE` | data | — | BOM query + export |
 | 23-30 | `CREATE BOM`/`ADD LINE`/`SET TACK`/`SET ROTATION`/`SET DIMENSIONS`/`REMOVE LINE`/`DELETE BOM`/`SET LINE PROPERTY` | L0 | W-SY-1..29 | Synthetic BOM primitives |
 | 31-33 | `EXTRACT AABB`/`SNAP TO GRID`/`VALIDATE AABB` | utility | W-SY-1..29 | Geometry planning |
@@ -1895,8 +1895,8 @@ To diagnose whether defects originate from extraction data or BOM explosion, the
 
 | Suffix | Mode | BOM data source | Compilation |
 |--------|------|-----------------|-------------|
-| `_s` | Singular (EN-BLOC) | Flat EXTRACTED BOMs (EXT_SH/EXT_DX, all BUY) | Takes one BOM whole — hello-world POC |
-| `_e` | Walk Thru (WALK THRU) | Structured UNIT BOMs (UNIT → FLOOR → SET → BUY) | Walks hierarchy — production target |
+| `_s` | Instant Drop | Flat EXTRACTED BOMs (EXT_SH/EXT_DX, all BUY) | 1 OrderLine, no modifications — hello-world POC |
+| `_e` | BOM Drop | Structured UNIT BOMs (UNIT → FLOOR → SET → BUY) | Walks hierarchy with per-level tacking — production target |
 
 **Comparison method:**
 ```sql
@@ -2305,7 +2305,7 @@ Subdivide an AABB into room-sized slots. This is the 1D-to-rooms conversion: a b
 
 ```bimcobol
 PARTITION AABB 12000 10000 6000 INTO ROOMS LI DN KT BD BT
-    -- Uses M_BomCategoryLine min/max constraints
+    -- Uses M_BomCategory min/max constraints
     -- Allocates width proportional to category typical ratios
     -- Output: 5 room AABBs that tile the floor plan
 
@@ -2586,7 +2586,7 @@ STACK FLOORS IN SY_MY_DUPLEX
 
 ### 18.9 Level 4 — Catalog-Level Verbs (Template Grammar)
 
-These modify the `M_BomCategory` / `M_BomCategoryLine` grammar that drives COMPOSE BUILDING. This is the metaprogramming level — changing the rules that generate buildings, not the buildings themselves.
+These modify the `M_BomCategory` classification that drives COMPOSE BUILDING. This is the metaprogramming level — changing the rules that generate buildings, not the buildings themselves.
 
 #### DEFINE CATEGORY
 
@@ -2606,7 +2606,7 @@ DEFINE CATEGORY WS WORKSTATION doc_type Commercial
 
 #### ADD TEMPLATE RULE
 
-Insert M_BomCategoryLine — defines the parent→child containment rule with constraints.
+Insert a containment rule — defines the parent→child relationship with constraints.
 
 ```bimcobol
 ADD TEMPLATE RULE GF CONTAINS CL MIN 4 MAX 8
