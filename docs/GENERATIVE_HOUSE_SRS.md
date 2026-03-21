@@ -32,54 +32,47 @@ not a code problem.
 ### 2.1 The DemoHouse Path
 
 ```
-User: "Create 2BR house"
+User: "Create 2BR house with pitched roof and sprinklers"
          │
          ▼
-DesignerAPI.createNew()
-    RoomLayoutGenerator → 5 DesignBBox items:
-      LIVING   (bom_category=LIVING,   AABB=4000×3500×2800)
-      KITCHEN  (bom_category=KITCHEN,  AABB=4000×3500×2800)
-      BEDROOM1 (bom_category=BEDROOM,  AABB=5000×3500×2800)
-      BEDROOM2 (bom_category=BEDROOM,  AABB=5000×3500×2800)
-      BATHROOM (bom_category=BATHROOM, AABB=2000×1500×2800)
+C_Order created in work_output.db
          │
          ▼
-work_output.db: C_Order (DocStatus=DR) + C_OrderLine per room
-    Each C_OrderLine carries: bom_category, AABB, parent linkage
+C_OrderLine: M_Product_ID = BUILDING_SH_STD
+    (Start with SH as the base — 1 line, not exploded)
          │
          ▼
-Selection Cascade (BBC.md §3.5) — for each room slot:
-    1. Scope:  bom_category = 'BATHROOM'
-    2. Filter: DocBaseType = 'RE' (same base type as parent building)
-              DocSubType = 'DM' preferred → fallback to 'SH', 'DX', etc.
-    3. Fit:    child BOM AABB fits within slot's 2000×1500×2800
-    4. Volume: largest fitting BOM wins
-    5. seq_no: tiebreak
+BOM Drop — user navigates the tree:
+    BUILDING_SH_STD
+    ├─ SH_GF_STR         (floor structure — keep)
+    ├─ FLOOR_SH_GF_STD   (floor rooms — keep)
+    │  ├─ SH_LIVING_SET  (keep)
+    │  ├─ SH_DINING_SET  (keep)
+    │  ├─ SH_BED_SET     (keep)
+    │  └─ TOILET_BLOCK   (keep)
+    ├─ SH_ROOF_STR       ← SWAP: chooser shows RF products → FK_PITCHED_ROOF
+    ├─ SH_CW_STR         (keep)
+    └─ FLOOR_SLAB_GF     (keep)
          │
          ▼
-Matching BOM found → its children ARE the room contents:
-    SH's BATHROOM BOM has: toilet, sink, door, window, exhaust fan...
-    These children come with tack offsets (dx/dy/dz) already set.
-    No placement code needed — the BOM IS the placement spec.
+Add C_OrderLine: FP sprinkler product
+    Validation rules compute per-room placement
          │
          ▼
-User reviews in Designer UI
-    Sees: "BATHROOM will use SH's bathroom layout"
-    Can adjust: swap products, move items, change dimensions
+User reviews in Designer UI (BOM tree navigator = BOM Outliner G-9)
+    Can further swap, add, remove, adjust ASI
     All edits are C_OrderLine modifications in work_output.db
          │
          ▼
-DesignerAPI.promote() — explicit user action
-    C_OrderLine → m_bom + m_bom_line (entity_type='U', provenance='GENERATIVE')
-    DocStatus: DR → AP → CO (frozen)
-         │
-         ▼
-BuildingCompiler.compile() — SAME AS ROSETTA STONES
-    Reads m_bom/m_bom_line (same walker, same tack, same gates)
+BuildingCompiler.compile() — processes the order
+    Explodes BOM tree (same walker, same tack, same gates)
     Resolves products from component_library.db (same library)
     BIMEyes proofs run on output (same proofs)
     → output.db
 ```
+
+For TC-1 "Give me SH" — skip the BOM Drop. One C_OrderLine, no changes.
+Compile explodes the tree. Instant BOM Drop pattern.
 
 ### 2.2 The Three BOM Dimensions at Work
 
@@ -188,87 +181,43 @@ G3-DIGEST (spatial hash) requires a reference DB. For GENERATIVE buildings,
 there is no reference — DM defines the reference. G3 can be used for
 regression testing after the first successful compile.
 
-## 5. The Same YAML, Two Modes
+## 5. One Engine, Two Interfaces
 
-The classify YAML format is identical for extracted and generative buildings.
-The only difference is what the Selection Cascade finds when it searches:
+The same BOM tree processing drives both YAML-automated and Designer-visual paths.
+The only difference is who creates the C_OrderLine:
 
-### 5.1 Rosetta Stone Mode (EN-BLOC)
+### 5.1 YAML Path (automated)
+
+The classification YAML creates the C_Order + C_OrderLine automatically:
 
 ```yaml
-# classify_sh.yaml — EXTRACTED from IFC
+# classify_sh.yaml — 1 OrderLine, Instant Drop
 building:
   building_type: Ifc4_SampleHouse
   prefix: SH
   provenance: EXTRACTED
-  floor_rooms:
-    Ground:
-      spaces:
-        - { template_bom: ROOM_SH_LI, role: LIVING, aabb_mm: [4645, 2145, 3300] }
 ```
 
-The aabb_mm matches the extracted BOM exactly. Selection Cascade finds **one**
-matching BOM (singularity). EN-BLOC takes the whole tree. The Rosetta Stone
-proves the geometry machinery is correct.
+This creates 1 C_OrderLine referencing BUILDING_SH_STD. No BOM Drop.
+Compile explodes the tree → 55 elements.
 
-### 5.2 Generative Mode (WALK-THRU)
+### 5.2 Designer Path (interactive)
 
-```yaml
-# classify_dm.yaml — GENERATIVE, no IFC source
-building:
-  building_type: DemoHouse_2BR
-  prefix: DM
-  provenance: GENERATIVE
-  floor_rooms:
-    Ground:
-      spaces:
-        - { template_bom: ROOM_DEMO_LI, role: LIVING, aabb_mm: [4000, 3500, 2800] }
-```
+The BIM Designer lets users create C_OrderLines visually:
 
-The aabb_mm is different from any extracted building. Selection Cascade searches
-for BOMs with `bom_category=LIVING` and `DocBaseType=RE` that **fit within**
-4000×3500×2800. Multiple candidates may match (SH's living room, DX's living
-room). The cascade picks the best fit by volume, or the user overrides via
-the Designer.
+1. Pick a building product from the catalog (e.g. BUILDING_SH_STD)
+2. BOM Drop to navigate and modify the tree
+3. Swap/add/remove products at any level
+4. Compile the modified order
 
-### 5.3 Any Variant
+### 5.3 Both Paths, One Engine
 
-You can even specify a new duplex with different sizing:
-
-```yaml
-# classify_mydx.yaml — a custom duplex variant
-building:
-  building_type: MyDuplex
-  prefix: MX
-  provenance: GENERATIVE
-  doc_base_type: RE
-  composition: { type: MIRROR, unit_count: 2 }
-  floor_rooms:
-    Ground:
-      spaces:
-        - { template_bom: ROOM_MX_LI, role: LIVING, aabb_mm: [6000, 4000, 3000] }
-        - { template_bom: ROOM_MX_BD, role: BEDROOM, aabb_mm: [4000, 3500, 3000] }
-```
-
-The cascade finds DX's BOMs (same DocBaseType=RE), checks AABB fit, and places
-what fits. A bigger living room gets DX's living layout with space to spare.
-A smaller bedroom might not fit DX's bedroom → falls back to SH's bedroom.
-The cascade handles it automatically.
-
-### 5.4 Two Paths, One Machine
-
-| | YAML-driven (default) | Designer (visual) |
+| | YAML-driven | Designer (visual) |
 |---|---|---|
-| **Who selects BOMs** | Selection Cascade auto-picks | User browses + clicks |
+| **Who creates OrderLines** | YAML auto-creates | User browses + clicks |
+| **BOM Drop** | Not needed (Instant Drop) | Interactive tree navigation |
 | **Where decisions live** | C_OrderLine in work_output.db | Same |
-| **Promote to BOM** | Same promote path | Same |
 | **Compilation** | Same compiler, same gates | Same |
-| **Purpose** | Prove WALK-THRU works | Production use |
-
-The YAML-driven path with automatic selection is the **proof of concept** that
-the WALK-THRU machinery works. The Designer's visual path is the same mechanism
-with human choice replacing the cascade's automatic pick. Both write C_OrderLine.
-Both promote to BOM. Both compile through the same 9-stage pipeline and 6 gates.
 
 ## 6. AttributeSetInstance — Per-Instance Customization
 
@@ -291,9 +240,10 @@ original dimensions) and user-defined rooms (possibly bigger or smaller):
 5. Compiler resolves `effective = ASI ?? catalog` → scales library LOD
 6. Same pipeline, same gates. Zero new code.
 
-**Implementation state:** Schema DONE, FK DONE, ChangeSet.ASI DONE. Pending:
-WorkOutputDAO ASI read/write, compiler effective_dimension resolution,
-M_AttributeSet seed for major product types. See BBC.md §3.5.1 for details.
+**Implementation state (S52b):** Schema DONE, FK DONE, ChangeSet.ASI DONE,
+WorkOutputDAO ASI CRUD DONE (9 witnesses GREEN), DesignerAPI autoPopulate/readASI/
+updateASI DONE, M_AttributeSet seed for 11 product types DONE. Pending: compiler
+effective_dimension resolution (ASI > allocated > catalog). See BBC.md §3.5.1.
 
 ## 7. Test Cases — OrderLine-Driven Building Customization
 
@@ -302,12 +252,19 @@ M_AttributeSet seed for major product types. See BBC.md §3.5.1 for details.
 > the same pipeline. A user clicking "SH + add sprinklers" in the Designer produces
 > the same output as a YAML with the same OrderLine + ASI. One engine, two interfaces.
 
-### TC-1: Exact copy — "Give me SH"
+**Universal flow:** All test cases follow the same path:
+C_Order → C_OrderLine (references BOM product) → optional BOM Drop → compile.
+TC-1 and TC-8 use Instant Drop (no modifications).
+TC-2 through TC-7 use BOM Drop to swap/add/remove.
+
+### TC-1: Instant Drop — "Give me SH"
 
 ```
-C_OrderLine:
-  M_Product_ID = BUILDING_SH_STD
-  (no ASI overrides)
+C_Order in work_output.db
+C_OrderLine: M_Product_ID = BUILDING_SH_STD
+(no BOM Drop, no ASI overrides — Instant Drop)
+
+Compile explodes BOM tree → 55 elements in output.db
 
 Expected:
   55 elements (identical to Rosetta Stone)
@@ -447,14 +404,200 @@ OrderLine + ASI + validation rules provide the grammar. That is sufficient for a
 production-ready generative system. The topology maker is the creative writing course
 — useful but not required to form valid sentences.
 
-## 8. Witnesses
+## 8. Construction Completeness — Beyond Room Interiors
 
-| ID | Claim | Mechanism |
-|----|-------|-----------|
-| W-GEN-1 | Selection Cascade finds matching BOMs by category + AABB fit | SelectionCascadeTest (7 sub-witnesses) |
-| W-GEN-2 | Compilation produces same element count as selected BOMs predict | G1-COUNT gate |
-| W-GEN-3 | All geometry resolves from library (no parametric fallback) | G5-PROVENANCE gate |
-| W-GEN-4 | BIMEyes Tier 1 proofs pass on compiled output | EyesProofRunner.proveFromDB() |
-| W-GEN-5 | UBBL compliance passes for all rooms | PlacementValidator + AD_Val_Rule |
-| W-GEN-6 | Promoted BOM has entity_type='U', provenance='GENERATIVE' | PromoteTest assertions |
-| W-GEN-7 | No new code in BuildingCompiler for GENERATIVE path | Same compiler, same gates |
+> **Problem:** DemoHouseTest currently generates room interiors only (walls, doors,
+> windows, furniture, basic MEP). A real house needs a roof, foundation, wall-roof
+> junctions, and building envelope closure. All these products **already exist** in
+> component_library.db from extracted buildings. No new code is needed — only BOM
+> template authoring via YAML and OrderLine + ASI.
+
+### 8.1 What a Complete Generative House Needs
+
+Three construction layers beyond room interiors:
+
+**Layer A: Envelope (weather-tight shell)**
+
+| Element | IFC Class | Library Source | How it gets into OrderLine |
+|---------|-----------|---------------|---------------------------|
+| Roof deck (flat) | IfcRoof | SH: `Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr` (14.8×7.3×1.7m) | BUILDING-level static child |
+| Roof deck (pitched) | IfcSlab | FK: `Dach-1`, `Dach-2` (13×5.5×3.4m each slope) | BUILDING-level, 2 per pitch |
+| Roof framing (pitched) | IfcBeam | FK: `Sparren` (rafter 8/80mm, 23 members), `Pfette` (purlin), `First` (ridge) | CLUSTER verb on roof SET |
+| Roof insulation | IfcCovering | SC: `dakisolatie` (1.0×0.2×2.0m) | Material layer on roof product |
+| Roof weatherproofing | IfcCovering | SC: `dakpan`, SH: 4mm felt membrane | Top layer of roof assembly |
+| Roof edge trim / fascia | IfcCovering | SC: `dakopstand`, `zinkwerk`, `dakschroot` | BUILDING-level static children |
+| Curtain wall / glazed facade | IfcMember | SH: `Curtain_Wall-Exterior_Glazing` (21 segments) | CLUSTER verb on facade SET |
+| Wall cladding / finish | IfcCovering | SC: `gevelisolatie`, `buitenblad` | Material layer on wall product |
+
+**Layer B: Structure (load path)**
+
+| Element | IFC Class | Library Source | How it gets into OrderLine |
+|---------|-----------|---------------|---------------------------|
+| Foundation slab | IfcSlab | Generic: 150mm concrete slab-on-grade | BUILDING-level, z=-0.15m |
+| Strip footings | IfcFooting | Bridge/infra library (8+ products) | Below load-bearing walls |
+| Floor beams (2+ storey) | IfcBeam | 63 beam products (steel W-flanges, timber joists) | FLOOR-level static children |
+| Columns / posts | IfcColumn | 31 column products (concrete, steel) | Frame-based only |
+| Window lintels | IfcBeam | Concrete/steel lintels | Above each opening, verb-driven |
+
+**Layer C: Finishes (livability)**
+
+| Element | IFC Class | Library Source | How it gets into OrderLine |
+|---------|-----------|---------------|---------------------------|
+| Ceiling finish | IfcCovering | 35+ covering products (gypsum, ACT grid) | Per-room, dz = room height - ceiling thickness |
+| Floor finish | IfcCovering | Tile, timber, carpet products | Per-room, dz = 0 |
+| Roof skylight | IfcWindow | SC: `dakkoepel` (1.2×1.2×0.5m) | Optional, on roof deck |
+| Handrails / guardrails | IfcRailing | Library railing products | Balcony/stair edges |
+
+### 8.2 The Roof-Wall Junction Problem
+
+When a pitched roof meets walls, three things happen:
+
+1. **Walls terminate at top plate height** — wall `allocated_height_mm` = storey height
+   (e.g. 2800mm). The wall does NOT extend into the roof triangle. This is already
+   correct in FK extraction: walls end at ~2.5m, rafters begin above.
+
+2. **Gable walls follow the roof slope** — end walls that fill the triangle between
+   top plate and ridge. These are separate products with a triangular profile.
+   FK stores these as regular IfcWall elements with non-rectangular `allocated_height_mm`
+   that represents the peak height.
+
+3. **Curtain walls cut at roof line** — SH's curtain wall segments are pre-cut in the
+   IFC (authoring tool did the intersection). For generative buildings, the ASI needs
+   a `top_trim_mm` attribute or the auto-populate needs to compute per-panel height
+   from the roof slope function.
+
+**Resolution for generative path:**
+
+```
+BIM_Roof ASI template (new):
+  pitch_deg       — 0 (flat) to 45 (steep)
+  overhang_mm     — eaves projection beyond wall face
+  ridge_direction — ALONG_WIDTH or ALONG_DEPTH
+  material        — CONCRETE / TIMBER / METAL
+
+BIM_Wall ASI addition:
+  top_trim_mm     — if wall meets pitched roof, trim height at this point
+                    (computed from: wall_x_position × tan(pitch_deg))
+
+BIM_GableWall (new ASI template, IsInstanceAttribute=1):
+  peak_height_mm  — height at the ridge (above top plate)
+  base_width_mm   — width at the top plate
+```
+
+**Auto-populate logic for pitched roof:**
+```
+1. User selects roof_type: PITCHED (or cascade defaults from building template)
+2. Auto-populate creates:
+   a. 2× roof deck slabs (one per slope) — ASI: {pitch_deg, span_mm}
+   b. N× rafters via CLUSTER verb — spacing from FK pattern (600mm o.c.)
+   c. 2× purlins (front + back) — ASI: {span_mm = building length}
+   d. 1× ridge beam — ASI: {span_mm = building length}
+   e. 2× gable walls — ASI: {peak_height_mm, base_width_mm}
+3. For each exterior wall touching the roof:
+   a. Compute trim height from roof slope at wall position
+   b. Set wall ASI: {top_trim_mm}
+4. For curtain wall panels:
+   a. Compute per-panel height from roof slope function
+   b. Set ASI: {height_mm = min(panel_height, roof_z_at_panel_x)}
+```
+
+### 8.3 FP Clash Detection During Auto-Populate
+
+Fire protection elements (sprinklers, fire pipes) must not collide with structural
+elements or ACMV ductwork. The rules already exist in `AD_Clash_Rule`:
+
+| Rule | Discipline A | Discipline B | Type | Min Distance | Verdict |
+|------|-------------|-------------|------|-------------|---------|
+| 4 | FP (pipes) | STR (beams/columns) | HARD | 0mm | BLOCK — reroute pipe |
+| 6 | FP (sprinkler heads) | ACMV (ducts) | CLEARANCE | 300mm | BLOCK — NFPA 13 obstruction |
+
+**Wiring needed:** After `autoPopulate()` places all elements (structural + MEP),
+call `PlacementValidatorImpl.validateBatch()` with all placements to detect clashes.
+The validator already implements `checkClearance()` (lines 698-730) for cross-discipline
+spatial checks — it just needs to be called from the auto-populate flow.
+
+**Expected auto-populate behavior:**
+```
+1. Place all room contents (walls, doors, windows, furniture)
+2. Place MEP per ad_space_type_mep_bom (sprinklers, lights, outlets)
+3. Run validateBatch() — clash detection
+4. For each BLOCK clash:
+   a. Reposition MEP element (move sprinkler 300mm from duct)
+   b. Or flag as WARNING for user review
+5. Return AutoPopulateResponse with validationWarnings
+```
+
+### 8.4 Validation Rules That Close Gaps
+
+Three rule tables drive gap-filling. All exist, need wiring to auto-populate:
+
+**`ad_space_type_opening`** (103 rules) — "A KITCHEN needs 1 exterior window":
+```
+After cascade fills room contents, for each room:
+  1. Query ad_space_type_opening WHERE space_type_id = room.category
+  2. Count existing openings in room's C_OrderLine children
+  3. If qty < qty_rule → auto-add missing opening as new C_OrderLine
+  4. Select opening product from family_id (e.g. INST_CURTAIN_WINDOW)
+  5. Place on specified wall face (placement_wall = 'exterior')
+```
+
+**`ad_space_type_mep_bom`** (186 rules) — "A BATHROOM needs 1 exhaust fan + GFCI":
+```
+After cascade fills room contents, for each room:
+  1. Query ad_space_type_mep_bom WHERE space_type_id = room.category
+  2. Count existing MEP of each type in room's C_OrderLine children
+  3. If qty < qty_normal → auto-add missing MEP as new C_OrderLine
+  4. Select product from mep_product_id (e.g. EXHAUST_FAN, OUTLET_GFCI)
+  5. Place per placement_rule on host_surface (WALL/CEILING)
+```
+
+**`AD_Val_Rule`** (63 rules) — "Window-to-floor area ratio ≥ 10% (UBBL §39)":
+```
+Rule 110: UBBL_WINDOW_MIN_AREA_RATIO (param: min_ratio=0.10)
+  Currently: defined but not evaluated during auto-populate
+  Wire: after all openings placed, compute total glazing area vs floor area
+        If ratio < 0.10 → WARN "insufficient natural light"
+        Or auto-add window to increase ratio
+```
+
+### 8.5 Construction Tools Summary — What S53 Needs
+
+| Tool | Exists? | Wire to auto-populate? |
+|------|---------|----------------------|
+| Selection Cascade (room contents) | YES — `findMatchingSets()` | YES — S52b done |
+| ASI authoring (per-instance dims) | YES — `WorkOutputDAO` CRUD | YES — S52b done |
+| Opening gap-fill (`ad_space_type_opening`) | DATA exists (103 rules) | NOT WIRED — needs query + insert loop |
+| MEP gap-fill (`ad_space_type_mep_bom`) | DATA exists (186 rules) | NOT WIRED — needs query + insert loop |
+| FP clash detection (`AD_Clash_Rule`) | CODE exists (`checkClearance()`) | NOT WIRED — needs `validateBatch()` call |
+| Glazing ratio check (Rule 110) | DATA exists | NOT WIRED — needs evaluation in approve gate |
+| Roof BOM template | PRODUCTS exist in library | NOT AUTHORED — needs YAML + ASI template |
+| Foundation BOM template | PRODUCTS exist (8+ footings) | NOT AUTHORED — needs YAML |
+| Wall-roof junction | FK extraction shows the pattern | NEEDS: `BIM_Roof` ASI + `top_trim_mm` on walls |
+| Ceiling/floor finish | PRODUCTS exist (35+ coverings) | NOT AUTHORED — needs per-room static children |
+
+**Key insight:** The compiler, pipeline, and gates handle all these element types today
+(proven by FK, SH, SC, TE extractions). The generative gap is **data authoring** (YAML
+templates + ASI attributes), not code. The exception is the `validateBatch()` wiring
+for clash detection — that's a small code change to call existing logic.
+
+## 9. Witnesses
+
+| ID | Claim | Status |
+|----|-------|--------|
+| W-GEN-1 | Selection Cascade finds matching BOMs by category + AABB fit | GREEN (S52, 7 sub-witnesses) |
+| W-GEN-2 | Compilation produces same element count as selected BOMs predict | SPEC |
+| W-GEN-3 | All geometry resolves from library (no parametric fallback) | SPEC |
+| W-GEN-4 | BIMEyes Tier 1 proofs pass on compiled output | SPEC |
+| W-GEN-5 | UBBL compliance passes for all rooms | SPEC |
+| W-GEN-6 | Promoted BOM has entity_type='U', provenance='GENERATIVE' | SPEC |
+| W-GEN-7 | No new code in BuildingCompiler for GENERATIVE path | PROVEN (same compiler) |
+| W-ASI-AUTO-1 | autoPopulate fills all empty rooms with cascade matches | GREEN (S52b) |
+| W-ASI-AUTO-2 | Auto-populated walls have ASI.length_mm scaled to room width | GREEN (S52b) |
+| W-ASI-AUTO-3 | IsInstanceAttribute=0 products have no ASI after auto-populate | GREEN (S52b) |
+| W-ASI-READ-1 | readASI returns correct fields for a wall with ASI override | GREEN (S52b) |
+| W-ASI-EDIT-1 | updateASI changes single field, effective dimension reflects override | GREEN (S52b) |
+| W-GEN-OPEN-1 | Opening gap-fill adds missing doors/windows per ad_space_type_opening | SPEC |
+| W-GEN-MEP-1 | MEP gap-fill adds missing fixtures per ad_space_type_mep_bom | SPEC |
+| W-GEN-CLASH-1 | FP vs STR clash detected after auto-populate | SPEC |
+| W-GEN-ROOF-1 | Pitched roof template places rafters + purlins + ridge via CLUSTER | SPEC |
+| W-GEN-TRIM-1 | Wall top_trim_mm computed from roof pitch at wall position | SPEC |

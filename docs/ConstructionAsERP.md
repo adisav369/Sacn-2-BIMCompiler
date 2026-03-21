@@ -425,55 +425,36 @@ the exact geometry. See Appendix E for the full ledger dumps.
 sets need SpaceSize matching. Each selection decision spawns a CO_EmptySpaceLine,
 recording which variant won, what orientation was resolved, what space remains.
 
-**Furniture-set level — one unified consultation process:**
+**BOM tree processing — standard ERP manufacturing pattern:**
 
-All buildings go through the same BOMCategory lookup. There is no exclusive
-treatment. The difference in outcome is purely a consequence of match cardinality:
+All buildings go through the same BOM tree explosion. There is no exclusive
+treatment. C_OrderLine references a BOM product. Compile explodes the tree.
 
-| Outcome | Condition | ESLines written | C_OrderLines written |
-|---------|-----------|-----------------|----------------------|
-| **Single-match** | DocSubType matches + exactly one BOM fits → whole assembly taken in toto | ONE ESLine for the whole set | None — existing C_OrderLine sufficient |
-| **Walk** | DocSubType does not match → BOMCategory slot walk by Sequence; if AABB fits exactly, arrives at same result | One ESLine per slot placed | One new C_OrderLine per found BOM (written to **output.db** — transactional instance data) |
+| Pattern | iDempiere parallel | How it works |
+|---------|-------------------|--------------|
+| **Instant Drop** | Instant BOM Drop plugin | 1 C_OrderLine → compile explodes full BOM tree. No user modifications. The quickest hello world test. |
+| **BOM Drop** | BOMDrop Configurator plugin | User navigates BOM tree, swaps products (same bom_category), adds/removes lines. Compile processes modified order. |
 
-**Single-match (SH/DX):** `DocSubType='SH'` — m_bom.doc_sub_type='SH' → exactly
-one match. The compiler takes the whole LIVING_SET assembly in one unit: ONE ESLine
-records origin + orientation; the BOM's `dx/dy/dz` values reproduce exact item
-positions from the reference IFC. No further walking, no new C_OrderLines. Spatial
-digest is stable: same BOM offsets → same world coordinates every compile.
+**Instant Drop (Rosetta Stones):** C_OrderLine references BUILDING_SH_STD.
+Compile walks the BOM tree, accumulates tack offsets (dx/dy/dz) at every level,
+resolves leaves to M_Product geometry. ONE C_OrderLine, ONE CO_EmptySpaceLine.
+SH (55), DX (1099), TE (48,428) all compile this way.
 
-**Walk (ST mode):** `DocSubType='ST'` → no doc_sub_type match. The compiler
-walks M_BomCategoryLine slots in Sequence order (Dining=10, Sofa=20, Piano=30),
-placing each against the remaining room AABB. When the AABB matches SH's
-exactly, the walk finds the same BOMs that SH's direct match finds — and the result
-is identical. This is not a coincidence: it is the architecture working correctly.
-The same room dimensions can only accept the same furniture set. The process
-naturally converges to the same placement. A new C_OrderLine + ESLine is written
-for each slot; for a slot that does not fit, it is skipped.
+**BOM Drop (generative/custom):** User starts with a base building product,
+opens the BOM tree, navigates to the child they want to change, and swaps it
+with another product in the same bom_category. The chooser filters by category
++ AABB fit. User can also add new C_OrderLines for additional products
+(e.g. fire protection discipline). Validation rules govern placement.
 
-**DX AABB is its own discriminant.** DX's living room (3332×3943mm) is uniquely
-sized — only DX BOMs (doc_sub_type='DX') fit that space. The walk finds them
-because nothing else matches. The two-unit (dual-tenant) structure is handled at
-the higher structural tier (PR path in M_BomCategoryLine `num_units=2`) and
-produces the DUPLEX_SET_STD pair container as one of the 7 structural ESLines.
-For Rosetta Stone testing, AABB alone is sufficient to ensure DX BOMs and no
-others are selected.
+**AABB as natural discriminant:** Each building's room dimensions are unique —
+SH's living room (4645×2145mm) differs from DX's (3332×3943mm). When the
+BOM chooser filters by bom_category + AABB fit, the results naturally
+reflect what fits. This is not a code path — it's geometry.
 
-**Rosetta Stone proof — the only efficient "visual" verification:**
-The spatial digest hash comparison is the only systematic way to prove that the
-correct furniture sits in the correct positions. Without it there is no efficient
-visual proof — only manual inspection of coordinates. Both the direct-match path
-and the walk path must produce the **same spatial digest hash total GREEN**:
-
-```
-SpatialDigest(SH)     == SpatialDigest(ST_SH)   ← same AABB, walk finds same BOMs
-SpatialDigest(DX)     == SpatialDigest(ST_DX)   ← same AABB, walk finds same BOMs
-```
-
-Test sequence (Rosetta Stone only — SH and DX are the reference stones):
-1. SH and DX direct DocSubType match → spatial digest GREEN
-2. ST_SH (DocSubType='ST', SH AABB) and ST_DX (DocSubType='ST', DX AABB) → walk
-   → same digest GREEN
-When both pass, the placement process is proven robust and correct.
+**Rosetta Stone proof — spatial digest verification:**
+The spatial digest hash comparison proves that the BOM tree explosion produces
+correct element positions. The digest filters to visible, geometry-bearing
+elements only — same IFC classes on both sides.
 
 **Rosetta Stone digest filter (Q&A1, 2026-03-02):** SH EXTRACTED has 56 elements;
 ST_SH GENERATIVE currently produces 123. The 67 extra elements are compilation

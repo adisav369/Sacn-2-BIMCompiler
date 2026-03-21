@@ -330,9 +330,9 @@ When the user places a room or furniture set, the BOM selection cascade
 3. **Largest volume** (secondary) — maximize space usage
 4. **seq_no** (tiebreaker) — lower preferred
 
-If exactly one BOM matches = **EN-BLOC** (taken whole). If multiple match =
-**WALK THRU** (compiler walks slots in sequence, fitting best candidate per
-slot). The user sees the result and can override via verb edits.
+The user can BOM Drop to navigate the tree and swap/add products (same
+bom_category constraint). Without BOM Drop, compile explodes the tree
+automatically (Instant Drop). See BBC.md §3.3-3.4.
 
 ### 2.5 EntityType → Data Governance
 

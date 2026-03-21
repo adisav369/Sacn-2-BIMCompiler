@@ -262,7 +262,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 | M_Product_Category_ID | TEXT FK | → M_Product_Category |
 | is_active | INTEGER | |
 
-### M_BomCategory (functional classification)
+### M_BomCategory (flat classification — like M_Product_Category in iDempiere)
 
 | M_BomCategory_ID | Name | Purpose |
 |-------------------|------|---------|

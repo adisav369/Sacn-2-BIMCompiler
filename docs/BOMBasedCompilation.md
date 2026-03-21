@@ -40,12 +40,12 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
 
 **Three BOM dimensions** (iDempiere pattern) govern selection:
 
-1. **Category** (M_BomCategory) — WHAT: kitchen, bedroom, bathroom, structural
-2. **Owner** (C_DocType.DocSubType) — WHICH variant: SH, DX, TB, TE
+1. **Category** (M_BomCategory) — WHAT: kitchen, bedroom, bathroom, structural — flat classification (like M_Product_Category in iDempiere). Products belong to categories.
+2. **Provenance** (m_bom.doc_sub_type) — WHO extracted it: SH, DX, TB, TE — metadata on the BOM, not a selection driver
 3. **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm
 
 **Why this is powerful:** Adding a new building type requires zero Java code.
-Define new BOM data (M_BomCategory + M_BomCategoryLine + m_bom rows) and the
+Define new BOM data (M_BomCategory + m_bom rows) and the
 compiler handles it. The same way an ERP handles a new product — data, not code.
 
 ### 1.1 Disciplines Are Metadata, Not Structure
@@ -439,8 +439,8 @@ position. See `BIM_Designer.md` §8.3 for per-instance ASI overrides
 |------|-------------------|------------|
 | **ESLine** | S_Resource (spatial workstation) | `co_empty_space_line` — a spatial slot that receives a child BOM. The parent provides the attachment point (tack_from); the child doesn't know its host. |
 | **BUFFER** | Phantom BOM line | Fills the gap between SUM(children AABB) and parent AABB. Ensures parent = SUM(children) invariant. |
-| **EN-BLOC** | Single-sourcing | Selection cascade finds exactly one BOM → take it whole. |
-| **WALK-THRU** | Multi-sourcing | Multiple candidates → walk M_BomCategoryLine slots, pick best fit per slot. |
+| **BOM Drop** | PP_Product_BOM explosion | Interactive tree navigation — expand BOM children one level at a time, swap products (same bom_category), add lines. Only needed when making changes. Without BOM Drop, compile explodes the tree automatically (iDempiere Instant BOM Drop pattern). |
+| **Instant Drop** | Manufacturing Order processing | No modifications — 1 C_OrderLine references a BOM product, compile explodes the full tree. The quickest hello world test. |
 | **Tack** | Origin datum | Left-Back-Down (LBD) corner of AABB = (minX, minY, minZ) = (0,0,0) in own frame. All offsets are parent-LBD to child-LBD. |
 | **BOM** | Bill of Materials | Any `m_bom` row. If `child_product_id` resolves to an `m_bom`, the walker recurses into it. There is no MAKE/BUY distinction — the walker decides by existence. |
 | **Leaf** | Purchased item | A `child_product_id` that resolves to `M_Product` in `component_library.db` (no matching `m_bom`). The compiler emits the element here. |
@@ -458,10 +458,10 @@ Parent BOM (e.g. FLOOR_TE_GF)
   │
   ├─ tack_from = [slot_1_origin, slot_2_origin, ...]   ← parent defines WHERE
   │
-  └─ M_BomCategoryLine (template)                       ← parent defines WHAT KIND
+  └─ m_bom_line (children)                               ← parent defines WHAT children
        │
-       ├─ slot 1: BomCategory=ARC, AABB capacity         ← "I need an ARC assembly here"
-       ├─ slot 2: BomCategory=STR, AABB capacity         ← "I need a STR assembly here"
+       ├─ child 1: bom_category=ARC, dx/dy/dz            ← architecture assembly
+       ├─ child 2: bom_category=STR, dx/dy/dz            ← structural assembly
        └─ ...
             │
             ▼
@@ -476,85 +476,69 @@ a child BOM for a slot, the ESLine tells the compiler: "place this child's LBD
 at this position within the parent's frame." The child's tack_to (its own LBD)
 meets the parent's tack_from (the slot origin). The child never looks up.
 
-**Mirror invariant (W-ESLINE-TACK-1, pending):** The ESLine's `tack_from_x/y/z`
-must match the corresponding `m_bom_line.dx/dy/dz` for every slot. If the ESLine
-drifts from the BOM line, WALK-THRU would place elements at ESLine positions
-while EN-BLOC uses BOM positions — producing different output from the same data.
-This invariant is untested because WALK-THRU is unproven (§3.4), but must be
-implemented before WALK-THRU goes live. See also `G4_SRS.md` §5.4 for the
-work_output.db mirror: `CO_EmptySpaceLine.tack_from` must match `C_OrderLine.dx/dy/dz`.
+**Why this matters for generative:** In the BIM Designer, the user navigates the tree.
+The parent BOM defines its children via m_bom_line. The user can BOM Drop to navigate the tree and swap/add products. The child BOM is oblivious — it can be swapped, resized, or replaced without touching any other BOM.
 
-**Why this matters for generative:** In the BIM Designer, the user fills slots.
-The parent BOM defines the slots (M_BomCategoryLine). The user picks which child
-goes in each slot (selection). The ESLine records the result. The child BOM is
-oblivious — it can be swapped, resized, or replaced without touching any other
-BOM. This is the iDempiere S_Resource pattern: a workstation (slot) receives
-whatever work order (BOM) is assigned to it.
+### 3.3 Instant Drop — The HelloWorld Test
 
-### 3.3 EN-BLOC — The HelloWorld Test
+The simplest compilation: one `C_OrderLine` references a BOM product (e.g.
+BUILDING_SH_STD). No BOM Drop, no modifications. The compiler processes the
+order and explodes the BOM tree — walking every level, accumulating tack
+offsets (dx/dy/dz), resolving leaves to M_Product geometry.
 
-EN-BLOC answers one question: **do all the BOMs fit when restacked?**
+This is the iDempiere **Instant BOM Drop** pattern: drop without modification,
+auto-resolve cascading quantities from the parent.
 
-One `C_OrderLine` selects the BUILDING BOM. One `CO_EmptySpaceLine` at
-origin (0,0,0). No selection cascade, no slot walking, no tack evaluation.
-EN-BLOC sees **singularity**: same AABB, same DocBaseType, same DocSubType
-→ exactly one BOM matches → take whole. The entire BOM hierarchy is accepted
-as-is (`C_DocType AABB = M_Product AABB`, see `PlacementLoader.java:24`).
+One C_OrderLine. One CO_EmptySpaceLine at origin (0,0,0). The entire BOM
+hierarchy is accepted as-is. SH (55), DX (1099), TE (48,428) all compile
+this way — the Rosetta Stones prove the BOM data restacks correctly.
 
-EN-BLOC **accumulates** tack offsets (dx/dy/dz) through the BOM tree to compute
-world positions, but does not **evaluate** them against slot constraints — it
-trusts that the restacked BOMs produce correct positions because they were
-extracted from a verified source. WALK-THRU (§3.4) is where each tack_from is
-evaluated against slot AABB capacity and the selection cascade picks candidates.
-
-SH (55), DX (1099), TE (48,428) all compile EN-BLOC.
-
-**What EN-BLOC proves:**
+**What Instant Drop proves:**
 - **Stacking order:** the BOM hierarchy restacks to reproduce the original
 - Verb expansion: factored recipes expand to correct instance count
 - The BOM data is complete and self-consistent (G1-G6 gates verify this)
+- Tacking: dx/dy/dz accumulates correctly through every BOM level
 
-**What EN-BLOC does NOT test:**
-- Tack evaluation (each dx/dy/dz tested against slot AABB — that's WALK-THRU)
-- Multi-candidate selection (only one BOM matches per singularity)
-- Slot walking (no M_BomCategoryLine traversal)
-- DocValidate compliance (extracted buildings bypass validation)
-- PP_Order routing (no assembly sequence needed for restacking)
+### 3.4 BOM Drop — Interactive Modification
 
-### 3.4 WALK-THRU (Progressive Stacking)
+When the user wants to modify a building, they use **BOM Drop** — the
+iDempiere BOMDrop Configurator pattern adapted for BIM.
 
-When multiple BOMs could fit a slot, the compiler walks slots in sequence:
+1. C_OrderLine references a BOM product (e.g. BUILDING_SH_STD)
+2. User performs BOM Drop — tree expands one level, showing immediate children
+3. User navigates to the child they want to change
+4. **Swap:** replace a child with another product in the same bom_category
+   (e.g. swap flat roof → pitched roof, both category RF)
+5. **Add:** insert a new C_OrderLine for an additional product
+   (e.g. add FP sprinkler — validation rules compute placement)
+6. **Remove:** deactivate a child line (e.g. remove dining room furniture)
+7. Compile processes the modified order — same tacking, same explosion
 
-1. Read `M_BomCategoryLine` entries for the parent's BomCategory, ordered by `seq_no`
-2. Each entry defines a slot — BomCategory scope + AABB capacity
-3. The ESLine for each slot carries the parent's tack_from (attachment origin)
-4. Selection cascade picks the best-fitting child BOM for that slot
-5. The child's LBD is placed at the ESLine's origin (parent's tack_from)
-6. One `C_OrderLine` per slot records WHAT was placed
-7. BUFFER fills remaining capacity after all slots are walked
+**Four component types** (from iDempiere BOMDrop Configurator):
 
-**Three-concern separation per slot:**
+| Type | BIM example |
+|------|-------------|
+| **Component** (compulsory) | Structural: walls, slabs, roof — cannot remove |
+| **Optional** (checkbox) | MEP disciplines: FP sprinklers, ACMV — toggle on/off |
+| **Variant** (qty adjustable) | Room count: 2 bedrooms → 3 bedrooms |
+| **Radio Group** (exclusive) | Roof type: flat OR pitched — pick one |
 
-| Concern | Table | What it carries |
-|---------|-------|----------------|
-| WHAT | C_OrderLine | Which child BOM was selected, qty |
-| WHERE | CO_EmptySpaceLine | Parent's tack_from for this slot, AABB capacity |
-| HOW | PP_Order_Node | Verb parameters (if the child uses verbs) |
-
-**Multi-candidate WALK-THRU is unproven.** All current Rosetta Stones are
-EN-BLOC singularities. WALK-THRU with actual choice (multiple candidates per
-slot) will first be exercised by the BIM Designer's generative path (DemoHouse).
+The BOM Drop tree for Terminal (48,428 elements) has only 58 BOM nodes and
+1,572 lines — the verbs (TILE, ROUTE, FRAME, CLUSTER) compress thousands
+of instances into formula lines. The tree stays navigable at any scale.
 
 ### 3.5 Selection Cascade
 
-Two fields drive everything: **DocSubType** and **AABB**. A third — **BomCategory**
-— scopes the search.
+The BOM chooser (used during BOM Drop to find replacement products) uses two
+fields: **BomCategory** and **AABB**.
 
-1. **BomCategory** (scope): restricts to correct functional type
-2. **DocBaseType/DocSubType** (filter): matches the parent's document type
-3. **AABB fit** (primary): child SpaceSize must fit within the ESLine's capacity
-4. **Largest volume** (secondary): maximize space usage
-5. **seq_no** (tiebreaker): lower preferred
+1. **BomCategory** (scope): restricts to same functional type (swap roof → show only RF products)
+2. **AABB fit** (primary): replacement must fit within the parent's allocated space
+3. **Largest volume** (secondary): maximize space usage
+4. **seq_no** (tiebreaker): lower preferred
+
+This is the same browse/filter pattern as iDempiere's product lookup:
+filter by M_Product_Category, then by dimensional fit.
 
 ### 3.5.1 AttributeSetInstance — Per-Instance Customization
 
