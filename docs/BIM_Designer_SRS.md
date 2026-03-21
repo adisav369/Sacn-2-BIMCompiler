@@ -2939,8 +2939,142 @@ BOM Drop follows the standard iDempiere DocAction pattern on C_Order:
 
 ---
 
+## 29. Web UI Frontend (S56)
+
+> **Spec:** [BIM_Designer_UserGuide.md §13](BIM_Designer_UserGuide.md) (tab layout, DocAction flow, tech stack)
+> **Architecture:** Web UI for data/control, Bonsai for viewport only (S55 decision)
+> **Launch:** `./scripts/run_webui.sh` — opens http://localhost:9878
+
+### 29.1 Server Architecture
+
+| Component | Class | Port | Role |
+|-----------|-------|------|------|
+| DesignerServer | `DesignerServer.java` | 9876 | TCP/NDJSON — Bonsai addon bridge |
+| **WebUIServer** | `WebUIServer.java` | **9878** | **HTTP static files + JSON API** |
+| BackOfficeServer | `BackOfficeServer.java` | 9877 | HTTP REST — portfolio/reports |
+
+**WebUIServer** uses JDK `com.sun.net.httpserver.HttpServer` (same proven pattern as
+BackOfficeServer). Two contexts:
+- `GET /` → serve static files from `webui/` directory
+- `POST /api` → JSON action dispatch (same actions as DesignerServer)
+
+**No WebSocket.** Browser uses `fetch()` (HTTP POST) for all actions. This avoids
+WebSocket browser compatibility issues and is simpler to debug/proxy/firewall.
+
+**No new dependencies.** Pure JDK HttpServer.
+
+**Standalone operation:** WebUIServer runs independently of Bonsai. User opens browser,
+selects building, configures BOM, compiles — all without Bonsai. Bonsai is optional
+(viewport only — receives `COMPILE_COMPLETE` via TCP/NDJSON on port 9876).
+
+### 29.2 HTTP API Protocol
+
+```
+Browser → Server:  POST /api  {"action":"scanLibrary"}
+Server → Browser:  200 OK     {"buildings":[...], "count":35}
+```
+
+All 47+ DesignerServer wire actions are available, plus two new WebUI-specific actions:
+
+| Action | Source | Purpose |
+|--------|--------|---------|
+| `scanLibrary` | WebUIServer | Scan `library/*_BOM.db`, query `C_DocType` from each |
+| `loadBuildingDetail` | WebUIServer | BOM stats from a specific `*_BOM.db` file |
+| `compile`, `bomDrop`, `getBomTree`, ... | DesignerServer | All 47+ existing wire actions |
+
+**`scanLibrary` flow:**
+1. List `library/*_BOM.db` files (filesystem scan)
+2. For each, open SQLite connection, query `C_DocType` for ProjectName/Name/ExpectedElements
+3. Return `{buildings: [{code, name, dbFile, elementCount, bomCount}, ...], count, libraryDir}`
+
+**`_callId` echo:** WebUIServer injects `_callId` from the request into the response
+JSON so the browser can correlate responses when multiple requests are in-flight.
+
+### 29.3 Static UI
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `webui/index.html` | ~290 | SPA shell — header, building selector, tab bar (1D-10), 10 content panels, footer |
+| `webui/app.js` | ~330 | `fetch()` API client, tab routing (`#tab=4d`), all tab renderers |
+| `webui/style.css` | ~400 | Dark theme (#1a1a2e/#16213e/#0f3460/#e94560), cards, data tables, BOM tree |
+
+**Tab-action mapping:**
+
+| Tab | Wire Action(s) | UI Widget |
+|-----|----------------|-----------|
+| 1D BOM | `getBomTree`, `listOrderLines`, `bomDrop`, `save`, `compile` | `<details>` tree + data table + DocAction bar |
+| 2D Import | — | Placeholder (IFC import, YAML export) |
+| 3D Federation | `scanLibrary`, `loadBuildingDetail`, `compile` | Status cards + buildings table + DB path |
+| 4D Schedule | `constructionSchedule` | Data table (task, discipline, start/end, duration) |
+| 5D Cost | `costBreakdown` | Data table with material/labour/equipment + totals row |
+| 6D Sustain | `carbonFootprint` | Summary cards (CO2e, mass, intensity) + data table |
+| 7D Facility | `maintenanceSchedule` | Data table (asset, type, interval, cost) |
+| 8 Reports | `portfolio`, `balancedScorecard` | Portfolio table + scorecard cards |
+| 9 Query | `executeNlpQuery`, `browseItems` | NLP search + 10 suggested queries + product catalog search |
+| 10 Color | — (client-side) | 4 palettes (Realistic/Phase/Safety/Discipline, 16 colors each) + discipline filter |
+
+**NLP Query tab** mirrors the Bonsai federation NLP module — same 10 suggested queries:
+"How many beams?", "Total building cost", "Show ACMV elements", etc.
+
+**Color Studio tab** renders the 4 construction palettes from the Bonsai `color_palette.py`
+module. Color application requires Bonsai viewport; Web UI is preview-only.
+
+### 29.4 Bonsai Panel Integration
+
+Each of the 10 active Bonsai panels has an "Open in Web UI" button:
+```python
+op = row.operator("bim.launch_web_ui", text="Open in Web UI", icon="URL")
+op.tab = "4d"  # opens http://localhost:9878/#tab=4d
+```
+
+3 new panels added (1D BOM Designer, 2D Import/Export, 8 ERP Reports) — these are
+Web UI-primary tabs that show a brief description + launch button in Bonsai.
+
+**Operator:** `BIM_OT_launch_web_ui` — `webbrowser.open(url)`, `tab` StringProperty.
+
+### 29.5 1D Order Configurator (S57 — next iteration)
+
+The 1D tab is the **Order + OrderLine + ASI editor** — the YAML maker.
+
+**Flow:**
+1. Building product dropdown: `scanBomProducts` — query `m_bom WHERE bom_type='BUILDING'`
+   from each `*_BOM.db`. User picks a template (e.g. `BUILDING_SH_STD`).
+2. **BOM Drop** (`bomDrop`): creates `C_Order` + `C_OrderLine`(s) from BOM tree explosion.
+3. **OrderLine table** (`listOrderLines`): editable grid — product, category, qty, status.
+   Inline edit via `updateOrderLine`. Each line references an `M_Product_ID`.
+4. **ASI panel** (`readASI`, `updateASI`): per-line attribute editing — dimensions (W/D/H),
+   material, finish, fire rating. From `M_AttributeSetInstance` (see §28, S52b).
+5. **Save** (`save` / `prepareIt`): validate ASI values, jurisdiction rules, kickback invalid.
+   Persist to `work_output.db`. Kicked-back items highlighted red.
+6. **Complete** (`compile` / `completeIt`): merge `work_output.db` → `output.db`.
+   Push `COMPILE_COMPLETE` to Bonsai for viewport rendering.
+
+**New wire action needed:** `scanBomProducts` — like `scanLibrary` but returns
+BUILDING-level BOM headers (`bom_id`, `name`, `element_count`) from each `*_BOM.db`.
+
+**UI layout:**
+```
+┌─ DocAction bar: [BOM Drop ▼] [Save] [Complete]  status ─┐
+├─ BOM Tree (left, <details>)  │  ASI Panel (right, form) ─┤
+├─ OrderLine table (full width, editable)                   ─┤
+└───────────────────────────────────────────────────────────┘
+```
+
+### 29.6 Witnesses
+
+| Witness | Claim | Test |
+|---------|-------|------|
+| W-WS-1 | `POST /api` with `scanLibrary` returns buildings array | DesignerServerTest |
+| W-WS-2 | `POST /api` with `listBuildings` dispatches to DesignerServer | DesignerServerTest |
+| W-WS-3 | `GET /` returns 200 with HTML containing "BIM Designer" | DesignerServerTest |
+
+**Test:** `DesignerServerTest` — 21/21 GREEN. 3 Web UI witnesses (W-WS-1..3).
+
+---
+
 *References:
 [BIM_Designer.md](BIM_Designer.md) (architecture, §17 Design Mode, §18 UI Strategy) |
+[BIM_Designer_UserGuide.md §13](BIM_Designer_UserGuide.md) (Web UI spec — tab layout, tech stack) |
 [G4_SRS.md](G4_SRS.md) (work_output.db, Save/Recall/Promote sequences) |
 [DocValidate.md](DocValidate.md) §15 (PlacementValidator, AD_Val_Rule) |
 [TestArchitecture.md](TestArchitecture.md) (traceability matrix, witness convention) |

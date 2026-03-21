@@ -124,7 +124,8 @@ public class DesignerServer implements AutoCloseable {
         }
     }
 
-    private String dispatch(String jsonLine) {
+    /** Package-private so {@link WebUIServer} can reuse the same dispatch logic. */
+    String dispatch(String jsonLine) {
         try {
             var request = JsonProtocol.parseRequest(jsonLine);
             String action = request.action();

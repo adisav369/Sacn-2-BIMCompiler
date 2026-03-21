@@ -765,13 +765,44 @@ Server push pattern (option 2 from S55):
 5. Callback schedules `bpy.ops.bim.load_full_federation_viewport_gi()` via `bpy.app.timers`
 6. Geometry appears in Blender viewport
 
-### Tech Stack
+### Tech Stack (Implemented S56)
 
-- **Static HTML/JS** — no framework bloat (vanilla JS or lightweight: htmx / Alpine.js)
-- **WebSocket** to DesignerServer — add WS endpoint to DesignerServer.java (Jetty or Java built-in HttpServer)
-- **CSS grid** for responsive tab layout
-- **AG Grid** or **Handsontable** for Excel-like 4D/5D/6D tables
-- **Tree widget** — jsTree or custom for BOM Drop tree with expand/collapse/drag
+- **Static HTML/JS** — vanilla JS, no framework. Single-page app with tab routing
+- **WebSocket** to DesignerServer via `WebUIServer.java` (port 9878) — RFC 6455 handshake + text frames, zero external dependencies (pure JDK `ServerSocket`)
+- **CSS grid** for responsive tab layout — professional dark theme (#1a1a2e palette)
+- **HTML `<table>`** for 4D/5D/6D/7D data grids (AG Grid/Handsontable deferred)
+- **`<details>/<summary>`** for BOM tree with expand/collapse (jsTree deferred)
+
+### Implementation (S56)
+
+| File | Path | Purpose |
+|------|------|---------|
+| WebUIServer.java | `BonsaiBIMDesigner/.../api/` | JDK HttpServer — static files + `POST /api` JSON dispatch |
+| WebSocketHandler.java | `BonsaiBIMDesigner/.../api/` | RFC 6455 (retained for future use, not used by browser) |
+| index.html | `webui/` | SPA shell — 10 tabs, building selector, status bar |
+| app.js | `webui/` | `fetch()` API client, tab renderers, color palettes |
+| style.css | `webui/` | Professional dark theme, cards, data tables, BOM tree |
+
+**Server architecture:** WebUIServer uses JDK `com.sun.net.httpserver.HttpServer`
+(same proven pattern as BackOfficeServer). Two endpoints:
+- `GET /*` → static files from `webui/`
+- `POST /api` → JSON action dispatch → `DesignerServer.dispatch()` + `scanLibrary`
+
+No WebSocket — browser uses `fetch()` (HTTP POST). This avoids browser compatibility
+issues. All 47+ wire actions are available via the same JSON format.
+
+**Standalone operation:** `./scripts/run_webui.sh` starts the server. No Bonsai needed.
+User opens http://localhost:9878, selects a building from the dropdown (populated by
+scanning `library/*_BOM.db` files), and works with BOM/schedule/cost data.
+
+**`scanLibrary` action:** Scans `library/` for `*_BOM.db` files, queries `C_DocType`
+from each for name/element count. Returns all available buildings with database paths.
+
+**Bonsai integration:** All 10 panels have "Open in Web UI" button (`BIM_OT_launch_web_ui`)
+→ `webbrowser.open("http://localhost:9878/#tab=4d")`. 3 new panels: 1D, 2D, 8.
+
+**Witnesses:** W-WS-1 (scanLibrary API), W-WS-2 (listBuildings dispatch), W-WS-3 (static HTML).
+DesignerServerTest: 21/21 GREEN. SRS: BIM_Designer_SRS.md §29.
 
 ### Why Not Blender?
 
@@ -833,4 +864,4 @@ needs Web UI + Blender viewport integration before beta release.
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
 
 ---
-*v0.8 — 2026-03-20, session 39d. Updated as features are built and tested.*
+*v0.9 — 2026-03-22, session 56. Web UI frontend implemented (§13). Updated as features are built and tested.*

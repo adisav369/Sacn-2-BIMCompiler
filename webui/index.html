@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIM Designer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────── -->
+<div class="header">
+    <div class="logo"><span>BIM</span> Designer</div>
+    <select class="building-selector" id="buildingSelect">
+        <option value="">Select Building...</option>
+    </select>
+    <div class="status-dot disconnected" id="statusDot"></div>
+    <div class="status-label" id="statusLabel">Disconnected</div>
+</div>
+
+<!-- ── Tab Bar ──────────────────────────────────────────── -->
+<div class="tab-bar" id="tabBar">
+    <div class="tab active" data-tab="1d">1D BOM</div>
+    <div class="tab" data-tab="2d">2D Import</div>
+    <div class="tab" data-tab="3d">3D Federation</div>
+    <div class="tab" data-tab="4d">4D Schedule</div>
+    <div class="tab" data-tab="5d">5D Cost</div>
+    <div class="tab" data-tab="6d">6D Sustain</div>
+    <div class="tab" data-tab="7d">7D Facility</div>
+    <div class="tab" data-tab="8">8 Reports</div>
+    <div class="tab" data-tab="9">9 Query</div>
+    <div class="tab" data-tab="10">10 Color</div>
+</div>
+
+<!-- ── Content ──────────────────────────────────────────── -->
+<div class="content" id="content">
+
+    <!-- ── 1D: BOM Designer ──────────────────────────────── -->
+    <div class="tab-panel active" id="panel-1d">
+        <div class="doc-action-bar">
+            <button class="btn btn-primary" onclick="BIM.bomDrop()">BOM Drop</button>
+            <button class="btn" onclick="BIM.save()">Save</button>
+            <button class="btn btn-success" onclick="BIM.compile()">Complete</button>
+            <span class="status-text" id="docStatus">Draft</span>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">BOM Tree</span>
+                <span class="card-subtitle" id="bomCount">0 items</span>
+            </div>
+            <div class="bom-tree" id="bomTree">
+                <div class="placeholder">
+                    <div class="icon">&#9776;</div>
+                    <h3>No BOM loaded</h3>
+                    <p>Select a building or click BOM Drop to start designing.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Order Lines</span>
+            </div>
+            <div id="orderLines">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Line</th>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th class="num">Qty</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderLinesBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 2D: Import/Export ─────────────────────────────── -->
+    <div class="tab-panel" id="panel-2d">
+        <div class="placeholder">
+            <div class="icon">&#128462;</div>
+            <h3>Import / Export</h3>
+            <p>IFC import, YAML export, and format conversion tools. Coming soon.</p>
+        </div>
+    </div>
+
+    <!-- ── 3D: Federation ────────────────────────────────── -->
+    <div class="tab-panel" id="panel-3d">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Federation Status</span>
+                <button class="btn btn-primary" onclick="BIM.listBuildings()">Scan Library</button>
+            </div>
+            <div class="status-grid" id="fedGrid"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Selected Database</span>
+            </div>
+            <div style="padding:4px 0; font-size:13px; color:var(--text-dim)">
+                <span>DB Path: </span><code id="fedDbPath" style="color:var(--text)">No building selected</code>
+            </div>
+            <div class="btn-group" style="margin-top:8px">
+                <button class="btn" onclick="alert('Preview BBoxes requires Bonsai viewport.\nSelect a building and use Bonsai panel.')">Preview BBoxes</button>
+                <button class="btn" onclick="alert('Full Load requires Bonsai viewport.\nSelect a building and use Bonsai panel.')">Full Load</button>
+                <button class="btn btn-primary" onclick="BIM.compile()">Compile</button>
+            </div>
+            <div style="margin-top:8px; font-size:11px; color:var(--text-dim)">
+                Preview / Full Load require Bonsai (viewport). Compile works standalone.
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Available Buildings</span>
+                <span class="card-subtitle" id="fedBuildingCount">0</span>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Code</th><th>Name</th><th class="num">Elements</th><th>Database</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody id="buildingsBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 4D: Schedule ──────────────────────────────────── -->
+    <div class="tab-panel" id="panel-4d">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Construction Schedule</span>
+                <div class="btn-group">
+                    <input type="date" class="search-input" id="scheduleStart" value="2026-04-01" style="width:160px">
+                    <button class="btn btn-primary" onclick="BIM.loadSchedule()">Load</button>
+                </div>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Task</th><th>Discipline</th><th>Start</th><th>End</th><th class="num">Duration (d)</th><th>Dependencies</th></tr>
+                    </thead>
+                    <tbody id="scheduleBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 5D: Cost ──────────────────────────────────────── -->
+    <div class="tab-panel" id="panel-5d">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Cost Breakdown</span>
+                <button class="btn btn-primary" onclick="BIM.loadCost()">Load</button>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Item</th><th>Category</th><th class="num">Material</th><th class="num">Labour</th><th class="num">Equipment</th><th class="num">Total</th></tr>
+                </thead>
+                <tbody id="costBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── 6D: Sustainability ────────────────────────────── -->
+    <div class="tab-panel" id="panel-6d">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Carbon Footprint</span>
+                <button class="btn btn-primary" onclick="BIM.loadCarbon()">Load</button>
+            </div>
+            <div class="status-grid" id="carbonSummary"></div>
+            <table class="data-table" style="margin-top:16px">
+                <thead>
+                    <tr><th>Element</th><th>Material</th><th class="num">Mass (kg)</th><th class="num">CO2e (kg)</th></tr>
+                </thead>
+                <tbody id="carbonBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── 7D: Facility Management ───────────────────────── -->
+    <div class="tab-panel" id="panel-7d">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Maintenance Schedule</span>
+                <button class="btn btn-primary" onclick="BIM.loadMaintenance()">Load</button>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Asset</th><th>Type</th><th class="num">Interval (yr)</th><th class="num">Cost/Event</th><th class="num">Lifecycle Cost</th></tr>
+                </thead>
+                <tbody id="maintenanceBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── 8: ERP Reports ────────────────────────────────── -->
+    <div class="tab-panel" id="panel-8">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Portfolio Overview</span>
+                <button class="btn btn-primary" onclick="BIM.loadPortfolio()">Load</button>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Project</th><th>Status</th><th class="num">Elements</th><th class="num">Cost</th><th class="num">Score</th></tr>
+                </thead>
+                <tbody id="portfolioBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Balanced Scorecard</span>
+            </div>
+            <div class="status-grid" id="bscGrid"></div>
+        </div>
+    </div>
+
+    <!-- ── 9: NLP Query ──────────────────────────────────── -->
+    <div class="tab-panel" id="panel-9">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Natural Language Query</span>
+                <span class="card-subtitle">Federation Database</span>
+            </div>
+            <div class="search-bar">
+                <input type="text" class="search-input" id="queryInput"
+                       placeholder="Ask about your building... e.g. How many beams?"
+                       onkeydown="if(event.key==='Enter')BIM.executeQuery()">
+                <button class="btn btn-primary" onclick="BIM.executeQuery()">Search</button>
+                <button class="btn" onclick="BIM.clearQueryResults()">Clear</button>
+            </div>
+            <div id="queryIntent" style="font-size:12px; color:var(--text-dim); margin-bottom:12px"></div>
+            <table class="data-table">
+                <thead id="queryResultsHead"><tr><th>Results will appear here</th></tr></thead>
+                <tbody id="queryResults"></tbody>
+            </table>
+            <div id="queryElapsed" style="font-size:11px; color:var(--text-dim); margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Suggested Queries</span>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px">
+                <button class="btn" onclick="BIM.setQuery('How many beams?')">How many beams?</button>
+                <button class="btn" onclick="BIM.setQuery('How many doors?')">How many doors?</button>
+                <button class="btn" onclick="BIM.setQuery('Find lights from Linergy')">Find lights from Linergy</button>
+                <button class="btn" onclick="BIM.setQuery('Total building cost')">Total building cost</button>
+                <button class="btn" onclick="BIM.setQuery('Floor area')">Floor area</button>
+                <button class="btn" onclick="BIM.setQuery('How much concrete?')">How much concrete?</button>
+                <button class="btn" onclick="BIM.setQuery('Cost of ACMV work')">Cost of ACMV work</button>
+                <button class="btn" onclick="BIM.setQuery('Which disciplines exist?')">Which disciplines exist?</button>
+                <button class="btn" onclick="BIM.setQuery('Search for AHU')">Search for AHU</button>
+                <button class="btn" onclick="BIM.setQuery('Show ACMV elements')">Show ACMV elements</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Product Catalog Search</span>
+                <span class="card-subtitle">Component Library</span>
+            </div>
+            <div class="search-bar">
+                <input type="text" class="search-input" id="productSearchInput"
+                       placeholder="Search products... e.g. door, pipe, beam"
+                       onkeydown="if(event.key==='Enter')BIM.searchProducts()">
+                <button class="btn btn-primary" onclick="BIM.searchProducts()">Search</button>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Product</th><th>Category</th><th class="num">W (mm)</th><th class="num">D (mm)</th><th class="num">H (mm)</th></tr>
+                </thead>
+                <tbody id="productResults"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── 10: Color Studio ──────────────────────────────── -->
+    <div class="tab-panel" id="panel-10">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Color Palettes</span>
+            </div>
+            <div style="margin-bottom:12px">
+                <select class="building-selector" id="paletteSelect" onchange="BIM.selectPalette(this.value)" style="min-width:180px">
+                    <option value="realistic">Realistic Materials</option>
+                    <option value="phase">Construction Phase</option>
+                    <option value="safety">Safety Status</option>
+                    <option value="discipline">Discipline</option>
+                </select>
+            </div>
+            <div class="status-grid" id="colorSwatches" style="grid-template-columns:repeat(4, 1fr)"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Discipline Filter</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px">
+                <button class="btn" style="border-left:3px solid #8B9DC3" onclick="BIM.filterDiscipline('ARC')">ARC</button>
+                <button class="btn" style="border-left:3px solid #D4A574" onclick="BIM.filterDiscipline('STR')">STR</button>
+                <button class="btn" style="border-left:3px solid #6BB5E0" onclick="BIM.filterDiscipline('MEP')">MEP</button>
+                <button class="btn" style="border-left:3px solid #F5D76E" onclick="BIM.filterDiscipline('ELEC')">ELEC</button>
+                <button class="btn" style="border-left:3px solid #5DADE2" onclick="BIM.filterDiscipline('PLB')">PLB</button>
+                <button class="btn" style="border-left:3px solid #E74C3C" onclick="BIM.filterDiscipline('FP')">FP</button>
+                <button class="btn" style="border-left:3px solid #48C9B0" onclick="BIM.filterDiscipline('HVAC')">HVAC</button>
+                <button class="btn" style="border-left:3px solid #BB8FCE" onclick="BIM.filterDiscipline('CW')">CW</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Scheme Management</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn" onclick="alert('Save/Load requires Bonsai viewport connection.\nUse the Bonsai Color Studio panel.')">Save Scheme</button>
+                <button class="btn" onclick="alert('Save/Load requires Bonsai viewport connection.\nUse the Bonsai Color Studio panel.')">Load Scheme</button>
+                <button class="btn" onclick="alert('Reset requires Bonsai viewport connection.\nUse the Bonsai Color Studio panel.')">Reset All</button>
+            </div>
+            <div style="margin-top:8px; font-size:11px; color:var(--text-dim)">
+                Color application requires Bonsai viewport. This panel previews palettes.
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Footer ───────────────────────────────────────────── -->
+<div class="footer">
+    <span>BIM Designer</span>
+    <span id="footerBuilding">No building selected</span>
+    <span class="spacer"></span>
+    <span id="footerWs">API: ready</span>
+    <span id="footerVersion">v0.8</span>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

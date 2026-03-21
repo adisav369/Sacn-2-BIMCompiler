@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head><title>WS Test</title></head>
+<body style="background:#1a1a2e;color:#eee;font-family:monospace;padding:20px">
+<h2>WebSocket Debug Test</h2>
+<pre id="log" style="white-space:pre-wrap"></pre>
+<script>
+function log(msg) {
+    document.getElementById('log').textContent += new Date().toISOString().substr(11,12) + ' ' + msg + '\n';
+}
+
+var httpHost = location.hostname || 'localhost';
+var wsPort = (parseInt(location.port) || 9878) + 1;
+var wsUrl = 'ws://' + httpHost + ':' + wsPort + '/ws';
+
+log('Page loaded. Attempting WebSocket connection...');
+log('URL: ' + wsUrl);
+
+try {
+    var ws = new WebSocket(wsUrl);
+
+    ws.onopen = function() {
+        log('CONNECTED! readyState=' + ws.readyState);
+        var msg = JSON.stringify({action:'scanLibrary', _callId:1});
+        log('Sending: ' + msg);
+        ws.send(msg);
+    };
+
+    ws.onmessage = function(e) {
+        log('RECEIVED (' + e.data.length + ' bytes):');
+        try {
+            var data = JSON.parse(e.data);
+            log('  _callId: ' + data._callId);
+            log('  count: ' + data.count);
+            if (data.buildings) {
+                log('  buildings (' + data.buildings.length + '):');
+                data.buildings.slice(0, 5).forEach(function(b) {
+                    log('    ' + (b.code||'?') + ' = ' + (b.name||'?') + ' (' + (b.elementCount||0) + ' elements)');
+                });
+                if (data.buildings.length > 5) log('    ... and ' + (data.buildings.length - 5) + ' more');
+            }
+        } catch(err) {
+            log('  Parse error: ' + err);
+            log('  Raw: ' + e.data.substring(0, 500));
+        }
+    };
+
+    ws.onerror = function(e) {
+        log('ERROR: ' + JSON.stringify(e));
+    };
+
+    ws.onclose = function(e) {
+        log('CLOSED: code=' + e.code + ' reason=' + e.reason + ' wasClean=' + e.wasClean);
+    };
+} catch(err) {
+    log('EXCEPTION: ' + err);
+}
+</script>
+</body>
+</html>

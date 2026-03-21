@@ -351,7 +351,73 @@ class DesignerServerTest {
         }
     }
 
-    // ── Helper ──────────────────────────────────────────────────────
+    // ── Web UI proofs (S56 — HTTP API) ─────────────────────────────
+
+    private static final int HTTP_UI_PORT = 19878;
+    private static WebUIServer webUIServer;
+
+    @Test
+    @Order(30)
+    @DisplayName("W-WS-1: POST /api with scanLibrary returns buildings")
+    void w_ws_1_api_scan_library() throws Exception {
+        ensureWebUIServer();
+
+        String response = httpPost("http://localhost:" + HTTP_UI_PORT + "/api",
+                "{\"action\":\"scanLibrary\"}");
+        assertNotNull(response);
+        assertTrue(response.contains("\"buildings\""), "Response must contain buildings array");
+        assertTrue(response.contains("\"count\""), "Response must contain count");
+    }
+
+    @Test
+    @Order(31)
+    @DisplayName("W-WS-2: POST /api with listBuildings dispatches to DesignerServer")
+    void w_ws_2_api_list_buildings() throws Exception {
+        ensureWebUIServer();
+
+        String response = httpPost("http://localhost:" + HTTP_UI_PORT + "/api",
+                "{\"action\":\"listBuildings\"}");
+        assertNotNull(response);
+        assertTrue(response.contains("Sample House") || response.contains("SH"),
+                "Response must contain building data from DesignerServer");
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("W-WS-3: GET / returns HTML with BIM Designer")
+    void w_ws_3_static_file() throws Exception {
+        ensureWebUIServer();
+
+        var url = new java.net.URL("http://localhost:" + HTTP_UI_PORT + "/");
+        var conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        assertEquals(200, conn.getResponseCode());
+        String body = new String(conn.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        assertTrue(body.contains("BIM Designer"), "HTML must contain BIM Designer");
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────
+
+    private void ensureWebUIServer() throws Exception {
+        if (webUIServer == null) {
+            java.nio.file.Path webRoot = java.nio.file.Path.of("webui");
+            webUIServer = new WebUIServer(server, webRoot,
+                    java.nio.file.Path.of("library"), HTTP_UI_PORT);
+            webUIServer.startAsync();
+            Thread.sleep(500);
+        }
+    }
+
+    private String httpPost(String urlStr, String jsonBody) throws Exception {
+        var url = new java.net.URL(urlStr);
+        var conn = (java.net.HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setDoOutput(true);
+        conn.getOutputStream().write(jsonBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        conn.getOutputStream().flush();
+        return new String(conn.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    }
 
     private String tcpRequest(String json) throws Exception {
         try (Socket socket = new Socket("127.0.0.1", TEST_PORT);
@@ -360,5 +426,10 @@ class DesignerServerTest {
             out.println(json);
             return in.readLine();
         }
+    }
+
+    @AfterAll
+    static void tearDownWebUI() {
+        if (webUIServer != null) webUIServer.close();
     }
 }

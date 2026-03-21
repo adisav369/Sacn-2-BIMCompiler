@@ -1,0 +1,27 @@
+#!/bin/bash
+# ============================================================
+# BIM Designer — Web UI (standalone, no Bonsai needed)
+# HTTP on port 9878. Ctrl+C to stop.
+# ============================================================
+set -e
+cd "$(dirname "$0")/.."
+
+PORT="${1:-9878}"
+
+[ -f library/component_library.db ] || { echo "ERROR: library/component_library.db not found."; exit 1; }
+[ -f webui/index.html ] || { echo "ERROR: webui/index.html not found."; exit 1; }
+
+# Compile if needed
+if [ ! -d BonsaiBIMDesigner/target/classes ] || \
+   [ "$(find BonsaiBIMDesigner/src -name '*.java' -newer BonsaiBIMDesigner/target/classes 2>/dev/null | head -1)" ]; then
+    echo "Compiling..."
+    mvn compile -q -pl BonsaiBIMDesigner -am
+fi
+
+CP=$(mvn -pl BonsaiBIMDesigner dependency:build-classpath -Dmdep.outputFile=/dev/stdout -q 2>/dev/null)
+CP="BonsaiBIMDesigner/target/classes:DAGCompiler/target/classes:BIM_COBOL/target/classes:BIMEyes/target/classes:ORMSandbox/target/classes:BIMBackOffice/target/classes:IFCtoBOM/target/classes:$CP"
+
+(sleep 2 && xdg-open "http://localhost:$PORT" 2>/dev/null || open "http://localhost:$PORT" 2>/dev/null || true) &
+
+exec java -cp "$CP" -Dbom.db="library/component_library.db" \
+     com.bim.designer.api.WebUIServer library "$PORT" webui

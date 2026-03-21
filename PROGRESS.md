@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 44b. 34 buildings onboarded (was 20). 14 new: GH, JS, NI, WB, WL, WT, WA, JE, WI, RA, RM, RS, CL, HI. 4 failed extraction (FJ, SW, VG, ET).**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 56b. From-scratch pipeline verified. 26/34 buildings ran (9 pending). SH/FK 7/7 GREEN. run_RosettaStones.sh now includes validation rule extraction. Log: `logs/run_RosettaStones_20260322_063438.txt`**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
@@ -19,7 +19,7 @@
 **Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
-**BonsaiBIMDesigner:** 304/304 GREEN (38 test classes). SelectionCascadeTest: W-GEN-1 (7 witnesses).
+**BonsaiBIMDesigner:** 304/304 GREEN (38 test classes). SelectionCascadeTest: W-GEN-1 (7 witnesses). DesignerServerTest: 21/21 GREEN (+3 W-WS).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
@@ -130,8 +130,33 @@
   Architecture decision: Web UI for data/control, Bonsai for viewport only.
   Details: BIM_Designer_UserGuide.md §2, §5.1. DocAction: BIM_Designer_SRS.md §28.
 
-**Next: S56 — Web UI Frontend:**
-  Spec: BIM_Designer_UserGuide.md §13. Tabbed HTML/JS (1D-10), WebSocket to DesignerServer.
+**[DONE] S56 — Web UI Frontend:**
+  WebUIServer (port 9878, JDK HttpServer) + webui/ SPA (10 tabs). HTTP API: POST /api.
+  `scanLibrary` scans library/*_BOM.db → building dropdown. `fetch()` — no WebSocket.
+  Bonsai: 3 new panels + "Open in Web UI" on all 10. `./scripts/run_webui.sh` standalone.
+  DesignerServerTest: 21/21 GREEN (+3 W-WS). Spec: BIM_Designer_SRS.md §29.
+
+**[DONE] S56b — Last Mile Problem Re-Check (single-path model):**
+  LAST_MILE_PROBLEM.md 11 checklist items verified. Gate: 31/35 PASS (SH 7/7, FK 7/7).
+  Log: `logs/run_RosettaStones_20260322_041950.txt`
+  **Bugs fixed:**
+  1. `ad_geometry_map → I_Geometry_Map` rename migration never applied to LFS DB
+  2. `ProductRegistrar.ensureProductImages()` filtered `extracted_from` (always 'IFC_EXTRACTION')
+     instead of `building_type` — M_Product_Image never populated (0 rows). Fixed both
+     `ensureProductImages()` and `countUnlinkedProducts()`.
+  3. `BuildingWriter.java:1020` TODO comment → design-note (G4-TAMPER T10 now PASS)
+  4. `GeometricFingerprintTest.java` + `BridgeRulesTest.java` + `TerminalSandboxTest.java` +
+     `onboard_ifc.sh`: 36 stale `_enbloc.db`/`_walkthru.db` path references → single `.db`
+  5. `schema_snapshot_component_library.sql`: removed duplicate `ad_geometry_map` definition
+  6. `run_RosettaStones.sh` populate skip: now checks both `I_Geometry_Map` AND `M_Product_Image`
+  **Cleanup:** 65 stale `_enbloc.db`/`_walkthru.db` files deleted from `DAGCompiler/lib/output/`.
+  **Pre-existing debt (unchanged):** IN G3 120 window SHIFTs (S39c), DX G2/G3/C9 87 MIRROR (S25),
+  TE G3+W-TOT 48336/48428 (re-baseline).
+
+**Next: S57 — Remaining pipeline + DM generative path:**
+  1. Run remaining 9 buildings (RA, JE, ES, MO, HI, RM, RS, SC, WA)
+  2. DM generative path + outstanding gate issues: [GENERATIVE_HOUSE_SRS.md](docs/GENERATIVE_HOUSE_SRS.md) §"Next Step: DM"
+  3. 1D Order Configurator: [BIM_Designer_SRS.md](docs/BIM_Designer_SRS.md) §28 + §29.5
 
 **Deferred: Rosetta Stone wiring (Track 2 from S55):**
 
@@ -186,7 +211,12 @@
   a qualified sub-rule. The rule tree (disc_validation.db) is the reusable asset — not
   the CLUSTER offset tables. See CALIBRATION_SRS.md for calibration loop.
 
-**Next: S53 — Cascade data enrichment + LIVING/KITCHEN coverage:**
+**Next: S57 — Web UI visual test + Blender integration test:**
+  Start WebUIServer + open in browser. Verify all 10 tabs render. Test WebSocket action
+  round-trip (listBuildings, getBomTree, constructionSchedule). Test Bonsai "Open in Web UI"
+  buttons launch correct tab. Test COMPILE_COMPLETE push from server to browser.
+
+**Deferred: S53 — Cascade data enrichment + LIVING/KITCHEN coverage:**
   LIVING/KITCHEN have no fitting SETs — library needs smaller room BOMs or
   SET AABB re-measurement. Options: (1) curate DM-specific room SETs,
   (2) relax cascade to try rotated AABB, (3) accept gaps — validation rules flag them.
