@@ -24,11 +24,13 @@ No BIM tool in the industry does this. They validate against fixed, hand-authore
 
 See [BOMBasedCompilation.md §9](docs/BOMBasedCompilation.md) for the full specification.
 
-## Geometric Comprehension (BIMEyes)
+## We Got Eyes
 
-The compiler doesn't just place elements — it *understands* them. Every element's shape is reduced to three dimensionless ratios (planarity, elongation, squareness) that form a geometric fingerprint. A wall must be planar. A column must be elongated. Furniture must be compact. These are mathematical facts, not heuristics — and they hold regardless of scale, coordinate system, or what the BIM tool labelled the element.
+A blind spot — pun intended — in BIM software is the inability to verify geometry without human eyes. Someone has to open a viewer, rotate the model, and eyeball whether that door is actually inside its wall. Scale that to 48,000 elements across eight disciplines and you have an industry running on hope.
 
-This fingerprint engine powers 26 proofs across three tiers:
+This compiler can see. Every element's shape is reduced to three dimensionless ratios — planarity, elongation, squareness — that form a geometric fingerprint. A wall *must* be planar. A column *must* be elongated. Furniture *must* be compact. These are mathematical facts, not heuristics, and they hold regardless of scale, coordinate system, or what the BIM tool labelled the element.
+
+The fingerprint engine (BIMEyes) powers 26 proofs across three tiers:
 
 | Tier | What it proves | Example |
 |------|---------------|---------|
@@ -38,7 +40,7 @@ This fingerprint engine powers 26 proofs across three tiers:
 
 The result: **97% of 90,310 elements across 32 buildings pass both shape AND position proof.** 22 buildings score 100% — every element is the right shape at the right place, verified by pure arithmetic. The remaining 3% are known BOM relationship issues (mirror dimensions, MEP expansion), not test bugs.
 
-No visual inspection. No AI. No tolerances to tune. Just mathematics applied to construction data.
+No visual inspection. No AI. No tolerances to tune. Just mathematics.
 
 See [EYES_SRS.md](docs/EYES_SRS.md) for the full specification.
 
