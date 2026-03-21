@@ -2491,7 +2491,7 @@ user can act on them, not just read log files.
 | FL-F-02 | **Advisory panel.** Blender panel shows advisories colour-coded by severity. | INFO=blue, WARNING=amber, SUGGESTION=green. Scrollable list. |
 | FL-F-03 | **Click-to-highlight.** Clicking an advisory highlights the flagged element in the 3D viewport. | `focus_section(element_ref)` bridges advisory → viewport object. |
 | FL-F-04 | **Apply suggestion.** SUGGESTION-type advisories offer "Apply" button. | Calls `updateOrderLine(orderLineId, field, suggestedValue)`. Dimension updates immediately in viewport. |
-| FL-F-05 | **CALIBRATE auto-fill.** When placing a new element, dimension fields are pre-populated with typical values from the mined pool. | `suggestDimensions(ifcClass)` → returns {typicalW, typicalD, typicalH, nearestProducts[]}. |
+| FL-F-05 | **CALIBRATE auto-fill.** When placing a new element, dimension fields are pre-populated with typical values from the mined pool. **API DONE (S50)** — `suggestDimensions(ifcClass)` wired. UX auto-fill pending. | `suggestDimensions(ifcClass)` → returns {typicalMinW..typicalMaxH, observationCount, nearestProducts[]}. |
 | FL-F-06 | **Refresh on load.** Advisories refresh when a building is loaded or after compilation. | Panel clears and re-queries on `loadBuilding` or `compile`. |
 
 ### 27.3 Advisory Severities
@@ -2576,15 +2576,19 @@ record ListAdvisoriesResponse(boolean success,
 
 ### 27.7 Witness Claims
 
-| Witness | Claim |
-|---------|-------|
-| W-FL-ADVISORY-1 | listAdvisories returns advisories for known building |
-| W-FL-ADVISORY-2 | SUGGESTION-type advisory includes suggested value and nearest typical |
-| W-FL-ADVISORY-3 | Empty advisory list for building with no outliers |
-| W-FL-ADVISORY-4 | DimensionRangeValidator.writeAdvisories creates WARNING + SUGGESTION rows for each outlier |
-| W-FL-ADVISORY-5 | BuildingProfileValidator.writeAdvisories creates WARNING rows for anomalies |
-| W-FL-CALIBRATE-1 | suggestDimensions(IfcWall) returns typical range |
-| W-FL-CALIBRATE-2 | suggestDimensions(unknown) returns empty |
+| Witness | Claim | Status |
+|---------|-------|--------|
+| W-FL-ADVISORY-1 | listAdvisories returns advisories for known building | GREEN (S50) |
+| W-FL-ADVISORY-2 | SUGGESTION-type advisory includes suggested value and nearest typical | GREEN (S50) |
+| W-FL-ADVISORY-3 | Empty advisory list for building with no outliers | GREEN (S50) |
+| W-FL-ADVISORY-4 | DimensionRangeValidator.writeAdvisories creates WARNING + SUGGESTION rows for each outlier | GREEN (S50) |
+| W-FL-ADVISORY-5 | BuildingProfileValidator.writeAdvisories creates WARNING rows for anomalies | GREEN (S50) |
+| W-FL-CALIBRATE-1 | suggestDimensions(IfcWall) returns typical range | GREEN (S50) |
+| W-FL-CALIBRATE-2 | suggestDimensions(unknown) returns empty | GREEN (S50) |
+| W-FL-SHAPE-1 | ShapeAdvisoryWriter detects class-shape mismatch (FL-5) | GREEN (S50) |
+| W-FL-SHAPE-2 | No shape advisories for geometrically consistent elements (FL-5) | GREEN (S50) |
+
+**Test:** `FlyAdvisoryTest` in `IFCtoBOM/src/test/java/com/bim/ifctobom/` — 9/9 GREEN.
 
 ---
 

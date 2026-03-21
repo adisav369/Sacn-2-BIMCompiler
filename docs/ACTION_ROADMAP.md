@@ -203,7 +203,6 @@ The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions
 
 | Gate | What | Blocks |
 |------|------|--------|
-| **FL-3** | **CALIBRATE verb** — suggestDimensions API ready; needs CALIBRATE verb wiring + Designer auto-fill. | — |
 | **FL-4** | **Relational mining** — mine element-to-space relationships, enrich MEP schedules. | — |
 | **G-10** | **Promote to BOM** — C_OrderLine → m_bom + m_bom_line. Dangles check, owner sign-off, entity_type='U', provenance='GENERATIVE'. **DONE (session 47).** | — |
 | **G-11** | **ParametricMesh UI** — Blender panel exposing slider params. Construction-grade: BOM sub-assembly with tack I/O. | — |
@@ -217,10 +216,12 @@ G-1..G-10 (DONE) ─── G-11 (ParametricMesh)
                      │                    G-12 (Text Mode)
                      │                    G-13 (Auto-chain)
                      │
-FL-1..FL-2 (DONE) ── FL-3 (CALIBRATE verb — API ready)
-                     │
-FL-5 (DONE) ──────── FL-4 (Relational mining)
+FL-1..FL-2..FL-5 (DONE) ── FL-4 (Relational mining)
 ```
+
+**FL-3 dropped as gate (session 50):** `suggestDimensions(ifcClass)` API already wired
+in FL-2. CALIBRATE verb wrapper adds no value — Python panel calls `suggest_dimensions()`
+directly. Auto-fill UX folded into next Designer pass.
 
 ---
 
@@ -287,26 +288,13 @@ CREATE TABLE W_Validation_Advisory (
 **Wire protocol:** `{"action":"listAdvisories","buildingId":"..."}` → `ListAdvisoriesResponse`
 `{"action":"suggestDimensions","ifcClass":"..."}` → `SuggestDimensionsResponse`
 
-### FL-3: CALIBRATE Verb
+### ~~FL-3: CALIBRATE Verb~~ (dropped — absorbed into FL-2)
 
-**Problem:** When the designer places a new element, they guess the
-dimensions. The mined data knows what typical dimensions are for each
-IFC class from 20+ real buildings.
-
-**Solution:** A `calibrateDimensions` API method that suggests dimensions:
-
-```
-Designer: "I'm placing an IfcColumn on Level 1"
-System:   "Typical: 300×300×3400mm (from 10 buildings, 22 observations)"
-          "Nearest products: COLUMN_300x300, COLUMN_200x200"
-```
-
-**Wire:** PlacementValidatorImpl already has the mined rules loaded.
-Add `suggestDimensions(ifcClass)` → returns typical W/D/H ranges +
-nearest M_Product matches from component_library.db.
-
-**Effort:** 1 session. Changes: PlacementValidatorImpl +1 method,
-DesignerAPI +1 method, Python client +1 verb, panel auto-fill.
+The `suggestDimensions(ifcClass)` API was delivered as part of FL-2 (session 50).
+It returns typical W/D/H ranges + nearest M_Products from the mined pool.
+The Python client verb `suggest_dimensions()` is wired. No separate CALIBRATE
+verb needed — the panel calls the API directly. Auto-fill UX will be folded
+into the next Designer pass.
 
 ### FL-4: Relational Mining (Layer 3 Flywheel)
 
@@ -382,13 +370,12 @@ advisories — not just log output. The Designer should:
 3. Allow click-to-highlight of flagged elements
 4. For SUGGESTION-type advisories, offer "Apply" button that calls
    `updateOrderLine()` with the suggested dimension
-5. For CALIBRATE, call `suggestDimensions(ifcClass)` to auto-populate
-   dimension fields when placing new elements
+5. Call `suggestDimensions(ifcClass)` to auto-populate dimension fields
+   when placing new elements (API already wired)
 
 The advisory data is already in disc_validation.db — the Designer just
 needs to read and present it. No new validation logic needed on the
-Python side. The `suggestDimensions` API is already wired — FL-3 only
-needs the CALIBRATE verb integration and Designer auto-fill UX.
+Python side.
 
 ---
 
