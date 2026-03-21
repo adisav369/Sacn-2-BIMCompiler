@@ -515,7 +515,9 @@ are waste.
 | §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
 | §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER (structural) | PASS |
 | §3.3 Instant Drop | 1 C_OrderLine, BOM tree explosion, no modifications | RosettaStoneGateTest | G1-G6 | PASS (SH/DX/TE) |
+| §3.3 Instant Drop | bomDrop() creates C_Order + explodes BOM tree → 55 elements | BomDropTest | W-DROP-1..6 | PASS (S54, 6 witnesses) |
 | §3.4 BOM Drop | Interactive tree navigation, swap/add by bom_category | SelectionCascadeTest | W-GEN-1b | PASS (3/5 slots) |
+| §3.4 BOM Drop | DocAction: Save(validate) → Approve(new product) → Complete(compile) | BomDropTest | W-DROP-1 | PASS (S54) |
 | §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS (7 witnesses) |
 | §3.5 AABB fit | Oversized SETs rejected | SelectionCascadeTest | W-GEN-1d | PASS |
 | §3.5 Volume ranking | Largest fitting SET wins | SelectionCascadeTest | W-GEN-1c | PASS |

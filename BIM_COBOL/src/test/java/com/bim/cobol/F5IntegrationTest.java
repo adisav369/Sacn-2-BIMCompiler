@@ -526,7 +526,10 @@ class F5IntegrationTest {
         System.out.println("║          CHECK CLASH (outputConn wired)              ║");
         System.out.println("╚══════════════════════════════════════════════════════╝");
 
-        // This test always passes — it's a diagnostic report
-        assertTrue(true, "gap report generated");
+        // Assert exercised verb count matches expectation
+        assertEquals(36, exercised.length,
+            "exercised verb count must match — update if verbs added/removed");
+        assertTrue(report.passCount() > 0,
+            "gap report requires at least one passing verb line");
     }
 }

@@ -24,6 +24,10 @@
         </dependency>
         <dependency>
             <groupId>com.bim</groupId>
+            <artifactId>bim-eyes</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.bim</groupId>
             <artifactId>bim-cobol</artifactId>
         </dependency>
         <dependency>

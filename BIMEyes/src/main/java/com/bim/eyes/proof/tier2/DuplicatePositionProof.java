@@ -19,6 +19,12 @@ public final class DuplicatePositionProof {
                 PlacementData b = placements.get(j);
                 if (!a.ifcClass().equals(b.ifcClass())) continue;
 
+                // NaN guard: skip pairs where either centroid has non-finite components
+                if (!Double.isFinite(a.cx()) || !Double.isFinite(a.cy()) || !Double.isFinite(a.cz())
+                        || !Double.isFinite(b.cx()) || !Double.isFinite(b.cy()) || !Double.isFinite(b.cz())) {
+                    continue;
+                }
+
                 double dist = Math.sqrt(
                     Math.pow(a.cx() - b.cx(), 2) +
                     Math.pow(a.cy() - b.cy(), 2) +

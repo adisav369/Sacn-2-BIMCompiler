@@ -435,10 +435,40 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 
 ---
 
+## S51-AUDIT: Focused Audit Fix Session
+
+*Full report: [`AUDIT_S51_FOCUSED.md`](AUDIT_S51_FOCUSED.md). Cross-referenced against BBC.md, EYES_SRS.md, TestArchitecture.md, BACK_OFFICE_SRS.md.*
+
+**Context:** 127 commits (S30–S50, 5 days) audited across 5 dimensions.
+**Finding:** Hard problems solved correctly; wiring/plumbing has gaps. 8 P0, 9 P1, 9 P2.
+
+| Phase | Focus | P0 | P1 | Est. | Gate |
+|-------|-------|----|----|------|------|
+| **1** | **Security** — wire existing SessionManager into handlers, path traversal, CORS, error leaks | 2 | 2 | 1h | BackOfficeServerTest 401 + existing 19/19 GREEN |
+| **2** | **Geometry** — StoreyZBand Math.max, PerimeterClosure float keys, OpeningContainment depth, NaN guard, AABB validation | 2 | 3 | 1h | CompilerContractTest prover 7/7; SH 9/10 |
+| **3** | **Test Integrity** — replace assumeTrue with fail(), remove assertTrue(true), expand seal manifest, fix exception swallow | 2 | 2 | 30m | Full suite GREEN; seal INTACT |
+| **4** | **Migrations** — delete DV006, renumber V011/V012 duplicates, DV003 idempotency | 2 | 2 | 30m | `sqlite3 :memory: < migration/*.sql` clean |
+| **5** | **Docs** — coordinate system, P08/P21 limitations, seal manifest expansion | 0 | 0 | 15m | — |
+
+**Spec violations found:**
+
+| Spec | Section | Violation |
+|------|---------|-----------|
+| BACK_OFFICE_SRS.md §5a | Token validation | Auth built, never wired into handlers |
+| TestArchitecture.md §Anti-Drift Rule 4 | No Hallucinated Success | 6 test classes silently skip on missing DB |
+| EYES_SRS.md §4.1 P04 | Storey Z-band | `Math.max(x, x+3.5)` no-op in proof logic |
+| EYES_SRS.md §4.3 P10b | Perimeter closure | Float string keys break at rounding boundary |
+| BBC.md (append-only) | Migration integrity | Broken DV006 still in tree alongside DV006b fix |
+
+**Priority:** Run S51-AUDIT before any new feature work. Total estimate: ~3.5 hours.
+
+---
+
 ## Known Debt (ordered by priority)
 
 | # | Item | Severity | Status |
 |---|------|----------|--------|
+| **S51** | **Audit fixes (SEC/GEO/TEST/MIG)** | **CRITICAL** | **TODO — next session** |
 | CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path |
 | CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path |
 | CP-4 | ~~Geometric archetype abstraction (IFC class independence)~~ | ~~HIGH~~ | **DONE** (s46 geometric + s48 semantic). See §CP-4 |

@@ -78,7 +78,7 @@ the right validation rules (see `DocValidate.md`).
 contains hardcoded category checks — `CompilationPipeline:506 IN (...)`,
 `categoryToRoomType()` switch, `ComposeBuildingVerb RESIDENTIAL→RE` map
 (see `TestArchitecture.md` H3/H4). These are on the DSL path only — the
-BOM-based pipeline (EN-BLOC, WALK-THRU) is clean. Target: migrate DSL path
+BOM-based pipeline (Instant Drop / BOM Drop) is clean. Target: migrate DSL path
 to data-driven lookups when generative compilation is prioritised.
 
 **MEP disciplines** (FP, ACMV, ELEC, SP, CW, LPG) are not structurally
@@ -611,8 +611,8 @@ not extracted from IFC.
 - The pipeline from recipe to placement is deterministic and verifiable
 
 **What the Rosetta Stone does NOT prove:**
-- Multi-candidate selection (all stones are EN-BLOC singularities)
-- WALK-THRU with actual choice → first test is DemoHouse via BIM Designer
+- Multi-candidate selection (all stones are Instant Drop singularities)
+- BOM Drop with actual swap choice → first test is DemoHouse via BIM Designer
 - DocValidate compliance checking → proven separately (`DocValidate.md`),
   applied in BIM Designer's ambient compliance (§18.4 in `BIM_Designer.md`)
 

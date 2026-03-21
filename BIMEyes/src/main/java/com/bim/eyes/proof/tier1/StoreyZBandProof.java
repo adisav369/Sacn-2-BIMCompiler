@@ -67,7 +67,7 @@ public final class StoreyZBandProof {
 
         if (arch == ShapeArchetype.ELONGATED && band != ScaleBand.ARCHITECTURAL) {
             floorZ = Math.min(floorZ, -2.0);
-            ceilingZ = Math.max(ceilingZ, ceilingZ + DEFAULT_STOREY_HEIGHT);
+            ceilingZ += DEFAULT_STOREY_HEIGHT;
         }
 
         double elementHeight = p.maxZ() - p.minZ();

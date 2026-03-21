@@ -67,7 +67,7 @@ class RotationContractTest {
             buildings = BuildingRegistry.loadActive();
         } catch (RuntimeException e) {
             // No compile DB available (standalone run without bom.db) — skip
-            assumeTrue(false, "BuildingRegistry unavailable: " + e.getMessage());
+            fail("BuildingRegistry unavailable: " + e.getMessage());
             return List.of();
         }
         List<DynamicTest> tests = new ArrayList<>();

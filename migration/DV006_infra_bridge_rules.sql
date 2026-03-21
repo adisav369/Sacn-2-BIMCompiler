@@ -1,132 +1,137 @@
--- DV006: Infrastructure bridge validation rules — mined from BR Rosetta Stone
+-- DV006b: Infrastructure bridge validation rules — schema-corrected rewrite of DV006
+-- DV006 had wrong column names (rule_id, rule_name, mining_source, param_name, etc.)
+-- This file uses the actual validation.db schema:
+--   AD_Val_Rule: ad_val_rule_id, name, description, rule_type, discipline, provenance, is_active
+--   AD_Val_Rule_Param: ad_val_rule_param_id, ad_val_rule_id, name, value, value_type
+--
 -- Source: DAGCompiler/lib/output/infra_bridge_enbloc.db (48 elements, 10/10 PASS)
--- Pattern: same as TE-mined NFPA13 spacing rules (see TE_MINING_RESULTS.md)
 -- See docs/InfrastructureAnalysis.md §7.1 for derivation.
---
 -- Migration: append-only (CLAUDE.md sacred files rule).
--- Target DB: validation.db (AD_Val_Rule + AD_Val_Rule_Param)
---
--- ══════════════════════════════════════════════════════════════════════
--- TO APPLY (next session):
---   sqlite3 library/validation.db < migration/DV006_infra_bridge_rules.sql
---
--- TO MINE (refresh from latest extraction):
---   Run the mining queries below against infra_bridge_enbloc.db
---   Update the INSERT values if the reference model changes
--- ══════════════════════════════════════════════════════════════════════
 
--- ── Structural dimension rules ───────────────────────────────────────
+-- ── Structural dimension rules (901-907) ──────────────────────────────
 
-INSERT OR IGNORE INTO AD_Val_Rule (rule_id, rule_name, discipline, rule_type, description, mining_source, is_active)
+INSERT OR IGNORE INTO AD_Val_Rule (ad_val_rule_id, name, discipline, rule_type, description, provenance, is_active)
 VALUES
-('BRIDGE_ARCH_MEMBER_DIM', 'Bridge arch member dimensions', 'STR', 'DIMENSION',
+(901, 'BRIDGE_ARCH_MEMBER_DIM', 'STR', 'DIMENSION',
  'IfcMember in superstructure: avg 6080x5531x4084mm (8 instances in railbridge superstructure)',
  'Infra_Bridge', 1),
 
-('BRIDGE_PIER_COLUMN_RAIL', 'Rail bridge pier column dimensions', 'STR', 'DIMENSION',
+(902, 'BRIDGE_PIER_COLUMN_RAIL', 'STR', 'DIMENSION',
  'IfcColumn in rail pier: 3499x4561x3780mm (4 instances)',
  'Infra_Bridge', 1),
 
-('BRIDGE_PIER_COLUMN_ROAD', 'Road bridge pier column dimensions', 'STR', 'DIMENSION',
+(903, 'BRIDGE_PIER_COLUMN_ROAD', 'STR', 'DIMENSION',
  'IfcColumn in road pier: 2276x3393x2286mm (3 instances)',
  'Infra_Bridge', 1),
 
-('BRIDGE_FOOTING_RAIL', 'Rail bridge footing dimensions', 'STR', 'DIMENSION',
+(904, 'BRIDGE_FOOTING_RAIL', 'STR', 'DIMENSION',
  'IfcFooting under rail pier: 6231x7293x1000mm (4 instances)',
  'Infra_Bridge', 1),
 
-('BRIDGE_FOOTING_ROAD', 'Road bridge footing dimensions', 'STR', 'DIMENSION',
+(905, 'BRIDGE_FOOTING_ROAD', 'STR', 'DIMENSION',
  'IfcFooting under road pier: 4319x5380x700mm (3 instances)',
  'Infra_Bridge', 1),
 
-('BRIDGE_DECK_THICKNESS', 'Bridge deck slab thickness', 'STR', 'DIMENSION',
+(906, 'BRIDGE_DECK_THICKNESS', 'STR', 'DIMENSION',
  'IfcSlab in deck segment: 56mm height (thin plate, 1 instance)',
  'Infra_Bridge', 1),
 
-('BRIDGE_APPROACH_SLAB', 'Bridge approach slab thickness', 'STR', 'DIMENSION',
+(907, 'BRIDGE_APPROACH_SLAB', 'STR', 'DIMENSION',
  'IfcSlab in approach segment: 441mm height (2 instances)',
  'Infra_Bridge', 1);
 
--- ── Ratio rules (cross-element) ─────────────────────────────────────
+-- ── Ratio rules (908-909) ─────────────────────────────────────────────
 
-INSERT OR IGNORE INTO AD_Val_Rule (rule_id, rule_name, discipline, rule_type, description, mining_source, is_active)
+INSERT OR IGNORE INTO AD_Val_Rule (ad_val_rule_id, name, discipline, rule_type, description, provenance, is_active)
 VALUES
-('FOOTING_SPREAD_RATIO', 'Footing-to-column spread ratio', 'STR', 'RATIO',
+(908, 'FOOTING_SPREAD_RATIO', 'STR', 'RATIO',
  'Footing width must exceed column width. Rail: 1.78x, Road: 1.90x. Min observed: 1.78x.',
  'Infra_Bridge', 1),
 
-('FOOTING_DEPTH_RATIO', 'Footing depth-to-column height ratio', 'STR', 'RATIO',
+(909, 'FOOTING_DEPTH_RATIO', 'STR', 'RATIO',
  'Footing height / column height. Rail: 0.26x, Road: 0.31x. Range: 0.26-0.31x.',
  'Infra_Bridge', 1);
 
--- ── Placement rules ─────────────────────────────────────────────────
+-- ── Placement rules (910-911) ─────────────────────────────────────────
 
-INSERT OR IGNORE INTO AD_Val_Rule (rule_id, rule_name, discipline, rule_type, description, mining_source, is_active)
+INSERT OR IGNORE INTO AD_Val_Rule (ad_val_rule_id, name, discipline, rule_type, description, provenance, is_active)
 VALUES
-('BRIDGE_RAILING_HEIGHT', 'Bridge railing minimum height', 'ARC', 'MIN_DIMENSION',
+(910, 'BRIDGE_RAILING_HEIGHT', 'ARC', 'MIN_DIMENSION',
  'IfcRailing on deck: H=956mm (2 instances). Safety: bridge railing minimum.',
  'Infra_Bridge', 1),
 
-('BRIDGE_SIGNAGE_COUNT', 'Bridge signage per superstructure', 'SIGN', 'MIN_COUNT',
+(911, 'BRIDGE_SIGNAGE_COUNT', 'SIGN', 'MIN_COUNT',
  'IfcSign: 4 signs per superstructure, 1401x826x400mm. Regulatory identification.',
  'Infra_Bridge', 1);
 
--- ── Segment Z-continuity rules ──────────────────────────────────────
+-- ── Segment Z-continuity rules (912-913) ──────────────────────────────
 
-INSERT OR IGNORE INTO AD_Val_Rule (rule_id, rule_name, discipline, rule_type, description, mining_source, is_active)
+INSERT OR IGNORE INTO AD_Val_Rule (ad_val_rule_id, name, discipline, rule_type, description, provenance, is_active)
 VALUES
-('SEGMENT_Z_PIER_DECK', 'Pier-to-deck vertical continuity', 'STR', 'Z_CONTINUITY',
+(912, 'SEGMENT_Z_PIER_DECK', 'STR', 'Z_CONTINUITY',
  'Pier z_max must approximate deck z_min (gap <= 100mm). Observed: 22mm gap.',
  'Infra_Bridge', 1),
 
-('SEGMENT_Z_BELOW_GROUND', 'Pier embeds below ground level', 'STR', 'Z_RANGE',
+(913, 'SEGMENT_Z_BELOW_GROUND', 'STR', 'Z_RANGE',
  'Pier segments must extend below Z=0. Road pier: -3.5m, Rail pier: -1.49m.',
  'Infra_Bridge', 1);
 
--- ── Rule parameters ─────────────────────────────────────────────────
--- These provide the numeric thresholds for PlacementValidator queries.
+-- ── Rule parameters ───────────────────────────────────────────────────
+-- Convention: ad_val_rule_param_id = rule_id * 10 + seq
 
-INSERT OR IGNORE INTO AD_Val_Rule_Param (rule_id, param_name, param_value, unit, description)
+INSERT OR IGNORE INTO AD_Val_Rule_Param (ad_val_rule_param_id, ad_val_rule_id, name, value, value_type)
 VALUES
--- Arch member
-('BRIDGE_ARCH_MEMBER_DIM', 'avg_width_mm', '6080', 'mm', 'Average member width'),
-('BRIDGE_ARCH_MEMBER_DIM', 'avg_depth_mm', '5531', 'mm', 'Average member depth'),
-('BRIDGE_ARCH_MEMBER_DIM', 'avg_height_mm', '4084', 'mm', 'Average member height'),
-('BRIDGE_ARCH_MEMBER_DIM', 'instance_count', '8', 'count', 'Instances in superstructure'),
+-- 901: Arch member
+(9011, 901, 'avg_width_mm', '6080', 'NUM'),
+(9012, 901, 'avg_depth_mm', '5531', 'NUM'),
+(9013, 901, 'avg_height_mm', '4084', 'NUM'),
+(9014, 901, 'instance_count', '8', 'NUM'),
 
--- Pier columns
-('BRIDGE_PIER_COLUMN_RAIL', 'width_mm', '3499', 'mm', 'Column width'),
-('BRIDGE_PIER_COLUMN_RAIL', 'depth_mm', '4561', 'mm', 'Column depth'),
-('BRIDGE_PIER_COLUMN_RAIL', 'height_mm', '3780', 'mm', 'Column height'),
-('BRIDGE_PIER_COLUMN_ROAD', 'width_mm', '2276', 'mm', 'Column width'),
-('BRIDGE_PIER_COLUMN_ROAD', 'depth_mm', '3393', 'mm', 'Column depth'),
-('BRIDGE_PIER_COLUMN_ROAD', 'height_mm', '2286', 'mm', 'Column height'),
+-- 902: Pier columns (rail)
+(9021, 902, 'width_mm', '3499', 'NUM'),
+(9022, 902, 'depth_mm', '4561', 'NUM'),
+(9023, 902, 'height_mm', '3780', 'NUM'),
 
--- Footings
-('BRIDGE_FOOTING_RAIL', 'width_mm', '6231', 'mm', 'Footing width'),
-('BRIDGE_FOOTING_RAIL', 'depth_mm', '7293', 'mm', 'Footing depth'),
-('BRIDGE_FOOTING_RAIL', 'height_mm', '1000', 'mm', 'Footing height'),
-('BRIDGE_FOOTING_ROAD', 'width_mm', '4319', 'mm', 'Footing width'),
-('BRIDGE_FOOTING_ROAD', 'depth_mm', '5380', 'mm', 'Footing depth'),
-('BRIDGE_FOOTING_ROAD', 'height_mm', '700', 'mm', 'Footing height'),
+-- 903: Pier columns (road)
+(9031, 903, 'width_mm', '2276', 'NUM'),
+(9032, 903, 'depth_mm', '3393', 'NUM'),
+(9033, 903, 'height_mm', '2286', 'NUM'),
 
--- Deck and approach
-('BRIDGE_DECK_THICKNESS', 'min_height_mm', '56', 'mm', 'Deck slab thickness'),
-('BRIDGE_APPROACH_SLAB', 'height_mm', '441', 'mm', 'Approach slab thickness'),
+-- 904: Footings (rail)
+(9041, 904, 'width_mm', '6231', 'NUM'),
+(9042, 904, 'depth_mm', '7293', 'NUM'),
+(9043, 904, 'height_mm', '1000', 'NUM'),
 
--- Ratios
-('FOOTING_SPREAD_RATIO', 'min_ratio', '1.78', 'ratio', 'Minimum footing/column width ratio'),
-('FOOTING_SPREAD_RATIO', 'max_ratio', '1.90', 'ratio', 'Maximum observed ratio'),
-('FOOTING_DEPTH_RATIO', 'min_ratio', '0.26', 'ratio', 'Minimum footing height/column height'),
-('FOOTING_DEPTH_RATIO', 'max_ratio', '0.31', 'ratio', 'Maximum observed ratio'),
+-- 905: Footings (road)
+(9051, 905, 'width_mm', '4319', 'NUM'),
+(9052, 905, 'depth_mm', '5380', 'NUM'),
+(9053, 905, 'height_mm', '700', 'NUM'),
 
--- Placement
-('BRIDGE_RAILING_HEIGHT', 'min_height_mm', '956', 'mm', 'Minimum railing height'),
-('BRIDGE_SIGNAGE_COUNT', 'min_count', '4', 'count', 'Minimum signs per superstructure'),
-('BRIDGE_SIGNAGE_COUNT', 'sign_width_mm', '1401', 'mm', 'Sign width'),
-('BRIDGE_SIGNAGE_COUNT', 'sign_height_mm', '400', 'mm', 'Sign height'),
+-- 906: Deck
+(9061, 906, 'min_height_mm', '56', 'NUM'),
 
--- Z-continuity
-('SEGMENT_Z_PIER_DECK', 'max_gap_mm', '100', 'mm', 'Maximum pier-deck Z gap'),
-('SEGMENT_Z_BELOW_GROUND', 'rail_min_depth_m', '-1.49', 'm', 'Rail pier min Z'),
-('SEGMENT_Z_BELOW_GROUND', 'road_min_depth_m', '-3.50', 'm', 'Road pier min Z');
+-- 907: Approach slab
+(9071, 907, 'height_mm', '441', 'NUM'),
+
+-- 908: Footing spread ratio
+(9081, 908, 'min_ratio', '1.78', 'NUM'),
+(9082, 908, 'max_ratio', '1.90', 'NUM'),
+
+-- 909: Footing depth ratio
+(9091, 909, 'min_ratio', '0.26', 'NUM'),
+(9092, 909, 'max_ratio', '0.31', 'NUM'),
+
+-- 910: Railing height
+(9101, 910, 'min_height_mm', '956', 'NUM'),
+
+-- 911: Signage count
+(9111, 911, 'min_count', '4', 'NUM'),
+(9112, 911, 'sign_width_mm', '1401', 'NUM'),
+(9113, 911, 'sign_height_mm', '400', 'NUM'),
+
+-- 912: Z pier-deck continuity
+(9121, 912, 'max_gap_mm', '100', 'NUM'),
+
+-- 913: Z below ground
+(9131, 913, 'rail_min_depth_m', '-1.49', 'NUM'),
+(9132, 913, 'road_min_depth_m', '-3.50', 'NUM');

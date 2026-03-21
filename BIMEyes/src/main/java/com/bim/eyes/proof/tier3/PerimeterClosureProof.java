@@ -56,6 +56,6 @@ public final class PerimeterClosureProof {
     }
 
     private static String coordKey(double x, double y) {
-        return "%.3f,%.3f".formatted(x, y);
+        return Math.round(x * 1000) + "," + Math.round(y * 1000);
     }
 }

@@ -38,6 +38,9 @@ public final class OpeningContainmentProof {
                 double exZ1 = hostWall.minZ() - opening.minZ();
                 double exZ2 = opening.maxZ() - hostWall.maxZ();
                 maxExceedance = Math.max(0, Math.max(exY1, Math.max(exY2, Math.max(exZ1, exZ2))));
+                // Perpendicular depth check: opening centroid must be within wall thickness on X-axis
+                double exXDepth = Math.max(0, Math.abs(opening.cx() - hostWall.wallX()) - EyesConstants.STANDARD_WALL_THICK_M);
+                maxExceedance = Math.max(maxExceedance, exXDepth);
                 contained = maxExceedance <= EyesConstants.CONTAINMENT_TOLERANCE_M;
             } else {
                 double exX1 = hostWall.minX() - opening.minX();
@@ -45,6 +48,9 @@ public final class OpeningContainmentProof {
                 double exZ1 = hostWall.minZ() - opening.minZ();
                 double exZ2 = opening.maxZ() - hostWall.maxZ();
                 maxExceedance = Math.max(0, Math.max(exX1, Math.max(exX2, Math.max(exZ1, exZ2))));
+                // Perpendicular depth check: opening centroid must be within wall thickness on Y-axis
+                double exYDepth = Math.max(0, Math.abs(opening.cy() - hostWall.wallY()) - EyesConstants.STANDARD_WALL_THICK_M);
+                maxExceedance = Math.max(maxExceedance, exYDepth);
                 contained = maxExceedance <= EyesConstants.CONTAINMENT_TOLERANCE_M;
             }
 

@@ -57,6 +57,7 @@ public class ClassificationYaml {
     public record BuildingConfig(
             String buildingType, String prefix, String buildingBomId,
             String docSubType, String docBaseType, String name,
+            String provenance,
             Map<String, StoreyConfig> storeys,
             Map<String, FloorRoomConfig> floorRooms,
             List<StaticChildConfig> staticChildren,
@@ -228,6 +229,7 @@ public class ClassificationYaml {
                 getString(bldg, "doc_sub_type"),
                 getString(bldg, "doc_base_type"),
                 getString(bldg, "name"),
+                getString(bldg, "provenance"),
                 storeys, floorRooms, staticChildren, composition,
                 disciplines,
                 getString(bldg, "dsl_file"),

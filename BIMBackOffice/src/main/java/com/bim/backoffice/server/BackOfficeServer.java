@@ -10,6 +10,8 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.util.concurrent.Executors;
@@ -98,7 +100,7 @@ public class BackOfficeServer implements AutoCloseable {
     public void close() {
         stop();
         sessionMgr.closeAll();
-        try { compLibConn.close(); } catch (Exception ignored) {}
+        try { compLibConn.close(); } catch (Exception e) { BIMLogger.warn(TAG, "Connection close: {}", e.getMessage()); }
     }
 
     public SessionManager getSessionManager() {
@@ -107,6 +109,23 @@ public class BackOfficeServer implements AutoCloseable {
 
     public int getPort() {
         return server.getAddress().getPort();
+    }
+
+    // ── Auth helper ──────────────────────────────────────────────────
+
+    /** Returns the session for the token in X-Session-Token, or sends 401 and returns null. */
+    private SessionManager.Session requireSession(HttpExchange ex) throws IOException {
+        String token = ex.getRequestHeaders().getFirst("X-Session-Token");
+        if (token == null || token.isBlank()) {
+            sendJson(ex, 401, java.util.Map.of("error", "Authentication required"));
+            return null;
+        }
+        SessionManager.Session session = sessionMgr.getSession(token);
+        if (session == null) {
+            sendJson(ex, 401, java.util.Map.of("error", "Authentication required"));
+            return null;
+        }
+        return session;
     }
 
     // ── Endpoints ───────────────────────────────────────────────────
@@ -132,6 +151,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleSessions(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         try {
             var active = sessionMgr.activeSessions();
             var list = active.stream()
@@ -150,6 +170,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handlePortfolio(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         try {
             PortfolioDAO dao = new PortfolioDAO();
             PortfolioDAO.PortfolioSummary summary =
@@ -161,6 +182,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleKanban(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         try {
             PortfolioDAO dao = new PortfolioDAO();
             var cards = dao.kanbanBoard(libraryDir, compLibConn);
@@ -171,6 +193,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleBSC(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         try {
             PortfolioDAO dao = new PortfolioDAO();
             var bsc = dao.balancedScorecard(libraryDir, compLibConn);
@@ -181,6 +204,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleCost(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         String buildingId = queryParam(ex, "id");
         if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
         try (Connection bomConn = openBom(buildingId)) {
@@ -193,6 +217,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleSchedule(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         String buildingId = queryParam(ex, "id");
         if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
         String startDate = queryParam(ex, "start");
@@ -208,6 +233,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleCarbon(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         String buildingId = queryParam(ex, "id");
         if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
         try (Connection bomConn = openBom(buildingId)) {
@@ -220,6 +246,7 @@ public class BackOfficeServer implements AutoCloseable {
     }
 
     private void handleMaintenance(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
         String buildingId = queryParam(ex, "id");
         if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
         try (Connection bomConn = openBom(buildingId)) {
@@ -243,7 +270,8 @@ public class BackOfficeServer implements AutoCloseable {
 
     private void addCorsHeaders(HttpExchange ex) {
         var headers = ex.getResponseHeaders();
-        headers.set("Access-Control-Allow-Origin", "*");
+        String corsOrigin = System.getenv("BIM_CORS_ORIGIN");
+        headers.set("Access-Control-Allow-Origin", (corsOrigin != null && !corsOrigin.isBlank()) ? corsOrigin : "*");
         headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
         headers.set("Access-Control-Allow-Headers", "Content-Type, X-Session-Token");
         headers.set("Access-Control-Max-Age", "86400");
@@ -252,7 +280,11 @@ public class BackOfficeServer implements AutoCloseable {
     // ── Helpers ─────────────────────────────────────────────────────
 
     private Connection openBom(String buildingId) throws Exception {
-        String dbPath = libraryDir + "/" + buildingId.toUpperCase() + "_BOM.db";
+        Path safePath = Paths.get(libraryDir).resolve(buildingId.toUpperCase() + "_BOM.db").normalize();
+        if (!safePath.startsWith(Paths.get(libraryDir).normalize())) {
+            throw new SecurityException("Invalid building ID");
+        }
+        String dbPath = safePath.toString();
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath);
     }
 
@@ -288,7 +320,7 @@ public class BackOfficeServer implements AutoCloseable {
 
     private void sendError(HttpExchange ex, Exception e) throws IOException {
         BIMLogger.warn(TAG, "Request failed: {}", e.getMessage());
-        sendJson(ex, 500, java.util.Map.of("error", e.getMessage()));
+        sendJson(ex, 500, java.util.Map.of("error", "Internal server error"));
     }
 
     // ── Main ────────────────────────────────────────────────────────

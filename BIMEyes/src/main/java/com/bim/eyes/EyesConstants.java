@@ -3,6 +3,11 @@ package com.bim.eyes;
 /**
  * Single source of truth for all geometric thresholds.
  * // Implementing EYES_SRS.md §3.5 — Witness: W-EYES-CONSTANTS
+ *
+ * Coordinate system convention (IFC default):
+ *   X = East-West (positive East)
+ *   Y = North-South (positive North)
+ *   Z = Vertical (positive Up, 0 = ground level)
  */
 public final class EyesConstants {
 

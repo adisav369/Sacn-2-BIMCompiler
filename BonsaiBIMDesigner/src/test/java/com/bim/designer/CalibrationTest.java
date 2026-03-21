@@ -353,9 +353,13 @@ class CalibrationTest {
     @Order(50)
     @DisplayName("W-CAL-ND-COMPAT: Calibration is read-only — no DB writes")
     void ndCompat() throws Exception {
-        // Verify all connections are read-only (no writes happened)
-        // If we got here without exception, the DAO is read-only
-        assertTrue(true, "CalibrationDAO performed no writes — Non-Disturbance safe");
+        // Verify CalibrationDAO is read-only: all connections still open, no writes detected
+        assertNotNull(dao, "CalibrationDAO must have been initialized");
+        assertFalse(bomConn.isClosed(), "bomConn must still be open (no write error closed it)");
+        // Verify BOM table unchanged: count m_bom rows (CalibrationDAO only reads)
+        try (var rs = bomConn.createStatement().executeQuery("SELECT count(*) FROM m_bom")) {
+            assertTrue(rs.next() && rs.getInt(1) > 0, "m_bom must have rows (DAO did not corrupt)");
+        }
     }
 
     // ── Core calibration engine ──────────────────────────────────────

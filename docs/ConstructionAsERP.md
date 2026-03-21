@@ -189,7 +189,13 @@ C_Order (output.db — created fresh each compile from C_DocType)
 │   C_DocType_ID   = 'RE_DX'                    ← FK → C_DocType
 │   Site_AABB      = aabb_width/depth/height_mm  ← HOW BIG (construction envelope)
 │   Description    = 'Duplex residential unit'
-│   DocStatus      = 'DR' → 'IP' → 'CO'
+│   DocStatus      = 'DR' → 'IP' → 'AP' → 'CO'
+│
+│   DocAction lifecycle for BOM Drop (BIM_Designer_SRS.md §28.11):
+│     bomDrop() → DR (draft, BOM tree auto-exploded into C_OrderLine)
+│     Save      → IP (backend validates, adjusts, returns errors)
+│     Approve   → AP (save as new product configuration / promote)
+│     Complete  → CO (full compile into output.db, load viewport)
 │
 │   These two fields — DocSubType + AABB — ARE the building definition.
 │   Everything else on C_Order is administrative (lifecycle, audit, digest).

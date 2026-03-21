@@ -14,6 +14,13 @@ public record PlacementData(
     double minY, double maxY,
     double minZ, double maxZ
 ) {
+    /** Compact constructor: swap any inverted AABB axes defensively. */
+    public PlacementData {
+        if (minX > maxX) { double t = minX; minX = maxX; maxX = t; }
+        if (minY > maxY) { double t = minY; minY = maxY; maxY = t; }
+        if (minZ > maxZ) { double t = minZ; minZ = maxZ; maxZ = t; }
+    }
+
     public double cx() { return (minX + maxX) / 2; }
     public double cy() { return (minY + maxY) / 2; }
     public double cz() { return (minZ + maxZ) / 2; }

@@ -348,6 +348,46 @@ public interface DesignerAPI extends AssemblyAPI {
             String error
     ) {}
 
+    // ── BOM Drop — Template-First Building Design (§28) ──────────
+
+    /**
+     * BOM Drop: create a C_Order with a single C_OrderLine referencing a
+     * BUILDING product, then explode the BOM tree into child C_OrderLine rows.
+     * Returns the exploded tree as BomTreeNode for the Outliner.
+     *
+     * <p>iDempiere pattern: C_OrderLine references M_Product_ID (family_ref).
+     * If the product IsBOM (has a matching m_bom entry), the engine walks
+     * m_bom / m_bom_line recursively to explode the tree. Non-BOM products
+     * become LEAF C_OrderLine rows. The user can then navigate, swap by
+     * M_Product_Category (bom_category), add, or remove nodes.
+     *
+     * <p>Instant Drop (TC-1): bomDrop with no edits → compile produces
+     * identical output to the Rosetta Stone for that building.
+     *
+     * // Implementing GENERATIVE_HOUSE_SRS.md §2.1, BIM_Designer_SRS.md §28.1
+     * // Witness: W-DROP-1
+     */
+    BomDropResponse bomDrop(String buildingProductId);
+
+    /**
+     * BOM Drop response — exploded BOM tree + order metadata.
+     *
+     * @param success          true if BOM found and tree exploded
+     * @param orderId          the C_Order_ID created for this design session
+     * @param orderLineId      the root C_OrderLine_ID (BUILDING product)
+     * @param tree             exploded BOM tree for Outliner navigation
+     * @param totalElements    leaf count (element count if compiled as-is)
+     * @param error            error message if success=false
+     */
+    record BomDropResponse(
+            boolean success,
+            String orderId,
+            int orderLineId,
+            BomTreeNode tree,
+            int totalElements,
+            String error
+    ) {}
+
     // ── Auto-Populate + ASI Authoring (BIM_Designer_SRS.md §28) ────
 
     /**

@@ -34,7 +34,7 @@ CREATE INDEX IF NOT EXISTS idx_alias_canonical
 -- PRIORITY 1: IFC4 class — direct entity match (most reliable)
 -- ═══════════════════════════════════════════════════════════════════════
 
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('OUTLET',         'ifc_class', 'IfcOutlet',                    1, 'IFC4_SPEC', 'IFC4 direct subtype of IfcFlowTerminal'),
   ('SWITCH',         'ifc_class', 'IfcSwitchingDevice',           1, 'IFC4_SPEC', 'IFC4 direct subtype of IfcFlowController'),
   ('LIGHT',          'ifc_class', 'IfcLightFixture',              1, 'IFC4_SPEC', 'IFC4 direct subtype of IfcFlowTerminal'),
@@ -55,7 +55,7 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- IfcOutlet PredefinedTypes
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('OUTLET',         'predefined_type', 'POWEROUTLET',          2, 'IFC4_SPEC', 'IfcOutletTypeEnum'),
   ('OUTLET',         'predefined_type', 'COMMUNICATIONSOUTLET', 2, 'IFC4_SPEC', 'IfcOutletTypeEnum — data/phone/network'),
   ('OUTLET',         'predefined_type', 'DATAOUTLET',           2, 'IFC4_SPEC', 'IfcOutletTypeEnum'),
@@ -63,7 +63,7 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
   ('OUTLET',         'predefined_type', 'AUDIOVISUALOUTLET',    2, 'IFC4_SPEC', 'IfcOutletTypeEnum');
 
 -- IfcSanitaryTerminal PredefinedTypes
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('TOILET',         'predefined_type', 'TOILETPAN',            2, 'IFC4_SPEC', 'IfcSanitaryTerminalTypeEnum'),
   ('TOILET',         'predefined_type', 'WCSEAT',               2, 'IFC4_SPEC', 'IfcSanitaryTerminalTypeEnum'),
   ('TOILET',         'predefined_type', 'CISTERN',              2, 'IFC4_SPEC', 'IfcSanitaryTerminalTypeEnum'),
@@ -71,13 +71,13 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
   ('SINK',           'predefined_type', 'WASHHANDBASIN',        2, 'IFC4_SPEC', 'IfcSanitaryTerminalTypeEnum');
 
 -- IfcSensor PredefinedTypes
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('SMOKE_DETECTOR', 'predefined_type', 'SMOKESENSOR',          2, 'IFC4_SPEC', 'IfcSensorTypeEnum'),
   ('SMOKE_DETECTOR', 'predefined_type', 'FIRESENSOR',           2, 'IFC4_SPEC', 'IfcSensorTypeEnum'),
   ('SMOKE_DETECTOR', 'predefined_type', 'HEATSENSOR',           2, 'IFC4_SPEC', 'IfcSensorTypeEnum');
 
 -- IfcSwitchingDevice PredefinedTypes
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('SWITCH',         'predefined_type', 'TOGGLESWITCH',         2, 'IFC4_SPEC', 'IfcSwitchingDeviceTypeEnum'),
   ('SWITCH',         'predefined_type', 'DIMMERSWITCH',         2, 'IFC4_SPEC', 'IfcSwitchingDeviceTypeEnum'),
   ('SWITCH',         'predefined_type', 'KEYPADSWITCH',         2, 'IFC4_SPEC', 'IfcSwitchingDeviceTypeEnum'),
@@ -86,12 +86,12 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
   ('SWITCH',         'predefined_type', 'STARTER',              2, 'IFC4_SPEC', 'IfcSwitchingDeviceTypeEnum');
 
 -- IfcFireSuppressionTerminal PredefinedTypes
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('SPRINKLER',      'predefined_type', 'SPRINKLER',            2, 'IFC4_SPEC', 'IfcFireSuppressionTerminalTypeEnum'),
   ('SPRINKLER',      'predefined_type', 'SPRINKLERDEFLECTOR',   2, 'IFC4_SPEC', 'IfcFireSuppressionTerminalTypeEnum');
 
 -- IfcAirTerminal PredefinedTypes
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('DIFFUSER',       'predefined_type', 'DIFFUSER',             2, 'IFC4_SPEC', 'IfcAirTerminalTypeEnum'),
   ('DIFFUSER',       'predefined_type', 'GRILLE',               2, 'IFC4_SPEC', 'IfcAirTerminalTypeEnum'),
   ('DIFFUSER',       'predefined_type', 'REGISTER',             2, 'IFC4_SPEC', 'IfcAirTerminalTypeEnum');
@@ -101,7 +101,7 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
 -- When element is IfcFlowTerminal but its Type is e.g. IfcOutletType
 -- ═══════════════════════════════════════════════════════════════════════
 
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('OUTLET',         'type_class', 'IfcOutletType',                    3, 'IFC2X3_SPEC', 'IfcRelDefinesByType → IfcOutletType'),
   ('SWITCH',         'type_class', 'IfcSwitchingDeviceType',           3, 'IFC2X3_SPEC', 'IfcRelDefinesByType → IfcSwitchingDeviceType'),
   ('LIGHT',          'type_class', 'IfcLightFixtureType',              3, 'IFC2X3_SPEC', 'IfcRelDefinesByType → IfcLightFixtureType'),
@@ -122,7 +122,7 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
 
 -- ── DX-mined (Ifc2x3 Duplex — Revit residential) ────────────────────
 
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('OUTLET',         'element_name', '%Receptacle%',                 4, 'DX_MINED', 'M_Duplex Receptacle (47 in DX)'),
   ('OUTLET',         'element_name', '%Telephone Outlet%',           4, 'DX_MINED', 'M_Telephone Outlet (4 in DX)'),
   ('OUTLET',         'element_name', '%Telephone Terminal%',         4, 'DX_MINED', 'M_Telephone Terminal Board (1 in DX)'),
@@ -138,7 +138,7 @@ INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, prio
 
 -- ── TE-mined (IFC4 Terminal — Revit commercial) ──────────────────────
 
-INSERT INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
+INSERT OR IGNORE INTO ad_element_mep_alias (canonical_type, match_field, match_value, priority, source, notes) VALUES
   ('SPRINKLER',      'element_name', '%sprinkler%head%',             4, 'TE_MINED', 'jkrME18_spr_sprinkler head (899 in TE)'),
   ('SPRINKLER',      'element_name', '%Hose Reel%',                  4, 'TE_MINED', 'AB_Hose Reel (10 in TE)'),
   ('DIFFUSER',       'element_name', '%diffuser%supply%',            4, 'TE_MINED', 'jkrME_air-tm_diffuser_supply (138 in TE)'),

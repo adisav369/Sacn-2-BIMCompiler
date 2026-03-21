@@ -284,6 +284,11 @@ List<CompilerStage> STAGES = List.of(
 | **Instant Drop** | 1 C_OrderLine, no modifications | BOM tree exploded in one pass (BBC.md §3.3) |
 | **BOM Drop** | User navigates tree, swaps/adds products | Modified order compiled through same pipeline (BBC.md §3.4) |
 
+**Entry point:** `DesignerAPI.bomDrop(buildingProductId)` → `DesignerAPIImpl.explodeBomTree()`.
+Creates C_Order + walks m_bom/m_bom_line recursively. IsBOM products (matching m_bom) recurse;
+leaves become C_OrderLine LEAF rows. Returns `BomTreeNode` for Outliner (expand/collapse).
+DocAction: Save(validate) → Approve(new product config) → Complete(compile+viewport).
+
 **CO mode (Terminal/Institutional):** CompileStage is skipped for `DocBaseType=CO`. All elements come from BOM extraction — no DSL compilation path needed.
 
 > **Full pipeline spec:** [`BOMBasedCompilation.md`](BOMBasedCompilation.md) — per-stage walkthrough, CO mode forensics, data integrity chain.

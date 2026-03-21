@@ -2592,6 +2592,353 @@ record ListAdvisoriesResponse(boolean success,
 
 ---
 
+## 28. BOM Drop — Template-First Building Design
+
+> **Foundation:** [GENERATIVE_HOUSE_SRS.md](GENERATIVE_HOUSE_SRS.md) §2.1 (BOM Drop) · [BBC.md §3.5.1](BOMBasedCompilation.md) (ASI) · [BBC.md §3.5](BOMBasedCompilation.md) (Selection Cascade)
+> **Schema:** `ASI_001_attribute_set_instance.sql` · `W001_work_output_schema.sql`
+
+*Date: 2026-03-22. Session: S52b. Replaces: room-by-room cascade (§28 v1).*
+
+### 28.1 Paradigm — Template + BOM Drop + ASI
+
+> **Separation of concerns:** The BOM Drop **engine** (explode BOM tree, resolve
+> products, compute placements) lives in the backend — DAGCompiler / BIM_COBOL /
+> pipeline layer. The BIM Designer is a **GUI that calls the engine** via
+> `DesignerAPI.bomDrop()`. The Designer never walks BOMs, never resolves products,
+> never computes geometry. It renders the tree the engine returns and sends user
+> edits back as C_OrderLine mutations. Same principle as compile(): the Designer
+> calls it, the pipeline does the work.
+
+The Designer is a **tree editor with a product catalog**, not a building generator.
+
+The user starts with a **complete, proven building** (SH, FK, DX — any Rosetta Stone
+or previously promoted generative building) and makes targeted edits. The compiler
+already knows how to explode BOM trees — that is what it does for every Rosetta Stone.
+The generative path is just the ERP order-entry pattern: place an order for a product,
+the BOM explodes.
+
+```
+Step 1: BOM Drop — pick a building template
+        User: "Give me SH" → 1 C_OrderLine: BUILDING_SH_STD
+                                              │
+Step 2: Tree Navigation — BOM Outliner (§17.19)
+        BUILDING_SH_STD                       │
+        ├─ SH_GF_STR         (floor structure)│
+        ├─ FLOOR_SH_GF_STD   (floor rooms)   │── user navigates this tree
+        │  ├─ SH_LIVING_SET                   │
+        │  ├─ SH_DINING_SET                   │
+        │  ├─ SH_BED_SET                      │
+        │  └─ TOILET_BLOCK                    │
+        ├─ SH_ROOF_STR       ← user SWAPS this node
+        ├─ SH_CW_STR         (curtain wall)   │
+        └─ FLOOR_SLAB_GF     (slab)           │
+                                              │
+Step 3: Edit — swap, add, remove, ASI         │
+        Swap: SH_ROOF_STR → FK_PITCHED_ROOF  │
+        Add: C_OrderLine for FP sprinklers    │
+        ASI: wall length_mm, material         │
+                                              │
+Step 4: Compile — same compiler, same gates   │
+        Explodes modified BOM tree → output.db
+```
+
+**Three interaction modes:**
+
+| Mode | User action | Example |
+|------|------------|---------|
+| **Instant Drop** | Pick template, no edits, compile | TC-1: "Give me SH" → 55 elements |
+| **BOM Drop** | Pick template, navigate tree, swap/add/remove | TC-4: SH + swap roof → pitched |
+| **From Scratch** | No template, autoPopulate fills from cascade | Fallback: topology maker path |
+
+### 28.2 Why This Is Simpler
+
+The old room-by-room cascade required 8 heavy steps (layout generation → cascade per
+room → ASI computation per element → gap-fill per rule → clash detection). BOM Drop
+requires 3 steps: pick template → navigate tree → swap what you want.
+
+| Concern | Room-by-room | BOM Drop |
+|---------|-------------|----------|
+| Roof | Must author BIM_Roof ASI, compute rafters | Already in template (SH flat / FK pitched) |
+| Foundation | Must author from scratch | Already in template |
+| Structural load path | Must compute beams, columns | Already proven in extracted building |
+| Wall-roof junction | Compute top_trim_mm per wall | Template walls already sized correctly |
+| Opening gap-fill | Query 103 rules, auto-add | Template already has all openings |
+| MEP gap-fill | Query 186 rules, auto-add | Additive only (TC-5: add discipline) |
+| FP clash | Check all auto-placed items | Only check items user added/moved |
+| Element count | Unknown until cascade fills | Known from template (SH=55, FK=82) |
+| Roof-wall trim for curtain wall | Must compute per-panel | Pre-cut in extracted template |
+
+**The construction completeness problem (§8 in GENERATIVE_HOUSE_SRS.md) disappears
+for template-based builds.** The extracted building already has roof, foundation,
+structural frame, curtain wall panels, all correctly sized. The user only deals with
+construction completeness if they create from scratch (fallback path).
+
+### 28.3 Architectural Boundary — Designer vs Engine
+
+```
+┌─────────────────────────────────────────────────────┐
+│  BIM Designer (GUI layer)                           │
+│                                                     │
+│  1. Render tree (BOM Outliner)                      │
+│  2. Accept user edits (swap/add/remove/ASI)         │
+│  3. Write changes to C_OrderLine in work_output.db  │
+│  4. Call engine: bomDrop() / compile()              │
+│                                                     │
+│  NEVER: walks BOMs, resolves products, computes     │
+│         geometry, reads m_bom_line, runs verbs      │
+└──────────────────────┬──────────────────────────────┘
+                       │  save → call engine
+                       ▼
+┌─────────────────────────────────────────────────────┐
+│  BOM Drop Engine (backend — DAGCompiler / pipeline) │
+│                                                     │
+│  bomDrop():  read C_OrderLine → resolve BUILDING    │
+│              product → walk m_bom/m_bom_line →      │
+│              return exploded tree for GUI            │
+│                                                     │
+│  compile():  same 9-stage pipeline as Rosetta Stones│
+│              reads the saved C_OrderLine state       │
+│              explodes → places → output.db          │
+│                                                     │
+│  Owns: BOMWalker, PlacementCollector, VerbRegistry, │
+│        MeshBinder, BIMEyes, gate checks             │
+└─────────────────────────────────────────────────────┘
+```
+
+**The pattern is identical to compilation today:**
+
+1. GUI makes changes → writes to work_output.db (C_OrderLine mutations)
+2. GUI calls engine (bomDrop or compile)
+3. Engine reads the saved state, does all the heavy lifting, returns result
+4. GUI renders the result
+
+The Designer never interprets BOM structure. It writes OrderLine rows and calls
+the engine. The engine reads those rows, resolves them against the BOM/product
+databases, and returns either a tree (for navigation) or output.db (for delivery).
+This is the same separation as the existing `compile()` path — `DesignerAPIImpl`
+delegates to `CompilationPipeline`, which owns all BOM walking and placement logic.
+
+### 28.4 API Mapping — What the Designer Calls
+
+| Existing API | BOM Drop Role | Change? |
+|---|---|---|
+| `listBuildingTypes()` | Step 1: user picks template | NO |
+| `getBomTree(buildingId)` | Step 2: Outliner shows exploded tree | SMALL — read from BOM.db not just C_OrderLine |
+| `browseItems(request)` | Step 3: user clicks node → sees swap candidates | NO |
+| `findSimilar(request)` | "Show me similar roof products" | NO |
+| `updateOrderLine(id, field, value)` | Swap product on a node | SMALL — `family_ref` as editable field |
+| `placeItem(request)` | Add new item (e.g. sprinkler) | NO |
+| `readASI(buildingId, olId)` | Inspect per-instance attributes | NO — S52b done |
+| `updateASI(buildingId, olId, name, value)` | Tweak ASI (wall length, material) | NO — S52b done |
+| `approve(buildingId)` | Pre-promote validation gate | NO |
+| `promote(request)` | Freeze order → BOM | NO |
+| `compile(request)` | Explode + output | NO |
+
+**One new action needed** (thin delegation to backend engine):
+
+```java
+// ── BOM Drop — template-first building creation (§28.1) ──────
+
+/**
+ * Create a C_Order with a single C_OrderLine referencing a complete
+ * BUILDING product. Delegates to the backend BOM Drop engine to
+ * explode the BOM tree. Returns the tree for Outliner navigation.
+ *
+ * <p>The Designer does NOT walk the BOM tree itself. The engine
+ * reads m_bom/m_bom_line, resolves products, and returns the
+ * exploded tree as a BomTreeNode hierarchy.
+ *
+ * <p>Instant Drop: if the user compiles without editing, the output
+ * is identical to the Rosetta Stone for that building.
+ *
+ * <p>BOM Drop: user navigates the returned tree and edits via
+ * updateOrderLine(), placeItem(), updateASI().
+ *
+ * // Implementing GENERATIVE_HOUSE_SRS.md §2.1 — Witness: W-DROP-1
+ */
+BomDropResponse bomDrop(String buildingProductId);
+
+record BomDropResponse(
+    boolean success,
+    String orderId,
+    int orderLineId,
+    BomTreeNode tree,        // exploded BOM tree for Outliner
+    int totalElements,       // element count if compiled as-is
+    String error
+) {}
+```
+
+**Demoted APIs** (still exist, now fallback path for "from scratch"):
+
+| API | New Status |
+|---|---|
+| `createNew()` + `RoomLayoutGenerator` | Fallback — "from scratch" only |
+| `autoPopulate()` | Fallback — fills empty rooms when no template |
+| `suggestRoomContents()` | Internal helper for swap candidates |
+| `addRoom()` / `removeRoom()` / `addStorey()` | Still valid — TC-3 "add bedroom" |
+
+### 28.5 ASI in BOM Drop Context
+
+ASI serves a different role in BOM Drop vs room-by-room:
+
+| | Room-by-room | BOM Drop |
+|---|---|---|
+| **When ASI is created** | During auto-populate (stretch walls to room) | When user explicitly edits a dimension |
+| **Default state** | Every wall gets auto-computed ASI | No ASI needed — template dimensions are correct |
+| **User interaction** | Review auto-computed values | Only create ASI if changing something |
+
+In BOM Drop, most elements have **no ASI** — the template's `allocated_*_mm` values
+are already correct. ASI only appears when the user actively customizes:
+
+- TC-6 "SH but 20% bigger" → ASI `scale_factor: 1.2` on walls
+- TC-4 "Swap roof" → no ASI needed (swapped product has its own dimensions)
+- TC-5 "Add sprinklers" → no ASI (sprinklers are IsInstanceAttribute=0)
+
+The ASI CRUD backend (WorkOutputDAO, S52b) remains correct — it is called when the
+user edits individual items, not during initial BOM Drop.
+
+### 28.6 ASI Resolution Rule (unchanged)
+
+```
+effective_dimension = ASI_override ?? allocated_*_mm ?? M_Product.catalog_default
+```
+
+| Tier | Source | When used |
+|------|--------|-----------|
+| 1 | `M_AttributeInstance.Value` (ASI override) | User changed a dimension |
+| 2 | `m_bom_line.allocated_*_mm` (BOM recipe) | Template default (most elements) |
+| 3 | `M_Product.width/depth/height` (catalog) | Fallback for missing allocated |
+
+### 28.7 ASI Field Resolution Matrix (unchanged)
+
+| Product Type | M_AttributeSet | IsInstance | Varying (ASI fields) | Fixed (catalog) |
+|---|---|---|---|---|
+| Wall | BIM_Wall | 1 | length_mm, height_mm, material, finish | thickness |
+| Pipe | BIM_Pipe | 1 | length_mm, angle_deg, elevation | diameter |
+| Conduit | BIM_Conduit | 1 | length_mm | diameter, material |
+| Duct | BIM_Duct | 1 | length_mm, cross_section | material |
+| Door | BIM_Door | 1 | swing_side, face_anchor (INT/EXT) | width, height |
+| Window | BIM_Window | 1 | sill_height_mm, face_anchor | width, height |
+| Slab | BIM_Slab | 1 | area_m2, thickness_mm | material |
+| Beam | BIM_Beam | 1 | span_mm | section profile |
+| Column | BIM_Column | 1 | height_mm | section profile |
+| Furniture | BIM_Component | 0 | — | All dims fixed |
+| MEP terminal | BIM_Component | 0 | — | Identical everywhere |
+| Fitting | BIM_Fitting | 0 | — | Angle is type, not instance |
+
+### 28.8 WorkOutputDAO ASI Operations (implemented S52b)
+
+| Method | Purpose | Status |
+|--------|---------|--------|
+| `createASI(attributeSetId, values)` | Create ASI header + name/value pairs | DONE |
+| `updateASIAttribute(asiId, name, value)` | Update/upsert single attribute | DONE |
+| `readASI(asiId)` | Read all attribute values for an ASI | DONE |
+| `linkASI(orderLineId, asiId)` | Set FK on C_OrderLine | DONE |
+| `getASIForOrderLine(orderLineId)` | Read linked ASI ID | DONE |
+| `listAttributeSets()` | List M_AttributeSet templates | DONE |
+| `resolveAttributeSetForProduct(familyRef)` | WALL_* → BIM_Wall, etc. | DONE |
+| `isInstanceAttribute(attributeSetId)` | Check if product type needs ASI | DONE |
+| `initASISchema()` | Create tables + seed 11 templates | DONE |
+
+### 28.9 UX Interaction — BOM Drop Sequence
+
+```
+User opens Designer
+  → listBuildingTypes() shows: SH (55 el), FK (82 el), DX (1099 el), ...
+  → user clicks "SH — Sample House"
+     → bomDrop("BUILDING_SH_STD")
+        → C_Order created, 1 C_OrderLine
+        → BOM tree returned for Outliner
+  → Outliner shows:
+     BUILDING_SH_STD
+     ├─ SH_GF_STR (floor structure, 5 elements)
+     ├─ FLOOR_SH_GF (rooms)
+     │  ├─ SH_LIVING_SET (8 elements)    ← user clicks here
+     │  │    → browseItems or findSimilar shows swap candidates
+     │  │    → user keeps it (or swaps with DX_LIVING_SET)
+     │  ├─ SH_BED_SET (4 elements)
+     │  └─ TOILET_BLOCK (3 elements)
+     ├─ SH_ROOF_STR (2 elements)         ← user clicks "Swap"
+     │    → browseItems(category="roof") shows: FK_PITCHED_ROOF, CS_METAL_ROOF
+     │    → user picks FK_PITCHED_ROOF
+     │    → updateOrderLine(id, "family_ref", "FK_PITCHED_ROOF")
+     ├─ SH_CW_STR (21 curtain wall segments)
+     └─ FLOOR_SLAB_GF (1 slab)
+  → user clicks "Add Sprinklers"
+     → placeItem(discipline="FP") per room
+     → validation rules compute placement from ad_space_type_mep_bom
+  → user clicks on a wall → readASI shows: length_mm=3800, material=Brick
+     → user changes material: updateASI(olId, "material", "ConcreteBlock")
+  → user clicks "Compile"
+     → compile() explodes modified tree → output.db
+     → G1-COUNT, G5-PROVENANCE verified
+  → user clicks "Promote" → governance gate (§18)
+```
+
+### 28.10 Validation in BOM Drop
+
+Validation rules have a **lighter** role in BOM Drop than in room-by-room:
+
+| Rule Source | Room-by-room role | BOM Drop role |
+|---|---|---|
+| `ad_space_type_opening` (103 rules) | Auto-add missing openings | Verify template openings are present; flag only if user removed one |
+| `ad_space_type_mep_bom` (186 rules) | Auto-add missing MEP | Compute placement for user-added disciplines (TC-5) |
+| `AD_Val_Rule` (63 rules) | Enforce min area, min height | Same — validate after any swap/resize |
+| `AD_Clash_Rule` (FP vs STR) | Check all auto-placed items | Check only user-added items against template structure |
+
+The approve gate (§18) runs all validation before promote. BOM Drop makes validation
+faster because most elements are template-proven — only user modifications need checking.
+
+### 28.11 DocAction Lifecycle — iDempiere Document Processing
+
+BOM Drop follows the standard iDempiere DocAction pattern on C_Order:
+
+| DocAction | DocStatus | Backend behaviour |
+|-----------|-----------|------------------|
+| **bomDrop()** | → DR | Create C_Order + explode BOM tree into C_OrderLine hierarchy. Backend auto-explodes; GUI shows collapsed tree. |
+| **Save** | DR → IP | Backend validates C_OrderLine tree — AABB fit, category consistency, attribute compatibility. Returns adjustment suggestions or error messages. User corrects attribute selections based on backend feedback. |
+| **Approve** | IP → AP | Prompts for metadata to save configuration as a new M_Product (reusable BOM template in catalog). This is the promote step. |
+| **Complete** | AP → CO | Full 9-stage compilation into output.db. Loads solid geometry into Blender viewport. Order is frozen. |
+
+**iDempiere OrderLine model:**
+- C_OrderLine references `M_Product_ID` (= `family_ref`). No BOMCategory on OrderLine level.
+- Product category for swap browsing is resolved from `M_Product.M_Product_Category_ID` or `m_bom.bom_category`.
+- Only products with IsBOM=Y (matching `m_bom` entry) are exploded recursively.
+- If user doesn't modify the tree, fold back to parent line (thin pipe performance).
+- If user expands and modifies, all child C_OrderLine rows flow through.
+
+### 28.12 Witness Claims
+
+| Witness | Claim | Status |
+|---------|-------|--------|
+| W-DROP-1 | bomDrop creates C_Order + explodes BOM tree into C_OrderLine hierarchy | GREEN (S54) |
+| W-DROP-2 | Instant Drop totalElements = 55 (SH Rosetta Stone match) | GREEN (S54) |
+| W-DROP-3 | Tree has FLOOR-level children (IsBOM sub-assemblies) | GREEN (S54) |
+| W-DROP-4 | FLOOR_SH_GF_STD contains ROOM sub-assemblies with LEAF children | GREEN (S54) |
+| W-DROP-5 | Non-BOM product (IsBOM=false) returns error | GREEN (S54) |
+| W-DROP-6 | Each node carries bom_category for category-based swap browsing | GREEN (S54) |
+| W-ASI-READ-1 | readASI returns correct fields for wall with ASI override | GREEN (S52b) |
+| W-ASI-EDIT-1 | updateASI changes single field, effective dimension reflects override | GREEN (S52b) |
+| W-ASI-AUTO-1 | autoPopulate fills empty rooms (fallback path) | GREEN (S52b) |
+| W-ASI-AUTO-3 | IsInstanceAttribute=0 products have no ASI | GREEN (S52b) |
+| W-ASI-RESOLVE-1 | Compiler resolves ASI > allocated > catalog in correct priority | SPEC |
+
+### 28.13 Traceability
+
+| Requirement | Source | Implementation |
+|-------------|--------|---------------|
+| BOM Drop paradigm | GENERATIVE_HOUSE_SRS.md §2.1 | `DesignerAPI.bomDrop()` — GREEN (S54) |
+| Instant Drop = Rosetta Stone | GENERATIVE_HOUSE_SRS.md §7 TC-1 | `BomDropTest` W-DROP-2: 55 elements |
+| DocAction lifecycle | iDempiere C_Order processing | Save→validate, Approve→promote, Complete→compile |
+| Tree navigation | BIM_Designer.md §17.19 (BOM Outliner) | `getBomTree()` + `explodeBomTree()` |
+| Product swap in tree | BIM_Designer.md §17.11 (ORDER View edit) | `updateOrderLine()` + `family_ref` field |
+| ASI three-table pattern | BBC.md §3.5.1 | `ASI_001` + `WorkOutputDAO` (S52b DONE) |
+| Selection Cascade | BBC.md §3.5 | `DesignerDAO.findMatchingSets()` (swap candidates) |
+| Auto-populate fallback | This section §28.1 | `autoPopulate()` (S52b DONE, demoted to fallback) |
+| Validation on edit | This section §28.9 | `approve()` + `PlacementValidator` (existing) |
+
+---
+
 *References:
 [BIM_Designer.md](BIM_Designer.md) (architecture, §17 Design Mode, §18 UI Strategy) |
 [G4_SRS.md](G4_SRS.md) (work_output.db, Save/Recall/Promote sequences) |

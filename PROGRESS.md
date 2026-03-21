@@ -123,7 +123,11 @@
   doc_sub_type on SET/FLOOR BOMs: DROPPED — per user direction, no more BOMCategory/DocType/SubType
   on OrderLine level. All is simple OrderLine → Product → BOM explosion.
 
-**Next: S54b — Wire RosettaStones + Remove EN-BLOC/WALK-THRU:**
+**Next: S54b — Complete BOM Drop wiring:**
+  S54a PARTIAL: bomDrop() API + BomDropTest (6 witnesses, W-DROP-1..6) DONE.
+  Still needed from S54a: PlacementLoader isolation fix, W002 M_Product_ID migration,
+  BomDropCompileTest (bomDrop→compile→55 elements end-to-end equivalence proof).
+  Then S54b:
   1. Wire run_RosettaStones.sh through C_OrderLine + explodeBOM path (replace ENBLOC/WALKTHRU)
   2. Single compilation mode: 1 C_OrderLine per building → bomDrop → compile
   3. Same element counts: 55/82/699/1099/48428 (gate: Rosetta Stones unchanged)

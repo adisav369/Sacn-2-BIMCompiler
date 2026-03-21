@@ -272,8 +272,13 @@ Expected:
   All categories: LIVING + DINING + MASTER + structural + roof + curtain wall
 ```
 
-**Witness:** Same as RosettaStoneGateTest for SH. The generative path with zero
-overrides must produce the same output as the extracted path.
+**Witness:** `BomDropTest` W-DROP-1..6 (S54). bomDrop("BUILDING_SH_STD") creates
+C_Order, auto-explodes BOM tree into C_OrderLine hierarchy, returns BomTreeNode
+with 55 leaf elements matching Rosetta Stone SH G1-COUNT. **GREEN (6 witnesses).**
+
+**DocAction lifecycle:** Save(validate) → Approve(new product config) → Complete(compile+viewport).
+iDempiere pattern: C_OrderLine references M_Product_ID. IsBOM products explode recursively.
+Backend auto-explodes; GUI shows collapsed tree (expand/collapse per node).
 
 ### TC-2: Drop a room — "SH but no dining room"
 
@@ -591,6 +596,12 @@ for clash detection — that's a small code change to call existing logic.
 | W-GEN-5 | UBBL compliance passes for all rooms | SPEC |
 | W-GEN-6 | Promoted BOM has entity_type='U', provenance='GENERATIVE' | SPEC |
 | W-GEN-7 | No new code in BuildingCompiler for GENERATIVE path | PROVEN (same compiler) |
+| W-DROP-1 | bomDrop creates C_Order + explodes BOM tree into C_OrderLine hierarchy | GREEN (S54) |
+| W-DROP-2 | Instant Drop totalElements = 55 (SH Rosetta Stone match) | GREEN (S54) |
+| W-DROP-3 | Tree has FLOOR-level children (IsBOM sub-assemblies) | GREEN (S54) |
+| W-DROP-4 | FLOOR_SH_GF_STD contains ROOM sub-assemblies with LEAF children | GREEN (S54) |
+| W-DROP-5 | Non-BOM product (IsBOM=false) returns error | GREEN (S54) |
+| W-DROP-6 | Each node carries bom_category for category-based swap browsing | GREEN (S54) |
 | W-ASI-AUTO-1 | autoPopulate fills all empty rooms with cascade matches | GREEN (S52b) |
 | W-ASI-AUTO-2 | Auto-populated walls have ASI.length_mm scaled to room width | GREEN (S52b) |
 | W-ASI-AUTO-3 | IsInstanceAttribute=0 products have no ASI after auto-populate | GREEN (S52b) |

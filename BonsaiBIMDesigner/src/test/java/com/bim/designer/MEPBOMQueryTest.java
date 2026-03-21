@@ -40,7 +40,9 @@ class MEPBOMQueryTest {
     static void setUp() throws Exception {
         String dbPath = "library/disc_validation.db";
         dbAvailable = new File(dbPath).exists();
-        if (!dbAvailable) return;
+        if (!dbAvailable) {
+            fail("disc_validation.db required — MEPBOMQueryTest cannot run without it");
+        }
 
         conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
         query = new MEPBOMQuery(conn);
@@ -58,7 +60,6 @@ class MEPBOMQueryTest {
     @DisplayName("W-CTP-MEP-1: BATHROOM + FP returns SPRINKLER requirement")
     // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-MEP-1
     void w_ctp_mep_1_bathroom_fp() throws Exception {
-        Assumptions.assumeTrue(dbAvailable, "disc_validation.db not found");
 
         List<MEPRequirement> reqs = query.queryForDiscipline("BATHROOM", "FP");
 
@@ -74,7 +75,6 @@ class MEPBOMQueryTest {
     @DisplayName("W-CTP-MEP-2: BEDROOM + ELEC returns LIGHT, OUTLET, SWITCH")
     // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-MEP-2
     void w_ctp_mep_2_bedroom_elec() throws Exception {
-        Assumptions.assumeTrue(dbAvailable, "disc_validation.db not found");
 
         List<MEPRequirement> reqs = query.queryForDiscipline("BEDROOM", "ELEC");
 
@@ -118,7 +118,6 @@ class MEPBOMQueryTest {
     @DisplayName("W-CTP-MEP-5: requirements carry placement_rule and host_surface")
     // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-MEP-5
     void w_ctp_mep_5_placement_metadata() throws Exception {
-        Assumptions.assumeTrue(dbAvailable, "disc_validation.db not found");
 
         List<MEPRequirement> reqs = query.queryForDiscipline("BATHROOM", "ELEC");
         assertFalse(reqs.isEmpty(), "BATHROOM + ELEC must have requirements");
@@ -136,7 +135,6 @@ class MEPBOMQueryTest {
     @DisplayName("W-CTP-MEP-6: requirements carry building_code provenance")
     // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-MEP-6
     void w_ctp_mep_6_building_code() throws Exception {
-        Assumptions.assumeTrue(dbAvailable, "disc_validation.db not found");
 
         List<MEPRequirement> reqs = query.queryForDiscipline("BEDROOM", "FP");
         assertFalse(reqs.isEmpty(), "BEDROOM + FP must have requirements");

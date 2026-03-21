@@ -19,6 +19,8 @@ import com.bim.designer.dao.DesignerDAO.BuildingTypeRow;
 import com.bim.designer.dao.DesignerDAO.CategoryRow;
 import com.bim.designer.dao.MEPBOMQuery;
 import com.bim.designer.dao.WorkOutputDAO;
+import com.bim.ormsandbox.po.MBOM;
+import com.bim.ormsandbox.po.MBOMLine;
 import com.bim.designer.validation.FacilityType;
 import com.bim.designer.validation.GradingStrategy;
 import com.bim.designer.validation.PlacementContext;
@@ -1673,6 +1675,156 @@ public class DesignerAPIImpl implements DesignerAPI {
                 row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
                 row.widthMm(), row.depthMm(), row.heightMm(),
                 row.qty(), row.validationStatus(), children);
+    }
+
+    // ── BOM Drop — Template-First Building Design (§28) ──────────
+
+    // Implementing GENERATIVE_HOUSE_SRS.md §2.1, BIM_Designer_SRS.md §28.1
+    // Witness: W-DROP-1
+    @Override
+    public BomDropResponse bomDrop(String buildingProductId) {
+        try {
+            BIMLogger.info(TAG, "BOM_DROP product={}", buildingProductId);
+
+            // 1. Check IsBOM — product must have a matching m_bom entry
+            MBOM rootBom = new MBOM(bomConn);
+            if (!rootBom.load(buildingProductId)) {
+                return new BomDropResponse(false, null, 0, null, 0,
+                        "Product has no BOM (IsBOM=false): " + buildingProductId);
+            }
+
+            // 2. Create C_Order for this BOM Drop session
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingProductId);
+            String orderId = woDao.createBomDropOrder(buildingProductId,
+                    rootBom.getAabbWidthMm(), rootBom.getAabbDepthMm(),
+                    rootBom.getAabbHeightMm());
+
+            // 3. Explode BOM tree recursively into C_OrderLine hierarchy
+            //    iDempiere pattern: walk m_bom/m_bom_line, insert C_OrderLine
+            //    per node. IsBOM products (matching m_bom) recurse; others are LEAF.
+            int[] leafCount = {0};
+            BomTreeNode tree = explodeBomTree(woDao, orderId, buildingProductId,
+                    0, "BUILDING", rootBom.getBomCategory(), 0, leafCount);
+
+            BIMLogger.info(TAG, "BOM_DROP → order={} root_line={} leaves={}",
+                    orderId, tree != null ? tree.orderLineId() : 0, leafCount[0]);
+
+            return new BomDropResponse(true, orderId,
+                    tree != null ? tree.orderLineId() : 0,
+                    tree, leafCount[0], null);
+
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "bomDrop failed", e);
+            BIMLogger.error(TAG, "BOM_DROP failed: {}", e.getMessage());
+            return new BomDropResponse(false, null, 0, null, 0, e.getMessage());
+        }
+    }
+
+    /**
+     * Recursively explode a BOM tree into C_OrderLine rows.
+     *
+     * <p>iDempiere BOM Drop pattern: for each m_bom_line child, check if
+     * the child_product_id has a matching m_bom entry (IsBOM). If yes,
+     * it is a sub-assembly — insert C_OrderLine and recurse. If no,
+     * it is a leaf product — insert C_OrderLine as LEAF.
+     * PHANTOM components are skipped (no output).
+     *
+     * @param woDao            WorkOutputDAO for C_OrderLine insertion
+     * @param orderId          C_Order_ID
+     * @param bomId            current BOM to explode
+     * @param parentLineId     parent C_OrderLine_ID (0 = root)
+     * @param hostType         BUILDING | FLOOR | ROOM | LEAF
+     * @param bomCategory      M_Product_Category for this node
+     * @param depth            recursion depth (0 = root)
+     * @param leafCount        mutable counter for leaf elements
+     * @return BomTreeNode for the Outliner
+     */
+    private BomTreeNode explodeBomTree(WorkOutputDAO woDao, String orderId,
+                                        String bomId, int parentLineId,
+                                        String hostType, String bomCategory,
+                                        int depth, int[] leafCount) throws Exception {
+        if (depth > 20) {
+            BIMLogger.warn(TAG, "BOM_DROP max depth exceeded at {}", bomId);
+            return null;
+        }
+
+        // Load BOM to get AABB
+        MBOM bom = new MBOM(bomConn);
+        if (!bom.load(bomId)) return null;
+
+        // Insert C_OrderLine for this BOM node
+        int lineId = woDao.insertBomDropLine(orderId, parentLineId,
+                bomId, hostType, bomCategory,
+                0, 0, 0,  // root/assembly offsets — tack is relative
+                bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
+                1);
+
+        // Walk m_bom_line children
+        List<MBOMLine> lines = MBOMLine.getByBom(bomConn, bomId);
+        List<BomTreeNode> children = new java.util.ArrayList<>();
+
+        for (MBOMLine line : lines) {
+            String childProductId = line.getChildProductId();
+            if (childProductId == null) continue;
+
+            // Check IsBOM — does child_product_id have a matching m_bom entry?
+            MBOM childBom = new MBOM(bomConn);
+            boolean isBom = childBom.load(childProductId);
+
+            if (isBom) {
+                // Sub-assembly — recurse (iDempiere BOM explosion)
+                String childHostType = deriveHostType(depth + 1);
+                BomTreeNode child = explodeBomTree(woDao, orderId,
+                        childProductId, lineId,
+                        childHostType, childBom.getBomCategory(),
+                        depth + 1, leafCount);
+                if (child != null) children.add(child);
+
+            } else if ("PHANTOM".equals(line.getComponentType())) {
+                // PHANTOM — skip, no C_OrderLine (filler element)
+                continue;
+
+            } else if ("MAKE".equals(line.getComponentType())) {
+                // Dangling MAKE reference — component_type says sub-assembly
+                // but no m_bom entry exists. Skip (same as BOMWalker).
+                BIMLogger.warn(TAG, "BOM_DROP dangling MAKE: {} in BOM {} — skipping",
+                        childProductId, bomId);
+                continue;
+
+            } else {
+                // Leaf product — insert C_OrderLine as LEAF
+                int qty = line.getQty();
+                int leafLineId = woDao.insertBomDropLine(orderId, lineId,
+                        childProductId, "LEAF", bomCategory,
+                        line.getDx(), line.getDy(), line.getDz(),
+                        line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
+                        line.getAllocatedHeightMm(),
+                        qty);
+                leafCount[0] += qty;
+
+                children.add(new BomTreeNode(
+                        leafLineId, childProductId, "LEAF", bomCategory,
+                        line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
+                        line.getAllocatedHeightMm(),
+                        qty, "UNCHECKED", List.of()));
+            }
+        }
+
+        return new BomTreeNode(lineId, bomId, hostType, bomCategory,
+                bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
+                1, "UNCHECKED", children);
+    }
+
+    /**
+     * Derive host_type from BOM tree depth.
+     * Level 0 = BUILDING (root), level 1 = FLOOR, level 2+ = ROOM.
+     */
+    private static String deriveHostType(int depth) {
+        return switch (depth) {
+            case 0 -> "BUILDING";
+            case 1 -> "FLOOR";
+            default -> "ROOM";
+        };
     }
 
     // ── Place Item + Layout Editing (§15, §16) ─────────────────────

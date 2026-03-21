@@ -25,6 +25,7 @@ class BackOfficeServerTest {
     private static BackOfficeServer server;
     private static HttpClient client;
     private static String baseUrl;
+    private static String authToken;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -32,6 +33,15 @@ class BackOfficeServerTest {
         server.start();
         baseUrl = "http://localhost:" + server.getPort();
         client = HttpClient.newHttpClient();
+        // Obtain auth token for authenticated endpoints
+        HttpRequest loginReq = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/login"))
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        "{\"userId\":\"test\",\"displayName\":\"Test User\"}"))
+                .build();
+        HttpResponse<String> loginResp = client.send(loginReq, HttpResponse.BodyHandlers.ofString());
+        authToken = JsonParser.parseString(loginResp.body()).getAsJsonObject()
+                .get("token").getAsString();
     }
 
     @AfterAll
@@ -42,6 +52,7 @@ class BackOfficeServerTest {
     private JsonObject get(String path) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + path))
+                .header("X-Session-Token", authToken)
                 .GET().build();
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, resp.statusCode(), "GET " + path + " must return 200");
@@ -73,6 +84,7 @@ class BackOfficeServerTest {
     void kanban() throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/kanban"))
+                .header("X-Session-Token", authToken)
                 .GET().build();
         HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, resp.statusCode());
@@ -225,7 +237,17 @@ class BackOfficeServerTest {
     }
 
     @Test @Order(23)
-    @DisplayName("W-BO-WAN-4: CORS preflight (OPTIONS) returns 204")
+    @DisplayName("W-BO-WAN-4: unauthenticated request returns 401")
+    void unauthenticatedReturns401() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/api/portfolio"))
+                .GET().build();  // no X-Session-Token header
+        HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, resp.statusCode(), "Must return 401 without token");
+    }
+
+    @Test @Order(24)
+    @DisplayName("W-BO-WAN-5: CORS preflight (OPTIONS) returns 204")
     void corsPreflight() throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/api/health"))

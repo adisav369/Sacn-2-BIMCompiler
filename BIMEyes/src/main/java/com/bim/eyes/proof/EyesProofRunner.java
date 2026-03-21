@@ -55,6 +55,10 @@ public class EyesProofRunner {
         results.addAll(DuplicatePositionProof.prove(placements));
         results.addAll(SameClassOverlapProof.prove(placements));
 
+        // Tier 2: Roof-wall validation
+        results.addAll(WallRoofIntersectionProof.prove(placements));
+        results.addAll(RoofCoverageProof.prove(placements));
+
         // Tier 2-3: Relational proofs (require library metadata)
         if (buildingName != null && !buildingName.isEmpty()
                 && (!ctx.wallFaces().isEmpty() || !ctx.rooms().isEmpty())) {

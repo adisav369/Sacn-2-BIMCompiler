@@ -249,7 +249,7 @@ Applied to every element individually. O(n), no inter-element state.
 | P03 | MIN_DIMENSION | Smallest axis > 1mm (not degenerate) | Yes |
 | P04 | STOREY_Z_BAND | Element Z falls within storey band ±500mm | Yes |
 
-### 4.2 Tier 2 — Pairwise/Relational (10 proofs)
+### 4.2 Tier 2 — Pairwise/Relational (12 proofs)
 
 Require pairs of elements or element-to-context relationships.
 
@@ -259,12 +259,44 @@ Require pairs of elements or element-to-context relationships.
 | P06 | NO_SAME_CLASS_OVERLAP | Same-class AABBs do not intersect >10mm³ | Yes |
 | P07 | OPENING_CONTAINED | Every door/window AABB within a host wall | No |
 | P08 | FURNITURE_IN_ROOM | Every furniture element within a room AABB | No |
+
+**P08 known limitation:** 2D centroid check only (X/Y). Z-axis containment relies on P04 storey Z-band.
 | P09 | FIXTURE_ON_SURFACE | Fixtures (lights, outlets) touch a wall/ceiling | No |
 | P15 | PIPE_IN_HOST | Pipe segments within their host floor/wall | No |
 | P20 | WALL_ORIENTATION | Walls aligned to cardinal axes (±5°) | No |
 | P21 | ELEMENT_IN_ROOM | Non-structural elements contained within rooms | No |
+
+**P21 known limitation:** Assumes axis-aligned walls. Rotated buildings may produce false violations.
 | P22 | OPENING_MESH_IN_BBOX | Opening mesh vertices within AABB (vertex-level) | Yes |
 | P23 | DRAIN_CORNER_ALIGNMENT | Drain pipe segments share corner points | No |
+| **P27** | **WALL_ROOF_INTERSECTION** | **Wall maxZ does not exceed roof surface at wall position** | **No** |
+| **P28** | **ROOF_COVERAGE** | **Roof footprint covers building footprint in plan** | **No** |
+
+### 4.6 New Proofs: P27 WALL_ROOF_INTERSECTION, P28 ROOF_COVERAGE
+
+#### P27 WALL_ROOF_INTERSECTION
+
+Detects walls that penetrate the roof surface. Essential for pitched/curved roofs where
+glass curtain walls or full-height walls may extend above the slope line.
+
+**Algorithm:** Tent-model estimation. Ridge runs along the longer AABB dimension.
+Slope is linear from ridge (maxZ) to eave (minZ). For each wall under the roof footprint:
+- Estimate roofZ at (wall.cx, wall.cy) via linear interpolation
+- If wall.maxZ exceeds roofZ + 50mm tolerance → VIOLATED
+
+**Flat roof:** dz < 0.1m → returns maxZ everywhere (no slope check needed).
+
+**Witness:** W-DH-ROOF-1 (standard walls pass), W-DH-ROOF-3 (curtain wall violates).
+
+#### P28 ROOF_COVERAGE
+
+Verifies that the roof footprint (XY) covers the building footprint derived from all wall extents.
+Detects gaps where the building has no roof overhead.
+
+**Algorithm:** Compare roof AABB (union of all IfcRoof/IfcRoofSlab) against wall AABB
+(union of all IfcWall/IfcCurtainWall/IfcWallStandardCase) with 50mm overhang tolerance.
+
+**Witness:** W-DH-ROOF-2.
 
 ### 4.3 Tier 3 — Aggregate/Conservation (12 proofs)
 
