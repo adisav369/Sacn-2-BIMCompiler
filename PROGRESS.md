@@ -16,7 +16,7 @@
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | PASS (centroid fix S43) | 48336/48428 |
 
-**Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (22+20+6+output).
+**Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 304/304 GREEN (38 test classes). SelectionCascadeTest: W-GEN-1 (7 witnesses).
@@ -28,9 +28,27 @@
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 **G-9 (S46b):** ORDER View + BOM Outliner. 3 API actions, 7 witnesses. UX-F-26 (sync) + UX-F-27 (three views) → IMPLEMENTED.
 **FL-2 (S50):** Advisory output — 3-layer W_Validation_Advisory (DIMENSION/PROFILE/SHAPE). 9 witnesses.
-**FL-5 (S50):** EYES integration — ShapeAdvisoryWriter. SH: 19 shape advisories. BIMEyes Phase 1-3 DONE (41 files, 26 proofs).
+**FL-5 (S50):** EYES integration — ShapeAdvisoryWriter. SH: 19 shape advisories. BIMEyes Phase 1-3 DONE (41 files, 28 proofs).
 
 ## What's Next
+
+**[DONE] S53 — Roof-Wall Geometry Proofs (P27, P28) + TRIM WALLS TO ROOF verb:**
+  **Proofs:**
+  P27 WALL_ROOF_INTERSECTION: detects walls penetrating pitched/curved roof surface.
+  P28 ROOF_COVERAGE: verifies roof XY footprint covers building wall envelope.
+  Tent-model estimation: ridge along longer AABB dimension, linear slope to eave.
+  Registered in EyesProofRunner.prove() (Tier 2). EYES_SRS.md §4.6 updated.
+  DemoHouseTest: +3 witnesses (W-DH-ROOF-1..3). 28 proofs total (was 26).
+  **TRIM verb:**
+  TrimWallsToRoofVerb — BIM_COBOL verb for wall-to-roof height clipping.
+  Three modes: pitch:0 (flat, surface=maxZ), pitch:N (explicit slope),
+  auto (tent-model on AABB — caveat: thick flat roofs need explicit pitch:0).
+  SH tested: 5 walls under roof, 0 trimmed (flat roof, pitch:0). Correct.
+  Synthetic pitched test: tall wall at eave TRIMMED, short wall at ridge NOT trimmed,
+  curtain wall at mid-slope TRIMMED. 6 witnesses (W-TRIM-1..6).
+  Key finding: SH roof AABB dz=1.73m is structural thickness (4Felt-150Ins-50Scr-
+  150Conc-12Plr), not pitch. Auto-detect misclassifies thick flat roofs → explicit
+  pitch:0 required. Real buildings with pitched roofs work in auto mode.
 
 **[DONE] S51-AUDIT: Focused Audit + Generative Architecture (session 51):**
   Audit: 8 P0 fixes (security auth wiring, geometry proofs, test integrity, migrations).
@@ -78,22 +96,57 @@
   resolution matrix, 8 witness claims, full traceability).
   BonsaiBIMDesigner: 313/313 GREEN (was 304). +9 from ASIAuthoringTest.
 
-**Next: S53 — Terminal CLUSTER Promotion + Generative Pipeline:**
-  Terminal CLUSTER groups (47,157 instances) need promotion to abstract patterns.
-  ClusterPatternAnalyser (S51b) confirmed: sprinklers, lights, beams = ZONE
-  (rule-governed, M1/M4/M6); pipes = MIXED (routing networks, compliance rules).
-  Task: promote ZONE groups to TILE/FRAME with ASI. Pipes stay CLUSTER — their
-  pattern is the routing rule (M2 branch length, M3 diameter), not a spatial grid.
-  ASI taxonomy seeded (9 templates). Generative path uses same M_AttributeSet.
+**[DONE] S53 — ERP-Correct BOM Tree Model + Spec Hardening:**
+  Architectural correction: drop EN-BLOC vs WALK-THRU dichotomy. Adopt standard
+  iDempiere manufacturing pattern: C_Order → C_OrderLine (BOM products) → compile.
+  Instant Drop = 1 OrderLine, no modifications, compile explodes BOM tree (TC-1).
+  BOM Drop = interactive tree navigation, swap by same bom_category, add lines.
+  DocSubType removed from C_Order selection path (stays on m_bom as provenance).
+  M_BomCategoryLine removed (M_BomCategory = flat classification only).
+  BOM chooser = bom_category + AABB fit (like M_Product_Category in iDempiere).
+  C_Order lifecycle: DR (build order) → AP (creates m_bom from order) → CO (compile).
+  iDempiere BOMDrop Configurator: Component/Optional/Variant/Radio Group types.
+  8 spec files updated (BBC.md, ConstructionAsERP.md, GENERATIVE_HOUSE_SRS.md,
+  DATA_MODEL.md, BIM_Designer.md, TestArchitecture.md, SourceCodeGuide.md, BIM_COBOL.md).
+  BIM_Designer_SRS.md deferred — under review in separate session.
+
+**Next: S54 — Wire BOM Drop Model into Code:**
+  1. PlacementLoader isolation fix (resetInstance in CompileBridgeTest + DemoHouseCompileTest)
+  2. Populate doc_sub_type on SET/FLOOR BOMs (provenance — all 33 buildings, IFCtoBOM fix)
+  3. TC-1 test: 1 C_OrderLine(BUILDING_SH_STD), AP creates m_bom, CO compiles → 55 elements
+  4. Wire run_RosettaStones.sh through C_OrderLine path (same engine, no shortcuts)
+  5. BOM Drop chooser: swap products by bom_category + AABB fit
   EN-BLOC for promoted groups: verb formula + ASI resolution. No zone BOMs needed
   if validation rules define the boundaries implicitly.
   Also: generative pipeline end-to-end —
 
-**S53 Track 2 — Generative Pipeline End-to-End:**
-  DemoHouseTest already tests YAML → BOM → placement → UBBL + BIMEyes proofs.
-  ASIAuthoringTest proves the C_OrderLine + ASI pump pattern.
-  Next: connect the two — autoPopulate DemoHouse rooms with cascade + ASI,
-  then compile through real pipeline. Gate: G1-COUNT + G5-PROVENANCE.
+**S53 Track 2 — Generative Pipeline End-to-End (BOM DROP paradigm):**
+  PARADIGM SHIFT (GENERATIVE_HOUSE_SRS.md rewritten): The primary generative path
+  is NOT room-by-room cascade. It is BOM Drop: user picks ONE complete building
+  product (e.g. BUILDING_SH_STD) as a single C_OrderLine → compiler explodes the
+  entire BOM tree → user navigates tree to swap/add/remove (BOM Outliner G-9).
+  TC-1 "Give me SH" = Instant Drop (1 OrderLine, no modifications, compile → 55 elements).
+  TC-4 "Swap roof" = BOM Drop: navigate to SH_ROOF_STR → swap with FK_PITCHED_ROOF.
+  TC-5 "Add sprinklers" = Add C_OrderLine for FP discipline, validation rules compute placement.
+  autoPopulate() (S52b) is still valid as the FALLBACK for "create from scratch" without
+  a template (topology maker path). But the main path is template + BOM Drop + ASI.
+  S52b ASI CRUD (readASI, updateASI, WorkOutputDAO) stays correct — used when user
+  edits individual items in the dropped tree.
+  IMPORTANT: The other session (IFCtoBOM) must work with YAML + OrderLine, NOT
+  duplicate the SH database. YAML creates 1 C_OrderLine referencing a BUILDING product.
+  Compile explodes the BOM tree. No new BOM databases should be created.
+
+**S53 Track 3 — Construction Completeness (GENERATIVE_HOUSE_SRS.md §8):**
+  DemoHouse currently generates room interiors only. A real house needs:
+  Layer A (envelope): roof (flat/pitched), weatherproofing, roof edge trim, curtain wall
+  Layer B (structure): foundation slab, footings, lintels, floor beams (2+ storey)
+  Layer C (finishes): ceiling, floor finish, skylights
+  All products exist in component_library.db (63 beams, 35 coverings, 8 footings,
+  4 roofs). No new code — only BOM template authoring in YAML + ASI attributes.
+  Key new items: BIM_Roof ASI template (pitch_deg, overhang_mm, ridge_direction),
+  wall top_trim_mm for roof-wall junction, gable wall ASI (peak_height_mm).
+  Wiring needed: ad_space_type_opening (103 rules) + ad_space_type_mep_bom (186 rules)
+  + AD_Clash_Rule (FP vs STR) into autoPopulate flow. Code exists, not called yet.
   Track 1: Pipeline GENERATIVE skip (no DSL). BOMWalker drives flat emission.
     Populate DM_BOM.db from YAML + cascade. Gate: G1-COUNT + G5-PROVENANCE.
   Track 2: Rules expand 5 YAML rooms → 50+ OrderLines (ad_space_type_opening,
