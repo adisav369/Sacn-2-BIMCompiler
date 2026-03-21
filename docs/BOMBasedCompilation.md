@@ -556,6 +556,57 @@ Two fields drive everything: **DocSubType** and **AABB**. A third — **BomCateg
 4. **Largest volume** (secondary): maximize space usage
 5. **seq_no** (tiebreaker): lower preferred
 
+### 3.5.1 AttributeSetInstance — Per-Instance Customization
+
+The Selection Cascade picks the **BOM recipe** (WHAT). The `M_AttributeSetInstance`
+(ASI) customizes **each instance** (HOW) — the iDempiere ERP pattern:
+
+```
+ERP:  SKU = "TEE_CREW_NECK"    → ASI: { size: XL, color: navy }
+BIM:  Product = "WALL_EXT_150" → ASI: { length_mm: 12500, material: BrickPlaster }
+      Product = "PIPE_COLD_25" → ASI: { length_mm: 3200, angle_deg: 45 }
+      Product = "DOOR_INT_810" → ASI: { swing_side: -1, face_anchor: INT }
+```
+
+**Three-table pattern** (identical to iDempiere manufacturing):
+
+| Table | Role | Example |
+|-------|------|---------|
+| `M_Product` | Catalog product (canonical dimensions) | WALL_EXT_150: 150mm exterior wall |
+| `M_AttributeSetInstance` | Per-instance header (FK from C_OrderLine) | Instance #47: wall on grid A-1 |
+| `M_AttributeInstance` | Individual name/value overrides | length_mm=12500, material=BrickPlaster |
+
+**Resolution rule:** `effective_dimension = ASI_override ?? catalog_default`
+
+The compiler resolves effective dimensions from ASI (if customized) or catalog default.
+Library LOD is **scaled** by the effective dimension — never remodeled, never generated.
+
+**What varies per instance** (derived from extracted Rosetta Stones):
+
+| Product Type | Varying (IsInstanceAttribute=1) | Fixed (defines product type) |
+|---|---|---|
+| Wall | length_mm, height_mm, material, finish | thickness |
+| Pipe | length_mm, angle_deg, elevation | diameter |
+| Door | swing_side, face_anchor (INT/EXT) | width, height |
+| Window | sill_height_mm, face_anchor | width, height |
+| Slab | area_m2, thickness_mm | material |
+| Furniture | — (IsInstanceAttribute=0) | All dims fixed |
+| MEP terminal | — (IsInstanceAttribute=0) | Identical everywhere |
+
+`IsInstanceAttribute=0` products (furniture, smoke detectors) need no ASI — every
+instance is identical. `IsInstanceAttribute=1` products (walls, pipes, slabs) vary
+per instance and carry ASI overrides.
+
+**Generative flow:** The user defines a bigger room (e.g., LIVING 6000×4500×3000).
+The cascade finds a matching SET that fits. Each element in the SET becomes a
+C_OrderLine. The user (or auto-suggest) creates ASI overrides to stretch walls to
+the new room dimensions. The compiler resolves `effective = ASI ?? catalog` and
+produces the correctly-sized output. Zero new code — just data on the OrderLine.
+
+*Full ASI field resolution matrix: BIM_Designer.md §8.*
+*Schema: W001_work_output_schema.sql (M_AttributeSetInstance, M_AttributeInstance).*
+*Generative application: GENERATIVE_ROOM_SRS.md §6.*
+
 ### 3.6 The Rosetta Stone — Launch Booster
 
 The Rosetta Stone exercise (SH/DX/TE) proves the pipeline is **lossless**:

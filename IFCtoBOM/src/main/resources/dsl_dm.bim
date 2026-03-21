@@ -1,0 +1,25 @@
+// DemoHouse_2BR — Generative POC (no IFC source)
+// 5 rooms: Living, Kitchen, 2x Bedroom, Bathroom
+// BOM-driven compilation — rooms filled by Selection Cascade (BBC.md §3.5)
+// All elements from library via OrderLine + AttributeSet
+
+BUILDING "DemoHouse_2BR" type:SINGLE_UNIT profile:"MY_Residential" {
+
+    STOREY "Ground Floor" level:0 height:2.8m {
+        LIVING "living" {
+            exterior: north, west
+        }
+        KITCHEN "kitchen" {
+            exterior: south, west
+        }
+        BEDROOM "bedroom1" {
+            exterior: north, east
+        }
+        BEDROOM "bedroom2" {
+            exterior: south, east
+        }
+        BATHROOM "bathroom" {
+            exterior: south, east
+        }
+    }
+}

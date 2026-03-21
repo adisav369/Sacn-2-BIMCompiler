@@ -313,6 +313,267 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
     }
 
+    // ── Selection Cascade — Room Auto-Suggest (BBC.md §3.5) ──────────
+
+    // Implementing GENERATIVE_ROOM_SRS.md §3 — Witness: W-GEN-1
+    @Override
+    public SuggestRoomContentsResponse suggestRoomContents(List<DesignBBox> rooms) {
+        try {
+            List<RoomSuggestion> suggestions = new ArrayList<>();
+            int matched = 0;
+            int totalRooms = 0;
+
+            for (DesignBBox room : rooms) {
+                if (!"ROOM".equals(room.bomType()) || room.category() == null) continue;
+                totalRooms++;
+
+                int slotW = (int) (room.maxX() - room.minX());
+                int slotD = (int) (room.maxY() - room.minY());
+                int slotH = (int) (room.maxZ() - room.minZ());
+
+                var matches = dao.findMatchingSets(room.category(), slotW, slotD, slotH);
+
+                if (!matches.isEmpty()) {
+                    var best = matches.get(0);
+                    suggestions.add(new RoomSuggestion(
+                            room.bomId(), room.category(),
+                            best.bomId(), best.bomName(),
+                            best.childCount(), matches.size()));
+                    matched++;
+                    LOG.info(() -> String.format("SUGGEST %s → %s (%d children, %d candidates)",
+                            room.category(), best.bomId(), best.childCount(), matches.size()));
+                } else {
+                    suggestions.add(new RoomSuggestion(
+                            room.bomId(), room.category(),
+                            null, null, 0, 0));
+                    LOG.info(() -> String.format("SUGGEST %s → NO MATCH (manual selection required)",
+                            room.category()));
+                }
+            }
+
+            return new SuggestRoomContentsResponse(true, suggestions, matched, totalRooms, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "suggestRoomContents failed", e);
+            return new SuggestRoomContentsResponse(false, List.of(), 0, 0, e.getMessage());
+        }
+    }
+
+    // ── Auto-Populate + ASI Authoring (BIM_Designer_SRS.md §28) ────
+
+    // Implementing BIM_Designer_SRS.md §28.3 — Witness: W-ASI-AUTO-1
+    @Override
+    public AutoPopulateResponse autoPopulate(String buildingId, List<DesignBBox> rooms) {
+        try {
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            woDao.initASISchema();
+
+            int roomsFilled = 0;
+            int linesCreated = 0;
+            int asiCreated = 0;
+            List<String> warnings = new ArrayList<>();
+
+            for (DesignBBox room : rooms) {
+                if (!"ROOM".equals(room.bomType()) || room.category() == null) continue;
+
+                int slotW = (int) (room.maxX() - room.minX());
+                int slotD = (int) (room.maxY() - room.minY());
+                int slotH = (int) (room.maxZ() - room.minZ());
+
+                // Step 3: Selection Cascade — find best-matching SET BOM
+                var matches = dao.findMatchingSets(room.category(), slotW, slotD, slotH);
+                if (matches.isEmpty()) {
+                    warnings.add(room.category() + ": no matching SET BOM found");
+                    continue;
+                }
+
+                var bestSet = matches.get(0);
+                roomsFilled++;
+
+                // Expand SET children → C_OrderLine per element
+                var setChildren = dao.getBomLines(bestSet.bomId());
+
+                for (var child : setChildren) {
+                    if ("PHANTOM".equals(child.componentType())) continue;
+
+                    // Create C_OrderLine for this element
+                    DesignBBox itemBbox = new DesignBBox(
+                            child.childProductId(),
+                            child.childProductId(),
+                            "LEAF",
+                            room.category(),
+                            null, null, room.bomId(),
+                            room.minX() + child.dx() * 1000.0,
+                            room.minY() + child.dy() * 1000.0,
+                            room.minZ() + child.dz() * 1000.0,
+                            room.minX() + child.dx() * 1000.0 + child.allocatedWidthMm(),
+                            room.minY() + child.dy() * 1000.0 + child.allocatedDepthMm(),
+                            room.minZ() + child.dz() * 1000.0 + child.allocatedHeightMm()
+                    );
+                    int orderLineId = woDao.insertOrderLine(buildingId, itemBbox);
+                    linesCreated++;
+
+                    // Step 4: ASI auto-computation for IsInstanceAttribute=1 products
+                    String attrSetId = woDao.resolveAttributeSetForProduct(
+                            child.childProductId());
+                    if (woDao.isInstanceAttribute(attrSetId)) {
+                        // Compute stretch factors from slot vs SET AABB
+                        java.util.Map<String, String> asiValues =
+                                computeASIDefaults(attrSetId, child, bestSet, slotW, slotD, slotH);
+                        if (!asiValues.isEmpty()) {
+                            int asiId = woDao.createASI(attrSetId, asiValues);
+                            woDao.linkASI(orderLineId, asiId);
+                            asiCreated++;
+                        }
+                    }
+                }
+
+                LOG.info(() -> String.format("AUTO_POPULATE %s → %s (%d children)",
+                        room.category(), bestSet.bomId(), setChildren.size()));
+            }
+
+            BIMLogger.info(TAG, "AUTO_POPULATE {} → {} rooms, {} lines, {} ASIs",
+                    buildingId, roomsFilled, linesCreated, asiCreated);
+
+            return new AutoPopulateResponse(true, roomsFilled, linesCreated,
+                    asiCreated, warnings, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "autoPopulate failed", e);
+            return new AutoPopulateResponse(false, 0, 0, 0, List.of(), e.getMessage());
+        }
+    }
+
+    /**
+     * Compute default ASI values based on product type and room dimensions.
+     * BBC.md §3.5.1: stretch walls to room width, pipes to run length, etc.
+     */
+    private java.util.Map<String, String> computeASIDefaults(
+            String attrSetId,
+            DesignerDAO.BomLineRow child,
+            DesignerDAO.SetMatchRow set,
+            int slotW, int slotD, int slotH) {
+
+        var values = new java.util.LinkedHashMap<String, String>();
+        double scaleW = set.aabbWidthMm() > 0 ? (double) slotW / set.aabbWidthMm() : 1.0;
+        double scaleD = set.aabbDepthMm() > 0 ? (double) slotD / set.aabbDepthMm() : 1.0;
+        double scaleH = set.aabbHeightMm() > 0 ? (double) slotH / set.aabbHeightMm() : 1.0;
+
+        switch (attrSetId) {
+            case "BIM_Wall" -> {
+                // Walls stretch along their longest allocated dimension
+                int allocW = child.allocatedWidthMm();
+                int allocD = child.allocatedDepthMm();
+                if (allocW >= allocD) {
+                    values.put("length_mm", String.valueOf((int) (allocW * scaleW)));
+                } else {
+                    values.put("length_mm", String.valueOf((int) (allocD * scaleD)));
+                }
+                values.put("height_mm", String.valueOf((int) (child.allocatedHeightMm() * scaleH)));
+            }
+            case "BIM_Pipe", "BIM_Conduit", "BIM_Duct" -> {
+                int allocW = child.allocatedWidthMm();
+                int allocD = child.allocatedDepthMm();
+                int runLength = (int) (Math.max(allocW, allocD) * Math.max(scaleW, scaleD));
+                values.put("length_mm", String.valueOf(runLength));
+            }
+            case "BIM_Slab" -> {
+                double areaM2 = (slotW / 1000.0) * (slotD / 1000.0);
+                values.put("area_m2", String.format("%.2f", areaM2));
+            }
+            case "BIM_Beam" -> {
+                values.put("span_mm", String.valueOf(slotW));
+            }
+            case "BIM_Column" -> {
+                values.put("height_mm", String.valueOf(slotH));
+            }
+            case "BIM_Door" -> {
+                values.put("swing_side", "1");
+                values.put("face_anchor", "INT");
+            }
+            case "BIM_Window" -> {
+                values.put("sill_height_mm", "900");
+                values.put("face_anchor", "EXT");
+            }
+            default -> { /* BIM_Component, BIM_Fitting — no ASI */ }
+        }
+        return values;
+    }
+
+    // Implementing BIM_Designer_SRS.md §28.8 — Witness: W-ASI-READ-1
+    @Override
+    public ASIResponse readASI(String buildingId, int orderLineId) {
+        try {
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            woDao.initASISchema();
+
+            int asiId = woDao.getASIForOrderLine(orderLineId);
+            if (asiId < 0) {
+                // No ASI — determine if this product type even needs one
+                WorkOutputDAO.OrderLineRow line = woDao.getOrderLine(orderLineId);
+                if (line == null) {
+                    return new ASIResponse(false, orderLineId, null, false,
+                            List.of(), "OrderLine not found");
+                }
+                String attrSetId = woDao.resolveAttributeSetForProduct(line.familyRef());
+                boolean isInstance = woDao.isInstanceAttribute(attrSetId);
+                return new ASIResponse(true, orderLineId, attrSetId, isInstance,
+                        List.of(), null);
+            }
+
+            var fields = woDao.readASI(asiId);
+            if (fields.isEmpty()) {
+                return new ASIResponse(true, orderLineId, null, false,
+                        List.of(), null);
+            }
+
+            String setName = fields.get(0).attributeSetName();
+            boolean isInstance = fields.get(0).isInstanceAttribute();
+            List<ASIField> apiFields = fields.stream()
+                    .map(f -> new ASIField(f.name(), f.value(), f.valueType(), true))
+                    .toList();
+
+            return new ASIResponse(true, orderLineId, setName, isInstance,
+                    apiFields, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "readASI failed", e);
+            return new ASIResponse(false, orderLineId, null, false,
+                    List.of(), e.getMessage());
+        }
+    }
+
+    // Implementing BIM_Designer_SRS.md §28.8 — Witness: W-ASI-EDIT-1
+    @Override
+    public ASIResponse updateASI(String buildingId, int orderLineId,
+                                  String attributeName, String value) {
+        try {
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            woDao.initASISchema();
+
+            int asiId = woDao.getASIForOrderLine(orderLineId);
+            if (asiId < 0) {
+                // No ASI yet — create one from the product's attribute set template
+                WorkOutputDAO.OrderLineRow line = woDao.getOrderLine(orderLineId);
+                if (line == null) {
+                    return new ASIResponse(false, orderLineId, null, false,
+                            List.of(), "OrderLine not found");
+                }
+                String attrSetId = woDao.resolveAttributeSetForProduct(line.familyRef());
+                var initialValues = new java.util.LinkedHashMap<String, String>();
+                initialValues.put(attributeName, value);
+                asiId = woDao.createASI(attrSetId, initialValues);
+                woDao.linkASI(orderLineId, asiId);
+            } else {
+                woDao.updateASIAttribute(asiId, attributeName, value);
+            }
+
+            // Return fresh state
+            return readASI(buildingId, orderLineId);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "updateASI failed", e);
+            return new ASIResponse(false, orderLineId, null, false,
+                    List.of(), e.getMessage());
+        }
+    }
+
     // ── Building discovery (YAML-opaque — reads C_DocType via DAO) ──
 
     // Implementing INFRA_DESIGNER_SRS.md §0.1 — Witness: W-INFRA-LIST-1

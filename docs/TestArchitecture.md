@@ -515,7 +515,11 @@ are waste.
 | §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
 | §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER (structural) | PASS |
 | §3.3 EN-BLOC | Single BOM per singularity, no selection cascade | RosettaStoneGateTest | G1-G6 | PASS (SH/DX/TE) |
-| §3.4 WALK-THRU | Multi-candidate selection per slot | — | W-WALKTHRU-DIFFERS-1 | **PENDING** (unproven) |
+| §3.4 WALK-THRU | Multi-candidate selection per slot | SelectionCascadeTest | W-GEN-1b | PASS (3/5 slots) |
+| §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS (7 witnesses) |
+| §3.5 AABB fit | Oversized SETs rejected | SelectionCascadeTest | W-GEN-1d | PASS |
+| §3.5 Volume ranking | Largest fitting SET wins | SelectionCascadeTest | W-GEN-1c | PASS |
+| §3 GENERATIVE | DemoHouse BOM + UBBL + BIMEyes | DemoHouseTest | W-DH-1..5, W-DH-EYES-1..5 | PASS (12 witnesses) |
 
 ### BBC.md §4 — Tack Convention
 
@@ -885,6 +889,10 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 **Sealed:** 2026-03-21 (v26: session 44b, 34 buildings total, GATE_SCOPE expanded, 74 files)
 **Super-hash:** `af2fb4f6c249dcf2082c3b33a2b04178b12458b32735c19b1ccd6e5ece65a9c6`
+
+**S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
+- `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)
+- `assertTrue(true)` tautologies removed (F5Integration, Calibration)
 
 Quick verify: `bash scripts/verify_test_seal.sh`
 

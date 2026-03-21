@@ -101,9 +101,9 @@ class TerminalSandboxTest {
     @Test
     @DisplayName("W-TE-SB-1: BOMWalker tree walk produces placements for TE_FDN_STR")
     void w_te_sb_1_walkthru_produces_placements() throws Exception {
-        assumeTrue(new java.io.File(TE_BOM_DB).exists(),
+        assertTrue(new java.io.File(TE_BOM_DB).exists(),
             "TE_BOM.db not found — run IFCtoBOM first");
-        assumeTrue(new java.io.File(COMP_LIB).exists(),
+        assertTrue(new java.io.File(COMP_LIB).exists(),
             "component_library.db not found");
 
         try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + TE_BOM_DB);
@@ -159,8 +159,8 @@ class TerminalSandboxTest {
     @Test
     @DisplayName("W-TE-SB-2: Unfactored slabs match extraction AABB within 1mm")
     void w_te_sb_2_unfactored_slabs() throws Exception {
-        assumeTrue(new java.io.File(TE_BOM_DB).exists(), "TE_BOM.db not found");
-        assumeTrue(new java.io.File(TE_EXTRACTED).exists(), "Extraction DB not found");
+        assertTrue(new java.io.File(TE_BOM_DB).exists(), "TE_BOM.db not found");
+        assertTrue(new java.io.File(TE_EXTRACTED).exists(), "Extraction DB not found");
 
         try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + TE_BOM_DB);
              Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + COMP_LIB)) {
@@ -263,8 +263,8 @@ class TerminalSandboxTest {
     @Test
     @DisplayName("W-TE-SB-3: SPRAY elements bounded within extraction envelope")
     void w_te_sb_3_spray_bounded() throws Exception {
-        assumeTrue(new java.io.File(TE_BOM_DB).exists(), "TE_BOM.db not found");
-        assumeTrue(new java.io.File(TE_EXTRACTED).exists(), "Extraction DB not found");
+        assertTrue(new java.io.File(TE_BOM_DB).exists(), "TE_BOM.db not found");
+        assertTrue(new java.io.File(TE_EXTRACTED).exists(), "Extraction DB not found");
 
         try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + TE_BOM_DB);
              Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + COMP_LIB)) {
@@ -366,8 +366,8 @@ class TerminalSandboxTest {
     @Test
     @DisplayName("DIAGNOSTIC: Coordinate chain dump for TE_FDN_STR")
     void diagnostic_coordinate_chain() throws Exception {
-        assumeTrue(new java.io.File(TE_BOM_DB).exists(), "TE_BOM.db not found");
-        assumeTrue(new java.io.File(TE_EXTRACTED).exists(), "Extraction DB not found");
+        assertTrue(new java.io.File(TE_BOM_DB).exists(), "TE_BOM.db not found");
+        assertTrue(new java.io.File(TE_EXTRACTED).exists(), "Extraction DB not found");
 
         try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + TE_BOM_DB)) {
             System.out.println("\n══════════════════════════════════════════════════════");

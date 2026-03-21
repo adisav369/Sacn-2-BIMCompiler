@@ -314,6 +314,94 @@ public interface DesignerAPI extends AssemblyAPI {
                                       java.util.List<NearestProduct> nearestProducts,
                                       String error) {}
 
+    // ── Selection Cascade — Room Auto-Suggest (BBC.md §3.5) ──────────
+
+    /**
+     * Suggest room contents via BBC.md §3.5 Selection Cascade.
+     * For each room DesignBBox with a category, finds the best-matching SET BOM
+     * from the library by bom_category + AABB fit.
+     *
+     * <p>This is the generative path's auto-suggest: YAML defines rooms with
+     * bom_category + AABB → cascade finds matching BOMs → same compiler.
+     * Zero new compilation code.
+     *
+     * // Implementing GENERATIVE_ROOM_SRS.md §3 — Witness: W-GEN-1
+     */
+    SuggestRoomContentsResponse suggestRoomContents(List<DesignBBox> rooms);
+
+    /** One room's cascade suggestion. */
+    record RoomSuggestion(
+            String roomBomId,
+            String category,
+            String suggestedSetBomId,
+            String suggestedSetName,
+            int elementCount,
+            int candidateCount
+    ) {}
+
+    /** Response for suggestRoomContents. */
+    record SuggestRoomContentsResponse(
+            boolean success,
+            List<RoomSuggestion> suggestions,
+            int matchedCount,
+            int totalRooms,
+            String error
+    ) {}
+
+    // ── Auto-Populate + ASI Authoring (BIM_Designer_SRS.md §28) ────
+
+    /**
+     * Auto-populate all empty rooms with cascade + ASI + validation rules.
+     * Same as WALK-THRU but applied to the interactive C_OrderLine tree.
+     *
+     * // Implementing BIM_Designer_SRS.md §28.3 — Witness: W-ASI-AUTO-1
+     */
+    AutoPopulateResponse autoPopulate(String buildingId, List<DesignBBox> rooms);
+
+    /** Auto-populate result — how many rooms/lines/ASIs were created. */
+    record AutoPopulateResponse(
+            boolean success,
+            int roomsFilled,
+            int orderLinesCreated,
+            int asiCreated,
+            List<String> validationWarnings,
+            String error
+    ) {}
+
+    /**
+     * Read ASI attributes for a C_OrderLine.
+     * Returns empty fields if no ASI exists (IsInstanceAttribute=0 product).
+     *
+     * // Implementing BIM_Designer_SRS.md §28.8 — Witness: W-ASI-READ-1
+     */
+    ASIResponse readASI(String buildingId, int orderLineId);
+
+    /**
+     * Update a single ASI attribute value. Creates ASI header if needed.
+     *
+     * // Implementing BIM_Designer_SRS.md §28.8 — Witness: W-ASI-EDIT-1
+     */
+    ASIResponse updateASI(String buildingId, int orderLineId,
+                           String attributeName, String value);
+
+    /** ASI response — current attribute state for an order line. */
+    record ASIResponse(
+            boolean success,
+            int orderLineId,
+            String attributeSetName,
+            boolean isInstanceAttribute,
+            List<ASIField> fields,
+            String error
+    ) {}
+
+    /** Single ASI field with value and override status. */
+    record ASIField(
+            String name,
+            String value,
+            String valueType,
+            boolean overridden
+    ) {}
+
     // ── Records ───────────────────────────────────────────────────────
 
     /** Summary of an available building type (from C_DocType). */

@@ -440,6 +440,69 @@ public class DesignerDAO {
 
     public record CategoryCountRow(String productType, int count) {}
 
+    // ── Selection Cascade (BBC.md §3.5) ─────────────────────────────
+
+    /**
+     * BBC.md §3.5 Selection Cascade — find SET BOMs matching a room slot.
+     *
+     * <p>Five-tier priority:
+     * <ol>
+     *   <li>Scope: bom_category = room's category</li>
+     *   <li>Fit: SET AABB ≤ slot AABB (AABB=0 = universal fit)</li>
+     *   <li>Rank: largest volume first</li>
+     *   <li>Tiebreak: seq_no ascending</li>
+     * </ol>
+     *
+     * // Implementing BBC.md §3.5, GENERATIVE_ROOM_SRS.md §3 — Witness: W-GEN-1
+     */
+    public List<SetMatchRow> findMatchingSets(String category,
+            int slotWidthMm, int slotDepthMm, int slotHeightMm) throws SQLException {
+        String sql = """
+                SELECT b.bom_id, b.bom_name, b.bom_category,
+                       b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm,
+                       (SELECT COUNT(*) FROM m_bom_line l
+                        WHERE l.bom_id = b.bom_id AND l.is_active = 1
+                          AND l.component_type != 'PHANTOM') AS child_count
+                FROM m_bom b
+                WHERE b.bom_category = ?
+                  AND b.bom_type = 'SET'
+                  AND b.is_active = 1
+                  AND (b.aabb_width_mm <= ? OR b.aabb_width_mm = 0)
+                  AND (b.aabb_depth_mm <= ? OR b.aabb_depth_mm = 0)
+                  AND (b.aabb_height_mm <= ? OR b.aabb_height_mm = 0)
+                ORDER BY (CAST(b.aabb_width_mm AS INTEGER) * CAST(b.aabb_depth_mm AS INTEGER)
+                          * CAST(b.aabb_height_mm AS INTEGER)) DESC,
+                         b.seq_no ASC
+                """;
+        List<SetMatchRow> rows = new ArrayList<>();
+        try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
+            ps.setString(1, category);
+            ps.setInt(2, slotWidthMm);
+            ps.setInt(3, slotDepthMm);
+            ps.setInt(4, slotHeightMm);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new SetMatchRow(
+                            rs.getString("bom_id"),
+                            rs.getString("bom_name"),
+                            rs.getString("bom_category"),
+                            rs.getInt("aabb_width_mm"),
+                            rs.getInt("aabb_depth_mm"),
+                            rs.getInt("aabb_height_mm"),
+                            rs.getInt("child_count")
+                    ));
+                }
+            }
+        }
+        return rows;
+    }
+
+    public record SetMatchRow(
+            String bomId, String bomName, String bomCategory,
+            int aabbWidthMm, int aabbDepthMm, int aabbHeightMm,
+            int childCount
+    ) {}
+
     // ── Find Similar (§25.3 — JEPA-inspired embedding similarity) ──
 
     /**

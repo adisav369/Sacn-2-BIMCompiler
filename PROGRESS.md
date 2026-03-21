@@ -59,6 +59,18 @@
   TerminalSandboxTest assumeTrue(file.exists)→assertTrue (6 occurrences).
   BonsaiBIMDesigner: 304/304 GREEN (was 297). +7 from SelectionCascadeTest.
 
+**Next: S53 — Generative Pipeline End-to-End:**
+  Wire full YAML → rules auto-populate OrderLines → compile → output.db.
+  Track 1: Pipeline GENERATIVE skip (no DSL). BOMWalker drives flat emission.
+    Populate DM_BOM.db from YAML + cascade. Gate: G1-COUNT + G5-PROVENANCE.
+  Track 2: Rules expand 5 YAML rooms → 50+ OrderLines (ad_space_type_opening,
+    ad_space_type_mep_bom, AD_Val_Rule). Topological: doors→circulation,
+    no landlocked rooms, bedroom privacy. Room orientation defaults from rules.
+  Track 3: ASI wiring (converges with TE extraction session).
+    WorkOutputDAO ASI read/write. Compiler effective = ASI ?? catalog.
+    Building-level orientation_deg. Per-instance wall length/door swing/material.
+  All rules are pure metadata (AD_Val_Rule rows). Code is generic engine.
+
 **[DONE] S51b — FRAME/ROUTE LBD fix + ClusterReclassifier:**
   FRAME verb: LBD clustering (minX/minY) replaces centroid-halfW[0]. Fidelity 1.08m→1.4mm.
   FRAME promoted back to EXACT_VERBS (gating at ≤5mm). TE 9/10 (was 8/10).
