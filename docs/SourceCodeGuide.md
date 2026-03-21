@@ -439,7 +439,7 @@ Four concentric defence layers:
 
 The extension pattern: adding a new building type requires **zero Java code**.
 
-### IFC Onboarding Recipe (8 Steps)
+### IFC Onboarding Recipe (10 Steps)
 
 | Step | What | Artefact |
 |------|------|----------|
@@ -450,10 +450,12 @@ The extension pattern: adding a new building type requires **zero Java code**.
 | 4 | Write `dsl_{prefix}.bim` | Building DSL definition |
 | 5 | Add to `construction_manifest.yaml` | Building identity |
 | 6 | Add to `GATE_SCOPE` (**critical** — without this, tests silently skip) | Two test files |
-| 7 | Run `./scripts/run_RosettaStones.sh classify_xx.yaml` | Compilation |
-| 8 | Interpret results (G4 FAIL = uncommitted, C8 = library gaps) | Gate report |
+| 7 | Run `./scripts/run_RosettaStones.sh classify_xx.yaml` | Compilation + DimensionRangeValidator pre-flight |
+| 8 | Interpret results (G4 FAIL = uncommitted, C8 = library gaps, DimRange = outliers) | Gate report |
+| 9 | Mine dimension rules: `./scripts/extract_validation_rules.sh {type}` | `migration/DV_{prefix}_rules.sql` |
+| 10 | Apply mined rules: `./scripts/apply_mined_rules.sh` | Updates `disc_validation.db` ad_val_rule |
 
-Proven on 5 buildings (SH, FK, IN, DX, TE). See [`ACInstituteAnalysis.md`](ACInstituteAnalysis.md) for a worked example (699 elements).
+Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every element's W/D/H is checked against mined ranges from 20 buildings (415 rules, 25 IFC classes). Steps 9–10 feed new building data back into the validation pool. See [`ACInstituteAnalysis.md`](ACInstituteAnalysis.md) for a worked example (699 elements).
 
 > **Full self-service runbook:** [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md) — step-by-step with commands, expected output, troubleshooting, and template generator (`scripts/new_building.sh`).
 
@@ -480,12 +482,16 @@ Proven on 5 buildings (SH, FK, IN, DX, TE). See [`ACInstituteAnalysis.md`](ACIns
 | `scripts/run_RosettaStones.sh` | YAML-driven: IFCtoBOM → compile → delta |
 | `scripts/verify_test_seal.sh` | SHA-256 seal verification (74 critical files) |
 | `scripts/construction_manifest.yaml` | Building identity registry |
+| `scripts/onboard_ifc.sh` | End-to-end IFC onboarding (steps 0–8 automated) |
+| `scripts/extract_validation_rules.sh` | Mine dimension rules from compiled output DBs |
+| `scripts/apply_mined_rules.sh` | Uncomment + apply all DV_*_rules.sql to disc_validation.db |
 
 ### Java — IFCtoBOM
 
 | Class | Role |
 |-------|------|
-| `IFCtoBOMPipeline` | Orchestrator |
+| `IFCtoBOMPipeline` | Orchestrator (includes DV010 DimensionRangeValidator pre-flight) |
+| `DimensionRangeValidator` | IFC quality gate: checks element dims against 415 mined rules |
 | `ExtractionPopulator` | Populates I_Element_Extraction from reference DB |
 | `ProductRegistrar` | M_Product master catalog |
 | `VerbFactorizer` | Reusable verb compression: group→detect→factored/unfactored LEAF writes |
