@@ -1339,6 +1339,51 @@ class BIM_OT_designer_get_bom_tree(Operator):
         return {'FINISHED'}
 
 
+# ── FL-2: Flywheel Advisory Panel (§27) ─────────────────────────────────────
+
+
+class BIM_OT_designer_list_advisories(Operator):
+    """Refresh flywheel advisories for the current building"""
+    bl_idname = "bim.designer_list_advisories"
+    bl_label = "Refresh Advisories"
+    bl_options = {'REGISTER'}
+
+    def execute(self, context):
+        global _client
+        props = _get_props(context)
+
+        if _client is None or not props.is_connected:
+            self.report({'ERROR'}, "Not connected")
+            return {'CANCELLED'}
+
+        if not props.building_id:
+            self.report({'ERROR'}, "No building ID set")
+            return {'CANCELLED'}
+
+        try:
+            result = _client.list_advisories(props.building_id)
+            if result.get("success"):
+                advisories = result.get("advisories", [])
+                context.scene["_advisories"] = json.dumps(advisories)
+                info_c = result.get("infoCount", 0)
+                warn_c = result.get("warningCount", 0)
+                sugg_c = result.get("suggestionCount", 0)
+                total = len(advisories)
+                props.compile_status = (
+                    f"Advisories: {total} ({warn_c} warn, {sugg_c} suggest, {info_c} info)"
+                )
+                self.report({'INFO'}, f"Loaded {total} advisories")
+            else:
+                error = result.get("error", "Unknown error")
+                props.compile_status = f"Advisory error: {error}"
+                self.report({'WARNING'}, error)
+        except Exception as e:
+            self.report({'ERROR'}, str(e))
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
 # =============================================================================
 # Registration
 # =============================================================================
@@ -1371,6 +1416,7 @@ _classes = (
     BIM_OT_designer_list_order_lines,
     BIM_OT_designer_update_order_line,
     BIM_OT_designer_get_bom_tree,
+    BIM_OT_designer_list_advisories,
 )
 
 
