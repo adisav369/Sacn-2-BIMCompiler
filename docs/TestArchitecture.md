@@ -306,7 +306,7 @@ but the storey path never queried it.
 
 **Principle:** The compilation pipeline MUST NOT generate geometry. Every element
 gets its mesh from `component_library.db` (LOD_ hash prefix). Parametric bounding
-boxes (GEO_ hash prefix) are prohibited in ALL modes — EN-BLOC, CO, and generative.
+boxes (GEO_ hash prefix) are prohibited in all compilation paths — RE, CO, and generative.
 
 **Why:** Rosetta Stone verification compares compiled output against extracted
 reference. The apple is compilation. If the compiler emits a parametric box where
@@ -812,7 +812,7 @@ Run these checks when adding BOMs, products, or geometry paths.
 
 The audit found that tests and production code can drift together silently —
 both change, tests still pass, but correctness is lost. The hash lock prevents
-this by creating a "wax seal" over all 68 critical files.
+this by creating a "wax seal" over all 73 critical files.
 
 **The idea is simple:**
 1. We take a fingerprint (SHA256 hash) of every test file and every critical
@@ -892,8 +892,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-21 (v26: session 44b, 34 buildings total, GATE_SCOPE expanded, 74 files)
-**Super-hash:** `af2fb4f6c249dcf2082c3b33a2b04178b12458b32735c19b1ccd6e5ece65a9c6`
+**Sealed:** 2026-03-22 (v27: session 54b, WalkThruCompilationTest removed, single compilation path, 73 files)
+**Super-hash:** `f3155d81832e1b06faae3371f94674c4fe849aeaa7157ef73f4e363c3a253fb3`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)

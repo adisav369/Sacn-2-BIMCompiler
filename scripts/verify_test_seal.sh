@@ -26,7 +26,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="ac9203d86eb7f761be7f1f97cb6d2451608a08d5146b90b24a0a248d3eb48b49"
+EXPECTED="f3155d81832e1b06faae3371f94674c4fe849aeaa7157ef73f4e363c3a253fb3"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java
@@ -48,7 +48,6 @@ FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/CompilerContractTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/ExtractedBOMWalkTest.java
-  DAGCompiler/src/test/java/com/bim/compiler/contract/WalkThruCompilationTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/CoEmptySpaceTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/BomChainIntegrityTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/BOMChainMathTest.java
@@ -139,7 +138,7 @@ fi
 ACTUAL=$(sha256sum "${FILES[@]}" | sha256sum | awk '{print $1}')
 
 if [ "$ACTUAL" = "$EXPECTED" ]; then
-  echo "SEAL INTACT — 74 files, super-hash matches"
+  echo "SEAL INTACT — 73 files, super-hash matches"
   echo "  $ACTUAL"
   exit 0
 fi
