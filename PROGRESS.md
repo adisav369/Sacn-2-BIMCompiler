@@ -131,11 +131,21 @@
   Details: BIM_Designer_UserGuide.md §2, §5.1. DocAction: BIM_Designer_SRS.md §28.
 
 **Next: S56 — Web UI Frontend (BOM Designer + nD Reports):**
-  Data/control layer as HTML/JS talking to DesignerServer NDJSON (port 9876).
-  BOM Drop tree + Product Chooser + DocAction (Save=prepareIt, Complete=completeIt) in one view.
-  Complete→Blender bridge: server push COMPILE_COMPLETE → Bonsai listener → Full Load.
-  4D-7D reports migrate from Bonsai panels to web dashboard.
-  Bonsai stays viewport-only: 3D Federation (Preview/Full Load).
+  Architecture: Web UI replaces Blender sidebar for all data/control. Bonsai stays viewport-only.
+  DesignerServer already speaks NDJSON on port 9876 — add WebSocket endpoint or TCP-WS bridge.
+  **Layout:** Single-page tabbed (1D-10 as tabs) with:
+  - 1D BOM Designer: BOM Drop tree (expand/collapse/drag) + Product Chooser (slide-out) + DocAction
+    - Save = prepareIt() — validate ASI, kickback invalid values, persist to work_output.db
+    - Complete = completeIt() — incremental merge work_output.db → output.db → bridge to Blender
+  - 3D Federation: IFC Extract status + IFCtoBOM trigger (Bonsai handles viewport Preview/Full Load)
+  - 4D-5D: Excel-like editable grid (AG Grid / Handsontable) for schedule + cost breakdown
+  - 6D-7D: Asset register table + IoT sensor dashboard
+  - 8 ERP Reporting: print config + report viewer
+  - 9 NLP: query bar + results grid
+  - 10 Color Studio: palette picker + scheme save/load
+  **Complete→Blender bridge:** DesignerServer pushes COMPILE_COMPLETE → Bonsai listener → Full Load.
+  **Tech stack:** Static HTML/JS (no framework bloat), WebSocket to DesignerServer, CSS grid layout.
+  Round/bevel buttons, responsive, Excel-like grids — all native HTML, no Blender constraints.
 
 **Deferred: Rosetta Stone wiring (Track 2 from S55):**
 
