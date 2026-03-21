@@ -33,6 +33,7 @@ Single-page entry point. All active docs by tier.
 | [TIER1_SRS.md](TIER1_SRS.md) | 6D carbon, 7D FM, audit trail, 3D native |
 | [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) | BackOffice HTTP server, SessionManager, portfolio |
 | [INSTALLER_SPEC.md](INSTALLER_SPEC.md) | Installation and deployment specification |
+| [EYES_SRS.md](EYES_SRS.md) | BIMEyes geometric comprehension engine, 26 proofs, shape/compare/diff |
 
 ## T3 Analysis — Rosetta Stone Guardrails
 

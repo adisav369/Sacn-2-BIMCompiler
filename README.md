@@ -24,6 +24,24 @@ No BIM tool in the industry does this. They validate against fixed, hand-authore
 
 See [BOMBasedCompilation.md §9](docs/BOMBasedCompilation.md) for the full specification.
 
+## Geometric Comprehension (BIMEyes)
+
+The compiler doesn't just place elements — it *understands* them. Every element's shape is reduced to three dimensionless ratios (planarity, elongation, squareness) that form a geometric fingerprint. A wall must be planar. A column must be elongated. Furniture must be compact. These are mathematical facts, not heuristics — and they hold regardless of scale, coordinate system, or what the BIM tool labelled the element.
+
+This fingerprint engine powers 26 proofs across three tiers:
+
+| Tier | What it proves | Example |
+|------|---------------|---------|
+| **Per-element** | Each element is geometrically sane | Positive extent, finite coordinates, non-degenerate dimensions |
+| **Pairwise** | Elements relate correctly to each other | Doors contained in walls, furniture inside rooms, no same-class overlaps |
+| **Aggregate** | The building makes sense as a whole | Rooms have walls + floor + ceiling + door, waste pipes slope downward, MEP systems are connected |
+
+The result: **97% of 90,310 elements across 32 buildings pass both shape AND position proof.** 22 buildings score 100% — every element is the right shape at the right place, verified by pure arithmetic. The remaining 3% are known BOM relationship issues (mirror dimensions, MEP expansion), not test bugs.
+
+No visual inspection. No AI. No tolerances to tune. Just mathematics applied to construction data.
+
+See [EYES_SRS.md](docs/EYES_SRS.md) for the full specification.
+
 ## Key Numbers
 
 | Metric | Value |
