@@ -1,6 +1,6 @@
 # IFC Model Inventory & Quality Analysis
 
-**Generated:** 2026-03-20 | **Location:** `DAGCompiler/lib/input/IFC/`
+**Generated:** 2026-03-21 (S47 update) | **Location:** `DAGCompiler/lib/input/IFC/`
 
 ---
 
@@ -25,7 +25,9 @@ These models have Rosetta Stone YAMLs and run through the pipeline today.
 
 | **FK** | FZK_Haus_IFC4.ifc | IFC4 | 2.6 MB | 44,249 | 2 | 13 wall, 11 window, 5 door, 4 slab, 4 beam, 42 member, 2 railing, 1 stair | 4,757 | 659 | A |
 
-**Existing pipeline YAML configs:** `classify_sh.yaml`, `classify_dx.yaml`, `classify_te.yaml`, `classify_br.yaml`, `classify_rd.yaml`, `classify_rl.yaml`, `classify_dm.yaml`, `classify_fk.yaml`
+**Existing pipeline YAML configs:** `classify_sh.yaml`, `classify_dx.yaml`, `classify_te.yaml`, `classify_br.yaml`, `classify_rd.yaml`, `classify_rl.yaml`, `classify_dm.yaml`, `classify_fk.yaml`, `classify_in.yaml`, + 26 more from S44/S44b onboarding.
+
+**Total onboarded:** 34 buildings (S44b). 2,459 products across 25 IFC classes.
 
 ---
 
@@ -67,12 +69,12 @@ All from `github.com/buildingSMART/Sample-Test-Files` — official IFC4X3 certif
 
 | Priority | File | Proposed Prefix | Typology | Why |
 |----------|------|----------------|----------|-----|
-| ~~1~~ | ~~FZK_Haus_IFC4.ifc~~ | ~~FK~~ | — | **DONE** (session 38b). 82 elements, 9/10 PASS, first timber/TILE stone. |
-| **1** | AC11_Institute_IFC2x3.ifc | IN | Institutional (IFC2x3) | 50K entities, 5 storeys, 119 walls, 206 windows, 82 spaces, 253 furnishing. First institutional building — proves grammar generalises beyond residential. IFC2x3 = cross-version proof. |
-| **2** | PCERT_Infra_Bridge_IFC4X3.ifc | PB | Infrastructure Bridge | Official IFC4X3 cert file. 18 BridgePart entities. Validates infra bridge rules from `DV006b`. |
-| **3** | PCERT_Infra_Road_IFC4X3.ifc | PR | Infrastructure Road | Official IFC4X3. 26 RoadPart, new entity types. Validates road rules from `DV007`. |
-| **4** | PCERT_Infra_Rail_IFC4X3.ifc | PL | Infrastructure Rail | Official IFC4X3. 66 TrackElement. Validates rail rules from `DV008`. |
-| **5** | Vogel_Gesamt_IFC2x3.ifc | VG | Residential (German) | 17K entities, geometry-rich but no PSets. Good geometry-only stress test. |
+| ~~1~~ | ~~FZK_Haus_IFC4.ifc~~ | ~~FK~~ | — | **DONE** (S38b). 82 elements, 10/10 PASS, first timber/TILE stone. |
+| ~~1~~ | ~~AC11_Institute_IFC2x3.ifc~~ | ~~IN~~ | — | **DONE** (S39c). 699 elements, 9/10 PASS. First institutional building. |
+| ~~2~~ | ~~PCERT IFC4X3 (4 files)~~ | ~~BA/BH/BS/IP~~ | — | **DONE** (S44). Config-only onboarding, zero compiler changes. |
+| ~~3~~ | ~~Schependomlaan + Clinic (5) + Esplanades + Molio~~ | ~~SC/CA/CS/CH/CE/CP/ES/MO~~ | — | **DONE** (S44). 12 buildings, 8→20 total. |
+| ~~4~~ | ~~BimWhale (4) + AC9/AC90 (3) + Revit (3) + Castle + HITOS + Jesse + Wilfer~~ | ~~14 buildings~~ | — | **DONE** (S44b). 20→34 buildings. 4 failed extraction (FJ/SW/VG/ET). |
+| **1** | Fresh IFC from user's project | — | Real project | DimensionRangeValidator (DV010) now screens new IFCs against 415 mined rules from 20 buildings. Pipeline auto-flags dimensional outliers. |
 | defer | Smiley_West_IFC2x3.ifc | SW | Commercial | Needs header fixup first — non-standard FILE_SCHEMA. 73K entities once fixed. |
 | skip | FJK_Project_IFC2x3.ifc | — | — | Too minimal (6 proxies, no structure). |
 | skip | PCERT_Building_Hvac_IFC4X3.ifc | — | — | Only 5 real elements. |
@@ -115,28 +117,23 @@ These sources require registration, login, or manual navigation. Listed with eno
 
 How well does our inventory cover the IFC entity spectrum?
 
-| Entity Domain | Existing Pipeline | New Downloads | Gap |
-|---------------|------------------|---------------|-----|
-| IfcWall / WallStandardCase | SH, DX | FK, IN, VG | Covered well |
-| IfcSlab | SH, DX, TE-STR | FK, PCERT-Arch | Covered |
-| IfcBeam | TE-STR | FK, PCERT-Bridge, PCERT-Struct | Covered |
-| IfcColumn | TE-STR | FK, PCERT-Bridge | Covered |
-| IfcDoor | DX | FK, IN | Covered |
-| IfcWindow | SH, DX | FK (22), IN (206) | Now excellent |
-| IfcSpace | SH, DX-MEP | IN (82), PCERT-Arch | Improved |
-| IfcFurnishing / Furniture | SH | IN (253) | Now covered |
-| IfcStair / Railing | DX | FK (3 railing) | Thin — need Schependomlaan |
-| IfcRoof | SH | PCERT-Arch (2) | Thin |
-| IfcMember | TE-STR (312) | FK (42) | Covered |
-| **IfcPipeSegment** | DX-MEP, TE-CW/SP | PCERT-Plumb (24) | Covered |
-| **IfcDuctSegment/Fitting** | TE-ACMV | — | TE only |
-| **IfcBridge / BridgePart** | — | PCERT-Bridge (3/18) | **NEW** |
-| **IfcRoad / RoadPart** | — | PCERT-Road (5/26) | **NEW** |
-| **IfcRailway / TrackElement** | — | PCERT-Rail (2/66) | **NEW** |
-| **IfcCourse** | — | PCERT-Road (16), Rail (2) | **NEW** |
-| **IfcEarthworksFill** | — | PCERT-Bridge (4), Road (16) | **NEW** |
-| IfcCurtainWall | TE-CW | — | TE only |
-| IfcPlate | TE-Fed (33K) | — | TE only |
+| Entity Domain | Onboarded Buildings | Mined Rules | Coverage |
+|---------------|---------------------|-------------|----------|
+| IfcWall | SH, DX, FK, IN, SC, CA, ES, MO, GH, JS, NI, RA, CL, HI + 6 more | 64 rules | **Excellent** — 20 buildings |
+| IfcDoor | DX, FK, IN, ES, CA, RA, RM, CL, HI, MO + 7 more | 51 rules | **Excellent** |
+| IfcWindow | SH, DX, FK, IN, ES, RA, CL, HI, MO + 5 more | 46 rules | **Excellent** |
+| IfcSlab | SH, DX, TE, ES, RM, CL, HI, MO + 6 more | 40 rules | **Excellent** |
+| IfcFlowTerminal | CP, CE, CH, RM | 29 rules | **Good** — MEP coverage |
+| IfcColumn | ES, RM, RA, CL, HI, MO + 4 more | 22 rules | **Good** |
+| IfcFurnishingElement | IN, CA, RA, CL, HI, MO | 19 rules | **Good** |
+| IfcBeam | ES, RM, CL, HI, MO + 2 more | 14 rules | **Good** |
+| IfcFlowSegment/Fitting | CP, CE, CH, RM | 21 rules | **Good** — pipe/duct |
+| IfcDuctSegment/Fitting | RM | 8 rules | Revit MEP only |
+| IfcAirTerminal | RM | 3 rules | Revit MEP only |
+| IfcBridge / BridgePart | BA (PCERT) | (infra rules) | IFC4X3 |
+| IfcRoad / RoadPart | (PCERT) | (infra rules) | IFC4X3 |
+| IfcRailway / TrackElement | (PCERT) | (infra rules) | IFC4X3 |
+| **Total** | **34 buildings** | **415 rules, 25 classes** | **2,459 products** |
 
 ---
 
@@ -149,3 +146,47 @@ How well does our inventory cover the IFC entity spectrum?
 | FJK_Project_IFC2x3.ifc | No `FILE_SCHEMA` detected, no building hierarchy, only 6 proxies | Delete or keep as negative test |
 | PCERT_Building_Hvac_IFC4X3.ifc | Only 5 real elements, 153 total entities | Too small for Rosetta Stone, keep for IFC4X3 schema test only |
 | All PCERT files | Zero property sets (PSets=0) — certification geometry-only | Property mining won't yield results; useful for entity/spatial testing only |
+
+---
+
+## 8. Dimension Range Validation (DV010)
+
+**Status:** LIVE (session 47). Runs automatically in the IFC-to-BOM pipeline.
+
+Every new IFC that enters the pipeline has its extracted element dimensions
+checked against typical ranges mined from 20 onboarded buildings:
+
+| IFC Class | Rules | Typical Width Range | Typical Height Range | Buildings |
+|-----------|-------|--------------------|--------------------|-----------|
+| IfcWall | 64 | 800–10,269mm | 531–5,100mm | 20 |
+| IfcDoor | 51 | 625–2,140mm | 2,134–2,283mm | 17 |
+| IfcWindow | 46 | 500–2,688mm | 705–2,500mm | 14 |
+| IfcSlab | 40 | 1,600–64,767mm | 30–429mm | 14 |
+| IfcColumn | 22 | 188–1,000mm | 2,000–4,779mm | 10 |
+| IfcBeam | 14 | 189–4,375mm | 200–675mm | 6 |
+| ... | ... | ... | ... | ... |
+| **Total** | **415 rules** | **25 IFC classes** | **1,245 params** | **20 buildings** |
+
+**What it flags:** Elements with dimensions >5× outside the aggregated
+min/max range across all buildings. Example from SH pipeline run:
+
+```
+[DimRange] Ifc4_SampleHouse: 55/55 checked, 27 PASS, 28 outliers
+  IfcWall: Wall-Partn W=95mm (range [800-10269]mm)   ← thin partition
+  IfcMember: Curtain_Wall W=30mm (range [457-1782]mm) ← curtain wall mullion
+```
+
+Both are legitimate elements (thin partitions, mullions) — the validator
+correctly identifies them as dimensional outliers compared to typical
+full-width walls/members. This is valuable for catching data errors in
+unfamiliar IFC files before the pipeline invests effort in BOM compilation.
+
+**Advisory only** — never blocks the pipeline. Outlier report is logged and
+available for review. As more buildings are onboarded, the mined ranges
+become more representative and the false-positive rate decreases.
+
+**To regenerate rules after onboarding new buildings:**
+```bash
+./scripts/extract_validation_rules.sh <building_type>  # mine rules from extracted DB
+./scripts/apply_mined_rules.sh                          # apply all DV_*_rules.sql
+```
