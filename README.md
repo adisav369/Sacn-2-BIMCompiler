@@ -42,6 +42,8 @@ The result: **97% of 90,310 elements across 32 buildings pass both shape AND pos
 
 No visual inspection. No AI. No tolerances to tune. Just mathematics.
 
+There is no AI inside this system. Every proof is deterministic — same input, same result, every time. You can download it, disconnect from the Internet, point it at any IFC file produced from thin air, and it will tell you exactly what is right and what is wrong. No cloud. No model. No magic. Arithmetic.
+
 See [EYES_SRS.md](docs/EYES_SRS.md) for the full specification.
 
 ## Key Numbers
