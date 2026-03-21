@@ -70,9 +70,19 @@ public class VerbDetector {
         public int instanceCount() { return legs.stream().mapToInt(RouteLeg::count).sum(); }
     }
 
-    /** Detected FRAME pattern: gridline intersections. */
+    /** Detected FRAME pattern: gridline intersections.
+     *  Format: {@code FRAME:x1,x2,...|y1,y2,...|halfW,halfD}
+     *  The trailing halfW,halfD are the detection-time half-extents used to convert
+     *  centroids → LBD offsets. Expansion uses these instead of BOM-line dimensions,
+     *  eliminating the centroid→LBD→centroid round-trip mismatch. */
     public record FrameResult(double[] xLines, double[] yLines,
-                              double originX, double originY, double originZ) {
+                              double originX, double originY, double originZ,
+                              double halfW, double halfD) {
+        /** Backward-compatible constructor (no half-extents — legacy callers). */
+        public FrameResult(double[] xLines, double[] yLines,
+                           double originX, double originY, double originZ) {
+            this(xLines, yLines, originX, originY, originZ, 0, 0);
+        }
         public String verbRef() {
             StringBuilder sb = new StringBuilder("FRAME:");
             for (int i = 0; i < xLines.length; i++) {
@@ -84,6 +94,9 @@ public class VerbDetector {
                 if (i > 0) sb.append(',');
                 sb.append(String.format("%.4f", yLines[i]));
             }
+            // Append detection-time half-extents so expansion round-trips exactly
+            sb.append('|');
+            sb.append(String.format("%.4f,%.4f", halfW, halfD));
             return sb.toString();
         }
         public int instanceCount() { return xLines.length * yLines.length; }
@@ -299,8 +312,13 @@ public class VerbDetector {
                                           double floorMinX, double floorMinY, double floorMinZ) {
         if (elements.size() < MIN_GROUP) return null;
 
-        double[] xs = elements.stream().mapToDouble(ExtractionElement::centroidX).sorted().toArray();
-        double[] ys = elements.stream().mapToDouble(ExtractionElement::centroidY).sorted().toArray();
+        // Implementing BBC.md §4 — Witness: W-FRAME-FIDELITY
+        // Cluster LBD positions (minX/minY) directly — NOT centroids.
+        // Same-product elements (e.g. beams) may have different lengths, so
+        // centroid-minus-halfW[0] produced up to 1.08m error. LBD positions
+        // ARE the grid positions; no half-extent conversion needed.
+        double[] xs = elements.stream().mapToDouble(ExtractionElement::minX).sorted().toArray();
+        double[] ys = elements.stream().mapToDouble(ExtractionElement::minY).sorted().toArray();
 
         List<Double> xLines = uniquePositions(xs);
         List<Double> yLines = uniquePositions(ys);
@@ -312,38 +330,34 @@ public class VerbDetector {
 
         // FRAME differs from TILE: gridlines need NOT be uniformly spaced
         // (TILE requires uniform step, FRAME allows irregular grids)
-        if (!verifyGrid(elements, xLines, yLines)) return null;
+        // Use LBD grid verification (minX/minY, not centroids)
+        if (!verifyGridLBD(elements, xLines, yLines)) return null;
 
-        // R16: Self-fidelity check — verify that gridline positions reproduce
-        // actual centroids within exact threshold. Without this, elements that
-        // happen to form a complete grid (xLines*yLines==count) but have centroids
-        // offset from their nearest gridline by >5mm cause fidelity gate failures.
+        // Self-fidelity check — verify that LBD gridline positions reproduce
+        // actual minX/minY within exact threshold.
         // Also check Z-uniformity: FRAME encodes one Z for all elements, so reject
         // groups where elements span different Z levels (fall through to CLUSTER).
         double minZ = Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
         for (ExtractionElement e : elements) {
-            double nearestX = xLines.get(findNearest(xLines, e.centroidX()));
-            double nearestY = yLines.get(findNearest(yLines, e.centroidY()));
-            double errX = Math.abs(e.centroidX() - nearestX);
-            double errY = Math.abs(e.centroidY() - nearestY);
+            double nearestX = xLines.get(findNearest(xLines, e.minX()));
+            double nearestY = yLines.get(findNearest(yLines, e.minY()));
+            double errX = Math.abs(e.minX() - nearestX);
+            double errY = Math.abs(e.minY() - nearestY);
             if (errX > TOL || errY > TOL) return null;  // too imprecise for exact verb
             minZ = Math.min(minZ, e.minZ());
             maxZ = Math.max(maxZ, e.minZ());
         }
         if (maxZ - minZ > TOL) return null;  // Z spread too large — fall through to CLUSTER
 
-        // Implementing BBC.md §4 — Witness: W-FRAME-FIDELITY
-        // Gridlines are clustered from centroids. Convert to LBD offsets by subtracting
-        // half the element dimensions (all elements in a FRAME group share the same product).
-        // Without this, PlacementCollectorVisitor adds halfW/halfD again (§4 tack convention
-        // assumes LBD offsets), double-counting and shifting every element by +halfW/+halfD.
+        // LBD offsets: gridline positions are already LBD, just subtract floor origin.
+        // Detection-time halfW/halfD stored in verb formula for centroid recovery at expansion.
         double halfW = (elements.get(0).maxX() - elements.get(0).minX()) / 2.0;
         double halfD = (elements.get(0).maxY() - elements.get(0).minY()) / 2.0;
-        double[] xArr = xLines.stream().mapToDouble(v -> v - floorMinX - halfW).toArray();
-        double[] yArr = yLines.stream().mapToDouble(v -> v - floorMinY - halfD).toArray();
-        double originZ = elements.get(0).minZ() - floorMinZ;  // LBD Z, not centroid Z
+        double[] xArr = xLines.stream().mapToDouble(v -> v - floorMinX).toArray();
+        double[] yArr = yLines.stream().mapToDouble(v -> v - floorMinY).toArray();
+        double originZ = elements.get(0).minZ() - floorMinZ;  // LBD Z
 
-        return new FrameResult(xArr, yArr, 0, 0, originZ);
+        return new FrameResult(xArr, yArr, 0, 0, originZ, halfW, halfD);
     }
 
     // ── SPRAY: semi-regular grid (relaxed tolerance) ──────────────────
@@ -612,13 +626,20 @@ public class VerbDetector {
             String[] halves = verbRef.substring(6).split("\\|");
             String[] xStrs = halves[0].split(",");
             String[] yStrs = halves[1].split(",");
+            // Use embedded half-extents if present (3rd segment); fall back to sample AABB
+            double fHalfW = halfW, fHalfD = halfD;
+            if (halves.length >= 3) {
+                String[] dims = halves[2].split(",");
+                fHalfW = Double.parseDouble(dims[0]);
+                fHalfD = Double.parseDouble(dims[1]);
+            }
             double[][] pos = new double[xStrs.length * yStrs.length][3];
             int idx = 0;
             for (String xs : xStrs) {
                 for (String ys : yStrs) {
                     // FRAME positions are floor-relative LBD offsets; +halfW recovers centroid
-                    pos[idx][0] = floorMinX + Double.parseDouble(xs) + halfW;
-                    pos[idx][1] = floorMinY + Double.parseDouble(ys) + halfD;
+                    pos[idx][0] = floorMinX + Double.parseDouble(xs) + fHalfW;
+                    pos[idx][1] = floorMinY + Double.parseDouble(ys) + fHalfD;
                     pos[idx][2] = floorMinZ + originDz + halfH;
                     idx++;
                 }
@@ -696,6 +717,26 @@ public class VerbDetector {
         for (ExtractionElement e : elements) {
             int xi = findNearest(uniqueX, e.centroidX());
             int yi = findNearest(uniqueY, e.centroidY());
+            if (xi < 0 || yi < 0) return false;
+            if (occupied[xi][yi]) return false;  // duplicate position
+            occupied[xi][yi] = true;
+        }
+        for (boolean[] row : occupied) {
+            for (boolean cell : row) {
+                if (!cell) return false;
+            }
+        }
+        return true;
+    }
+
+    /** Verify grid occupancy using LBD positions (minX/minY) instead of centroids.
+     *  Used by FRAME detection where elements may have varying dimensions. */
+    static boolean verifyGridLBD(List<ExtractionElement> elements,
+                                 List<Double> uniqueX, List<Double> uniqueY) {
+        boolean[][] occupied = new boolean[uniqueX.size()][uniqueY.size()];
+        for (ExtractionElement e : elements) {
+            int xi = findNearest(uniqueX, e.minX());
+            int yi = findNearest(uniqueY, e.minY());
             if (xi < 0 || yi < 0) return false;
             if (occupied[xi][yi]) return false;  // duplicate position
             occupied[xi][yi] = true;

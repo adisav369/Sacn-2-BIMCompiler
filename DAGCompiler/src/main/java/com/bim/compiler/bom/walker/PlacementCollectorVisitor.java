@@ -458,7 +458,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return result;
     }
 
-    /** FRAME:x1,x2,...|y1,y2,... → cartesian product of gridlines (floor-relative). */
+    /** FRAME:x1,x2,...|y1,y2,...|halfW,halfD → cartesian product of gridlines (floor-relative).
+     *  LBD offsets are stored directly (clustered from minX/minY), so no half-extent
+     *  conversion is needed. The embedded halfW,halfD are informational only — the
+     *  caller uses BOM-line dimensions for centroid recovery (standard tack convention). */
     private static double[][] expandFrame(String verbRef, double originDz) {
         String[] halves = verbRef.substring(6).split("\\|");
         String[] xStrs = halves[0].split(",");

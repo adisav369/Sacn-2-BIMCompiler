@@ -1,8 +1,16 @@
 package com.bim.compiler.contract;
 
-import com.bim.compiler.validation.GeometricFingerprint;
-import com.bim.compiler.validation.GeometricFingerprint.*;
-import com.bim.compiler.validation.PlacementProver;
+import com.bim.eyes.shape.Fingerprint;
+import com.bim.eyes.shape.FingerprintComputer;
+import com.bim.eyes.shape.ShapeArchetype;
+import com.bim.eyes.compare.MultisetComparator;
+import com.bim.eyes.compare.MultisetComparator.MultisetResult;
+import com.bim.eyes.compare.BomTracedComparator;
+import com.bim.eyes.compare.BomTracedComparator.BomTracedResult;
+import com.bim.eyes.compare.BomTracedComparator.BomTracedElement;
+import com.bim.eyes.proof.EyesProofRunner;
+import com.bim.eyes.proof.ProofReport;
+import com.bim.eyes.proof.ProofResult;
 import org.junit.jupiter.api.*;
 
 import java.io.File;
@@ -24,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * <p>Implementing LAST_MILE_PROBLEM.md §Geometric Fingerprint
  *
- * @see GeometricFingerprint
+ * @see FingerprintComputer
  */
 @DisplayName("Geometric Fingerprint — shape identity proof")
 class GeometricFingerprintTest {
@@ -91,7 +99,7 @@ class GeometricFingerprintTest {
 
             if (!new File(extractedDb).exists()) continue;
 
-            List<Fingerprint> fingerprints = GeometricFingerprint.computeFromExtracted(extractedDb);
+            List<Fingerprint> fingerprints = FingerprintComputer.computeFromExtracted(extractedDb);
 
             // Group by IFC class for reporting
             Map<String, List<Fingerprint>> byClass = fingerprints.stream()
@@ -169,7 +177,7 @@ class GeometricFingerprintTest {
 
             tests.add(DynamicTest.dynamicTest(label + ": archetype census", () -> {
 
-                List<Fingerprint> fingerprints = GeometricFingerprint.computeFromExtracted(extractedDb);
+                List<Fingerprint> fingerprints = FingerprintComputer.computeFromExtracted(extractedDb);
 
                 // Count by archetype × IFC class
                 Map<String, Map<ShapeArchetype, Long>> census = fingerprints.stream()
@@ -223,11 +231,11 @@ class GeometricFingerprintTest {
 
             tests.add(DynamicTest.dynamicTest(label + ": multiset fingerprint", () -> {
 
-                List<Fingerprint> extracted = GeometricFingerprint.computeFromExtracted(extractedDb);
-                List<Fingerprint> compiled = GeometricFingerprint.computeFromOutput(outputDb);
+                List<Fingerprint> extracted = FingerprintComputer.computeFromExtracted(extractedDb);
+                List<Fingerprint> compiled = FingerprintComputer.computeFromOutput(outputDb);
 
-                GeometricFingerprint.MultisetResult result =
-                    GeometricFingerprint.proveMultisetEquivalence(extracted, compiled, EPSILON);
+                MultisetResult result =
+                    MultisetComparator.proveMultisetEquivalence(extracted, compiled, EPSILON);
 
                 System.out.printf("  [%s] ext=%d cmp=%d matched=%d/%d (%.1f%%)%s%n",
                     label, result.extractedCount(), result.compiledCount(),
@@ -266,8 +274,8 @@ class GeometricFingerprintTest {
             String label = b[0];
             if (!new File(b[1]).exists() || !new File(b[2]).exists()) continue;
 
-            List<Fingerprint> ext = GeometricFingerprint.computeFromExtracted(b[1]);
-            List<Fingerprint> cmp = GeometricFingerprint.computeFromOutput(b[2]);
+            List<Fingerprint> ext = FingerprintComputer.computeFromExtracted(b[1]);
+            List<Fingerprint> cmp = FingerprintComputer.computeFromOutput(b[2]);
             if (ext.isEmpty() || cmp.isEmpty()) continue;
 
             // Compute building origin (min centroid) for each set
@@ -349,8 +357,8 @@ class GeometricFingerprintTest {
             String label = b[0];
             if (!new File(b[1]).exists() || !new File(b[2]).exists()) continue;
 
-            GeometricFingerprint.BomTracedResult r =
-                GeometricFingerprint.proveBomTraced(b[1], b[2], EPSILON, POS_TOL);
+            BomTracedResult r =
+                BomTracedComparator.proveBomTraced(b[1], b[2], EPSILON, POS_TOL);
 
             totalPaired += r.paired();
             totalBoth += r.bothOK();
@@ -382,7 +390,7 @@ class GeometricFingerprintTest {
     // =====================================================================
 
     @TestFactory
-    @DisplayName("P10: Shape identity proof via PlacementProver pipeline (with BOM trace)")
+    @DisplayName("P10: Shape identity proof via EyesProofRunner pipeline (with BOM trace)")
     Collection<DynamicTest> p10_shapeIdentityPipeline() {
         List<DynamicTest> tests = new ArrayList<>();
 
@@ -398,17 +406,18 @@ class GeometricFingerprintTest {
                 if (new File(bomDb).exists()) {
                     System.setProperty("bom.db", bomDb);
                 }
-                PlacementProver.ProofReport report = PlacementProver.proveFromDB(outputDb, label);
+                ProofReport report = EyesProofRunner.proveFromDB(outputDb, label,
+                    EyesProofRunner.RelationalContext.EMPTY);
 
                 // Extract P10 results only
-                List<PlacementProver.ProofResult> p10Results = report.results().stream()
+                List<ProofResult> p10Results = report.results().stream()
                     .filter(r -> r.proofId().equals("P10_SHAPE_IDENTITY"))
                     .toList();
 
                 long proven = p10Results.stream()
-                    .filter(r -> r.status() == PlacementProver.ProofResult.Status.PROVEN).count();
+                    .filter(r -> r.status() == ProofResult.Status.PROVEN).count();
                 long violated = p10Results.stream()
-                    .filter(r -> r.status() == PlacementProver.ProofResult.Status.VIOLATED).count();
+                    .filter(r -> r.status() == ProofResult.Status.VIOLATED).count();
 
                 // Deterministic debug log: every element, every ratio, every verdict.
                 // This IS the proof — grep P10_SHAPE to see every decision.
@@ -419,16 +428,16 @@ class GeometricFingerprintTest {
                     "Element", "Class", "planar", "elong", "square", "Verdict");
                 System.out.printf("  │ %s%n", "─".repeat(110));
 
-                for (PlacementProver.ProofResult r : p10Results) {
+                for (ProofResult r : p10Results) {
                     // Parse the evidence string to reconstruct the ratios for the log
-                    String status = r.status() == PlacementProver.ProofResult.Status.PROVEN ? "PROVEN" : "VIOLATED";
+                    String status = r.status() == ProofResult.Status.PROVEN ? "PROVEN" : "VIOLATED";
                     System.out.printf("  │ [%s] %s — %s%n", status, r.element(), r.evidence());
                 }
 
                 if (violated > 0) {
                     System.out.printf("  │%n  │ ── VIOLATION DETAIL (source trace) ──────────────────────────%n");
                     p10Results.stream()
-                        .filter(r -> r.status() == PlacementProver.ProofResult.Status.VIOLATED)
+                        .filter(r -> r.status() == ProofResult.Status.VIOLATED)
                         .forEach(r -> System.out.printf("  │ [FIX] %s%n  │       %s%n", r.element(), r.evidence()));
                 }
 

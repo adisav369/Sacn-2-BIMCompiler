@@ -781,16 +781,14 @@ public class BomValidator {
         }
     }
 
-    /** Verbs where the grammar encodes exact positions — fidelity errors are bugs.
-     *  R16: FRAME demoted to advisory — fidelity check sort-order pairing can mismatch
-     *  when former-ROUTE elements fall through to FRAME with construction-tolerance offsets.
-     *  CLUSTER: lossless offset-table — must reproduce extraction positions exactly. */
     /** Exact verbs verified by fidelity check.
      *  TILE: exact grid formula, verified by sorted-position matching.
+     *  FRAME: grid intersections with embedded half-extents — centroid round-trip
+     *  now exact (detection-time halfW/halfD stored in verb formula).
      *  CLUSTER: lossless offset-table, self-verified at detection time
      *  (VerbDetector round-trip check, 1mm tolerance). Reported as exact
      *  with 0.0m error — no matching needed. */
-    private static final Set<String> EXACT_VERBS = Set.of("TILE", "CLUSTER");
+    private static final Set<String> EXACT_VERBS = Set.of("TILE", "FRAME", "CLUSTER");
 
     /** Fidelity threshold for exact verbs: max centroid error in metres. */
     private static final double EXACT_FIDELITY_M = 0.005;  // 5mm
@@ -945,10 +943,7 @@ public class BomValidator {
                         status);
                 if (maxErr > EXACT_FIDELITY_M) exactFails++;
             } else {
-                // Approximate verb (ROUTE, SPRAY, FRAME) — report but do not gate
-                // FRAME: fidelity check has grouping mismatch (BomValidator extraction
-                // key vs VerbDetector group may include different elements for same
-                // product/storey/discipline). LBD fix is correct in PlacementCollectorVisitor.
+                // Approximate verb (ROUTE, SPRAY) — report but do not gate
                 report(String.format("Fidelity: %-6s (%d instances)", verb, count),
                         String.format("max=%.4fm avg=%.4fm [approximate]", maxErr, avgErr),
                         "SKIP");
@@ -1010,6 +1005,7 @@ public class BomValidator {
     private static double[][] expandFrame(String vr, double dz) {
         String[] halves = vr.substring(6).split("\\|");
         String[] xs = halves[0].split(","), ys = halves[1].split(",");
+        // 3rd segment (halfW,halfD) is informational — skip for LBD expansion
         double[][] r = new double[xs.length * ys.length][3];
         int idx = 0;
         for (String x : xs) for (String y : ys)

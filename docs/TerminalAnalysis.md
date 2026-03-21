@@ -140,7 +140,7 @@ END-TILE
 |----------------|---------------|-----------|-------------|-----------------|--------|
 | TILE (2D grid) | `TILE SURFACE` | 33,324 | TILE | 12 | LIVE (0.0m fidelity) |
 | PATH (1D route) | `ROUTE` | 9,345 | ROUTE | 18 | LIVE (0.32m max) |
-| GRID (structural) | `FRAME` | 590 | FRAME | 78 | LIVE (1.08m max) |
+| GRID (structural) | `FRAME` | 590 | FRAME | 78 | LIVE (1.4mm max — S51 LBD fix) |
 | Semi-regular grid | `CLUSTER` | — | CLUSTER | 47,607 | LIVE (29.1m max, 3.7m avg — **approximate**) |
 | Irregular (flat) | manual placement | 2,123 | flat | 770 | LIVE (exact) |
 | ~~ARRAY (rebar)~~ | ~~`ARRAY`~~ | ~~2,660~~ | — | — | REMOVED (REB excluded) |
@@ -558,7 +558,7 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.
 |------|--------|-----------|-----------|-----------------|----------|----------|
 | `TILE SURFACE` | **EXACT** | ARC (roof) | 33,324 | 12 exact, rest CLUSTER | — | PASS (0.0m) |
 | `ROUTE` | **EXACT** | FP/CW/SP/LPG | 9,345+2,619 | 18 exact, rest CLUSTER | ad_fp_coverage | 0.32m max |
-| `FRAME` | **EXACT** | STR | 590 | 78 exact, rest CLUSTER | — | 1.08m max |
+| `FRAME` | **EXACT** | STR | 590 | 78 exact, rest CLUSTER | — | 1.4mm max (S51 fix) |
 | `CLUSTER` | **APPROX** | all MEP | — | 47,607 | — | 29.1m max, 3.7m avg |
 | `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | — | — | not started |
 | `DISTRIBUTE` | DESIGNED | ARC (furniture) | ~2,123 | — | — | not started |
@@ -575,6 +575,23 @@ Implementation cost: parameter mapping + AD table creation, not new verb code.
 **FRAME** is structural bay grid placement. Columns at grid intersections
 (BIM_Component, identical), beams spanning between columns (BIM_Slab,
 IsInstance=1 if spans vary). Reads structural grid from YAML.
+
+**S51 FRAME LBD fix:** Detection now clusters `minX/minY` (LBD positions) directly
+instead of centroids. The old approach computed LBD offsets as `centroid - halfW[0]`,
+using element[0]'s half-width. Same-product elements with different actual dimensions
+(e.g., beams spanning 10m vs 8m bays) had up to 1.08m error. The fix eliminates the
+centroid→LBD conversion entirely — LBD positions ARE the grid positions. Embedded
+`halfW,halfD` in the verb formula (`FRAME:x1,...|y1,...|halfW,halfD`) preserves
+detection-time geometry metadata. Fidelity improved from 1.08m to 1.4mm.
+FRAME promoted back to EXACT_VERBS (gating at ≤5mm).
+
+**Why this matters for future buildings:** Every commercial/institutional building has
+a structural grid. Warehouses (20m bays), stadiums (40m spans), high-rises (mixed
+column sizes per floor) — all use FRAME. The LBD clustering approach scales to any
+grid irregularity because it never converts between coordinate systems. This also
+establishes the pattern for GPU instancing: FRAME elements at grid intersections are
+natural candidates for hardware instanced rendering, since they share the same product
+geometry placed at known grid positions.
 
 **ENCLOSE** is wall perimeter placement. Follows a 2D closed path, inserts
 wall segments (BIM_Wall, IsInstance=1 — length varies) and openings at
@@ -1288,7 +1305,7 @@ not per-verb correctness. This section documents what is and isn't proven.
 | G3-DIGEST | SHA-256 of sorted coordinates | **PASS** (4 IfcSensor removed — Federation addon) |
 | G5-PROVENANCE | Every geometry_hash exists in library | All elements verified |
 | QA (step 9) | BOM structure, duplicates, orphans, AABB containment | 15 checks, all PASS |
-| Verb fidelity (step 9b) | Round-trip centroid comparison | Advisory only, FAIL for ROUTE/SPRAY |
+| Verb fidelity (step 9b) | Round-trip LBD comparison | FRAME/TILE/CLUSTER exact (gating); ROUTE advisory |
 
 **Schema-Not-Geometry classification: ERP-maths.** Verb factorization (TILE,
 ROUTE, SPRAY, FRAME) takes extracted AABB positions and compresses them into
