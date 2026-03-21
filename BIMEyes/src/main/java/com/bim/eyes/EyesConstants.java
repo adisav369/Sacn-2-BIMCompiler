@@ -39,4 +39,11 @@ public final class EyesConstants {
 
     // ── Dimension range validation ──
     public static final double DIM_RANGE_RATIO        = 5.0;
+
+    // ── Containment/coverage tolerances ──
+    public static final double CONTAINMENT_TOLERANCE_M = 0.050;  // 50mm opening/fixture
+    public static final double COVERAGE_TOLERANCE_M    = 0.010;  // 10mm wall coverage
+    public static final double PLATE_THIN_WALL_TOL_M   = 0.050;  // 50mm curtain wall junction
+    public static final double AREA_CONSERVATION_TOL   = 0.10;   // 10% floor area
+    public static final double STANDARD_WALL_THICK_M   = 0.15;   // 150mm wall thickness
 }

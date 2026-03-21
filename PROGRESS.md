@@ -19,7 +19,7 @@
 **Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (22+20+6+output).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
-**BonsaiBIMDesigner:** 258/258 GREEN (34 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 285/285 GREEN (37 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
@@ -30,6 +30,20 @@
 
 ## What's Next
 
+**[DONE] BIMEyes Phase 2: Extract Proof Methods (session 50):**
+  24 proof classes extracted from PlacementProver → individual classes under proof/tier1/2/3.
+  Tier 1 (4): PositiveExtentProof, FiniteCoordsProof, MinDimensionProof, StoreyZBandProof.
+  Tier 2 (10): DuplicatePosition, SameClassOverlap, OpeningContainment, FurnitureInRoom,
+    FixtureOnSurface, PipeInHost, WallOrientation, ElementInRoom, OpeningMeshInBbox, DrainCornerAlignment.
+  Tier 3 (10): ShapeIdentity, PerimeterClosure, WallCoverage, RoomHasDoor, PerimeterLength,
+    FloorArea, WasteGradient, SystemConnected, VentAboveRoof, LodGeometry.
+  EyesProofRunner orchestrator with RelationalContext. PlacementData + RelationalData records.
+  PlacementProver → thin facade delegating to EyesProofRunner (data loading stays in facade).
+  EyesConstants: +5 thresholds (containment, coverage, plate, area conservation, wall thickness).
+  BIMEyes: 39 source files (was 12). CompilerContractTest prover 7/7 PASS.
+  BonsaiBIMDesigner 285/285 GREEN. SH 9/10 undisturbed.
+  **Phase 3 next:** Implement P25 ROOM_VALIDITY, P26 BUILDING_COMPLETENESS, remove wrappers.
+
 **[DONE] BIMEyes Phase 1: Standalone Module (session 49):**
   New module `BIMEyes/` — 12 source files, 4 packages (shape, compare, diff, proof).
   Canonical types: ShapeArchetype, ScaleBand, Fingerprint, FingerprintComputer, ShapeClassifier.
@@ -37,8 +51,6 @@
   EyesConstants (17 thresholds), ProductCategory (10 categories, 37 IFC mappings).
   DAGCompiler facades (GeometricFingerprint, ProductCategory, SpatialDiff) delegate to Eyes.
   Full 10-module reactor compiles. EYES_SRS.md written (26 proofs, 8 witnesses).
-  **Phase 2 next:** Extract proof methods from PlacementProver → individual proof classes.
-  **Phase 3 next:** Implement P25 ROOM_VALIDITY, P26 BUILDING_COMPLETENESS, remove wrappers.
 
 **[DONE] CP-4 Semantic Half: Product Category (session 48):**
   `product_category TEXT` added to `component_types` (CP4_002 migration). 58 rows mapped.
