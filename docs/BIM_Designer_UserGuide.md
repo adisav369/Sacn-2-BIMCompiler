@@ -694,12 +694,100 @@ See [BackOfficeUserGuide.md](BackOfficeUserGuide.md) for the full multi-project 
 
 ---
 
-## 13. What's Next
+## 13. Web UI Frontend (S56)
+
+### Architecture Split
+
+Blender's sidebar is too constrained for data-heavy workflows (BOM trees, Excel-like
+grids, product choosers). S55 concluded: **Web UI for data/control, Bonsai for viewport only.**
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  Web Browser (HTML/JS)                                    │
+│  ┌──────────────────────────────────────────────────────┐ │
+│  │ Tab bar: 1D | 2D | 3D | 4D | 5D | 6D | 7D | 8 | 9 | 10 │
+│  ├──────────────────────────────────────────────────────┤ │
+│  │                                                      │ │
+│  │  (active tab content — tree, grid, form, dashboard)  │ │
+│  │                                                      │ │
+│  └──────────────────────────────────────────────────────┘ │
+│         │ WebSocket                                       │
+└─────────┼────────────────────────────────────────────────┘
+          │
+┌─────────┼────────────────────────────────────────────────┐
+│  Java DesignerServer (port 9876)                          │
+│         │ NDJSON (same 44 wire actions)                    │
+│         │                                                  │
+│         ├──→ Save (prepareIt): validate ASI, kickback,    │
+│         │    persist to work_output.db                     │
+│         ├──→ Complete (completeIt): merge work_output.db   │
+│         │    → output.db, push COMPILE_COMPLETE            │
+│         │                          │                       │
+└─────────┼──────────────────────────┼───────────────────────┘
+          │                          │ server push
+┌─────────┼──────────────────────────┼───────────────────────┐
+│  Blender (Bonsai)                  ▼                       │
+│  Listener receives COMPILE_COMPLETE → Full Load → viewport │
+│  Bonsai = viewport only: Preview BBoxes / Full Load        │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Tab Layout
+
+| Tab | Content | UI widget |
+|-----|---------|-----------|
+| **1D** | BOM Designer: BOM Drop tree + Product Chooser + DocAction (Save/Complete) | Tree widget (expand/collapse/drag) + slide-out product panel |
+| **2D** | Import/Export (pending) | File upload + format selector |
+| **3D** | Federation: IFC Extract status + IFCtoBOM trigger | Status cards + action buttons |
+| **4D** | Scheduling | Excel-like editable grid (AG Grid / Handsontable) |
+| **5D** | Costing: material + labour + equipment breakdown | Excel-like grid with column totals |
+| **6D** | Asset Maintenance: asset register + replacement intervals | Sortable/filterable table |
+| **7D** | Tandem IoT: sensor dashboard + alerts | Live chart + alert list |
+| **8** | ERP Reporting: print config + report viewer | Form + preview pane |
+| **9** | NLP Query: search bar + results | Query input + results grid |
+| **10** | Color Studio: palette picker + scheme save/load | Color swatches + save/load buttons |
+
+### DocAction Flow (iDempiere pattern)
+
+| Action | iDempiere | What happens |
+|--------|-----------|-------------|
+| **Save** | `prepareIt()` | Validate ASI values, check jurisdiction rules, adjust/kickback invalid numbers. Persist to work_output.db. Web UI shows kicked-back items highlighted red. |
+| **Complete** | `completeIt()` | Incrementally merge validated data from work_output.db → output.db. Server pushes `COMPILE_COMPLETE` to Bonsai listener. Bonsai runs Full Load → geometry in viewport. |
+| **Approve** | BOM promotion | Rare. Promotes design to reusable BOM template. Deferred. |
+
+### Complete → Blender Bridge
+
+Server push pattern (option 2 from S55):
+1. Web UI sends `{"action":"compile", ...}` to DesignerServer
+2. Server compiles, writes output.db
+3. Server pushes `{"type":"COMPILE_COMPLETE", "outputDb":"/path/to/output.db"}` to all connected clients
+4. Bonsai's `start_listener()` callback receives the push
+5. Callback schedules `bpy.ops.bim.load_full_federation_viewport_gi()` via `bpy.app.timers`
+6. Geometry appears in Blender viewport
+
+### Tech Stack
+
+- **Static HTML/JS** — no framework bloat (vanilla JS or lightweight: htmx / Alpine.js)
+- **WebSocket** to DesignerServer — add WS endpoint to DesignerServer.java (Jetty or Java built-in HttpServer)
+- **CSS grid** for responsive tab layout
+- **AG Grid** or **Handsontable** for Excel-like 4D/5D/6D tables
+- **Tree widget** — jsTree or custom for BOM Drop tree with expand/collapse/drag
+
+### Why Not Blender?
+
+- Blender's `invoke_popup()` max ~600px, no `template_list` in popups, no round buttons
+- Properties sidebar is 300px — too narrow for BOM trees and data grids
+- Bonsai doesn't block this — Blender's own UI toolkit is the limit
+- Web UI gives: round buttons, Excel grids, drag-and-drop trees, responsive layout, keyboard shortcuts
+
+---
+
+## 14. What's Next
 
 ### Beta Readiness Checklist
 
-The engine is proven (253 tests GREEN, 5 Rosetta Stone buildings). The GUI
-needs Blender integration testing before beta release.
+The engine is proven (330 tests GREEN, 34 Rosetta Stone buildings). The GUI
+needs Web UI + Blender viewport integration before beta release.
 
 | Priority | Task | Status | Effort |
 |----------|------|--------|--------|
