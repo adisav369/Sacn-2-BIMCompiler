@@ -2,7 +2,7 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
-*Updated: 2026-03-21 (session 44). Previous version archived in git history.*
+*Updated: 2026-03-21 (session 50). Previous version archived in git history.*
 
 ## Current Position
 
@@ -12,10 +12,12 @@
 - SC (3214), CA (2586), CS (1078), CH (3693), CE (2110), CP (6584), ES (1941), MO (3114): session 44
 - GH (193), JS (61), NI (104), WB (125), WL (114), WT (55), WA (1749), JE (626), WI (1), RA (442), RM (6787), RS (4133), CL (3214), HI (2068): session 44b
 
-63 verbs. 9-stage pipeline. 196 witnesses. 2459 products. 4-DB architecture. 34 building types.
+63 verbs. 9-stage pipeline. 205 witnesses. 2459 products. 4-DB architecture. 34 building types.
 BIM Designer: 285/285 GREEN. BackOffice: 19/19 GREEN. G-1 through G-9 DONE.
-**Data Flywheel (session 47):** 415 mined dimension rules + 297 building profiles.
+**Data Flywheel (session 50):** 415 mined dimension rules + 297 building profiles + 3-layer advisory output.
 Self-improving pipeline: each compiled building enriches the validation pool automatically.
+**BIMEyes (session 50):** Standalone geometric comprehension module. 26 proofs, 3 tiers, 41 source files.
+Shape-aware advisories wired into flywheel (FL-5). IFCtoBOM depends on BIMEyes.
 
 **Market context:** See [`BIM_Compiler_Market_Impact_Report.pdf`](BIM_Compiler_Market_Impact_Report.pdf) — USD 10B global BIM market (2025), Malaysia BIM mandate from July 2025 (all projects ≥RM10M).
 
@@ -194,13 +196,15 @@ The IN G3 window drift analysis (10-90mm gradient) revealed that AABB dimensions
 | G-8 | s45 | Click-to-Place (viewport click → room → discipline placement) |
 | G-9 | s46b | ORDER View + BOM Outliner (three views share C_OrderLine) |
 | FL-1 | s47 | Data Flywheel: dimension validation + building profiles + auto-mining |
+| FL-2 | s50 | Advisory Output: W_Validation_Advisory + listAdvisories API + suggestDimensions + Blender panel |
+| FL-5 | s50 | EYES Integration: ShapeAdvisoryWriter → 3-layer advisory (DIMENSION/PROFILE/SHAPE) |
 
 ### Next Gates
 
 | Gate | What | Blocks |
 |------|------|--------|
-| **FL-2** | **Advisory Output for Designer** — W_Validation_Advisory table + listAdvisories API + Blender panel. Structured flywheel output. Spec: ACTION_ROADMAP.md §FL-2. | — |
-| **FL-3** | **CALIBRATE verb** — suggestDimensions(ifcClass) returns typical W/D/H + nearest products. Auto-fill in Designer. | FL-2 |
+| **FL-3** | **CALIBRATE verb** — suggestDimensions API ready; needs CALIBRATE verb wiring + Designer auto-fill. | — |
+| **FL-4** | **Relational mining** — mine element-to-space relationships, enrich MEP schedules. | — |
 | **G-10** | **Promote to BOM** — C_OrderLine → m_bom + m_bom_line. Dangles check, owner sign-off, entity_type='U', provenance='GENERATIVE'. **DONE (session 47).** | — |
 | **G-11** | **ParametricMesh UI** — Blender panel exposing slider params. Construction-grade: BOM sub-assembly with tack I/O. | — |
 | **G-12** | **Text Mode** — Search box + future NL → OrderLine + ASI. | — |
@@ -213,11 +217,9 @@ G-1..G-10 (DONE) ─── G-11 (ParametricMesh)
                      │                    G-12 (Text Mode)
                      │                    G-13 (Auto-chain)
                      │
-FL-1 (DONE) ──── FL-2 (Advisory table + Designer panel)
+FL-1..FL-2 (DONE) ── FL-3 (CALIBRATE verb — API ready)
                      │
-                  FL-3 (CALIBRATE verb)
-                     │
-                  FL-4 (Relational mining)
+FL-5 (DONE) ──────── FL-4 (Relational mining)
 ```
 
 ---
@@ -252,47 +254,38 @@ Layer 1 (DimensionRangeValidator) and Layer 2 (BuildingProfileValidator)
 run as pre-flight in IFCtoBOMPipeline. Post-commit auto-mining feeds back.
 415 dimension rules + 297 profile rows from 36 buildings.
 
-### FL-2: Advisory Output for BIM Designer
+### FL-2: Advisory Output for BIM Designer ✓
 
-**Problem:** Flywheel output is currently log-only. The BIM Designer
-cannot read the outlier report — it doesn't know which elements were
-flagged or why.
+**Delivered (session 50):**
+- DV012 migration: `W_Validation_Advisory` table in disc_validation.db
+- `DimensionRangeValidator.writeAdvisories()` — WARNING + SUGGESTION per outlier
+- `BuildingProfileValidator.writeAdvisories()` — WARNING per anomaly, INFO summary
+- `IFCtoBOMPipeline` calls both after validate() (Layer 1 + Layer 2)
+- `DesignerAPI.listAdvisories(buildingId)` + `DesignerAPIImpl` + `DesignerServer` dispatch
+- `DesignerAPI.suggestDimensions(ifcClass)` — FL-3 prep: typical W/D/H + nearest M_Products
+- Python `client.list_advisories()` + `client.suggest_dimensions()` + `panel._draw_advisory_panel()`
+- FlyAdvisoryTest: 9 witnesses (W-FL-ADVISORY-1..5, W-FL-CALIBRATE-1..2, W-FL-SHAPE-1..2)
 
-**Solution:** Structured advisory output that the Designer can consume:
-
-| Artefact | Format | Consumer |
-|----------|--------|----------|
-| `W_Validation_Advisory` table | SQLite in disc_validation.db | Designer API |
-| `listAdvisories(buildingId)` | DesignerAPI method (JSON) | Python client |
-| Advisory panel in BIM Designer | Blender UI panel | User |
-
-**Schema:**
+**Schema (DV012):**
 ```sql
 CREATE TABLE W_Validation_Advisory (
     advisory_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type   TEXT NOT NULL,
-    element_ref     TEXT,           -- which element (NULL for profile-level)
-    layer           TEXT NOT NULL,  -- 'DIMENSION', 'PROFILE', 'COMPLIANCE', 'SHAPE' (FL-5/EYES)
-    severity        TEXT NOT NULL,  -- 'INFO', 'WARNING', 'SUGGESTION'
-    rule_name       TEXT,           -- e.g. 'DIMENSION_RANGE_W:IfcWall'
-    message         TEXT NOT NULL,  -- human-readable
+    element_ref     TEXT,           -- element bomId (NULL for profile-level)
+    layer           TEXT NOT NULL   CHECK(layer IN ('DIMENSION','PROFILE','COMPLIANCE','SHAPE')),
+    severity        TEXT NOT NULL   CHECK(severity IN ('INFO','WARNING','SUGGESTION')),
+    rule_name       TEXT,
+    message         TEXT NOT NULL,
     actual_value    REAL,
     expected_min    REAL,
     expected_max    REAL,
-    suggestion      TEXT,           -- e.g. 'Nearest typical: 5000mm (from Esplanades)'
+    suggestion      TEXT,
     created_at      TEXT DEFAULT (datetime('now'))
 );
 ```
 
-**Designer integration:**
-- `listAdvisories(buildingId)` → returns advisories for this building
-- Panel: colour-coded list (INFO=blue, WARNING=amber, SUGGESTION=green)
-- Click advisory → highlights the element in 3D viewport
-- "Apply suggestion" button → auto-adjusts dimension to nearest typical
-
-**Effort:** 1 session. Changes: DV012 migration, DimensionRangeValidator
-writes to table, BuildingProfileValidator writes to table, DesignerAPI
-+1 method, Python client +1 verb, panel +1 section.
+**Wire protocol:** `{"action":"listAdvisories","buildingId":"..."}` → `ListAdvisoriesResponse`
+`{"action":"suggestDimensions","ifcClass":"..."}` → `SuggestDimensionsResponse`
 
 ### FL-3: CALIBRATE Verb
 
@@ -344,46 +337,39 @@ averages 1 per 15m²."
 **Effort:** 1 session. Depends on: buildings with IfcSpace + containment
 data (IN, SC, ES have this).
 
-### FL-5: EYES Integration — Shape-Aware Advisories
+### FL-5: EYES Integration — Shape-Aware Advisories ✓
 
-**Problem:** The flywheel currently checks dimensions (Layer 1) and
-composition (Layer 2). But it cannot say "this IfcWall is actually
-shaped like a column" — that requires geometric fingerprinting.
+**Delivered (session 50):**
+- `ShapeAdvisoryWriter` in IFCtoBOM — uses BIMEyes `ShapeClassifier` + `ProductCategory`
+- IFCtoBOM now depends on BIMEyes module (pom.xml)
+- Wired as Layer 3 in IFCtoBOMPipeline, after DimensionRange (L1) and Profile (L2)
+- Two checks per element:
+  1. **CLASS_SHAPE** — IFC class vs shape archetype consistency via `Fingerprint.verifyClassConsistency()`
+  2. **DISCIPLINE_SHAPE** — geometry-inferred discipline vs declared product category
+- Writes to `W_Validation_Advisory` with `layer='SHAPE'`, severity `SUGGESTION`
+- SH result: 19 SHAPE advisories (thin IfcMember mullions flagged as MEP-like at fitting scale)
+- Witnesses: W-FL-SHAPE-1 (mismatch detection), W-FL-SHAPE-2 (no false positives for consistent elements)
 
-**Solution:** Wire BIMEyes (EYES_SRS.md) into the advisory pipeline.
-The EYES module provides 26 proofs across 3 tiers. The key additions:
+**Advisory table now has 3 active layers:**
 
-| EYES Capability | Advisory Value |
-|----------------|---------------|
-| Shape archetype (PLANAR/ELONGATED/COMPACT) | "This IfcWall is ELONGATED — it's shaped like a beam, not a wall" |
-| ProductCategory (10 domain categories) | "This element is classified ARC but its geometry is MEP_ROUTING" |
-| P25 ROOM_VALIDITY | "Room 'Kitchen' has 3 walls but no floor slab and no door" |
-| P26 BUILDING_COMPLETENESS | "Building has no roof element and no external door" |
+| Layer | Source | What it checks |
+|-------|--------|---------------|
+| DIMENSION | DimensionRangeValidator (DV010) | Element W/D/H vs mined typical ranges |
+| PROFILE | BuildingProfileValidator (DV011) | Class diversity, missing openings, novel classes |
+| SHAPE | ShapeAdvisoryWriter (FL-5/EYES) | Archetype vs IFC class, discipline vs geometry |
 
-**Integration with FL-2 advisory table:**
-- EYES proofs write to same `W_Validation_Advisory` table
-- Shape mismatches → SUGGESTION severity (with correct category)
-- Room/building violations → WARNING severity
-- Designer panel shows EYES advisories alongside dimension/profile ones
-
-**Depends on:** EYES_SRS.md Phase 1 (module creation + core types).
-The spec defines 3 phases — Phase 1 is 1 session. FL-5 wiring is
-an additional session after EYES Phase 1 ships.
-
-**Effort:** 2 sessions total (1 for EYES Phase 1, 1 for FL-5 wiring).
+**Future:** P25 ROOM_VALIDITY and P26 BUILDING_COMPLETENESS proofs can write
+to the same table with `layer='COMPLIANCE'` when connected to IFCtoBOMPipeline.
 
 ### FL Dependency Chain
 
 ```
-FL-1 (DONE) → FL-2 (advisory table + Designer panel)
-                ↓
-              FL-3 (CALIBRATE verb — uses same advisory data)
-                ↓
-              FL-4 (relational mining — enriches MEP schedules)
-                ↓
-              FL-5 (EYES integration — shape-aware advisories)
-                    ↑
-              EYES Phase 1 (module creation — EYES_SRS.md)
+FL-1 (DONE) → FL-2 (DONE) → FL-3 (CALIBRATE verb — API ready)
+                               ↓
+                             FL-4 (relational mining)
+FL-5 (DONE) ─────────────────┘
+     ↑
+EYES Phase 1..3 (DONE)
 ```
 
 ### FL Designer Development Note
@@ -396,11 +382,13 @@ advisories — not just log output. The Designer should:
 3. Allow click-to-highlight of flagged elements
 4. For SUGGESTION-type advisories, offer "Apply" button that calls
    `updateOrderLine()` with the suggested dimension
-5. For CALIBRATE, auto-populate dimension fields when placing new elements
+5. For CALIBRATE, call `suggestDimensions(ifcClass)` to auto-populate
+   dimension fields when placing new elements
 
 The advisory data is already in disc_validation.db — the Designer just
 needs to read and present it. No new validation logic needed on the
-Python side.
+Python side. The `suggestDimensions` API is already wired — FL-3 only
+needs the CALIBRATE verb integration and Designer auto-fill UX.
 
 ---
 

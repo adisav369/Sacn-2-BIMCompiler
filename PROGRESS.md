@@ -24,11 +24,27 @@
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
 **Scorecard: 31/36** (was 27). 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
-**Wire actions:** 42 total (was 39). +3: listOrderLines, updateOrderLine, getBomTree.
+**Wire actions:** 44 total (was 42). +2: listAdvisories, suggestDimensions.
 **WF-BB §26:** 25 requirements, 17 witnesses. 8 CODE DONE (needs Blender test), 4 STUB, 13 SPEC ONLY.
 **G-9 (S46b):** ORDER View + BOM Outliner. 3 API actions, 7 witnesses. UX-F-26 (sync) + UX-F-27 (three views) → IMPLEMENTED.
+**FL-2 (S50):** Advisory output — 3-layer W_Validation_Advisory (DIMENSION/PROFILE/SHAPE). 9 witnesses.
+**FL-5 (S50):** EYES integration — ShapeAdvisoryWriter. SH: 19 shape advisories. BIMEyes Phase 1-3 DONE (41 files, 26 proofs).
 
 ## What's Next
+
+**[DONE] FL-5: EYES Integration — Shape-Aware Advisories (session 50):**
+  `ShapeAdvisoryWriter` — uses BIMEyes `ShapeClassifier` + `ProductCategory` for per-element
+  shape-class consistency checks. Wired as Layer 3 in IFCtoBOMPipeline. IFCtoBOM now depends
+  on BIMEyes module. Two checks: CLASS_SHAPE (archetype vs IFC class), DISCIPLINE_SHAPE
+  (geometry-inferred discipline vs product category). Writes to W_Validation_Advisory layer='SHAPE'.
+  SH: 19 advisories (thin IfcMember mullions at fitting scale flagged as MEP-like).
+  FlyAdvisoryTest: W-FL-SHAPE-1, W-FL-SHAPE-2 GREEN.
+
+**[DONE] FL-2: Advisory Output for BIM Designer (session 50):**
+  DV012 migration: W_Validation_Advisory table. writeAdvisories on DimensionRangeValidator
+  + BuildingProfileValidator. listAdvisories API + suggestDimensions API (FL-3 prep).
+  Python client.list_advisories + client.suggest_dimensions + panel._draw_advisory_panel.
+  DesignerServer dispatch for both. FlyAdvisoryTest: W-FL-ADVISORY-1..5, W-FL-CALIBRATE-1..2 GREEN.
 
 **[DONE] BIMEyes Phase 3: New Proofs P25/P26 (session 50):**
   P25 ROOM_VALIDITY: room has walls≥2, floor, ceiling, door (DB-level, advisory).
