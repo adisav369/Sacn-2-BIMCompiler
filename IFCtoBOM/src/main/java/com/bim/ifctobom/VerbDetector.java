@@ -233,10 +233,13 @@ public class VerbDetector {
             }
         }
 
-        // Sort by X then Y (greedy chain)
+        // Sort by LBD X then Y (greedy chain).
+        // Use minX/minY (LBD positions) instead of centroids — same fix as FRAME.
+        // ROUTE dimension uniformity guard ensures centroid-step == LBD-step,
+        // but origin must be LBD to match the tack convention.
         List<double[]> centroids = new ArrayList<>();
         for (ExtractionElement e : elements) {
-            centroids.add(new double[]{e.centroidX(), e.centroidY(), e.centroidZ()});
+            centroids.add(new double[]{e.minX(), e.minY(), e.minZ()});
         }
         centroids.sort((a, b) -> {
             int cmp = Double.compare(a[0], b[0]);
