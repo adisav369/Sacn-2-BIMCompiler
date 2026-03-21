@@ -33,6 +33,21 @@ public class DesignerDAO {
 
     // ── Building types (C_DocType) ──────────────────────────────────
 
+    /**
+     * Resolve buildingId → building_type Name from C_DocType.
+     * Returns null if not found.
+     */
+    public String resolveBuildingType(String buildingId) throws SQLException {
+        String sql = "SELECT Name FROM C_DocType WHERE C_DocType_ID = ? OR Name = ?";
+        try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
+            ps.setString(1, buildingId);
+            ps.setString(2, buildingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString("Name") : null;
+            }
+        }
+    }
+
     /** Active building types from C_DocType, with AABB from BUILDING-level m_bom. */
     public List<BuildingTypeRow> listBuildingTypes() throws SQLException {
         String sql = """

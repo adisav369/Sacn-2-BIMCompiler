@@ -190,8 +190,9 @@ class MEPWriter {
         // Parametric bounds (ceiling-mounted square)
         double size = 0.3;  // 300mm default
         double depth = 0.1; // 100mm default
-        // Phase 92B: IfcFan with library mesh uses 1500mm bounds
-        if (ifcClass.equals("IfcFan") && diffuser.geometryHash() != null && !diffuser.geometryHash().isEmpty()) {
+        // Phase 92B: exhaust fan with library mesh uses 1500mm bounds
+        // Implementing BBC.md §2.2.1 — domain type, not IFC class
+        if (diffuser.diffuserType().equals("exhaust") && diffuser.geometryHash() != null && !diffuser.geometryHash().isEmpty()) {
             size = 0.75;  // 750mm half-width = 1500mm fan diameter
             depth = 0.35; // 350mm height
         }
@@ -583,8 +584,12 @@ class MEPWriter {
         String geoHash = null;
 
         // Phase 59: Use LOD400 library geometry if available
+        // Implementing BBC.md §2.2.1 — Witness: W-PRODUCT-CATEGORY
+        // Furniture determined by domain type, not IFC class
+        boolean isFurniture = com.bim.compiler.validation.ProductCategory.FURNISHING.equals(
+            com.bim.compiler.validation.ProductCategory.resolve(ifcClass));
         if (fixture.geometryHash() != null && !fixture.geometryHash().isEmpty() && libraryMapper != null) {
-            if ("IfcFurniture".equals(ifcClass)) {
+            if (isFurniture) {
                 // Furniture: scale mesh to fit product dimensions (width × depth × height).
                 // Library mesh canonical dimensions may differ — scale to bbox exactly.
                 boolean scaled = false;

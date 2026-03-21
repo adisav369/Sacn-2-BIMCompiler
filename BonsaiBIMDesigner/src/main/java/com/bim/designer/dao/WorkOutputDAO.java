@@ -549,6 +549,40 @@ public class WorkOutputDAO {
         }
     }
 
+    // ── DocStatus (Promote governance gate §17.10.4) ────────────────
+
+    /**
+     * Get the master C_Order DocStatus for a building.
+     * Returns null if no master order exists.
+     *
+     * // Implementing BIM_Designer.md §17.10.4 — Witness: W-PROMOTE-2
+     */
+    public String getMasterDocStatus(String buildingId) throws SQLException {
+        String sql = "SELECT DocStatus FROM C_Order WHERE C_Order_ID = ? AND Parent_Order_ID IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, buildingId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
+    /**
+     * Transition master C_Order DocStatus (e.g. IP → AP, AP → CO).
+     * Returns true if a row was updated.
+     *
+     * // Implementing BIM_Designer.md §17.10.4 — Witness: W-PROMOTE-4
+     */
+    public boolean setMasterDocStatus(String buildingId, String newStatus) throws SQLException {
+        String sql = "UPDATE C_Order SET DocStatus = ?, updated = datetime('now') "
+                + "WHERE C_Order_ID = ? AND Parent_Order_ID IS NULL";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newStatus);
+            ps.setString(2, buildingId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────
 
     private int countVariants(String buildingId) throws SQLException {

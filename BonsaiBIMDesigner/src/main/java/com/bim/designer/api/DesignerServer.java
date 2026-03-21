@@ -393,6 +393,17 @@ public class DesignerServer implements AutoCloseable {
                     var resp = api.balancedScorecard();
                     yield JsonProtocol.toJson(resp);
                 }
+                // ── Flywheel Advisory (BIM_Designer_SRS §27) ──────
+                case "listAdvisories" -> {
+                    var resp = api.listAdvisories(
+                            request.stringField("buildingId"));
+                    yield JsonProtocol.toJson(resp);
+                }
+                case "suggestDimensions" -> {
+                    var resp = api.suggestDimensions(
+                            request.stringField("ifcClass"));
+                    yield JsonProtocol.toJson(resp);
+                }
                 // ── Audit Trail (TIER1_SRS §3) ───────────────────
                 case "changelog" -> {
                     var resp = api.changelog(

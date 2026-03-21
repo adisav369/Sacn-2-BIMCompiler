@@ -272,7 +272,7 @@ CREATE TABLE W_Validation_Advisory (
     advisory_id     INTEGER PRIMARY KEY AUTOINCREMENT,
     building_type   TEXT NOT NULL,
     element_ref     TEXT,           -- which element (NULL for profile-level)
-    layer           TEXT NOT NULL,  -- 'DIMENSION', 'PROFILE', 'COMPLIANCE'
+    layer           TEXT NOT NULL,  -- 'DIMENSION', 'PROFILE', 'COMPLIANCE', 'SHAPE' (FL-5/EYES)
     severity        TEXT NOT NULL,  -- 'INFO', 'WARNING', 'SUGGESTION'
     rule_name       TEXT,           -- e.g. 'DIMENSION_RANGE_W:IfcWall'
     message         TEXT NOT NULL,  -- human-readable

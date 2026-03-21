@@ -149,6 +149,72 @@ public class DimensionRangeValidator {
         return new Report(buildingType, elements.size(), checked, passed, outliersByClass);
     }
 
+    /**
+     * Write advisory rows for dimension outliers to W_Validation_Advisory.
+     * One WARNING per outlier, one SUGGESTION with nearest typical value.
+     * Called from IFCtoBOMPipeline after validate().
+     *
+     * // Implementing BIM_Designer_SRS.md §27.5 — Witness: W-FL-ADVISORY-4
+     */
+    public static void writeAdvisories(Connection discConn, Report report)
+            throws SQLException {
+        if (!report.hasOutliers()) return;
+
+        // Clear previous advisories for this building (idempotent re-run)
+        try (PreparedStatement del = discConn.prepareStatement(
+                "DELETE FROM W_Validation_Advisory WHERE building_type = ? AND layer = 'DIMENSION'")) {
+            del.setString(1, report.buildingType());
+            del.executeUpdate();
+        }
+
+        String insert = """
+                INSERT INTO W_Validation_Advisory
+                (building_type, element_ref, layer, severity, rule_name, message,
+                 actual_value, expected_min, expected_max, suggestion)
+                VALUES (?, ?, 'DIMENSION', ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        try (PreparedStatement ps = discConn.prepareStatement(insert)) {
+            for (var entry : report.outliersByClass().entrySet()) {
+                String ifcClass = entry.getKey();
+                for (Outlier o : entry.getValue()) {
+                    // WARNING row
+                    ps.setString(1, report.buildingType());
+                    ps.setString(2, o.elementRef());
+                    ps.setString(3, "WARNING");
+                    ps.setString(4, "DIMENSION_RANGE_" + o.dimension() + ":" + ifcClass);
+                    ps.setString(5, String.format(
+                            "%s %s=%.0fmm outside typical range [%.0f-%.0f]mm",
+                            ifcClass, o.dimension(), o.actual(), o.rangeMin(), o.rangeMax()));
+                    ps.setDouble(6, o.actual());
+                    ps.setDouble(7, o.rangeMin());
+                    ps.setDouble(8, o.rangeMax());
+                    ps.setNull(9, java.sql.Types.VARCHAR);
+                    ps.addBatch();
+
+                    // SUGGESTION row — nearest typical midpoint
+                    double typical = (o.rangeMin() + o.rangeMax()) / 2.0;
+                    ps.setString(1, report.buildingType());
+                    ps.setString(2, o.elementRef());
+                    ps.setString(3, "SUGGESTION");
+                    ps.setString(4, "DIMENSION_RANGE_" + o.dimension() + ":" + ifcClass);
+                    ps.setString(5, String.format(
+                            "Nearest typical %s for %s: %.0fmm",
+                            o.dimension(), ifcClass, typical));
+                    ps.setDouble(6, o.actual());
+                    ps.setDouble(7, o.rangeMin());
+                    ps.setDouble(8, o.rangeMax());
+                    ps.setString(9, String.format("Nearest typical: %.0fmm", typical));
+                    ps.addBatch();
+                }
+            }
+            ps.executeBatch();
+        }
+
+        BIMLogger.info(TAG, "Wrote {} dimension advisories for {}",
+                report.outlierCount() * 2, report.buildingType());
+    }
+
     /** One outlier element. */
     public record Outlier(
             String elementRef, String storey, String dimension,

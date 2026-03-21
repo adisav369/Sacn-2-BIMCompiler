@@ -84,6 +84,7 @@ public class BomValidator {
         if (extractionCount >= 0) {
             fails += checkExtractionReconciliation(bomConn, extractionCount, compositionPaired);
         }
+        fails += checkShapeConsistency(bomConn);
         printFloorDistribution(bomConn);
         printComplianceReport(bomConn);
 
@@ -610,6 +611,65 @@ public class BomValidator {
                 report("Extraction reconciliation", detail, "PASS");
             } else {
                 report("Extraction reconciliation", detail, "FAIL");
+                fails++;
+            }
+        }
+        return fails;
+    }
+
+    /**
+     * CP-4 §4e: Shape consistency gate — every LEAF row with dimensions must have
+     * a valid shape_archetype and scale_band. Catches:
+     * - Missing classification (NULL archetype on dimensioned rows)
+     * - Invalid archetype values (typos, schema drift)
+     * - Degenerate geometry (all-zero dimensions that shouldn't be LEAF)
+     *
+     * // Implementing BBC.md §4.2.3 — Witness: W-ARCHETYPE-GATE
+     */
+    private static int checkShapeConsistency(Connection conn) throws SQLException {
+        int fails = 0;
+        try (Statement stmt = conn.createStatement()) {
+            // Count LEAF rows with dimensions > 0 but no archetype
+            ResultSet rs = stmt.executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF'
+                      AND MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
+                      AND (shape_archetype IS NULL OR scale_band IS NULL)
+                    """);
+            int missing = rs.next() ? rs.getInt(1) : 0;
+
+            // Count LEAF rows with invalid archetype values
+            rs = stmt.executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF'
+                      AND shape_archetype IS NOT NULL
+                      AND shape_archetype NOT IN ('PLANAR', 'ELONGATED', 'COMPACT', 'MIXED')
+                    """);
+            int invalid = rs.next() ? rs.getInt(1) : 0;
+
+            // Count LEAF rows with invalid scale_band values
+            rs = stmt.executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF'
+                      AND scale_band IS NOT NULL
+                      AND scale_band NOT IN ('ARCHITECTURAL', 'FURNITURE', 'FITTING', 'TINY')
+                    """);
+            int invalidBand = rs.next() ? rs.getInt(1) : 0;
+
+            // Total classified
+            rs = stmt.executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF' AND shape_archetype IS NOT NULL
+                    """);
+            int classified = rs.next() ? rs.getInt(1) : 0;
+
+            int totalIssues = missing + invalid + invalidBand;
+            if (totalIssues == 0) {
+                report("Shape consistency (CP-4)", classified + " LEAF rows classified", "PASS");
+            } else {
+                String detail = String.format("%d missing archetype, %d invalid archetype, %d invalid band",
+                        missing, invalid, invalidBand);
+                report("Shape consistency (CP-4)", detail, "FAIL");
                 fails++;
             }
         }

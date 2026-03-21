@@ -276,4 +276,108 @@ class SHPipelineTest {
             }
         }
     }
+
+    // ── CP-4 §4a: Shape archetype + scale band witnesses ──────────────────
+
+    @Test
+    @Order(20)
+    @DisplayName("W-ARCHETYPE-BOM: Every LEAF row has non-null shape_archetype")
+    void wArchetypeBom_allLeafsClassified() throws Exception {
+        // Implementing BBC.md §2.2.1 — Witness: W-ARCHETYPE-BOM
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            // Count LEAF rows with dimensions > 0 that lack archetype
+            var rs = conn.createStatement().executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF'
+                      AND MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
+                      AND shape_archetype IS NULL
+                    """);
+            rs.next();
+            int missing = rs.getInt(1);
+            assertEquals(0, missing,
+                    "Every LEAF row with dimensions must have shape_archetype — " + missing + " missing");
+
+            // Count total classified
+            rs = conn.createStatement().executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF' AND shape_archetype IS NOT NULL
+                    """);
+            rs.next();
+            int classified = rs.getInt(1);
+            assertTrue(classified >= 40,
+                    "SH must have at least 40 classified LEAF rows, got " + classified);
+        }
+    }
+
+    @Test
+    @Order(21)
+    @DisplayName("W-ARCHETYPE-BOM: Every LEAF row has non-null scale_band")
+    void wArchetypeBom_allLeafsScaleBanded() throws Exception {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            var rs = conn.createStatement().executeQuery("""
+                    SELECT COUNT(*) FROM m_bom_line
+                    WHERE component_type = 'LEAF'
+                      AND MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
+                      AND scale_band IS NULL
+                    """);
+            rs.next();
+            int missing = rs.getInt(1);
+            assertEquals(0, missing,
+                    "Every LEAF row with dimensions must have scale_band — " + missing + " missing");
+        }
+    }
+
+    @Test
+    @Order(22)
+    @DisplayName("W-ARCHETYPE-DIST: SH archetype distribution is well-formed")
+    void wArchetypeDist_shDistribution() throws Exception {
+        // SH has walls (PLANAR), columns (ELONGATED), furniture (COMPACT)
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
+            var rs = conn.createStatement().executeQuery("""
+                    SELECT shape_archetype, COUNT(*) as cnt
+                    FROM m_bom_line
+                    WHERE component_type = 'LEAF' AND shape_archetype IS NOT NULL
+                    GROUP BY shape_archetype
+                    ORDER BY cnt DESC
+                    """);
+            int total = 0;
+            boolean hasPlanar = false;
+            System.out.println("\n  [CP-4] SH archetype distribution:");
+            while (rs.next()) {
+                String arch = rs.getString(1);
+                int cnt = rs.getInt(2);
+                System.out.printf("    %-12s %d%n", arch, cnt);
+                total += cnt;
+                if ("PLANAR".equals(arch)) hasPlanar = true;
+            }
+            assertTrue(hasPlanar, "SH must have PLANAR elements (walls, slabs)");
+            assertTrue(total >= 40, "Must classify all LEAF elements, got " + total);
+        }
+    }
+
+    @Test
+    @Order(23)
+    @DisplayName("W-ARCHETYPE-COMPUTE: Classification matches expected for known shapes")
+    void wArchetypeCompute_knownShapes() {
+        // Wall: 200mm × 5000mm × 3000mm → PLANAR
+        assertEquals("PLANAR", VerbFactorizer.classifyArchetype(200, 5000, 3000));
+        assertEquals("ARCHITECTURAL", VerbFactorizer.classifyScaleBand(200, 5000, 3000));
+
+        // Column: 300mm × 300mm × 3000mm → ELONGATED
+        assertEquals("ELONGATED", VerbFactorizer.classifyArchetype(300, 300, 3000));
+
+        // Furniture: 800mm × 600mm × 400mm → COMPACT
+        assertEquals("COMPACT", VerbFactorizer.classifyArchetype(800, 600, 400));
+        assertEquals("FURNITURE", VerbFactorizer.classifyScaleBand(800, 600, 400));
+
+        // Beam: 200mm × 100mm × 6000mm → ELONGATED
+        assertEquals("ELONGATED", VerbFactorizer.classifyArchetype(200, 100, 6000));
+
+        // Tiny fitting: 20mm × 20mm × 30mm → COMPACT + TINY
+        assertEquals("COMPACT", VerbFactorizer.classifyArchetype(20, 20, 30));
+        assertEquals("TINY", VerbFactorizer.classifyScaleBand(20, 20, 30));
+
+        // Degenerate: 0 × 0 × 0 → MIXED
+        assertEquals("MIXED", VerbFactorizer.classifyArchetype(0, 0, 0));
+    }
 }

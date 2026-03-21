@@ -136,7 +136,11 @@ public class GeometryIntegrityChecker {
                 // Opening elements (doors/windows) use depth-axis relaxation: mesh depth
                 // (Y for NS, X for EW) is the frame thickness, not the full wall thickness.
                 // Allow underrun on all axes for openings; only flag protrusion.
-                boolean isOpening = "IfcDoor".equals(ifcClass) || "IfcWindow".equals(ifcClass);
+                // CP-4 §4b: detect opening from geometry, not IFC class
+                double elemW = (rMaxX - rMinX) * 1000;
+                double elemD = (rMaxY - rMinY) * 1000;
+                double elemH = (rMaxZ - rMinZ) * 1000;
+                boolean isOpening = GeometricFingerprint.isHostedOpening(elemW, elemD, elemH);
 
                 List<String> elementWarnings = new ArrayList<>();
 

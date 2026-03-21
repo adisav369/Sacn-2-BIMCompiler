@@ -241,6 +241,10 @@ public class DisciplineBomBuilder {
                                       String orientation,
                                       String materialName, String materialRgba)
             throws SQLException {
+        // CP-4 §4a: compute geometric classification from allocated dimensions
+        String archetype = VerbFactorizer.classifyArchetype(allocW, allocD, allocH);
+        String scaleBand = VerbFactorizer.classifyScaleBand(allocW, allocD, allocH);
+
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
@@ -248,12 +252,14 @@ public class DisciplineBomBuilder {
                  dx, dy, dz, is_active, entity_type, qty,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
-                 material_name, material_rgba)
+                 material_name, material_rgba,
+                 shape_archetype, scale_band)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', 1,
                         ?, ?, ?,
                         ?, ?, ?, ?,
+                        ?, ?,
                         ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -275,6 +281,8 @@ public class DisciplineBomBuilder {
             stmt.setString(16, orientation);
             stmt.setString(17, materialName);
             stmt.setString(18, materialRgba);
+            stmt.setString(19, archetype);
+            stmt.setString(20, scaleBand);
             stmt.executeUpdate();
         }
     }

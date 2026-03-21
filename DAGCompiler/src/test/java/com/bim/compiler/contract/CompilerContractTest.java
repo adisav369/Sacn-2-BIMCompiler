@@ -11,6 +11,7 @@ import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.PlacementProver.PlacementData;
 import com.bim.compiler.validation.PlacementProver.ProofReport;
 import com.bim.compiler.validation.PlacementProver.ProofResult;
+import com.bim.compiler.validation.ProductCategory;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -252,7 +253,7 @@ public class CompilerContractTest {
     @DisplayName("C3a: P01 detects zero-extent bbox")
     void prover_zeroExtent_violated() {
         PlacementData pd = new PlacementData(
-                "G1", "IfcWall", "W1", "Ground Floor",
+                "G1", "IfcWall", ProductCategory.STRUCTURAL_PLANAR, "W1", "Ground Floor",
                 5.0, 5.0, 0.0, 1.0, 0.0, 3.0);
         ProofReport report = PlacementProver.prove(List.of(pd), "TEST");
         assertTrue(report.results().stream()
@@ -265,7 +266,7 @@ public class CompilerContractTest {
     @DisplayName("C3b: P02 detects infinite coordinates")
     void prover_infiniteCoord_violated() {
         PlacementData pd = new PlacementData(
-                "G1", "IfcWall", "W1", "Ground Floor",
+                "G1", "IfcWall", ProductCategory.STRUCTURAL_PLANAR, "W1", "Ground Floor",
                 Double.POSITIVE_INFINITY, 1.0, 0.0, 1.0, 0.0, 3.0);
         ProofReport report = PlacementProver.prove(List.of(pd), "TEST");
         assertTrue(report.results().stream()
@@ -278,7 +279,7 @@ public class CompilerContractTest {
     @DisplayName("C3c: P03 detects sub-millimeter dimension")
     void prover_subMmDimension_violated() {
         PlacementData pd = new PlacementData(
-                "G1", "IfcWall", "W1", "Ground Floor",
+                "G1", "IfcWall", ProductCategory.STRUCTURAL_PLANAR, "W1", "Ground Floor",
                 0.0, 0.0001, 0.0, 1.0, 0.0, 3.0);
         ProofReport report = PlacementProver.prove(List.of(pd), "TEST");
         assertTrue(report.results().stream()
@@ -291,7 +292,7 @@ public class CompilerContractTest {
     @DisplayName("C3d: Valid placement has zero critical violations")
     void prover_validPlacement_allCriticalPass() {
         PlacementData pd = new PlacementData(
-                "G1", "IfcWall", "W1", "Ground Floor",
+                "G1", "IfcWall", ProductCategory.STRUCTURAL_PLANAR, "W1", "Ground Floor",
                 0.0, 0.2, 0.0, 5.0, 0.0, 3.0);
         ProofReport report = PlacementProver.prove(List.of(pd), "TEST");
         assertEquals(0, report.criticalViolations(),
@@ -690,10 +691,11 @@ public class CompilerContractTest {
     void p06_crossProduct_furniture_exempt() {
         // Chair and table from same SET BOM — different elementRef, overlapping AABBs
         PlacementData chair = new PlacementData(
-                "CHAIR_1", "IfcFurnishingElement", "Chair - Dining:Chair - Dining",
+                "CHAIR_1", "IfcFurnishingElement", ProductCategory.FURNISHING,
+                "Chair - Dining:Chair - Dining",
                 "Ground Floor", 1.0, 1.43, 2.0, 2.44, 0.0, 1.227);
         PlacementData table = new PlacementData(
-                "TABLE_1", "IfcFurnishingElement",
+                "TABLE_1", "IfcFurnishingElement", ProductCategory.FURNISHING,
                 "Furniture_Table_Dining_w-Chairs_Rectangular:2000x1000x750mm",
                 "Ground Floor", 1.0, 3.0, 1.5, 2.5, 0.0, 0.75);
         // Chair AABB overlaps table AABB (chair pushed under table edge)
@@ -711,10 +713,12 @@ public class CompilerContractTest {
     void p06_sameProduct_furniture_flagged() {
         // Two identical chairs at overlapping positions — same elementRef = merge bug
         PlacementData chair1 = new PlacementData(
-                "CHAIR_1", "IfcFurnishingElement", "Chair - Dining:Chair - Dining",
+                "CHAIR_1", "IfcFurnishingElement", ProductCategory.FURNISHING,
+                "Chair - Dining:Chair - Dining",
                 "Ground Floor", 1.0, 1.43, 2.0, 2.44, 0.0, 1.227);
         PlacementData chair2 = new PlacementData(
-                "CHAIR_2", "IfcFurnishingElement", "Chair - Dining:Chair - Dining",
+                "CHAIR_2", "IfcFurnishingElement", ProductCategory.FURNISHING,
+                "Chair - Dining:Chair - Dining",
                 "Ground Floor", 1.1, 1.53, 2.0, 2.44, 0.0, 1.227);
         // Same product, overlapping AABBs → should be flagged
         ProofReport report = PlacementProver.prove(List.of(chair1, chair2), "TEST");
@@ -732,10 +736,12 @@ public class CompilerContractTest {
         // Two curtain wall panels with 20mm corner junction overlap
         // Panel ~25mm thick → minOverlap = 20mm < 50mm tolerance → exempt
         PlacementData panelA = new PlacementData(
-                "PANEL_A", "IfcPlate", "System Panel:Glazed",
+                "PANEL_A", "IfcPlate", ProductCategory.STRUCTURAL_PLANAR,
+                "System Panel:Glazed",
                 "Ground Floor", 0.0, 0.025, 0.0, 2.0, 0.0, 3.0);
         PlacementData panelB = new PlacementData(
-                "PANEL_B", "IfcPlate", "System Panel:Glazed",
+                "PANEL_B", "IfcPlate", ProductCategory.STRUCTURAL_PLANAR,
+                "System Panel:Glazed",
                 "Ground Floor", 0.005, 2.005, 0.0, 0.025, 0.0, 3.0);
         // Overlap region: x=[0.005,0.025]=20mm, y=[0,0.025]=25mm, z=[0,3]=3m
         // minOverlap = 20mm < 50mm → exempt
@@ -753,10 +759,12 @@ public class CompilerContractTest {
     void p06_plate_thickOverlap_flagged() {
         // Two plates with 60mm overlap → genuine plate-into-plate → flagged
         PlacementData panelA = new PlacementData(
-                "PANEL_A", "IfcPlate", "System Panel:Glazed",
+                "PANEL_A", "IfcPlate", ProductCategory.STRUCTURAL_PLANAR,
+                "System Panel:Glazed",
                 "Ground Floor", 0.0, 0.060, 0.0, 2.0, 0.0, 3.0);
         PlacementData panelB = new PlacementData(
-                "PANEL_B", "IfcPlate", "System Panel:Glazed",
+                "PANEL_B", "IfcPlate", ProductCategory.STRUCTURAL_PLANAR,
+                "System Panel:Glazed",
                 "Ground Floor", 0.0, 2.0, 0.0, 0.060, 0.0, 3.0);
         // Overlap region: x=[0,0.060]=60mm, y=[0,0.060]=60mm, z=[0,3]=3m
         // minOverlap = 60mm ≥ 50mm → flagged

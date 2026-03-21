@@ -271,6 +271,31 @@ class DesignerClient:
             "buildingId": building_id,
         })
 
+    # ── FL-2: Flywheel Advisory Panel (§27) ─────────────────────────
+
+    def list_advisories(self, building_id: str) -> dict:
+        """List flywheel advisories for a building (§27).
+
+        Returns: { success, advisories: [{layer, severity, message, ...}],
+                   infoCount, warningCount, suggestionCount, error }
+        """
+        return self._send({
+            "action": "listAdvisories",
+            "buildingId": building_id,
+        })
+
+    def suggest_dimensions(self, ifc_class: str) -> dict:
+        """Suggest typical dimensions for an IFC class from mined data (FL-3 prep).
+
+        Returns: { success, ifcClass, typicalMinW, typicalMaxW,
+                   typicalMinD, typicalMaxD, typicalMinH, typicalMaxH,
+                   observationCount, nearestProducts: [{productId, name, ...}], error }
+        """
+        return self._send({
+            "action": "suggestDimensions",
+            "ifcClass": ifc_class,
+        })
+
     def get_element_metadata(self, bom_id: str, building_id: str = "") -> dict:
         """Get metadata for a BOM element — properties popup (§26.6).
 

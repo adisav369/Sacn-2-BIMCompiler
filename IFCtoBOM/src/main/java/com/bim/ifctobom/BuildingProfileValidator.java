@@ -169,6 +169,57 @@ public class BuildingProfileValidator {
                 thisProfile, anomalies);
     }
 
+    /**
+     * Write advisory rows for profile anomalies to W_Validation_Advisory.
+     * One WARNING per anomaly, one INFO for profile summary.
+     * Called from IFCtoBOMPipeline after validate().
+     *
+     * // Implementing BIM_Designer_SRS.md §27.5 — Witness: W-FL-ADVISORY-5
+     */
+    public static void writeAdvisories(Connection discConn, Report report)
+            throws SQLException {
+        // Clear previous advisories for this building (idempotent re-run)
+        try (PreparedStatement del = discConn.prepareStatement(
+                "DELETE FROM W_Validation_Advisory WHERE building_type = ? AND layer = 'PROFILE'")) {
+            del.setString(1, report.buildingType());
+            del.executeUpdate();
+        }
+
+        String insert = """
+                INSERT INTO W_Validation_Advisory
+                (building_type, element_ref, layer, severity, rule_name, message)
+                VALUES (?, NULL, 'PROFILE', ?, ?, ?)
+                """;
+
+        try (PreparedStatement ps = discConn.prepareStatement(insert)) {
+            // WARNING rows for anomalies
+            for (String anomaly : report.anomalies()) {
+                String ruleName = anomaly.contains(":") ? "PROFILE_" + anomaly.split(":")[0] : "PROFILE_ANOMALY";
+                ps.setString(1, report.buildingType());
+                ps.setString(2, "WARNING");
+                ps.setString(3, ruleName);
+                ps.setString(4, anomaly);
+                ps.addBatch();
+            }
+
+            // INFO row — profile summary
+            ps.setString(1, report.buildingType());
+            ps.setString(2, "INFO");
+            ps.setString(3, "PROFILE_SUMMARY");
+            ps.setString(4, String.format(
+                    "%d IFC classes detected, dominant: %s (%.1f%%), %d total elements",
+                    report.classCount(), report.dominantClass(),
+                    report.profile().getOrDefault(report.dominantClass(), 0.0),
+                    report.totalElements()));
+            ps.addBatch();
+
+            ps.executeBatch();
+        }
+
+        BIMLogger.info(TAG, "Wrote {} profile advisories for {}",
+                report.anomalies().size() + 1, report.buildingType());
+    }
+
     public record Report(
             String buildingType, int totalElements, int classCount,
             String dominantClass, Map<String, Double> profile,

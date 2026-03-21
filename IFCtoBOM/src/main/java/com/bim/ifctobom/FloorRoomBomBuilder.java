@@ -126,16 +126,22 @@ public class FloorRoomBomBuilder {
     private static void insertSpaceLine(Connection conn, String bomId, SpaceConfig space,
                                         double dx, double dy, double dz)
             throws SQLException {
+        // CP-4 §4a: compute geometric classification from space AABB
+        String archetype = VerbFactorizer.classifyArchetype(space.aabbW(), space.aabbD(), space.aabbH());
+        String scaleBand = VerbFactorizer.classifyScaleBand(space.aabbW(), space.aabbD(), space.aabbH());
+
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
                  dx, dy, dz, is_active, entity_type,
-                 allocated_width_mm, allocated_depth_mm, allocated_height_mm)
+                 allocated_width_mm, allocated_depth_mm, allocated_height_mm,
+                 shape_archetype, scale_band)
                 VALUES (?, ?, 'LEAF', ?, ?,
                         '0', 20, 0,
                         ?, ?, ?, 1, 'D',
-                        ?, ?, ?)
+                        ?, ?, ?,
+                        ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -148,6 +154,8 @@ public class FloorRoomBomBuilder {
             stmt.setInt(8, space.aabbW());
             stmt.setInt(9, space.aabbD());
             stmt.setInt(10, space.aabbH());
+            stmt.setString(11, archetype);
+            stmt.setString(12, scaleBand);
             stmt.executeUpdate();
         }
     }

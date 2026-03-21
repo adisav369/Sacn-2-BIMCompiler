@@ -1,5 +1,7 @@
 package com.bim.compiler.export;
 
+import com.bim.compiler.validation.GeometricFingerprint;
+
 import java.io.*;
 import java.sql.*;
 import java.util.*;
@@ -122,13 +124,15 @@ public class BOMExporter {
                 double totalLength = 0;
                 double totalArea = 0;
 
-                if (ifcClass.equals("IfcMember")) {
+                // CP-4 §4c: aggregate by archetype, not IFC class
+                var arch = GeometricFingerprint.classifyArchetype(
+                        width * 1000, depth * 1000, height * 1000);
+                if (arch == GeometricFingerprint.ShapeArchetype.ELONGATED) {
                     // Linear member - length is the longest dimension
                     double length = Math.max(Math.max(width, depth), height);
                     totalLength = length * qty;
-                } else if (ifcClass.equals("IfcPlate") || ifcClass.equals("IfcSlab")) {
-                    // Sheet/slab - area calculation
-                    // Area is the two largest dimensions
+                } else if (arch == GeometricFingerprint.ShapeArchetype.PLANAR) {
+                    // Sheet/slab - area calculation (two largest dimensions)
                     double[] dims = {width, depth, height};
                     Arrays.sort(dims);
                     totalArea = dims[1] * dims[2] * qty;
@@ -273,24 +277,41 @@ public class BOMExporter {
         System.out.println("  Exported: " + path);
     }
 
+    /**
+     * Determine UOM from geometric archetype, not IFC class.
+     *
+     * <p>CP-4 §4c: ELONGATED → linear (EA, cut to length).
+     * PLANAR + ARCHITECTURAL → cubic (M3, concrete). PLANAR → sheet (M2).
+     */
     private String determineUOM(String ifcClass, double w, double d, double h) {
-        return switch (ifcClass) {
-            case "IfcMember" -> "EA";      // Each (linear cut to length)
-            case "IfcPlate" -> "M2";       // Square meters
-            case "IfcSlab" -> "M3";        // Cubic meters (concrete)
-            case "IfcRoof" -> "M2";        // Square meters
+        var arch = GeometricFingerprint.classifyArchetype(w, d, h);
+        var band = GeometricFingerprint.classifyScaleBand(w, d, h);
+        return switch (arch) {
+            case ELONGATED -> "EA";      // Each (linear cut to length)
+            case PLANAR -> band == GeometricFingerprint.ScaleBand.ARCHITECTURAL ? "M3" : "M2";
             default -> "EA";
         };
     }
 
+    /**
+     * Format description from geometric archetype, not IFC class.
+     *
+     * <p>CP-4 §4c: description template based on shape, not label.
+     */
     private String formatDescription(String ifcClass, String type, double w, double d, double h) {
-        return switch (ifcClass) {
-            case "IfcMember" -> String.format("Steel frame member %.0fx%.0f L=%.0fmm",
+        var arch = GeometricFingerprint.classifyArchetype(w, d, h);
+        var band = GeometricFingerprint.classifyScaleBand(w, d, h);
+        return switch (arch) {
+            case ELONGATED -> String.format("Linear member %.0fx%.0f L=%.0fmm",
                 Math.min(w, d), Math.max(Math.min(w, d), Math.min(d, h)), Math.max(Math.max(w, d), h));
-            case "IfcPlate" -> String.format("Sheet cladding %.0fx%.0fmm",
-                Math.max(w, d), Math.max(Math.max(w, d), h));
-            case "IfcSlab" -> String.format("Concrete slab %.0fx%.0fx%.0fmm", w, d, h);
-            case "IfcRoof" -> String.format("Roof panel %.0fx%.0fmm", w, d);
+            case PLANAR -> {
+                if (band == GeometricFingerprint.ScaleBand.ARCHITECTURAL) {
+                    yield String.format("Planar element %.0fx%.0fx%.0fmm", w, d, h);
+                }
+                double[] dims = {w, d, h};
+                java.util.Arrays.sort(dims);
+                yield String.format("Sheet element %.0fx%.0fmm", dims[1], dims[2]);
+            }
             default -> type;
         };
     }

@@ -280,7 +280,8 @@ After Snap, the **Status Strip** shows per-rule compliance:
 | Save | `save` | Stores current bboxes to `work_output.db` as a new variant (C_Order + C_OrderLine + W_Variant). Cheap, frequent. |
 | Recall | `recall` | Restores a previous variant. Non-destructive — originals never overwritten. |
 | List Variants | `listVariants` | Shows all saved variants (most recent first) with label and line count. |
-| Promote | `promote` | Governance gate — creates m_bom + m_bom_line in BOM.db. Requires compliance pass. |
+| Approve | `approve` | Compliance gate — validates all rooms, checks dangles, transitions master C_Order IP → AP. |
+| Promote | `promote` | Governance gate — creates m_bom + m_bom_line in BOM.db. Requires AP status. Freezes master C_Order AP → CO. |
 
 **Save creates:**
 - Sub-C_Order (child of master order for the building)
@@ -288,6 +289,15 @@ After Snap, the **Status Strip** shows per-rule compliance:
 - W_Variant pointer (label, is_active, line count)
 
 **Round-trip fidelity:** Save stores mm, recall restores mm. No precision loss.
+
+**Promote flow (G-10):**
+1. Click **Approve** — validates placement rules, checks for dangling product references. If all pass, master C_Order transitions IP → AP.
+2. Click **Promote to BOM** — requires AP status (button greyed out otherwise).
+   - Runs dangle check on ITEM bboxes. If unresolved products exist, returns the dangle list and blocks.
+   - Writes `m_bom` rows (entity_type='U', provenance='GENERATIVE') for each BUILDING/FLOOR/ROOM.
+   - Writes `m_bom_line` rows with parent-relative offsets and AABB dims.
+   - Freezes master C_Order AP → CO. Design mode is now read-only for this building.
+3. Promoted BOM entries are immediately available as templates for new buildings.
 
 ### 5.8 BOM Chooser — Search-First Product Browser (§17.18)
 

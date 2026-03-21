@@ -2520,21 +2520,69 @@ User clicks "Apply" on SUGGESTION
   → Viewport updates via sync timer (UX-F-26)
 ```
 
-### 27.5 Implementation Notes
+### 27.5 Output Specification
+
+**Schema (DV012):**
+```sql
+CREATE TABLE IF NOT EXISTS W_Validation_Advisory (
+    advisory_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+    building_type   TEXT NOT NULL,
+    element_ref     TEXT,           -- element bomId (NULL for profile-level)
+    layer           TEXT NOT NULL   -- 'DIMENSION', 'PROFILE', 'COMPLIANCE', 'SHAPE'
+                    CHECK(layer IN ('DIMENSION','PROFILE','COMPLIANCE','SHAPE')),
+    severity        TEXT NOT NULL   -- 'INFO', 'WARNING', 'SUGGESTION'
+                    CHECK(severity IN ('INFO','WARNING','SUGGESTION')),
+    rule_name       TEXT,           -- e.g. 'DIMENSION_RANGE_W:IfcWall'
+    message         TEXT NOT NULL,  -- human-readable
+    actual_value    REAL,
+    expected_min    REAL,
+    expected_max    REAL,
+    suggestion      TEXT,           -- e.g. 'Nearest typical: 5000mm (from Esplanades)'
+    created_at      TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_advisory_building ON W_Validation_Advisory(building_type);
+CREATE INDEX IF NOT EXISTS idx_advisory_severity ON W_Validation_Advisory(severity);
+```
+
+**Java API record:**
+```java
+record Advisory(int advisoryId, String buildingType, String elementRef,
+                String layer, String severity, String ruleName,
+                String message, Double actualValue,
+                Double expectedMin, Double expectedMax,
+                String suggestion) {}
+
+record ListAdvisoriesResponse(boolean success,
+                               List<Advisory> advisories,
+                               int infoCount, int warningCount,
+                               int suggestionCount, String error) {}
+```
+
+**Writers (IFCtoBOMPipeline post-validate):**
+- `DimensionRangeValidator.Report.outliersByClass` → one WARNING row per outlier, one SUGGESTION row if nearest typical exists
+- `BuildingProfileValidator.Report.anomalies` → one WARNING row per anomaly (DIVERSITY, MISSING_OPENINGS, NOVEL_CLASS, EXTREME_RATIO)
+- Profile-level INFO for building stats (class count, dominant class)
+
+**Wire protocol:** `{"action":"listAdvisories","buildingId":"..."}` → `ListAdvisoriesResponse` JSON
+
+### 27.6 Implementation Notes
 
 - **Java:** DesignerAPIImpl +1 method (`listAdvisories`), DesignerServer +1 dispatch case
-- **Python:** client.py +1 verb (`list_advisories`), panel.py +1 section
-- **Schema:** DV012 migration creates `W_Validation_Advisory` table
+- **Python:** client.py +1 verb (`list_advisories`), panel.py +1 section (`_draw_advisory_panel`)
+- **Schema:** DV012 migration creates `W_Validation_Advisory` table in disc_validation.db
 - **No new validation logic on Python side** — all intelligence stays in Java
 - **Backward compatible:** advisory panel is additive, existing panels unchanged
+- **Write-side:** DimensionRangeValidator and BuildingProfileValidator gain `writeAdvisories(Connection discConn, Report report)` methods, called from IFCtoBOMPipeline after `validate()`
 
-### 27.6 Witness Claims
+### 27.7 Witness Claims
 
 | Witness | Claim |
 |---------|-------|
 | W-FL-ADVISORY-1 | listAdvisories returns advisories for known building |
-| W-FL-ADVISORY-2 | SUGGESTION-type advisory includes suggested value |
+| W-FL-ADVISORY-2 | SUGGESTION-type advisory includes suggested value and nearest typical |
 | W-FL-ADVISORY-3 | Empty advisory list for building with no outliers |
+| W-FL-ADVISORY-4 | DimensionRangeValidator.writeAdvisories creates WARNING + SUGGESTION rows for each outlier |
+| W-FL-ADVISORY-5 | BuildingProfileValidator.writeAdvisories creates WARNING rows for anomalies |
 | W-FL-CALIBRATE-1 | suggestDimensions(IfcWall) returns typical range |
 | W-FL-CALIBRATE-2 | suggestDimensions(unknown) returns empty |
 

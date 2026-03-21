@@ -317,6 +317,10 @@ public class CompositionBomBuilder {
                                        ExtractionElement e, int seq,
                                        double dx, double dy, double dz)
             throws SQLException {
+        // CP-4 §4a: compute geometric classification from element dimensions
+        String archetype = VerbFactorizer.classifyArchetype(e.widthMm(), e.depthMm(), e.heightMm());
+        String scaleBand = VerbFactorizer.classifyScaleBand(e.widthMm(), e.depthMm(), e.heightMm());
+
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
@@ -324,12 +328,14 @@ public class CompositionBomBuilder {
                  dx, dy, dz, is_active, entity_type,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
-                 material_name, material_rgba)
+                 material_name, material_rgba,
+                 shape_archetype, scale_band)
                 VALUES (?, ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D',
                         ?, ?, ?,
                         ?, ?, ?, ?,
+                        ?, ?,
                         ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -350,6 +356,8 @@ public class CompositionBomBuilder {
             stmt.setString(15, e.orientation());
             stmt.setString(16, e.materialName());
             stmt.setString(17, e.materialRgba());
+            stmt.setString(18, archetype);
+            stmt.setString(19, scaleBand);
             stmt.executeUpdate();
         }
     }

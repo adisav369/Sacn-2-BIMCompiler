@@ -663,14 +663,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return deriveDiscipline(ifcClass);
     }
 
+    /**
+     * Derive discipline from product category — fallback when BOM hierarchy lacks discipline.
+     *
+     * <p>CP-4 semantic half: uses ProductCategory.deriveDiscipline() instead of
+     * switching on IFC class strings. The primary path is still the disciplineStack.
+     */
+    // Implementing BBC.md §2.2.1 — Witness: W-PRODUCT-CATEGORY
     private static String deriveDiscipline(String ifcClass) {
-        if (ifcClass == null) return "ARC";
-        return switch (ifcClass) {
-            case "IfcBeam", "IfcMember", "IfcPlate", "IfcSlab",
-                 "IfcStairFlight", "IfcRailing" -> "STR";
-            case "IfcFlowController", "IfcFlowFitting",
-                 "IfcFlowSegment", "IfcFlowTerminal" -> "MEP";
-            default -> "ARC";
-        };
+        return com.bim.compiler.validation.ProductCategory.deriveDiscipline(
+            com.bim.compiler.validation.ProductCategory.resolve(ifcClass));
     }
 }

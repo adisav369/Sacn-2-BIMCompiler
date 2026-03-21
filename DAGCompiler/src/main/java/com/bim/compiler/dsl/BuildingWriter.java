@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
+import com.bim.compiler.validation.GeometricFingerprint;
 import com.bim.compiler.bom.walker.AssemblyStructureVisitor;
 import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.contract.AssemblerFactory;
@@ -945,7 +946,9 @@ public class BuildingWriter {
             List<PlacementProver.PlacementData> proofData = new java.util.ArrayList<>();
             for (PlacementLoader.Placement p : allPlacements) {
                 proofData.add(new PlacementProver.PlacementData(
-                    p.elementRef(), p.ifcClass(), p.elementRef(), p.storey(),
+                    p.elementRef(), p.ifcClass(),
+                    com.bim.compiler.validation.ProductCategory.resolve(p.ifcClass()),
+                    p.elementRef(), p.storey(),
                     p.minX(), p.maxX(), p.minY(), p.maxY(), p.minZ(), p.maxZ()));
             }
             PlacementProver.ProofReport proofReport = PlacementProver.prove(proofData, buildingName);
@@ -979,25 +982,41 @@ public class BuildingWriter {
             if (!discPrefix.isEmpty()) {
                 guidPrefix = discPrefix + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
             } else {
-                // Existing ARC logic
-                guidPrefix = switch (p.ifcClass()) {
-                    case "IfcColumn" -> "COLUMN_MD_";
-                    case "IfcMember" -> "FRAME_MD_";
-                    case "IfcSlab"   -> "SLAB_MD_";
-                    default          -> "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+                // CP-4 §4c: ARC GUID prefix from archetype, not IFC class
+                double wMm = (p.maxX() - p.minX()) * 1000;
+                double dMm = (p.maxY() - p.minY()) * 1000;
+                double hMm = (p.maxZ() - p.minZ()) * 1000;
+                var arch = GeometricFingerprint.classifyArchetype(wMm, dMm, hMm);
+                guidPrefix = switch (arch) {
+                    case ELONGATED -> "FRAME_MD_";
+                    case PLANAR    -> "SLAB_MD_";
+                    case COMPACT   -> "COMPACT_MD_";
+                    default        -> "MD_";
                 };
             }
             String guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal()
                     + (p.elementRef() != null && p.elementRef().startsWith("A_") ? "_A"
                      : p.elementRef() != null && p.elementRef().startsWith("B_") ? "_B" : "");
 
-            String type = switch (p.ifcClass()) {
-                case "IfcSlab"   -> "FLOOR";
-                case "IfcPlate"  -> "CURTAIN_PANEL";
-                default          -> p.ifcClass();
+            // CP-4 §4c: element type from archetype, not IFC class
+            double wMm2 = (p.maxX() - p.minX()) * 1000;
+            double dMm2 = (p.maxY() - p.minY()) * 1000;
+            double hMm2 = (p.maxZ() - p.minZ()) * 1000;
+            var arch2 = GeometricFingerprint.classifyArchetype(wMm2, dMm2, hMm2);
+            var band2 = GeometricFingerprint.classifyScaleBand(wMm2, dMm2, hMm2);
+            String type = switch (arch2) {
+                case PLANAR -> band2 == GeometricFingerprint.ScaleBand.ARCHITECTURAL ? "FLOOR" : "CURTAIN_PANEL";
+                case ELONGATED -> "FRAME";
+                case COMPACT -> "FITTING";
+                default -> p.ifcClass();
             };
 
-            if ("IfcRoof".equals(p.ifcClass())) {
+            // Roof detection: PLANAR or MIXED elements at roof storey height
+            boolean isRoof = hMm2 > 0 && p.minZ() > 2.5
+                    && (arch2 == GeometricFingerprint.ShapeArchetype.PLANAR
+                        || arch2 == GeometricFingerprint.ShapeArchetype.MIXED)
+                    && "IfcRoof".equals(p.ifcClass()); // TODO: remove IFC class check once roof detection is fully geometric
+            if (isRoof) {
                 dispatchOverrideRoof(p, roofOverrides, furnitureLibrary);
                 roofOverrides++;
             } else if (binder != null) {
@@ -1229,14 +1248,19 @@ public class BuildingWriter {
         if (!discPrefix.isEmpty()) {
             guidPrefix = discPrefix + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
         } else {
-            guidPrefix = switch (p.ifcClass()) {
-                case "IfcColumn" -> "COLUMN_MD_";
-                case "IfcMember" -> "FRAME_MD_";
-                case "IfcSlab"   -> "SLAB_MD_";
-                default          -> "MD_" + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
-            };
-        }
-        return guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
+                // CP-4 §4c: ARC GUID prefix from archetype
+                double rwMm = (p.maxX() - p.minX()) * 1000;
+                double rdMm = (p.maxY() - p.minY()) * 1000;
+                double rhMm = (p.maxZ() - p.minZ()) * 1000;
+                var rArch = GeometricFingerprint.classifyArchetype(rwMm, rdMm, rhMm);
+                guidPrefix = switch (rArch) {
+                    case ELONGATED -> "FRAME_MD_";
+                    case PLANAR    -> "SLAB_MD_";
+                    case COMPACT   -> "COMPACT_MD_";
+                    default        -> "MD_";
+                };
+            }
+            return guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
     }
 
     /**

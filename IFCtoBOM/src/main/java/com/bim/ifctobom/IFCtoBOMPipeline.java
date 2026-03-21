@@ -138,6 +138,13 @@ public class IFCtoBOMPipeline {
                             DimensionRangeValidator.Report report =
                                     drv.validate(allElements, config.buildingType());
                             report.print();
+                            // FL-2: write advisories to W_Validation_Advisory (DV012)
+                            // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-4
+                            try {
+                                DimensionRangeValidator.writeAdvisories(discConn, report);
+                            } catch (SQLException e) {
+                                BIMLogger.warn("IFCtoBOM", "Dimension advisory write skipped: {}", e.getMessage());
+                            }
                         }
 
                         // Layer 2: Building profile check (DV011)
@@ -146,6 +153,13 @@ public class IFCtoBOMPipeline {
                             BuildingProfileValidator.Report profileReport =
                                     bpv.validate(allElements, config.buildingType());
                             profileReport.print();
+                            // FL-2: write advisories to W_Validation_Advisory (DV012)
+                            // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-5
+                            try {
+                                BuildingProfileValidator.writeAdvisories(discConn, profileReport);
+                            } catch (SQLException e) {
+                                BIMLogger.warn("IFCtoBOM", "Profile advisory write skipped: {}", e.getMessage());
+                            }
                         }
                     } catch (Exception e) {
                         BIMLogger.warn("IFCtoBOM", "Dimension range check skipped: {}", e.getMessage());

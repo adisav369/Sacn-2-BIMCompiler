@@ -384,6 +384,9 @@ class BIM_PT_bim_designer(Panel):
         if props.last_element_count > 0:
             box.label(text=f"~{props.last_element_count} elements", icon='MESH_DATA')
 
+        # ── Flywheel Advisories (FL-2, §27) ────────────────────────────
+        self._draw_advisory_panel(context, box, props)
+
         # ── Status Strip — per-rule compliance (UX-F-18/19) ────────────
         self._draw_status_strip(context, box, props)
 
@@ -444,6 +447,60 @@ class BIM_PT_bim_designer(Panel):
         row.operator("bim.designer_promote", icon='EXPORT')
         row.enabled = props.is_connected
 
+
+    # ── FL-2: Flywheel Advisory Panel (§27) ─────────────────────────
+
+    def _draw_advisory_panel(self, context, box, props):
+        """Draw the Flywheel Advisory Panel — colour-coded advisories."""
+        adv_box = box.box()
+        adv_box.label(text="Flywheel Advisories", icon='LIGHT_SUN')
+
+        # Refresh button
+        row = adv_box.row(align=True)
+        row.operator("bim.designer_list_advisories", icon='FILE_REFRESH')
+        row.enabled = props.is_connected
+
+        # Parse cached advisories
+        raw = context.scene.get("_advisories", "")
+        advisories = json.loads(raw) if raw else []
+
+        if not advisories:
+            adv_box.label(text="No advisories — refresh after compilation",
+                          icon='CHECKMARK')
+            return
+
+        # Severity summary
+        counts = {}
+        for a in advisories:
+            sev = a.get("severity", "INFO")
+            counts[sev] = counts.get(sev, 0) + 1
+
+        summary_row = adv_box.row(align=True)
+        for sev, icon_name in [("WARNING", 'ERROR'), ("SUGGESTION", 'LIGHT_SUN'),
+                                ("INFO", 'INFO')]:
+            cnt = counts.get(sev, 0)
+            if cnt > 0:
+                summary_row.label(text=f"{sev}: {cnt}", icon=icon_name)
+
+        # Advisory rows (cap at 20 for UI)
+        for adv in advisories[:20]:
+            sev = adv.get("severity", "INFO")
+            icon = {'INFO': 'INFO', 'WARNING': 'ERROR',
+                    'SUGGESTION': 'LIGHT_SUN'}.get(sev, 'DOT')
+
+            row = adv_box.row(align=True)
+            row.label(text=adv.get("message", "?"), icon=icon)
+
+            # Click-to-highlight for element-level advisories
+            elem = adv.get("elementRef")
+            if elem:
+                op = row.operator("bim.designer_focus_section",
+                                  text="", icon='ZOOM_SELECTED')
+                op.section_id = elem
+
+        if len(advisories) > 20:
+            adv_box.label(text=f"... and {len(advisories) - 20} more",
+                          icon='THREE_DOTS')
 
     def _draw_bom_chooser(self, context, box, props):
         """Draw the BOM Chooser — search-first product browser (§17.18).

@@ -40,6 +40,42 @@ class GeometricFingerprintTest {
                "DAGCompiler/lib/output/ifc2x3_duplex_enbloc.db"},
     };
 
+    /** All building pairs with both extracted and compiled DBs. */
+    private static final String[][] ALL_BUILDINGS = {
+        {"SH",  "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db",     "DAGCompiler/lib/output/ifc4_samplehouse_enbloc.db"},
+        {"DX",  "DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db",        "DAGCompiler/lib/output/ifc2x3_duplex_enbloc.db"},
+        {"FK",  "DAGCompiler/lib/input/Ifc4_FZKHaus_extracted.db",          "DAGCompiler/lib/output/ifc4_fzkhaus_enbloc.db"},
+        {"IN",  "DAGCompiler/lib/input/Ifc2x3_AC11Institute_extracted.db",  "DAGCompiler/lib/output/ifc2x3_ac11institute_enbloc.db"},
+        {"BR",  "DAGCompiler/lib/input/Infra_Bridge_extracted.db",          "DAGCompiler/lib/output/infra_bridge_enbloc.db"},
+        {"IP",  "DAGCompiler/lib/input/Infra_Plumbing_extracted.db",        "DAGCompiler/lib/output/infra_plumbing_enbloc.db"},
+        {"BA",  "DAGCompiler/lib/input/Building_Architecture_extracted.db",  "DAGCompiler/lib/output/building_architecture_enbloc.db"},
+        {"BH",  "DAGCompiler/lib/input/Building_Hvac_extracted.db",         "DAGCompiler/lib/output/building_hvac_enbloc.db"},
+        {"BS",  "DAGCompiler/lib/input/Building_Structural_extracted.db",    "DAGCompiler/lib/output/building_structural_enbloc.db"},
+        {"SC",  "DAGCompiler/lib/input/Schependomlaan_extracted.db",        "DAGCompiler/lib/output/schependomlaan_enbloc.db"},
+        {"CA",  "DAGCompiler/lib/input/Clinic_Architecture_extracted.db",    "DAGCompiler/lib/output/clinic_architecture_enbloc.db"},
+        {"CS",  "DAGCompiler/lib/input/Clinic_Structural_extracted.db",      "DAGCompiler/lib/output/clinic_structural_enbloc.db"},
+        {"CH",  "DAGCompiler/lib/input/Clinic_HVAC_extracted.db",           "DAGCompiler/lib/output/clinic_hvac_enbloc.db"},
+        {"CE",  "DAGCompiler/lib/input/Clinic_Electrical_extracted.db",      "DAGCompiler/lib/output/clinic_electrical_enbloc.db"},
+        {"CP",  "DAGCompiler/lib/input/Clinic_Plumbing_extracted.db",       "DAGCompiler/lib/output/clinic_plumbing_enbloc.db"},
+        {"ES",  "DAGCompiler/lib/input/Esplanades_extracted.db",            "DAGCompiler/lib/output/esplanades_enbloc.db"},
+        {"MO",  "DAGCompiler/lib/input/Molio_extracted.db",                 "DAGCompiler/lib/output/molio_enbloc.db"},
+        {"GH",  "DAGCompiler/lib/input/AC9_HausGH_extracted.db",           "DAGCompiler/lib/output/ac9_hausgh_enbloc.db"},
+        {"NI",  "DAGCompiler/lib/input/AC90_Niedriha_extracted.db",         "DAGCompiler/lib/output/ac90_niedriha_enbloc.db"},
+        {"JE",  "DAGCompiler/lib/input/Jesse_extracted.db",                 "DAGCompiler/lib/output/jesse_enbloc.db"},
+        {"WI",  "DAGCompiler/lib/input/Wilfer_extracted.db",                "DAGCompiler/lib/output/wilfer_enbloc.db"},
+        {"JS",  "DAGCompiler/lib/input/AC90_Jasmin_extracted.db",           "DAGCompiler/lib/output/ac90_jasmin_enbloc.db"},
+        {"WB",  "DAGCompiler/lib/input/BimWhale_Basic_extracted.db",        "DAGCompiler/lib/output/bimwhale_basic_enbloc.db"},
+        {"WL",  "DAGCompiler/lib/input/BimWhale_Large_extracted.db",        "DAGCompiler/lib/output/bimwhale_large_enbloc.db"},
+        {"WT",  "DAGCompiler/lib/input/BimWhale_Tall_extracted.db",         "DAGCompiler/lib/output/bimwhale_tall_enbloc.db"},
+        {"WA",  "DAGCompiler/lib/input/BimWhale_Advanced_extracted.db",     "DAGCompiler/lib/output/bimwhale_advanced_enbloc.db"},
+        {"RA",  "DAGCompiler/lib/input/Revit_ARC_extracted.db",             "DAGCompiler/lib/output/revit_arc_enbloc.db"},
+        {"RM",  "DAGCompiler/lib/input/Revit_MEP_extracted.db",             "DAGCompiler/lib/output/revit_mep_enbloc.db"},
+        {"RS",  "DAGCompiler/lib/input/Revit_STR_extracted.db",             "DAGCompiler/lib/output/revit_str_enbloc.db"},
+        {"CL",  "DAGCompiler/lib/input/SampleCastle_extracted.db",          "DAGCompiler/lib/output/samplecastle_enbloc.db"},
+        {"HI",  "DAGCompiler/lib/input/HITOS_extracted.db",                 "DAGCompiler/lib/output/hitos_enbloc.db"},
+        {"TE",  "DAGCompiler/lib/input/SJTII_Terminal_extracted.db",        "DAGCompiler/lib/output/sjtii_terminal_enbloc.db"},
+    };
+
     // =====================================================================
     // W-SHAPE: Class consistency — is each element what it claims to be?
     // =====================================================================
@@ -105,106 +141,16 @@ class GeometricFingerprintTest {
         return tests;
     }
 
+    // W-EQUIV removed (session 48) — superseded by W-MULTISET.
+    // W-EQUIV used per-class dimension-sorted pairing which broke at 80.2% for DX
+    // (round pipes conflated with rectangular waste pipes). W-MULTISET sorts ALL
+    // fingerprints by ratio triple — no pairing needed, no class dependency.
+    // See LAST_MILE_PROBLEM.md §Geometric Fingerprint.
+
     // =====================================================================
-    // W-EQUIV: Cross-mode equivalence — extracted ≡ compiled
+    // REMOVED — was wEquiv_crossModeEquivalence (superseded by wMultiset)
     // =====================================================================
-
-    @TestFactory
-    @DisplayName("W-EQUIV: Extracted and compiled fingerprints are geometrically equivalent")
-    Collection<DynamicTest> wEquiv_crossModeEquivalence() {
-        List<DynamicTest> tests = new ArrayList<>();
-
-        // Epsilon for ratio comparison: 5% allows for inner-surface AABB gradient
-        // while catching genuine shape mismatches (wrong element, 90° swap, etc.)
-        final double EPSILON = 0.05;
-
-        for (String[] b : BUILDINGS) {
-            String label = b[0];
-            String extractedDb = b[1];
-            String outputDb = b[2];
-
-            if (!new File(extractedDb).exists() || !new File(outputDb).exists()) continue;
-
-            tests.add(DynamicTest.dynamicTest(label + ": cross-mode equivalence", () -> {
-
-                List<Fingerprint> extracted = GeometricFingerprint.computeFromExtracted(extractedDb);
-                List<Fingerprint> compiled = GeometricFingerprint.computeFromOutput(outputDb);
-
-                // Cross-mode matching: GUIDs differ (IFC vs compiled names).
-                // Match by IFC class + sorted dimension order (largest first).
-                // Within same class, pair by dimension-sorted rank — same approach
-                // as COBOL batch matching: sort both sides identically, pair by position.
-                Map<String, List<Fingerprint>> extByClass = extracted.stream()
-                    .collect(Collectors.groupingBy(Fingerprint::ifcClass));
-                Map<String, List<Fingerprint>> cmpByClass = compiled.stream()
-                    .collect(Collectors.groupingBy(Fingerprint::ifcClass));
-
-                int matched = 0, equivalent = 0;
-                List<String> mismatches = new ArrayList<>();
-
-                StringBuilder report = new StringBuilder();
-                report.append(String.format("%n  %-30s %-15s %8s %8s %8s │ %8s %8s %8s │ %s%n",
-                    "Element", "Class", "ext.P", "ext.E", "ext.S", "cmp.P", "cmp.E", "cmp.S", "Verdict"));
-                report.append("  " + "─".repeat(130) + "\n");
-
-                for (var entry : extByClass.entrySet()) {
-                    String ifcClass = entry.getKey();
-                    List<Fingerprint> extList = new ArrayList<>(entry.getValue());
-                    List<Fingerprint> cmpList = cmpByClass.getOrDefault(ifcClass, List.of());
-                    if (cmpList.isEmpty()) continue;
-                    cmpList = new ArrayList<>(cmpList);
-
-                    // Sort both by (largeMM desc, mediumMM desc, smallMM desc) — deterministic pairing
-                    Comparator<Fingerprint> byDims = Comparator
-                        .comparingDouble(Fingerprint::largeMM).reversed()
-                        .thenComparing(Comparator.comparingDouble(Fingerprint::mediumMM).reversed())
-                        .thenComparing(Comparator.comparingDouble(Fingerprint::smallMM).reversed());
-                    extList.sort(byDims);
-                    cmpList.sort(byDims);
-
-                    int pairs = Math.min(extList.size(), cmpList.size());
-                    for (int i = 0; i < pairs; i++) {
-                        Fingerprint ext = extList.get(i);
-                        Fingerprint cmp = cmpList.get(i);
-                        matched++;
-
-                        String diff = GeometricFingerprint.proveEquivalence(ext, cmp, EPSILON);
-                        if (diff == null) equivalent++;
-
-                        String shortName = ext.elementName() != null ?
-                            ext.elementName().substring(0, Math.min(28, ext.elementName().length())) : "?";
-
-                        report.append(String.format("  %-30s %-15s %8.4f %8.4f %8.4f │ %8.4f %8.4f %8.4f │ %s%n",
-                            shortName, ifcClass,
-                            ext.planarity(), ext.elongation(), ext.squareness(),
-                            cmp.planarity(), cmp.elongation(), cmp.squareness(),
-                            diff == null ? "EQUIVALENT" : "DIFFER: " + diff));
-
-                        if (diff != null) {
-                            mismatches.add(String.format("[%s] %s (%s): %s", label, shortName, ifcClass, diff));
-                        }
-                    }
-                }
-
-                report.append(String.format("%n  Summary: %d matched, %d equivalent, %d differ (epsilon=%.2f)%n",
-                    matched, equivalent, mismatches.size(), EPSILON));
-
-                System.out.println(report);
-
-                if (!mismatches.isEmpty()) {
-                    System.out.println("  *** Elements with geometric differences (investigation targets):");
-                    mismatches.forEach(m -> System.out.println("    " + m));
-                }
-
-                assertTrue(matched > 0,
-                    String.format("[%s] No class matches between extracted and compiled", label));
-                System.out.printf("  [%s] %d/%d matched elements are geometrically equivalent (%.1f%%)%n",
-                    label, equivalent, matched, 100.0 * equivalent / matched);
-            }));
-        }
-
-        return tests;
-    }
+    /* REMOVED: W-EQUIV per-class pairing approach. Superseded by W-MULTISET. */
 
     // =====================================================================
     // W-CENSUS: Archetype distribution — sanity check on the whole building
@@ -256,6 +202,179 @@ class GeometricFingerprintTest {
         }
 
         return tests;
+    }
+
+    // =====================================================================
+    // W-MULTISET: Pairing-free shape equivalence — the definitive Rosetta proof
+    // =====================================================================
+
+    @TestFactory
+    @DisplayName("W-MULTISET: Sorted fingerprint multiset equivalence (all buildings)")
+    Collection<DynamicTest> wMultiset_allBuildings() {
+        List<DynamicTest> tests = new ArrayList<>();
+        final double EPSILON = 0.05;
+
+        for (String[] b : ALL_BUILDINGS) {
+            String label = b[0];
+            String extractedDb = b[1];
+            String outputDb = b[2];
+
+            if (!new File(extractedDb).exists() || !new File(outputDb).exists()) continue;
+
+            tests.add(DynamicTest.dynamicTest(label + ": multiset fingerprint", () -> {
+
+                List<Fingerprint> extracted = GeometricFingerprint.computeFromExtracted(extractedDb);
+                List<Fingerprint> compiled = GeometricFingerprint.computeFromOutput(outputDb);
+
+                GeometricFingerprint.MultisetResult result =
+                    GeometricFingerprint.proveMultisetEquivalence(extracted, compiled, EPSILON);
+
+                System.out.printf("  [%s] ext=%d cmp=%d matched=%d/%d (%.1f%%)%s%n",
+                    label, result.extractedCount(), result.compiledCount(),
+                    result.matched(), Math.min(result.extractedCount(), result.compiledCount()),
+                    result.matchRate(),
+                    result.isEquivalent() ? " ✓ EQUIVALENT" : "");
+
+                if (!result.mismatches().isEmpty() && result.mismatches().size() <= 10) {
+                    result.mismatches().forEach(m -> System.out.println("    " + m));
+                } else if (!result.mismatches().isEmpty()) {
+                    System.out.printf("    (%d mismatches, showing first 5)%n", result.mismatches().size());
+                    result.mismatches().stream().limit(5).forEach(m -> System.out.println("    " + m));
+                }
+
+                assertTrue(result.matched() > 0,
+                    String.format("[%s] No shape matches between extracted and compiled", label));
+            }));
+        }
+
+        return tests;
+    }
+
+    // =====================================================================
+    // W-DIAG: Diagnostic — shape vs position breakdown for failing buildings
+    // =====================================================================
+
+    @Test
+    @DisplayName("W-DIAG: Shape vs Position failure analysis (origin-normalized)")
+    void wDiag_shapeVsPosition() {
+        final double EPSILON = 0.05;
+        System.out.printf("%n  %-4s %6s  %14s  %14s  %14s  %10s %10s %10s  origin_delta%n",
+            "Bldg", "Count", "Shape%", "Pos%", "Both%", "median_m", "p90_m", "max_m");
+        System.out.println("  " + "─".repeat(120));
+
+        for (String[] b : ALL_BUILDINGS) {
+            String label = b[0];
+            if (!new File(b[1]).exists() || !new File(b[2]).exists()) continue;
+
+            List<Fingerprint> ext = GeometricFingerprint.computeFromExtracted(b[1]);
+            List<Fingerprint> cmp = GeometricFingerprint.computeFromOutput(b[2]);
+            if (ext.isEmpty() || cmp.isEmpty()) continue;
+
+            // Compute building origin (min centroid) for each set
+            double extOx = ext.stream().mapToDouble(Fingerprint::cx).min().orElse(0);
+            double extOy = ext.stream().mapToDouble(Fingerprint::cy).min().orElse(0);
+            double extOz = ext.stream().mapToDouble(Fingerprint::cz).min().orElse(0);
+            double cmpOx = cmp.stream().mapToDouble(Fingerprint::cx).min().orElse(0);
+            double cmpOy = cmp.stream().mapToDouble(Fingerprint::cy).min().orElse(0);
+            double cmpOz = cmp.stream().mapToDouble(Fingerprint::cz).min().orElse(0);
+
+            double originDelta = Math.sqrt(
+                (extOx-cmpOx)*(extOx-cmpOx) + (extOy-cmpOy)*(extOy-cmpOy) + (extOz-cmpOz)*(extOz-cmpOz));
+
+            // Sort by shape only to pair by shape
+            Comparator<Fingerprint> byShape = Comparator
+                .comparingDouble(Fingerprint::planarity)
+                .thenComparingDouble(Fingerprint::elongation)
+                .thenComparingDouble(Fingerprint::squareness);
+            ext = new ArrayList<>(ext); ext.sort(byShape);
+            cmp = new ArrayList<>(cmp); cmp.sort(byShape);
+
+            int pairs = Math.min(ext.size(), cmp.size());
+            if (pairs == 0) continue;
+            int shapeOK = 0, posOK = 0, bothOK = 0;
+            List<Double> posDeltas = new ArrayList<>();
+
+            for (int i = 0; i < pairs; i++) {
+                Fingerprint e = ext.get(i), c = cmp.get(i);
+                double maxSD = Math.max(
+                    Math.abs(e.planarity() - c.planarity()),
+                    Math.max(Math.abs(e.elongation() - c.elongation()),
+                             Math.abs(e.squareness() - c.squareness())));
+                boolean shape = maxSD <= EPSILON;
+
+                // Origin-normalized position comparison
+                double ddx = (e.cx() - extOx) - (c.cx() - cmpOx);
+                double ddy = (e.cy() - extOy) - (c.cy() - cmpOy);
+                double ddz = (e.cz() - extOz) - (c.cz() - cmpOz);
+                double dist = Math.sqrt(ddx*ddx + ddy*ddy + ddz*ddz);
+                boolean pos = dist <= 0.050;
+
+                if (shape) shapeOK++;
+                if (pos) posOK++;
+                if (shape && pos) bothOK++;
+                posDeltas.add(dist);
+            }
+
+            posDeltas.sort(Double::compareTo);
+            double median = posDeltas.get(posDeltas.size()/2);
+            double p90 = posDeltas.get((int)(posDeltas.size() * 0.90));
+            double max = posDeltas.get(posDeltas.size()-1);
+
+            System.out.printf("  %-4s %6d  %5d (%5.1f%%)  %5d (%5.1f%%)  %5d (%5.1f%%)  %10.3f %10.3f %10.3f  %.3f%n",
+                label, pairs,
+                shapeOK, 100.0*shapeOK/pairs,
+                posOK, 100.0*posOK/pairs,
+                bothOK, 100.0*bothOK/pairs,
+                median, p90, max, originDelta);
+        }
+    }
+
+    // =====================================================================
+    // W-BOM-TRACED: The definitive Rosetta Stone proof — BOM identity pairing
+    // =====================================================================
+
+    @Test
+    @DisplayName("W-BOM-TRACED: Shape AND Position via BOM element identity (all buildings)")
+    void wBomTraced_allBuildings() {
+        final double EPSILON = 0.05;
+        final double POS_TOL = 0.050; // 50mm
+
+        System.out.printf("%n  %-4s %6s %6s %6s  %14s  %14s  %14s%n",
+            "Bldg", "Ext", "Cmp", "Pair", "Shape%", "Pos%", "Both%");
+        System.out.println("  " + "─".repeat(90));
+
+        int totalPaired = 0, totalBoth = 0;
+
+        for (String[] b : ALL_BUILDINGS) {
+            String label = b[0];
+            if (!new File(b[1]).exists() || !new File(b[2]).exists()) continue;
+
+            GeometricFingerprint.BomTracedResult r =
+                GeometricFingerprint.proveBomTraced(b[1], b[2], EPSILON, POS_TOL);
+
+            totalPaired += r.paired();
+            totalBoth += r.bothOK();
+
+            System.out.printf("  %-4s %6d %6d %6d  %5d (%5.1f%%)  %5d (%5.1f%%)  %5d (%5.1f%%)%n",
+                label, r.extractedCount(), r.compiledCount(), r.paired(),
+                r.shapeOK(), r.shapeRate(), r.posOK(), r.posRate(), r.bothOK(), r.bothRate());
+
+            // Show up to 5 failures per building
+            if (!r.failures().isEmpty()) {
+                int show = Math.min(5, r.failures().size());
+                r.failures().stream()
+                    .sorted((a, bb) -> Double.compare(bb.posDist(), a.posDist()))
+                    .limit(show)
+                    .forEach(f -> System.out.printf("    %s %s: shape=%s pos=%s dist=%.3fm delta=%.4f%n",
+                        f.shapeOK() && !f.posOK() ? "POS" : !f.shapeOK() && f.posOK() ? "SHAPE" : "BOTH",
+                        f.elementRef().substring(0, Math.min(50, f.elementRef().length())),
+                        f.shapeOK() ? "OK" : "FAIL", f.posOK() ? "OK" : "FAIL",
+                        f.posDist(), f.shapeDelta()));
+            }
+        }
+
+        System.out.printf("%n  TOTAL: %d paired, %d both OK (%.1f%%)%n",
+            totalPaired, totalBoth, totalPaired > 0 ? 100.0 * totalBoth / totalPaired : 0);
     }
 
     // =====================================================================

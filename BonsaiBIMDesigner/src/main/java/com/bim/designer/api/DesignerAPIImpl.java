@@ -387,6 +387,197 @@ public class DesignerAPIImpl implements DesignerAPI {
         return result;
     }
 
+    // ── FL-2: Flywheel Advisory Panel (§27) ─────────────────────────
+    // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-1
+
+    @Override
+    public ListAdvisoriesResponse listAdvisories(String buildingId) {
+        try {
+            Connection dvConn = getDiscValidationConn();
+            if (dvConn == null) {
+                return new ListAdvisoriesResponse(false, List.of(), 0, 0, 0,
+                        "disc_validation.db not available");
+            }
+
+            // Resolve building_type from buildingId (C_DocType lookup)
+            String buildingType = dao.resolveBuildingType(buildingId);
+            if (buildingType == null) {
+                buildingType = buildingId; // fallback: treat as building_type directly
+            }
+
+            String sql = "SELECT advisory_id, building_type, element_ref, layer, severity, "
+                       + "rule_name, message, actual_value, expected_min, expected_max, suggestion "
+                       + "FROM W_Validation_Advisory WHERE building_type = ? ORDER BY advisory_id";
+
+            List<Advisory> advisories = new ArrayList<>();
+            int info = 0, warning = 0, suggestion = 0;
+
+            try (PreparedStatement ps = dvConn.prepareStatement(sql)) {
+                ps.setString(1, buildingType);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String sev = rs.getString("severity");
+                        switch (sev) {
+                            case "INFO" -> info++;
+                            case "WARNING" -> warning++;
+                            case "SUGGESTION" -> suggestion++;
+                        }
+                        advisories.add(new Advisory(
+                                rs.getInt("advisory_id"),
+                                rs.getString("building_type"),
+                                rs.getString("element_ref"),
+                                rs.getString("layer"),
+                                sev,
+                                rs.getString("rule_name"),
+                                rs.getString("message"),
+                                rs.getObject("actual_value") != null ? rs.getDouble("actual_value") : null,
+                                rs.getObject("expected_min") != null ? rs.getDouble("expected_min") : null,
+                                rs.getObject("expected_max") != null ? rs.getDouble("expected_max") : null,
+                                rs.getString("suggestion")));
+                    }
+                }
+            }
+
+            return new ListAdvisoriesResponse(true, advisories, info, warning, suggestion, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "listAdvisories failed", e);
+            return new ListAdvisoriesResponse(false, List.of(), 0, 0, 0, e.getMessage());
+        }
+    }
+
+    /**
+     * Get or lazily open disc_validation.db connection.
+     * Reuses existing discValConn if already opened by getMEPBOMQuery().
+     */
+    private Connection getDiscValidationConn() {
+        if (discValConn != null) return discValConn;
+        synchronized (this) {
+            if (discValConn != null) return discValConn;
+            try {
+                String dbPath = "library/disc_validation.db";
+                if (!new File(dbPath).exists()) {
+                    BIMLogger.warn(TAG, "disc_validation.db not found at {}", dbPath);
+                    return null;
+                }
+                discValConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+                BIMLogger.info(TAG, "Opened disc_validation.db for advisory queries");
+                return discValConn;
+            } catch (Exception e) {
+                BIMLogger.warn(TAG, "Failed to open disc_validation.db: {}", e.getMessage());
+                return null;
+            }
+        }
+    }
+
+    // ── FL-3 prep: suggestDimensions (§27, FL-F-05) ─────────────────
+    // Implementing BIM_Designer_SRS.md §27, FL-F-05 — Witness: W-FL-CALIBRATE-1
+
+    @Override
+    public SuggestDimensionsResponse suggestDimensions(String ifcClass) {
+        try {
+            Connection dvConn = getDiscValidationConn();
+            if (dvConn == null || ifcClass == null || ifcClass.isBlank()) {
+                return new SuggestDimensionsResponse(true, ifcClass,
+                        0, 0, 0, 0, 0, 0, 0, List.of(), null);
+            }
+
+            // Aggregate mined typical W/D/H from ad_val_rule + ad_val_rule_param
+            String sql =
+                    "SELECT p.param_name, CAST(p.param_value AS REAL) "
+                  + "FROM ad_val_rule r "
+                  + "JOIN ad_val_rule_param p ON p.ad_val_rule_id = r.ad_val_rule_id "
+                  + "WHERE r.is_active = 1 AND r.check_method = 'DIMENSION_RANGE' "
+                  + "AND r.ifc_class = ?";
+
+            double minW = Double.MAX_VALUE, maxW = 0;
+            double minD = Double.MAX_VALUE, maxD = 0;
+            double minH = Double.MAX_VALUE, maxH = 0;
+            int observations = 0;
+
+            try (PreparedStatement ps = dvConn.prepareStatement(sql)) {
+                ps.setString(1, ifcClass);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String param = rs.getString(1);
+                        double val = rs.getDouble(2);
+                        if (val <= 0) continue;
+                        observations++;
+                        switch (param) {
+                            case "typical_width_mm"  -> { minW = Math.min(minW, val); maxW = Math.max(maxW, val); }
+                            case "typical_depth_mm"  -> { minD = Math.min(minD, val); maxD = Math.max(maxD, val); }
+                            case "typical_height_mm" -> { minH = Math.min(minH, val); maxH = Math.max(maxH, val); }
+                        }
+                    }
+                }
+            }
+
+            if (observations == 0) {
+                return new SuggestDimensionsResponse(true, ifcClass,
+                        0, 0, 0, 0, 0, 0, 0, List.of(), null);
+            }
+
+            // Fix sentinel values
+            if (minW == Double.MAX_VALUE) minW = 0;
+            if (minD == Double.MAX_VALUE) minD = 0;
+            if (minH == Double.MAX_VALUE) minH = 0;
+
+            // Find nearest M_Products from component_library.db
+            List<NearestProduct> products = List.of();
+            try {
+                Connection libConn = getCompLibConn();
+                double midW = (minW + maxW) / 2.0;
+                double midD = (minD + maxD) / 2.0;
+                double midH = (minH + maxH) / 2.0;
+
+                String prodSql =
+                        "SELECT m.value AS product_id, m.name, "
+                      + "cd.allocated_width_mm, cd.allocated_depth_mm, cd.allocated_height_mm "
+                      + "FROM M_Product m "
+                      + "JOIN component_definitions cd ON cd.m_product_id = m.m_product_id "
+                      + "WHERE cd.allocated_width_mm BETWEEN ? AND ? "
+                      + "AND cd.allocated_depth_mm BETWEEN ? AND ? "
+                      + "AND cd.allocated_height_mm BETWEEN ? AND ? "
+                      + "ORDER BY ABS(cd.allocated_width_mm - ?) + ABS(cd.allocated_depth_mm - ?) "
+                      + "+ ABS(cd.allocated_height_mm - ?) "
+                      + "LIMIT 5";
+
+                List<NearestProduct> prods = new ArrayList<>();
+                try (PreparedStatement ps = libConn.prepareStatement(prodSql)) {
+                    ps.setDouble(1, minW * 0.5);
+                    ps.setDouble(2, maxW * 2.0);
+                    ps.setDouble(3, minD * 0.5);
+                    ps.setDouble(4, maxD * 2.0);
+                    ps.setDouble(5, minH * 0.5);
+                    ps.setDouble(6, maxH * 2.0);
+                    ps.setDouble(7, midW);
+                    ps.setDouble(8, midD);
+                    ps.setDouble(9, midH);
+                    try (ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            prods.add(new NearestProduct(
+                                    rs.getString("product_id"),
+                                    rs.getString("name"),
+                                    rs.getDouble("allocated_width_mm"),
+                                    rs.getDouble("allocated_depth_mm"),
+                                    rs.getDouble("allocated_height_mm")));
+                        }
+                    }
+                }
+                products = prods;
+            } catch (Exception e) {
+                BIMLogger.warn(TAG, "Product lookup for suggestDimensions skipped: {}", e.getMessage());
+            }
+
+            return new SuggestDimensionsResponse(true, ifcClass,
+                    minW, maxW, minD, maxD, minH, maxH,
+                    observations, products, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "suggestDimensions failed", e);
+            return new SuggestDimensionsResponse(false, ifcClass,
+                    0, 0, 0, 0, 0, 0, 0, List.of(), e.getMessage());
+        }
+    }
+
     // ── Design Mode — Snap + Validate (§17.10) ────────────────────
 
     // Implementing BBC.md §4, BIM_Designer_SRS.md §17, CORE_SRS.md §3.1
@@ -794,20 +985,179 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
     }
 
+    // Implementing BIM_Designer.md §17.10.4 — Witness: W-PROMOTE-1
     @Override
     public PromoteResponse promote(PromoteRequest request) {
         try {
-            // TODO: Governance gate — check dangles, validate, write m_bom + m_bom_line.
-            // For now, return stub with dangle detection.
-            LOG.info(() -> String.format("PROMOTE %s by %s (%d bboxes) (stub)",
-                    request.buildingId(), request.owner(), request.bboxes().size()));
+            String buildingId = request.buildingId();
+            BIMLogger.info(TAG, "PROMOTE building={} owner={}", buildingId, request.owner());
 
-            // Stub: no dangles, report success
-            return new PromoteResponse(true, request.buildingId(),
-                    request.bboxes().size(), java.util.List.of(), null);
+            // 1. Pre-check: master C_Order must be AP (approve first)
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            String docStatus = woDao.getMasterDocStatus(buildingId);
+            if (!"AP".equals(docStatus)) {
+                BIMLogger.warn(TAG, "PROMOTE blocked — DocStatus={} (need AP)", docStatus);
+                return new PromoteResponse(false, buildingId, 0,
+                        List.of(), "Approve design first (current status: "
+                        + (docStatus != null ? docStatus : "none") + ")");
+            }
+
+            // 2. Get current bboxes from work_output.db
+            List<DesignBBox> bboxes = getCurrentBboxes(buildingId);
+            if (bboxes.isEmpty()) {
+                return new PromoteResponse(false, buildingId, 0,
+                        List.of(), "No saved design for building: " + buildingId);
+            }
+
+            // 3. Dangle check: ITEM bboxes referencing non-existent products
+            List<String> dangles = new ArrayList<>();
+            for (DesignBBox bb : bboxes) {
+                if ("ITEM".equals(bb.bomType())) {
+                    try {
+                        var product = dao.getProduct(bb.name());
+                        if (product == null) {
+                            dangles.add(bb.bomId() + " -> " + bb.name());
+                        }
+                    } catch (Exception e) {
+                        dangles.add(bb.bomId() + " -> " + bb.name());
+                    }
+                }
+            }
+            if (!dangles.isEmpty()) {
+                BIMLogger.warn(TAG, "PROMOTE dangles: {}", dangles);
+                return new PromoteResponse(false, buildingId, 0, dangles,
+                        "Dangling product references — resolve before promoting");
+            }
+
+            // 4. Write m_bom + m_bom_line into BOM.db
+            int entriesCreated = 0;
+
+            // Build parent map: bomId → promoted bom_id
+            java.util.Map<String, String> promotedBomIds = new java.util.LinkedHashMap<>();
+
+            // 4a. Write m_bom for BUILDING/FLOOR/ROOM bboxes
+            String insertBom = """
+                    INSERT OR IGNORE INTO m_bom (bom_id, bom_name, description,
+                        bom_type, group_by, bom_category, entity_type,
+                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                        doc_sub_type, origin_x, origin_y, origin_z)
+                    VALUES (?, ?, 'GENERATIVE', ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
+                    """;
+            try (PreparedStatement ps = bomConn.prepareStatement(insertBom)) {
+                for (DesignBBox bb : bboxes) {
+                    String bt = bb.bomType();
+                    if ("BUILDING".equals(bt) || "FLOOR".equals(bt) || "ROOM".equals(bt)) {
+                        String promBomId = bb.bomId() + "_GEN";
+                        promotedBomIds.put(bb.bomId(), promBomId);
+
+                        ps.setString(1, promBomId);
+                        ps.setString(2, bb.name());
+                        ps.setString(3, bt);
+                        ps.setString(4, "ROOM".equals(bt) ? "ROOM" : "BUILDING");
+                        ps.setString(5, bb.category());
+                        double w = bb.maxX() - bb.minX();
+                        double d = bb.maxY() - bb.minY();
+                        double h = bb.maxZ() - bb.minZ();
+                        ps.setInt(6, (int) w);
+                        ps.setInt(7, (int) d);
+                        ps.setInt(8, (int) h);
+                        ps.setString(9, request.provenance());
+                        ps.setDouble(10, bb.minX() / 1000.0);
+                        ps.setDouble(11, bb.minY() / 1000.0);
+                        ps.setDouble(12, bb.minZ() / 1000.0);
+                        ps.addBatch();
+                        entriesCreated++;
+                    }
+                }
+                ps.executeBatch();
+            }
+
+            // 4b. Write m_bom_line for child bboxes (FLOOR→BUILDING, ROOM→FLOOR, ITEM→ROOM)
+            //     parentBomId may be null (recall() doesn't preserve it), so infer
+            //     parent from bom_type hierarchy: FLOOR→BUILDING, ROOM→FLOOR, ITEM→ROOM
+            DesignBBox buildingBb = null;
+            java.util.Map<String, DesignBBox> floorByStorey = new java.util.LinkedHashMap<>();
+            for (DesignBBox bb : bboxes) {
+                if ("BUILDING".equals(bb.bomType())) buildingBb = bb;
+                else if ("FLOOR".equals(bb.bomType())) floorByStorey.put(bb.storey(), bb);
+            }
+
+            String insertLine = """
+                    INSERT INTO m_bom_line (bom_id, child_product_id, role,
+                        component_type, entity_type,
+                        allocated_width_mm, allocated_depth_mm, allocated_height_mm,
+                        dx, dy, dz, storey)
+                    VALUES (?, ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
+                    """;
+            try (PreparedStatement ps = bomConn.prepareStatement(insertLine)) {
+                for (DesignBBox bb : bboxes) {
+                    // Infer parent: use explicit parentBomId if available, else by type hierarchy
+                    String parentBomId = bb.parentBomId();
+                    DesignBBox parentBb = null;
+                    if (parentBomId != null) {
+                        for (DesignBBox p : bboxes) {
+                            if (p.bomId().equals(parentBomId)) { parentBb = p; break; }
+                        }
+                    } else {
+                        // Infer: FLOOR→BUILDING, ROOM/ITEM→FLOOR (by storey or first floor)
+                        if ("FLOOR".equals(bb.bomType())) {
+                            parentBb = buildingBb;
+                            parentBomId = buildingBb != null ? buildingBb.bomId() : null;
+                        } else if ("ROOM".equals(bb.bomType()) || "ITEM".equals(bb.bomType())) {
+                            // Try storey match first, then spatial containment, then first floor
+                            parentBb = bb.storey() != null ? floorByStorey.get(bb.storey()) : null;
+                            if (parentBb == null) {
+                                // Find floor that spatially contains this bbox (by Z overlap)
+                                for (DesignBBox f : floorByStorey.values()) {
+                                    if (bb.minZ() >= f.minZ() && bb.maxZ() <= f.maxZ()) {
+                                        parentBb = f; break;
+                                    }
+                                }
+                            }
+                            if (parentBb == null && !floorByStorey.isEmpty()) {
+                                parentBb = floorByStorey.values().iterator().next();
+                            }
+                            parentBomId = parentBb != null ? parentBb.bomId() : null;
+                        }
+                    }
+
+                    String parentPromId = parentBomId != null
+                            ? promotedBomIds.get(parentBomId) : null;
+                    if (parentPromId == null) continue; // root BUILDING has no parent line
+
+                    double relDx = parentBb != null ? (bb.minX() - parentBb.minX()) / 1000.0 : bb.minX() / 1000.0;
+                    double relDy = parentBb != null ? (bb.minY() - parentBb.minY()) / 1000.0 : bb.minY() / 1000.0;
+                    double relDz = parentBb != null ? (bb.minZ() - parentBb.minZ()) / 1000.0 : bb.minZ() / 1000.0;
+
+                    ps.setString(1, parentPromId);
+                    ps.setString(2, bb.name());
+                    ps.setString(3, bb.category() != null ? bb.category() : bb.bomType());
+                    ps.setString(4, "ITEM".equals(bb.bomType()) ? "BUY" : "MAKE");
+                    ps.setInt(5, (int) (bb.maxX() - bb.minX()));
+                    ps.setInt(6, (int) (bb.maxY() - bb.minY()));
+                    ps.setInt(7, (int) (bb.maxZ() - bb.minZ()));
+                    ps.setDouble(8, relDx);
+                    ps.setDouble(9, relDy);
+                    ps.setDouble(10, relDz);
+                    ps.setString(11, bb.storey());
+                    ps.addBatch();
+                    entriesCreated++;
+                }
+                ps.executeBatch();
+            }
+
+            // 5. Freeze: transition master C_Order AP → CO
+            woDao.setMasterDocStatus(buildingId, "CO");
+
+            BIMLogger.info(TAG, "PROMOTE {} → {} entries created, status=CO",
+                    buildingId, entriesCreated);
+            return new PromoteResponse(true, buildingId, entriesCreated,
+                    List.of(), null);
+
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Promote failed", e);
-            return new PromoteResponse(false, null, 0, java.util.List.of(), e.getMessage());
+            BIMLogger.error(TAG, "PROMOTE failed: {}", e.getMessage());
+            return new PromoteResponse(false, null, 0, List.of(), e.getMessage());
         }
     }
 
@@ -1725,6 +2075,13 @@ public class DesignerAPIImpl implements DesignerAPI {
             if (blockers.isEmpty() && dangles.isEmpty()) {
                 status = "AP";
                 success = true;
+                // Persist AP status on master C_Order for promote gate
+                try {
+                    WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+                    woDao.setMasterDocStatus(buildingId, "AP");
+                } catch (Exception ex) {
+                    BIMLogger.warn(TAG, "APPROVE could not persist AP status: {}", ex.getMessage());
+                }
             } else {
                 status = "BLOCKED";
                 success = false;

@@ -202,11 +202,69 @@ public class VerbFactorizer {
         return new FactorResult(linesWritten, verbMatched, verbInstances, unfactored);
     }
 
+    // ── Shape classification (CP-4 §4a) ─────────────────────────────────────
+
+    /**
+     * Classify shape archetype from AABB dimensions.
+     *
+     * <p>Mirrors {@code GeometricFingerprint.ShapeArchetype} logic. Dimensionless
+     * ratios from sorted dimensions (S ≤ M ≤ L):
+     * <pre>
+     *   planarity  = S / L    (0 = infinitely thin, 1 = cube)
+     *   elongation = M / L    (0 = needle, 1 = square cross-section)
+     *
+     *   PLANAR:    planarity < 0.15, elongation ≥ 0.40  → wall, slab, plate
+     *   ELONGATED: planarity < 0.15, elongation < 0.40  → column, beam, pipe
+     *   COMPACT:   planarity ≥ 0.25, elongation ≥ 0.50  → furniture, equipment
+     *   MIXED:     transitional
+     * </pre>
+     *
+     * // Implementing BBC.md §2.2.1 — Witness: W-ARCHETYPE-BOM
+     *
+     * @param widthMm  allocated_width_mm (X extent)
+     * @param depthMm  allocated_depth_mm (Y extent)
+     * @param heightMm allocated_height_mm (Z extent)
+     * @return archetype string: PLANAR, ELONGATED, COMPACT, or MIXED
+     */
+    static String classifyArchetype(double widthMm, double depthMm, double heightMm) {
+        double[] dims = {widthMm, depthMm, heightMm};
+        java.util.Arrays.sort(dims);
+        double S = dims[0], L = dims[2];
+        if (L < 0.01) return "MIXED"; // degenerate
+        double planarity = S / L;
+        double elongation = dims[1] / L;
+        if (planarity < 0.15 && elongation >= 0.40) return "PLANAR";
+        if (planarity < 0.15 && elongation < 0.40)  return "ELONGATED";
+        if (planarity >= 0.25 && elongation >= 0.50) return "COMPACT";
+        return "MIXED";
+    }
+
+    /**
+     * Classify scale band from AABB dimensions.
+     *
+     * <p>Mirrors {@code GeometricFingerprint.ScaleBand} logic.
+     * Volume in m³ = (S × M × L) / 1e9  (mm³ → m³).
+     *
+     * @return scale band string: ARCHITECTURAL, FURNITURE, FITTING, or TINY
+     */
+    static String classifyScaleBand(double widthMm, double depthMm, double heightMm) {
+        double[] dims = {widthMm, depthMm, heightMm};
+        java.util.Arrays.sort(dims);
+        double volumeM3 = (dims[0] * dims[1] * dims[2]) / 1e9;
+        if (volumeM3 > 1.0)    return "ARCHITECTURAL";
+        if (volumeM3 > 0.01)   return "FURNITURE";
+        if (volumeM3 > 0.0001) return "FITTING";
+        return "TINY";
+    }
+
     // ── SQL helpers ──────────────────────────────────────────────────────────
 
     /**
-     * Insert a LEAF BOM line with qty and verb_ref support.
+     * Insert a LEAF BOM line with qty, verb_ref, shape_archetype, and scale_band.
      * Canonical insert — used by all BOM builders via factorize().
+     *
+     * <p>CP-4 §4a: shape_archetype and scale_band are computed from allocated
+     * dimensions at insert time. Every LEAF row carries its geometric identity.
      */
     private static void insertLeafLine(Connection conn,
                                         String bomId, String childProductId, String role,
@@ -218,6 +276,10 @@ public class VerbFactorizer {
                                         String materialName, String materialRgba,
                                         int qty, String verbRef)
             throws SQLException {
+        // CP-4 §4a: compute geometric classification from allocated dimensions
+        String archetype = classifyArchetype(allocW, allocD, allocH);
+        String scaleBand = classifyScaleBand(allocW, allocD, allocH);
+
         String sql = """
                 INSERT INTO m_bom_line
                 (bom_id, child_product_id, component_type, role, sequence,
@@ -225,12 +287,14 @@ public class VerbFactorizer {
                  dx, dy, dz, is_active, entity_type, qty, verb_ref,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
-                 material_name, material_rgba)
+                 material_name, material_rgba,
+                 shape_archetype, scale_band)
                 VALUES (?, ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', ?, ?,
                         ?, ?, ?,
                         ?, ?, ?, ?,
+                        ?, ?,
                         ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -253,6 +317,8 @@ public class VerbFactorizer {
             stmt.setString(17, orientation);
             stmt.setString(18, materialName);
             stmt.setString(19, materialRgba);
+            stmt.setString(20, archetype);
+            stmt.setString(21, scaleBand);
             stmt.executeUpdate();
         }
     }

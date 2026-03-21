@@ -630,9 +630,10 @@ public class WitnessBuilder {
         data.put("type", elementType);
         data.put("position", new double[]{x, y, z});
         data.put("room", roomName);
-        // Validate IFC class is correct
-        boolean validClass = ("GRID_COLUMN".equals(elementType) && "IfcColumn".equals(ifcClass)) ||
-                            ("GRID_BEAM".equals(elementType) && "IfcBeam".equals(ifcClass));
+        // Validate IFC class matches expected product category (STRUCTURAL_LINEAR)
+        // Implementing BBC.md §2.2.1 — Witness: W-PRODUCT-CATEGORY
+        boolean validClass = com.bim.compiler.validation.ProductCategory.STRUCTURAL_LINEAR.equals(
+            com.bim.compiler.validation.ProductCategory.resolve(ifcClass));
         data.put("ifc_class_valid", validClass);
         structuralGridElements.add(data);
     }
@@ -808,8 +809,10 @@ public class WitnessBuilder {
         elem.put("position", new double[]{x, y, z});
 
         // 3D containment check with wall tolerance for wall-mounted elements
-        // Outlets and switches are ON walls, so use tolerance for XY
-        boolean isWallMounted = "IfcOutlet".equals(ifcClass) || "IfcSwitchingDevice".equals(ifcClass);
+        // MEP_TERMINAL elements on walls need XY tolerance
+        // Implementing BBC.md §2.2.1 — Witness: W-PRODUCT-CATEGORY
+        boolean isWallMounted = com.bim.compiler.validation.ProductCategory.MEP_TERMINAL.equals(
+            com.bim.compiler.validation.ProductCategory.resolve(ifcClass));
         double xyTolerance = isWallMounted ? WALL_TOLERANCE : 0.0;
 
         boolean insideX = x >= (roomMinX - xyTolerance) && x <= (roomMaxX + xyTolerance);
@@ -2633,8 +2636,7 @@ public class WitnessBuilder {
 
             // IFC class validation details
             Map<String, Object> ifcValidation = new LinkedHashMap<>();
-            ifcValidation.put("expected_column_class", "IfcColumn");
-            ifcValidation.put("expected_beam_class", "IfcBeam");
+            ifcValidation.put("expected_category", com.bim.compiler.validation.ProductCategory.STRUCTURAL_LINEAR);
             ifcValidation.put("all_correct", allValidClass);
             w.put("ifc_class_validation", ifcValidation);
 
@@ -2651,7 +2653,7 @@ public class WitnessBuilder {
             structuralGridElements.stream()
                 .filter(e -> !Boolean.TRUE.equals(e.get("ifc_class_valid")))
                 .map(e -> (String) e.get("id") + " has " + e.get("ifc_class") + " (expected " +
-                    ("GRID_COLUMN".equals(e.get("type")) ? "IfcColumn" : "IfcBeam") + ")")
+                    com.bim.compiler.validation.ProductCategory.STRUCTURAL_LINEAR + ")")
                 .forEach(violations::add);
 
             // Two-way grid violations

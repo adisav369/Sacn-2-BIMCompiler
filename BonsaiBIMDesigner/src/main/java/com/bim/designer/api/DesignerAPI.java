@@ -269,6 +269,51 @@ public interface DesignerAPI extends AssemblyAPI {
      */
     LayoutResponse addStorey(String buildingId);
 
+    // ── Flywheel Advisory Panel (FL-2, §27) ──────────────────────────
+
+    /**
+     * List advisories for a building from the flywheel validation pool.
+     * Reads W_Validation_Advisory from disc_validation.db.
+     *
+     * // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-1
+     */
+    ListAdvisoriesResponse listAdvisories(String buildingId);
+
+    /** One advisory finding from the flywheel. */
+    record Advisory(int advisoryId, String buildingType, String elementRef,
+                    String layer, String severity, String ruleName,
+                    String message, Double actualValue,
+                    Double expectedMin, Double expectedMax,
+                    String suggestion) {}
+
+    /** Response for listAdvisories — includes severity counts. */
+    record ListAdvisoriesResponse(boolean success,
+                                   java.util.List<Advisory> advisories,
+                                   int infoCount, int warningCount,
+                                   int suggestionCount, String error) {}
+
+    /**
+     * Suggest typical dimensions for an IFC class from the mined validation pool.
+     * Returns typical W/D/H ranges + nearest M_Product matches.
+     *
+     * // Implementing BIM_Designer_SRS.md §27, FL-F-05 — Witness: W-FL-CALIBRATE-1
+     */
+    SuggestDimensionsResponse suggestDimensions(String ifcClass);
+
+    /** A matching product from the component library. */
+    record NearestProduct(String productId, String name,
+                          double widthMm, double depthMm, double heightMm) {}
+
+    /** Response for suggestDimensions — typical ranges + nearest products. */
+    record SuggestDimensionsResponse(boolean success,
+                                      String ifcClass,
+                                      double typicalMinW, double typicalMaxW,
+                                      double typicalMinD, double typicalMaxD,
+                                      double typicalMinH, double typicalMaxH,
+                                      int observationCount,
+                                      java.util.List<NearestProduct> nearestProducts,
+                                      String error) {}
+
     // ── Records ───────────────────────────────────────────────────────
 
     /** Summary of an available building type (from C_DocType). */
