@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *   <li>W-DV-DB-SEED: Seed data matches component_library.db source counts</li>
  *   <li>W-DV-DB-REF: Reference pointers resolve across databases</li>
  *   <li>W-DV-DB-ND: Migration does not disturb component_library.db</li>
+ *   <li>W-DV-MINED-RULES: 415 mined dimension rules with 1245 params in ad_val_rule</li>
  * </ul>
  *
  * // Implementing DISC_VALIDATION_DB_SRS.md §9 — Witness: W-DV-DB-*
@@ -54,7 +55,7 @@ class DiscValidationDBTest {
         EXPECTED_COUNTS.put("ad_space_type_mep", 22);
     }
 
-    /** All 19 tables expected in disc_validation.db. */
+    /** All 21 tables expected in disc_validation.db (19 original + 2 DV010 mined rules). */
     static final List<String> ALL_TABLES = List.of(
             "ad_space_type", "ad_element_mep", "ad_space_type_mep_bom",
             "ad_fp_coverage", "ad_assembly_connector", "ad_assembly_manifest",
@@ -63,6 +64,7 @@ class DiscValidationDBTest {
             "ad_space_dim", "ad_space_exterior_rule", "ad_space_type_opening",
             "ad_space_type_mep",
             "ad_element_mep_alias",
+            "ad_val_rule", "ad_val_rule_param",       // DV010: mined dimension rules
             "W_Calibration_Result", "AD_SysConfig"
     );
 
@@ -85,7 +87,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-DV-DB-SCHEMA: All 19 tables exist in disc_validation.db")
+    @DisplayName("W-DV-DB-SCHEMA: All 21 tables exist in disc_validation.db")
     void allTablesExist() throws Exception {
         Set<String> actual = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         try (ResultSet rs = discConn.getMetaData().getTables(
@@ -370,6 +372,80 @@ class DiscValidationDBTest {
                 testAreaM2, discLight);
         assertTrue(discLight > 0,
                 "disc_validation.db must return >0 for LIGHT (DV004 per_area_normal=0.05)");
+    }
+
+    // ── W-DV-MINED-RULES ──────────────────────────────────────────────
+
+    @Test
+    @Order(50)
+    @DisplayName("W-DV-MINED-RULES: 415 mined dimension rules from 20 buildings")
+    void minedRulesPresent() throws Exception {
+        int ruleCount = countRows(discConn, "ad_val_rule");
+        int paramCount = countRows(discConn, "ad_val_rule_param");
+
+        System.out.printf("  ad_val_rule=%d  ad_val_rule_param=%d%n", ruleCount, paramCount);
+        assertTrue(ruleCount >= 415,
+                "ad_val_rule must have >= 415 rows, got " + ruleCount);
+        assertTrue(paramCount >= 1245,
+                "ad_val_rule_param must have >= 1245 rows, got " + paramCount);
+    }
+
+    @Test
+    @Order(51)
+    @DisplayName("W-DV-MINED-RULES: Every rule has exactly 3 params (W, D, H)")
+    void minedRulesHaveThreeParams() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT r.ad_val_rule_id, r.rule_name, COUNT(p.ad_val_rule_param_id) as cnt " +
+                "FROM ad_val_rule r " +
+                "LEFT JOIN ad_val_rule_param p ON p.ad_val_rule_id = r.ad_val_rule_id " +
+                "GROUP BY r.ad_val_rule_id HAVING cnt != 3");
+             ResultSet rs = ps.executeQuery()) {
+            List<String> bad = new ArrayList<>();
+            while (rs.next()) bad.add(rs.getString("rule_name") + "(" + rs.getInt("cnt") + ")");
+
+            assertTrue(bad.isEmpty(),
+                    "All rules must have exactly 3 params: " + bad);
+        }
+    }
+
+    @Test
+    @Order(52)
+    @DisplayName("W-DV-MINED-RULES: 20 distinct provenance buildings")
+    void minedRulesProvenanceCoverage() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(DISTINCT provenance) FROM ad_val_rule");
+             ResultSet rs = ps.executeQuery()) {
+            int buildings = rs.getInt(1);
+            System.out.printf("  Distinct provenances: %d%n", buildings);
+            assertTrue(buildings >= 20,
+                    "Must have >= 20 distinct provenance buildings, got " + buildings);
+        }
+    }
+
+    @Test
+    @Order(53)
+    @DisplayName("W-DV-MINED-RULES: No orphan params (FK integrity)")
+    void minedRulesNoOrphans() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM ad_val_rule_param p " +
+                "WHERE NOT EXISTS (SELECT 1 FROM ad_val_rule r " +
+                "WHERE r.ad_val_rule_id = p.ad_val_rule_id)");
+             ResultSet rs = ps.executeQuery()) {
+            int orphans = rs.getInt(1);
+            assertEquals(0, orphans, "No orphan params allowed");
+        }
+    }
+
+    @Test
+    @Order(54)
+    @DisplayName("W-DV-MINED-RULES: DV010 schema version recorded")
+    void minedRulesVersionRecorded() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT value FROM AD_SysConfig WHERE name = 'MINED_RULES_VERSION'");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next(), "MINED_RULES_VERSION row must exist");
+            assertEquals("DV010", rs.getString(1));
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

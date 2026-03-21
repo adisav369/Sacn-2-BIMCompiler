@@ -179,7 +179,7 @@ SPRINKLER, it:
 `migration/DV003_element_mep_alias.sql` (alias cascade).
 Schemas match the actual column layout in component_library.db source tables.
 
-### 4.1 Table Summary (20 tables)
+### 4.1 Table Summary (22 tables)
 
 | Table | PK | Rows | Purpose |
 |-------|----|------|---------|
@@ -202,6 +202,8 @@ Schemas match the actual column layout in component_library.db source tables.
 | `ad_space_type_mep` | space_type_id | 22 | MEP service requirements per space |
 | `ad_element_mep_alias` | alias_id | 84 | IFC version-agnostic product resolution (§5.1) |
 | `ad_ifc_class_map` | ifc_class | 46 | IFC class extraction authority — discipline, category, attachment, domain per type. `extract.py` reads at startup. See §5.2. |
+| `ad_val_rule` | ad_val_rule_id | 415 | Mined dimension rules: typical W/D/H per (ifc_class, storey) from 20 buildings. DV010 migration. |
+| `ad_val_rule_param` | ad_val_rule_param_id | 1245 | Rule parameters (typical_width_mm, typical_depth_mm, typical_height_mm). |
 | `W_Calibration_Result` | id | 0 | CalibrationTest output (runtime writes) |
 | `AD_SysConfig` | Name | 3 | Schema/seed/alias version tracking |
 

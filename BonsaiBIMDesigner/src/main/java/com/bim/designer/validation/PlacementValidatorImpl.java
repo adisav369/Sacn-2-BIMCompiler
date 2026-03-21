@@ -51,8 +51,14 @@ public class PlacementValidatorImpl implements PlacementValidator {
     /** Wildcard key for rules that apply to all categories. */
     private static final String WILDCARD = "*";
 
+    /** Dimension deviation ratio threshold: flag if actual/typical > MAX or < 1/MAX. */
+    private static final double DIM_RANGE_RATIO = 5.0;
+
     /** Rules keyed by bom_category (or "*" for any-category rules). */
     private Map<String, List<CachedRule>> rulesByCategory = Map.of();
+
+    /** Mined dimension rules from disc_validation.db, keyed by ifc_class. */
+    private Map<String, List<CachedRule>> minedRulesByClass = Map.of();
 
     private boolean active;
     private String jurisdiction;
@@ -86,6 +92,16 @@ public class PlacementValidatorImpl implements PlacementValidator {
         this.active = false;
         this.jurisdiction = null;
         this.rulesByCategory = Map.of();
+        this.minedRulesByClass = Map.of();
+    }
+
+    @Override
+    public void activateMinedRules(Connection discConn) {
+        Objects.requireNonNull(discConn, "discConn");
+        this.minedRulesByClass = loadMinedRules(discConn);
+        BIMLogger.info(TAG, "Loaded {} mined dimension rules across {} IFC classes",
+                minedRulesByClass.values().stream().mapToInt(List::size).sum(),
+                minedRulesByClass.size());
     }
 
     @Override
@@ -114,6 +130,10 @@ public class PlacementValidatorImpl implements PlacementValidator {
 
         v = checkCategory(request, WILDCARD);
         if (v.isBlocked()) return v;
+        if (v.isWarning() && !worst.isWarning()) worst = v;
+
+        // DV010: mined dimension range check (advisory only)
+        v = checkDimensionRange(request);
         if (v.isWarning() && !worst.isWarning()) worst = v;
 
         return worst;
@@ -224,6 +244,69 @@ public class PlacementValidatorImpl implements PlacementValidator {
         }
 
         return result;
+    }
+
+    /**
+     * Loads mined DIMENSION_RANGE rules from disc_validation.db (DV010).
+     * Groups by ifc_class for O(1) lookup during validation.
+     *
+     * // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE
+     */
+    private Map<String, List<CachedRule>> loadMinedRules(Connection conn) {
+        Map<String, List<CachedRule>> result = new HashMap<>();
+
+        String ruleSQL =
+                "SELECT ad_val_rule_id, rule_name, ifc_class, check_method, severity, description "
+              + "FROM ad_val_rule WHERE is_active = 1";
+
+        try (PreparedStatement ps = conn.prepareStatement(ruleSQL);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int ruleId = rs.getInt(1);
+                String ruleName = rs.getString(2);
+                String ifcClass = rs.getString(3);
+                String checkMethod = rs.getString(4);
+                String severity = rs.getString(5);
+
+                // Load params (typical_width_mm, typical_depth_mm, typical_height_mm)
+                Map<String, String> allParams = loadMinedParams(conn, ruleId);
+                Map<String, Double> thresholds = new HashMap<>();
+                for (var e : allParams.entrySet()) {
+                    if (isNumeric(e.getValue())) {
+                        thresholds.put(e.getKey(), Double.parseDouble(e.getValue()));
+                    }
+                }
+
+                Map<String, String> stringParams = new HashMap<>();
+                stringParams.put("check_method", checkMethod);
+                if (severity != null) stringParams.put("verdict", severity.equals("BLOCK") ? "BLOCK" : "WARN");
+
+                if (!thresholds.isEmpty()) {
+                    CachedRule rule = new CachedRule(ruleId, ruleName, null,
+                            thresholds, stringParams, 0);
+                    result.computeIfAbsent(ifcClass, k -> new ArrayList<>()).add(rule);
+                }
+            }
+        } catch (SQLException e) {
+            BIMLogger.warn(TAG, "Failed to load mined rules from disc_validation.db: {}", e.getMessage());
+            return Map.of();
+        }
+
+        return result;
+    }
+
+    private Map<String, String> loadMinedParams(Connection conn, int ruleId) throws SQLException {
+        Map<String, String> params = new LinkedHashMap<>();
+        String sql = "SELECT param_name, param_value FROM ad_val_rule_param WHERE ad_val_rule_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, ruleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    params.put(rs.getString(1), rs.getString(2));
+                }
+            }
+        }
+        return params;
     }
 
     private Map<String, String> loadParams(Connection conn, int ruleId) throws SQLException {
@@ -362,11 +445,75 @@ public class PlacementValidatorImpl implements PlacementValidator {
         };
     }
 
+    /**
+     * DV010: Check element dimensions against mined typical dimensions.
+     * Compares request W/D/H against observed ranges for its ifc_class.
+     * Returns WARN if any dimension deviates by more than DIM_RANGE_RATIO.
+     * Never returns BLOCK — mined rules are advisory only.
+     *
+     * // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE
+     */
+    private ValidationVerdict checkDimensionRange(PlacementRequest req) {
+        if (minedRulesByClass.isEmpty() || req.ifcClass() == null) {
+            return ValidationVerdict.pass();
+        }
+
+        List<CachedRule> rules = minedRulesByClass.get(req.ifcClass());
+        if (rules == null || rules.isEmpty()) {
+            return ValidationVerdict.pass();
+        }
+
+        // Aggregate min/max typical across all buildings for this ifc_class
+        double minW = Double.MAX_VALUE, maxW = 0;
+        double minD = Double.MAX_VALUE, maxD = 0;
+        double minH = Double.MAX_VALUE, maxH = 0;
+
+        for (CachedRule rule : rules) {
+            Double tw = rule.thresholds.get("typical_width_mm");
+            Double td = rule.thresholds.get("typical_depth_mm");
+            Double th = rule.thresholds.get("typical_height_mm");
+            if (tw != null && tw > 0) { minW = Math.min(minW, tw); maxW = Math.max(maxW, tw); }
+            if (td != null && td > 0) { minD = Math.min(minD, td); maxD = Math.max(maxD, td); }
+            if (th != null && th > 0) { minH = Math.min(minH, th); maxH = Math.max(maxH, th); }
+        }
+
+        // Check if request dimensions are within [min/ratio, max*ratio]
+        if (maxW > 0 && req.widthMm() > 0) {
+            if (req.widthMm() > maxW * DIM_RANGE_RATIO || req.widthMm() < minW / DIM_RANGE_RATIO) {
+                return ValidationVerdict.warn(
+                        "DIMENSION_RANGE_W:" + req.ifcClass(), null,
+                        req.widthMm(), maxW,
+                        String.format("%s width %.0fmm outside mined range [%.0f-%.0f]mm (×%.1f tolerance)",
+                                req.ifcClass(), req.widthMm(), minW, maxW, DIM_RANGE_RATIO));
+            }
+        }
+        if (maxD > 0 && req.depthMm() > 0) {
+            if (req.depthMm() > maxD * DIM_RANGE_RATIO || req.depthMm() < minD / DIM_RANGE_RATIO) {
+                return ValidationVerdict.warn(
+                        "DIMENSION_RANGE_D:" + req.ifcClass(), null,
+                        req.depthMm(), maxD,
+                        String.format("%s depth %.0fmm outside mined range [%.0f-%.0f]mm (×%.1f tolerance)",
+                                req.ifcClass(), req.depthMm(), minD, maxD, DIM_RANGE_RATIO));
+            }
+        }
+        if (maxH > 0 && req.heightMm() > 0) {
+            if (req.heightMm() > maxH * DIM_RANGE_RATIO || req.heightMm() < minH / DIM_RANGE_RATIO) {
+                return ValidationVerdict.warn(
+                        "DIMENSION_RANGE_H:" + req.ifcClass(), null,
+                        req.heightMm(), maxH,
+                        String.format("%s height %.0fmm outside mined range [%.0f-%.0f]mm (×%.1f tolerance)",
+                                req.ifcClass(), req.heightMm(), minH, maxH, DIM_RANGE_RATIO));
+            }
+        }
+
+        return ValidationVerdict.pass();
+    }
+
     @Override
     public int getRuleCount() {
-        return rulesByCategory.values().stream()
-                .mapToInt(List::size)
-                .sum();
+        int compliance = rulesByCategory.values().stream().mapToInt(List::size).sum();
+        int mined = minedRulesByClass.values().stream().mapToInt(List::size).sum();
+        return compliance + mined;
     }
 
     @Override

@@ -71,6 +71,16 @@ public interface PlacementValidator {
      */
     ValidationVerdict validate(PlacementRequest request);
 
+    /**
+     * Load mined dimension rules from disc_validation.db (DV010).
+     * These are DIMENSION_RANGE rules: typical W/D/H per ifc_class from 20+ buildings.
+     * Fires as advisory WARNING when an element's dimensions deviate significantly
+     * from observed patterns. Must be called after activate().
+     *
+     * @param discConn connection to disc_validation.db
+     */
+    void activateMinedRules(Connection discConn);
+
     /** @return true if a jurisdiction is currently active */
     boolean isActive();
 

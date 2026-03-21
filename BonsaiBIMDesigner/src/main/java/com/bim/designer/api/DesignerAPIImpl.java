@@ -675,12 +675,20 @@ public class DesignerAPIImpl implements DesignerAPI {
 
         try (Connection valConn = DriverManager.getConnection("jdbc:sqlite:library/validation.db")) {
             validator.activate(jurisdiction, ft, valConn);
-            BIMLogger.info(TAG, "Activated validator: jurisdiction={}, facilityType={}, rules={}",
-                    jurisdiction, ft, validator.getRuleCount());
         } catch (Exception e) {
             BIMLogger.error(TAG, "Failed to activate validator for facilityType {}: {}",
                     facilityTypeStr, e.getMessage());
         }
+
+        // DV010: load mined dimension rules from disc_validation.db
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+            validator.activateMinedRules(discConn);
+        } catch (Exception e) {
+            BIMLogger.warn(TAG, "Mined rules not loaded (disc_validation.db): {}", e.getMessage());
+        }
+
+        BIMLogger.info(TAG, "Activated validator: jurisdiction={}, facilityType={}, rules={}",
+                jurisdiction, ft, validator.getRuleCount());
     }
 
     // Implementing G4_SRS §2.2 — Witness: W-SAVE-1

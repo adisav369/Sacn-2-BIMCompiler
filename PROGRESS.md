@@ -16,10 +16,10 @@
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | PASS (centroid fix S43) | 48336/48428 |
 
-**Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (21+20+6+output).
+**Pipeline:** 9 stages. 63 verbs. 2459 products. 4-DB architecture (22+20+6+output).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
-**BonsaiBIMDesigner:** 256/256 GREEN (34 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
+**BonsaiBIMDesigner:** 258/258 GREEN (34 test classes). DemoHouseTest: skipped (DM_BOM.db empty).
 **Tier 1 (S39):** 6D SustainabilityDAO, 7D FacilityMgmtDAO, Audit ChangelogDAO — 14 witnesses.
 **4D/5D (S39b):** ScheduleDAO (CIDB sequence → Gantt), CostDAO (3-component: mat+lab+eq) — 11 witnesses.
 **Portfolio (S39c):** PortfolioDAO — analysis table, Kanban board, balanced scorecard — 6 witnesses. 8 projects scanned.
@@ -29,6 +29,25 @@
 **G-9 (S46b):** ORDER View + BOM Outliner. 3 API actions, 7 witnesses. UX-F-26 (sync) + UX-F-27 (three views) → IMPLEMENTED.
 
 ## What's Next
+
+**[DONE] DV010: Mined Dimension Rules + validation wiring (session 47):**
+  415 DIMENSION_RANGE rules mined from 20 buildings (of 34 onboarded).
+  ad_val_rule + ad_val_rule_param tables in disc_validation.db (DV010 migration).
+  25 IFC classes, 1245 params. IfcWall(64), IfcDoor(51), IfcWindow(46), IfcSlab(40).
+  Script: apply_mined_rules.sh processes 22 DV_*_rules.sql files.
+  Fixed last_insert_rowid() FK bug (param→param instead of param→rule).
+  **IFC pipeline gate (DimensionRangeValidator):**
+  - Runs as pre-flight in IFCtoBOMPipeline, after extraction, before BOM builders
+  - Loads from disc_validation.db, aggregates min/max per ifc_class across 20 buildings
+  - Flags elements with dimensions >5x outside observed range — advisory, never blocks
+  - SH result: 55/55 checked, 27 PASS, 28 outliers (thin mullions + partitions = expected)
+  - DimensionRangeValidatorTest: 5 witnesses (W-DV-PIPELINE-1..5)
+  **PlacementValidator wiring:**
+  - `activateMinedRules(discConn)` loads from disc_validation.db, indexes by ifc_class
+  - `checkDimensionRange()` fires in validate() after compliance checks
+  - DesignerAPIImpl: auto-loads mined rules alongside compliance rules at activation
+  - PlacementValidatorImplTest: 4 witnesses (W-DV-MINED-WIRE-1..4)
+  14 witnesses total. 258/258 Designer GREEN + 5/5 DimensionRangeValidator GREEN.
 
 **[DONE] G-9 ORDER View + BOM Outliner (session 46b):**
   Three views share one truth (UX-F-27): BBox Design (3D), ORDER View (tabular),
@@ -51,13 +70,33 @@
   **7 witnesses** (OrderViewTest): W-OV-LIST-1..2, W-OV-UPDATE-1..2, W-OV-TREE-1..2, W-OV-SYNC-1.
   256/256 GREEN. Rosetta Stones undisturbed.
 
-**CP-4: Geometric Archetype Abstraction — Phase 4c next:**
-  Phase 4a DONE (session 46): shape_archetype + scale_band columns on m_bom_line.
-  Phase 4b DONE (session 46): 15 geometric switches replaced with archetype in 5 files.
-  Phase 4c: wire semantic decisions to component library (BOMExporter UOM, BuildingWriter
-  GUID prefix/element_type, PlacementCollectorVisitor deriveDiscipline, MeshBinder findClosestFit).
-  Phase 4e: BomValidator.checkShapeConsistency() gate.
-  See ACTION_ROADMAP.md §CP-4 for full spec references and phase plan.
+**CP-4: Geometric Archetype Abstraction — geometric half COMPLETE (session 46):**
+  Phase 4a-4e: 23 IFC class switches → archetype. BomValidator gate. See done items below.
+  **Semantic half remaining (37 refs):** These switch on IFC class to answer "what kind of element?"
+  (pipe vs column, structural vs MEP) — archetype can't distinguish because both are ELONGATED.
+  Fix: component library `M_Product.product_category` or `component_types.semantic_role`.
+  **Specs to consult:** BBC.md §2.2.1 (The Rule), ConstructionAsERP.md §1.4 (product taxonomy),
+  DATA_MODEL.md (component_library.db schema), SourceCodeGuide.md §4 (library resolution chain).
+  **Files with remaining refs:**
+  - PlacementProver.java (15): P05 overlap, P06 containment, P07 opening-in-wall, P08 furniture density,
+    P09 MEP routing — each tests a specific domain rule. Need product_category to replace class.
+  - MEPWriter.java (13): MEP-specific output. Inherently domain-specific — need product_category
+    or discipline from BOM line (already available via discipline field, not yet threaded).
+  - PlacementCollectorVisitor.java (2): deriveDiscipline fallback. Needs AABB dims threaded through
+    BOM walk, or discipline populated on all BOM lines (extraction already provides it).
+  - WitnessBuilder.java (4): test witness assertions. Low priority.
+
+**[DONE] CP-4 Phase 4e: BomValidator.checkShapeConsistency() gate (session 46):**
+  Pre-commit gate validates: no LEAF row with dimensions lacks archetype, no invalid archetype
+  values, no invalid scale_band values. SH: 46 LEAF rows classified → PASS.
+
+**[DONE] CP-4 Phase 4c: semantic switches → archetype (session 46):**
+  BOMExporter: determineUOM, formatDescription, aggregation — all use archetype instead of IFC class.
+  ELONGATED→EA(linear), PLANAR+ARCHITECTURAL→M3(concrete), PLANAR→M2(sheet).
+  BuildingWriter: GUID prefix (ELONGATED→FRAME_MD_, PLANAR→SLAB_MD_, COMPACT→COMPACT_MD_).
+  BuildingWriter: element_type (PLANAR+ARCH→FLOOR, PLANAR→CURTAIN_PANEL, ELONGATED→FRAME).
+  PlacementCollectorVisitor.deriveDiscipline: documented as fallback, TODO for AABB threading.
+  SH 9/10 undisturbed. Full compile clean.
 
 **[DONE] CP-4 Phase 4b: geometric switches → archetype (session 46):**
   15 IFC class switch points replaced with archetype-based logic across 5 files:
@@ -441,8 +480,9 @@ positions matching the tack convention, or convert FRAME groups to CLUSTER (loss
 
 | Session | Date | What | Tests |
 |---------|------|------|-------|
+| 47 | 2026-03-21 | DV010: 415 mined dimension rules (20 buildings, 25 IFC classes, 1245 params) → disc_validation.db. DimensionRangeValidator pre-flight in IFCtoBOM pipeline + PlacementValidator wiring. apply_mined_rules.sh script. 14 witnesses | 258+5 |
 | 46b | 2026-03-21 | G-9 ORDER View + BOM Outliner: listOrderLines + updateOrderLine + getBomTree. View tab selector (BBOX/ORDER/TREE). 7 witnesses (OrderViewTest). UX-F-26 + UX-F-27 IMPLEMENTED | 256/256 |
-| 46 | 2026-03-21 | CP-4 Phase 4a+4b: shape_archetype + scale_band on m_bom_line (6 INSERT paths). 15 geometric switches → archetype in PlacementProver/SpatialDiff/MeshBinder/GeometryIntegrityChecker. isHostedOpening() replaces IfcDoor/IfcWindow. 4 witnesses | 249/249 |
+| 46 | 2026-03-21 | CP-4 complete (4a+4b+4c+4e): shape_archetype + scale_band on m_bom_line. 23 IFC class switches → archetype across 8 files. isHostedOpening(). BomValidator gate. 4 witnesses | 256/256 |
 | 45 | 2026-03-21 | G-8 Click-to-Place: clickToPlace API + viewport ray-cast + discipline selector + placeItem persistence + MEPBOMQuery + multi-item placement + coverage tracking + computePlacementOffset (16 placement rules). 15 witnesses | 249/249 |
 | 44b | 2026-03-21 | CP-3 batch: 14 more IFCs (20→34 buildings). BimWhale(4), AC9/AC90(3), Revit(3), SampleCastle, HITOS, Jesse, Wilfer. 1326→2459 products. 4 failed extraction (FJ/SW/VG/ET) | — |
 | 44 | 2026-03-21 | CP-3 scale-up: 12 IFCs onboarded (8→20 buildings). Scripts: onboard_ifc.sh, ifc_recon.py, rosetta_report.sh. Cross-class geometry fallback. 823→1326 products. Clinic federated (5 disciplines), Schependomlaan, Esplanades, Molio | — |

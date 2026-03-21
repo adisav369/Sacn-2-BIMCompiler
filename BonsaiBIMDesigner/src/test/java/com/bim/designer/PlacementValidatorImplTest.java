@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>W-PV-3: KITCHEN 2000x2000x2800 BLOCK on min_area (4.0 < 4.5)</li>
  *   <li>W-PV-4: Deactivated validator always returns PASS</li>
  *   <li>W-PV-5: US jurisdiction loads different rules (IRC thresholds)</li>
+ *   <li>W-DV-MINED-WIRE-1: Mined rules loaded from disc_validation.db (415 rules, 25 IFC classes)</li>
+ *   <li>W-DV-MINED-WIRE-2: IfcWall within range PASS</li>
+ *   <li>W-DV-MINED-WIRE-3: IfcWall way outside range WARN</li>
+ *   <li>W-DV-MINED-WIRE-4: Unknown IFC class PASS (no mined data)</li>
  * </ul>
  */
 @DisplayName("PlacementValidatorImpl -- AD_Val_Rule checks")
@@ -316,6 +320,86 @@ class PlacementValidatorImplTest {
         ValidationVerdict v2 = validator.validate(small);
         assertEquals(ValidationVerdict.Result.BLOCK, v2.result(),
                 "Building validation unchanged: 2800mm min dim still BLOCK");
+    }
+
+    // ── DV010: Mined dimension rules ──────────────────────────────────
+
+    @Test
+    @Order(50)
+    @DisplayName("W-DV-MINED-WIRE-1: Mined rules loaded from disc_validation.db")
+    void w_dv_mined_wire_1_load() throws Exception {
+        // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-1
+        validator.activate("MY", FacilityType.BUILDING, valConn);
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+            validator.activateMinedRules(discConn);
+        }
+        // 10 compliance + 415 mined = 425+
+        assertTrue(validator.getRuleCount() >= 415,
+                "Rule count must include mined rules, got " + validator.getRuleCount());
+    }
+
+    @Test
+    @Order(51)
+    @DisplayName("W-DV-MINED-WIRE-2: IfcWall within range PASS")
+    void w_dv_mined_wire_2_pass() throws Exception {
+        // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-2
+        validator.activate("MY", FacilityType.BUILDING, valConn);
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+            validator.activateMinedRules(discConn);
+        }
+        // Typical IfcWall: ~3000x3500x3000mm — well within mined range
+        PlacementRequest wall = new PlacementRequest(
+                "WALL", "IfcWall", "ARC",
+                3000, 3500, 3000,
+                0, 0, 0, "SNAP", 0, "GF");
+        ValidationVerdict v = validator.validate(wall);
+        // Should not trigger DIMENSION_RANGE warning (within 5x of typical)
+        if (v.isWarning()) {
+            assertFalse(v.ruleName().startsWith("DIMENSION_RANGE"),
+                    "Normal wall should not trigger dimension range: " + v.message());
+        }
+    }
+
+    @Test
+    @Order(52)
+    @DisplayName("W-DV-MINED-WIRE-3: IfcWall way outside range WARN")
+    void w_dv_mined_wire_3_warn() throws Exception {
+        // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-3
+        validator.activate("MY", FacilityType.BUILDING, valConn);
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+            validator.activateMinedRules(discConn);
+        }
+        // Absurdly large wall: 500000mm width = 500m — way outside any mined range
+        PlacementRequest hugeWall = new PlacementRequest(
+                "WALL", "IfcWall", "ARC",
+                500000, 3500, 3000,
+                0, 0, 0, "SNAP", 0, "GF");
+        ValidationVerdict v = validator.validate(hugeWall);
+        assertTrue(v.isWarning(), "500m wall should trigger WARN");
+        assertTrue(v.ruleName().startsWith("DIMENSION_RANGE"),
+                "Warning should be dimension range: " + v.ruleName());
+    }
+
+    @Test
+    @Order(53)
+    @DisplayName("W-DV-MINED-WIRE-4: Unknown IFC class PASS (no mined data)")
+    void w_dv_mined_wire_4_unknown_class() throws Exception {
+        // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-4
+        validator.activate("MY", FacilityType.BUILDING, valConn);
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+            validator.activateMinedRules(discConn);
+        }
+        // IfcChimney has no mined data — should pass silently
+        PlacementRequest chimney = new PlacementRequest(
+                "MISC", "IfcChimney", "ARC",
+                500, 500, 5000,
+                0, 0, 0, "SNAP", 0, "GF");
+        ValidationVerdict v = validator.validate(chimney);
+        // No DIMENSION_RANGE warning for unknown class
+        if (v.isWarning()) {
+            assertFalse(v.ruleName().startsWith("DIMENSION_RANGE"),
+                    "Unknown class should not trigger dimension range");
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────

@@ -125,6 +125,25 @@ public class IFCtoBOMPipeline {
             System.out.printf("[IFCtoBOM] Read %d elements across %d storeys%n",
                     extractionCount, storeyElements.size());
 
+            // ── PRE-FLIGHT: Dimension range validation (DV010) ──────────────────
+            // Advisory: check element dimensions against mined typical ranges
+            // from disc_validation.db. Logs outliers but never blocks the pipeline.
+            {
+                Path discDbPath = Path.of("library/disc_validation.db");
+                if (Files.exists(discDbPath)) {
+                    try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + discDbPath)) {
+                        DimensionRangeValidator drv = DimensionRangeValidator.load(discConn);
+                        if (drv.hasRules()) {
+                            DimensionRangeValidator.Report report =
+                                    drv.validate(allElements, config.buildingType());
+                            report.print();
+                        }
+                    } catch (Exception e) {
+                        BIMLogger.warn("IFCtoBOM", "Dimension range check skipped: {}", e.getMessage());
+                    }
+                }
+            }
+
             // ── PRE-FLIGHT: Storey mapping validation ─────────────────────────
             // GUARD: Every storey in the extraction DB MUST have a matching key
             // in the YAML storeys section. Unmapped storeys = silent element loss.
@@ -509,7 +528,9 @@ public class IFCtoBOMPipeline {
                     material_name       TEXT,
                     material_rgba       TEXT,
                     entity_type         TEXT DEFAULT 'D',
-                    verb_ref            TEXT DEFAULT NULL
+                    verb_ref            TEXT DEFAULT NULL,
+                    shape_archetype     TEXT DEFAULT NULL,
+                    scale_band          TEXT DEFAULT NULL
                 )
                 """);
 

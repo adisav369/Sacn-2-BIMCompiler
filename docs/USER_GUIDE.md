@@ -1,8 +1,8 @@
 # BIM Compiler User Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
-**Version:** 1.0.0
-**Updated:** February 2026
+**Version:** 1.1.0
+**Updated:** March 2026
 
 ## Table of Contents
 1. [Quick Start](#quick-start)
@@ -535,6 +535,42 @@ Validates mesh quality:
 ### SpatialDigest (Determinism)
 
 Computes SHA-256 hash of all element bounding boxes at 1mm precision. Same input must always produce the same digest — this detects non-deterministic compilation.
+
+### Dimension Range Validation (DV010)
+
+When onboarding a new IFC file, the pipeline checks every extracted element's
+dimensions (W, D, H) against typical ranges mined from 20 real buildings
+(415 rules, 25 IFC classes, stored in `disc_validation.db`).
+
+The check runs automatically as a pre-flight in the IFC-to-BOM pipeline:
+
+```
+IFC → extract.py → ExtractionPopulator → DimensionRangeValidator → BOM builders
+```
+
+**What it flags:** Elements whose dimensions deviate by more than 5× from
+observed ranges across all onboarded buildings. For example:
+- IfcWall typical width: 800–10,269mm across 20 buildings
+- A 95mm partition wall → flagged (thin but legitimate)
+- A 500,000mm wall → flagged (data error)
+
+**Advisory only** — outliers are logged but never block the pipeline:
+
+```
+[DimRange] MyBuilding: 120/120 checked, 115 PASS, 5 outliers
+[DimRange]   IfcWall: 2 outlier(s)
+[DimRange]     Wall-Partn: W=95mm (range [800-10269]mm)
+```
+
+The same mined rules also feed the PlacementValidator in the BIM Designer,
+providing dimension sanity checks during interactive design.
+
+To apply new mined rules after onboarding additional buildings:
+
+```bash
+./scripts/apply_mined_rules.sh           # uncomment + apply all DV_*_rules.sql
+./scripts/apply_mined_rules.sh --dry-run  # preview without changes
+```
 
 ---
 
