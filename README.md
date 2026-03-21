@@ -14,21 +14,26 @@ The data model is [iDempiere](https://idempiere.org/) ERP: `M_Product`, `M_BOM`,
 
 | Metric | Value |
 |--------|-------|
-| **Test suites** | 248 Designer + 19 BackOffice — all green |
-| **Rosetta Stone buildings** | 7 (SH, DX, FK, TE, BR, RD, RL) — 3 residential, 1 commercial, 3 infrastructure |
+| **Test suites** | 258 Designer + 5 DimRange + 19 BackOffice — all green |
+| **Buildings onboarded** | 34 (residential, clinics, castles, airport terminal, infrastructure) |
 | **BIM COBOL verbs** | 63 verbs, 196 witnesses, 5 tiers (L0–L4) |
 | **Compilation pipeline** | 9 stages, 6 mathematical gates (G1–G6) |
-| **Products** | 800 in catalog, 24.9K geometries |
+| **Products** | 2,459 in catalog, 44K geometries, 25 IFC classes |
+| **Mined validation rules** | 415 dimension rules from 20 buildings — IFC quality gate |
 | **Largest building** | Terminal (48,428 elements, 505 products, 8 disciplines) |
-| **Databases** | 4-DB architecture: component_library (21 tables), disc_validation (20), per-building BOM (6), output |
+| **Databases** | 4-DB architecture: component_library (21 tables), disc_validation (22), per-building BOM (6), output |
 | **Java source** | 728 files across 9 Maven modules |
+
+## Project Overview
+
+Open [`project_overview.html`](project_overview.html) in any browser — a standalone, zero-dependency dashboard with all 34 buildings, the 9-stage pipeline, Rosetta Stone gate results, component library stats, and BOM output structure. Click **"Captions"** at the bottom-right for a guided walkthrough. Can be distributed and run anywhere without a server.
 
 ## 4-Database Architecture
 
 | Database | Role | Mutability |
 |----------|------|------------|
 | `component_library.db` | LOD catalog: product geometry, meshes, materials (21 tables) | Read-only |
-| `disc_validation.db` | Discipline metadata: MEP rules, space types, fire protection (20 tables) | Read-only (migration-seeded) |
+| `disc_validation.db` | Discipline metadata + 415 mined dimension rules (22 tables) | Read-only (migration-seeded) |
 | `{PREFIX}_BOM.db` | Per-building BOM dictionary (one per building: SH, DX, TE, etc.) | Read-only at compile time |
 | `output.db` | Compiled output: elements, spatial structure, IFC properties | Written fresh each compile |
 
