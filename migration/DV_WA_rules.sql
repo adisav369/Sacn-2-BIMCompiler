@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WA: BimWhale Advanced Project (BimWhale_Advanced)
 -- Source: DAGCompiler/lib/output/bimwhale_advanced.db
--- Generated: 2026-03-22 07:44
+-- Generated: 2026-03-22 23:16
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -10,7 +10,7 @@
 -- ifc_class                storey            cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- -----------------------  ----------------  ---  --------  --------  --------  --------  --------
 -- IfcFurnishingElement     1 - First Floor   307  986.0     933.0     1169.0    500.0     2573.0  
--- IfcBuildingElementProxy  1 - First Floor   189  166.0     140.0     306.0     28.0      1239.0  
+-- IfcBuildingElementProxy  1 - First Floor   189  166.0     141.0     306.0     28.0      1239.0  
 -- IfcWall                  Level 1           183  8341.0    8771.0    20713.0   343.0     45993.0 
 -- IfcWall                  1 - First Floor   110  2631.0    2885.0    15000.0   240.0     16844.0 
 -- IfcBuildingElementProxy  Level 1           107  1863.0    1765.0    2028.0    28.0      8221.0  
@@ -22,7 +22,7 @@
 -- IfcWindow                3 - Third Floor   46   778.0     1332.0    1571.0    395.0     2880.0  
 -- IfcWindow                4 - Fourth Floor  46   778.0     1332.0    1571.0    395.0     2880.0  
 -- IfcWindow                5 - Fifth Floor   46   778.0     1332.0    1571.0    395.0     2880.0  
--- IfcDoor                  -1 - Garage       45   653.0     741.0     2124.0    411.0     1088.0  
+-- IfcDoor                  -1 - Garage       45   653.0     742.0     2124.0    411.0     1088.0  
 -- IfcDoor                  1 - First Floor   42   793.0     868.0     2210.0    534.0     1099.0  
 -- IfcFlowTerminal          1 - First Floor   40   865.0     868.0     1061.0    578.0     1435.0  
 -- IfcDoor                  Level 1           36   881.0     1117.0    2252.0    534.0     1214.0  
@@ -32,7 +32,7 @@
 -- IfcBuildingElementProxy  -1 - Garage       24   3540.0    2529.0    1642.0    1514.0    3930.0  
 -- IfcRailing               Unknown           17   1848.0    2170.0    3685.0    916.0     3279.0  
 -- IfcStairFlight           Unknown           9    2726.0    3033.0    2952.0    2382.0    3291.0  
--- IfcBuildingElementProxy  Level 2           7    955.0     501.0     626.0     409.0     1047.0  
+-- IfcBuildingElementProxy  Level 2           7    956.0     501.0     626.0     409.0     1047.0  
 -- IfcWall                  6 - Sixth Floor   7    3403.0    3172.0    3029.0    503.0     7737.0  
 -- IfcFlowTerminal          -1 - Garage       5    773.0     739.0     860.0     578.0     868.0   
 -- IfcFlowTerminal          Level 1           4    631.0     823.0     826.0     578.0     683.0   
@@ -80,16 +80,16 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1169.0');
 
--- Rule: IfcBuildingElementProxy_1_-_First_Floor (189 instances, avg 166.0x140.0x306.0 mm)
+-- Rule: IfcBuildingElementProxy_1_-_First_Floor (189 instances, avg 166.0x141.0x306.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_1_-_First_Floor', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on 1 - First Floor: 189 instances, avg W=166.0 D=140.0 H=306.0mm',
+--     'IfcBuildingElementProxy on 1 - First Floor: 189 instances, avg W=166.0 D=141.0 H=306.0mm',
 --     'BimWhale_Advanced');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '166.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '140.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '141.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '306.0');
 
@@ -236,16 +236,16 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1571.0');
 
--- Rule: IfcDoor_-1_-_Garage (45 instances, avg 653.0x741.0x2124.0 mm)
+-- Rule: IfcDoor_-1_-_Garage (45 instances, avg 653.0x742.0x2124.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcDoor_-1_-_Garage', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcDoor on -1 - Garage: 45 instances, avg W=653.0 D=741.0 H=2124.0mm',
+--     'IfcDoor on -1 - Garage: 45 instances, avg W=653.0 D=742.0 H=2124.0mm',
 --     'BimWhale_Advanced');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '653.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '741.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '742.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2124.0');
 
@@ -366,14 +366,14 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '2952.0');
 
--- Rule: IfcBuildingElementProxy_Level_2 (7 instances, avg 955.0x501.0x626.0 mm)
+-- Rule: IfcBuildingElementProxy_Level_2 (7 instances, avg 956.0x501.0x626.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcBuildingElementProxy_Level_2', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcBuildingElementProxy on Level 2: 7 instances, avg W=955.0 D=501.0 H=626.0mm',
+--     'IfcBuildingElementProxy on Level 2: 7 instances, avg W=956.0 D=501.0 H=626.0mm',
 --     'BimWhale_Advanced');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '955.0');
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '956.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '501.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)

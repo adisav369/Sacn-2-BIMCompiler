@@ -606,6 +606,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
     DOC_BASE_TYPE=$(parse_yaml "$yaml_file" "doc_base_type")
     BLDG_NAME=$(parse_yaml "$yaml_file" "name")
     BUILDING_BOM_ID=$(parse_yaml "$yaml_file" "building_bom_id")
+    PROVENANCE=$(parse_yaml "$yaml_file" "provenance")
 
     BOM_DB="library/${PREFIX}_BOM.db"
     OUTPUT_BASE="DAGCompiler/lib/output/$(echo "$BUILDING_TYPE" | tr '[:upper:]' '[:lower:]')"
@@ -616,54 +617,85 @@ for yaml_file in "${YAML_FILES[@]}"; do
     echo "  Building type:  ${BUILDING_TYPE}"
     echo "  DocType:        ${DOC_BASE_TYPE}_${DOC_SUB_TYPE}"
     echo "  Building BOM:   ${BUILDING_BOM_ID}"
+    echo "  Provenance:     ${PROVENANCE:-EXTRACTED}"
     echo "  Output base:    ${OUTPUT_BASE}"
 
-    # Step 0: Run IFCtoBOM to produce fresh *_BOM.db
+    # Step 0: Produce *_BOM.db (IFCtoBOM for EXTRACTED, seed SQL for GENERATIVE)
     if [ "$DELTA_ONLY" != "true" ]; then
-        section "IFCtoBOM Pipeline (${PREFIX})"
 
-        # ── Populate product catalog (skip if geometry AND product images exist) ──
-        # Both I_Geometry_Map (geometry) and M_Product_Image (product→geometry link) must be populated.
-        comp_db="library/component_library.db"
-        geom_count=$(sqlite3 "$comp_db" \
-            "SELECT COUNT(*) FROM I_Geometry_Map WHERE building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
-        image_count=$(sqlite3 "$comp_db" \
-            "SELECT COUNT(*) FROM M_Product_Image i JOIN M_Product p ON i.M_Product_ID = p.product_id WHERE p.building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
-
-        if [ "$geom_count" = "0" ] || [ "$image_count" = "0" ]; then
-            echo "  [populate] Populating component_library.db for ${BUILDING_TYPE}..."
-            POP_OUTPUT=""
-            POP_RC=0
-            POP_OUTPUT=$(mvn exec:java -pl IFCtoBOM \
-                -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
-                -Dexec.args="--populate --classify ${yaml_file}" \
-                -q 2>&1) && POP_RC=0 || POP_RC=$?
-            echo "$POP_OUTPUT" | grep -E '^\[populate\]'
-
-            if [ "$POP_RC" -ne 0 ]; then
-                verdict "POPULATE_${PREFIX}" "FAIL" "populate failed"
-                echo "$POP_OUTPUT" | grep -E "ERROR|Exception|FAIL" | head -5 | sed 's/^/    /'
+        if [ "$PROVENANCE" = "GENERATIVE" ]; then
+            # ── GENERATIVE path: seed BOM from SQL, skip IFCtoBOM extraction ──
+            section "GENERATIVE Seed (${PREFIX})"
+            SEED_SQL="migration/seed_${PREFIX,,}_bom.sql"
+            if [ -f "$SEED_SQL" ]; then
+                rm -f "$BOM_DB"
+                # Apply full BOM schema first (metadata tables need all columns),
+                # then seed data (INSERT OR REPLACE into existing tables)
+                sed 's/CREATE TABLE \([^I"]\)/CREATE TABLE IF NOT EXISTS \1/g; s/CREATE TABLE "\([^I]\)/CREATE TABLE IF NOT EXISTS "\1/g' \
+                    library/schema_snapshot_bom.sql | sqlite3 "$BOM_DB" 2>/dev/null || true
+                sqlite3 "$BOM_DB" < "$SEED_SQL"
+                bom_count=$(sqlite3 "$BOM_DB" "SELECT COUNT(*) FROM m_bom" 2>/dev/null || echo "0")
+                line_count=$(sqlite3 "$BOM_DB" "SELECT COUNT(*) FROM m_bom_line WHERE component_type='LEAF'" 2>/dev/null || echo "0")
+                echo "  [seed] ${BOM_DB}: ${bom_count} BOMs, ${line_count} LEAF elements from ${SEED_SQL}"
+                verdict "SEED_${PREFIX}" "PASS" "${bom_count} BOMs, ${line_count} LEAF elements"
             else
-                verdict "POPULATE_${PREFIX}" "PASS" "component_library.db populated"
+                echo "  [seed] MISSING: ${SEED_SQL}"
+                verdict "SEED_${PREFIX}" "FAIL" "no seed SQL found: ${SEED_SQL}"
+            fi
+
+            # Add DSLContent to C_DocType if dsl file exists
+            DSL_FILE="IFCtoBOM/src/main/resources/dsl_${PREFIX,,}.bim"
+            if [ -f "$DSL_FILE" ] && [ -f "$BOM_DB" ]; then
+                DSL_CONTENT=$(cat "$DSL_FILE")
+                sqlite3 "$BOM_DB" "UPDATE C_DocType SET DSLContent = '$(echo "$DSL_CONTENT" | sed "s/'/''/g")' WHERE C_DocType_ID = '${DOC_BASE_TYPE}_${DOC_SUB_TYPE}'" 2>/dev/null || true
             fi
         else
-            echo "  [populate] Already populated: ${geom_count} geometries, ${image_count} images for ${BUILDING_TYPE} — skipping"
-        fi
+            # ── EXTRACTED path: normal IFCtoBOM pipeline ──
+            section "IFCtoBOM Pipeline (${PREFIX})"
 
-        # Run IFCtoBOM via CLI (YAML-driven, produces *_BOM.db)
-        IFC_OUTPUT=""
-        IFC_RC=0
-        IFC_OUTPUT=$(mvn exec:java -pl IFCtoBOM \
-            -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
-            -Dexec.args="--classify ${yaml_file} --bom-db ${BOM_DB}" \
-            -q 2>&1) && IFC_RC=0 || IFC_RC=$?
-        echo "$IFC_OUTPUT" | grep -E '^\[IFCtoBOM\]|^=== |^  \[|^\[QA\]|^  Floor'
+            # ── Populate product catalog (skip if geometry AND product images exist) ──
+            # Both I_Geometry_Map (geometry) and M_Product_Image (product→geometry link) must be populated.
+            comp_db="library/component_library.db"
+            geom_count=$(sqlite3 "$comp_db" \
+                "SELECT COUNT(*) FROM I_Geometry_Map WHERE building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
+            image_count=$(sqlite3 "$comp_db" \
+                "SELECT COUNT(*) FROM M_Product_Image i JOIN M_Product p ON i.M_Product_ID = p.product_id WHERE p.building_type='${BUILDING_TYPE}'" 2>/dev/null || echo "0")
 
-        if [ "$IFC_RC" -ne 0 ]; then
-            verdict "IFCTOBOM_${PREFIX}" "FAIL" "IFCtoBOM pipeline failed"
-            echo "$IFC_OUTPUT" | grep -E "ERROR\|Exception" | head -5 | sed 's/^/    /'
-        else
-            verdict "IFCTOBOM_${PREFIX}" "PASS" "${BOM_DB} produced"
+            if [ "$geom_count" = "0" ] || [ "$image_count" = "0" ]; then
+                echo "  [populate] Populating component_library.db for ${BUILDING_TYPE}..."
+                POP_OUTPUT=""
+                POP_RC=0
+                POP_OUTPUT=$(mvn exec:java -pl IFCtoBOM \
+                    -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
+                    -Dexec.args="--populate --classify ${yaml_file}" \
+                    -q 2>&1) && POP_RC=0 || POP_RC=$?
+                echo "$POP_OUTPUT" | grep -E '^\[populate\]'
+
+                if [ "$POP_RC" -ne 0 ]; then
+                    verdict "POPULATE_${PREFIX}" "FAIL" "populate failed"
+                    echo "$POP_OUTPUT" | grep -E "ERROR|Exception|FAIL" | head -5 | sed 's/^/    /'
+                else
+                    verdict "POPULATE_${PREFIX}" "PASS" "component_library.db populated"
+                fi
+            else
+                echo "  [populate] Already populated: ${geom_count} geometries, ${image_count} images for ${BUILDING_TYPE} — skipping"
+            fi
+
+            # Run IFCtoBOM via CLI (YAML-driven, produces *_BOM.db)
+            IFC_OUTPUT=""
+            IFC_RC=0
+            IFC_OUTPUT=$(mvn exec:java -pl IFCtoBOM \
+                -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
+                -Dexec.args="--classify ${yaml_file} --bom-db ${BOM_DB}" \
+                -q 2>&1) && IFC_RC=0 || IFC_RC=$?
+            echo "$IFC_OUTPUT" | grep -E '^\[IFCtoBOM\]|^=== |^  \[|^\[QA\]|^  Floor'
+
+            if [ "$IFC_RC" -ne 0 ]; then
+                verdict "IFCTOBOM_${PREFIX}" "FAIL" "IFCtoBOM pipeline failed"
+                echo "$IFC_OUTPUT" | grep -E "ERROR\|Exception" | head -5 | sed 's/^/    /'
+            else
+                verdict "IFCTOBOM_${PREFIX}" "PASS" "${BOM_DB} produced"
+            fi
         fi
 
         # Prepare per-building compile DB (e.g. library/_SH_compile.db)
@@ -678,9 +710,13 @@ for yaml_file in "${YAML_FILES[@]}"; do
     run_integrity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$BOM_DB"
 
     # Fidelity test — reference (input) vs output (C8/C9)
-    # Reference DB path: DAGCompiler/lib/input/{BUILDING_TYPE}_extracted.db
-    REF_DB="DAGCompiler/lib/input/${BUILDING_TYPE}_extracted.db"
-    run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$REF_DB"
+    # Skip for GENERATIVE buildings (no reference DB — DM defines the reference)
+    if [ "$PROVENANCE" = "GENERATIVE" ]; then
+        echo "  [fidelity] SKIP — GENERATIVE building (no reference DB)"
+    else
+        REF_DB="DAGCompiler/lib/input/${BUILDING_TYPE}_extracted.db"
+        run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$REF_DB"
+    fi
 done
 
 # ── Validation rule extraction (idempotent — INSERT OR IGNORE) ──

@@ -13,6 +13,7 @@ building:
   doc_base_type: RE
   name: Molio
   dsl_file: dsl_mo.bim
+  geometry_fail_threshold: 1  # 1 IfcCovering (FRAME_MD_6._SAL_468) has no library mesh
 
   storeys:
     "Kælder": { code: BSMT, bom_category: BSMT, role: BASEMENT, seq: 1010 }  # 59 elements

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- HI: HITOS Building (HITOS)
 -- Source: DAGCompiler/lib/output/hitos.db
--- Generated: 2026-03-22 07:24
+-- Generated: 2026-03-22 21:06
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
