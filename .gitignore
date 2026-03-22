@@ -60,3 +60,5 @@ GodMode.txt
 null
 docs/sessions.txt
 reference/transient_rosetta/
+backup/
+.venv/
