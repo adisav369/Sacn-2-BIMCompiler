@@ -175,7 +175,39 @@ to port 9878, handles `loadOutput` (loads output.db via db_loader) and `applySch
 
 ---
 
-## 5. Recommended Next Steps
+## 5. Federation Preview — Must Remain Intact
+
+The federation addon's native **Preview BBoxes** button (`bpy.ops.bim.preview_federation_viewport`)
+renders wireframe bounding boxes from any SQLite federation database. This is the **production path**
+for Show in Bonsai:
+
+```
+Web UI: Complete → compile → output.db
+    ↓ loadOutput command queued
+Bonsai: pollCommands → _load_output_command → preview_federation_viewport
+    ↓
+Federation preview: wireframe bboxes with real spatial positions from compiled output
+```
+
+**Do not break:**
+- `webui_sync._load_output_command()` — sets `federation_database_path`, calls preview operator
+- `bpy.ops.bim.preview_federation_viewport()` — the fast bbox loader from federation module
+- `bpy.ops.bim.load_full_federation_viewport_gi()` — the fallback full geometry loader
+- The `pollCommands` → `loadOutput` flow in `webui_sync.py` lines 178-181
+
+**The S60 "Show in Bonsai" proof** (257 wireframe cubes) used a temporary cube-creation fallback
+because BOM Drop order lines lack spatial offsets (dx/dy/dz=0). The production path uses
+Complete → compile → output.db → federation preview, which has correct positions.
+
+**What's new vs what existed:**
+- **Existed:** Federation preview from a local DB file (click button in Bonsai panel)
+- **New (S60):** Browser triggers the preview remotely via HTTP poll. First browser-to-Bonsai
+  BIM preview push. The individual pieces (HTTP poll, wireframe, BIM data) all existed —
+  the integration of a web BIM configurator pushing to Bonsai's federation viewport is new.
+
+---
+
+## 6. Recommended Next Steps
 
 ### Immediate (S60 scope — no backend changes)
 
