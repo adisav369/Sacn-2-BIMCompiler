@@ -19,11 +19,13 @@ orders, procurement. This project proves they are the **same problem**.
 
 | Manufacturing concept | Construction equivalent |
 |----------------------|----------------------|
-| **M_Product** (product catalog) | Building element (wall panel, door, pipe elbow) |
-| **M_BOM** (bill of materials) | Assembly recipe (kitchen set, floor plan, building unit) |
-| **M_BOM_Line** (BOM child) | Recipe line: product type + qty (or verb formula). NOT a per-instance placement |
-| **C_Order** (work order) | Construction project for a specific building |
-| **C_DocType** (document type) | Building type configuration (SH, DX, TB, TE) |
+| **M_Product** (product catalog) | Building element (wall, door, pipe) or assembly (floor, room SET, building). IsBOM=Y → has M_BOM children |
+| **M_Product_Category** | Product classification: ARC, STR, FP, MEP, FURNITURE, etc. Replaces M_BomCategory |
+| **M_BOM** (bill of materials) | Assembly recipe attached to a product. A product IS a BOM when IsBOM=Y |
+| **M_BOM_Line** (BOM child) | Recipe line: child product + qty + relative offset (dx/dy/dz). NOT a per-instance placement |
+| **C_Order** (work order) | Construction project for a specific building. ONE doc type: "Construction Order" |
+| **C_OrderLine** (order line) | Instance of a product in this project. BOM Drop explodes parent → child lines |
+| **C_DocType** (document type) | "Construction Order" — one only. Classification metadata, NOT a compilation driver |
 | **CO_EmptySpace** (warehouse slot) | Room/floor slot awaiting BOM content |
 | **PP_Order_Node** (operation) | Verb execution record (audit trail) |
 | **C_Campaign** (marketing) | Design theme (Bali, Scandinavian, Industrial) |
@@ -38,14 +40,15 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
                               group    (door, pipe, cabinet)
 ```
 
-**Three BOM dimensions** (iDempiere pattern) govern selection:
+**Two selection dimensions** (iDempiere product pattern):
 
-1. **Category** (M_BomCategory) — WHAT: kitchen, bedroom, bathroom, structural — flat classification (like M_Product_Category in iDempiere). Products belong to categories.
-2. **Provenance** (m_bom.doc_sub_type) — WHO extracted it: SH, DX, TB, TE — metadata on the BOM, not a selection driver
-3. **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm
+1. **Category** (M_Product_Category) — WHAT: ARC, STR, FP, KITCHEN, BEDROOM, BATHROOM. Products belong to categories. No separate M_BomCategory table needed — the product category IS the classification
+2. **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm. Determines which child BOM fits in a given slot
+
+**Provenance** (m_bom.doc_sub_type: SH, DX, TE) is metadata — WHO extracted it. Not a selection dimension. Stays on m_bom as audit trail but does not drive compilation or BOM Drop.
 
 **Why this is powerful:** Adding a new building type requires zero Java code.
-Define new BOM data (M_BomCategory + m_bom rows) and the
+Create an M_Product with IsBOM=Y, add M_BOM + M_BOM_Line children, and the
 compiler handles it. The same way an ERP handles a new product — data, not code.
 
 ### 1.1 Disciplines Are Metadata, Not Structure

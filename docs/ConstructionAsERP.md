@@ -4,11 +4,17 @@
 
 *How BIM compilation maps to iDempiere C_Order → BOM explosion → spatial resolution*
 
-> **Governing principle:** A construction project is a C_Order. C_DocType (in {PREFIX}_BOM.db)
-> defines the building type; C_Order + C_OrderLine (in output.db) are the compiled
-> transaction. The BOM catalog defines WHAT can be built. PP_Order_Node defines HOW
-> (verb operations). CO_EmptySpace tracks WHERE things sit in construction space.
-> Three databases, three concerns, no overlap.
+> **Governing principle:** A construction project is a C_Order. There is ONE document type:
+> "Construction Order." C_OrderLine references an M_Product (which may be a BOM product
+> with IsBOM=Y). BOM Drop explodes the product's recipe into child OrderLines. The user
+> edits lines (swap products, add disciplines). completeIt triggers compilation from the
+> OrderLine tree. M_Product_Category classifies products — no separate M_BomCategory needed.
+> PP_Order_Node records HOW (verb operations). CO_EmptySpace tracks WHERE things sit.
+>
+> **What changed (S60):** C_DocType no longer drives compilation — it is order metadata only.
+> M_BomCategory replaced by M_Product_Category. Products with IsBOM=Y ARE BOMs. The
+> compiler walks C_OrderLine, not m_bom directly. run_RosettaStones.sh creates C_Order +
+> bomDrop per building, then compiles via completeIt — same path as Designer UI.
 
 ---
 

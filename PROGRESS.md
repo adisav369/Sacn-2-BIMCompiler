@@ -22,7 +22,7 @@
 
 **Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output). 4D/5D/6D live on real library.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 22 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
-**BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 304/304 GREEN (38 test classes).
+**BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 392/392 GREEN (39 test classes).
 **Scorecard: 31/36.** 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
 **BIMEyes:** 41 files, 28 proofs. FL-2 advisory + FL-5 EYES integration DONE.
 
@@ -32,12 +32,40 @@
   IN/DX/TE all GREEN. Details: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
   C9 axis-swap tolerance: `GeometryFidelityTest.java`. Reference DBs re-baselined (not pipeline code).
 
-**Next: S59 Session 3 — FP discipline + validation:**
-  Wire validateBatch() into auto-populate. FP OrderLine → sprinkler placement.
-  NFPA 13 spacing, FP-STR clearance. Witness: W-DM-TC5-1, W-DM-FP-VAL-1.
+**[DONE] S59 — Work Order path + HTML↔Bonsai sync:**
+  W-WO-1: bomDrop(DM) → 60 leaves → completeIt → 60 elements. WorkOrderCompileTest 6/6 GREEN.
+  HTML UI: bomDrop renders tree, compile/completeIt pass paths, DocAction buttons (save/approve/complete/promote).
+  Bonsai bridge: pollCommands timer (2s interval) picks up loadOutput → db_loader populates viewport.
+  §30.2 sync table: all 6 directions DONE. §30.5 priority #1 DONE, #2 DONE.
+
+**Next: S60 — ERP Model Alignment (iDempiere BOM pattern):**
+  Align compilation pipeline to pure iDempiere C_Order → C_OrderLine → BOM Drop model.
+  **Spec changes already applied:** BBC.md §1, ConstructionAsERP.md §1 updated.
+
+  **Key principles (agreed with user):**
+  1. ONE C_DocType: "Construction Order" — metadata only, not a compilation driver
+  2. No M_BomCategory — use M_Product_Category instead (product IS its category)
+  3. Products with IsBOM=Y ARE BOMs — no separate bom_type hierarchy
+  4. Compiler walks C_OrderLine tree, not m_bom directly
+  5. YAML is the test script (creates C_Order + OrderLines), not a pipeline driver
+
+  **Code changes needed:**
+  1. `CompilationPipeline.run()` → accept C_Order ID, walk C_OrderLine tree (not C_DocType lookup)
+  2. `BuildingRegistryTest` → create C_Order + bomDrop per building, then compile via OrderLine path
+  3. `run_RosettaStones.sh` → use bomDrop + completeIt (same path as WorkOrderCompileTest)
+  4. Remove C_DocType as compilation entry point (keep as order metadata)
+  5. Replace M_BomCategory references with M_Product_Category
+  6. Add visual diff report: per-element TSV under `--diff` flag
+  7. Script accepts building prefixes as arguments, small files default, large files explicit
+
+  **Already proven:** WorkOrderCompileTest (W-WO-1: bomDrop→compile→60 el),
+  BomDropConfigureTest (TC-4: roof swap→95 el). The OrderLine path works.
+
+  **Database backup:** `backup/db_snapshot_20260323_014819/` (1.5GB)
 
 ## Session Log (recent first)
 
+**S59** — Work Order path + HTML↔Bonsai sync. W-WO-1: WorkOrderCompileTest 6/6 GREEN (bomDrop→compile→60 el). HTML UI: DocAction buttons (save/approve/complete/promote), bomDrop renders tree, compile passes paths. Bonsai bridge: pollCommands timer + db_loader viewport load. §30.2 sync complete. 392/392 GREEN.
 **S59-S2** — Post-swap compilation. W-DM-TC4-1 GREEN: bomDrop(SH) + swapProduct(roof→FK_DG_STR) + compile → 95 elements. G1/G5/G8 pass. BomDropConfigureTest 6/6 GREEN. No pipeline code changes.
 **S58b** — DM generative path. First GENERATIVE building (DemoHouse_2BR, 60 elements). seed_dm_bom.sql.
 **S58a** — 9 buildings full pipeline (RA/JE/ES/MO/HI/RM/RS/SC/WA). G3 baselined. MO threshold=1. +3 ALL GREEN.
