@@ -16,7 +16,7 @@
 | C9-AXIS | PASS | PASS | **PASS** | FAIL (87 mismatches) | PASS |
 | W-TOT | PASS | PASS | **—** | PASS (centroid fix S43) | 48336/48428 |
 
-**Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output).
+**Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output). 4D/5D/6D live on real library (V010+V013 applied).
 **Rosetta Stones:** 34 buildings. Originals: SH(55), FK(82), IN(699), BR(48), RD(53), RL(73), DX(1099), TE(48428). S44: BA(11), BH(5), BS(16), IP(27), SC(3214), CA(2586), CS(1078), CH(3693), CE(2110), CP(6584), ES(1941), MO(3114). S44b: GH(193), JS(61), NI(104), WB(125), WL(114), WT(55), WA(1749), JE(626), WI(1), RA(442), RM(6787), RS(4133), CL(3214), HI(2068).
 **BIMBackOffice:** 5/5 GREEN (PrintConfigTest). New module: ERP back-office (print config, reports, portfolio).
 **BonsaiBIMDesigner:** 304/304 GREEN (38 test classes). SelectionCascadeTest: W-GEN-1 (7 witnesses). DesignerServerTest: 21/21 GREEN (+3 W-WS).
