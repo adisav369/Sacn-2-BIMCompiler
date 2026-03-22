@@ -67,7 +67,8 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
 9. [x] **Orientation fidelity?** Does each placed element respect its `component_definitions` orientation metadata (`attachment_face`, `up_axis`, `forward_axis`)? A door AABB at the right position but facing the wrong way (inward vs outward) is a drift that AABB checks alone cannot catch. W-ROT catches 90° swaps; `face_anchor`/`swing_side` ASI catches facing direction (M16/M17 when implemented).
    **Gap identified (session 27):** Mesh centroid offset relative to AABB centre is an orientation fingerprint that works cross-mode. Fix: C10 mesh centroid fingerprint (TestArchitecture.md). Uses existing P22 vertex blob infrastructure.
    **Session 42:** W-ROT PASS for SH/DX. 23,888 products have orientation metadata in `component_definitions`.
-   **Remedy:** `RotationContractTest.java` compares width/depth alignment per door/window. M16/M17 (DocValidate) for facing direction — pending R21 (host_element_ref extraction).
+   **Remedy:** `RotationContractTest.java` compares width/depth alignment per door/window. M16/M17 (DocValidate) for facing direction — R21 DONE (S60-S2).
+   **R21 (S60-S2):** `host_element_ref` column on m_bom_line. Extracted from IFC via IfcRelVoidsElement+IfcRelFillsElement chain → `rel_fills_host` table in reference DB → ExtractionPopulator resolves to element_ref. **Caveat:** Reference DBs must be re-extracted with `tools/extract.py` to populate `rel_fills_host`. See S60_ERP_ALIGNMENT.md §R21 Implementation.
 10. [x] **Who checks the tests?** Are the tests themselves fooling us?
     **Session 42:** G4-TAMPER provides meta-testing (T18-T20 scan source for anti-patterns).
     Seal v23 (74 files INTACT) prevents silent test changes. C8/C9 cross-validate output vs reference.

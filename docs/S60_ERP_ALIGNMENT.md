@@ -29,7 +29,7 @@
 | 3 | BuildingRegistryTest → bomDrop per building | DONE |
 | 4 | run_RosettaStones.sh → same path (schema auto-applied) | DONE |
 | 5 | C_DocType as metadata only (not compilation driver) | DONE — PlacementLoader reads C_OrderLine when available |
-| 6 | Replace M_BomCategory references with M_Product_Category | ASSESSED — 77 files, dedicated session needed |
+| 6 | Replace M_BomCategory references with M_Product_Category | ASSESSED — see §M_BomCategory Assessment below |
 | 7 | ~~OrderLineHydrationDAO~~ | SUPERSEDED by OrderLineWalker |
 | 8 | Wire AD_Val_Rule validation with exception override | DONE — X_AD_Val_Rule_Exception + MValRuleException DAO |
 | 9 | Visual diff report: per-element TSV under `--diff` flag | DONE — `SpatialDiff.toTsv()`, `--diff` flag on run_RosettaStones.sh |
@@ -99,4 +99,44 @@ component_library.db: 433MB total (358MB geometry blobs). Too large for git — 
 
 ## Database Backup
 
-`backup/db_snapshot_20260323_014819/` (1.5GB — library, output, input DBs)
+`backup/db_snapshot_20260323_014819/` (1.5GB — library, output, input DBs).
+**WARNING:** `backup/` is .gitignored. NEVER commit database snapshots to git — GitHub rejects files >100MB. The backup dir stays local-only.
+
+## R21 Implementation (host_element_ref)
+
+**IFC chain:** Wall ←(IfcRelVoidsElement)← IfcOpeningElement ←(IfcRelFillsElement)← Door/Window.
+
+**Data flow:**
+1. `tools/extract.py` extracts chain → `rel_fills_host(element_guid, host_guid)` table in reference DB
+2. `DAGCompiler/python/reference_schema.sql` defines the table
+3. `ExtractionPopulator.readFillsHost()` reads the table (backward-compat: empty map if table absent)
+4. `ExtractionPopulator.deriveRows()` resolves host GUID → host element_ref via GUID→elementRef map
+5. `ExtractionReader.ExtractionElement.hostElementRef()` carries the value
+6. All BOM builders + VerbFactorizer write `host_element_ref` to m_bom_line
+7. `migration/R21_host_element_ref.sql` adds the column to existing DBs
+
+**IMPORTANT:** Reference DBs must be re-extracted with `tools/extract.py` to populate `rel_fills_host`. Pre-R21 reference DBs have no `rel_fills_host` table — ExtractionPopulator handles this gracefully (returns empty map).
+
+**Consumers:** M16/M17 validation rules (DocValidate) can now use FK join on `host_element_ref` instead of AABB proximity. See LAST_MILE_PROBLEM.md §Check 9.
+
+## M_BomCategory Assessment (#6)
+
+**Finding (S60-S2):** NOT a simple rename. M_BomCategory and M_Product_Category are **orthogonal axes**:
+
+| Axis | M_BomCategory | M_Product_Category |
+|------|---------------|-------------------|
+| Purpose | Room/zone template types | IFC discipline classification |
+| Codes | LI, BD, KT, BT, DN, FR, ST... (19 codes) | STR, ARC, MEP, IFC_WALL... (tree) |
+| Structure | Junction table (M_BomCategoryLine) | Self-referencing (Parent_Category_ID) |
+| Used by | Template grammar, BIM_COBOL verbs | Discipline assignment, product catalog |
+
+**Impact:** 77 files across 6 layers (PO, BIM_COBOL verbs, pipeline, tests, DAOs, migrations).
+
+**What works already:** DisciplineBomBuilder uses discipline codes (ARC/STR/FP) as bom_category — these ARE M_Product_Category root IDs. The CO path is already aligned.
+
+**What needs dedicated session:**
+- BIM_COBOL verbs: DEFINE CATEGORY, ADD TEMPLATE RULE, REGISTER BOM (3 files)
+- Template grammar: M_BomCategoryLine → M_Product_Category self-referencing tree
+- AABB template matching: currently on M_BomCategory, needs PlacementContext
+- 10+ test files need verb/query refactoring
+- Schema migration: backfill 19 functional codes → M_Product_Category entries
