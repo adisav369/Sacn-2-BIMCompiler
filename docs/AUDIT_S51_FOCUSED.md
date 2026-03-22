@@ -395,3 +395,83 @@ single-check validator classes. Currently testable only as monolith.
 | BBC.md | §Schema-Not-Geometry | All geometry proofs are SQL-expressible | **COMPLIANT** |
 | BBC.md | §2.2.1 | No IFC class branching in compiler (CP-4 done) | **COMPLIANT** |
 | DEPLOYMENT.md | TLS, HMAC | Crypto implementation correct | **COMPLIANT** |
+
+---
+
+## Appendix B — S59 Uncommitted State Watchdog (2026-03-23)
+
+> **Snapshot:** After S59/S59-S2 close, before S60 begins.
+> **Last commit:** `4636ae6 [S59-S2] Concise rewrite of §D.5 Universal Configurator`
+> **Compile:** `mvn compile -q` — CLEAN.
+
+Three S60-spec commits already landed:
+- `6da75ff` ERP model alignment — C_DocType metadata only
+- `3a81dfb` UI session gap analysis — schema + DAO gaps
+- `7cefca5` Move spec to `docs/S60_ERP_ALIGNMENT.md`
+
+### Modified (unstaged) — 14 files, +571 −34
+
+| File | Lines | Risk | Notes |
+|------|-------|------|-------|
+| `WorkOutputDAO.java` | +84 | LOW | DAO additions (S59 work order path) |
+| `client.py` (Bonsai) | +21 | LOW | Python bridge extensions |
+| `operator.py` (Bonsai) | +94 | LOW | Bonsai operator additions |
+| `PlacementLoader.java` | +110 | **MED** | DSL changes — compiler core, test coverage needed |
+| `BuildingRegistryTest.java` | +12 | LOW | Test additions |
+| `BIM_Designer_SRS.md` | +124 | LOW | Spec text only |
+| `DemoHouseAnalysis.md` | +5 | LOW | Analysis doc |
+| `component_library.db` | binary | **MED** | Library DB change — verify via `schema_snapshot_bom.sql` |
+| `schema_snapshot_bom.sql` | +45 | LOW | Schema snapshot — documents the .db change |
+| `DV_DM_rules.sql` | +2 | LOW | Append to migration — check SACRED FILES rule |
+| `DV_FK_rules.sql` | +2 | LOW | Same |
+| `DV_SH_rules.sql` | +2 | LOW | Same |
+| `webui/app.js` | +98 | LOW | BOM tree rendering, DocAction save/approve/complete |
+| `webui/index.html` | +2 | LOW | UI markup |
+
+### Untracked (new files) — 5 files, 865 lines
+
+| File | Lines | Purpose |
+|------|-------|---------|
+| `WorkOrderCompileTest.java` | 303 | W-WO-1 test — 6/6 GREEN per PROGRESS.md |
+| `BomDropper.java` | 288 | BOM explosion logic (new class) |
+| `OrderLineWalker.java` | 179 | OrderLine tree walker (new class) |
+| `S60_schema.sql` | 61 | C_Order + C_OrderLine + AD_Val_Rule_Exception DDL |
+| `W003_orderline_discipline.sql` | 34 | ALTER TABLE: Discipline, Jurisdiction, OccupancyClass |
+
+### Observations
+
+1. **S59 complete but uncommitted.** PROGRESS.md says DONE (392/392 GREEN). Commit before S60.
+2. **S60 schema drafted.** `S60_schema.sql` + `W003_orderline_discipline.sql` match S60_ERP_ALIGNMENT.md.
+3. **Sacred file touches:** DV_{DM,FK,SH}_rules.sql each +2 lines — verify appends only.
+4. **`.venv/`** should be .gitignored.
+5. **Binary DB** `component_library.db` — cross-check against `schema_snapshot_bom.sql`.
+
+### Recommended Commit Sequence
+
+1. Commit S59 implementation (all modified + 3 new Java files)
+2. Commit S60 schema separately (2 migration files)
+3. Add `.venv/` to `.gitignore` if missing
+
+---
+
+## Appendix C — Terminal (TE) Last Mile Status (S60)
+
+Against [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) Session 42 Checklist.
+
+| # | Check | TE Status | Evidence | Outstanding |
+|---|-------|-----------|----------|-------------|
+| 1 | Input = Output | **PASS** | W-TOT 48428/48428 | — |
+| 2 | LOD400 geometry | **PASS** | G5: 0 GEO_ fallbacks | — |
+| 3 | Compiler only | **PASS** | T18/T19/T20: 0 violations | — |
+| 4 | Openings/furniture | **PASS** | P05/P06: 0 violations | — |
+| 5 | Spec fidelity | **PASS** | 7 sources audited | — |
+| 6 | Output path | **PASS** | Single path via C_OrderLine (S60) | — |
+| 7 | Separate from input | **PASS** | T18 guards, R11-R15 DONE | — |
+| 8 | Visual fidelity | **PASS** | C8+C9 clean | — |
+| 9 | Orientation | **PARTIAL** | W-ROT passes (90° swaps caught) | M16/M17 facing direction needs R21 (host_element_ref extraction) |
+| 10 | Meta-testing | **PASS** | Seal + T18-T20 tamper + C8/C9 | — |
+| 11 | Factorization | **PASS** | 48428/48428 exact (99.8% W-TOT) | — |
+
+**Single outstanding item:** Check #9 — door/window **facing direction** (inward vs outward). W-ROT catches 90° rotation swaps, but same-axis facing (e.g., door opening into room vs into corridor) requires `host_element_ref` extraction (R21) to determine which side of the host wall the opening belongs to. This enables M16/M17 validation rules in DocValidate.
+
+**Pre-existing debt cleared (S58c):** TE G3 "92 FRAME mismatches" were centroid-vs-LBD offset — confirmed not actual errors, reference re-baselined.
