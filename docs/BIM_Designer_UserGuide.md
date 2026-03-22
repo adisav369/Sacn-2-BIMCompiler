@@ -778,13 +778,22 @@ Web UI (Screen 1)                     Bonsai (Screen 2)
 └──────────────────────┘              └──────────────────────┘
 ```
 
-**Lightweight preview flow (no compile):**
-1. User clicks "Show in Bonsai" → sends `previewBBoxes` command with `buildingId`
-2. Command queued on server
-3. Bonsai poll timer (2s) picks up `previewBBoxes` command
-4. Handler calls `client.list_order_lines(buildingId)` → gets W/D/H + offsets
-5. Converts order lines to bbox format → `design_bbox.enable(bboxes)`
-6. Category-coloured wireframe boxes appear in viewport — same as Design Mode overlay
+**Lightweight preview flow (no compile) — PROVEN S60:**
+1. User clicks "Show in Bonsai" → sends `applyScheme(schemeName:'previewBBoxes', guid:buildingId)`
+2. Java WebUIServer queues command (whitelisted fields: schemeName, objectName, guid)
+3. Bonsai poll timer (0.5s) picks up command via `pollCommands`
+4. `_apply_scheme_command` checks `schemeName == 'previewBBoxes'` → routes to handler
+5. Handler calls `listOrderLines(buildingId)` via HTTP → gets W/D/H per line
+6. Converts to bboxes → creates wireframe cubes (`display_type='WIRE'`) in viewport
+7. Category-coloured wireframe boxes appear in `BIM_Preview_BBoxes` collection
+
+**Proven:** 257 wireframe cubes (MO building) rendered in Bonsai viewport from Web UI BOM Drop.
+Screenshot: `~/Pictures/Screenshots/Screenshot from 2026-03-23 06-15-37.png`
+
+**Known limitation — geometry at origin:** All bboxes currently stack at (0,0,0) because
+BOM Drop order lines have `dx=dy=dz=0` — offsets are computed by the compiler during
+spatial placement, not at BOM Drop time. Fix: populate `dx/dy/dz` from the BOM tree's
+tack offsets during BOM Drop, or run a lightweight placement pass before preview.
 
 **Full geometry when ready:**
 - User clicks **Full Load** in Bonsai panel → loads compiled output.db with meshes
