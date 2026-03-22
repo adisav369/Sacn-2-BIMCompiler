@@ -150,7 +150,7 @@ public class VerbFactorizer {
                         first.widthMm(), first.depthMm(), first.heightMm(),
                         first.storey(), first.elementRef(), first.ordinal(),
                         first.orientation(), first.materialName(), first.materialRgba(),
-                        group.size(), verbRef);
+                        group.size(), verbRef, first.hostElementRef());
 
                 // CP-1: MA (Material Allocation) — per-instance IFC GUIDs
                 if (writeMaRows) {
@@ -192,7 +192,7 @@ public class VerbFactorizer {
                             e.widthMm(), e.depthMm(), e.heightMm(),
                             e.storey(), elemRef, e.ordinal(),
                             e.orientation(), e.materialName(), e.materialRgba(),
-                            1, null);
+                            1, null, e.hostElementRef());
 
                     // CP-1: MA for unfactored lines (qi=0, single instance).
                     // Required for CO buildings where SpatialDiff uses GUID-based matching.
@@ -281,7 +281,8 @@ public class VerbFactorizer {
                                         String storey, String elementRef, int ordinal,
                                         String orientation,
                                         String materialName, String materialRgba,
-                                        int qty, String verbRef)
+                                        int qty, String verbRef,
+                                        String hostElementRef)
             throws SQLException {
         // CP-4 §4a: compute geometric classification from allocated dimensions
         String archetype = classifyArchetype(allocW, allocD, allocH);
@@ -295,14 +296,16 @@ public class VerbFactorizer {
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba,
-                 shape_archetype, scale_band)
+                 shape_archetype, scale_band,
+                 host_element_ref)
                 VALUES (?, ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', ?, ?,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?,
-                        ?, ?)
+                        ?, ?,
+                        ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -326,6 +329,7 @@ public class VerbFactorizer {
             stmt.setString(19, materialRgba);
             stmt.setString(20, archetype);
             stmt.setString(21, scaleBand);
+            stmt.setString(22, hostElementRef);
             stmt.executeUpdate();
         }
     }

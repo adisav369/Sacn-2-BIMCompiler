@@ -39,6 +39,24 @@ public class SpatialDiff {
             return drift == 0 && shift == 0 && missing == 0 && extra == 0;
         }
 
+        /**
+         * Format the diff report as a TSV string.
+         * Columns: band, ifc_class, index, dMinX_mm, dMaxX_mm, dMinY_mm, dMaxY_mm, dMinZ_mm, dMaxZ_mm, max_mm
+         */
+        public String toTsv() {
+            StringBuilder sb = new StringBuilder();
+            sb.append("band\tifc_class\tindex\tdMinX_mm\tdMaxX_mm\tdMinY_mm\tdMaxY_mm\tdMinZ_mm\tdMaxZ_mm\tmax_mm\n");
+            for (ElementDelta d : deltas) {
+                sb.append(String.format("%s\t%s\t%d\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f%n",
+                    d.band, d.ifcClass, d.indexInClass,
+                    d.deltaMinX_mm, d.deltaMaxX_mm,
+                    d.deltaMinY_mm, d.deltaMaxY_mm,
+                    d.deltaMinZ_mm, d.deltaMaxZ_mm,
+                    d.maxDelta()));
+            }
+            return sb.toString();
+        }
+
         public String summary() {
             StringBuilder sb = new StringBuilder();
             sb.append(String.format("SpatialDiff: %d exact, %d drift, %d shift, %d missing, %d extra%n",
@@ -297,6 +315,34 @@ public class SpatialDiff {
             while (rs.next()) { result.putIfAbsent(rs.getString(1), rs.getString(2)); }
         } catch (SQLException e) { return Collections.emptyMap(); }
         return result;
+    }
+
+    /**
+     * Write diff report as TSV to a file.
+     * // Implementing S60_ERP_ALIGNMENT.md §9 — Witness: W-S60-DIFF
+     */
+    public static void writeTsv(DiffReport report, String tsvPath) {
+        try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(tsvPath))) {
+            pw.print(report.toTsv());
+        } catch (java.io.IOException e) {
+            System.err.printf("[SpatialDiff] Failed to write TSV: %s — %s%n", tsvPath, e.getMessage());
+        }
+    }
+
+    /**
+     * CLI entry point: diff two DBs and write TSV.
+     * Usage: SpatialDiff &lt;ref.db&gt; &lt;out.db&gt; &lt;output.tsv&gt;
+     */
+    public static void main(String[] args) {
+        if (args.length < 3) {
+            System.err.println("Usage: SpatialDiff <ref.db> <out.db> <output.tsv>");
+            System.exit(1);
+        }
+        DiffReport report = diff(args[0], args[1]);
+        writeTsv(report, args[2]);
+        System.out.printf("[SpatialDiff] %s: %d elements, %d exact, %d drift, %d shift, %d missing, %d extra%n",
+                args[2], report.deltas().size(), report.exact(), report.drift(),
+                report.shift(), report.missing(), report.extra());
     }
 
     private static Map<String, List<double[]>> loadElements(String dbPath) {

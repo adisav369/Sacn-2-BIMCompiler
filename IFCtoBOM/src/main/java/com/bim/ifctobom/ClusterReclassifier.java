@@ -185,7 +185,7 @@ public class ClusterReclassifier {
                 dy, dy + nomD,    // minY, maxY (nominal)
                 dz, dz + nomH,    // minZ, maxZ (nominal)
                 null, null, null, null,
-                productId, null
+                productId, null, null
             ));
         }
         return elements;

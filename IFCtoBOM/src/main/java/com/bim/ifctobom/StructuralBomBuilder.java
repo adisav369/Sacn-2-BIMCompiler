@@ -256,14 +256,16 @@ public class StructuralBomBuilder {
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba,
-                 shape_archetype, scale_band)
+                 shape_archetype, scale_band,
+                 host_element_ref)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', ?,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?,
-                        ?, ?)
+                        ?, ?,
+                        ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -287,6 +289,7 @@ public class StructuralBomBuilder {
             stmt.setString(19, materialRgba);
             stmt.setString(20, archetype);
             stmt.setString(21, scaleBand);
+            stmt.setString(22, null);  // MAKE lines have no host_element_ref
             stmt.executeUpdate();
         }
     }

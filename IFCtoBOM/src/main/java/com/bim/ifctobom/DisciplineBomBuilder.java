@@ -253,14 +253,16 @@ public class DisciplineBomBuilder {
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba,
-                 shape_archetype, scale_band)
+                 shape_archetype, scale_band,
+                 host_element_ref)
                 VALUES (?, ?, ?, ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', 1,
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?,
-                        ?, ?)
+                        ?, ?,
+                        ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -283,6 +285,7 @@ public class DisciplineBomBuilder {
             stmt.setString(18, materialRgba);
             stmt.setString(19, archetype);
             stmt.setString(20, scaleBand);
+            stmt.setString(21, null);  // MAKE lines have no host_element_ref
             stmt.executeUpdate();
         }
     }

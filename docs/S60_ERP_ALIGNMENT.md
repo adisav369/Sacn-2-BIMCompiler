@@ -29,10 +29,10 @@
 | 3 | BuildingRegistryTest → bomDrop per building | DONE |
 | 4 | run_RosettaStones.sh → same path (schema auto-applied) | DONE |
 | 5 | C_DocType as metadata only (not compilation driver) | DONE — PlacementLoader reads C_OrderLine when available |
-| 6 | Replace M_BomCategory references with M_Product_Category | TODO |
+| 6 | Replace M_BomCategory references with M_Product_Category | ASSESSED — 77 files, dedicated session needed |
 | 7 | ~~OrderLineHydrationDAO~~ | SUPERSEDED by OrderLineWalker |
-| 8 | Wire AD_Val_Rule validation with exception override | TODO |
-| 9 | Visual diff report: per-element TSV under `--diff` flag | TODO |
+| 8 | Wire AD_Val_Rule validation with exception override | DONE — X_AD_Val_Rule_Exception + MValRuleException DAO |
+| 9 | Visual diff report: per-element TSV under `--diff` flag | DONE — `SpatialDiff.toTsv()`, `--diff` flag on run_RosettaStones.sh |
 | 10 | Script accepts building prefixes as arguments | TODO |
 
 ## Proven

@@ -524,7 +524,7 @@ binary), but must not be confused with the source DBs being mixed.
 | R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **TODO** — dead tables |
 | R19 | Update ConstructionAsERP.md §1.1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
 | R20 | Migrate test extraction fixtures out of component_library.db | §8.3 test dependency | LOW | **DEFER** — tests work as-is |
-| R21 | Extract `host_element_ref` from `IfcRelVoidsElement` into I_Element_Extraction | Schema-Not-Geometry §15.6 | MED | **TODO** — M16/M17 upgrade from AABB_PROXIMITY to FK join |
+| R21 | Extract `host_element_ref` from `IfcRelVoidsElement` into m_bom_line | Schema-Not-Geometry §15.6 | MED | **DONE** (S60-S2) — extract.py→rel_fills_host→ExtractionPopulator→m_bom_line.host_element_ref. Re-extract ref DBs to populate. |
 | R22 | Extract `I_Element_Connectivity` linking table from `IfcRelConnectsElements` | Schema-Not-Geometry §15.6 | MED | **TODO** — M13/M14/M15 upgrade from positional grouping |
 | R23 | Extract `I_Element_Interference` linking table from `IfcRelInterferesElements` | Schema-Not-Geometry §15.6 | LOW | **TODO** — M9/M10 upgrade from AABB intersection |
 | R24 | Extract `fire_stop_product_ref` from `IfcRelFillsElement` into I_Element_Extraction | Schema-Not-Geometry §15.6 | LOW | **TODO** — M11 upgrade from WARN to FK check |

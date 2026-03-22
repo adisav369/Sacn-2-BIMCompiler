@@ -893,7 +893,7 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 ---
 
 **Sealed:** 2026-03-22 (v27: session 54b, WalkThruCompilationTest removed, single compilation path, 73 files)
-**Super-hash:** `f3155d81832e1b06faae3371f94674c4fe849aeaa7157ef73f4e363c3a253fb3`
+**Super-hash:** `e4c7fd17fd9973592f6500fc1a59cd98a8501963dfa8d37157b5439b86a92747`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)

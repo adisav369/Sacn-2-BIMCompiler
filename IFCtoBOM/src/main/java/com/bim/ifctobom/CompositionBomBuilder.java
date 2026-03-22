@@ -329,14 +329,16 @@ public class CompositionBomBuilder {
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba,
-                 shape_archetype, scale_band)
+                 shape_archetype, scale_band,
+                 host_element_ref)
                 VALUES (?, ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D',
                         ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?,
-                        ?, ?)
+                        ?, ?,
+                        ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -358,6 +360,7 @@ public class CompositionBomBuilder {
             stmt.setString(17, e.materialRgba());
             stmt.setString(18, archetype);
             stmt.setString(19, scaleBand);
+            stmt.setString(20, e.hostElementRef());
             stmt.executeUpdate();
         }
     }

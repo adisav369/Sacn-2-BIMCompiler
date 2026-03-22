@@ -77,8 +77,11 @@ public class ExtractionPopulator {
             return Map.of();
         }
 
+        // R21: Read opening→host mappings from reference DB
+        Map<String, String> fillsHostMap = readFillsHost(refDb);
+
         // Derive enriched rows in memory (element_ref, ordinal, M_Product_ID, orientation)
-        List<ExtractionRow> rows = deriveRows(rawElements, buildingType);
+        List<ExtractionRow> rows = deriveRows(rawElements, buildingType, fillsHostMap);
 
         // Filter: exclude REBAR (Bonsai addon, not main construction)
         rows = rows.stream()
@@ -101,7 +104,7 @@ public class ExtractionPopulator {
                     r.storey, r.ifcClass, r.elementRef, r.ordinal,
                     r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ,
                     r.orientation, r.discipline, r.materialName(), r.materialRgba(),
-                    r.mProductId, r.guid);
+                    r.mProductId, r.guid, r.hostElementRef);
             if (e.mProductId() == null || e.mProductId().isBlank()) nullProductCount++;
             result.computeIfAbsent(r.storey, k -> new ArrayList<>()).add(e);
         }
@@ -136,7 +139,8 @@ public class ExtractionPopulator {
             double minX, double maxX, double minY, double maxY, double minZ, double maxZ,
             String orientation, String discipline,
             String materialName, String materialRgba,
-            String mProductId, String guid
+            String mProductId, String guid,
+            String hostElementRef  // R21: element_ref of host wall/slab (NULL for non-openings)
     ) {}
 
     // ── Read reference DB ───────────────────────────────────────────────────
@@ -170,9 +174,46 @@ public class ExtractionPopulator {
         return result;
     }
 
+    // ── R21: Read opening→host map ─────────────────────────────────────────
+
+    /**
+     * Read rel_fills_host table from reference DB.
+     * Returns map: element_guid (door/window) → host_guid (wall/slab).
+     * Empty map if table doesn't exist (pre-R21 reference DBs).
+     */
+    private static Map<String, String> readFillsHost(Path refDb) throws SQLException {
+        Map<String, String> result = new HashMap<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + refDb)) {
+            // Check if table exists (backward compat with pre-R21 reference DBs)
+            try (ResultSet rs = conn.getMetaData().getTables(null, null, "rel_fills_host", null)) {
+                if (!rs.next()) return result;
+            }
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT element_guid, host_guid FROM rel_fills_host")) {
+                while (rs.next()) {
+                    result.put(rs.getString(1), rs.getString(2));
+                }
+            }
+        }
+        if (!result.isEmpty()) {
+            System.out.printf("  [ExtractionPopulator] R21: %d opening→host mappings loaded%n", result.size());
+        }
+        return result;
+    }
+
     // ── Derive extraction rows ──────────────────────────────────────────────
 
-    private static List<ExtractionRow> deriveRows(List<RawElement> raw, String buildingType) {
+    private static List<ExtractionRow> deriveRows(List<RawElement> raw, String buildingType,
+                                                     Map<String, String> fillsHostMap) {
+        // R21: Build GUID→element_ref map for host resolution
+        // First pass: derive element_ref for every element (needed to resolve host GUIDs)
+        Map<String, String> guidToElementRef = new HashMap<>();
+        for (RawElement e : raw) {
+            if (e.guid() != null) {
+                guidToElementRef.put(e.guid(), deriveElementRef(e.elementName(), e.ifcClass()));
+            }
+        }
+
         // Group by (ifc_class, storey) for ordinal assignment
         Map<String, List<RawElement>> groups = new LinkedHashMap<>();
         for (RawElement e : raw) {
@@ -201,12 +242,21 @@ public class ExtractionPopulator {
                 // M_Product_ID = element_ref — deterministic, no invention
                 String mProductId = elementRef;
 
+                // R21: Resolve host element_ref from GUID chain
+                String hostElementRef = null;
+                if (e.guid() != null) {
+                    String hostGuid = fillsHostMap.get(e.guid());
+                    if (hostGuid != null) {
+                        hostElementRef = guidToElementRef.get(hostGuid);
+                    }
+                }
+
                 result.add(new ExtractionRow(
                         buildingType, storey, ifcClass, elementRef, ordinal,
                         e.minX(), e.maxX(), e.minY(), e.maxY(), e.minZ(), e.maxZ(),
                         orientation, discipline,
                         e.materialName(), e.materialRgba(),
-                        mProductId, e.guid()
+                        mProductId, e.guid(), hostElementRef
                 ));
                 ordinal++;
             }

@@ -146,6 +146,10 @@ REFERENCE_SCHEMA = """
         space_guid TEXT,
         PRIMARY KEY (element_guid, space_guid)
     );
+    CREATE TABLE IF NOT EXISTS rel_fills_host (
+        element_guid TEXT PRIMARY KEY,
+        host_guid TEXT NOT NULL
+    );
 """
 
 # ---------------------------------------------------------------------------
@@ -473,6 +477,43 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
             except Exception:
                 failed += 1
     conn.commit()
+
+    # R21: Extract IfcRelVoidsElement + IfcRelFillsElement chain
+    # Maps doors/windows to their host walls via intermediate IfcOpeningElement.
+    # Chain: Wall ←(IfcRelVoidsElement)← OpeningElement ←(IfcRelFillsElement)← Door/Window
+    fills_count = 0
+    try:
+        # Step 1: OpeningElement → host wall (IfcRelVoidsElement)
+        opening_to_host = {}
+        for rel in ifc_file.by_type("IfcRelVoidsElement"):
+            try:
+                host = rel.RelatingBuildingElement
+                opening = rel.RelatedOpeningElement
+                if host and opening:
+                    opening_to_host[opening.GlobalId] = host.GlobalId
+            except (AttributeError, TypeError):
+                pass
+
+        # Step 2: Door/Window → OpeningElement (IfcRelFillsElement)
+        for rel in ifc_file.by_type("IfcRelFillsElement"):
+            try:
+                opening = rel.RelatingOpeningElement
+                filling = rel.RelatedBuildingElement
+                if opening and filling and opening.GlobalId in opening_to_host:
+                    host_guid = opening_to_host[opening.GlobalId]
+                    conn.execute(
+                        "INSERT OR IGNORE INTO rel_fills_host (element_guid, host_guid) "
+                        "VALUES (?, ?)", (filling.GlobalId, host_guid))
+                    fills_count += 1
+            except (AttributeError, TypeError):
+                pass
+
+        conn.commit()
+        if fills_count > 0:
+            print(f"    R21: {fills_count} door/window→host mappings from IfcRelVoidsElement chain")
+    except RuntimeError:
+        pass  # IFC schema may not have these types
+
     print(f"    Imported: {imported}, Failed: {failed}")
     return imported
 
@@ -682,7 +723,23 @@ def extract_from_db_to_reference(src_path, conn, classes, exclude, disciplines):
         imported += 1
 
     conn.commit()
-    src.close()
+
+    # R21: Copy rel_fills_host if source DB has it
+    fills_count = 0
+    try:
+        src2 = sqlite3.connect(src_path)
+        src2.execute("SELECT 1 FROM rel_fills_host LIMIT 1")
+        for row in src2.execute("SELECT element_guid, host_guid FROM rel_fills_host"):
+            conn.execute(
+                "INSERT OR IGNORE INTO rel_fills_host (element_guid, host_guid) VALUES (?, ?)", row)
+            fills_count += 1
+        conn.commit()
+        src2.close()
+        if fills_count > 0:
+            print(f"    R21: Copied {fills_count} door/window→host mappings")
+    except sqlite3.OperationalError:
+        pass  # source DB doesn't have the table yet
+
     print(f"    Imported: {imported} elements, {len(existing_geo)} unique geometries")
     return imported
 

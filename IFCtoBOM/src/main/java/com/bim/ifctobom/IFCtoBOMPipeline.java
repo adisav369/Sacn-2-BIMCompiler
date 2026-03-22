@@ -577,7 +577,8 @@ public class IFCtoBOMPipeline {
                     entity_type         TEXT DEFAULT 'D',
                     verb_ref            TEXT DEFAULT NULL,
                     shape_archetype     TEXT DEFAULT NULL,
-                    scale_band          TEXT DEFAULT NULL
+                    scale_band          TEXT DEFAULT NULL,
+                    host_element_ref    TEXT DEFAULT NULL
                 )
                 """);
 

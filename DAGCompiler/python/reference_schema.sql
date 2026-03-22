@@ -71,6 +71,14 @@ CREATE TABLE IF NOT EXISTS surface_styles (
     source TEXT
 );
 
+-- R21: Opening-to-host mapping (IfcRelVoidsElement + IfcRelFillsElement chain)
+-- Maps doors/windows to their host walls via the intermediate IfcOpeningElement.
+-- element_guid = the door/window; host_guid = the wall/slab hosting the opening.
+CREATE TABLE IF NOT EXISTS rel_fills_host (
+    element_guid TEXT PRIMARY KEY,
+    host_guid TEXT NOT NULL
+);
+
 -- Material layer composition (wall = Brick > Air > Insulation > Block > Plaster)
 CREATE TABLE IF NOT EXISTS material_layers (
     layer_set_name TEXT NOT NULL,

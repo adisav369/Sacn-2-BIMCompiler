@@ -40,16 +40,19 @@
 **[IN PROGRESS] S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/S60_ERP_ALIGNMENT.md)
   Core wiring DONE: BomDropper + OrderLineWalker in Rosetta Stone pipeline. SH/FK/DM GREEN.
   DX G2/G3 drift is pre-existing (component_library.db evolving, not S60).
+  S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
 
 **Next session:**
   1. Commit S59 uncommitted files (WorkOutputDAO, webui, Bonsai bridge, WorkOrderCompileTest)
-  2. FP discipline + validation (W-DM-TC5-1, W-DM-FP-VAL-1)
-  3. Wire AD_Val_Rule_Exception (U6) — table exists, needs DAO + UI
+  2. Re-extract reference DBs with `tools/extract.py` to populate `rel_fills_host` (R21 data)
+  3. FP discipline + validation (W-DM-TC5-1, W-DM-FP-VAL-1)
   4. TRIM verb verification (CW panels bounded by pitched roof)
-  5. Replace M_BomCategory refs with M_Product_Category (S60 #6)
+  5. M_BomCategory → M_Product_Category replacement (S60 #6, dedicated session — 77 files)
   6. Pristine component_library.db commit + reference re-baseline at end
 
 ## Session Log (recent first)
+
+**S60-S2** — R21 + S60 remaining items. (1) R21 host_element_ref: full chain from IfcRelVoidsElement+IfcRelFillsElement extraction (extract.py) → rel_fills_host reference table → ExtractionPopulator → m_bom_line.host_element_ref. Enables M16/M17 validation. (2) AD_Val_Rule_Exception DAO (U6): X_ PO + MValRuleException model with isExcepted/getExceptedRuleIds. (3) Visual diff TSV: --diff flag on run_RosettaStones.sh → SpatialDiff.toTsv() → logs/diff_{PREFIX}.tsv. (4) M_BomCategory #6 assessed: 77 files, orthogonal semantic axes, needs dedicated session. SH/FK 7/7 GREEN.
 
 **S60** — ERP Model Alignment. BomDropper creates C_OrderLine tree in compile DB; OrderLineWalker walks it via bom_child_id FK join-back to m_bom_line. PlacementLoader auto-detects OrderLine path. SH (55), FK (82), DM (60) all GREEN through new path. Schema: C_Order + C_OrderLine in compile DB, S60_schema.sql (U2-U4, U6). Seal re-sealed.
 
@@ -68,20 +71,5 @@
 **S51b** — FRAME/ROUTE LBD fix. ClusterReclassifier (345 groups, 47K instances).
 **S51** — Focused audit. 8 P0 fixes. DemoHouseTest rewritten. 297/297 GREEN.
 **S50** — BIMEyes Phase 1-3. 24 proof classes. FL-2 advisory. FL-5 EYES integration. 28 proofs.
-**S49** — BIMEyes standalone module. 12 source files, 4 packages.
-**S48** — CP-4 semantic half. product_category on component_types. 20 switches replaced.
-**S47** — DV010 mined dimension rules. 415 rules from 20 buildings. DimensionRangeValidator.
-**S46b** — G-9 ORDER View + BOM Outliner. 3 API actions, 7 witnesses.
-**S46** — CP-4 geometric half (phases 4a-4e). shape_archetype + scale_band on m_bom_line.
-**S45** — G-8 Click-to-Place. Interactive viewport placement. 15 witnesses.
-**S44** — CP-3 scale-up. 8→20 buildings onboarded. onboard_ifc.sh.
-**S44b** — 14 more buildings (20→34). GH/JS/NI/WB/WL/WT/WA/JE/WI/RA/RM/RS/CL/HI.
-**S43** — AABB qualifier + PHANTOM spatial index. Tack chain proof. IN G3 root cause found.
-**S42** — LAST_MILE checklist. C8 naming fix. IN G3 root cause analysis.
-**S41b** — DB migration (81→21 tables). Doc consolidation. 4-DB architecture.
-**S41** — FACTORIZE-v2 review + 6 fixes. Seal re-sealed.
-**S40** — Frontend review + 7 fixes. BonsaiBIMDesigner Python addon.
-**S39c** — AC11 Institute (IN) 5th Rosetta Stone. 699 elements.
-**S39d** — BIMBackOffice module. FRAME LBD fix. 5 witnesses.
-**S39b** — 4D ScheduleDAO + 5D CostDAO. 11 witnesses.
+*Earlier: S39–S49 — BIMEyes, CP-4, DV010, G-8/G-9, scale-up to 34 buildings, LAST_MILE, DB consolidation.*
 **S39** — 6D SustainabilityDAO + 7D FacilityMgmtDAO + Audit ChangelogDAO. 14 witnesses.

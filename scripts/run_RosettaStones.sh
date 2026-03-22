@@ -60,10 +60,12 @@ fi
 # ── Parse arguments ─────────────────────────────────────────
 YAML_FILES=()
 DELTA_ONLY=false
+DIFF_TSV=false
 
 for arg in "$@"; do
     case "$arg" in
         delta) DELTA_ONLY=true ;;  # kept for backward compat (skips compile)
+        --diff) DIFF_TSV=true ;;   # S60 #9: produce per-element TSV diff report
         *.yaml|*.yml)
             if [ -f "$arg" ]; then
                 YAML_FILES+=("$arg")
@@ -716,6 +718,15 @@ for yaml_file in "${YAML_FILES[@]}"; do
     else
         REF_DB="DAGCompiler/lib/input/${BUILDING_TYPE}_extracted.db"
         run_fidelity "$DOC_SUB_TYPE" "${OUTPUT_BASE}.db" "$REF_DB"
+
+        # S60 #9: Visual diff TSV report (--diff flag)
+        if [ "$DIFF_TSV" = "true" ] && [ -f "${OUTPUT_BASE}.db" ] && [ -f "$REF_DB" ]; then
+            TSV_FILE="logs/diff_${DOC_SUB_TYPE}.tsv"
+            mvn exec:java -pl BIMEyes \
+                -Dexec.mainClass="com.bim.eyes.diff.SpatialDiff" \
+                -Dexec.args="$REF_DB ${OUTPUT_BASE}.db $TSV_FILE" \
+                -q 2>&1 | tail -1
+        fi
     fi
 done
 
