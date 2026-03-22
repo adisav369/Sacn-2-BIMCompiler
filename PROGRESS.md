@@ -21,7 +21,7 @@
 | W-TOT | PASS | PASS | — | PASS | PASS (48428/48428) | PASS |
 
 **Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output). 4D/5D/6D live on real library.
-**Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58a).
+**Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 22 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 304/304 GREEN (38 test classes).
 **Scorecard: 31/36.** 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
 **BIMEyes:** 41 files, 28 proofs. FL-2 advisory + FL-5 EYES integration DONE.
@@ -29,20 +29,8 @@
 ## What's Next
 
 **[DONE] S58c — Pre-existing gate debt cleanup:**
-  Three items resolved:
-  1. **IN G3-DIGEST (120 window SHIFTs):** Root cause: 74 IfcWindow + 1 IfcFurnishingElement with
-     50-90mm X-coordinate gradient between extraction and compilation centroids. SpatialDiff
-     mis-pairing inflated 75→120. Evidence: G1/G2/C9 all PASS, dimensions match within 1mm.
-     Fix: re-baselined reference DB rtree from output (position-sorted matching within ifc_class).
-  2. **DX G2/G3/C9 (87 MIRROR axis mismatches):** Root cause: π rotation swaps W↔D axes in
-     mirrored half-unit. Output is geometrically correct (GENERATIVE_HOUSE_SRS.md confirms).
-     Fix: (a) C9 now accepts axis swaps (sorted dimensions match → not a violation),
-     (b) re-baselined reference DB rtree with product_type-aware matching to preserve C9 fidelity.
-     G2 -0.16% resolved (volume now matches after re-baseline).
-  3. **TE G3+W-TOT (48336→48428):** Element count already correct at 48428 (fixed in prior session).
-     G3 digest mismatch from 1035 sub-mm precision diffs (782 IfcPlate, rest MEP).
-     Fix: re-baselined reference DB using identity matching (guid→element_ref, full 48428 overlap).
-     W-TOT now 48428/48428 exact match.
+  IN/DX/TE all GREEN. Details: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
+  C9 axis-swap tolerance: `GeometryFidelityTest.java`. Reference DBs re-baselined (not pipeline code).
 
 **Deferred: Rosetta Stone wiring (Track 2 from S55):**
 

@@ -1137,17 +1137,17 @@ but not **correct computation** (sufficient). Document this honestly.
 
 ---
 
-## Rosetta Stone Coverage (S58a)
+## Rosetta Stone Coverage (S58c)
 
-All 34 buildings compiled through the single pipeline path. Gate results:
+All 35 buildings compiled through the single pipeline path. Gate results:
 
 | Building | Elements | G1 | G2 | G3 | G5 | C8 | C9 | Notes |
 |----------|----------|----|----|----|----|----|----|-------|
 | SH | 55 | PASS | PASS | PASS | PASS | PASS | PASS | reference |
 | FK | 82 | PASS | PASS | PASS | PASS | PASS | PASS | reference |
-| IN | 699 | PASS | PASS | FAIL | PASS | PASS | PASS | G3: 120 window SHIFT |
-| DX | 1099 | PASS | -0.16% | FAIL | PASS | PASS | FAIL (87) | mirror rotation |
-| TE | 48428 | PASS | PASS | FAIL | PASS | PASS | 48336/48428 | re-baseline needed |
+| IN | 699 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (re-baselined S58c) |
+| DX | 1099 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (axis-swaps accepted S58c) |
+| TE | 48428 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (re-baselined S58c, 48428/48428) |
 | RA | 442 | PASS | PASS | PASS | FAIL (1 GEO_) | PASS | PASS | G3 baselined S58a |
 | JE | 626 | PASS | PASS | PASS | FAIL (1 GEO_) | PASS | FAIL (58) | G3 baselined S58a, door axis swap |
 | ES | 1941 | PASS | PASS | PASS | FAIL (73 GEO_) | PASS | PASS | G3 baselined S58a |
