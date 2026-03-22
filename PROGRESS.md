@@ -32,13 +32,9 @@
   IN/DX/TE all GREEN. Details: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
   C9 axis-swap tolerance: `GeometryFidelityTest.java`. Reference DBs re-baselined (not pipeline code).
 
-**Next: S59 — DemoHouse 3-OrderLine compilation (TC-4 + TC-5):**
-  SH BOM Drop + swap roof to pitched (FK) + add FP discipline.
-  Full task breakdown: [GENERATIVE_HOUSE_SRS.md §10](docs/GENERATIVE_HOUSE_SRS.md#10-demohouse-implementation-tasks-s59).
-  Pre-reqs: TRIM verb, BOM Drop cascade, FP validation rules, mock tests.
-
-**Deferred: Cascade data enrichment (LIVING/KITCHEN coverage):**
-  Library needs smaller room BOMs or SET AABB re-measurement.
+**Next: S59 — Core Engine: Work Order → DemoHouse end-to-end:**
+  Build DM from C_OrderLine (no YAML). HTML ↔ Bonsai bidirectional sync.
+  5 witness claims (W-WO-1..5). Full spec: [BIM_Designer_SRS.md §30](docs/BIM_Designer_SRS.md#30--core-engine-todo-s59).
 
 ## Session Log (recent first)
 

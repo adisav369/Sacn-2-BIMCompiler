@@ -3138,6 +3138,113 @@ Bonsai (viewport)         WebUIServer (:9878)         Browser (Web UI)
 
 ---
 
+## §30 — Core Engine TODO (S59+)
+
+> **Goal:** A user builds a DemoHouse end-to-end using Work Orders (C_OrderLine →
+> M_Product → BOM explosion), driven from either the HTML UI or the Bonsai 10-panel
+> stack. Both surfaces control the same pipeline. YAML is retired — the Work Order
+> IS the building specification.
+
+### 30.1 Design Paradigm Shift: YAML → Work Order
+
+The pipeline no longer starts from a YAML classify file. It starts from a
+**C_Order** (Work Order) containing **C_OrderLines**, each referencing an
+**M_Product** from the component library. The compiler explodes the BOM tree
+exactly as iDempiere Manufacturing does: Order → OrderLine → BOM → sub-assemblies
+→ leaf elements. This is the ERP Manufacturing BOM pattern applied to construction.
+
+**What this means for the Designer:**
+- `createNew` = create a C_Order with one C_OrderLine (the BUILDING product)
+- `bomDrop` = explode that product's BOM tree into the viewport
+- Swap/add/remove = modify C_OrderLines, recompile
+- `promote` = write the finalized order back to BOM.db as a new M_BOM
+- YAML files remain only as onboarding scripts for legacy IFC buildings
+
+### 30.2 Bidirectional Sync: HTML ↔ Bonsai
+
+**Requirement:** Any action in the HTML UI must be reflected in Bonsai's viewport
+and 10-panel stack, and vice versa. The Java server is the single source of truth.
+
+| Direction | Mechanism | Status |
+|-----------|-----------|--------|
+| HTML → Server | `POST /api` (existing) | DONE |
+| Server → Bonsai | SSE `pollCommands` (§29.6) | DONE (loadOutput, applyScheme) |
+| Bonsai → Server | `selectionChanged` via timer | DONE |
+| Server → HTML | SSE `EventSource` broadcast | DONE (compileComplete) |
+| **HTML → Bonsai** | Server queues command → Bonsai polls | **WIRED but incomplete** |
+| **Bonsai → HTML** | Server SSE-broadcasts state change → browser updates | **WIRED but incomplete** |
+
+**Core actions that must flow both ways:**
+
+| Action | HTML trigger | Bonsai trigger | Server handler |
+|--------|-------------|----------------|----------------|
+| Select element | Click BOM tree row | Click object in viewport | `selectionChanged` |
+| Create OrderLine | "Place" button in BOM Chooser | Click-to-Place operator | `placeItem` |
+| Swap product | Dropdown in BOM Outliner | Right-click → Swap | `updateOrderLine` |
+| Compile | "Compile" button (tab 1) | Compile operator | `compile` / `completeIt` |
+| Change dimension | Slider in property panel | Bbox resize (Design Mode) | `snap` |
+| Save variant | "Save" button | Ctrl+S operator | `save` |
+
+### 30.3 Bonsai 10-Panel Stack (must remain fully functional)
+
+The 10 panels map to nD BIM dimensions. All must continue working as standalone
+Bonsai UI — the HTML is an alternative surface, not a replacement.
+
+| Panel | nD | Core function | HTML equivalent |
+|-------|----|---------------|-----------------|
+| 1 — Order | 1D | C_Order status, compile, BOM Drop | Tab 1 (Building) |
+| 2 — Spatial | 2D | Storey browser, containment | Tab 2 (Spatial) |
+| 3 — Geometry | 3D | Placement, AABB, mesh preview | Tab 3 (Geometry) |
+| 4 — Schedule | 4D | Construction sequence (Gantt) | Tab 4 (Schedule) |
+| 5 — Cost | 5D | Material + labour + equipment | Tab 5 (Cost) |
+| 6 — Sustainability | 6D | Carbon, embodied energy | Tab 6 (Sustainability) |
+| 7 — Facility Mgmt | 7D | Maintenance, lifecycle | Tab 7 (Facility) |
+| 8 — Validation | 8 | Advisories, compliance | Tab 8 (Validation) |
+| 9 — BOM Outliner | 9 | BOM tree, swap, add/remove | Tab 9 (BOM) |
+| 10 — Color Studio | 10 | Discipline colours, schemes | Tab 10 (Colours) |
+
+### 30.4 DemoHouse End-to-End (acceptance test)
+
+**The DM (DemoHouse_2BR) must be buildable from either surface:**
+
+1. User opens HTML UI (or Bonsai panel 1)
+2. Selects "Create New" → DM building type, 2BR/1BT
+3. Server creates C_Order + 1 C_OrderLine(`BUILDING_DM_STD`)
+4. `bomDrop` explodes BOM → 60 elements appear in viewport
+5. User swaps a room product via BOM Outliner (panel 9 or tab 9)
+6. Recompile → updated geometry
+7. Save variant → recall → verify identical output
+8. Promote → new M_BOM written to BOM.db
+
+**Witness claims (to implement):**
+
+| Witness | Claim |
+|---------|-------|
+| W-WO-1 | DemoHouse created from C_OrderLine (no YAML) |
+| W-WO-2 | HTML compile triggers Bonsai viewport update |
+| W-WO-3 | Bonsai selection reflected in HTML BOM Outliner |
+| W-WO-4 | Product swap via HTML updates Bonsai geometry |
+| W-WO-5 | Save/recall round-trip produces identical element count |
+
+### 30.5 Priority Stack (core engine only)
+
+| # | Item | Blocks | Effort |
+|---|------|--------|--------|
+| 1 | **Work Order compile path** — `createNew` → `bomDrop` → `compile` without YAML | W-WO-1 | wired (verify DM) |
+| 2 | **HTML → Bonsai command flow** — compile/swap in HTML updates viewport | W-WO-2, W-WO-4 | extend `pollCommands` |
+| 3 | **Bonsai → HTML state flow** — selection/edit in Bonsai updates HTML | W-WO-3 | extend SSE broadcast |
+| 4 | **BOM Outliner sync** — tree view in both surfaces, swap triggers recompile | W-WO-4 | wire `getBomTree` to HTML tab 9 |
+| 5 | **Save/Recall round-trip** — variant persistence from either surface | W-WO-5 | verify existing path |
+
+**Not in scope (deferred):**
+- Embedding search (§25)
+- Ghost drag / chain interaction (WF-12..25)
+- Multi-user changelog (WF-21..25)
+- nD stubs (4D-7D return real data only when DAO is wired)
+- Portfolio/Kanban/Scorecard back-office views
+
+---
+
 *References:
 [BIM_Designer.md](BIM_Designer.md) (architecture, §17 Design Mode, §18 UI Strategy) |
 [BIM_Designer_UserGuide.md §13](BIM_Designer_UserGuide.md) (Web UI spec — tab layout, tech stack) |
@@ -3146,4 +3253,5 @@ Bonsai (viewport)         WebUIServer (:9878)         Browser (Web UI)
 [TestArchitecture.md](TestArchitecture.md) (traceability matrix, witness convention) |
 [BIM_COBOL.md](BIM_COBOL.md) §20 (spatial predicate verbs) |
 [BlenderBridge.md](BlenderBridge.md) (Java-smart/Python-dumb, incremental viewport) |
-[ConstructionAsERP.md](ConstructionAsERP.md) (iDempiere M_Product/C_Order model)*
+[ConstructionAsERP.md](ConstructionAsERP.md) (iDempiere M_Product/C_Order model) |
+[WorkOrderGuide.md](WorkOrderGuide.md) (pipeline flow, invention boundary)*
