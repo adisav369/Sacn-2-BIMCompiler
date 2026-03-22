@@ -41,6 +41,7 @@
   Core wiring DONE: BomDropper + OrderLineWalker in Rosetta Stone pipeline. SH/FK/DM GREEN.
   DX G2/G3 drift is pre-existing (component_library.db evolving, not S60).
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
+  S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
 **Next session:**
   1. Commit S59 uncommitted files (WorkOutputDAO, webui, Bonsai bridge, WorkOrderCompileTest)
@@ -52,10 +53,11 @@
 
 ## Session Log (recent first)
 
+**S60-UI** — Web UI alignment + Show in Bonsai. 10 tabs aligned to §30.3 (2D Spatial, 3D Geometry, 8 Validate, 9 BOM, 10 Colour). BOM tree container fixed (#bomTree was missing). Show in Bonsai: browser pushes previewBBoxes via schemeName field → Bonsai poll picks up → 257 wireframe cubes rendered. First browser-to-Bonsai BIM preview push. Federation gap analysis: 70+ ops in IfcOpenShell, 8 HIGH priority migration items. webui_sync.py fixed for Blender 5.0 (bpy.app attribute error).
+
 **S60-S2** — R21 + S60 remaining items. (1) R21 host_element_ref: full chain from IfcRelVoidsElement+IfcRelFillsElement extraction (extract.py) → rel_fills_host reference table → ExtractionPopulator → m_bom_line.host_element_ref. Enables M16/M17 validation. (2) AD_Val_Rule_Exception DAO (U6): X_ PO + MValRuleException model with isExcepted/getExceptedRuleIds. (3) Visual diff TSV: --diff flag on run_RosettaStones.sh → SpatialDiff.toTsv() → logs/diff_{PREFIX}.tsv. (4) M_BomCategory #6 assessed: 77 files, orthogonal semantic axes, needs dedicated session. SH/FK 7/7 GREEN.
 
 **S60** — ERP Model Alignment. BomDropper creates C_OrderLine tree in compile DB; OrderLineWalker walks it via bom_child_id FK join-back to m_bom_line. PlacementLoader auto-detects OrderLine path. SH (55), FK (82), DM (60) all GREEN through new path. Schema: C_Order + C_OrderLine in compile DB, S60_schema.sql (U2-U4, U6). Seal re-sealed.
-
 **S59** — Work Order path + HTML↔Bonsai sync. W-WO-1: WorkOrderCompileTest 6/6 GREEN (bomDrop→compile→60 el). HTML UI: DocAction buttons (save/approve/complete/promote), bomDrop renders tree, compile passes paths. Bonsai bridge: pollCommands timer + db_loader viewport load. §30.2 sync complete. 392/392 GREEN.
 **S59-S2** — Post-swap compilation. W-DM-TC4-1 GREEN: bomDrop(SH) + swapProduct(roof→FK_DG_STR) + compile → 95 elements. G1/G5/G8 pass. BomDropConfigureTest 6/6 GREEN. No pipeline code changes.
 **S58b** — DM generative path. First GENERATIVE building (DemoHouse_2BR, 60 elements). seed_dm_bom.sql.
