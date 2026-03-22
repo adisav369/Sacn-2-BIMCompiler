@@ -1190,6 +1190,50 @@ All 34 buildings compiled through the single pipeline path. Gate results:
 
 ---
 
+## Backend-First Testing — SQLite Is the Truth (S57)
+
+The ERP database pattern means **all BOM operations run on SQLite**. Every stage
+of the lifecycle produces a testable database — no Bonsai/Blender needed for
+validation. Bonsai is the viewport; the database is the truth.
+
+### Test Layers on the Output DB
+
+After `compile()` produces `output.db`, the following tests run on pure SQL:
+
+| Layer | What to test | Tables | Status |
+|-------|-------------|--------|--------|
+| **G1-COUNT** | Element count matches BOM leaf count | `elements_meta` | DONE (34/34) |
+| **G2-VOLUME** | Total volume matches reference | `elements_meta` | DONE |
+| **G3-DIGEST** | Spatial hash matches baseline | `elements_meta` | Needs baselines |
+| **G5-PROVENANCE** | All geometry from library (no GEO_ fallback) | `elements_meta` JOIN `component_library` | DONE |
+| **Incremental update** | Swap product → recompile → diff element delta | `C_OrderLine` → `elements_meta` | TC-4 swap proven |
+| **4D Schedule** | CIDB sequence → Gantt phases | `ScheduleDAO` on output | DAO exists (11 witnesses) |
+| **5D Cost** | Material + labour + equipment rollup | `CostDAO` on `C_OrderLine` quantities | DAO exists (11 witnesses) |
+| **6D Sustainability** | Material volumes → carbon coefficients | `SustainabilityDAO` | DAO exists (14 witnesses) |
+| **7D Facility Mgmt** | Asset register from compiled elements | `FacilityMgmtDAO` | DAO exists (14 witnesses) |
+| **Validation rules** | DV_*_rules.sql applied to output | `W_Validation_Rule` | Extracted for all 34 buildings |
+| **BIMEyes proofs** | Geometry assertions (overlap, containment) | `elements_meta` coordinates | 28 proofs |
+
+### The BOM Configurator Test Chain
+
+The generative path is pure ERP — no YAML, no IFC extraction:
+
+```
+bomDrop("BUILDING_SH_STD")           → C_OrderLine tree (55 leaves)
+swapProduct(roofId, "FK_DG_STR")     → OrderLine.family_ref updated
+compile()                            → output.db with modified elements
+ScheduleDAO.getGantt(outputDb)       → 4D schedule from compiled result
+CostDAO.rollUp(outputDb)             → 5D cost from compiled quantities
+```
+
+Each step produces a SQLite database that the next step consumes.
+All testable without Bonsai.
+
+**Witnesses:** BomDropTest W-DROP-1..6, BomDropCompileTest W-TC1-1..4,
+BomDropConfigureTest W-TC4-1..4 (swap proven), DemoHouseCompileTest W-GEN-COMPILE-1..4.
+
+---
+
 ## Appendix: Illegal SQL Patterns — Why BIM COBOL Verbs Exist
 
 The verb-first rule is not bureaucracy. Raw SQL is the mechanism by which
