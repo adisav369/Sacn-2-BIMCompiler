@@ -533,23 +533,37 @@ const BIM = (() => {
 
     function showInBonsai() {
         if (!currentBuilding) { alert('Select a building first'); return; }
-        if (currentOrderLines.length === 0) { alert('No order lines — do a BOM Drop first'); return; }
+        if (!currentBomDbPath) { alert('No BOM database path — do a BOM Drop first'); return; }
         const ds = document.getElementById('docStatus');
-        ds.textContent = 'Pushing preview to Bonsai...';
-        // Send lightweight bbox preview — no compile, just wireframe overlay.
-        // Bonsai renders category-coloured wireframe boxes via design_bbox.enable().
-        // User clicks Full Load in Bonsai when ready for geometry.
-        send('applyScheme', {
-            schemeName: 'previewBBoxes',
-            objectName: currentBuilding,
-            guid: currentBuilding
+        // Step 1: completeIt — compile to output.db (real spatial positions)
+        ds.textContent = 'Compiling for Bonsai...';
+        send('completeIt', {
+            buildingId: currentBuilding,
+            bomDbPath: currentBomDbPath,
+            libraryPath: 'library',
+            outputDir: 'DAGCompiler/lib/output/'
+        }).then(data => {
+            if (data.success === false) {
+                ds.textContent = 'Compile failed';
+                alert('Show in Bonsai failed: ' + (data.error || 'Unknown error'));
+                return;
+            }
+            ds.textContent = 'Compiled: ' + (data.elementCount || '?') +
+                ' elements — pushing to Bonsai...';
+            // Step 2: push loadOutput to Bonsai via pollCommands queue
+            // Bonsai federation preview renders wireframe bboxes with correct positions
+            return send('applyScheme', {
+                schemeName: 'loadOutput',
+                objectName: currentBuilding,
+                guid: data.outputDbPath || ''
+            });
         }).then(() => {
-            ds.textContent = 'Preview sent to Bonsai — wireframe (2s poll)';
+            ds.textContent = 'Sent to Bonsai — preview loading';
             const fb = document.getElementById('applyFeedback');
-            if (fb) fb.textContent = 'BBox preview sent: ' + currentBuilding +
-                ' (' + currentOrderLines.length + ' lines)';
+            if (fb) fb.textContent = 'Compiled + preview sent: ' + currentBuilding;
+            loadOrderLines();
         }).catch(e => {
-            ds.textContent = 'Preview failed';
+            ds.textContent = 'Show in Bonsai failed';
             alert('Show in Bonsai failed: ' + e.message);
         });
     }
