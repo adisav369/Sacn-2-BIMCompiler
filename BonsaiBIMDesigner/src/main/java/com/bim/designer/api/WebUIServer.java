@@ -201,6 +201,8 @@ public class WebUIServer implements AutoCloseable {
                 case "scanBomProducts" -> scanBomProducts();
                 case "loadBuildingDetail" -> loadBuildingDetail(
                         obj.has("dbFile") ? obj.get("dbFile").getAsString() : null);
+                // ── BOM Drop with explicit DB path ──────────────────
+                case "bomDrop" -> handleBomDrop(obj);
                 // ── Bidirectional sync (Bonsai ↔ Web UI) ────────────
                 case "selectionChanged" -> handleSelectionChanged(obj);
                 case "applyScheme" -> handleApplyScheme(obj);
@@ -423,6 +425,37 @@ public class WebUIServer implements AutoCloseable {
         result.put("commands", commands);
         result.put("count", commands.size());
         return JsonProtocol.toJson(result);
+    }
+
+    // ── BOM Drop with explicit BOM DB path ──────────────────────────────
+    // WebUI sends bomDbPath from scanBomProducts result → open that DB for the drop
+
+    private String handleBomDrop(JsonObject obj) {
+        String productId = obj.has("buildingProductId") ? obj.get("buildingProductId").getAsString() : "";
+        String bomDbPath = obj.has("bomDbPath") ? obj.get("bomDbPath").getAsString() : "";
+
+        if (productId.isBlank()) {
+            return "{\"success\":false,\"error\":\"Missing buildingProductId\"}";
+        }
+
+        // If bomDbPath provided, open that specific BOM DB and do the drop
+        if (!bomDbPath.isBlank()) {
+            java.nio.file.Path resolved = java.nio.file.Path.of(bomDbPath).normalize();
+            if (!java.nio.file.Files.exists(resolved)) {
+                return "{\"success\":false,\"error\":\"BOM DB not found: " + bomDbPath + "\"}";
+            }
+            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + resolved)) {
+                DesignerAPIImpl tempApi = new DesignerAPIImpl(bomConn);
+                var resp = tempApi.bomDrop(productId);
+                return com.bim.designer.protocol.JsonProtocol.toJson(resp);
+            } catch (Exception e) {
+                LOG.log(Level.WARNING, "bomDrop with DB path failed", e);
+                return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+            }
+        }
+
+        // Fallback: dispatch through DesignerServer (uses constructor bomConn)
+        return designer.dispatch("{\"action\":\"bomDrop\",\"buildingProductId\":\"" + productId + "\"}");
     }
 
     // ── Launch Bonsai from Web UI ───────────────────────────────────────

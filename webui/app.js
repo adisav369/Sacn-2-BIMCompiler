@@ -365,14 +365,14 @@ const BIM = (() => {
         const select = document.getElementById('bomProductSelect');
         let id = select.value;
         if (!id) {
-            id = currentBuilding;
-        }
-        if (!id) {
             alert('Select a BOM template from the dropdown first.');
             return;
         }
+        // Find the dbFile for this BOM product
+        const product = bomProducts.find(p => p.bomId === id);
+        const bomDbPath = product ? product.dbFile : '';
         document.getElementById('docStatus').textContent = 'Dropping...';
-        send('bomDrop', { buildingProductId: id }).then(data => {
+        send('bomDrop', { buildingProductId: id, bomDbPath: bomDbPath }).then(data => {
             if (!data.success) {
                 document.getElementById('docStatus').textContent = 'Drop failed';
                 alert('BOM Drop failed: ' + (data.error || 'Unknown error'));
