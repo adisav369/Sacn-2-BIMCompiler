@@ -271,3 +271,120 @@ output.db has correct positions — no origin-bunching.
 - PDF terrain extraction
 - Ghost drag / chain interaction (WF-12..25)
 - Multi-user changelog
+
+---
+
+## 7. Lessons Learned (S60-UI session)
+
+Hard-won knowledge from this session. Future sessions MUST read this before touching
+the Web UI ↔ Bonsai integration.
+
+### 7.1 Java Server Command Queue — Whitelisted Fields Only
+
+`WebUIServer.handleApplyScheme()` hardcodes `command='applyScheme'` and only copies
+whitelisted fields: `schemeName`, `objectName`, `guid`, `color`, `filterDiscipline`,
+`filterIfcType`. **Any other field is silently dropped.**
+
+To pass custom data through the queue, encode it in whitelisted fields:
+- `schemeName` → command type (e.g. `'previewBBoxes'`, `'loadOutput'`)
+- `guid` → payload (e.g. output.db path, building ID)
+- `objectName` → display name
+
+**Do not** add a `command` field inside the payload — the server overwrites it with
+`'applyScheme'`. Do not add `buildingId` — it's not whitelisted and gets dropped.
+
+### 7.2 Blender 5.0 — No Arbitrary Attributes on bpy.app
+
+Blender 5.0 locked down `bpy.app`. Setting `bpy.app._custom_attr = True` throws
+`AttributeError`. Use module-level variables instead:
+
+```python
+# WRONG (crashes on Blender 5.0):
+bpy.app._sync_active = True
+
+# RIGHT:
+_sync_active = False  # module level
+def my_function():
+    global _sync_active
+    _sync_active = True
+```
+
+The `global` declaration must come **before** the variable is read in the function,
+or Python raises `SyntaxError: name used prior to global declaration`.
+
+### 7.3 Federation Module Import Chain — One Crash Kills All Panels
+
+`federation/__init__.py` line 42 imports ALL submodules in one line:
+```python
+from . import ui, prop, operator, discipline_legend, cache_monitor, color_palette, crud_operators, webui_sync
+```
+
+If **any** submodule has a SyntaxError or ImportError, the **entire federation module**
+fails to register. All 10+ federation panels disappear from Bonsai. The `mep_engineering`
+module also fails because it imports from `federation.core.gpu_utils`.
+
+**Always verify syntax before committing:**
+```bash
+python3 -c "import py_compile; py_compile.compile('webui_sync.py', doraise=True)"
+```
+
+### 7.4 Snap Blender Version Pinning
+
+Snap auto-updates Blender. Version 5.0→5.1 breaks addon paths because:
+- 5.0 uses Python 3.11, config at `~/.config/blender/5.0/extensions/.local/lib/python3.11/`
+- 5.1 uses Python 3.13, config at `~/.config/blender/5.1/extensions/.local/lib/python3.13/`
+
+Symlinks across versions don't work (binary-incompatible Python). The `bonsai` alias
+in `~/.bashrc` must pin to the specific snap revision:
+```bash
+alias bonsai="__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia /snap/blender/6898/blender"
+```
+
+The alias takes precedence over `~/bin/bonsai` script. Check `~/.bashrc` first.
+
+### 7.5 Python Bytecode Cache (.pyc)
+
+After editing federation Python files, Blender may load stale `.pyc` from `__pycache__/`.
+Clear before testing:
+```bash
+find ~/.config/blender/ -path "*federation*" -name "*.pyc" -delete
+```
+
+Since the installed addon is symlinked to the source repo (`~/IfcOpenShell/...`),
+edits to source files are immediately visible — but only after clearing `.pyc` cache
+and restarting Blender.
+
+### 7.6 Two Separate Poll Loops
+
+Bonsai has TWO independent poll timers that both call `pollCommands`:
+
+1. **Federation sync** (`webui_sync.py`) — 0.5s interval, started by "Start Web UI Sync"
+   button in federation panel. Handles `applyScheme`, `loadOutput`, `previewBBoxes`.
+
+2. **BIM Designer** (`operator.py`) — 2s interval, started by "Connect" in A.1 panel.
+   Handles `loadOutput`, `applyScheme`, `previewBBoxes`.
+
+Commands are consumed from the queue on first poll. If federation sync polls first,
+the BIM Designer timer won't see the command, and vice versa. In practice, users
+activate one or the other, not both.
+
+### 7.7 HTML is Data Assistant, Bonsai is Viewport
+
+The HTML UI shows order data, BOM trees, validation status. The Bonsai viewport shows
+3D geometry. They complement each other:
+
+- **Incremental editing with highlighted bboxes** → Bonsai (Design Mode, GPU overlay)
+- **Order line table, ASI attributes, compliance** → HTML (Tab 1, Tab 8)
+- **Show in Bonsai** → HTML compiles, pushes result to Bonsai for preview
+- **Full Load** → user-initiated in Bonsai panel only (creates .blend)
+
+Do not try to duplicate viewport features in HTML or order features in Bonsai.
+
+### 7.8 Tab 3 Database Path — Input or Output
+
+Tab 3 (Geometry) can load **any** SQLite database — BOM input or compiled output.
+Federation Preview and Full Load don't care which type. The "Show Output DBs" toggle
+switches the building list between library (BOM input) and output (compiled) databases.
+
+When Show in Bonsai compiles from Tab 1, it sets Tab 3's DB path to the output.db.
+Tab 3's Preview/Full Load then work on that same database. One database, multiple views.
