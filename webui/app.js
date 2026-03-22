@@ -540,9 +540,9 @@ const BIM = (() => {
         // Bonsai renders category-coloured wireframe boxes via design_bbox.enable().
         // User clicks Full Load in Bonsai when ready for geometry.
         send('applyScheme', {
-            command: 'previewBBoxes',
-            buildingId: currentBuilding,
-            objectName: currentBuilding
+            schemeName: 'previewBBoxes',
+            objectName: currentBuilding,
+            guid: currentBuilding
         }).then(() => {
             ds.textContent = 'Preview sent to Bonsai — wireframe (2s poll)';
             const fb = document.getElementById('applyFeedback');
