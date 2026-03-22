@@ -229,6 +229,15 @@ output.db has correct positions — no origin-bunching.
 
 ## 6. Recommended Next Steps
 
+### Backend actions needed by HTML UI (for backend session)
+
+| Action | Purpose | HTML caller | Priority |
+|--------|---------|-------------|----------|
+| `scanOutputDbs` | List `.db` files in a given folder (default `DAGCompiler/lib/output`) with name, path, element count, file size. Tab 3 "Show Output DBs" button calls this. | `toggleOutputView()` | **HIGH** — needed for Tab 3 to browse compiled outputs |
+| `getConfig` | Return `{libraryDir, outputDir, projectRoot}` so HTML knows server paths. Currently hardcoded. | `init()` on page load | MEDIUM — needed when project folder is on a different path |
+| `loadOutput` should NOT be auto-queued by `afterCompile` | Already removed in S60-UI. Confirm backend does not re-add it. | — | **HIGH** — prevents accidental Bonsai loads during testing |
+| `completeIt` must return `outputDbPath` | Show in Bonsai needs this to push `loadOutput`. Already works. | `showInBonsai()` | Confirmed working |
+
 ### Immediate (S60 scope — no backend changes)
 
 1. **Wire 4D tab to real data** — If `constructionSchedule` action already returns data from

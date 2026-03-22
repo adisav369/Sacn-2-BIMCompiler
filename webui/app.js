@@ -600,9 +600,9 @@ const BIM = (() => {
 
     function previewInBonsai() {
         if (!currentBuilding) { alert('Select a building first'); return; }
-        const info = buildingDb[currentBuilding];
-        const dbPath = info ? info.dbFile : '';
-        if (!dbPath) { alert('No database path — compile first via Show in Bonsai'); return; }
+        var info = buildingDb[currentBuilding];
+        var dbPath = info ? info.dbFile : '';
+        if (!dbPath) { alert('No database path'); return; }
         send('applyScheme', {
             schemeName: 'loadOutput',
             objectName: currentBuilding,
@@ -615,10 +615,9 @@ const BIM = (() => {
 
     function fullLoadInBonsai() {
         if (!currentBuilding) { alert('Select a building first'); return; }
-        const info = buildingDb[currentBuilding];
-        const dbPath = info ? info.dbFile : '';
-        if (!dbPath) { alert('No database path — compile first via Show in Bonsai'); return; }
-        // Full Load: check if .blend already exists (TODO: backend check via API)
+        var info = buildingDb[currentBuilding];
+        var dbPath = info ? info.dbFile : '';
+        if (!dbPath) { alert('No database path'); return; }
         send('applyScheme', {
             schemeName: 'loadOutput',
             objectName: currentBuilding,
@@ -627,6 +626,49 @@ const BIM = (() => {
             document.getElementById('applyFeedback').textContent =
                 'Full load sent to Bonsai: ' + currentBuilding;
         }).catch(() => alert('Sync not active. Start sync in Bonsai first.'));
+    }
+
+    var showingOutputDbs = false;
+
+    function toggleOutputView() {
+        showingOutputDbs = !showingOutputDbs;
+        var btn = document.getElementById('btnOutputToggle');
+        if (showingOutputDbs) {
+            btn.textContent = 'Show Library';
+            scanOutputDbs();
+        } else {
+            btn.textContent = 'Show Output DBs';
+            loadBuildings();
+        }
+    }
+
+    function scanOutputDbs() {
+        // Scan the output folder — path relative to server working directory
+        send('scanOutputDbs', { folder: 'DAGCompiler/lib/output' }).then(data => {
+            var files = data.files || [];
+            var body = document.getElementById('buildingsBody');
+            var count = document.getElementById('fedBuildingCount');
+            if (count) count.textContent = files.length + ' output databases';
+            if (!body) return;
+
+            // Register in buildingDb so Preview/Full Load can find the path
+            files.forEach(function(f) {
+                var id = f.name || f.path.split('/').pop().replace('.db', '');
+                buildingDb[id] = { dbFile: f.path, code: id, name: f.name, elementCount: f.elementCount || 0 };
+            });
+
+            body.innerHTML = files.map(function(f) {
+                var id = f.name || f.path.split('/').pop().replace('.db', '');
+                return '<tr><td><strong>' + esc(id) + '</strong></td>' +
+                    '<td>' + esc(f.name || '-') + '</td>' +
+                    '<td class="num">' + (f.elementCount || '-') + '</td>' +
+                    '<td>' + esc(f.path || '-') + '</td>' +
+                    '<td><button class="btn" onclick="BIM.selectBuilding(\'' + esc(id) + '\')">Select</button></td></tr>';
+            }).join('');
+        }).catch(function() {
+            alert('scanOutputDbs: backend action not yet wired.\n\n' +
+                  'Add "scanOutputDbs" action to WebUIServer that lists .db files from the given folder.');
+        });
     }
 
     function renderFederationBuildings(buildings) {
@@ -1142,7 +1184,7 @@ const BIM = (() => {
         loadBuildings, selectBuilding, loadDetail,
         selectLine, closeASI, loadASI, onASIChange, editCell,
         importIFC, onboardIFC, exportBOM, exportOrder, exportIFC,
-        previewInBonsai, fullLoadInBonsai,
+        previewInBonsai, fullLoadInBonsai, toggleOutputView,
         loadSpatial, loadSchedule, loadCost, loadCarbon, loadMaintenance,
         loadValidation, loadPortfolio,
         searchProducts, setQuery, executeQuery, clearQueryResults,

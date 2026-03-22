@@ -43,13 +43,15 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**Next session:**
+**Next session (backend):**
   1. Commit S59 uncommitted files (WorkOutputDAO, webui, Bonsai bridge, WorkOrderCompileTest)
-  2. Re-extract reference DBs with `tools/extract.py` to populate `rel_fills_host` (R21 data)
-  3. FP discipline + validation (W-DM-TC5-1, W-DM-FP-VAL-1)
-  4. TRIM verb verification (CW panels bounded by pitched roof)
-  5. M_BomCategory → M_Product_Category replacement (S60 #6, dedicated session — 77 files)
-  6. Pristine component_library.db commit + reference re-baseline at end
+  2. Add `scanOutputDbs` action to WebUIServer — list .db files from a folder (Tab 3 needs this)
+  3. Add `getConfig` action — return `{libraryDir, outputDir, projectRoot}` for HTML to read paths
+  4. Confirm `afterCompile` does NOT auto-queue `loadOutput` (removed in S60-UI, must stay removed)
+  5. Re-extract reference DBs with `tools/extract.py` to populate `rel_fills_host` (R21 data)
+  6. FP discipline + validation (W-DM-TC5-1, W-DM-FP-VAL-1)
+  7. M_BomCategory → M_Product_Category replacement (S60 #6, dedicated session — 77 files)
+  See [S60_UI_ALIGNMENT_SPEC.md §6](docs/S60_UI_ALIGNMENT_SPEC.md) for full backend action table.
 
 ## Session Log (recent first)
 
