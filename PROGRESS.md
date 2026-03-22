@@ -43,8 +43,8 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**Next session:**
-  See [S60_UI_ALIGNMENT_SPEC.md §6](docs/S60_UI_ALIGNMENT_SPEC.md) for backend actions needed by HTML UI.
+**Next session:** [ACTION_ROADMAP.md §S60-S3](docs/ACTION_ROADMAP.md#s60-s3-next-session-tasks)
+  6 tasks: commit S59, re-extract R21, audit P0 fixes, FP discipline, M_BomCategory, re-baseline.
 
 ## Session Log (recent first)
 

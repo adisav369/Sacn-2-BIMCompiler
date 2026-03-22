@@ -464,20 +464,62 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 
 ---
 
+## S60-S3: Next Session Tasks
+
+*Link from PROGRESS.md §Next session. Detailed context for each task below.*
+
+| # | Task | Spec Reference | Priority |
+|---|------|---------------|----------|
+| 1 | Commit S59 uncommitted files | AUDIT_S51_FOCUSED.md §Appendix B | HIGH — unblock dirty tree |
+| 2 | Re-extract reference DBs (R21 data) | S60_ERP_ALIGNMENT.md §R21 Implementation | HIGH — populate rel_fills_host |
+| 3 | Audit P0 fixes (GEO-1, GEO-2, MIG-1, MIG-2, TEST-1) | AUDIT_S51_FOCUSED.md §1-3 | HIGH — 8 P0 findings |
+| 4 | FP discipline + validation | PROGRESS.md (W-DM-TC5-1) | MED |
+| 5 | M_BomCategory → M_Product_Category | S60_ERP_ALIGNMENT.md §M_BomCategory Assessment | MED — 77 files, dedicated session |
+| 6 | Pristine component_library.db + re-baseline | DEPLOYMENT.md §Git Operations | LOW — end of session |
+
+### Task 1: Commit S59 files
+14 modified + 5 untracked. Full inventory in AUDIT_S51_FOCUSED.md §Appendix B.
+Key files: WorkOutputDAO.java, BomDropper.java, OrderLineWalker.java, S60_schema.sql, WorkOrderCompileTest.java.
+Add `.venv/` to .gitignore (already done). Audit verdict: all CLEAN (§Appendix B Code Integrity Audit).
+
+### Task 2: Re-extract reference DBs
+`tools/extract.py` now extracts IfcRelVoidsElement+IfcRelFillsElement chain → `rel_fills_host` table.
+Pre-R21 reference DBs have NO `rel_fills_host` table. Must re-run extraction on SH/FK IFC sources.
+Verify: door/window m_bom_line rows get non-NULL host_element_ref after re-extract + pipeline run.
+See S60_ERP_ALIGNMENT.md §R21 Implementation for full data flow.
+
+### Task 3: Audit P0 fixes
+From AUDIT_S51_FOCUSED.md. 8 P0 findings across 4 areas:
+- **GEO-1:** StoreyZBandProof.java:70 — `Math.max(x, x+3.5)` no-op
+- **GEO-2:** PerimeterClosureProof.java:59 — float string key rounding boundary
+- **MIG-1:** Delete DV006 (wrong column names), rename DV006b → DV006
+- **MIG-2:** Renumber duplicate V011/V012 prefixes
+- **TEST-1:** Silent test skipping via `assumeTrue(file.exists())` — 6 test classes
+- **TEST-2:** DemoHouseTest expected count mismatch
+- **SEC-1/SEC-2:** Auth wiring (lower priority — no public deployment yet)
+
+### Task 5: M_BomCategory replacement
+77 files across 6 layers. Orthogonal semantic axes (room templates vs IFC classification).
+Full assessment in S60_ERP_ALIGNMENT.md §M_BomCategory Assessment.
+DisciplineBomBuilder CO path already aligned (uses ARC/STR/FP codes = M_Product_Category roots).
+Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template matching, tests.
+
+---
+
 ## Known Debt (ordered by priority)
 
 | # | Item | Severity | Status |
 |---|------|----------|--------|
-| **S51** | **Audit fixes (SEC/GEO/TEST/MIG)** | **CRITICAL** | **TODO — next session** |
+| **S51** | **Audit fixes (SEC/GEO/TEST/MIG)** | **CRITICAL** | **TODO — see §S60-S3 Task 3** |
+| S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — see §M_BomCategory Assessment in S60_ERP_ALIGNMENT.md |
 | CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path |
 | CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path |
-| CP-4 | ~~Geometric archetype abstraction (IFC class independence)~~ | ~~HIGH~~ | **DONE** (s46 geometric + s48 semantic). See §CP-4 |
+| CP-4 | ~~Geometric archetype abstraction~~ | ~~HIGH~~ | **DONE** (S46+S48+S50) |
 | R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO (R20 first) |
-| R21 | Extract host_element_ref (IfcRelVoidsElement) | MED | TODO |
+| R21 | Extract host_element_ref (IfcRelVoidsElement) | MED | **DONE** (S60-S2) — re-extract needed |
 | R22 | Extract I_Element_Connectivity | MED | TODO |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO |
 | BBC-002 | BomValidator verb fidelity in compliance report | LOW | TODO |
-| AABB-Q | AABB qualifier column (`INNER`/`STRUCTURAL`/`OUTER`/`OPENING`) on `m_bom` | MED | NEW (S42) — see `INNER_SURFACE_ANALYSIS.md` |
 | R18 | DROP dead ad_bom/ad_bom_child tables | LOW | TODO |
 | R19 | Update ConstructionAsERP.md dual architecture | DOC | TODO |
 | VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | Known limit |
