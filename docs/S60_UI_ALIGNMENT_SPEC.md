@@ -179,25 +179,37 @@ to port 9878, handles `loadOutput` (loads output.db via db_loader) and `applySch
 
 The federation addon's native **Preview BBoxes** button (`bpy.ops.bim.preview_federation_viewport`)
 renders wireframe bounding boxes from any SQLite federation database. This is the **production path**
-for Show in Bonsai:
+for Show in Bonsai.
+
+**Production flow — Save vs Complete distinction:**
 
 ```
-Web UI: Complete → compile → output.db
-    ↓ loadOutput command queued
+BOM Drop → C_Order + C_OrderLine tree (HTML shows BOM tree, no compile)
+    ↓
+Save → persist order to work_output.db (just save, no compile, no Bonsai push)
+    ↓
+Complete → compile → output.db (with real spatial positions from compiler)
+    ↓ loadOutput command queued automatically
 Bonsai: pollCommands → _load_output_command → preview_federation_viewport
     ↓
-Federation preview: wireframe bboxes with real spatial positions from compiled output
+Federation preview: wireframe bboxes with correct positions
+    ↓
+Show in Bonsai → re-sends output.db path (no re-compile, just pushes existing output)
+Full Load → user clicks in Bonsai panel when ready for full geometry
 ```
+
+**Key design rule:** Save is just save. Only Complete triggers a compile. Show in Bonsai
+only works after Complete — it pushes the already-compiled output.db for federation preview.
 
 **Do not break:**
 - `webui_sync._load_output_command()` — sets `federation_database_path`, calls preview operator
 - `bpy.ops.bim.preview_federation_viewport()` — the fast bbox loader from federation module
 - `bpy.ops.bim.load_full_federation_viewport_gi()` — the fallback full geometry loader
-- The `pollCommands` → `loadOutput` flow in `webui_sync.py` lines 178-181
+- The `pollCommands` → `loadOutput` flow in `webui_sync.py`
 
-**The S60 "Show in Bonsai" proof** (257 wireframe cubes) used a temporary cube-creation fallback
-because BOM Drop order lines lack spatial offsets (dx/dy/dz=0). The production path uses
-Complete → compile → output.db → federation preview, which has correct positions.
+**S60 proof of concept** (257 wireframe cubes) used a temporary cube-creation fallback from
+raw order lines (dx/dy/dz=0, all at origin). The production path uses Complete → compile →
+output.db → federation preview, which has correct positions from the compiler.
 
 **What's new vs what existed:**
 - **Existed:** Federation preview from a local DB file (click button in Bonsai panel)
