@@ -385,13 +385,11 @@ const BIM = (() => {
                 alert('BOM Drop failed: ' + (data.error || 'Unknown error'));
                 return;
             }
-            currentBuilding = data.orderId || currentBuilding;
+            // Use the BOM product ID as the building key (not the order ID)
+            currentBuilding = id;
+            document.getElementById('footerBuilding').textContent = id;
             document.getElementById('docStatus').textContent =
                 'Dropped (' + (data.totalElements || 0) + ' elements)';
-            // Render returned tree directly
-            if (data.tree) {
-                renderBomTree({ tree: data.tree });
-            }
             loadOrderLines();
         }).catch(e => {
             document.getElementById('docStatus').textContent = 'Drop failed';

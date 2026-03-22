@@ -3034,7 +3034,10 @@ Web UI-primary tabs that show a brief description + launch button in Bonsai.
 
 ### 29.5 1D Order Configurator (S57)
 
-The 1D tab is the **Order + OrderLine + ASI editor** — the YAML maker.
+The 1D tab is the **Sales Order** — pure iDempiere pattern. No YAML editor.
+The YAML is redundant: the Order Lines ARE the building specification. The BOM Drop
+explodes a template into C_OrderLine rows; the user edits lines and attributes directly.
+YAML can be *generated* from the order state if needed for the backend pipeline.
 
 **Flow:**
 1. Building product dropdown: `scanBomProducts` — query `m_bom WHERE bom_type='BUILDING'`
