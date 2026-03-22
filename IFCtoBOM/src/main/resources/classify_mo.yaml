@@ -15,7 +15,7 @@ building:
   dsl_file: dsl_mo.bim
 
   storeys:
-    "Kælder": { code: FDN, bom_category: FDN, role: BASEMENT, seq: 1010 }  # 59 elements
+    "Kælder": { code: BSMT, bom_category: BSMT, role: BASEMENT, seq: 1010 }  # 59 elements
     "Grundplan": { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1020 }  # 66 elements
     "1. Sal": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1030 }  # 60 elements
     "2. Sal": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1040 }  # 70 elements

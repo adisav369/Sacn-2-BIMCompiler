@@ -206,7 +206,9 @@ storeys:
 | `role` | Role string on the MAKE child in BUILDING BOM |
 | `seq` | Sequence number for ordering in BUILDING BOM |
 
-**Key rule:** Every storey name in the reference DB must have a matching key here. Unmapped storeys are silently dropped (with a warning).
+**Key rules:**
+- Every storey name in the reference DB must have a matching key here. Unmapped storeys are silently dropped (with a warning).
+- **Each storey `code` must be unique within the building.** The code becomes the BOM ID (`{prefix}_{code}_STR`). If two IFC storeys share the same code, the BOM builder creates duplicate BUILDING→FLOOR references and the compiler walks the floor BOM once per duplicate — producing extra elements (S57 finding: RA +31%, JE +29%, WA +220%, MO +2%). When `onboard_ifc.sh` generates a YAML with colliding codes, disambiguate them before committing (e.g. `L1` → `L1A`/`L1B`, or merge both storeys into one entry if they are architecturally the same floor).
 
 ### `floor_rooms` (optional)
 

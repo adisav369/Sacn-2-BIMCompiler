@@ -1629,6 +1629,41 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
     }
 
+    // Implementing GENERATIVE_HOUSE_SRS.md §2.1 TC-4 — Witness: W-SWAP-1
+    @Override
+    public UpdateOrderLineResponse swapProduct(int orderLineId, String buildingId,
+                                               String newProductId) {
+        try {
+            BIMLogger.info(TAG, "SWAP_PRODUCT id={} new={}", orderLineId, newProductId);
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+
+            boolean updated = woDao.swapProduct(orderLineId, newProductId);
+            if (!updated) {
+                return new UpdateOrderLineResponse(false, null,
+                        "OrderLine not found or inactive: " + orderLineId);
+            }
+
+            var row = woDao.getOrderLine(orderLineId);
+            if (row == null) {
+                return new UpdateOrderLineResponse(false, null,
+                        "OrderLine not found after swap: " + orderLineId);
+            }
+
+            var info = new OrderLineInfo(
+                    row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
+                    row.dx(), row.dy(), row.dz(),
+                    row.widthMm(), row.depthMm(), row.heightMm(),
+                    row.qty(), row.validationStatus(), row.parentOrderLineId());
+
+            BIMLogger.info(TAG, "SWAP_PRODUCT → ok, id={} now={}", orderLineId, newProductId);
+            return new UpdateOrderLineResponse(true, info, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "swapProduct failed", e);
+            BIMLogger.error(TAG, "SWAP_PRODUCT failed: {}", e.getMessage());
+            return new UpdateOrderLineResponse(false, null, e.getMessage());
+        }
+    }
+
     // Implementing BIM_Designer.md §17.19 — Witness: W-OV-TREE-1
     @Override
     public BomTreeResponse getBomTree(String buildingId) {

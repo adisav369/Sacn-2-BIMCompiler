@@ -16,13 +16,13 @@ building:
 
   storeys:
     "Level 1": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 61 elements
-    "Level -1": { code: LEVE, bom_category: LEVE, role: UPPER_FLOOR, seq: 1020 }  # 90 elements
+    "Level -1": { code: LM1, bom_category: LM1, role: UPPER_FLOOR, seq: 1020 }  # 90 elements
     "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1030 }  # 404 elements
-    "level 0": { code: LEVE, bom_category: LEVE, role: UPPER_FLOOR, seq: 1040 }  # 25 elements
+    "level 0": { code: L0, bom_category: L0, role: UPPER_FLOOR, seq: 1040 }  # 25 elements
     "Level 2": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1050 }  # 14 elements
     "level 4": { code: L4, bom_category: L4, role: UPPER_FLOOR, seq: 1060 }  # 1 elements
     "T.O. level 0 floor": { code: T.O., bom_category: T.O., role: UPPER_FLOOR, seq: 1070 }  # 24 elements
-    "T.O. level 1 floor": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1080 }  # 7 elements
+    "T.O. level 1 floor": { code: T1, bom_category: T1, role: UPPER_FLOOR, seq: 1080 }  # 7 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

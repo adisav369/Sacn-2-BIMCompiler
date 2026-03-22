@@ -1,0 +1,357 @@
+-- ════════════════════════════════════════════════════════
+-- RA: Revit Architecture (Revit_ARC)
+-- Source: DAGCompiler/lib/output/revit_arc.db
+-- Generated: 2026-03-22 07:42
+-- ════════════════════════════════════════════════════════
+
+-- §1: Structural dimensions per (ifc_class, storey)
+-- Use: identify typical element sizes for validation rules
+
+-- ifc_class                storey              cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- -----------------------  ------------------  ---  --------  --------  --------  --------  --------
+-- IfcMember                Unknown             144  645.0     606.0     1059.0    92.0      1226.0  
+-- IfcBuildingElementProxy  Level 1             57   2592.0    2506.0    2726.0    87.0      12995.0 
+-- IfcPlate                 Unknown             44   1042.0    990.0     2176.0    803.0     1181.0  
+-- IfcWall                  Level 2             28   4305.0    4218.0    4453.0    637.0     15695.0 
+-- IfcSlab                  Foundation          20   570.0     570.0     3151.0    300.0     840.0   
+-- IfcFurnishingElement     Level 1             19   1013.0    944.0     789.0     376.0     4025.0  
+-- IfcWall                  Level 1             17   7400.0    6181.0    2887.0    1215.0    19663.0 
+-- IfcFurnishingElement     Level 1 Living Rm.  14   994.0     1027.0    476.0     588.0     3007.0  
+-- IfcDoor                  Level 2             8    779.0     778.0     2123.0    665.0     875.0   
+-- IfcFlowTerminal          Foundation          8    807.0     1012.0    343.0     762.0     925.0   
+-- IfcWindow                Level 1 Living Rm.  8    1112.0    1356.0    2710.0    1112.0    1112.0  
+-- IfcSlab                  Level 2             7    10985.0   9912.0    1082.0    300.0     23023.0 
+-- IfcWindow                Level 2             7    1356.0    1112.0    2710.0    1356.0    1356.0  
+-- IfcFlowTerminal          Level 2             6    1545.0    1326.0    924.0     588.0     2996.0  
+-- IfcBuildingElementProxy  Level 2             5    572.0     583.0     1203.0    519.0     641.0   
+-- IfcDoor                  Unknown             5    1107.0    940.0     2312.0    882.0     1165.0  
+-- IfcFlowTerminal          Level 1             5    1562.0    1573.0    502.0     158.0     3449.0  
+-- IfcRailing               Level 2             5    3635.0    4805.0    1347.0    1182.0    5333.0  
+-- IfcSlab                  Level 1             4    20203.0   14960.0   275.0     8730.0    33173.0 
+-- IfcBuildingElementProxy  Level 1 Living Rm.  3    7849.0    5733.0    2908.0    641.0     21341.0 
+-- IfcDoor                  Level 1             3    1053.0    1066.0    2190.0    902.0     1334.0  
+-- IfcRailing               Unknown             3    2064.0    2680.0    2618.0    1910.0    2370.0  
+-- IfcColumn                Level 1             2    1139.0    1102.0    5390.0    178.0     2101.0  
+-- IfcFurnishingElement     Level 2             2    1201.0    1319.0    2700.0    1201.0    1201.0  
+-- IfcSlab                  Level 1 Living Rm.  2    9307.0    9880.0    199.0     6598.0    12017.0 
+-- IfcSlab                  Unknown             2    8936.0    9111.0    319.0     5980.0    11892.0 
+-- IfcStairFlight           Unknown             2    5081.0    5040.0    1750.0    4769.0    5394.0  
+-- IfcWindow                Roof Line           2    1482.0    1449.0    962.0     1474.0    1490.0  
+
+-- §2: Material distribution
+
+
+-- §3: Spacing patterns (adjacent element gaps)
+-- Elements of the same ifc_class on the same storey, sorted by X
+
+
+-- §4: IFC class inventory
+
+-- ifc_class                discipline  cnt
+-- -----------------------  ----------  ---
+-- IfcMember                STR         144
+-- IfcBuildingElementProxy  ARC         66 
+-- IfcWall                  STR         47 
+-- IfcPlate                 STR         44 
+-- IfcFurnishingElement     ARC         35 
+-- IfcSlab                  STR         35 
+-- IfcFlowTerminal          MEP         19 
+-- IfcWindow                ARC         17 
+-- IfcDoor                  ARC         16 
+-- IfcRailing               ARC         10 
+-- IfcColumn                STR         3  
+-- IfcCovering              ARC         2  
+-- IfcStairFlight           ARC         2  
+-- IfcRoof                  ARC         1  
+-- IfcStair                 ARC         1  
+
+-- §5: Candidate validation rules for disc_validation.db
+-- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcMember_Unknown (144 instances, avg 645.0x606.0x1059.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Unknown', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Unknown: 144 instances, avg W=645.0 D=606.0 H=1059.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '645.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '606.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1059.0');
+
+-- Rule: IfcBuildingElementProxy_Level_1 (57 instances, avg 2592.0x2506.0x2726.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_1', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 1: 57 instances, avg W=2592.0 D=2506.0 H=2726.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2592.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2506.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2726.0');
+
+-- Rule: IfcPlate_Unknown (44 instances, avg 1042.0x990.0x2176.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPlate_Unknown', 'IfcPlate', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPlate on Unknown: 44 instances, avg W=1042.0 D=990.0 H=2176.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1042.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '990.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2176.0');
+
+-- Rule: IfcWall_Level_2 (28 instances, avg 4305.0x4218.0x4453.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Level_2', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 2: 28 instances, avg W=4305.0 D=4218.0 H=4453.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4305.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4218.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4453.0');
+
+-- Rule: IfcSlab_Foundation (20 instances, avg 570.0x570.0x3151.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Foundation', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Foundation: 20 instances, avg W=570.0 D=570.0 H=3151.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '570.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '570.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3151.0');
+
+-- Rule: IfcFurnishingElement_Level_1 (19 instances, avg 1013.0x944.0x789.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Level_1', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Level 1: 19 instances, avg W=1013.0 D=944.0 H=789.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1013.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '944.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '789.0');
+
+-- Rule: IfcWall_Level_1 (17 instances, avg 7400.0x6181.0x2887.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Level_1', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 1: 17 instances, avg W=7400.0 D=6181.0 H=2887.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '7400.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6181.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2887.0');
+
+-- Rule: IfcFurnishingElement_Level_1_Living_Rm. (14 instances, avg 994.0x1027.0x476.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_Level_1_Living_Rm.', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on Level 1 Living Rm.: 14 instances, avg W=994.0 D=1027.0 H=476.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '994.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1027.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '476.0');
+
+-- Rule: IfcDoor_Level_2 (8 instances, avg 779.0x778.0x2123.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Level_2', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Level 2: 8 instances, avg W=779.0 D=778.0 H=2123.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '779.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '778.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2123.0');
+
+-- Rule: IfcFlowTerminal_Foundation (8 instances, avg 807.0x1012.0x343.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Foundation', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Foundation: 8 instances, avg W=807.0 D=1012.0 H=343.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '807.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1012.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '343.0');
+
+-- Rule: IfcWindow_Level_1_Living_Rm. (8 instances, avg 1112.0x1356.0x2710.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Level_1_Living_Rm.', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Level 1 Living Rm.: 8 instances, avg W=1112.0 D=1356.0 H=2710.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1112.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1356.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2710.0');
+
+-- Rule: IfcSlab_Level_2 (7 instances, avg 10985.0x9912.0x1082.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 2: 7 instances, avg W=10985.0 D=9912.0 H=1082.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '10985.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '9912.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1082.0');
+
+-- Rule: IfcWindow_Level_2 (7 instances, avg 1356.0x1112.0x2710.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Level_2', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Level 2: 7 instances, avg W=1356.0 D=1112.0 H=2710.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1356.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1112.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2710.0');
+
+-- Rule: IfcFlowTerminal_Level_2 (6 instances, avg 1545.0x1326.0x924.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Level_2', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Level 2: 6 instances, avg W=1545.0 D=1326.0 H=924.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1545.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1326.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '924.0');
+
+-- Rule: IfcBuildingElementProxy_Level_2 (5 instances, avg 572.0x583.0x1203.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_2', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 2: 5 instances, avg W=572.0 D=583.0 H=1203.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '572.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '583.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1203.0');
+
+-- Rule: IfcDoor_Unknown (5 instances, avg 1107.0x940.0x2312.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Unknown', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Unknown: 5 instances, avg W=1107.0 D=940.0 H=2312.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1107.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '940.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2312.0');
+
+-- Rule: IfcFlowTerminal_Level_1 (5 instances, avg 1562.0x1573.0x502.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Level_1', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Level 1: 5 instances, avg W=1562.0 D=1573.0 H=502.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1562.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1573.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '502.0');
+
+-- Rule: IfcRailing_Level_2 (5 instances, avg 3635.0x4805.0x1347.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Level_2', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Level 2: 5 instances, avg W=3635.0 D=4805.0 H=1347.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3635.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4805.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1347.0');
+
+-- Rule: IfcSlab_Level_1 (4 instances, avg 20203.0x14960.0x275.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_1', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 1: 4 instances, avg W=20203.0 D=14960.0 H=275.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '20203.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '14960.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '275.0');
+
+-- Rule: IfcBuildingElementProxy_Level_1_Living_Rm. (3 instances, avg 7849.0x5733.0x2908.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_1_Living_Rm.', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 1 Living Rm.: 3 instances, avg W=7849.0 D=5733.0 H=2908.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '7849.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5733.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2908.0');
+
+-- Rule: IfcDoor_Level_1 (3 instances, avg 1053.0x1066.0x2190.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Level_1', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Level 1: 3 instances, avg W=1053.0 D=1066.0 H=2190.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1053.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1066.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2190.0');
+
+-- Rule: IfcRailing_Unknown (3 instances, avg 2064.0x2680.0x2618.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Unknown', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Unknown: 3 instances, avg W=2064.0 D=2680.0 H=2618.0mm',
+--     'Revit_ARC');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2064.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2680.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2618.0');
+
+

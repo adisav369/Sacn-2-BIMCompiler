@@ -1,0 +1,684 @@
+-- ════════════════════════════════════════════════════════
+-- CL: Sample Castle (SampleCastle)
+-- Source: DAGCompiler/lib/output/samplecastle.db
+-- Generated: 2026-03-22 08:27
+-- ════════════════════════════════════════════════════════
+
+-- §1: Structural dimensions per (ifc_class, storey)
+-- Use: identify typical element sizes for validation rules
+
+-- ifc_class                storey                cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- -----------------------  --------------------  ---  --------  --------  --------  --------  --------
+-- IfcCovering              00 begane grond       417  738.0     671.0     1172.0    10.0      11930.0 
+-- IfcCovering              02 tweede verdieping  351  872.0     837.0     811.0     10.0      15790.0 
+-- IfcCovering              01 eerste verdieping  338  725.0     752.0     842.0     10.0      16856.0 
+-- IfcWall                  01 eerste verdieping  252  800.0     749.0     1926.0    68.0      11772.0 
+-- IfcCovering              03 derde verdieping   226  1263.0    938.0     1230.0    10.0      17646.0 
+-- IfcCovering              04 dak                150  593.0     595.0     75.0      1.0       12320.0 
+-- IfcDoor                  00 begane grond       144  803.0     558.0     1394.0    12.0      2936.0  
+-- IfcWall                  00 begane grond       138  941.0     909.0     2422.0    70.0      11772.0 
+-- IfcDoor                  01 eerste verdieping  114  738.0     704.0     1507.0    12.0      2936.0  
+-- IfcDoor                  02 tweede verdieping  102  725.0     694.0     1400.0    12.0      1787.0  
+-- IfcWall                  03 derde verdieping   98   1018.0    956.0     1996.0    49.0      5722.0  
+-- IfcBeam                  -1 fundering          82   1897.0    1972.0    347.0     150.0     16400.0 
+-- IfcSlab                  00 begane grond       80   4143.0    2882.0    246.0     505.0     21300.0 
+-- IfcWall                  02 tweede verdieping  77   1077.0    1081.0    2409.0    70.0      15132.0 
+-- IfcSlab                  03 derde verdieping   74   3643.0    3192.0    1179.0    325.0     16000.0 
+-- IfcSlab                  01 eerste verdieping  62   3493.0    3630.0    330.0     3.0       21300.0 
+-- IfcWall                  -1 fundering          50   1033.0    941.0     500.0     100.0     12010.0 
+-- IfcRailing               01 eerste verdieping  39   411.0     518.0     538.0     20.0      1835.0  
+-- IfcBeam                  02 tweede verdieping  36   917.0     2313.0    103.0     80.0      9515.0  
+-- IfcSlab                  02 tweede verdieping  31   4964.0    3456.0    95.0      129.0     16000.0 
+-- IfcDoor                  03 derde verdieping   27   348.0     793.0     2415.0    45.0      1028.0  
+-- IfcRailing               02 tweede verdieping  26   1101.0    256.0     406.0     42.0      1835.0  
+-- IfcBeam                  00 begane grond       24   800.0     739.0     158.0     90.0      2000.0  
+-- IfcFlowSegment           01 eerste verdieping  24   106.0     119.0     1326.0    80.0      242.0   
+-- IfcBeam                  01 eerste verdieping  22   664.0     1023.0    158.0     90.0      3204.0  
+-- IfcWindow                01 eerste verdieping  22   804.0     559.0     1825.0    114.0     1715.0  
+-- IfcFlowSegment           02 tweede verdieping  21   112.0     87.0      742.0     80.0      189.0   
+-- IfcRailing               03 derde verdieping   21   976.0     178.0     243.0     42.0      1406.0  
+-- IfcWindow                00 begane grond       20   596.0     715.0     1838.0    114.0     1210.0  
+-- IfcWall                  04 dak                16   1634.0    1056.0    730.0     74.0      3328.0  
+-- IfcWindow                03 derde verdieping   16   908.0     376.0     1872.0    114.0     1530.0  
+-- IfcFlowSegment           00 begane grond       15   81.0      136.0     2569.0    80.0      86.0    
+-- IfcWindow                02 tweede verdieping  14   739.0     661.0     1273.0    114.0     1210.0  
+-- IfcBuildingElementProxy  00 begane grond       12   397.0     333.0     360.0     135.0     1000.0  
+-- IfcSlab                  04 dak                11   6165.0    3435.0    92.0      2816.0    13240.0 
+-- IfcColumn                03 derde verdieping   10   787.0     220.0     1459.0    220.0     1353.0  
+-- IfcBeam                  04 dak                9    2969.0    2693.0    218.0     220.0     11650.0 
+-- IfcColumn                02 tweede verdieping  8    111.0     111.0     973.0     110.0     113.0   
+-- IfcColumn                00 begane grond       5    94.0      94.0      3424.0    80.0      152.0   
+-- IfcColumn                01 eerste verdieping  5    98.0      100.0     2381.0    80.0      171.0   
+-- IfcWindow                04 dak                5    1193.0    1193.0    535.0     1193.0    1193.0  
+-- IfcRailing               00 begane grond       4    1387.0    86.0      1892.0    42.0      1835.0  
+-- IfcMember                01 eerste verdieping  3    797.0     127.0     1484.0    268.0     1159.0  
+-- IfcStair                 00 begane grond       3    1747.0    1639.0    1135.0    1570.0    1835.0  
+-- IfcStair                 01 eerste verdieping  3    1747.0    1639.0    1135.0    1570.0    1835.0  
+-- IfcStair                 02 tweede verdieping  3    1747.0    1639.0    1135.0    1570.0    1835.0  
+
+-- §2: Material distribution
+
+
+-- §3: Spacing patterns (adjacent element gaps)
+-- Elements of the same ifc_class on the same storey, sorted by X
+
+
+-- §4: IFC class inventory
+
+-- ifc_class                discipline  cnt 
+-- -----------------------  ----------  ----
+-- IfcCovering              ARC         1482
+-- IfcWall                  STR         631 
+-- IfcDoor                  ARC         387 
+-- IfcSlab                  STR         259 
+-- IfcBeam                  STR         174 
+-- IfcRailing               ARC         90  
+-- IfcWindow                ARC         77  
+-- IfcFlowSegment           MEP         60  
+-- IfcColumn                STR         28  
+-- IfcBuildingElementProxy  ARC         13  
+-- IfcStair                 ARC         9   
+-- IfcMember                STR         4   
+
+-- §5: Candidate validation rules for disc_validation.db
+-- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcCovering_00_begane_grond (417 instances, avg 738.0x671.0x1172.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_00_begane_grond', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on 00 begane grond: 417 instances, avg W=738.0 D=671.0 H=1172.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '738.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '671.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1172.0');
+
+-- Rule: IfcCovering_02_tweede_verdieping (351 instances, avg 872.0x837.0x811.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_02_tweede_verdieping', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on 02 tweede verdieping: 351 instances, avg W=872.0 D=837.0 H=811.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '872.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '837.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '811.0');
+
+-- Rule: IfcCovering_01_eerste_verdieping (338 instances, avg 725.0x752.0x842.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_01_eerste_verdieping', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on 01 eerste verdieping: 338 instances, avg W=725.0 D=752.0 H=842.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '725.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '752.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '842.0');
+
+-- Rule: IfcWall_01_eerste_verdieping (252 instances, avg 800.0x749.0x1926.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_01_eerste_verdieping', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 01 eerste verdieping: 252 instances, avg W=800.0 D=749.0 H=1926.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '800.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '749.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1926.0');
+
+-- Rule: IfcCovering_03_derde_verdieping (226 instances, avg 1263.0x938.0x1230.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_03_derde_verdieping', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on 03 derde verdieping: 226 instances, avg W=1263.0 D=938.0 H=1230.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1263.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '938.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1230.0');
+
+-- Rule: IfcCovering_04_dak (150 instances, avg 593.0x595.0x75.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_04_dak', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on 04 dak: 150 instances, avg W=593.0 D=595.0 H=75.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '593.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '595.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '75.0');
+
+-- Rule: IfcDoor_00_begane_grond (144 instances, avg 803.0x558.0x1394.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_00_begane_grond', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 00 begane grond: 144 instances, avg W=803.0 D=558.0 H=1394.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '803.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '558.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1394.0');
+
+-- Rule: IfcWall_00_begane_grond (138 instances, avg 941.0x909.0x2422.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_00_begane_grond', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 00 begane grond: 138 instances, avg W=941.0 D=909.0 H=2422.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '941.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '909.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2422.0');
+
+-- Rule: IfcDoor_01_eerste_verdieping (114 instances, avg 738.0x704.0x1507.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_01_eerste_verdieping', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 01 eerste verdieping: 114 instances, avg W=738.0 D=704.0 H=1507.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '738.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '704.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1507.0');
+
+-- Rule: IfcDoor_02_tweede_verdieping (102 instances, avg 725.0x694.0x1400.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_02_tweede_verdieping', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 02 tweede verdieping: 102 instances, avg W=725.0 D=694.0 H=1400.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '725.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '694.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1400.0');
+
+-- Rule: IfcWall_03_derde_verdieping (98 instances, avg 1018.0x956.0x1996.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_03_derde_verdieping', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 03 derde verdieping: 98 instances, avg W=1018.0 D=956.0 H=1996.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1018.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '956.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1996.0');
+
+-- Rule: IfcBeam_-1_fundering (82 instances, avg 1897.0x1972.0x347.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_-1_fundering', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on -1 fundering: 82 instances, avg W=1897.0 D=1972.0 H=347.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1897.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1972.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '347.0');
+
+-- Rule: IfcSlab_00_begane_grond (80 instances, avg 4143.0x2882.0x246.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_00_begane_grond', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 00 begane grond: 80 instances, avg W=4143.0 D=2882.0 H=246.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4143.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2882.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '246.0');
+
+-- Rule: IfcWall_02_tweede_verdieping (77 instances, avg 1077.0x1081.0x2409.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_02_tweede_verdieping', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 02 tweede verdieping: 77 instances, avg W=1077.0 D=1081.0 H=2409.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1077.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1081.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2409.0');
+
+-- Rule: IfcSlab_03_derde_verdieping (74 instances, avg 3643.0x3192.0x1179.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_03_derde_verdieping', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 03 derde verdieping: 74 instances, avg W=3643.0 D=3192.0 H=1179.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3643.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3192.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1179.0');
+
+-- Rule: IfcSlab_01_eerste_verdieping (62 instances, avg 3493.0x3630.0x330.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_01_eerste_verdieping', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 01 eerste verdieping: 62 instances, avg W=3493.0 D=3630.0 H=330.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3493.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3630.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '330.0');
+
+-- Rule: IfcWall_-1_fundering (50 instances, avg 1033.0x941.0x500.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_-1_fundering', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on -1 fundering: 50 instances, avg W=1033.0 D=941.0 H=500.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1033.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '941.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '500.0');
+
+-- Rule: IfcRailing_01_eerste_verdieping (39 instances, avg 411.0x518.0x538.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_01_eerste_verdieping', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 01 eerste verdieping: 39 instances, avg W=411.0 D=518.0 H=538.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '411.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '518.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '538.0');
+
+-- Rule: IfcBeam_02_tweede_verdieping (36 instances, avg 917.0x2313.0x103.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_02_tweede_verdieping', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 02 tweede verdieping: 36 instances, avg W=917.0 D=2313.0 H=103.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '917.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2313.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '103.0');
+
+-- Rule: IfcSlab_02_tweede_verdieping (31 instances, avg 4964.0x3456.0x95.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_02_tweede_verdieping', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 02 tweede verdieping: 31 instances, avg W=4964.0 D=3456.0 H=95.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4964.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3456.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '95.0');
+
+-- Rule: IfcDoor_03_derde_verdieping (27 instances, avg 348.0x793.0x2415.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_03_derde_verdieping', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 03 derde verdieping: 27 instances, avg W=348.0 D=793.0 H=2415.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '348.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '793.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2415.0');
+
+-- Rule: IfcRailing_02_tweede_verdieping (26 instances, avg 1101.0x256.0x406.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_02_tweede_verdieping', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 02 tweede verdieping: 26 instances, avg W=1101.0 D=256.0 H=406.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1101.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '256.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '406.0');
+
+-- Rule: IfcBeam_00_begane_grond (24 instances, avg 800.0x739.0x158.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_00_begane_grond', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 00 begane grond: 24 instances, avg W=800.0 D=739.0 H=158.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '800.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '739.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '158.0');
+
+-- Rule: IfcFlowSegment_01_eerste_verdieping (24 instances, avg 106.0x119.0x1326.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowSegment_01_eerste_verdieping', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowSegment on 01 eerste verdieping: 24 instances, avg W=106.0 D=119.0 H=1326.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '106.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '119.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1326.0');
+
+-- Rule: IfcBeam_01_eerste_verdieping (22 instances, avg 664.0x1023.0x158.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_01_eerste_verdieping', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 01 eerste verdieping: 22 instances, avg W=664.0 D=1023.0 H=158.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '664.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1023.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '158.0');
+
+-- Rule: IfcWindow_01_eerste_verdieping (22 instances, avg 804.0x559.0x1825.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_01_eerste_verdieping', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 01 eerste verdieping: 22 instances, avg W=804.0 D=559.0 H=1825.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '804.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '559.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1825.0');
+
+-- Rule: IfcFlowSegment_02_tweede_verdieping (21 instances, avg 112.0x87.0x742.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowSegment_02_tweede_verdieping', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowSegment on 02 tweede verdieping: 21 instances, avg W=112.0 D=87.0 H=742.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '112.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '87.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '742.0');
+
+-- Rule: IfcRailing_03_derde_verdieping (21 instances, avg 976.0x178.0x243.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_03_derde_verdieping', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 03 derde verdieping: 21 instances, avg W=976.0 D=178.0 H=243.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '976.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '178.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '243.0');
+
+-- Rule: IfcWindow_00_begane_grond (20 instances, avg 596.0x715.0x1838.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_00_begane_grond', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 00 begane grond: 20 instances, avg W=596.0 D=715.0 H=1838.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '596.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '715.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1838.0');
+
+-- Rule: IfcWall_04_dak (16 instances, avg 1634.0x1056.0x730.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_04_dak', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 04 dak: 16 instances, avg W=1634.0 D=1056.0 H=730.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1634.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1056.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '730.0');
+
+-- Rule: IfcWindow_03_derde_verdieping (16 instances, avg 908.0x376.0x1872.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_03_derde_verdieping', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 03 derde verdieping: 16 instances, avg W=908.0 D=376.0 H=1872.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '908.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '376.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1872.0');
+
+-- Rule: IfcFlowSegment_00_begane_grond (15 instances, avg 81.0x136.0x2569.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowSegment_00_begane_grond', 'IfcFlowSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowSegment on 00 begane grond: 15 instances, avg W=81.0 D=136.0 H=2569.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '81.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '136.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2569.0');
+
+-- Rule: IfcWindow_02_tweede_verdieping (14 instances, avg 739.0x661.0x1273.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_02_tweede_verdieping', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 02 tweede verdieping: 14 instances, avg W=739.0 D=661.0 H=1273.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '739.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '661.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1273.0');
+
+-- Rule: IfcBuildingElementProxy_00_begane_grond (12 instances, avg 397.0x333.0x360.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_00_begane_grond', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 00 begane grond: 12 instances, avg W=397.0 D=333.0 H=360.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '397.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '333.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '360.0');
+
+-- Rule: IfcSlab_04_dak (11 instances, avg 6165.0x3435.0x92.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_04_dak', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 04 dak: 11 instances, avg W=6165.0 D=3435.0 H=92.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6165.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3435.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '92.0');
+
+-- Rule: IfcColumn_03_derde_verdieping (10 instances, avg 787.0x220.0x1459.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_03_derde_verdieping', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 03 derde verdieping: 10 instances, avg W=787.0 D=220.0 H=1459.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '787.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '220.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1459.0');
+
+-- Rule: IfcBeam_04_dak (9 instances, avg 2969.0x2693.0x218.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_04_dak', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 04 dak: 9 instances, avg W=2969.0 D=2693.0 H=218.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2969.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2693.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '218.0');
+
+-- Rule: IfcColumn_02_tweede_verdieping (8 instances, avg 111.0x111.0x973.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_02_tweede_verdieping', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 02 tweede verdieping: 8 instances, avg W=111.0 D=111.0 H=973.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '111.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '111.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '973.0');
+
+-- Rule: IfcColumn_00_begane_grond (5 instances, avg 94.0x94.0x3424.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_00_begane_grond', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 00 begane grond: 5 instances, avg W=94.0 D=94.0 H=3424.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '94.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '94.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3424.0');
+
+-- Rule: IfcColumn_01_eerste_verdieping (5 instances, avg 98.0x100.0x2381.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_01_eerste_verdieping', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 01 eerste verdieping: 5 instances, avg W=98.0 D=100.0 H=2381.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '98.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '100.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2381.0');
+
+-- Rule: IfcWindow_04_dak (5 instances, avg 1193.0x1193.0x535.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_04_dak', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 04 dak: 5 instances, avg W=1193.0 D=1193.0 H=535.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1193.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1193.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '535.0');
+
+-- Rule: IfcRailing_00_begane_grond (4 instances, avg 1387.0x86.0x1892.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_00_begane_grond', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 00 begane grond: 4 instances, avg W=1387.0 D=86.0 H=1892.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1387.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '86.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1892.0');
+
+-- Rule: IfcMember_01_eerste_verdieping (3 instances, avg 797.0x127.0x1484.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_01_eerste_verdieping', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on 01 eerste verdieping: 3 instances, avg W=797.0 D=127.0 H=1484.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '797.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '127.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1484.0');
+
+-- Rule: IfcStair_00_begane_grond (3 instances, avg 1747.0x1639.0x1135.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStair_00_begane_grond', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on 00 begane grond: 3 instances, avg W=1747.0 D=1639.0 H=1135.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1747.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1639.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1135.0');
+
+-- Rule: IfcStair_01_eerste_verdieping (3 instances, avg 1747.0x1639.0x1135.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStair_01_eerste_verdieping', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on 01 eerste verdieping: 3 instances, avg W=1747.0 D=1639.0 H=1135.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1747.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1639.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1135.0');
+
+-- Rule: IfcStair_02_tweede_verdieping (3 instances, avg 1747.0x1639.0x1135.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStair_02_tweede_verdieping', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on 02 tweede verdieping: 3 instances, avg W=1747.0 D=1639.0 H=1135.0mm',
+--     'SampleCastle');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1747.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1639.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1135.0');
+
+

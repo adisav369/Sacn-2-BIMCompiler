@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- IP: PCERT Infra Plumbing (Infra_Plumbing)
 -- Source: DAGCompiler/lib/output/infra_plumbing.db
--- Generated: 2026-03-22 06:51
+-- Generated: 2026-03-22 08:20
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

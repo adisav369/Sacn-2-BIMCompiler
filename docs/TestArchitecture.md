@@ -1137,6 +1137,59 @@ but not **correct computation** (sufficient). Document this honestly.
 
 ---
 
+## Rosetta Stone Coverage (S57)
+
+All 34 buildings compiled through the single pipeline path. Gate results:
+
+| Building | Elements | G1 | G2 | G3 | G5 | C8 | C9 | Notes |
+|----------|----------|----|----|----|----|----|----|-------|
+| SH | 55 | PASS | PASS | PASS | PASS | PASS | PASS | reference |
+| FK | 82 | PASS | PASS | PASS | PASS | PASS | PASS | reference |
+| IN | 699 | PASS | PASS | FAIL | PASS | PASS | PASS | G3: 120 window SHIFT |
+| DX | 1099 | PASS | -0.16% | FAIL | PASS | PASS | FAIL (87) | mirror rotation |
+| TE | 48428 | PASS | PASS | FAIL | PASS | PASS | 48336/48428 | re-baseline needed |
+| RA | 442 | PASS | PASS | FAIL | FAIL (1 GEO_) | PASS | PASS | near-green |
+| JE | 626 | PASS | PASS | FAIL | FAIL (1 GEO_) | PASS | FAIL (58) | door axis swap |
+| ES | 1941 | PASS | PASS | FAIL | FAIL (73 GEO_) | PASS | PASS | near-green |
+| MO | 3114 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| HI | 2068 | PASS | PASS | FAIL | PASS | PASS | FAIL (285) | wall rotation |
+| SC | 3214 | PASS | PASS | FAIL | PASS | FAIL (1) | FAIL (1159) | window diversity |
+| RS | 4133 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
+| RM | 6787 | PASS | PASS | FAIL | PASS | PASS | FAIL (2) | 2 door depths |
+| WA | 1749 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
+| BH | 5 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| BA | 11 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| BS | 16 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| IP | 27 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| BR | 48 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| RD | 53 | PASS | PASS | PASS | — | — | — | infra (3/3) |
+| WT | 55 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| JS | 61 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| RL | 73 | PASS | PASS | PASS | — | — | — | infra (3/3) |
+| NI | 104 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| WL | 114 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| WB | 125 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| GH | 193 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
+| WI | 1 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
+| CS | 1078 | PASS | PASS | FAIL | FAIL (GEO_) | PASS | PASS | G3+G5 |
+| CE | 2110 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
+| CA | 2586 | PASS | PASS | FAIL | PASS | PASS | PASS | G3 + 2 geom |
+| CL | 3214 | PASS | PASS | FAIL | PASS | FAIL (1) | FAIL (1159) | = SC (same IFC) |
+| CH | 3693 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
+| CP | 6584 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
+
+**34/34 buildings G1-COUNT PASS. 16 ALL GREEN. 0 count mismatches.**
+
+**S57 finding — duplicate storey codes:** `onboard_ifc.sh` generated YAMLs where multiple IFC storeys shared the same `code`. The BOM ID is `{prefix}_{code}_STR`, so duplicate codes create duplicate BUILDING→FLOOR references — the compiler walks each floor BOM once per duplicate, producing extra elements. Fixed in RA, JE, WA, MO by disambiguating codes. Rule added to [YAMLGuide.md §storeys](YAMLGuide.md).
+
+**Remaining work:**
+- G3-DIGEST: establish baselines for new buildings (all non-original 5 need baselines)
+- G5: 4 buildings have GEO_ fallback (RA, JE, ES, CS — parametric BBox, missing library mesh)
+- C9: axis dimension mismatches in JE (doors), HI (walls), SC/CL (slabs), RM (doors) — pre-existing rotation/swap issues, not compilation bugs
+- CA: 2 geometry failures (threshold=0)
+
+---
+
 ## Appendix: Illegal SQL Patterns — Why BIM COBOL Verbs Exist
 
 The verb-first rule is not bureaucracy. Raw SQL is the mechanism by which

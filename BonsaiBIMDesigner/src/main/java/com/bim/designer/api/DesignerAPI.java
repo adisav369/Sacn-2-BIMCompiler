@@ -210,6 +210,16 @@ public interface DesignerAPI extends AssemblyAPI {
                                              String field, String value);
 
     /**
+     * Swap the product on a C_OrderLine — BOM configurator pattern.
+     * User navigates BOM tree, selects a node, swaps to a different product
+     * in the same category (e.g., flat roof → pitched roof).
+     *
+     * // Implementing GENERATIVE_HOUSE_SRS.md §2.1 TC-4 — Witness: W-SWAP-1
+     */
+    UpdateOrderLineResponse swapProduct(int orderLineId, String buildingId,
+                                        String newProductId);
+
+    /**
      * Get the BOM tree for a building — hierarchical BUILDING→FLOOR→ROOM→ITEM.
      * Built from C_OrderLine Parent_OrderLine_ID relationships.
      *

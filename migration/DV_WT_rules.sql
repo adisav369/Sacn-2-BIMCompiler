@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WT: BimWhale Tall Building (BimWhale_Tall)
 -- Source: DAGCompiler/lib/output/bimwhale_tall.db
--- Generated: 2026-03-22 06:51
+-- Generated: 2026-03-22 08:20
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

@@ -15,9 +15,9 @@ building:
   dsl_file: dsl_wa.bim
 
   storeys:
-    "Level 1": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 495 elements
-    "1 - First Floor": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1020 }  # 735 elements
-    "Level 2": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1030 }  # 7 elements
+    "Level 1": { code: L1A, bom_category: L1A, role: UPPER_FLOOR, seq: 1010 }  # 495 elements
+    "1 - First Floor": { code: L1B, bom_category: L1B, role: UPPER_FLOOR, seq: 1020 }  # 735 elements
+    "Level 2": { code: L2A, bom_category: L2A, role: UPPER_FLOOR, seq: 1030 }  # 7 elements
     "-1 - Garage": { code: -1_-, bom_category: -1_-, role: UPPER_FLOOR, seq: 1040 }  # 165 elements
     "6 - Sixth Floor": { code: 6_-_, bom_category: 6_-_, role: UPPER_FLOOR, seq: 1050 }  # 46 elements
     "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1060 }  # 113 elements

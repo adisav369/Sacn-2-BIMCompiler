@@ -1,0 +1,614 @@
+-- ════════════════════════════════════════════════════════
+-- HI: HITOS Building (HITOS)
+-- Source: DAGCompiler/lib/output/hitos.db
+-- Generated: 2026-03-22 07:24
+-- ════════════════════════════════════════════════════════
+
+-- §1: Structural dimensions per (ifc_class, storey)
+-- Use: identify typical element sizes for validation rules
+
+-- ifc_class                storey           cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- -----------------------  ---------------  ---  --------  --------  --------  --------  --------
+-- IfcWall                  2.etg            250  2090.0    2631.0    3321.0    7.0       15940.0 
+-- IfcWall                  u.etg            219  1957.0    2221.0    3429.0    71.0      15018.0 
+-- IfcWall                  1.etg            200  1995.0    2737.0    3271.0    7.0       15940.0 
+-- IfcWall                  3.etg            111  2152.0    3603.0    2868.0    71.0      14255.0 
+-- IfcSlab                  3.etg            105  6774.0    6718.0    194.0     221.0     14400.0 
+-- IfcSlab                  2.etg            99   4355.0    5504.0    79.0      408.0     29415.0 
+-- IfcSlab                  u.etg            90   5041.0    5798.0    149.0     500.0     29400.0 
+-- IfcBeam                  2.etg            83   634.0     4310.0    295.0     100.0     5890.0  
+-- IfcWindow                2.etg            81   868.0     1668.0    1979.0    90.0      11953.0 
+-- IfcColumn                2.etg            72   313.0     290.0     3836.0    40.0      1000.0  
+-- IfcDoor                  u.etg            72   702.0     699.0     2245.0    90.0      3500.0  
+-- IfcWindow                1.etg            67   871.0     1841.0    2078.0    90.0      11953.0 
+-- IfcWall                  kjeller          58   1919.0    2844.0    3471.0    126.0     15490.0 
+-- IfcSlab                  1.etg            57   4634.0    5755.0    78.0      1400.0    20750.0 
+-- IfcColumn                1.etg            56   345.0     315.0     3761.0    100.0     1000.0  
+-- IfcColumn                u.etg            55   339.0     309.0     3731.0    100.0     1000.0  
+-- IfcDoor                  2.etg            47   656.0     597.0     2113.0    90.0      1690.0  
+-- IfcDoor                  1.etg            45   441.0     802.0     2106.0    90.0      1799.0  
+-- IfcWindow                u.etg            40   868.0     1674.0    2223.0    75.0      11953.0 
+-- IfcWindow                3.etg            38   1248.0    1838.0    2508.0    90.0      14095.0 
+-- IfcFlowTerminal          u.etg            30   463.0     486.0     432.0     90.0      913.0   
+-- IfcDoor                  3.etg            27   424.0     869.0     2173.0    100.0     1740.0  
+-- IfcBuildingElementProxy  3.etg            18   1900.0    6996.0    88.0      72.0      14274.0 
+-- IfcFlowTerminal          1.etg            17   448.0     450.0     325.0     299.0     650.0   
+-- IfcColumn                kjeller          16   370.0     348.0     3621.0    350.0     430.0   
+-- IfcFlowTerminal          2.etg            15   544.0     399.0     393.0     400.0     650.0   
+-- IfcBuildingElementProxy  u.etg            10   2040.0    2899.0    674.0     50.0      16953.0 
+-- IfcFurnishingElement     u.etg            10   300.0     620.0     2000.0    300.0     300.0   
+-- IfcRailing               2.etg            10   2977.0    809.0     1717.0    60.0      12176.0 
+-- IfcColumn                3.etg            9    422.0     333.0     3715.0    350.0     1000.0  
+-- IfcSlab                  kjeller          8    12907.0   13250.0   189.0     2975.0    29639.0 
+-- IfcDoor                  kjeller          7    854.0     531.0     2090.0    100.0     1690.0  
+-- IfcFurnishingElement     3.etg            7    497.0     543.0     999.0     350.0     630.0   
+-- IfcFurnishingElement     1.etg            6    473.0     533.0     826.0     345.0     600.0   
+-- IfcStair                 1.etg            6    2593.0    4808.0    4757.0    1400.0    3399.0  
+-- IfcFlowTerminal          3.etg            5    548.0     401.0     431.0     500.0     561.0   
+-- IfcStair                 u.etg            5    2832.0    4473.0    5100.0    2070.0    3400.0  
+-- IfcSlab                  fundamentetasje  4    15870.0   21685.0   120.0     15510.0   16230.0 
+-- IfcBeam                  u.etg            3    6713.0    2427.0    300.0     615.0     16994.0 
+-- IfcBuildingElementProxy  1.etg            3    12825.0   2326.0    850.0     12825.0   12825.0 
+-- IfcRailing               3.etg            3    3050.0    2679.0    1000.0    50.0      9050.0  
+-- IfcStair                 2.etg            2    2909.0    3512.0    5137.0    2600.0    3218.0  
+
+-- §2: Material distribution
+
+
+-- §3: Spacing patterns (adjacent element gaps)
+-- Elements of the same ifc_class on the same storey, sorted by X
+
+
+-- §4: IFC class inventory
+
+-- ifc_class                discipline  cnt
+-- -----------------------  ----------  ---
+-- IfcWall                  STR         838
+-- IfcSlab                  STR         363
+-- IfcWindow                ARC         226
+-- IfcColumn                STR         208
+-- IfcDoor                  ARC         198
+-- IfcBeam                  STR         86 
+-- IfcFlowTerminal          MEP         67 
+-- IfcBuildingElementProxy  ARC         31 
+-- IfcFurnishingElement     ARC         23 
+-- IfcRailing               ARC         14 
+-- IfcStair                 ARC         14 
+
+-- §5: Candidate validation rules for disc_validation.db
+-- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcWall_2.etg (250 instances, avg 2090.0x2631.0x3321.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_2.etg', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 2.etg: 250 instances, avg W=2090.0 D=2631.0 H=3321.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2090.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2631.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3321.0');
+
+-- Rule: IfcWall_u.etg (219 instances, avg 1957.0x2221.0x3429.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_u.etg', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on u.etg: 219 instances, avg W=1957.0 D=2221.0 H=3429.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1957.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2221.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3429.0');
+
+-- Rule: IfcWall_1.etg (200 instances, avg 1995.0x2737.0x3271.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_1.etg', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 1.etg: 200 instances, avg W=1995.0 D=2737.0 H=3271.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1995.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2737.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3271.0');
+
+-- Rule: IfcWall_3.etg (111 instances, avg 2152.0x3603.0x2868.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_3.etg', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on 3.etg: 111 instances, avg W=2152.0 D=3603.0 H=2868.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2152.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3603.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2868.0');
+
+-- Rule: IfcSlab_3.etg (105 instances, avg 6774.0x6718.0x194.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_3.etg', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 3.etg: 105 instances, avg W=6774.0 D=6718.0 H=194.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6774.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6718.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '194.0');
+
+-- Rule: IfcSlab_2.etg (99 instances, avg 4355.0x5504.0x79.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_2.etg', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 2.etg: 99 instances, avg W=4355.0 D=5504.0 H=79.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4355.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5504.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '79.0');
+
+-- Rule: IfcSlab_u.etg (90 instances, avg 5041.0x5798.0x149.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_u.etg', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on u.etg: 90 instances, avg W=5041.0 D=5798.0 H=149.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5041.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5798.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '149.0');
+
+-- Rule: IfcBeam_2.etg (83 instances, avg 634.0x4310.0x295.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_2.etg', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on 2.etg: 83 instances, avg W=634.0 D=4310.0 H=295.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '634.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4310.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '295.0');
+
+-- Rule: IfcWindow_2.etg (81 instances, avg 868.0x1668.0x1979.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_2.etg', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 2.etg: 81 instances, avg W=868.0 D=1668.0 H=1979.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '868.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1668.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1979.0');
+
+-- Rule: IfcColumn_2.etg (72 instances, avg 313.0x290.0x3836.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_2.etg', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 2.etg: 72 instances, avg W=313.0 D=290.0 H=3836.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '313.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '290.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3836.0');
+
+-- Rule: IfcDoor_u.etg (72 instances, avg 702.0x699.0x2245.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_u.etg', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on u.etg: 72 instances, avg W=702.0 D=699.0 H=2245.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '702.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '699.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2245.0');
+
+-- Rule: IfcWindow_1.etg (67 instances, avg 871.0x1841.0x2078.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_1.etg', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 1.etg: 67 instances, avg W=871.0 D=1841.0 H=2078.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '871.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1841.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2078.0');
+
+-- Rule: IfcWall_kjeller (58 instances, avg 1919.0x2844.0x3471.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_kjeller', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on kjeller: 58 instances, avg W=1919.0 D=2844.0 H=3471.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1919.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2844.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3471.0');
+
+-- Rule: IfcSlab_1.etg (57 instances, avg 4634.0x5755.0x78.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_1.etg', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on 1.etg: 57 instances, avg W=4634.0 D=5755.0 H=78.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4634.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5755.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '78.0');
+
+-- Rule: IfcColumn_1.etg (56 instances, avg 345.0x315.0x3761.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_1.etg', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 1.etg: 56 instances, avg W=345.0 D=315.0 H=3761.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '345.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '315.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3761.0');
+
+-- Rule: IfcColumn_u.etg (55 instances, avg 339.0x309.0x3731.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_u.etg', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on u.etg: 55 instances, avg W=339.0 D=309.0 H=3731.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '339.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '309.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3731.0');
+
+-- Rule: IfcDoor_2.etg (47 instances, avg 656.0x597.0x2113.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_2.etg', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 2.etg: 47 instances, avg W=656.0 D=597.0 H=2113.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '656.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '597.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2113.0');
+
+-- Rule: IfcDoor_1.etg (45 instances, avg 441.0x802.0x2106.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_1.etg', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 1.etg: 45 instances, avg W=441.0 D=802.0 H=2106.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '441.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '802.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2106.0');
+
+-- Rule: IfcWindow_u.etg (40 instances, avg 868.0x1674.0x2223.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_u.etg', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on u.etg: 40 instances, avg W=868.0 D=1674.0 H=2223.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '868.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1674.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2223.0');
+
+-- Rule: IfcWindow_3.etg (38 instances, avg 1248.0x1838.0x2508.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_3.etg', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on 3.etg: 38 instances, avg W=1248.0 D=1838.0 H=2508.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1248.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1838.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2508.0');
+
+-- Rule: IfcFlowTerminal_u.etg (30 instances, avg 463.0x486.0x432.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_u.etg', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on u.etg: 30 instances, avg W=463.0 D=486.0 H=432.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '463.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '486.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '432.0');
+
+-- Rule: IfcDoor_3.etg (27 instances, avg 424.0x869.0x2173.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_3.etg', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on 3.etg: 27 instances, avg W=424.0 D=869.0 H=2173.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '424.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '869.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2173.0');
+
+-- Rule: IfcBuildingElementProxy_3.etg (18 instances, avg 1900.0x6996.0x88.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_3.etg', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 3.etg: 18 instances, avg W=1900.0 D=6996.0 H=88.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1900.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6996.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '88.0');
+
+-- Rule: IfcFlowTerminal_1.etg (17 instances, avg 448.0x450.0x325.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_1.etg', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 1.etg: 17 instances, avg W=448.0 D=450.0 H=325.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '448.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '450.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '325.0');
+
+-- Rule: IfcColumn_kjeller (16 instances, avg 370.0x348.0x3621.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_kjeller', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on kjeller: 16 instances, avg W=370.0 D=348.0 H=3621.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '370.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '348.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3621.0');
+
+-- Rule: IfcFlowTerminal_2.etg (15 instances, avg 544.0x399.0x393.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_2.etg', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 2.etg: 15 instances, avg W=544.0 D=399.0 H=393.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '544.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '399.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '393.0');
+
+-- Rule: IfcBuildingElementProxy_u.etg (10 instances, avg 2040.0x2899.0x674.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_u.etg', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on u.etg: 10 instances, avg W=2040.0 D=2899.0 H=674.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2040.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2899.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '674.0');
+
+-- Rule: IfcFurnishingElement_u.etg (10 instances, avg 300.0x620.0x2000.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_u.etg', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on u.etg: 10 instances, avg W=300.0 D=620.0 H=2000.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '300.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '620.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2000.0');
+
+-- Rule: IfcRailing_2.etg (10 instances, avg 2977.0x809.0x1717.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_2.etg', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 2.etg: 10 instances, avg W=2977.0 D=809.0 H=1717.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2977.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '809.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1717.0');
+
+-- Rule: IfcColumn_3.etg (9 instances, avg 422.0x333.0x3715.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_3.etg', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on 3.etg: 9 instances, avg W=422.0 D=333.0 H=3715.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '422.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '333.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3715.0');
+
+-- Rule: IfcSlab_kjeller (8 instances, avg 12907.0x13250.0x189.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_kjeller', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on kjeller: 8 instances, avg W=12907.0 D=13250.0 H=189.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '12907.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '13250.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '189.0');
+
+-- Rule: IfcDoor_kjeller (7 instances, avg 854.0x531.0x2090.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_kjeller', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on kjeller: 7 instances, avg W=854.0 D=531.0 H=2090.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '854.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '531.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2090.0');
+
+-- Rule: IfcFurnishingElement_3.etg (7 instances, avg 497.0x543.0x999.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_3.etg', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 3.etg: 7 instances, avg W=497.0 D=543.0 H=999.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '497.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '543.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '999.0');
+
+-- Rule: IfcFurnishingElement_1.etg (6 instances, avg 473.0x533.0x826.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurnishingElement_1.etg', 'IfcFurnishingElement', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurnishingElement on 1.etg: 6 instances, avg W=473.0 D=533.0 H=826.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '473.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '533.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '826.0');
+
+-- Rule: IfcStair_1.etg (6 instances, avg 2593.0x4808.0x4757.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStair_1.etg', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on 1.etg: 6 instances, avg W=2593.0 D=4808.0 H=4757.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2593.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4808.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4757.0');
+
+-- Rule: IfcFlowTerminal_3.etg (5 instances, avg 548.0x401.0x431.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_3.etg', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on 3.etg: 5 instances, avg W=548.0 D=401.0 H=431.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '548.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '401.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '431.0');
+
+-- Rule: IfcStair_u.etg (5 instances, avg 2832.0x4473.0x5100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStair_u.etg', 'IfcStair', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStair on u.etg: 5 instances, avg W=2832.0 D=4473.0 H=5100.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2832.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4473.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '5100.0');
+
+-- Rule: IfcSlab_fundamentetasje (4 instances, avg 15870.0x21685.0x120.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_fundamentetasje', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on fundamentetasje: 4 instances, avg W=15870.0 D=21685.0 H=120.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '15870.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '21685.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '120.0');
+
+-- Rule: IfcBeam_u.etg (3 instances, avg 6713.0x2427.0x300.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_u.etg', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on u.etg: 3 instances, avg W=6713.0 D=2427.0 H=300.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6713.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2427.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '300.0');
+
+-- Rule: IfcBuildingElementProxy_1.etg (3 instances, avg 12825.0x2326.0x850.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_1.etg', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on 1.etg: 3 instances, avg W=12825.0 D=2326.0 H=850.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '12825.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2326.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '850.0');
+
+-- Rule: IfcRailing_3.etg (3 instances, avg 3050.0x2679.0x1000.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_3.etg', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on 3.etg: 3 instances, avg W=3050.0 D=2679.0 H=1000.0mm',
+--     'HITOS');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3050.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2679.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1000.0');
+
+

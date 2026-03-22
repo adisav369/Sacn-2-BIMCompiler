@@ -1,12 +1,16 @@
 -- ════════════════════════════════════════════════════════
--- WI: Wilfer PART02 (Wilfer)
--- Source: DAGCompiler/lib/output/wilfer.db
--- Generated: 2026-03-22 08:22
+-- BH: PCERT Building Hvac (Building_Hvac)
+-- Source: DAGCompiler/lib/output/building_hvac.db
+-- Generated: 2026-03-22 08:19
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
 -- Use: identify typical element sizes for validation rules
 
+-- ifc_class                storey          cnt  avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- -----------------------  --------------  ---  --------  --------  --------  --------  --------
+-- IfcBuildingElementProxy  Unknown         2    1313.0    1342.0    550.0     1000.0    1626.0  
+-- IfcFlowTerminal          00 groundfloor  2    500.0     636.0     175.0     300.0     700.0   
 
 -- §2: Material distribution
 
@@ -17,9 +21,11 @@
 
 -- §4: IFC class inventory
 
--- ifc_class          discipline  cnt
--- -----------------  ----------  ---
--- IfcFlowController  MEP         1  
+-- ifc_class                discipline  cnt
+-- -----------------------  ----------  ---
+-- IfcBuildingElementProxy  ARC         2  
+-- IfcFlowTerminal          MEP         2  
+-- IfcFlowSegment           MEP         1  
 
 -- §5: Candidate validation rules for disc_validation.db
 -- Review and adjust before applying. Rule IDs are placeholders.

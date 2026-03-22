@@ -154,8 +154,8 @@ class OrderViewTest {
 
         int id = rows.get(0).orderLineId();
 
-        // Try to update a non-editable field
-        boolean updated = woDao.updateOrderLine(id, "family_ref", "HACK");
+        // Try to update a non-editable field (C_Order_ID is never editable)
+        boolean updated = woDao.updateOrderLine(id, "C_Order_ID", "HACK");
         assertFalse(updated, "Non-whitelisted field rejected");
 
         // Also reject SQL injection attempts
