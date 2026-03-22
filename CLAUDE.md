@@ -6,7 +6,7 @@
 ## Session Startup
 1. Read this file
 2. Read PROGRESS.md §Current State (gate table, what's next)
-3. Read `docs/YAMLGuide.md` §Invention Boundary + §Step 5-6 (pipeline flow)
+3. Read `docs/WorkOrderGuide.md` §Invention Boundary + §Step 5-6 (pipeline flow)
 4. Read the analysis doc for the building you're working on (`docs/{Building}Analysis.md`)
 5. Read the Java interface of whatever you're modifying
 6. Run `./scripts/run_RosettaStones.sh classify_{prefix}.yaml` to verify current state

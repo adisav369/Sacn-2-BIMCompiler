@@ -171,7 +171,7 @@ The pipeline will auto-create M_Product entries from extraction. Key types:
 ## How To Get IFC into BIM Compiler Framework
 
 Canonical references: `docs/SourceCodeGuide.md` §Chapter 4 (Steps 1-5),
-`docs/YAMLGuide.md` §How to Add a New Building.
+`docs/WorkOrderGuide.md` §How to Add a New Building.
 
 ### Step 0 — Seed databases (BEFORE extraction)
 
@@ -231,7 +231,7 @@ Of 699 elements: 253 furnishing in IfcSpaces, 446 structural at storey level.
 or SH (4 spaces).
 
 **Reference docs for BOM modelling:**
-- `docs/YAMLGuide.md` §Schema (v1) — full field reference for `storeys:`, `floor_rooms:`, `spaces:`
+- `docs/WorkOrderGuide.md` §Schema (v1) — full field reference for `storeys:`, `floor_rooms:`, `spaces:`
 - `docs/BOMBasedCompilation.md` §2.1 — BOM tree structure (BUILDING → FLOOR → SET → LEAF)
 - `docs/BOMBasedCompilation.md` §Appendix G3 — avoid double-counting extracted elements as static_children
 - `docs/SourceCodeGuide.md` §Step 3 — how BOM builders create m_bom/m_bom_line from YAML

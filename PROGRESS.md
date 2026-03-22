@@ -32,16 +32,10 @@
   IN/DX/TE all GREEN. Details: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
   C9 axis-swap tolerance: `GeometryFidelityTest.java`. Reference DBs re-baselined (not pipeline code).
 
-**Deferred: Rosetta Stone wiring (Track 2 from S55):**
-
-**S53 Track 2 — Generative Pipeline End-to-End (BOM DROP paradigm):**
-  BOM Drop: user picks ONE complete building product as C_OrderLine → compiler explodes BOM tree.
-  TC-1 "Give me SH" = Instant Drop. TC-4 "Swap roof" = BOM Drop navigate + swap.
-  autoPopulate() (S52b) is fallback for "create from scratch" (topology maker path).
-
-**S53 Track 3 — Construction Completeness (GENERATIVE_HOUSE_SRS.md §8):**
-  Layer A (envelope), Layer B (structure), Layer C (finishes). All products exist in library.
-  Wiring needed: ad_space_type_opening + ad_space_type_mep_bom + AD_Clash_Rule into autoPopulate.
+**Next: S59 — DemoHouse 3-OrderLine compilation (TC-4 + TC-5):**
+  SH BOM Drop + swap roof to pitched (FK) + add FP discipline.
+  Full task breakdown: [GENERATIVE_HOUSE_SRS.md §10](docs/GENERATIVE_HOUSE_SRS.md#10-demohouse-implementation-tasks-s59).
+  Pre-reqs: TRIM verb, BOM Drop cascade, FP validation rules, mock tests.
 
 **Deferred: Cascade data enrichment (LIVING/KITCHEN coverage):**
   Library needs smaller room BOMs or SET AABB re-measurement.

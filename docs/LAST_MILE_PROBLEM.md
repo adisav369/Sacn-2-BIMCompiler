@@ -225,7 +225,7 @@ The output is dictated by these spec sources and no others:
 | Reference extraction DB | 1 | Element positions, dimensions, geometry hashes (input data, not spec) |
 
 **R4 status:** Spec inventory confirmed by code audit (2026-03-16). The compiler
-reads no other source of specs. See `docs/YAMLGuide.md` §YAML Fidelity Mantra
+reads no other source of specs. See `docs/WorkOrderGuide.md` §YAML Fidelity Mantra
 for the mutation-based proof approach (test that changing a YAML value changes output).
 
 **8th source — User design (G-4 promote path):** When G-4 Promote writes

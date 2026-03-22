@@ -292,7 +292,7 @@ Full pipeline from IFC source to verified output (all Java, no Python):
     TotalityContractTest: per-element spatial diff (output vs reference).
     Shell: EN-BLOC vs WALK-THRU delta (both must match).
 
-  See: TerminalAnalysis.md (TE pipeline detail), YAMLGuide.md (YAML config),
+  See: TerminalAnalysis.md (TE pipeline detail), WorkOrderGuide.md (YAML config),
        TestArchitecture.md (gate definitions), SourceCodeGuide.md (code navigation).
     output DB → Bonsai Full Load → Blender Principled BSDF materials
       surface_styles.transparency → Alpha (inverted) + blend_method=BLEND

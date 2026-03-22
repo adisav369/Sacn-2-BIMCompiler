@@ -161,7 +161,7 @@ IFC file → extract → classify_XX.yaml → IFCtoBOM → {XX}_BOM.db → compi
 ./scripts/run_RosettaStones.sh
 ```
 
-**Detailed walkthrough:** [YAMLGuide.md](docs/YAMLGuide.md) — step-by-step pipeline with code links.
+**Detailed walkthrough:** [WorkOrderGuide.md](docs/WorkOrderGuide.md) — step-by-step pipeline with code links.
 **Onboarding recipe:** [IFC_ONBOARDING_RUNBOOK.md](docs/IFC_ONBOARDING_RUNBOOK.md) — 8-step self-service guide.
 
 ## Documentation
@@ -170,7 +170,7 @@ Start here, in order:
 
 | # | Document | What |
 |---|----------|------|
-| 1 | [YAMLGuide.md](docs/YAMLGuide.md) | **Start here** — pipeline walkthrough, invention boundary, troubleshooting |
+| 1 | [WorkOrderGuide.md](docs/WorkOrderGuide.md) | **Start here** — pipeline walkthrough, invention boundary, troubleshooting |
 | 2 | [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | Master spec — tack convention, BOM walker, compilation gospel |
 | 3 | [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
 | 4 | [ConstructionAsERP.md](docs/ConstructionAsERP.md) | iDempiere mapping, C_Order model, 4-DB architecture |

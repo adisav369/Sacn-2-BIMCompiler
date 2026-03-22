@@ -195,7 +195,7 @@ building:
 
 `LIVING`, `DINING`, `BEDROOM`, `BATHROOM`, `KITCHEN`, `CORRIDOR`, `OFFICE`, `GALLERY`, `MASTER`
 
-See [YAMLGuide.md](YAMLGuide.md) for the complete field dictionary.
+See [WorkOrderGuide.md](WorkOrderGuide.md) for the complete field dictionary.
 
 ---
 
@@ -406,7 +406,7 @@ After gates pass, extract patterns for discipline validation:
 
 The script mines 5 sections per building: structural dimensions, material distribution,
 spacing patterns, IFC class inventory, and candidate `ad_val_rule` INSERT stubs.
-Review and adjust rule IDs before applying. See [YAMLGuide.md](YAMLGuide.md) §Step 7 for details.
+Review and adjust rule IDs before applying. See [WorkOrderGuide.md](WorkOrderGuide.md) §Step 7 for details.
 
 ---
 
@@ -458,7 +458,7 @@ Review and adjust rule IDs before applying. See [YAMLGuide.md](YAMLGuide.md) §S
 ---
 
 > **Further reading:**
-> [YAMLGuide.md](YAMLGuide.md) — field dictionary, drift guards, what NOT to do |
+> [WorkOrderGuide.md](WorkOrderGuide.md) — field dictionary, drift guards, what NOT to do |
 > [BIM_COBOL.md](BIM_COBOL.md) — verb catalog (63 verbs) |
 > [TestArchitecture.md](TestArchitecture.md) — G1-G6 gate definitions |
 > [ACInstituteAnalysis.md](ACInstituteAnalysis.md) — worked example (699 elements, 5 storeys)

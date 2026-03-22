@@ -68,7 +68,7 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [BIMLogger.md](BIMLogger.md) | Levelled pipeline logging spec, grep patterns |
-| [YAMLGuide.md](YAMLGuide.md) | Pipeline config, discipline mapping |
+| [WorkOrderGuide.md](WorkOrderGuide.md) | Pipeline config, discipline mapping |
 | [BlenderBridge.md](BlenderBridge.md) | Java-smart/Python-dumb pipe |
 | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist |
 | [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md) | FIX-1/2/3 method specs, pipeline coordination |

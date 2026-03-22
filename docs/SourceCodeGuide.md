@@ -472,7 +472,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 4. Run gates — `./scripts/run_tests.sh` must stay GREEN
 5. Update seal if test files changed
 
-> **Full recipe with common gotchas:** [`YAMLGuide.md`](YAMLGuide.md) | Verb catalog → [`BIM_COBOL.md`](BIM_COBOL.md)
+> **Full recipe with common gotchas:** [`WorkOrderGuide.md`](WorkOrderGuide.md) | Verb catalog → [`BIM_COBOL.md`](BIM_COBOL.md)
 
 ---
 
@@ -625,7 +625,7 @@ VERIFIED ✓ (or drift detected ✗)
 | Read 4D-7D DAO specifications | [`TIER1_SRS.md`](TIER1_SRS.md) |
 | Understand infrastructure analysis | [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 | See the project roadmap | [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md) |
-| Learn YAML pipeline config | [`YAMLGuide.md`](YAMLGuide.md) |
+| Learn YAML pipeline config | [`WorkOrderGuide.md`](WorkOrderGuide.md) |
 | Browse the interactive architecture diagram | [`bim_architecture_viz.html`](bim_architecture_viz.html) |
 | Read the Rosetta Stone strategy | [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt) |
 | Understand calibration | [`CALIBRATION_SRS.md`](CALIBRATION_SRS.md) |

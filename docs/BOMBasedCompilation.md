@@ -221,7 +221,7 @@ The IFCtoBOM pipeline reads `I_Element_Extraction` (component_library.db) and a
 classification YAML, then produces a `*_BOM.db` with spatial arrangement (m_bom + m_bom_line).
 Products are created in component_library.db first (persistent catalog, reused across buildings),
 then transitionally copied to BOM DB. 9 BomValidator checks + 2 pre-flight guards enforce data integrity pre-commit.
-See [`YAMLGuide.md`](YAMLGuide.md) §Step 5 for the full pipeline table and §Drift Prevention
+See [`WorkOrderGuide.md`](WorkOrderGuide.md) §Step 5 for the full pipeline table and §Drift Prevention
 for the guard list. The decomposition is **top-down** — from the largest AABB to the smallest —
 with each layer stopping when it has assigned its children.
 

@@ -2,7 +2,7 @@
 # FK: FZK-Haus — German 2-storey residential with pitched timber roof.
 # IFC4, ArchiCAD export, KIT ifcwiki. 82 elements, 2 storeys, 7 spaces.
 # See docs/FZKHausAnalysis.md for full analysis.
-# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/WorkOrderGuide.md for the markup rules and field dictionary.
 # ────────────────────────────────────────────────────────────────────
 schema_version: 1
 

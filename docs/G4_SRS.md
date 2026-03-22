@@ -792,7 +792,7 @@ if V004 has already been run, or V004 will be corrected before first run.
 
 ### 7.1 Review Status
 
-YAMLGuide.md §Schema v3 defines the MEP rules-based laying pattern.
+WorkOrderGuide.md §Schema v3 defines the MEP rules-based laying pattern.
 Reviewed against the now-complete AD_Val_Rule seed data (V002 + V004):
 
 **CONFIRMED correct:**
@@ -819,7 +819,7 @@ V002 links sprinkler rules (601, 602) to LH occupancy. The YAML v3
 `occupancy_class: LH` will correctly select NFPA13 rules.
 
 **Gap identified — grid computation spec:**
-YAMLGuide.md §Schema v3 says:
+WorkOrderGuide.md §Schema v3 says:
 ```
 Compute grid: 8000/4500 = 2 cols, 6000/4500 = 2 rows → 4 heads
 ```
@@ -828,7 +828,7 @@ This uses `max_spacing_mm` (4600) as the grid pitch, which is wrong — it
 should use `typical_spacing_mm` (e.g., 3000-4000mm from TE mining M1).
 The max is a LIMIT, not a TARGET.
 
-**Fix needed in YAMLGuide.md:** The spawner should compute grid pitch as:
+**Fix needed in WorkOrderGuide.md:** The spawner should compute grid pitch as:
 ```
 pitch = min(max_spacing_mm, room_dimension / ceil(room_dimension / typical_spacing_mm))
 ```

@@ -551,7 +551,7 @@ Finch3D insight applied to a BOM-aware system.
 > processing the output pipeline. This section documents what the output.db
 > schema already resolves — grounding future Designer UX in proven data, not
 > speculative maths. The stable foundation is `*_BOM.db` (m_bom + m_bom_line
-> with tack dx/dy/dz, verb_ref, allocated dimensions) and `YAMLGuide.md`
+> with tack dx/dy/dz, verb_ref, allocated dimensions) and `WorkOrderGuide.md`
 > (pipeline config). The output.db tables below are the **compiled result**
 > of that BOM data — relationship tables that the other session is actively
 > populating and verifying.

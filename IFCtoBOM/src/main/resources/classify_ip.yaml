@@ -1,6 +1,6 @@
 # ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
 # IP: PCERT Infra Plumbing
-# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/WorkOrderGuide.md for the markup rules and field dictionary.
 # See docs/IFC_ONBOARDING_RUNBOOK.md for the onboarding process.
 # ────────────────────────────────────────────────────────────────────
 schema_version: 1

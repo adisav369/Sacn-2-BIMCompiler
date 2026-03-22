@@ -1,7 +1,7 @@
 # ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
 # This classification YAML is the single point of invention in the pipeline.
 # Everything else (extraction, BOM, compilation) is deterministic code.
-# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/WorkOrderGuide.md for the markup rules and field dictionary.
 # ────────────────────────────────────────────────────────────────────
 schema_version: 1
 

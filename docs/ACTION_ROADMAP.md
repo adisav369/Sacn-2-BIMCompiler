@@ -69,7 +69,7 @@ Include expected gate results for different building scales.
 **Delivered (session 42):**
 - [`IFC_ONBOARDING_RUNBOOK.md`](IFC_ONBOARDING_RUNBOOK.md) — self-service 9-step runbook with commands, expected output, troubleshooting, checklist
 - `NewBuildingGenerator.java` (`IFCtoBOM/src/main/java/com/bim/ifctobom/`) — Java template generator, auto-detects storeys from reference DB. Usage: `mvn exec:java -pl IFCtoBOM -Dexec.mainClass="com.bim.ifctobom.NewBuildingGenerator" -Dexec.args="--prefix XX --type BuildingType --name 'Name'" -q`
-- `YAMLGuide.md` §File Convention — complete IFC source inventory (14 IFCs in `DAGCompiler/lib/input/IFC/`, 9 classify_*.yaml files, 7 buildings fully onboarded)
+- `WorkOrderGuide.md` §File Convention — complete IFC source inventory (14 IFCs in `DAGCompiler/lib/input/IFC/`, 9 classify_*.yaml files, 7 buildings fully onboarded)
 - Updated: `SYSTEMS_INSTALLER_GUIDE.md` §5.2, `INDEX.md`, `SourceCodeGuide.md` §12
 
 **What was proven:**

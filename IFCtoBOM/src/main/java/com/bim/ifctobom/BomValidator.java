@@ -8,7 +8,7 @@ import java.util.*;
 /**
  * Pre-commit QA validator for BOM databases — the last gate before data reaches disk.
  *
- * <p>See {@code docs/YAMLGuide.md} §"Drift Prevention" for the full guard table
+ * <p>See {@code docs/WorkOrderGuide.md} §"Drift Prevention" for the full guard table
  * and what is NOT validated (honest gaps documented as ASSUMPTION remarks).
  *
  * <h3>LESSON LEARNED (2026-03-15): WARN on broken data = silent compilation failure</h3>

@@ -149,7 +149,7 @@ Each building has its own BOM dictionary, regenerated deterministically:
 ./scripts/run_RosettaStones.sh classify_dx.yaml   # → DX_BOM.db
 ```
 
-The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`) — see [`YAMLGuide.md`](YAMLGuide.md) §Step 5 for full table:
+The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`) — see [`WorkOrderGuide.md`](WorkOrderGuide.md) §Step 5 for full table:
 1. Load classification YAML + extract to `I_Element_Extraction` (`ExtractionPopulator`)
 2. **Pre-flight:** FAIL if extraction has storeys not in YAML; FAIL on NULL M_Product_ID
 3. `ProductRegistrar.ensureProductCatalog()`: M_Product → component_library.db (persistent, reusable)
@@ -294,7 +294,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 Source of truth for product definitions, geometry, orientation, and extraction archive.
 `M_Product` is the persistent product catalog (created by `ProductRegistrar.ensureProductCatalog()`,
 INSERT OR IGNORE = reused across buildings). `M_Product_Image` links products to geometry.
-See [`YAMLGuide.md`](YAMLGuide.md) §"Drift Prevention" for enforced guards.
+See [`WorkOrderGuide.md`](WorkOrderGuide.md) §"Drift Prevention" for enforced guards.
 
 **Discipline metadata (ad_space_type, ad_element_mep, ad_wall_face, placement_rules,
 etc.) is migrating to disc_validation.db** — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).

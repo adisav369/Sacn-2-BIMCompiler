@@ -134,7 +134,7 @@ public class NewBuildingGenerator {
         var sb = new StringBuilder();
         sb.append("# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────\n");
         sb.append("# ").append(prefix).append(": ").append(humanName).append('\n');
-        sb.append("# See docs/YAMLGuide.md for the markup rules and field dictionary.\n");
+        sb.append("# See docs/WorkOrderGuide.md for the markup rules and field dictionary.\n");
         sb.append("# See docs/IFC_ONBOARDING_RUNBOOK.md for the onboarding process.\n");
         sb.append("# ────────────────────────────────────────────────────────────────────\n");
         sb.append("schema_version: 1\n\n");

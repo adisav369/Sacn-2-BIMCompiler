@@ -642,3 +642,82 @@ for clash detection — that's a small code change to call existing logic.
 | W-GEN-CLASH-1 | FP vs STR clash detected after auto-populate | SPEC |
 | W-GEN-ROOF-1 | Pitched roof template places rafters + purlins + ridge via CLUSTER | SPEC |
 | W-GEN-TRIM-1 | Wall top_trim_mm computed from roof pitch at wall position | SPEC |
+| W-DM-TC4-1 | Roof swap: pitched replaces flat, base dimensions validated | SPEC |
+| W-DM-TC5-1 | FP discipline: sprinklers placed per ad_space_type_mep_bom rules | SPEC |
+| W-DM-TRIM-1 | Curtain wall trimmed to pitched roof envelope | SPEC |
+| W-DM-FP-VAL-1 | FP validation rules applied (NFPA 13 spacing, clearance) | SPEC |
+
+## 10. DemoHouse Implementation Tasks (S59+)
+
+> **Goal:** Compile a DemoHouse that starts from SH BOM Drop, swaps roof to pitched,
+> adds FP discipline, and passes all gates. This exercises TC-4 + TC-5 combined.
+
+### 10.1 The Three OrderLines
+
+The DemoHouse Work Order consists of 3 C_OrderLines:
+
+| # | OrderLine | What it does |
+|---|-----------|-------------|
+| 1 | `M_Product_ID = BUILDING_SH_STD` | BOM Drop of SH — explodes entire house structure into the Order |
+| 2 | Swap: `ProductCategory = 'Roof'` → pitched roof from FK (near-similar AABB) | Replace flat roof with pitched, library resolves from FK building |
+| 3 | Add: `discipline = FP` | Fire Protection — sprinklers per room from ad_space_type_mep_bom |
+
+### 10.2 Compilation Validation Requirements
+
+| Requirement | Gate | What the compiler must do |
+|-------------|------|--------------------------|
+| Roof fits base | G2-VOLUME | Pitched roof AABB must not exceed building envelope. Compiler validates replacement roof dims against the BUILDING BOM AABB it replaces. |
+| Curtain wall trims to roof | TRIM verb | Glass wall panels that exceed the pitched roof cover line are trimmed down. Panels that don't reach the cover line are extended up. TrimWallsToRoofVerb (S53) handles this. |
+| FP compliance | AD_Val_Rule | Sprinkler placement follows NFPA 13 spacing rules from disc_validation.db. validateBatch() applies AD_Clash_Rule for FP vs STR clearance. |
+
+### 10.3 Pre-Requisite Analysis
+
+Before implementation, verify each subsystem is ready:
+
+| Task | Subsystem | Check | Status |
+|------|-----------|-------|--------|
+| **A** | **Specs** | GENERATIVE_HOUSE_SRS.md §7 TC-4 + TC-5 fully specified. DemoHouse Analysis doc exists or is created. | §7 DONE. Analysis: create `docs/DemoHouseAnalysis.md` |
+| **B** | **Pipeline** | Each of the 9 compilation stages described clearly for the 3-OrderLine scenario. Document which stages fire, which skip, what each produces. | Verify in CompilationPipeline.java |
+| **C** | **TRIM verb** | TrimWallsToRoofVerb (S53) tested on pitched roof scenario. Synthetic test exists (W-TRIM-1..6). Verify it handles FK-style pitched roof geometry. | Code EXISTS (S53). Verify FK-on-SH cross-building trim. |
+| **D** | **BOM Drop cascade** | bomDrop() explodes BUILDING_SH_STD into OrderLine tree. swapProduct() replaces a node by ProductCategory. Verify roof swap produces valid BOM subtree. | bomDrop() GREEN (W-DROP-1..6). swapProduct() GREEN (TC-4 API exists). Verify roof-specific swap path. |
+| **E** | **FP rules** | ad_space_type_mep_bom has FP entries (discipline='FP'). Placement rules (NFPA 13 spacing) seeded. validateBatch() calls checkClearance(). | DATA exists (186 rules). checkClearance() CODE exists. Wiring NOT DONE — needs validateBatch() call from auto-populate flow. |
+| **F** | **Mock tests** | Each module has a test exercising the DemoHouse scenario: BomDropTest (swap roof), TrimVerbTest (pitched trim), FPValidationTest (sprinkler placement + clash). | BomDropTest EXISTS. TrimVerbTest EXISTS (synthetic). FPValidationTest NEEDED. |
+
+### 10.4 Implementation Order
+
+```
+Session 1: Analysis + spec hardening
+  - Create docs/DemoHouseAnalysis.md (guardrails for DM)
+  - Walk CompilationPipeline.java for 3-OrderLine scenario, annotate §10.2
+  - Verify TRIM verb handles cross-building roof swap (FK roof on SH base)
+  - Verify swapProduct() API for ProductCategory='Roof' swap
+
+Session 2: BOM Drop + roof swap
+  - Implement: bomDrop(BUILDING_SH_STD) + swapProduct(roof_node, FK_PITCHED_ROOF)
+  - Test: compiled element count = SH_base − flat_roof + pitched_roof_components
+  - Gate: G1-COUNT, G2-VOLUME, G5-PROVENANCE pass
+  - Witness: W-DM-TC4-1
+
+Session 3: FP discipline + validation
+  - Wire: validateBatch() into auto-populate flow (§8.3)
+  - Implement: FP OrderLine → ad_space_type_mep_bom query → sprinkler placement
+  - Test: sprinklers placed per room, NFPA 13 spacing, FP-STR clearance
+  - Gate: G1-COUNT (base + roof + sprinklers), G5 (all from library)
+  - Witness: W-DM-TC5-1, W-DM-FP-VAL-1
+
+Session 4: TRIM verb + integration
+  - Test: curtain wall panels trimmed to pitched roof envelope
+  - Integration: all 3 OrderLines compiled together
+  - Gate: full G1-G6 pass on combined output
+  - Witness: W-DM-TRIM-1, W-DM-TC4-1 (combined)
+```
+
+### 10.5 Success Criteria
+
+The DemoHouse compiles when:
+1. `bomDrop(BUILDING_SH_STD)` produces full SH house in OrderLine tree
+2. `swapProduct(roof_node, FK_pitched)` replaces flat roof, validates base dims
+3. FP OrderLine adds sprinklers per room (NFPA 13 from disc_validation.db)
+4. TRIM verb clips curtain wall panels to pitched roof line
+5. All gates pass: G1-COUNT, G2-VOLUME, G5-PROVENANCE, G6-ISOLATION
+6. BIMEyes proofs: P27 WALL_ROOF_INTERSECTION, P28 ROOF_COVERAGE verified

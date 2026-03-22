@@ -1,4 +1,5 @@
-# YAML Classification Guide
+# Work Order Guide
+> *Renamed from YAMLGuide.md — the pipeline follows ERP Manufacturing BOM / Work Order patterns, not YAML-specific workflow.*
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
 ## Quick Start — For Users

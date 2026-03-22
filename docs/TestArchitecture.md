@@ -1182,7 +1182,7 @@ All 35 buildings compiled through the single pipeline path. Gate results:
 
 **S58a — G3 baseline for 9 buildings:** Compiled output copied as reference DB for RA, JE, ES, MO, HI, RM, RS, SC, WA. G3-DIGEST now PASS for all 9. MO `geometry_fail_threshold` set to 1 in classify_mo.yaml (1 IfcCovering without library mesh: FRAME_MD_6._SAL_468).
 
-**S57 finding — duplicate storey codes:** `onboard_ifc.sh` generated YAMLs where multiple IFC storeys shared the same `code`. The BOM ID is `{prefix}_{code}_STR`, so duplicate codes create duplicate BUILDING→FLOOR references — the compiler walks each floor BOM once per duplicate, producing extra elements. Fixed in RA, JE, WA, MO by disambiguating codes. Rule added to [YAMLGuide.md §storeys](YAMLGuide.md).
+**S57 finding — duplicate storey codes:** `onboard_ifc.sh` generated YAMLs where multiple IFC storeys shared the same `code`. The BOM ID is `{prefix}_{code}_STR`, so duplicate codes create duplicate BUILDING→FLOOR references — the compiler walks each floor BOM once per duplicate, producing extra elements. Fixed in RA, JE, WA, MO by disambiguating codes. Rule added to [WorkOrderGuide.md §storeys](WorkOrderGuide.md).
 
 **Remaining work:**
 - G5: 4 buildings have GEO_ fallback (RA, JE, ES, CS — parametric BBox, missing library mesh)

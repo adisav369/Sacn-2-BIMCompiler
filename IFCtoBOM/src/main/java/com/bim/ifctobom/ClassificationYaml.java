@@ -103,7 +103,7 @@ public class ClassificationYaml {
         }
 
         // Parse storeys (or segments — alias for infrastructure IFCs)
-        // See docs/InfrastructureAnalysis.md §3.1 G5, YAMLGuide.md §storeys
+        // See docs/InfrastructureAnalysis.md §3.1 G5, WorkOrderGuide.md §storeys
         Map<String, StoreyConfig> storeys = new LinkedHashMap<>();
         Map<String, Object> storeyMap = (Map<String, Object>) bldg.get("storeys");
         if (storeyMap == null) {

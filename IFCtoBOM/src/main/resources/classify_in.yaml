@@ -2,7 +2,7 @@
 # IN: AC11 Institute — German 5-storey institutional building.
 # IFC2x3, ArchiCAD 11 export. 699 elements, 5 storeys, 82 spaces.
 # See docs/ACInstituteAnalysis.md for full analysis.
-# See docs/YAMLGuide.md for the markup rules and field dictionary.
+# See docs/WorkOrderGuide.md for the markup rules and field dictionary.
 # ────────────────────────────────────────────────────────────────────
 schema_version: 1
 

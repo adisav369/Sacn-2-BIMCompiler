@@ -278,7 +278,7 @@ on structural timber — a new verb+material combination.
 
 This is the full recipe for onboarding any new IFC file into the Rosetta Stone pipeline.
 FK-specific examples are shown, but the process is identical for every new model.
-Canonical references: `docs/SourceCodeGuide.md` §Chapter 4 (Steps 1–5), `docs/YAMLGuide.md` §How to Add a New Building.
+Canonical references: `docs/SourceCodeGuide.md` §Chapter 4 (Steps 1–5), `docs/WorkOrderGuide.md` §How to Add a New Building.
 
 ### Overview
 
@@ -557,7 +557,7 @@ building:
 3. Use `IfcSpace` extent to set `aabb_mm`
 4. For rooms without explicit IfcSpace, use element cluster bounding boxes
 
-Spec: `docs/YAMLGuide.md` §Schema (v1) — full field reference
+Spec: `docs/WorkOrderGuide.md` §Schema (v1) — full field reference
 
 ### Step 4 — Write the BIM COBOL DSL script
 
@@ -658,7 +658,7 @@ ORDER BY em.storey, em.ifc_class" -header -column
 ```
 
 Write mined rules to `migration/DV009_fzk_haus_rules.sql` (append-only).
-Spec: `docs/SourceCodeGuide.md` §Ch4.Step5, `docs/YAMLGuide.md` §Step 7
+Spec: `docs/SourceCodeGuide.md` §Ch4.Step5, `docs/WorkOrderGuide.md` §Step 7
 
 ### Step 8 — Update inventory and docs
 
