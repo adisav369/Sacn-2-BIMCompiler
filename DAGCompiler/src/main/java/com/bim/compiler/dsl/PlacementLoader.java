@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.bom.walker.BOMWalker;
+import com.bim.compiler.bom.walker.OrderLineWalker;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.ormsandbox.po.MBOM;
 
@@ -132,15 +133,116 @@ public class PlacementLoader {
 
     private void load() {
         loaded = true;
-        loadFromBOM();
+        if (hasOrderLineData()) {
+            loadFromOrderLine();
+        } else {
+            loadFromBOM();
+        }
+    }
+
+    /**
+     * Check if C_OrderLine data exists in the compile DB.
+     * If so, we use the OrderLine path instead of direct BOM walk.
+     */
+    private boolean hasOrderLineData() {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM C_OrderLine")) {
+            return rs.next() && rs.getInt(1) > 0;
+        } catch (SQLException e) {
+            // Table doesn't exist or empty — fall back to BOM path
+            return false;
+        }
+    }
+
+    /**
+     * Walk C_OrderLine tree via OrderLineWalker + PlacementCollectorVisitor.
+     *
+     * <p>S60 path: BomDropper creates C_OrderLine tree in compile DB,
+     * then OrderLineWalker walks it, loading MBOMLine attributes via
+     * bom_child_id FK join-back. Same PlacementCollectorVisitor produces
+     * identical Placements.
+     *
+     * @see com.bim.compiler.bom.BomDropper
+     * @see OrderLineWalker
+     */
+    private void loadFromOrderLine() {
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
+             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+            OrderLineWalker walker = new OrderLineWalker(conn, compConn);
+
+            // Load C_Order rows → map to building types via C_DocType_ID
+            Map<String, String> docTypeToProject = loadDocTypeToProjectMap(conn);
+
+            String sql = "SELECT C_Order_ID, C_DocType_ID FROM C_Order WHERE IsActive = 1";
+            try (Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(sql)) {
+                while (rs.next()) {
+                    String orderId = rs.getString("C_Order_ID");
+                    String docTypeId = rs.getString("C_DocType_ID");
+                    String buildingType = docTypeToProject.get(docTypeId);
+                    if (buildingType == null) {
+                        System.err.printf("[PlacementLoader] No C_DocType for %s — skipping%n", docTypeId);
+                        continue;
+                    }
+
+                    // World origin from BUILDING BOM (same as loadFromBOM path)
+                    double[] worldOrigin = loadWorldOriginForOrder(conn, orderId);
+
+                    PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                            conn, buildingType, worldOrigin);
+                    walker.walkOrder(orderId, List.of(visitor), buildingType);
+
+                    List<Placement> placements = visitor.getPlacements();
+                    cache.computeIfAbsent(buildingType, k -> new ArrayList<>()).addAll(placements);
+
+                    System.out.printf("[PlacementLoader] OrderLine %s (%s) → %d placements%n",
+                            orderId, buildingType, placements.size());
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[PlacementLoader] Failed to load from OrderLine: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /** Load C_DocType_ID → ProjectName mapping. */
+    private static Map<String, String> loadDocTypeToProjectMap(Connection conn) throws SQLException {
+        Map<String, String> map = new HashMap<>();
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT C_DocType_ID, ProjectName FROM C_DocType")) {
+            while (rs.next()) {
+                map.put(rs.getString("C_DocType_ID"), rs.getString("ProjectName"));
+            }
+        }
+        return map;
+    }
+
+    /** Load world origin for an order's root C_OrderLine's BUILDING BOM. */
+    private static double[] loadWorldOriginForOrder(Connection conn, String orderId) throws SQLException {
+        // Root C_OrderLine's family_ref = BUILDING bom_id
+        String sql = "SELECT family_ref FROM C_OrderLine "
+                   + "WHERE C_Order_ID = ? AND Parent_OrderLine_ID IS NULL AND IsActive = 1 LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String bomId = rs.getString("family_ref");
+                    MBOM bom = new MBOM(conn);
+                    if (bom.load(bomId)) {
+                        return new double[]{bom.getOriginX(), bom.getOriginY(), bom.getOriginZ()};
+                    }
+                }
+            }
+        }
+        return new double[]{0, 0, 0};
     }
 
     /**
      * Walk BOMs via BOMWalker + PlacementCollectorVisitor.
      *
-     * <p>Single compilation path: C_OrderLine → M_Product → BOM explosion.
-     * BOM walker traverses the BUILDING BOM tree, collecting placements
-     * at each leaf level. No mode selection — one path for all buildings.
+     * <p>Legacy path: walks m_bom directly. Used when no C_OrderLine data
+     * exists in the compile DB (backward compatibility).
      *
      * @see com.bim.designer.api.DesignerAPIImpl#bomDrop BOM explosion entry point
      */

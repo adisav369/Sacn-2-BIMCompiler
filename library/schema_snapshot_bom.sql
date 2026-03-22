@@ -1166,3 +1166,48 @@ CREATE INDEX idx_ad_space_type_category
 CREATE INDEX idx_ad_space_type_alias_type
     ON ad_space_type_alias(space_type_id)
     ;
+-- ============================================================================
+-- S60: C_Order + C_OrderLine in compile DB (ERP Model Alignment)
+-- Enables compiler to walk C_OrderLine tree instead of m_bom directly.
+-- BomDropper populates these from m_bom before compilation.
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS C_Order (
+    C_Order_ID        TEXT PRIMARY KEY,
+    C_DocType_ID      TEXT NOT NULL,
+    Name              TEXT NOT NULL,
+    DocStatus         TEXT NOT NULL DEFAULT 'DR'
+                      CHECK(DocStatus IN ('DR','IP','AP','CO','VO')),
+    aabb_width_mm     REAL NOT NULL DEFAULT 0,
+    aabb_depth_mm     REAL NOT NULL DEFAULT 0,
+    aabb_height_mm    REAL NOT NULL DEFAULT 0,
+    Jurisdiction      TEXT,
+    OccupancyClass    TEXT,
+    IsActive          INTEGER NOT NULL DEFAULT 1,
+    created           TEXT NOT NULL DEFAULT (datetime('now')),
+    updated           TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS C_OrderLine (
+    C_OrderLine_ID    INTEGER PRIMARY KEY AUTOINCREMENT,
+    C_Order_ID        TEXT NOT NULL REFERENCES C_Order(C_Order_ID),
+    Parent_OrderLine_ID INTEGER REFERENCES C_OrderLine(C_OrderLine_ID),
+    Line              INTEGER NOT NULL DEFAULT 10,
+    family_ref        TEXT NOT NULL,
+    host_type         TEXT NOT NULL,
+    bom_category      TEXT,
+    bom_child_id      INTEGER,
+    dx                REAL NOT NULL DEFAULT 0,
+    dy                REAL NOT NULL DEFAULT 0,
+    dz                REAL NOT NULL DEFAULT 0,
+    aabb_width_mm     REAL,
+    aabb_depth_mm     REAL,
+    aabb_height_mm    REAL,
+    M_Product_ID      TEXT,
+    Discipline        TEXT DEFAULT 'ARC',
+    Qty               INTEGER NOT NULL DEFAULT 1,
+    IsActive          INTEGER NOT NULL DEFAULT 1,
+    created           TEXT NOT NULL DEFAULT (datetime('now')),
+    updated           TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_orderline_order ON C_OrderLine(C_Order_ID);
+CREATE INDEX IF NOT EXISTS idx_orderline_parent ON C_OrderLine(Parent_OrderLine_ID);
+CREATE INDEX IF NOT EXISTS idx_orderline_family ON C_OrderLine(family_ref);

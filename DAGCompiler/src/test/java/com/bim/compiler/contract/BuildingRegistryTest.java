@@ -1,10 +1,12 @@
 package com.bim.compiler.contract;
 
+import com.bim.compiler.bom.BomDropper;
 import com.bim.compiler.dsl.BuildingRegistry;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingAssertion;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.CompilationPipeline;
 import com.bim.compiler.dsl.CompilationPipeline.PipelineResult;
+import com.bim.compiler.dsl.PlacementLoader;
 
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -67,6 +69,16 @@ public class BuildingRegistryTest {
             entry.docTypeId() + " outside gate scope");
         assumeTrue(entry.dslContent() != null && !entry.dslContent().isBlank(),
             entry.docTypeId() + " has no DSL content (template path — walkthru mode)");
+
+        // S60: BOM Drop — create C_OrderLine tree in compile DB before compilation.
+        // PlacementLoader auto-detects C_OrderLine and walks it via OrderLineWalker.
+        PlacementLoader.resetInstance();
+        try (Connection compileDb = DriverManager.getConnection(
+                "jdbc:sqlite:" + System.getProperty("bom.db"))) {
+            int leafCount = BomDropper.drop(compileDb, entry);
+            System.out.printf("[S60] BomDrop %s → %d leaves%n", entry.id(), leafCount);
+        }
+
         PipelineResult result = CompilationPipeline.run(entry);
 
         // 1. Element count

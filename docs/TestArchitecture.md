@@ -928,7 +928,7 @@ a41306f0  contract/CoEmptySpaceTest.java
 46e2e2f2  contract/BOMChainMathTest.java
 75dfd1a5  contract/SpatialPlacementVisitorTest.java
 304eb7ea  contract/StTemplatePipelineTest.java
-82b87433  contract/BuildingRegistryTest.java
+da1a6610  contract/BuildingRegistryTest.java
 1cedf232  contract/IntraBOMRelativeTest.java
 028950d9  contract/MetadataIntegrityTest.java
 82919c68  contract/DataIntegrityTest.java
