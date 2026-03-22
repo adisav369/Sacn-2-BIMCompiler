@@ -766,17 +766,10 @@ const BIM = (() => {
             if (data.success) {
                 document.getElementById('applyFeedback').textContent = 'Bonsai launching...';
             } else {
-                // Fallback: show instructions
-                alert('To launch Bonsai:\n\n' +
-                    '1. Open Blender\n' +
-                    '2. Enable Federation + BIM Designer addons\n' +
-                    '3. Click "Start Sync + Open Web UI" in the panel\n\n' +
-                    'Or run: blender --python-expr "import bpy"');
+                alert('Bonsai not found.\n\nEnsure ~/bin/bonsai is on your PATH.');
             }
         }).catch(() => {
-            alert('Launch Bonsai:\n\n' +
-                'Open Blender with Federation addon enabled.\n' +
-                'Click "Start Sync" in the Web UI Sync panel.');
+            alert('Bonsai not found.\n\nRun: bonsai');
         });
     }
 

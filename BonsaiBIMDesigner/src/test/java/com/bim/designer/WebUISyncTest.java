@@ -43,6 +43,12 @@ class WebUISyncTest {
 
     @BeforeAll
     static void setUp() throws Exception {
+        // Silence all loggers for clean test output
+        java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.OFF);
+        for (var h : java.util.logging.Logger.getLogger("").getHandlers()) {
+            h.setLevel(java.util.logging.Level.OFF);
+        }
+
         conn = DriverManager.getConnection("jdbc:sqlite::memory:");
         StubDataSeeder.seed(conn);
 

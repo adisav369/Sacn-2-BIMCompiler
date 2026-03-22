@@ -429,11 +429,13 @@ public class WebUIServer implements AutoCloseable {
 
     private String handleLaunchBonsai() {
         try {
-            ProcessBuilder pb = new ProcessBuilder("blender", "--python-expr",
-                    "import bpy; print('Bonsai ready')");
+            // Launch via user's shell to inherit PATH and environment
+            // ~/bin/bonsai wraps blender with addon config
+            String home = System.getProperty("user.home");
+            ProcessBuilder pb = new ProcessBuilder("bash", "-lc", home + "/bin/bonsai");
             pb.redirectErrorStream(true);
             pb.start(); // fire and forget — don't wait
-            return "{\"success\":true,\"message\":\"Blender launched\"}";
+            return "{\"success\":true,\"message\":\"Bonsai launched\"}";
         } catch (Exception e) {
             return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
         }
