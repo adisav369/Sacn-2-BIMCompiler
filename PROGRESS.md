@@ -38,9 +38,16 @@
   §30.2 sync table: all 6 directions DONE. §30.5 priority #1 DONE, #2 DONE.
 
 **[IN PROGRESS] S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/S60_ERP_ALIGNMENT.md)
-  BomDropper + OrderLineWalker wired into Rosetta Stone pipeline. SH/FK/DM gates pass.
-  DX G2/G3 drift is pre-existing (uncommitted component_library.db, not S60).
-  Remaining: FP discipline wiring, validation (U5/U6), reference re-baseline at end.
+  Core wiring DONE: BomDropper + OrderLineWalker in Rosetta Stone pipeline. SH/FK/DM GREEN.
+  DX G2/G3 drift is pre-existing (component_library.db evolving, not S60).
+
+**Next session:**
+  1. Commit S59 uncommitted files (WorkOutputDAO, webui, Bonsai bridge, WorkOrderCompileTest)
+  2. FP discipline + validation (W-DM-TC5-1, W-DM-FP-VAL-1)
+  3. Wire AD_Val_Rule_Exception (U6) — table exists, needs DAO + UI
+  4. TRIM verb verification (CW panels bounded by pitched roof)
+  5. Replace M_BomCategory refs with M_Product_Category (S60 #6)
+  6. Pristine component_library.db commit + reference re-baseline at end
 
 ## Session Log (recent first)
 

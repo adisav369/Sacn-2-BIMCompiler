@@ -12,32 +12,34 @@
 
 ## Schema Gaps (UI session review)
 
-| ID | Table | Column/Feature | Purpose |
-|----|-------|---------------|---------|
-| U2 | C_OrderLine | `Discipline TEXT DEFAULT 'ARC'` | Add FP/MEP/ELEC discipline lines to an order |
-| U3 | C_Order | `Jurisdiction TEXT` | MY/US/UK — determines which building code rules apply |
-| U4 | C_Order | `OccupancyClass TEXT` | LH/OH1 — NFPA 13 occupancy for FP calculations |
-| U5 | DAO | `OrderLineHydrationDAO` | Convert validated C_OrderLine → PlacementRequest for compiler |
-| U6 | Table+DAO | `AD_Val_Rule_Exception` | User override of WARN validation (accept known deviation) |
+| ID | Table | Column/Feature | Status |
+|----|-------|---------------|--------|
+| U2 | C_OrderLine | `Discipline TEXT DEFAULT 'ARC'` | DONE (S60_schema.sql) |
+| U3 | C_Order | `Jurisdiction TEXT` | DONE (S60_schema.sql) |
+| U4 | C_Order | `OccupancyClass TEXT` | DONE (S60_schema.sql) |
+| U5 | ~~DAO~~ | ~~OrderLineHydrationDAO~~ | SUPERSEDED — OrderLineWalker + bom_child_id join-back IS the bridge |
+| U6 | Table+DAO | `AD_Val_Rule_Exception` | Table DONE; wiring TODO |
 
 ## Code Changes
 
-1. Schema migration: add Discipline/Jurisdiction/OccupancyClass columns + AD_Val_Rule_Exception table
-2. `CompilationPipeline.run()` → accept C_Order ID, walk C_OrderLine tree (not C_DocType lookup)
-3. `BuildingRegistryTest` → create C_Order + bomDrop per building, then compile via OrderLine path
-4. `run_RosettaStones.sh` → use bomDrop + completeIt (same path as WorkOrderCompileTest)
-5. Remove C_DocType as compilation entry point (keep as order metadata)
-6. Replace M_BomCategory references with M_Product_Category
-7. OrderLineHydrationDAO: C_OrderLine → PlacementRequest (bridge between order and compiler)
-8. Wire AD_Val_Rule validation with exception override (U6)
-9. Add visual diff report: per-element TSV under `--diff` flag
-10. Script accepts building prefixes as arguments, small files default, large files explicit
+| # | Change | Status |
+|---|--------|--------|
+| 1 | Schema migration (U2-U4, U6) | DONE — `S60_schema.sql` |
+| 2 | Compiler walks C_OrderLine tree (BomDropper + OrderLineWalker) | DONE — `BomDropper.java`, `OrderLineWalker.java` |
+| 3 | BuildingRegistryTest → bomDrop per building | DONE |
+| 4 | run_RosettaStones.sh → same path (schema auto-applied) | DONE |
+| 5 | C_DocType as metadata only (not compilation driver) | DONE — PlacementLoader reads C_OrderLine when available |
+| 6 | Replace M_BomCategory references with M_Product_Category | TODO |
+| 7 | ~~OrderLineHydrationDAO~~ | SUPERSEDED by OrderLineWalker |
+| 8 | Wire AD_Val_Rule validation with exception override | TODO |
+| 9 | Visual diff report: per-element TSV under `--diff` flag | TODO |
+| 10 | Script accepts building prefixes as arguments | TODO |
 
-## Already Proven
+## Proven
 
 - `WorkOrderCompileTest` (W-WO-1: bomDrop → compile → 60 elements)
 - `BomDropConfigureTest` (TC-4: roof swap → 95 elements)
-- The OrderLine compilation path works. S60 wires it into the Rosetta Stone pipeline.
+- S60 Rosetta Stone: SH (55), FK (82), DM (60) all GREEN through OrderLine path
 
 ## Database Backup
 
