@@ -2119,6 +2119,75 @@ drawing operation. The existing AD infrastructure (`ad_typology_template`,
 `ad_unit_type`, `ad_spatial_rule`, `ad_check_threshold`) provides injection
 points for future enrichment without changing the composition engine.
 
+### D.5 Universal Configurator — Beyond Construction
+
+**The C_OrderLine pattern is domain-agnostic.** The engine does not know it is
+building a house. It knows: a product has a BOM, a BOM has children with offsets,
+children resolve to library geometry, and gates verify the result. Swap the library
+and the validation rules — the domain changes, the engine does not.
+
+**Three domains, one engine:**
+
+| | Construction | Infrastructure | Automotive |
+|---|---|---|---|
+| **Top-level product** | BUILDING_SH_STD | BRIDGE_TYPE_A | VEHICLE_SEDAN_STD |
+| **Spatial hierarchy** | Storey → Room | FacilityPart → Segment | Assembly → SubAssembly |
+| **Swap example** | Flat roof → pitched | Steel deck → precast box girder | ICE powertrain → EV |
+| **Discipline add** | FP sprinklers | Drainage system | ADAS sensor suite |
+| **Library source** | 34 Rosetta Stone IFCs | IFC4X3 infra models | Vehicle IFC/STEP |
+| **Validation rules** | UBBL, NFPA 13 | Road geometry standards | Crash/weight limits |
+| **4D schedule** | Construction sequence | Construction phasing | Assembly line sequence |
+| **5D cost** | Material takeoff | Tender BOQ | Manufacturing BOM cost |
+
+The BOM tree governs all three. bomDrop(BRIDGE_TYPE_A) works identically to
+bomDrop(BUILDING_SH_STD). swapProduct(deck, PRECAST_BOX_GIRDER) works like
+swapProduct(roof, FK_DG_STR). The AABB fit check ensures a 12m girder cannot sit
+on 8m piers, just as it ensures a 5m bathtub cannot fit a 2m bathroom.
+
+**Visual prototyping — the Bonsai workbench:**
+
+The Bonsai viewport is not a viewer — it is a **visual workbench** for assembling
+products from the library into new configurations:
+
+1. **Browse raw parts** — 2,459+ M_Products with IFC geometry, searchable by
+   category, AABB fit, and feature similarity (BOM Chooser, G-5 DONE)
+2. **Drag to BOM slot** — click a slot in the BOM tree, place a product.
+   AABB fit badge (FITS/TIGHT/TOO_WIDE) prevents misfit at selection time
+3. **Snap and validate** — Click-to-Place (G-8 DONE) identifies context (room,
+   storey, surface), looks up rules, auto-places with correct offset and spacing
+4. **Modify in place** — ASI overrides per instance (length, width, material).
+   The library LOD scales; the product identity is preserved
+5. **See the result** — Bonsai renders the output.db in real-time. Every element
+   traces to a catalog product. The 3D viewport IS the digital twin
+6. **Prove correctness** — all 6 gates + 28 BIMEyes proofs fire after every
+   compile. No visual editor anywhere offers automatic mathematical proof that
+   the design is constructible, code-compliant, and spatially consistent
+
+**The key differentiator:** traditional CAD tools let you draw geometry.
+Configurator tools (Snaptrude, Hypar, Vertex BD) let you assemble from templates.
+This system lets you **assemble from a proven catalog, modify any part, and the
+engine re-proves the result**. The proof is not a check you run after design —
+it is intrinsic to every compile. The BOM IS the specification. The gates ARE
+the quality system. The output.db IS the deliverable.
+
+**Freeform prototyping — something entirely new:**
+
+The most powerful mode: start from an empty C_Order, browse the library for raw
+parts (beams, panels, slabs, fixtures), drag them into position in Bonsai, and
+let the compiler resolve spatial relationships. The user is not constrained to
+existing building types. They can:
+
+- Take FK's timber frame and SH's curtain wall and DX's staircase
+- Place them in a new spatial arrangement via BOM tree editing
+- Add infrastructure elements (bridge piers as structural columns)
+- Add automotive elements (if the library has them)
+- Compile → the engine proves it works or reports what fails
+- Iterate until the gates pass
+
+This is **visual manufacturing engineering**: the viewport is the factory floor
+mockup, the BOM tree is the work order, and the gates are quality control.
+The domain boundary is the library, not the code.
+
 ---
 
 ## Appendix E: CO_EmptySpace Ledger — SH vs DX
