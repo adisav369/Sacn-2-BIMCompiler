@@ -204,7 +204,10 @@ Full Load → user clicks in Bonsai panel when ready for full mesh geometry
   spatial positions (tack offsets, storey elevations, room packing from compiler).
   No origin-bunching — the compiler produces real coordinates.
 - **Complete** → compile + finalise order (CO status)
-- **Full Load** → user-initiated in Bonsai panel for full mesh geometry
+- **Full Load** → user-initiated in Bonsai panel for full mesh geometry.
+  Creates a `.blend` file. If `.blend` already exists for this output.db,
+  skip reload (backend should check and return early). The `.blend` file
+  is the source of truth for whether Full Load was already done.
 
 **Do not break:**
 - `webui_sync._load_output_command()` — sets `federation_database_path`, calls preview operator

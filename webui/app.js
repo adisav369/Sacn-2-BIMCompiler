@@ -16,7 +16,6 @@ const BIM = (() => {
     let bomProducts = [];
     let currentOrderLines = [];
     let currentBomDbPath = '';  // BOM DB path from last bomDrop or building selection
-    let lastLoadedOutputDb = '';  // Track last output.db sent to Bonsai (prevent duplicate loads)
 
     // ── HTTP API ────────────────────────────────────────────
 
@@ -566,7 +565,6 @@ const BIM = (() => {
                 guid: outputPath
             });
         }).then(() => {
-            lastLoadedOutputDb = outputPath;
             ds.textContent = 'Sent to Bonsai — preview loading';
             var fb = document.getElementById('applyFeedback');
             if (fb) fb.textContent = 'Compiled + sent to Bonsai: ' + currentBuilding;
@@ -605,17 +603,11 @@ const BIM = (() => {
         const info = buildingDb[currentBuilding];
         const dbPath = info ? info.dbFile : '';
         if (!dbPath) { alert('No database path — compile first via Show in Bonsai'); return; }
-        if (lastLoadedOutputDb === dbPath) {
-            document.getElementById('applyFeedback').textContent =
-                'Already loaded in Bonsai: ' + currentBuilding;
-            return;
-        }
         send('applyScheme', {
             schemeName: 'loadOutput',
             objectName: currentBuilding,
             guid: dbPath
         }).then(() => {
-            lastLoadedOutputDb = dbPath;
             document.getElementById('applyFeedback').textContent =
                 'Preview sent to Bonsai: ' + currentBuilding;
         }).catch(() => alert('Sync not active. Start sync in Bonsai first.'));
@@ -626,13 +618,12 @@ const BIM = (() => {
         const info = buildingDb[currentBuilding];
         const dbPath = info ? info.dbFile : '';
         if (!dbPath) { alert('No database path — compile first via Show in Bonsai'); return; }
-        // Full Load always sends — user explicitly wants full geometry even if preview loaded
+        // Full Load: check if .blend already exists (TODO: backend check via API)
         send('applyScheme', {
             schemeName: 'loadOutput',
             objectName: currentBuilding,
             guid: dbPath
         }).then(() => {
-            lastLoadedOutputDb = dbPath;
             document.getElementById('applyFeedback').textContent =
                 'Full load sent to Bonsai: ' + currentBuilding;
         }).catch(() => alert('Sync not active. Start sync in Bonsai first.'));
