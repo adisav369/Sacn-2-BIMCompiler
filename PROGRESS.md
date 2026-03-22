@@ -2,7 +2,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — **Session 57. 1D Order Configurator + Bonsai ↔ Web UI bidirectional sync. 331/333 GREEN (2 pre-existing PortfolioTest). DesignerServerTest 21/21.**
+**Gate:** `./scripts/run_RosettaStones.sh` — **Session 57. All 34 buildings ran (was 26). 9 remaining buildings completed. 4 YAML duplicate-code bugs found and fixed (RA/JE/WA/MO). All 9 now G1-COUNT PASS. G3-DIGEST needs baseline for new buildings. YAMLGuide.md updated with unique-code rule.**
 
 | Gate | SH | FK | **IN** | DX | TE |
 |------|----|----|--------|----|----|
@@ -31,6 +31,11 @@
 **FL-5 (S50):** EYES integration — ShapeAdvisoryWriter. SH: 19 shape advisories. BIMEyes Phase 1-3 DONE (41 files, 28 proofs).
 
 ## What's Next
+
+**[DONE] S57 — Complete pipeline run (all 34 buildings):**
+  All 34 buildings compiled. 4 YAML duplicate-code fixes (RA/JE/WA/MO). 16 ALL GREEN.
+  34/34 G1-COUNT PASS. Details: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s57).
+  Unique-code rule: [YAMLGuide.md §storeys](docs/YAMLGuide.md#storeys-or-segments-required).
 
 **[DONE] S53 — Roof-Wall Geometry Proofs (P27, P28) + TRIM WALLS TO ROOF verb:**
   **Proofs:**
@@ -174,7 +179,18 @@
   - `webui_sync.py`: selection watcher, command poller, loadOutput/applyScheme handlers
   - Tab 10 Color Studio: SSE listener, Bonsai Selection card, Apply to Bonsai buttons
 
+  **Bug fix:** BOM Drop from Web UI failed with "no such table: m_bom" — `bomConn` pointed
+  to `component_library.db` not the per-building `*_BOM.db`. Fix: JS sends `bomDbPath` from
+  `scanBomProducts` result, WebUIServer intercepts `bomDrop` and opens the correct DB with
+  a temporary `DesignerAPIImpl`. Verified: 34 BUILDING templates load, BOM Drop works.
+
+  **Launch Bonsai:** `~/bin/bonsai` auto-migrates extension across Blender versions (symlink
+  from installed version). Web UI header "Launch Bonsai" button calls `bash -lc ~/bin/bonsai`.
+
   **Tests:** DesignerServerTest 21/21 GREEN. BomDropTest 6/6. ASIAuthoringTest 9/9.
+  WebUISyncTest 15/15 GREEN (W-S57-1..15: scanBomProducts, readASI, updateASI, prepareIt,
+  selectionChanged, getSelection, applyScheme, pollCommands, SSE endpoint, SSE broadcast,
+  launchBonsai, afterCompile queue, full round-trip, FIFO ordering, selection overwrite).
   BonsaiBIMDesigner 331/333 (2 pre-existing PortfolioTest).
 
 **Next: S58 — Remaining pipeline + DM generative path:**

@@ -3049,14 +3049,27 @@ The 1D tab is the **Order + OrderLine + ASI editor** — the YAML maker.
 6. **Complete** (`compile` / `completeIt`): merge `work_output.db` → `output.db`.
    Push `COMPILE_COMPLETE` to Bonsai for viewport rendering.
 
-**New wire action needed:** `scanBomProducts` — like `scanLibrary` but returns
-BUILDING-level BOM headers (`bom_id`, `name`, `element_count`) from each `*_BOM.db`.
+**Wire actions (implemented S57):**
+
+| Action | Direction | Purpose |
+|--------|-----------|---------|
+| `scanBomProducts` | Browser → Server | List BUILDING BOMs from each `*_BOM.db` (34 templates) |
+| `bomDrop` | Browser → Server | Explode BOM tree → C_Order + C_OrderLine hierarchy |
+| `readASI` | Browser → Server | Read ASI fields for an OrderLine |
+| `updateASI` | Browser → Server | Update single ASI attribute value |
+| `prepareIt` | Browser → Server | Validate (DocAction DR→IP) |
+| `completeIt` | Browser → Server | Compile (DocAction IP→CO) |
+
+**BOM Drop routing:** `scanBomProducts` returns `dbFile` (absolute path to `*_BOM.db`) per product.
+Browser sends `bomDbPath` with `bomDrop` request. WebUIServer opens that specific DB with a
+temporary `DesignerAPIImpl` — avoids "no such table: m_bom" (constructor `bomConn` points to
+`component_library.db`, not the per-building BOM DB).
 
 **UI layout:**
 ```
-┌─ DocAction bar: [BOM Drop ▼] [Save] [Complete]  status ─┐
-├─ BOM Tree (left, <details>)  │  ASI Panel (right, form) ─┤
-├─ OrderLine table (full width, editable)                   ─┤
+┌─ [BOM Template ▼]  [BOM Drop] [Save] [Complete]  status ─┐
+├─ BOM Tree (left 60%)      │  ASI Panel (right 40%)       ─┤
+├─ OrderLine table (full width, editable, dblclick cells)   ─┤
 └───────────────────────────────────────────────────────────┘
 ```
 
