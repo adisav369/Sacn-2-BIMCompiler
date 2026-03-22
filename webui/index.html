@@ -15,22 +15,28 @@
         <option value="">Select Building...</option>
     </select>
     <button class="btn btn-primary" style="margin-left:12px;padding:4px 12px;font-size:12px" onclick="BIM.launchBonsai()">Launch Bonsai</button>
+    <div class="search-compact">
+        <input type="text" class="search-input" id="globalSearch"
+               placeholder="Search products or query..."
+               onkeydown="if(event.key==='Enter')BIM.globalSearch(this.value)"
+               style="width:180px;padding:4px 10px;font-size:12px">
+    </div>
     <div class="status-dot disconnected" id="statusDot"></div>
     <div class="status-label" id="statusLabel">Disconnected</div>
 </div>
 
-<!-- ── Tab Bar ──────────────────────────────────────────── -->
+<!-- ── Tab Bar (§30.3 — 10 nD panels) ──────────────────── -->
 <div class="tab-bar" id="tabBar">
     <div class="tab active" data-tab="1d">1D Order</div>
-    <div class="tab" data-tab="2d">2D Import</div>
-    <div class="tab" data-tab="3d">3D Federation</div>
+    <div class="tab" data-tab="2d">2D Spatial</div>
+    <div class="tab" data-tab="3d">3D Geometry</div>
     <div class="tab" data-tab="4d">4D Schedule</div>
     <div class="tab" data-tab="5d">5D Cost</div>
     <div class="tab" data-tab="6d">6D Sustain</div>
     <div class="tab" data-tab="7d">7D Facility</div>
-    <div class="tab" data-tab="8">8 Reports</div>
-    <div class="tab" data-tab="9">9 Query</div>
-    <div class="tab" data-tab="10">10 Color</div>
+    <div class="tab" data-tab="8">8 Validate</div>
+    <div class="tab" data-tab="9">9 BOM</div>
+    <div class="tab" data-tab="10">10 Colour</div>
 </div>
 
 <!-- ── Content ──────────────────────────────────────────── -->
@@ -43,13 +49,45 @@
                 <option value="">Select BOM Template...</option>
             </select>
             <button class="btn btn-primary" onclick="BIM.bomDrop()">BOM Drop</button>
+            <button class="btn" onclick="BIM.showInBonsai()" id="btnShowBonsai" title="Preview wireframe bboxes in Bonsai viewport" style="border-left:3px solid var(--success)">Show in Bonsai</button>
             <button class="btn" onclick="BIM.save()">Save</button>
+            <button class="btn" onclick="BIM.approve()">Approve</button>
             <button class="btn btn-success" onclick="BIM.completeOrder()">Complete</button>
+            <button class="btn" onclick="BIM.promote()" title="Write to BOM.db (requires Approved)">Promote</button>
             <span class="status-text" id="docStatus">Draft</span>
             <span class="card-subtitle" id="orderLineCount" style="margin-left:8px">0 lines</span>
         </div>
 
+        <div class="split-pane">
+            <div class="split-left">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">BOM Tree</span>
+                        <span class="card-subtitle" id="bomCount">0 items</span>
+                    </div>
+                    <div class="bom-tree" id="bomTree">
+                        <div class="placeholder"><div class="icon">&#9776;</div>
+                            <h3>Empty BOM</h3><p>Select a BOM template and click BOM Drop.</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="split-right">
+                <div class="card" id="asiCard" style="display:none">
+                    <div class="card-header">
+                        <span class="card-title">Attributes (ASI)</span>
+                        <span class="card-subtitle" id="asiLineRef">No line selected</span>
+                        <button class="btn" onclick="BIM.closeASI()" style="padding:2px 10px;font-size:11px">Close</button>
+                    </div>
+                    <div id="asiPanel"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
+            <div class="card-header">
+                <span class="card-title">Order Lines</span>
+                <span class="card-subtitle" id="orderLineCount2">0 lines</span>
+            </div>
             <div style="overflow-x:auto">
                 <table class="data-table">
                     <thead>
@@ -69,26 +107,50 @@
                 </table>
             </div>
         </div>
-
-        <div class="card" id="asiCard" style="display:none">
-            <div class="card-header">
-                <span class="card-title">Attributes (ASI)</span>
-                <span class="card-subtitle" id="asiLineRef">No line selected</span>
-                <button class="btn" onclick="BIM.closeASI()" style="padding:2px 10px;font-size:11px">Close</button>
-            </div>
-            <div id="asiPanel"></div>
-        </div>
     </div>
 
-    <!-- ── 2D: Import/Export ─────────────────────────────── -->
+    <!-- ── 2D: Spatial — storey browser, containment (§30.3) ── -->
     <div class="tab-panel" id="panel-2d">
         <div class="card">
             <div class="card-header">
-                <span class="card-title">IFC Import</span>
+                <span class="card-title">Storey Browser</span>
+                <button class="btn btn-primary" onclick="BIM.loadSpatial()">Load</button>
+            </div>
+            <div class="status-grid" id="storeyGrid"></div>
+            <div style="overflow-x:auto; margin-top:12px">
+                <table class="data-table">
+                    <thead>
+                        <tr><th>Storey</th><th>Elevation (mm)</th><th class="num">Rooms</th><th class="num">Elements</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="storeyBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Containment Tree</span>
+            </div>
+            <div class="bom-tree" id="containmentTree">
+                <div class="placeholder" style="padding:40px 20px">
+                    <div class="icon">&#127959;</div>
+                    <h3>Spatial Hierarchy</h3>
+                    <p>Select a building and click Load to view the storey &rarr; space &rarr; element containment tree.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Import / Export</span>
             </div>
             <div class="btn-group" style="margin-bottom:12px">
-                <button class="btn btn-primary" onclick="BIM.importIFC()">Select IFC File</button>
+                <button class="btn" onclick="BIM.importIFC()">Import IFC</button>
                 <button class="btn" onclick="BIM.onboardIFC()">Onboard to Library</button>
+                <span class="divider"></span>
+                <button class="btn" onclick="BIM.exportBOM()">Export BOM</button>
+                <button class="btn" onclick="BIM.exportOrder()">Export Order</button>
+                <button class="btn" onclick="BIM.exportIFC()">Export IFC</button>
             </div>
             <table class="data-table">
                 <thead>
@@ -97,20 +159,9 @@
                 <tbody id="importBody"></tbody>
             </table>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title">Export</span>
-            </div>
-            <div class="btn-group">
-                <button class="btn" onclick="BIM.exportBOM()">Export BOM (CSV)</button>
-                <button class="btn" onclick="BIM.exportOrder()">Export Order (JSON)</button>
-                <button class="btn" onclick="BIM.exportIFC()">Export IFC</button>
-            </div>
-        </div>
     </div>
 
-    <!-- ── 3D: Federation ────────────────────────────────── -->
+    <!-- ── 3D: Geometry — federation, placement, mesh (§30.3) ── -->
     <div class="tab-panel" id="panel-3d">
         <div class="card">
             <div class="card-header">
@@ -163,6 +214,12 @@
                     <button class="btn btn-primary" onclick="BIM.loadSchedule()">Load</button>
                 </div>
             </div>
+            <div id="scheduleEmpty" class="placeholder" style="padding:40px 20px">
+                <div class="icon">&#128197;</div>
+                <h3>4D Schedule</h3>
+                <p>Construction sequence with discipline phases and dependencies.<br>
+                   Populated from ScheduleDAO when a building is compiled.</p>
+            </div>
             <div style="overflow-x:auto">
                 <table class="data-table">
                     <thead>
@@ -181,6 +238,12 @@
                 <span class="card-title">Cost Breakdown</span>
                 <button class="btn btn-primary" onclick="BIM.loadCost()">Load</button>
             </div>
+            <div id="costEmpty" class="placeholder" style="padding:40px 20px">
+                <div class="icon">&#128176;</div>
+                <h3>5D Cost</h3>
+                <p>Material, labour, and equipment cost breakdown per element.<br>
+                   Populated from CostDAO when a building is compiled.</p>
+            </div>
             <table class="data-table">
                 <thead>
                     <tr><th>Item</th><th>Category</th><th class="num">Material</th><th class="num">Labour</th><th class="num">Equipment</th><th class="num">Total</th></tr>
@@ -196,6 +259,12 @@
             <div class="card-header">
                 <span class="card-title">Carbon Footprint</span>
                 <button class="btn btn-primary" onclick="BIM.loadCarbon()">Load</button>
+            </div>
+            <div id="carbonEmpty" class="placeholder" style="padding:40px 20px">
+                <div class="icon">&#127793;</div>
+                <h3>6D Sustainability</h3>
+                <p>Embodied carbon, material mass, and CO2e intensity per element.<br>
+                   Populated from SustainabilityDAO when a building is compiled.</p>
             </div>
             <div class="status-grid" id="carbonSummary"></div>
             <table class="data-table" style="margin-top:16px">
@@ -214,6 +283,12 @@
                 <span class="card-title">Maintenance Schedule</span>
                 <button class="btn btn-primary" onclick="BIM.loadMaintenance()">Load</button>
             </div>
+            <div id="maintenanceEmpty" class="placeholder" style="padding:40px 20px">
+                <div class="icon">&#128295;</div>
+                <h3>7D Facility Management</h3>
+                <p>Asset lifecycle, maintenance intervals, and recurring costs.<br>
+                   Populated from FacilityMgmtDAO when a building is compiled.</p>
+            </div>
             <table class="data-table">
                 <thead>
                     <tr><th>Asset</th><th>Type</th><th class="num">Interval (yr)</th><th class="num">Cost/Event</th><th class="num">Lifecycle Cost</th></tr>
@@ -223,12 +298,33 @@
         </div>
     </div>
 
-    <!-- ── 8: ERP Reports ────────────────────────────────── -->
+    <!-- ── 8: Validate — advisories, compliance (§30.3) ──── -->
     <div class="tab-panel" id="panel-8">
         <div class="card">
             <div class="card-header">
+                <span class="card-title">Compliance Status</span>
+                <button class="btn btn-primary" onclick="BIM.loadValidation()">Check</button>
+            </div>
+            <div class="status-grid" id="validationSummary"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Advisories</span>
+                <span class="card-subtitle" id="advisoryCount">0</span>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr><th>Severity</th><th>Layer</th><th>Rule</th><th>Message</th><th>Element</th></tr>
+                </thead>
+                <tbody id="advisoryBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
                 <span class="card-title">Portfolio Overview</span>
-                <button class="btn btn-primary" onclick="BIM.loadPortfolio()">Load</button>
+                <button class="btn" onclick="BIM.loadPortfolio()">Load</button>
             </div>
             <table class="data-table">
                 <thead>
@@ -246,8 +342,23 @@
         </div>
     </div>
 
-    <!-- ── 9: NLP Query ──────────────────────────────────── -->
+    <!-- ── 9: BOM — outliner, swap, query (§30.3) ─────────── -->
     <div class="tab-panel" id="panel-9">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">BOM Outliner</span>
+                <span class="card-subtitle" id="bomOutlinerCount">0 items</span>
+            </div>
+            <div class="bom-tree" id="bomOutlinerTree">
+                <div class="placeholder" style="padding:40px 20px">
+                    <div class="icon">&#127970;</div>
+                    <h3>BOM Tree</h3>
+                    <p>Select a building to view the full BOM hierarchy.<br>
+                       Use the 1D Order tab to create a BOM via BOM Drop.</p>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <span class="card-title">Natural Language Query</span>
@@ -306,7 +417,7 @@
         </div>
     </div>
 
-    <!-- ── 10: Color Studio (Bonsai sync) ─────────────────── -->
+    <!-- ── 10: Colour Studio (Bonsai sync) ─────────────────── -->
     <div class="tab-panel" id="panel-10">
 
         <div class="card sync-card" id="syncSelectionCard">
@@ -365,13 +476,14 @@
 
 </div>
 
-<!-- ── Footer ───────────────────────────────────────────── -->
+<!-- ── Footer / Status Bar ─────────────────────────────── -->
 <div class="footer">
     <span>BIM Designer</span>
     <span id="footerBuilding">No building selected</span>
     <span class="spacer"></span>
+    <span id="footerCompliance" style="color:var(--text-dim)"></span>
     <span id="footerWs">API: ready</span>
-    <span id="footerVersion">v0.9-S57</span>
+    <span id="footerVersion">v1.0-S60</span>
 </div>
 
 <script src="app.js"></script>

@@ -71,11 +71,21 @@ body {
     border-color: var(--accent);
 }
 
+.header .search-compact {
+    margin-left: auto;
+    margin-right: 16px;
+}
+
+.header .search-compact .search-input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
 .header .status-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    margin-left: auto;
     margin-right: 8px;
 }
 

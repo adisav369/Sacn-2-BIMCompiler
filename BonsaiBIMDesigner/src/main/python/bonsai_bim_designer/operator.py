@@ -49,6 +49,8 @@ class BIM_OT_designer_connect(Operator):
             props.is_connected = True
             props.compile_status = "Connected"
             self.report({'INFO'}, f"Connected to {props.server_host}:{props.server_port}")
+            # Start polling WebUI for commands (loadOutput after HTML compile)
+            start_poll_timer()
         except Exception as e:
             props.is_connected = False
             props.compile_status = f"Connection failed: {e}"
@@ -70,6 +72,7 @@ class BIM_OT_designer_disconnect(Operator):
         props = _get_props(context)
 
         if _client is not None:
+            stop_poll_timer()
             try:
                 _client.disconnect()
             except Exception:
@@ -1579,6 +1582,175 @@ class BIM_OT_designer_list_advisories(Operator):
             return {'CANCELLED'}
 
         return {'FINISHED'}
+
+
+# =============================================================================
+# Poll Commands Timer — HTML → Bonsai bridge
+# =============================================================================
+# Implementing BIM_Designer_SRS.md §30.2 — Bonsai picks up commands from WebUI
+# The timer runs every 2 seconds while connected, polls the WebUI HTTP server
+# for queued commands (loadOutput after compile, applyScheme from color studio).
+# When a loadOutput command arrives, it loads the output.db into the viewport
+# using db_loader.load_from_db().
+
+_poll_timer_running = False
+
+
+def _poll_commands_timer() -> float | None:
+    """bpy.app.timers callback — polls WebUI for commands, returns interval or None to stop."""
+    global _poll_timer_running, _client
+
+    if not _poll_timer_running or _client is None:
+        _poll_timer_running = False
+        return None  # stop timer
+
+    try:
+        commands = _client.poll_commands()
+        for cmd in commands:
+            _handle_command(cmd)
+    except Exception as e:
+        print(f"[BIM poll] Error: {e}")
+
+    return 2.0  # poll again in 2 seconds
+
+
+def _handle_command(cmd: dict) -> None:
+    """Dispatch a single command from the WebUI server."""
+    command_type = cmd.get("command", "")
+
+    if command_type == "loadOutput":
+        output_path = cmd.get("outputDbPath", "")
+        element_count = cmd.get("elementCount", 0)
+        if output_path:
+            _do_load_output(output_path, element_count)
+
+    elif command_type == "previewBBoxes":
+        building_id = cmd.get("buildingId", "")
+        if building_id:
+            _do_preview_bboxes(building_id)
+
+    elif command_type == "applyScheme":
+        scheme_name = cmd.get("schemeName", "")
+        print(f"[BIM poll] applyScheme: {scheme_name} (viewport coloring deferred)")
+
+    else:
+        print(f"[BIM poll] Unknown command: {command_type}")
+
+
+def _do_preview_bboxes(building_id: str) -> None:
+    """Fetch order lines from server and render as wireframe bboxes in viewport.
+
+    Lightweight preview — no compile, no geometry. Category-coloured wireframe
+    boxes via design_bbox.enable(). User clicks Full Load in Bonsai for geometry.
+    Same visual as Design Mode / Federation Preview BBoxes.
+    """
+    global _client
+
+    if _client is None:
+        print("[BIM poll] previewBBoxes: not connected")
+        return
+
+    print(f"[BIM poll] Preview BBoxes: {building_id}")
+
+    try:
+        result = _client.list_order_lines(building_id)
+        lines = result.get("lines", result.get("orderLines", []))
+        if not lines:
+            print(f"[BIM poll] previewBBoxes: no order lines for {building_id}")
+            return
+
+        # Convert order lines to bbox format for design_bbox.enable()
+        # Each line has: familyRef, hostType, bomCategory, widthMm, depthMm, heightMm,
+        # dx, dy, dz (offsets from parent)
+        bboxes = []
+        for line in lines:
+            w = line.get("widthMm", line.get("aabb_width_mm", 0))
+            d = line.get("depthMm", line.get("aabb_depth_mm", 0))
+            h = line.get("heightMm", line.get("aabb_height_mm", 0))
+            dx = line.get("dx", 0)
+            dy = line.get("dy", 0)
+            dz = line.get("dz", 0)
+
+            if w <= 0 and d <= 0 and h <= 0:
+                continue  # skip lines without dimensions
+
+            bboxes.append({
+                "bomId": str(line.get("orderLineId", "")),
+                "name": line.get("familyRef", line.get("productId", "?")),
+                "bomType": line.get("hostType", "ITEM"),
+                "category": line.get("bomCategory", "ARC"),
+                "minX": dx, "minY": dy, "minZ": dz,
+                "maxX": dx + w, "maxY": dy + d, "maxZ": dz + h,
+            })
+
+        if not bboxes:
+            print(f"[BIM poll] previewBBoxes: no valid bboxes from {len(lines)} lines")
+            return
+
+        # Store in scene for undo tracking + panel display
+        import bpy
+        bpy.context.scene["_design_bboxes"] = json.dumps(bboxes)
+
+        # Enable wireframe overlay
+        design_bbox.enable(bboxes)
+
+        # Update props
+        try:
+            props = bpy.context.scene.BIMDesignerProperties
+            props.building_id = building_id
+            props.last_element_count = len(bboxes)
+            props.compile_status = f"Preview: {len(bboxes)} bboxes from Web UI"
+            props.design_mode = True
+        except Exception:
+            pass
+
+        print(f"[BIM poll] Preview BBoxes: {len(bboxes)} bboxes rendered")
+
+    except Exception as e:
+        print(f"[BIM poll] previewBBoxes error: {e}")
+
+
+def _do_load_output(db_path: str, element_count: int) -> None:
+    """Load compiled output.db into the Blender viewport."""
+    from . import db_loader
+
+    print(f"[BIM poll] Loading output: {db_path} ({element_count} elements)")
+
+    # Clear previous loaded geometry
+    db_loader.clear_loaded()
+
+    # Load new geometry from output.db
+    try:
+        loaded = db_loader.load_from_db(db_path)
+        print(f"[BIM poll] Loaded {loaded} elements into viewport")
+
+        # Update props if available
+        try:
+            props = bpy.context.scene.BIMDesignerProperties
+            props.output_db_path = db_path
+            props.last_element_count = loaded
+            props.compile_status = f"Loaded {loaded} elements from compile"
+        except Exception:
+            pass
+    except Exception as e:
+        print(f"[BIM poll] Load failed: {e}")
+
+
+def start_poll_timer():
+    """Start the pollCommands timer (called on connect)."""
+    global _poll_timer_running
+    if _poll_timer_running:
+        return  # already running
+    _poll_timer_running = True
+    bpy.app.timers.register(_poll_commands_timer, first_interval=2.0)
+    print("[BIM poll] Timer started — polling WebUI every 2s")
+
+
+def stop_poll_timer():
+    """Stop the pollCommands timer (called on disconnect)."""
+    global _poll_timer_running
+    _poll_timer_running = False
+    print("[BIM poll] Timer stopped")
 
 
 # =============================================================================

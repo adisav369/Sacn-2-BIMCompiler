@@ -15,6 +15,7 @@ const BIM = (() => {
     let selectedOrderLineId = 0;
     let bomProducts = [];
     let currentOrderLines = [];
+    let currentBomDbPath = '';  // BOM DB path from last bomDrop or building selection
 
     // ── HTTP API ────────────────────────────────────────────
 
@@ -112,9 +113,12 @@ const BIM = (() => {
     }
 
     function onBuildingSelected() {
+        const info = buildingDb[currentBuilding];
+        if (info) currentBomDbPath = info.dbFile || '';
         loadBomTree();
         loadOrderLines();
         scanBomProducts();
+        syncBomOutliner();
     }
 
     // ── 1D: Order Configurator (§29.5) ───────────────────────
@@ -200,6 +204,8 @@ const BIM = (() => {
     function renderOrderLines(lines) {
         const count = document.getElementById('orderLineCount');
         if (count) count.textContent = lines.length + ' lines';
+        const count2 = document.getElementById('orderLineCount2');
+        if (count2) count2.textContent = lines.length + ' lines';
         document.getElementById('orderLinesBody').innerHTML = lines.map((l, i) => {
             const lineId = l.orderLineId || l.lineId || (i+1);
             const status = (l.validationStatus || l.status || 'DR').toUpperCase();
@@ -387,9 +393,14 @@ const BIM = (() => {
             }
             // Use the BOM product ID as the building key (not the order ID)
             currentBuilding = id;
+            currentBomDbPath = bomDbPath;
             document.getElementById('footerBuilding').textContent = id;
             document.getElementById('docStatus').textContent =
                 'Dropped (' + (data.totalElements || 0) + ' elements)';
+
+            // Render the BOM tree from the explosion result
+            if (data.tree) renderBomTree(data);
+
             loadOrderLines();
         }).catch(e => {
             document.getElementById('docStatus').textContent = 'Drop failed';
@@ -402,13 +413,66 @@ const BIM = (() => {
         document.getElementById('docStatus').textContent = 'Saving...';
         send('save', { buildingId: currentBuilding, bboxes: [],
             variantLabel: 'WebUI-' + new Date().toISOString().slice(0,16)
-        }).then(() => {
-            document.getElementById('docStatus').textContent = 'Saved (IP)';
+        }).then(data => {
+            if (data.success === false) {
+                document.getElementById('docStatus').textContent = 'Save failed';
+                alert('Save failed: ' + (data.error || 'Unknown error'));
+                return;
+            }
+            document.getElementById('docStatus').textContent =
+                'Saved (IP) — ' + (data.variantId || '');
         }).catch(e => alert('Save failed: ' + e.message));
+    }
+
+    function approve() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        document.getElementById('docStatus').textContent = 'Validating...';
+        send('approve', { buildingId: currentBuilding }).then(data => {
+            if (data.success) {
+                document.getElementById('docStatus').textContent =
+                    'Approved (AP) — ' + (data.passed || 0) + '/' + (data.total || 0) + ' rules passed';
+            } else {
+                document.getElementById('docStatus').textContent = 'Blocked';
+                let msg = 'Approval blocked:\n';
+                if (data.blockers && data.blockers.length > 0) {
+                    msg += data.blockers.map(b => b.description || b.ruleName || JSON.stringify(b)).join('\n');
+                }
+                if (data.dangles && data.dangles.length > 0) {
+                    msg += '\nDangles: ' + data.dangles.join(', ');
+                }
+                alert(msg);
+            }
+            loadOrderLines();
+        }).catch(e => {
+            document.getElementById('docStatus').textContent = 'Validation failed';
+            alert('Approve failed: ' + e.message);
+        });
+    }
+
+    function promote() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        if (!confirm('Promote design to BOM?\nThis writes m_bom entries and freezes the order.')) return;
+        document.getElementById('docStatus').textContent = 'Promoting...';
+        send('promote', {
+            buildingId: currentBuilding,
+            owner: 'WebUI',
+            complianceRef: '',
+            provenance: 'GENERATIVE',
+            bboxes: []
+        }).then(data => {
+            if (data.success) {
+                document.getElementById('docStatus').textContent =
+                    'Promoted (CO) — ' + (data.bomEntriesCreated || 0) + ' BOM entries';
+            } else {
+                document.getElementById('docStatus').textContent = 'Promote failed';
+                alert('Promote failed: ' + (data.error || 'Unknown error'));
+            }
+        }).catch(e => alert('Promote failed: ' + e.message));
     }
 
     function completeOrder() {
         if (!currentBuilding) { alert('Select a building first'); return; }
+        if (!currentBomDbPath) { alert('No BOM database path — do a BOM Drop first'); return; }
         document.getElementById('docStatus').textContent = 'Validating...';
         // prepareIt → validate, then completeIt → compile
         send('prepareIt', { buildingId: currentBuilding }).then(data => {
@@ -418,9 +482,20 @@ const BIM = (() => {
                 return;
             }
             document.getElementById('docStatus').textContent = 'Compiling...';
-            send('completeIt', { buildingId: currentBuilding }).then(cdata => {
+            send('completeIt', {
+                buildingId: currentBuilding,
+                bomDbPath: currentBomDbPath,
+                libraryPath: 'library',
+                outputDir: 'DAGCompiler/lib/output/'
+            }).then(cdata => {
+                if (cdata.success === false) {
+                    document.getElementById('docStatus').textContent = 'Compile failed';
+                    alert('Complete failed: ' + (cdata.error || 'Unknown error'));
+                    return;
+                }
                 document.getElementById('docStatus').textContent =
-                    'Complete (CO) — ' + (cdata.elementCount || '?') + ' elements';
+                    'Complete (CO) — ' + (cdata.elementCount || '?') + ' elements' +
+                    (cdata.compileTimeMs ? ' in ' + cdata.compileTimeMs + 'ms' : '');
                 loadBomTree();
                 loadOrderLines();
             }).catch(e => {
@@ -435,11 +510,48 @@ const BIM = (() => {
 
     function compile() {
         if (!currentBuilding) { alert('Select a building first'); return; }
+        if (!currentBomDbPath) { alert('No BOM database path — do a BOM Drop first'); return; }
         document.getElementById('docStatus').textContent = 'Compiling...';
-        send('compile', { buildingId: currentBuilding }).then(data => {
+        send('compile', {
+            buildingId: currentBuilding,
+            bomDbPath: currentBomDbPath,
+            libraryPath: 'library',
+            outputDir: 'DAGCompiler/lib/output/'
+        }).then(data => {
+            if (data.success === false) {
+                document.getElementById('docStatus').textContent = 'Compile failed';
+                alert('Compile failed: ' + (data.error || 'Unknown error'));
+                return;
+            }
             document.getElementById('docStatus').textContent =
-                'Compiled: ' + (data.elementCount || '?') + ' elements';
+                'Compiled: ' + (data.elementCount || '?') + ' elements' +
+                (data.compileTimeMs ? ' in ' + data.compileTimeMs + 'ms' : '');
         }).catch(e => alert('Compile failed: ' + e.message));
+    }
+
+    // ── Show in Bonsai (compile + push to viewport) ─────────
+
+    function showInBonsai() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        if (currentOrderLines.length === 0) { alert('No order lines — do a BOM Drop first'); return; }
+        const ds = document.getElementById('docStatus');
+        ds.textContent = 'Pushing preview to Bonsai...';
+        // Send lightweight bbox preview — no compile, just wireframe overlay.
+        // Bonsai renders category-coloured wireframe boxes via design_bbox.enable().
+        // User clicks Full Load in Bonsai when ready for geometry.
+        send('applyScheme', {
+            command: 'previewBBoxes',
+            buildingId: currentBuilding,
+            objectName: currentBuilding
+        }).then(() => {
+            ds.textContent = 'Preview sent to Bonsai — wireframe (2s poll)';
+            const fb = document.getElementById('applyFeedback');
+            if (fb) fb.textContent = 'BBox preview sent: ' + currentBuilding +
+                ' (' + currentOrderLines.length + ' lines)';
+        }).catch(e => {
+            ds.textContent = 'Preview failed';
+            alert('Show in Bonsai failed: ' + e.message);
+        });
     }
 
     // ── 2D: Import/Export ────────────────────────────────────
@@ -540,6 +652,38 @@ const BIM = (() => {
         }).catch(e => alert('Failed: ' + e.message));
     }
 
+    // ── 2D: Spatial — storey browser ────────────────────────
+
+    function loadSpatial() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        send('loadBuildingDetail', { dbFile: buildingDb[currentBuilding]?.dbFile || '' }).then(data => {
+            const storeys = data.storeys || [];
+            const grid = document.getElementById('storeyGrid');
+            if (grid) {
+                grid.innerHTML =
+                    '<div class="status-card"><div class="label">Storeys</div><div class="value">' + (storeys.length || data.storeyCount || '-') + '</div></div>' +
+                    '<div class="status-card"><div class="label">Total Elements</div><div class="value">' + fmt(data.elementCount || 0) + '</div></div>' +
+                    '<div class="status-card"><div class="label">Building</div><div class="value" style="font-size:14px">' + esc(data.name || currentBuilding) + '</div></div>';
+            }
+            const body = document.getElementById('storeyBody');
+            if (body && storeys.length) {
+                body.innerHTML = storeys.map(s =>
+                    '<tr><td>' + esc(s.name || s.code || '') + '</td>' +
+                    '<td class="num">' + fmt(s.elevationMm || 0) + '</td>' +
+                    '<td class="num">' + (s.roomCount || '-') + '</td>' +
+                    '<td class="num">' + (s.elementCount || '-') + '</td>' +
+                    '<td><span class="status-badge ip">' + esc(s.status || 'OK') + '</span></td></tr>'
+                ).join('');
+            }
+            // Containment tree
+            const tree = document.getElementById('containmentTree');
+            if (tree && data.containment) {
+                const nodes = Array.isArray(data.containment) ? data.containment : [data.containment];
+                tree.innerHTML = nodes.map(n => renderNode(n)).join('');
+            }
+        }).catch(() => {});
+    }
+
     // ── 4D-7D: Data tabs ────────────────────────────────────
 
     function loadSchedule() {
@@ -548,6 +692,8 @@ const BIM = (() => {
             projectStartDate: document.getElementById('scheduleStart').value
         }).then(data => {
             const tasks = data.tasks || [];
+            const el = document.getElementById('scheduleEmpty');
+            if (el && tasks.length) el.style.display = 'none';
             document.getElementById('scheduleBody').innerHTML = tasks.map(t =>
                 '<tr><td>' + esc(t.name||t.task||'') + '</td><td>' + esc(t.discipline||'') +
                 '</td><td>' + esc(t.startDate||'') + '</td><td>' + esc(t.endDate||'') +
@@ -561,6 +707,8 @@ const BIM = (() => {
         if (!currentBuilding) { alert('Select a building first'); return; }
         send('costBreakdown', { buildingId: currentBuilding }).then(data => {
             const items = data.items || data.lines || [];
+            const el = document.getElementById('costEmpty');
+            if (el && items.length) el.style.display = 'none';
             let tM=0, tL=0, tE=0;
             document.getElementById('costBody').innerHTML = items.map(it => {
                 const m=it.materialCost||0, l=it.labourCost||0, e=it.equipmentCost||0;
@@ -578,6 +726,8 @@ const BIM = (() => {
         if (!currentBuilding) { alert('Select a building first'); return; }
         send('carbonFootprint', { buildingId: currentBuilding }).then(data => {
             const items = data.items || data.elements || [];
+            const el = document.getElementById('carbonEmpty');
+            if (el && items.length) el.style.display = 'none';
             const tCO2 = items.reduce((s,it) => s+(it.co2eKg||0), 0);
             const tMass = items.reduce((s,it) => s+(it.massKg||0), 0);
             document.getElementById('carbonSummary').innerHTML =
@@ -595,6 +745,8 @@ const BIM = (() => {
         if (!currentBuilding) { alert('Select a building first'); return; }
         send('maintenanceSchedule', { buildingId: currentBuilding }).then(data => {
             const items = data.items || data.assets || [];
+            const el = document.getElementById('maintenanceEmpty');
+            if (el && items.length) el.style.display = 'none';
             document.getElementById('maintenanceBody').innerHTML = items.map(it =>
                 '<tr><td>'+esc(it.name||it.asset||'')+'</td><td>'+esc(it.type||it.assetType||'')+
                 '</td><td class="num">'+(it.intervalYears||'')+'</td><td class="num">'+fmt(it.costPerEvent||0)+
@@ -603,7 +755,49 @@ const BIM = (() => {
         }).catch(() => {});
     }
 
-    // ── 8: Reports ──────────────────────────────────────────
+    // ── 8: Validate — advisories, compliance, reports ───────
+
+    function loadValidation() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        send('listAdvisories', { buildingId: currentBuilding }).then(data => {
+            const advisories = data.advisories || [];
+            const count = document.getElementById('advisoryCount');
+            if (count) count.textContent = advisories.length;
+
+            // Summary cards
+            const info = advisories.filter(a => a.severity === 'INFO').length;
+            const warn = advisories.filter(a => a.severity === 'WARNING').length;
+            const err = advisories.filter(a => a.severity === 'ERROR' || a.severity === 'BLOCK').length;
+            const grid = document.getElementById('validationSummary');
+            if (grid) {
+                grid.innerHTML =
+                    '<div class="status-card"><div class="label">Pass</div><div class="value" style="color:var(--success)">' + info + '</div></div>' +
+                    '<div class="status-card"><div class="label">Warnings</div><div class="value" style="color:var(--warning)">' + warn + '</div></div>' +
+                    '<div class="status-card"><div class="label">Blockers</div><div class="value" style="color:var(--danger)">' + err + '</div></div>' +
+                    '<div class="status-card"><div class="label">Total</div><div class="value">' + advisories.length + '</div></div>';
+            }
+
+            // Footer compliance summary
+            const fc = document.getElementById('footerCompliance');
+            if (fc) {
+                if (err > 0) fc.textContent = err + ' BLOCK';
+                else if (warn > 0) fc.textContent = warn + ' WARN';
+                else fc.textContent = 'PASS';
+                fc.style.color = err > 0 ? 'var(--danger)' : warn > 0 ? 'var(--warning)' : 'var(--success)';
+            }
+
+            // Advisory table
+            document.getElementById('advisoryBody').innerHTML = advisories.map(a => {
+                const sevClass = a.severity === 'ERROR' || a.severity === 'BLOCK' ? 'vo' :
+                                 a.severity === 'WARNING' ? 'ip' : 'co';
+                return '<tr><td><span class="status-badge ' + sevClass + '">' + esc(a.severity || '') + '</span></td>' +
+                    '<td>' + esc(a.layer || '') + '</td>' +
+                    '<td>' + esc(a.ruleName || a.rule || '') + '</td>' +
+                    '<td>' + esc(a.message || '') + '</td>' +
+                    '<td>' + esc(a.elementRef || a.bomId || '') + '</td></tr>';
+            }).join('');
+        }).catch(() => {});
+    }
 
     function loadPortfolio() {
         send('portfolio').then(data => {
@@ -861,6 +1055,43 @@ const BIM = (() => {
         selectPalette('discipline');
     }
 
+    // ── Global Search (header bar) ──────────────────────────
+
+    function globalSearch(query) {
+        if (!query || !query.trim()) return;
+        // Route to NLP query if it looks like a question, else product search
+        if (/\?|how|what|which|show|find|list/i.test(query)) {
+            document.querySelector('.tab[data-tab="9"]').click();
+            document.getElementById('queryInput').value = query;
+            executeQuery();
+        } else {
+            document.querySelector('.tab[data-tab="9"]').click();
+            document.getElementById('productSearchInput').value = query;
+            searchProducts();
+        }
+    }
+
+    // ── 9: BOM Outliner sync (mirrors 1D BOM tree) ─────────
+
+    function syncBomOutliner() {
+        if (!currentBuilding) return;
+        send('getBomTree', { buildingId: currentBuilding }).then(data => {
+            const tree = data.tree || data.children || data;
+            const container = document.getElementById('bomOutlinerTree');
+            if (!container) return;
+            if (!tree || (Array.isArray(tree) && tree.length === 0)) {
+                container.innerHTML = '<div class="placeholder" style="padding:40px 20px">' +
+                    '<div class="icon">&#127970;</div><h3>BOM Tree</h3>' +
+                    '<p>Select a building to view the full BOM hierarchy.</p></div>';
+                return;
+            }
+            const nodes = Array.isArray(tree) ? tree : [tree];
+            container.innerHTML = nodes.map(n => renderNode(n)).join('');
+            const count = document.getElementById('bomOutlinerCount');
+            if (count) count.textContent = countNodes(nodes) + ' items';
+        }).catch(() => {});
+    }
+
     // ── Utilities ───────────────────────────────────────────
 
     function esc(s) {
@@ -883,13 +1114,15 @@ const BIM = (() => {
     });
 
     return {
-        send, bomDrop, save, compile, completeOrder,
+        send, bomDrop, save, approve, promote, compile, completeOrder, showInBonsai,
         loadBuildings, selectBuilding, loadDetail,
         selectLine, closeASI, loadASI, onASIChange, editCell,
         importIFC, onboardIFC, exportBOM, exportOrder, exportIFC,
         previewInBonsai, fullLoadInBonsai,
-        loadSchedule, loadCost, loadCarbon, loadMaintenance, loadPortfolio,
+        loadSpatial, loadSchedule, loadCost, loadCarbon, loadMaintenance,
+        loadValidation, loadPortfolio,
         searchProducts, setQuery, executeQuery, clearQueryResults,
+        globalSearch, syncBomOutliner,
         selectPalette, filterDiscipline,
         applySchemeToSelected, applySchemeToAll, applyDisciplineColor, resetBonsaiColors,
         launchBonsai

@@ -2994,30 +2994,30 @@ JSON so the browser can correlate responses when multiple requests are in-flight
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `webui/index.html` | ~290 | SPA shell — header, building selector, tab bar (1D-10), 10 content panels, footer |
-| `webui/app.js` | ~330 | `fetch()` API client, tab routing (`#tab=4d`), all tab renderers |
-| `webui/style.css` | ~400 | Dark theme (#1a1a2e/#16213e/#0f3460/#e94560), cards, data tables, BOM tree |
+| `webui/index.html` | ~330 | SPA shell — header (search), building selector, 10 tabs (§30.3 aligned), footer (compliance) |
+| `webui/app.js` | ~1020 | 30+ functions, `fetch()` API, SSE listener, BOM tree renderer, 4 palettes |
+| `webui/style.css` | ~710 | Dark theme (#1a1a2e/#16213e/#0f3460/#e94560), cards, split pane, sync indicators |
 
-**Tab-action mapping:**
+**Tab-action mapping (aligned to §30.3 — S60):**
 
 | Tab | Wire Action(s) | UI Widget |
 |-----|----------------|-----------|
-| 1D BOM | `getBomTree`, `listOrderLines`, `bomDrop`, `save`, `compile` | `<details>` tree + data table + DocAction bar |
-| 2D Import | — | Placeholder (IFC import, YAML export) |
-| 3D Federation | `scanLibrary`, `loadBuildingDetail`, `compile` | Status cards + buildings table + DB path |
-| 4D Schedule | `constructionSchedule` | Data table (task, discipline, start/end, duration) |
-| 5D Cost | `costBreakdown` | Data table with material/labour/equipment + totals row |
-| 6D Sustain | `carbonFootprint` | Summary cards (CO2e, mass, intensity) + data table |
-| 7D Facility | `maintenanceSchedule` | Data table (asset, type, interval, cost) |
-| 8 Reports | `portfolio`, `balancedScorecard` | Portfolio table + scorecard cards |
-| 9 Query | `executeNlpQuery`, `browseItems` | NLP search + 10 suggested queries + product catalog search |
-| 10 Color | — (client-side) | 4 palettes (Realistic/Phase/Safety/Discipline, 16 colors each) + discipline filter |
+| 1D Order | `getBomTree`, `listOrderLines`, `bomDrop`, `save`, `approve`, `completeIt`, `promote`, `readASI`, `updateASI` | Split pane: BOM tree + ASI panel. Order Lines table below. DocAction bar. |
+| 2D Spatial | `loadBuildingDetail` | Storey browser + containment tree + Import/Export buttons |
+| 3D Geometry | `scanLibrary`, `loadBuildingDetail`, `compile`, `applyScheme` | Federation status cards + buildings table + Preview/Full Load/Compile |
+| 4D Schedule | `constructionSchedule` | Data table (task, discipline, start/end, duration). Placeholder until ScheduleDAO wired. |
+| 5D Cost | `costBreakdown` | Data table with material/labour/equipment + totals row. Placeholder until CostDAO wired. |
+| 6D Sustain | `carbonFootprint` | Summary cards (CO2e, mass, intensity) + data table. Placeholder until SustainabilityDAO wired. |
+| 7D Facility | `maintenanceSchedule` | Data table (asset, type, interval, cost). Placeholder until FacilityMgmtDAO wired. |
+| 8 Validate | `listAdvisories`, `portfolio`, `balancedScorecard` | Compliance summary cards + advisory table + portfolio + scorecard |
+| 9 BOM | `getBomTree`, `executeNlpQuery`, `browseItems` | BOM Outliner + NLP search (10 presets) + product catalog search |
+| 10 Colour | `applyScheme` (SSE sync) | Bonsai selection sync + 4 palettes (16 colors each) + discipline buttons + apply-to-Bonsai |
 
-**NLP Query tab** mirrors the Bonsai federation NLP module — same 10 suggested queries:
-"How many beams?", "Total building cost", "Show ACMV elements", etc.
+**NLP Query** (in Tab 9) mirrors the Bonsai federation NLP module — same 10 suggested queries.
+**Global search** in the header bar routes questions to NLP Query, keywords to Product Catalog.
 
-**Color Studio tab** renders the 4 construction palettes from the Bonsai `color_palette.py`
-module. Color application requires Bonsai viewport; Web UI is preview-only.
+**Color Studio** (Tab 10) renders 4 construction palettes. Color application pushes to Bonsai
+viewport via `applyScheme` → `pollCommands`. Bidirectional: Bonsai selection reflects in Tab 10.
 
 ### 29.4 Bonsai Panel Integration
 
@@ -3168,11 +3168,11 @@ and 10-panel stack, and vice versa. The Java server is the single source of trut
 | Direction | Mechanism | Status |
 |-----------|-----------|--------|
 | HTML → Server | `POST /api` (existing) | DONE |
-| Server → Bonsai | SSE `pollCommands` (§29.6) | DONE (loadOutput, applyScheme) |
+| Server → Bonsai | `pollCommands` queue (§29.6) | DONE (loadOutput, applyScheme) |
 | Bonsai → Server | `selectionChanged` via timer | DONE |
 | Server → HTML | SSE `EventSource` broadcast | DONE (compileComplete) |
-| **HTML → Bonsai** | Server queues command → Bonsai polls | **WIRED but incomplete** |
-| **Bonsai → HTML** | Server SSE-broadcasts state change → browser updates | **WIRED but incomplete** |
+| **HTML → Bonsai** | Server queues → Bonsai polls via HTTP timer | **DONE** (S59) — `_poll_commands_timer` in operator.py |
+| **Bonsai → HTML** | Server SSE-broadcasts state change → browser updates | DONE — SSE `selectionChanged` + `compileComplete` |
 
 **Core actions that must flow both ways:**
 
@@ -3190,18 +3190,18 @@ and 10-panel stack, and vice versa. The Java server is the single source of trut
 The 10 panels map to nD BIM dimensions. All must continue working as standalone
 Bonsai UI — the HTML is an alternative surface, not a replacement.
 
-| Panel | nD | Core function | HTML equivalent |
-|-------|----|---------------|-----------------|
-| 1 — Order | 1D | C_Order status, compile, BOM Drop | Tab 1 (Building) |
-| 2 — Spatial | 2D | Storey browser, containment | Tab 2 (Spatial) |
-| 3 — Geometry | 3D | Placement, AABB, mesh preview | Tab 3 (Geometry) |
-| 4 — Schedule | 4D | Construction sequence (Gantt) | Tab 4 (Schedule) |
-| 5 — Cost | 5D | Material + labour + equipment | Tab 5 (Cost) |
-| 6 — Sustainability | 6D | Carbon, embodied energy | Tab 6 (Sustainability) |
-| 7 — Facility Mgmt | 7D | Maintenance, lifecycle | Tab 7 (Facility) |
-| 8 — Validation | 8 | Advisories, compliance | Tab 8 (Validation) |
-| 9 — BOM Outliner | 9 | BOM tree, swap, add/remove | Tab 9 (BOM) |
-| 10 — Color Studio | 10 | Discipline colours, schemes | Tab 10 (Colours) |
+| Panel | nD | Core function | HTML Tab (aligned S60) |
+|-------|----|---------------|------------------------|
+| 1 — Order | 1D | C_Order status, compile, BOM Drop | **1D Order** — BOM tree + order lines + ASI + DocAction |
+| 2 — Spatial | 2D | Storey browser, containment | **2D Spatial** — storey browser + containment tree + import/export |
+| 3 — Geometry | 3D | Placement, AABB, mesh preview | **3D Geometry** — federation status + building list + compile |
+| 4 — Schedule | 4D | Construction sequence (Gantt) | **4D Schedule** — discipline phases + dependencies (placeholder) |
+| 5 — Cost | 5D | Material + labour + equipment | **5D Cost** — material/labour/equipment breakdown (placeholder) |
+| 6 — Sustainability | 6D | Carbon, embodied energy | **6D Sustain** — CO2e + mass + intensity (placeholder) |
+| 7 — Facility Mgmt | 7D | Maintenance, lifecycle | **7D Facility** — asset lifecycle + intervals (placeholder) |
+| 8 — Validation | 8 | Advisories, compliance | **8 Validate** — compliance cards + advisory table + portfolio |
+| 9 — BOM Outliner | 9 | BOM tree, swap, add/remove | **9 BOM** — BOM outliner + NLP query + product search |
+| 10 — Color Studio | 10 | Discipline colours, schemes | **10 Colour** — Bonsai sync + 4 palettes + apply to viewport |
 
 ### 30.4 DemoHouse End-to-End (acceptance test)
 
@@ -3218,23 +3218,24 @@ Bonsai UI — the HTML is an alternative surface, not a replacement.
 
 **Witness claims (to implement):**
 
-| Witness | Claim |
-|---------|-------|
-| W-WO-1 | DemoHouse created from C_OrderLine (no YAML) |
-| W-WO-2 | HTML compile triggers Bonsai viewport update |
-| W-WO-3 | Bonsai selection reflected in HTML BOM Outliner |
-| W-WO-4 | Product swap via HTML updates Bonsai geometry |
-| W-WO-5 | Save/recall round-trip produces identical element count |
+| Witness | Claim | Status |
+|---------|-------|--------|
+| W-WO-1 | DemoHouse created from C_OrderLine (no YAML) | **DONE** (S59) — WorkOrderCompileTest 6/6 GREEN |
+| W-WO-2 | HTML compile triggers Bonsai viewport update | WIRED — afterCompile queues loadOutput; needs pollCommands timer |
+| W-WO-3 | Bonsai selection reflected in HTML BOM Outliner | WIRED — SSE broadcast works; needs Bonsai selection listener |
+| W-WO-4 | Product swap via HTML updates Bonsai geometry | WIRED — swapProduct API works; needs recompile + pollCommands |
+| W-WO-5 | Save/recall round-trip produces identical element count | Backend DONE — save/recall/promote APIs implemented |
 
 ### 30.5 Priority Stack (core engine only)
 
-| # | Item | Blocks | Effort |
+| # | Item | Blocks | Status |
 |---|------|--------|--------|
-| 1 | **Work Order compile path** — `createNew` → `bomDrop` → `compile` without YAML | W-WO-1 | wired (verify DM) |
-| 2 | **HTML → Bonsai command flow** — compile/swap in HTML updates viewport | W-WO-2, W-WO-4 | extend `pollCommands` |
-| 3 | **Bonsai → HTML state flow** — selection/edit in Bonsai updates HTML | W-WO-3 | extend SSE broadcast |
-| 4 | **BOM Outliner sync** — tree view in both surfaces, swap triggers recompile | W-WO-4 | wire `getBomTree` to HTML tab 9 |
-| 5 | **Save/Recall round-trip** — variant persistence from either surface | W-WO-5 | verify existing path |
+| 1 | **Work Order compile path** — `bomDrop` → `completeIt` → output.db | W-WO-1 | **DONE** (S59) — 60 elements, equivalence proof |
+| 2 | **HTML → Bonsai command flow** — compile in HTML updates viewport | W-WO-2, W-WO-4 | **DONE** (S59) — pollCommands timer + db_loader |
+| 3 | **Bonsai → HTML state flow** — selection/edit in Bonsai updates HTML | W-WO-3 | Server SSE DONE. Need: Bonsai selection listener |
+| 4 | **BOM Outliner sync** — tree view in both surfaces, swap triggers recompile | W-WO-4 | BOM tree renders after bomDrop. Need: swap UI in tree |
+| 5 | **Save/Recall round-trip** — variant persistence from either surface | W-WO-5 | Backend DONE. Need: HTML save/recall buttons wired |
+| 6 | **ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | S60 | Spec: [S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md). 10 code changes, 5 schema gaps (U2-U6) |
 
 **Not in scope (deferred):**
 - Embedding search (§25)
@@ -3242,6 +3243,97 @@ Bonsai UI — the HTML is an alternative surface, not a replacement.
 - Multi-user changelog (WF-21..25)
 - nD stubs (4D-7D return real data only when DAO is wired)
 - Portfolio/Kanban/Scorecard back-office views
+
+### 30.6 UAT Gap Analysis — OrderLine Validation Model (S59→S60)
+
+The C_OrderLine schema is structurally ready (16 columns) but semantically
+incomplete for the validator to work end-to-end. This section documents the
+gaps that must be closed before the DemoHouse acceptance test (§30.4) can
+exercise the full BOM Drop → configure → validate → compile → promote flow.
+
+#### 30.6.1 User Scenarios That Must Work
+
+| # | Scenario | User Action | Backend Must Do |
+|---|----------|-------------|-----------------|
+| U1 | **Swap roof** | Select roof OrderLine by category (RF), pick pitched roof from library | `swapProduct(lineId, FK_DG_STR)` → recompile. **Works today.** |
+| U2 | **Add FP discipline** | Add a Fire Protection OrderLine to the order | Insert C_OrderLine with `Discipline='FPR'`, link to `ad_space_type_mep_bom` for per-room sprinkler placement. **Gap: no Discipline column.** |
+| U3 | **Set compliance** | Choose jurisdiction (MY/US/UK) for validation | `PlacementValidator.activate(jurisdiction)` selects AD_Val_Rule set. **Gap: no jurisdiction on C_Order.** |
+| U4 | **Set occupancy** | Specify Light Hazard / Residential for NFPA 13 rules | AD_Val_Rule_Occupancy join filters rules. **Gap: no occupancy_class on Order.** |
+| U5 | **Validate before compile** | Click Approve → see PASS/BLOCK per rule | Hydrate `PlacementRequest` from `C_OrderLine + M_Product`, run `validateAll()`, persist to `W_Validation_Result`. **Gap: no hydration DAO.** |
+| U6 | **Override a WARN** | Engineer-approve a specific violation | `AD_Val_Rule_Exception` table exists but not wired. **Gap: no override UI.** |
+
+#### 30.6.2 Schema Gaps — Missing Columns on C_OrderLine
+
+| Column | Type | Why Needed | Source |
+|--------|------|-----------|--------|
+| `ifc_class` | TEXT | Validator needs it for clash rules, mined dimension rules, discipline resolution | `M_Product.ifc_class` or `m_bom_line.child_element_type` |
+| `Discipline` | TEXT DEFAULT 'ARC' | Cross-discipline clash rules, occupancy-filtered rules, spatial predicates | `m_bom.bom_category` or `ad_ifc_class_map` |
+
+#### 30.6.3 Schema Gaps — Missing Context on C_Order
+
+| Column | Type | Why Needed | Current State |
+|--------|------|-----------|---------------|
+| `jurisdiction` | TEXT DEFAULT 'MY' | Selects AD_Val_Rule set (UBBL vs IRC vs UK NDSS) | `W_BuildingConfig.jurisdiction` exists but not on C_Order |
+| `occupancy_class` | TEXT | Filters NFPA 13 sprinkler spacing (LH=4600mm, OH1=3500mm, OH2=2800mm) | `AD_Occupancy_Class` table seeded (6 rows) but no link to Order |
+
+#### 30.6.4 Integration Gaps — Validator ↔ OrderLine Bridge
+
+| Gap | Description | Fix |
+|-----|-------------|-----|
+| **No hydration DAO** | No code to build `PlacementRequest` from `C_OrderLine + M_Product` | Write `OrderLineValidator.buildRequest()` — resolve ifc_class, discipline, dimensions from product |
+| **No result persistence** | `PlacementValidatorImpl.validate()` returns in-memory verdict only | Wire `W_Validation_Result` INSERT on `DocAction.validateLine()` |
+| **No batch spatial context** | `validateBatch()` processes elements independently, cannot check sprinkler spacing or MEP clearances | Pass storey grouping + AABB context to SpatialPredicates |
+| **InferenceEngine not wired** | Dependency-ordered rule evaluation (Kahn's sort) exists but not called from OrderLine validation | Connect to PlacementValidatorImpl for rule chains (e.g., room size depends on occupancy) |
+
+#### 30.6.5 Lookup Chain — How FP Discipline Gets Added
+
+Current data path for fire protection:
+```
+ad_space_type_mep_bom (disc_validation.db)
+  → WHERE discipline = 'FPR' AND space_type = 'BEDROOM'
+  → Returns: element_type = 'SPRINKLER', qty_per_room = 1, ifc_class = 'IfcFireSuppressionTerminal'
+
+MEPBomAD.getBOM(discipline, spaceType)     -- query layer READY
+PlacementValidatorImpl.validateBatch()     -- validation layer EXISTS
+```
+
+**Missing link:** No C_OrderLine row is created for the FP discipline.
+The BOM Drop explodes the structural BOM only — FP elements come from
+`ad_space_type_mep_bom`, not from `m_bom`. The bridge must:
+1. User adds an FP OrderLine (or toggles FP discipline on the order)
+2. Server queries `ad_space_type_mep_bom` for each room in the order
+3. Server inserts child C_OrderLines (sprinkler per room) under the FP line
+4. Compile picks up FP OrderLines and places sprinklers
+
+#### 30.6.6 Migration Plan
+
+See [S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md) for the full 10-item code change list.
+
+| Migration | DDL | Blocks | S60 Item |
+|-----------|-----|--------|----------|
+| **W003** | `ALTER TABLE C_OrderLine ADD COLUMN Discipline TEXT DEFAULT 'ARC';` | U2, U5 | #1 |
+| **W004** | `ALTER TABLE C_Order ADD COLUMN jurisdiction TEXT DEFAULT 'MY';` | U3 | #1 |
+| | `ALTER TABLE C_Order ADD COLUMN occupancy_class TEXT;` | U4 | #1 |
+| **W005** | `CREATE TABLE AD_Val_Rule_Exception ...` | U6 | #8 |
+
+**Architectural changes (S60):**
+- Compiler walks C_OrderLine tree, not C_DocType (#2)
+- run_RosettaStones.sh uses bomDrop + completeIt path (#4)
+- M_BomCategory replaced by M_Product_Category (#6)
+- OrderLineHydrationDAO bridges C_OrderLine → PlacementRequest (#7)
+
+#### 30.6.7 UAT Acceptance Criteria
+
+The DemoHouse acceptance test (§30.4) passes when:
+
+1. BOM Drop → 60 elements (structural) **[DONE — W-WO-1]**
+2. Swap roof → pitched roof compiles correctly **[DONE — W-DM-TC4-1]**
+3. Add FP discipline → sprinklers placed per room (NFPA 13 spacing)
+4. Set jurisdiction=MY → UBBL rules applied, bedroom min area checked
+5. Approve → validation results persisted, blockers shown in UI
+6. Complete → compile → output.db with STR + FP elements
+7. Save/recall → identical element count **[backend DONE — needs UI test]**
+8. Promote → m_bom entries written, order frozen
 
 ---
 

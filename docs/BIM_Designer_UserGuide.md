@@ -1,7 +1,7 @@
 # BIM Designer — User Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
-**Version:** 0.9 (2026-03-22, session 55)
+**Version:** 1.0 (2026-03-23, session 60)
 **Status:** Draft — updated each session as features are built and tested.
 
 > This guide covers the BIM Designer addon for Blender (Bonsai), the Java
@@ -31,7 +31,7 @@ BIM Designer is Item A of the IfcOpenShell Federation Suite. It adds
 - **Reports** — 4D schedule, 5D cost, 6D carbon, 7D facility management (via Back Office)
 
 The addon is a thin Python layer. All logic lives in the Java server.
-**5 Rosetta Stone buildings** prove the pipeline: SH (55), FK (82), IN (699), DX (1099), TE (48,428 elements).
+**35 Rosetta Stone buildings** prove the pipeline: SH (55), FK (82), IN (699), DX (1099), TE (48,428 elements). 22 ALL GREEN. 392/392 tests GREEN.
 
 ```
 User clicks button in Blender
@@ -74,9 +74,9 @@ User clicks button in Blender
 │  Java DesignerServer                  │                  │
 │  ┌────────────────────────────────────┘                  │
 │  │                                                      │
-│  │  34 wire actions (compile, createNew, snap, save,    │
-│  │  browseItems, placeItem, addRoom, carbonFootprint,   │
-│  │  costBreakdown, constructionSchedule, portfolio...)   │
+│  │  47+ wire actions (compile, createNew, snap, save,    │
+│  │  browseItems, placeItem, bomDrop, listOrderLines,    │
+│  │  approve, promote, costBreakdown, schedule, ...)     │
 │  │                                                      │
 │  │  PlacementValidator ←── disc_validation.db (63 rules)│
 │  │  BomValidator ←── 9 checks + verb fidelity           │
@@ -694,7 +694,7 @@ See [BackOfficeUserGuide.md](BackOfficeUserGuide.md) for the full multi-project 
 
 ---
 
-## 13. Web UI Frontend (S56)
+## 13. Web UI Frontend (S56, updated S60)
 
 ### Architecture Split
 
@@ -702,107 +702,204 @@ Blender's sidebar is too constrained for data-heavy workflows (BOM trees, Excel-
 grids, product choosers). S55 concluded: **Web UI for data/control, Bonsai for viewport only.**
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│  Web Browser (HTML/JS)                                    │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │ Tab bar: 1D | 2D | 3D | 4D | 5D | 6D | 7D | 8 | 9 | 10 │
-│  ├──────────────────────────────────────────────────────┤ │
-│  │                                                      │ │
-│  │  (active tab content — tree, grid, form, dashboard)  │ │
-│  │                                                      │ │
-│  └──────────────────────────────────────────────────────┘ │
-│         │ WebSocket                                       │
-└─────────┼────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  Web Browser (HTML/JS)        http://localhost:9878               │
+│  ┌──────────────────────────────────────────────────────────────┐│
+│  │ Header: [BIM Designer] [Building ▼] [Launch Bonsai] [Search]││
+│  │ Tab bar: 1D Order │ 2D Spatial │ 3D Geometry │ 4D │ 5D │ ...││
+│  ├──────────────────────────────────────────────────────────────┤│
+│  │  (active tab: BOM tree, order lines, validation, data grid) ││
+│  ├──────────────────────────────────────────────────────────────┤│
+│  │ Footer: [BIM Designer] [building] [compliance] [API] [v1.0] ││
+│  └──────────────────────────────────────────────────────────────┘│
+│         │ HTTP POST /api                                         │
+│         │ SSE /events (server → browser push)                    │
+└─────────┼────────────────────────────────────────────────────────┘
           │
-┌─────────┼────────────────────────────────────────────────┐
-│  Java DesignerServer (port 9876)                          │
-│         │ NDJSON (same 44 wire actions)                    │
-│         │                                                  │
-│         ├──→ Save (prepareIt): validate ASI, kickback,    │
-│         │    persist to work_output.db                     │
-│         ├──→ Complete (completeIt): merge work_output.db   │
-│         │    → output.db, push COMPILE_COMPLETE            │
-│         │                          │                       │
-└─────────┼──────────────────────────┼───────────────────────┘
-          │                          │ server push
-┌─────────┼──────────────────────────┼───────────────────────┐
-│  Blender (Bonsai)                  ▼                       │
-│  Listener receives COMPILE_COMPLETE → Full Load → viewport │
-│  Bonsai = viewport only: Preview BBoxes / Full Load        │
-└────────────────────────────────────────────────────────────┘
+┌─────────┼────────────────────────────────────────────────────────┐
+│  WebUIServer (port 9878)        Java DesignerServer (port 9876)  │
+│         │ dispatch to DesignerServer + scanLibrary/pollCommands   │
+│         │                                                        │
+│         ├──→ BOM Drop: bomDrop → C_Order + C_OrderLine tree      │
+│         ├──→ Save:     prepareIt → validate, persist work_output │
+│         ├──→ Approve:  compliance gate IP→AP                     │
+│         ├──→ Complete:  completeIt → compile → output.db         │
+│         ├──→ Compile:   compile → output.db + push COMPLETE      │
+│         │                          │                              │
+└─────────┼──────────────────────────┼─────────────────────────────┘
+          │ TCP 9876 (ndjson)        │ pollCommands (HTTP)
+┌─────────┼──────────────────────────┼─────────────────────────────┐
+│  Blender (Bonsai) — viewport only  ▼                              │
+│  30 operators → client.py → DesignerServer                        │
+│  Poll timer (2s) picks up loadOutput/applyScheme from Web UI      │
+│  db_loader renders compiled output.db into viewport               │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
-### Tab Layout
+### Tab Layout (§30.3 — 10 nD panels, aligned S60)
 
-| Tab | Content | UI widget |
-|-----|---------|-----------|
-| **1D** | BOM Designer: BOM Drop tree + Product Chooser + DocAction (Save/Complete) | Tree widget (expand/collapse/drag) + slide-out product panel |
-| **2D** | Import/Export (pending) | File upload + format selector |
-| **3D** | Federation: IFC Extract status + IFCtoBOM trigger | Status cards + action buttons |
-| **4D** | Scheduling | Excel-like editable grid (AG Grid / Handsontable) |
-| **5D** | Costing: material + labour + equipment breakdown | Excel-like grid with column totals |
-| **6D** | Asset Maintenance: asset register + replacement intervals | Sortable/filterable table |
-| **7D** | Tandem IoT: sensor dashboard + alerts | Live chart + alert list |
-| **8** | ERP Reporting: print config + report viewer | Form + preview pane |
-| **9** | NLP Query: search bar + results | Query input + results grid |
-| **10** | Color Studio: palette picker + scheme save/load | Color swatches + save/load buttons |
+| Tab | Name | Content | Status |
+|-----|------|---------|--------|
+| **1D** | **Order** | BOM Drop tree + Order Lines (editable) + ASI panel + DocAction (Save/Approve/Complete/Promote) | **LIVE** |
+| **2D** | **Spatial** | Storey browser + containment tree + Import/Export (IFC import, BOM/Order/IFC export) | Storey: wired. Import: stub |
+| **3D** | **Geometry** | Federation status + building list + Preview/Full Load (Bonsai push) + Compile | **LIVE** |
+| **4D** | **Schedule** | Construction schedule — discipline phases, dependencies, duration | Placeholder (ScheduleDAO) |
+| **5D** | **Cost** | Material + labour + equipment breakdown with totals | Placeholder (CostDAO) |
+| **6D** | **Sustain** | Carbon footprint — CO2e, mass, intensity per element | Placeholder (SustainabilityDAO) |
+| **7D** | **Facility** | Maintenance schedule — asset lifecycle, intervals, recurring costs | Placeholder (FacilityMgmtDAO) |
+| **8** | **Validate** | Compliance summary cards + advisory table + portfolio + balanced scorecard | Advisories: wired. Portfolio: stub |
+| **9** | **BOM** | BOM Outliner (mirrors 1D tree) + NLP Query (10 presets) + Product Catalog Search | **LIVE** |
+| **10** | **Colour** | Bonsai selection sync (SSE) + 4 palettes (realistic/phase/safety/discipline) + apply to Bonsai | **LIVE** |
 
-### DocAction Flow (iDempiere pattern)
+### 1D Order Tab — DocAction Flow (iDempiere pattern)
 
-| Action | iDempiere | What happens |
-|--------|-----------|-------------|
-| **Save** | `prepareIt()` | Validate ASI values, check jurisdiction rules, adjust/kickback invalid numbers. Persist to work_output.db. Web UI shows kicked-back items highlighted red. |
-| **Complete** | `completeIt()` | Incrementally merge validated data from work_output.db → output.db. Server pushes `COMPILE_COMPLETE` to Bonsai listener. Bonsai runs Full Load → geometry in viewport. |
-| **Approve** | BOM promotion | Rare. Promotes design to reusable BOM template. Deferred. |
+| Step | Button | Action | What happens |
+|------|--------|--------|-------------|
+| 1 | **BOM Drop** | `bomDrop` | Pick template → explode BOM → C_Order + C_OrderLine tree. Tree renders in left pane. |
+| 2 | **Save** | `save` | Persist bboxes + variant label to work_output.db. Status: IP (In Progress). |
+| 3 | **Approve** | `approve` | Compliance validation gate. Shows blockers/dangles. Status: IP→AP. |
+| 4 | **Complete** | `prepareIt` + `completeIt` | Validate → compile → output.db. Status: CO. Push to Bonsai. |
+| 5 | **Promote** | `promote` | Write M_BOM entries to BOM.db. Governance gate (requires AP). |
 
-### Complete → Blender Bridge
+### Show in Bonsai — Dual-Screen Workflow (S60)
 
-Server push pattern (option 2 from S55):
-1. Web UI sends `{"action":"compile", ...}` to DesignerServer
-2. Server compiles, writes output.db
-3. Server pushes `{"type":"COMPILE_COMPLETE", "outputDb":"/path/to/output.db"}` to all connected clients
-4. Bonsai's `start_listener()` callback receives the push
-5. Callback schedules `bpy.ops.bim.load_full_federation_viewport_gi()` via `bpy.app.timers`
-6. Geometry appears in Blender viewport
+After BOM Drop, the **"Show in Bonsai"** button pushes lightweight wireframe bboxes to the
+active Bonsai viewport. No compile — instant preview. Designed for dual-monitor setups:
+left screen = Web UI (BOM configurator, order lines, ASI), right screen = Bonsai viewport.
 
-### Tech Stack (Implemented S56)
+```
+Web UI (Screen 1)                     Bonsai (Screen 2)
+┌──────────────────────┐              ┌──────────────────────┐
+│ [BOM Drop] → tree    │              │  ┌──┐               │
+│ [Show in Bonsai] ────┼─ bboxes ───→│  │  │ ┌──┐ wireframe│
+│ [Save] [Approve]     │  ~2s poll    │  └──┘ │  │ preview  │
+│ Order Lines table    │              │       └──┘          │
+│                      │              │  [Full Load] for geo │
+└──────────────────────┘              └──────────────────────┘
+```
 
-- **Static HTML/JS** — vanilla JS, no framework. Single-page app with tab routing
-- **WebSocket** to DesignerServer via `WebUIServer.java` (port 9878) — RFC 6455 handshake + text frames, zero external dependencies (pure JDK `ServerSocket`)
-- **CSS grid** for responsive tab layout — professional dark theme (#1a1a2e palette)
-- **HTML `<table>`** for 4D/5D/6D/7D data grids (AG Grid/Handsontable deferred)
-- **`<details>/<summary>`** for BOM tree with expand/collapse (jsTree deferred)
+**Lightweight preview flow (no compile):**
+1. User clicks "Show in Bonsai" → sends `previewBBoxes` command with `buildingId`
+2. Command queued on server
+3. Bonsai poll timer (2s) picks up `previewBBoxes` command
+4. Handler calls `client.list_order_lines(buildingId)` → gets W/D/H + offsets
+5. Converts order lines to bbox format → `design_bbox.enable(bboxes)`
+6. Category-coloured wireframe boxes appear in viewport — same as Design Mode overlay
 
-### Implementation (S56)
+**Full geometry when ready:**
+- User clicks **Full Load** in Bonsai panel → loads compiled output.db with meshes
+- Or clicks **Complete** in Web UI → compiles + auto-pushes full geometry
+
+**Why wireframe first:**
+- Instant feedback — no compile wait (0s vs 2-4s for DemoHouse, minutes for large buildings)
+- Same visual language as Design Mode (§17.3) — category colours, grey context, vivid focus
+- Edits in Web UI (add room, swap product, change dimensions) push updated bboxes immediately
+- Full geometry only needed for final review, not during configuration
+
+**Industry precedent — browser-to-viewport push:**
+
+| Product | Web→Viewport | Preview? | Cloud? |
+|---------|-------------|----------|--------|
+| **Autodesk Forma** | Web massing → Revit via cloud bridge | Yes (massing boxes) | Yes |
+| **Hypar** | Web configurator → Rhino/Revit plugin | Yes (parametric preview) | Yes |
+| **Arkio** | VR/web → Revit/ArchiCAD live link | Yes (low-poly sync) | Yes |
+| **Rhino.Compute / ShapeDiver** | Web → server-side Grasshopper → viewport | Mesh only | Yes |
+| **Trimble Connect** | Web dashboard → SketchUp/Tekla | Model sync | Yes |
+| **Finch3D** | AI optimizer (web) → Revit | Floor plan preview | Yes |
+| **BIM Designer** | Web UI → local TCP poll → Bonsai | **Wireframe bbox** | **No** (offline) |
+
+None of these projects use Bonsai/Blender as their viewport. BIM Designer is the only
+open-source implementation of this pattern, and the only one that works entirely offline.
+The local TCP + HTTP poll architecture has zero cloud dependency — the same dual-screen
+experience as Forma or Hypar, but running on `localhost`.
+
+### Complete → Bonsai Bridge
+
+Same mechanism as "Show in Bonsai" but triggered by the Complete button:
+1. Browser sends `completeIt` → WebUIServer → DesignerServer
+2. Server compiles, writes output.db, returns `{elementCount, compileTimeMs}`
+3. WebUIServer SSE-broadcasts `compileComplete` to browser
+4. WebUIServer queues `loadOutput` command with `outputDbPath`
+5. Bonsai poll timer (2s) calls `pollCommands()` → receives `loadOutput`
+6. `db_loader.load_from_db(outputDbPath)` → geometry appears in Blender viewport
+
+### Bidirectional Sync — Bonsai ↔ Web UI (S57)
+
+| Direction | Mechanism | Events |
+|-----------|-----------|--------|
+| Server → Browser | SSE `/events` | `selectionChanged`, `compileComplete`, `schemeApplied` |
+| Browser → Server | `POST /api` | All 47+ actions via `send(action, params)` |
+| Browser → Bonsai | `POST /api applyScheme` | Queue command → Bonsai polls via `pollCommands` |
+| Bonsai → Server | TCP ndjson (port 9876) | 30 operators via `client.py._send()` |
+| Bonsai → Browser | TCP push | `COMPILE_COMPLETE` → SSE relay to browser |
+
+### Tech Stack
+
+- **Static HTML/JS** — vanilla JS, no framework. SPA with tab routing (`#tab=4d`)
+- **HTTP POST** — `fetch()` API, no WebSocket dependency
+- **SSE** — Server-Sent Events for real-time push (selection, compile, scheme)
+- **CSS Grid + Flexbox** — responsive dark theme (#1a1a2e bg, #e94560 accent)
+- **`<details>/<summary>`** — BOM tree with expand/collapse
+- **Split pane** — BOM tree (left) + ASI panel (right) in 1D tab
+
+### Implementation
 
 | File | Path | Purpose |
 |------|------|---------|
-| WebUIServer.java | `BonsaiBIMDesigner/.../api/` | JDK HttpServer — static files + `POST /api` JSON dispatch |
-| WebSocketHandler.java | `BonsaiBIMDesigner/.../api/` | RFC 6455 (retained for future use, not used by browser) |
-| index.html | `webui/` | SPA shell — 10 tabs, building selector, status bar |
-| app.js | `webui/` | `fetch()` API client, tab renderers, color palettes |
-| style.css | `webui/` | Professional dark theme, cards, data tables, BOM tree |
+| WebUIServer.java | `BonsaiBIMDesigner/.../api/` | JDK HttpServer — static files + `POST /api` + `GET /events` SSE |
+| index.html | `webui/` | SPA shell — 10 tabs (§30.3 aligned), header search, status bar |
+| app.js | `webui/` | 30+ functions, `fetch()` API, SSE listener, 4 palettes, BOM tree renderer |
+| style.css | `webui/` | Dark theme, cards, data tables, BOM tree, split pane, sync indicators |
 
-**Server architecture:** WebUIServer uses JDK `com.sun.net.httpserver.HttpServer`
-(same proven pattern as BackOfficeServer). Two endpoints:
+**Two HTTP endpoints:**
 - `GET /*` → static files from `webui/`
-- `POST /api` → JSON action dispatch → `DesignerServer.dispatch()` + `scanLibrary`
-
-No WebSocket — browser uses `fetch()` (HTTP POST). This avoids browser compatibility
-issues. All 47+ wire actions are available via the same JSON format.
+- `POST /api` → JSON dispatch → `DesignerServer.dispatch()` + `scanLibrary` + `pollCommands`
+- `GET /events` → SSE stream (selectionChanged, compileComplete, schemeApplied)
 
 **Standalone operation:** `./scripts/run_webui.sh` starts the server. No Bonsai needed.
-User opens http://localhost:9878, selects a building from the dropdown (populated by
-scanning `library/*_BOM.db` files), and works with BOM/schedule/cost data.
+User opens http://localhost:9878, selects a building, and works with BOM/schedule/cost data.
 
-**`scanLibrary` action:** Scans `library/` for `*_BOM.db` files, queries `C_DocType`
-from each for name/element count. Returns all available buildings with database paths.
+**Global search:** Header search bar routes to NLP Query (questions) or Product Catalog (keywords).
 
-**Bonsai integration:** All 10 panels have "Open in Web UI" button (`BIM_OT_launch_web_ui`)
-→ `webbrowser.open("http://localhost:9878/#tab=4d")`. 3 new panels: 1D, 2D, 8.
+**Bonsai integration:** All 10 Bonsai panels have "Open in Web UI" button (`BIM_OT_launch_web_ui`
+→ `webbrowser.open("http://localhost:9878/#tab=4d")`). Poll timer syncs compile output + colour schemes.
 
 **Witnesses:** W-WS-1 (scanLibrary API), W-WS-2 (listBuildings dispatch), W-WS-3 (static HTML).
-DesignerServerTest: 21/21 GREEN. SRS: BIM_Designer_SRS.md §29.
+DesignerServerTest: 21/21 GREEN. SRS: BIM_Designer_SRS.md §29. Spec: S60_UI_ALIGNMENT_SPEC.md.
+
+### Bonsai 10-Item Client Flow (verified S60)
+
+All 30 operators in `operator.py` → `client.py` → DesignerServer. Core 10:
+
+| # | Operation | Client Method | Operator |
+|---|-----------|--------------|----------|
+| 1 | Create New | `create_new()` | `BIM_OT_designer_create_new` |
+| 2 | Snap/Validate | `snap()` | `BIM_OT_designer_snap` |
+| 3 | Save | `save()` | `BIM_OT_designer_save` |
+| 4 | Order Lines | `list_order_lines()` | `BIM_OT_designer_list_order_lines` |
+| 5 | BOM Tree | `get_bom_tree()` | `BIM_OT_designer_get_bom_tree` |
+| 6 | BOM Drop | `bom_drop()` | `BIM_OT_designer_bom_drop` |
+| 7 | Approve | `approve()` | `BIM_OT_designer_approve` |
+| 8 | Promote | `promote()` | `BIM_OT_designer_promote` |
+| 9 | Compile | `compile()` | `BIM_OT_designer_compile` |
+| 10 | Sync | `poll_commands()` | `_poll_commands_timer()` (2s) |
+
+Full verification table: [S60_UI_ALIGNMENT_SPEC.md](S60_UI_ALIGNMENT_SPEC.md) §4.
+
+### Federation Module Gap (S60 finding)
+
+The IfcOpenShell federation module (`/home/red1/IfcOpenShell/.../federation/`) implements
+**70+ operators** including clash detection (28 ops), 4D schedule generation, 5D BOQ,
+6D digital twin, 7D IoT, and BCF export. These are currently Python-local in Bonsai.
+
+**HIGH priority items to migrate to Java backend** (enabling Web UI access):
+- Clash detection → Tab 8 Validate
+- Schedule generation → Tab 4D
+- BOQ generation → Tab 5D
+- BCF export → Tab 8 Validate
+- Asset import → Tab 6D/7D
+
+Full gap analysis: [S60_UI_ALIGNMENT_SPEC.md](S60_UI_ALIGNMENT_SPEC.md) §3.
 
 ### Why Not Blender?
 
@@ -817,15 +914,15 @@ DesignerServerTest: 21/21 GREEN. SRS: BIM_Designer_SRS.md §29.
 
 ### Beta Readiness Checklist
 
-The engine is proven (330 tests GREEN, 34 Rosetta Stone buildings). The GUI
-needs Web UI + Blender viewport integration before beta release.
+The engine is proven (392 tests GREEN, 35 Rosetta Stone buildings, 22 ALL GREEN).
+The Work Order path compiles end-to-end (W-WO-1). S60 ERP alignment in progress.
 
 | Priority | Task | Status | Effort |
 |----------|------|--------|--------|
-| **1** | **Blender visual test** — install addon, screenshot every panel state | NOT DONE | 1 session |
-| **2** | **Wire compile to real pipeline** (createNew → DM_BOM.db → compile → output.db) | NOT DONE | Medium |
-| **3** | **Federation integration test** (Design Mode + Full Load after compile) | NOT DONE | 1 session |
-| **4** | **Back Office UI** — web dashboard for portfolio/reports | NOT DONE | Multi-session |
+| **1** | **S60 ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | IN PROGRESS | [S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md) |
+| **2** | **Wire 4D-7D tabs to real DAO data** — ScheduleDAO/CostDAO/etc. already exist | NOT DONE | 1 session |
+| **3** | **Migrate federation operators to Java** — clash detection, BOQ, schedule | NOT DONE | Multi-session |
+| **4** | **DemoHouse UAT** — §30.4 end-to-end from either surface | NOT DONE | 1 session |
 | 5 | First-time user walkthrough vs SRS Journey 1 ("3 minutes to first building") | NOT DONE | 1 session |
 
 ### Feature Gates
@@ -839,16 +936,16 @@ needs Web UI + Blender viewport integration before beta release.
 | G-5 | BOM Chooser + Place + Inference | **DONE** (s27, 87 tests) |
 | G-6 | Compile Bridge (real pipeline) | **DONE** (s29) |
 | G-7 | Assembly Builder (MAKE path) | **DONE** (s35, 16 witnesses) |
-| G-8 | BlenderBridge pipe (Snap + incremental) | planned |
-| G-9 | ORDER View + BOM Outliner | planned |
-| G-10 | Promote to BOM (governance gate) | planned |
-| G-11 | ParametricMesh UI | planned |
-| G-12 | Text Mode (search + NL) | planned |
-| G-13 | Click-to-Place (interactive placement) | planned |
+| G-8 | Click-to-Place (interactive placement) | **DONE** (s45, 15 witnesses) |
+| G-9 | ORDER View + BOM Outliner | **DONE** (s46, 7 witnesses) |
+| G-10 | Promote to BOM (governance gate) | wired (promote API) |
+| G-11 | Web UI Frontend (10 tabs) | **DONE** (s56, 21 tests) |
+| G-12 | BOM Drop + Work Order path | **DONE** (s59, W-WO-1 6/6 GREEN) |
+| G-13 | Bidirectional Sync (Bonsai ↔ HTML) | **DONE** (s57, SSE + pollCommands) |
+| G-14 | ERP Model Alignment (C_OrderLine path) | IN PROGRESS (s60) |
 | BO-1 | Back Office print configurator | **DONE** (s39d, 5 witnesses) |
-| BO-2 | AD_Process report execution queue | planned |
+| BO-2 | BIMEyes advisory + EYES integration | **DONE** (s50, 28 proofs) |
 | I-1..4 | Infrastructure Designer | **DONE** (snap, terrain, cut-fill) |
-| I-5 | BlenderBridge terrain viewport | planned |
 
 ---
 
@@ -861,7 +958,9 @@ needs Web UI + Blender viewport integration before beta release.
 [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) (infrastructure) |
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements) |
 [CORE_SRS.md](CORE_SRS.md) (scale research, report engine, compliance) |
+[S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md) (ERP model alignment) |
+[S60_UI_ALIGNMENT_SPEC.md](S60_UI_ALIGNMENT_SPEC.md) (UI + federation gap analysis) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
 
 ---
-*v0.9 — 2026-03-22, session 56. Web UI frontend implemented (§13). Updated as features are built and tested.*
+*v1.0 — 2026-03-23, session 60. Tabs aligned to §30.3, BOM tree fixed, Bonsai 10-item flow verified, federation gap analysis completed.*
