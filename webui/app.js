@@ -230,8 +230,15 @@ const BIM = (() => {
         document.querySelectorAll('.order-line-row').forEach(r => r.classList.remove('selected'));
         const row = document.querySelector('.order-line-row[data-line-id="' + lineId + '"]');
         if (row) row.classList.add('selected');
-        // Load ASI for this line
+        // Show ASI card and load attributes
+        document.getElementById('asiCard').style.display = '';
         loadASI(lineId);
+    }
+
+    function closeASI() {
+        document.getElementById('asiCard').style.display = 'none';
+        selectedOrderLineId = 0;
+        document.querySelectorAll('.order-line-row').forEach(r => r.classList.remove('selected'));
     }
 
     function loadASI(lineId) {
@@ -831,7 +838,7 @@ const BIM = (() => {
     return {
         send, bomDrop, save, compile, completeOrder,
         loadBuildings, selectBuilding, loadDetail,
-        selectLine, loadASI, onASIChange, editCell,
+        selectLine, closeASI, loadASI, onASIChange, editCell,
         loadSchedule, loadCost, loadCarbon, loadMaintenance, loadPortfolio,
         searchProducts, setQuery, executeQuery, clearQueryResults,
         selectPalette, filterDiscipline,

@@ -36,7 +36,7 @@
 <!-- ── Content ──────────────────────────────────────────── -->
 <div class="content" id="content">
 
-    <!-- ── 1D: Order Configurator (§29.5) ────────────────── -->
+    <!-- ── 1D: Sales Order (§29.5) ────────────────────────── -->
     <div class="tab-panel active" id="panel-1d">
         <div class="doc-action-bar">
             <select class="building-selector" id="bomProductSelect" style="min-width:240px">
@@ -46,50 +46,15 @@
             <button class="btn" onclick="BIM.save()">Save</button>
             <button class="btn btn-success" onclick="BIM.completeOrder()">Complete</button>
             <span class="status-text" id="docStatus">Draft</span>
-        </div>
-
-        <div class="split-pane">
-            <div class="split-left">
-                <div class="card" style="height:100%">
-                    <div class="card-header">
-                        <span class="card-title">BOM Tree</span>
-                        <span class="card-subtitle" id="bomCount">0 items</span>
-                    </div>
-                    <div class="bom-tree" id="bomTree">
-                        <div class="placeholder">
-                            <div class="icon">&#9776;</div>
-                            <h3>No BOM loaded</h3>
-                            <p>Select a BOM template and click BOM Drop.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="split-right">
-                <div class="card" style="height:100%" id="asiCard">
-                    <div class="card-header">
-                        <span class="card-title">Attributes (ASI)</span>
-                        <span class="card-subtitle" id="asiLineRef">No line selected</span>
-                    </div>
-                    <div id="asiPanel">
-                        <div class="placeholder" style="padding:30px 10px">
-                            <div class="icon" style="font-size:32px">&#9881;</div>
-                            <p>Click an order line to edit its attributes.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <span class="card-subtitle" id="orderLineCount" style="margin-left:8px">0 lines</span>
         </div>
 
         <div class="card">
-            <div class="card-header">
-                <span class="card-title">Order Lines</span>
-                <span class="card-subtitle" id="orderLineCount">0 lines</span>
-            </div>
             <div style="overflow-x:auto">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Line</th>
+                            <th>#</th>
                             <th>Product</th>
                             <th>Host</th>
                             <th>Category</th>
@@ -103,6 +68,15 @@
                     <tbody id="orderLinesBody"></tbody>
                 </table>
             </div>
+        </div>
+
+        <div class="card" id="asiCard" style="display:none">
+            <div class="card-header">
+                <span class="card-title">Attributes (ASI)</span>
+                <span class="card-subtitle" id="asiLineRef">No line selected</span>
+                <button class="btn" onclick="BIM.closeASI()" style="padding:2px 10px;font-size:11px">Close</button>
+            </div>
+            <div id="asiPanel"></div>
         </div>
     </div>
 
