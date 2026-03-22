@@ -1,8 +1,7 @@
 # PROGRESS — Current Development State
 
-> **Housekeeping:** `library/component_library.db` is tracked in git but blocked from commit by pre-commit hook (Gate 1).
-> Before final release: commit a pristine snapshot, then `git rm --cached library/component_library.db` to untrack.
-> All schema changes go through `migration/` scripts only.
+> **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and PROGRESS
+> links to them. Keep this file under 80 lines.
 
 ## Current State
 
@@ -38,43 +37,8 @@
   Bonsai bridge: pollCommands timer (2s interval) picks up loadOutput → db_loader populates viewport.
   §30.2 sync table: all 6 directions DONE. §30.5 priority #1 DONE, #2 DONE.
 
-**Next: S60 — ERP Model Alignment (iDempiere BOM pattern):**
-  Align compilation pipeline to pure iDempiere C_Order → C_OrderLine → BOM Drop model.
-  **Spec changes already applied:** BBC.md §1, ConstructionAsERP.md §1 updated.
-
-  **Key principles (agreed with user):**
-  1. ONE C_DocType: "Construction Order" — metadata only, not a compilation driver
-  2. No M_BomCategory — use M_Product_Category instead (product IS its category)
-  3. Products with IsBOM=Y ARE BOMs — no separate bom_type hierarchy
-  4. Compiler walks C_OrderLine tree, not m_bom directly
-  5. YAML is the test script (creates C_Order + OrderLines), not a pipeline driver
-
-  **Schema gaps (from UI session review):**
-
-  | Gap | Table | Column/Feature | Purpose |
-  |-----|-------|---------------|---------|
-  | U2 | C_OrderLine | `Discipline TEXT DEFAULT 'ARC'` | Add FP/MEP/ELEC discipline lines to an order |
-  | U3 | C_Order | `Jurisdiction TEXT` | MY/US/UK — determines which building code rules apply |
-  | U4 | C_Order | `OccupancyClass TEXT` | LH/OH1 — NFPA 13 occupancy for FP calculations |
-  | U5 | DAO | `OrderLineHydrationDAO` | Convert validated C_OrderLine → PlacementRequest for compiler |
-  | U6 | Table+DAO | `AD_Val_Rule_Exception` | User override of WARN validation (accept known deviation) |
-
-  **Code changes needed:**
-  1. Schema migration: add Discipline/Jurisdiction/OccupancyClass columns + AD_Val_Rule_Exception table
-  2. `CompilationPipeline.run()` → accept C_Order ID, walk C_OrderLine tree (not C_DocType lookup)
-  3. `BuildingRegistryTest` → create C_Order + bomDrop per building, then compile via OrderLine path
-  4. `run_RosettaStones.sh` → use bomDrop + completeIt (same path as WorkOrderCompileTest)
-  5. Remove C_DocType as compilation entry point (keep as order metadata)
-  6. Replace M_BomCategory references with M_Product_Category
-  7. OrderLineHydrationDAO: C_OrderLine → PlacementRequest (bridge between order and compiler)
-  8. Wire AD_Val_Rule validation with exception override (U6)
-  9. Add visual diff report: per-element TSV under `--diff` flag
-  10. Script accepts building prefixes as arguments, small files default, large files explicit
-
-  **Already proven:** WorkOrderCompileTest (W-WO-1: bomDrop→compile→60 el),
-  BomDropConfigureTest (TC-4: roof swap→95 el). The OrderLine path works.
-
-  **Database backup:** `backup/db_snapshot_20260323_014819/` (1.5GB)
+**Next: S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/S60_ERP_ALIGNMENT.md)
+  C_Order → C_OrderLine → BOM Drop → compile. 10 code changes, 5 schema gaps (U2-U6).
 
 ## Session Log (recent first)
 
