@@ -81,15 +81,11 @@ class OrderConfiguratorTest {
     @Test @Order(2)
     @DisplayName("W-OC-2: findActiveSubOrder finds the BOM Drop order by buildingProductId")
     void w_oc_2_find_active_sub_order() throws Exception {
-        // This is the critical test — listOrderLines depends on this
+        // Parent_Order_ID = buildingProductId (BUG-1 fix)
+        // findActiveSubOrder queries WHERE Parent_Order_ID = 'BUILDING_SH_STD'
         var lines = woDao.listOrderLines("BUILDING_SH_STD");
-        // At this point, order exists but has no lines yet
-        // The key question: can findActiveSubOrder find it?
-        // It queries: WHERE Parent_Order_ID = 'BUILDING_SH_STD' AND DocStatus IN ('DR','IP')
-        //
-        // Bug: createBomDropOrder sets Parent_Order_ID = NULL
-        // So this will return empty until fixed.
         assertNotNull(lines, "listOrderLines must not return null");
+        // Order exists but no lines yet — empty is correct at this stage
     }
 
     @Test @Order(3)
@@ -158,22 +154,9 @@ class OrderConfiguratorTest {
             }
         }
 
-        // Now test listOrderLines(buildingId) — depends on findActiveSubOrder
+        // listOrderLines(buildingId) uses findActiveSubOrder(Parent_Order_ID = buildingProductId)
         var lines = woDao.listOrderLines("BUILDING_SH_STD");
-        // If this fails with 0 lines, Bug #1 is confirmed:
-        // createBomDropOrder sets Parent_Order_ID = NULL
-        if (lines.isEmpty()) {
-            // ── FIX: Update Parent_Order_ID to make findActiveSubOrder work ──
-            try (PreparedStatement ps = workConn.prepareStatement(
-                    "UPDATE C_Order SET Parent_Order_ID = Name WHERE Parent_Order_ID IS NULL AND C_Order_ID = ?")) {
-                ps.setString(1, orderId);
-                ps.executeUpdate();
-            }
-            lines = woDao.listOrderLines("BUILDING_SH_STD");
-            assertFalse(lines.isEmpty(),
-                    "After fix: listOrderLines must find lines via Parent_Order_ID = Name");
-        }
-        assertEquals(12, lines.size(), "All 12 lines must be returned");
+        assertEquals(12, lines.size(), "All 12 lines must be returned via findActiveSubOrder");
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -202,15 +185,21 @@ class OrderConfiguratorTest {
     }
 
     @Test @Order(8)
-    @DisplayName("W-OC-8: updateOrderLine rejects non-whitelisted fields")
-    void w_oc_8_reject_non_whitelisted() throws Exception {
-        // bom_category is NOT in EDITABLE_FIELDS — should fail
-        boolean updated = woDao.updateOrderLine(roofLineId, "bom_category", "RF_PITCHED");
-        assertFalse(updated, "bom_category must be rejected (not in whitelist)");
+    @DisplayName("W-OC-8: updateOrderLine rejects dangerous fields, allows category/product swap")
+    void w_oc_8_field_whitelist() throws Exception {
+        // bom_category and family_ref ARE now whitelisted (for category swap)
+        boolean updated = woDao.updateOrderLine(roofLineId, "bom_category", "RF");
+        assertTrue(updated, "bom_category must be editable (category swap)");
 
-        // family_ref also not whitelisted
-        updated = woDao.updateOrderLine(roofLineId, "family_ref", "ROOF_PITCHED");
-        assertFalse(updated, "family_ref must be rejected (not in whitelist)");
+        updated = woDao.updateOrderLine(roofLineId, "family_ref", "ROOF_ASSEMBLY");
+        assertTrue(updated, "family_ref must be editable (product swap)");
+
+        // But SQL-injection-prone fields must still be blocked
+        updated = woDao.updateOrderLine(roofLineId, "C_Order_ID", "HACKED");
+        assertFalse(updated, "C_Order_ID must be rejected");
+
+        updated = woDao.updateOrderLine(roofLineId, "IsActive", "0");
+        assertFalse(updated, "IsActive must be rejected");
     }
 
     @Test @Order(9)
@@ -372,9 +361,8 @@ class OrderConfiguratorTest {
     // ══════════════════════════════════════════════════════════════════
 
     @Test @Order(30)
-    @DisplayName("BUG-1: createBomDropOrder Parent_Order_ID is NULL → findActiveSubOrder fails")
-    void bug_1_parent_order_id_null() throws Exception {
-        // Create a fresh order to test the raw behavior
+    @DisplayName("BUG-1 FIXED: createBomDropOrder sets Parent_Order_ID = buildingProductId")
+    void bug_1_fixed_parent_order_id() throws Exception {
         Connection freshConn = DriverManager.getConnection("jdbc:sqlite::memory:");
         WorkOutputDAO freshDao = new WorkOutputDAO(freshConn);
         freshDao.initSchema();
@@ -383,40 +371,35 @@ class OrderConfiguratorTest {
         freshDao.insertBomDropLine(freshOrderId, 0, "TEST", "BUILDING", "GF",
                 0, 0, 0, 1000, 1000, 1000, 1);
 
-        // This SHOULD return 1 line but returns 0 due to Parent_Order_ID = NULL
+        // Parent_Order_ID should now be set → findActiveSubOrder works
         var lines = freshDao.listOrderLines("TEST_BUG");
+        assertEquals(1, lines.size(), "BUG-1 FIXED: listOrderLines finds line via Parent_Order_ID");
 
-        if (lines.isEmpty()) {
-            // Bug confirmed — document it
-            System.out.println("[BUG-1 CONFIRMED] createBomDropOrder sets Parent_Order_ID = NULL");
-            System.out.println("  Fix: INSERT should use Parent_Order_ID = buildingProductId");
-
-            // Verify the raw data
-            try (Statement stmt = freshConn.createStatement();
-                 ResultSet rs = stmt.executeQuery(
-                         "SELECT Parent_Order_ID FROM C_Order WHERE C_Order_ID = '" + freshOrderId + "'")) {
-                assertTrue(rs.next());
-                assertNull(rs.getString("Parent_Order_ID"),
-                        "Bug: Parent_Order_ID is NULL, should be 'TEST_BUG'");
-            }
-        } else {
-            // Bug is fixed — verify it works correctly
-            assertEquals(1, lines.size(), "Should find 1 line after fix");
+        // Verify Parent_Order_ID is set correctly
+        try (Statement stmt = freshConn.createStatement();
+             ResultSet rs = stmt.executeQuery(
+                     "SELECT Parent_Order_ID FROM C_Order WHERE C_Order_ID = '" + freshOrderId + "'")) {
+            assertTrue(rs.next());
+            assertEquals("TEST_BUG", rs.getString("Parent_Order_ID"));
         }
 
         freshConn.close();
     }
 
     @Test @Order(31)
-    @DisplayName("BUG-2: EDITABLE_FIELDS missing bom_category for category swap")
-    void bug_2_category_not_editable() throws Exception {
+    @DisplayName("BUG-2 FIXED: bom_category and family_ref now editable")
+    void bug_2_fixed_category_editable() throws Exception {
         boolean canEditCategory = woDao.updateOrderLine(roofLineId, "bom_category", "RF_PITCHED");
-        if (!canEditCategory) {
-            System.out.println("[BUG-2 CONFIRMED] bom_category not in EDITABLE_FIELDS");
-            System.out.println("  Fix: add 'bom_category' and 'family_ref' to whitelist");
-        }
-        // Test documents current behavior — does not assert pass/fail
-        // because the fix hasn't been applied yet
+        assertTrue(canEditCategory, "BUG-2 FIXED: bom_category must be editable");
+
+        var roof = woDao.getOrderLine(roofLineId);
+        assertEquals("RF_PITCHED", roof.bomCategory(), "Category must be updated");
+
+        boolean canEditProduct = woDao.updateOrderLine(roofLineId, "family_ref", "ROOF_PITCHED_ASM");
+        assertTrue(canEditProduct, "family_ref must be editable for product swap");
+
+        roof = woDao.getOrderLine(roofLineId);
+        assertEquals("ROOF_PITCHED_ASM", roof.familyRef(), "Product must be swapped");
     }
 
     @Test @Order(32)

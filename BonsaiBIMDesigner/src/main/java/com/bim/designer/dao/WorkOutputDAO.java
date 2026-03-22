@@ -480,7 +480,12 @@ public class WorkOutputDAO {
     /** Whitelist of fields editable via ORDER View inline editing. */
     private static final java.util.Set<String> EDITABLE_FIELDS = java.util.Set.of(
             "aabb_width_mm", "aabb_depth_mm", "aabb_height_mm",
-            "dx", "dy", "dz", "Qty");
+            "dx", "dy", "dz", "Qty",
+            "bom_category", "family_ref", "host_type");
+
+    /** Text-type fields — use setString, not setDouble. */
+    private static final java.util.Set<String> TEXT_FIELDS = java.util.Set.of(
+            "bom_category", "family_ref", "host_type");
 
     /**
      * Update a single field on a C_OrderLine (ORDER View inline edit).
@@ -500,10 +505,32 @@ public class WorkOutputDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             if ("Qty".equals(field)) {
                 ps.setInt(1, Integer.parseInt(value));
+            } else if (TEXT_FIELDS.contains(field)) {
+                ps.setString(1, value);
             } else {
                 ps.setDouble(1, Double.parseDouble(value));
             }
             ps.setInt(2, orderLineId);
+            return ps.executeUpdate() > 0;
+        }
+    }
+
+    /**
+     * Swap the product on a C_OrderLine — iDempiere BOM configurator pattern.
+     * Updates both family_ref and M_Product_ID (they are kept in sync).
+     * Used for BOM Drop swap: user navigates tree, picks a node, swaps product.
+     *
+     * // Implementing GENERATIVE_HOUSE_SRS.md §2.1 TC-4 — Witness: W-SWAP-1
+     */
+    public boolean swapProduct(int orderLineId, String newProductId) throws SQLException {
+        String sql = """
+                UPDATE C_OrderLine SET family_ref = ?, M_Product_ID = ?,
+                    updated = datetime('now')
+                WHERE C_OrderLine_ID = ? AND IsActive = 1""";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newProductId);
+            ps.setString(2, newProductId);
+            ps.setInt(3, orderLineId);
             return ps.executeUpdate() > 0;
         }
     }
@@ -584,14 +611,15 @@ public class WorkOutputDAO {
         String sql = """
                 INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
                     DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                VALUES (?, NULL, 'BOM_DROP', ?, 'DR', ?, ?, ?)
+                VALUES (?, ?, 'BOM_DROP', ?, 'DR', ?, ?, ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
-            ps.setString(2, buildingProductId);
-            ps.setDouble(3, widthMm);
-            ps.setDouble(4, depthMm);
-            ps.setDouble(5, heightMm);
+            ps.setString(2, buildingProductId);  // Parent_Order_ID = product ID (findActiveSubOrder key)
+            ps.setString(3, buildingProductId);
+            ps.setDouble(4, widthMm);
+            ps.setDouble(5, depthMm);
+            ps.setDouble(6, heightMm);
             ps.executeUpdate();
         }
         BIMLogger.info(TAG, "BOM_DROP order created: {} for product {}", orderId, buildingProductId);
