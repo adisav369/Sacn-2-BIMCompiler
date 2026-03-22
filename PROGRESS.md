@@ -37,10 +37,14 @@
   Bonsai bridge: pollCommands timer (2s interval) picks up loadOutput → db_loader populates viewport.
   §30.2 sync table: all 6 directions DONE. §30.5 priority #1 DONE, #2 DONE.
 
-**Next: S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/S60_ERP_ALIGNMENT.md)
-  C_Order → C_OrderLine → BOM Drop → compile. 10 code changes, 5 schema gaps (U2-U6).
+**[IN PROGRESS] S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/S60_ERP_ALIGNMENT.md)
+  BomDropper + OrderLineWalker wired into Rosetta Stone pipeline. SH/FK/DM gates pass.
+  DX G2/G3 drift is pre-existing (uncommitted component_library.db, not S60).
+  Remaining: FP discipline wiring, validation (U5/U6), reference re-baseline at end.
 
 ## Session Log (recent first)
+
+**S60** — ERP Model Alignment. BomDropper creates C_OrderLine tree in compile DB; OrderLineWalker walks it via bom_child_id FK join-back to m_bom_line. PlacementLoader auto-detects OrderLine path. SH (55), FK (82), DM (60) all GREEN through new path. Schema: C_Order + C_OrderLine in compile DB, S60_schema.sql (U2-U4, U6). Seal re-sealed.
 
 **S59** — Work Order path + HTML↔Bonsai sync. W-WO-1: WorkOrderCompileTest 6/6 GREEN (bomDrop→compile→60 el). HTML UI: DocAction buttons (save/approve/complete/promote), bomDrop renders tree, compile passes paths. Bonsai bridge: pollCommands timer + db_loader viewport load. §30.2 sync complete. 392/392 GREEN.
 **S59-S2** — Post-swap compilation. W-DM-TC4-1 GREEN: bomDrop(SH) + swapProduct(roof→FK_DG_STR) + compile → 95 elements. G1/G5/G8 pass. BomDropConfigureTest 6/6 GREEN. No pipeline code changes.
