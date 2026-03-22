@@ -21,7 +21,7 @@
 
 <!-- ── Tab Bar ──────────────────────────────────────────── -->
 <div class="tab-bar" id="tabBar">
-    <div class="tab active" data-tab="1d">1D BOM</div>
+    <div class="tab active" data-tab="1d">1D Order</div>
     <div class="tab" data-tab="2d">2D Import</div>
     <div class="tab" data-tab="3d">3D Federation</div>
     <div class="tab" data-tab="4d">4D Schedule</div>
@@ -82,10 +82,31 @@
 
     <!-- ── 2D: Import/Export ─────────────────────────────── -->
     <div class="tab-panel" id="panel-2d">
-        <div class="placeholder">
-            <div class="icon">&#128462;</div>
-            <h3>Import / Export</h3>
-            <p>IFC import, YAML export, and format conversion tools. Coming soon.</p>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">IFC Import</span>
+            </div>
+            <div class="btn-group" style="margin-bottom:12px">
+                <button class="btn btn-primary" onclick="BIM.importIFC()">Select IFC File</button>
+                <button class="btn" onclick="BIM.onboardIFC()">Onboard to Library</button>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr><th>File</th><th>Schema</th><th class="num">Elements</th><th>Status</th></tr>
+                </thead>
+                <tbody id="importBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Export</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn" onclick="BIM.exportBOM()">Export BOM (CSV)</button>
+                <button class="btn" onclick="BIM.exportOrder()">Export Order (JSON)</button>
+                <button class="btn" onclick="BIM.exportIFC()">Export IFC</button>
+            </div>
         </div>
     </div>
 
@@ -107,12 +128,12 @@
                 <span>DB Path: </span><code id="fedDbPath" style="color:var(--text)">No building selected</code>
             </div>
             <div class="btn-group" style="margin-top:8px">
-                <button class="btn" onclick="alert('Preview BBoxes requires Bonsai viewport.\nSelect a building and use Bonsai panel.')">Preview BBoxes</button>
-                <button class="btn" onclick="alert('Full Load requires Bonsai viewport.\nSelect a building and use Bonsai panel.')">Full Load</button>
+                <button class="btn" onclick="BIM.previewInBonsai()">Preview BBoxes</button>
+                <button class="btn" onclick="BIM.fullLoadInBonsai()">Full Load</button>
                 <button class="btn btn-primary" onclick="BIM.compile()">Compile</button>
             </div>
             <div style="margin-top:8px; font-size:11px; color:var(--text-dim)">
-                Preview / Full Load require Bonsai (viewport). Compile works standalone.
+                Preview / Full Load push to Bonsai via sync. Compile works standalone.
             </div>
         </div>
 
@@ -350,7 +371,7 @@
     <span id="footerBuilding">No building selected</span>
     <span class="spacer"></span>
     <span id="footerWs">API: ready</span>
-    <span id="footerVersion">v0.8</span>
+    <span id="footerVersion">v0.9-S57</span>
 </div>
 
 <script src="app.js"></script>

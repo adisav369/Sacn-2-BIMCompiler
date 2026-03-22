@@ -442,7 +442,56 @@ const BIM = (() => {
         }).catch(e => alert('Compile failed: ' + e.message));
     }
 
+    // ── 2D: Import/Export ────────────────────────────────────
+
+    function importIFC() { alert('IFC import: select .ifc file to onboard into library.'); }
+    function onboardIFC() { alert('Onboard: runs scripts/onboard_ifc.sh on selected file.'); }
+    function exportBOM() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        send('exportBOM', { buildingId: currentBuilding }).then(data => {
+            alert('BOM exported: ' + (data.path || 'check output/'));
+        }).catch(() => alert('Export not yet wired.'));
+    }
+    function exportOrder() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        send('exportOrder', { buildingId: currentBuilding }).then(data => {
+            alert('Order exported: ' + (data.path || 'check output/'));
+        }).catch(() => alert('Export not yet wired.'));
+    }
+    function exportIFC() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        alert('IFC export requires compilation output. Use Complete first.');
+    }
+
     // ── 3D: Federation ──────────────────────────────────────
+
+    function previewInBonsai() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        const info = buildingDb[currentBuilding];
+        send('applyScheme', {
+            command: 'loadOutput',
+            schemeName: 'preview',
+            objectName: currentBuilding,
+            outputDbPath: info ? info.dbFile : ''
+        }).then(() => {
+            document.getElementById('applyFeedback').textContent =
+                'Preview sent to Bonsai: ' + currentBuilding;
+        }).catch(() => alert('Sync not active. Start sync in Bonsai first.'));
+    }
+
+    function fullLoadInBonsai() {
+        if (!currentBuilding) { alert('Select a building first'); return; }
+        const info = buildingDb[currentBuilding];
+        send('applyScheme', {
+            command: 'loadOutput',
+            schemeName: 'full',
+            objectName: currentBuilding,
+            outputDbPath: info ? info.dbFile : ''
+        }).then(() => {
+            document.getElementById('applyFeedback').textContent =
+                'Full load sent to Bonsai: ' + currentBuilding;
+        }).catch(() => alert('Sync not active. Start sync in Bonsai first.'));
+    }
 
     function renderFederationBuildings(buildings) {
         const grid = document.getElementById('fedGrid');
@@ -837,6 +886,8 @@ const BIM = (() => {
         send, bomDrop, save, compile, completeOrder,
         loadBuildings, selectBuilding, loadDetail,
         selectLine, closeASI, loadASI, onASIChange, editCell,
+        importIFC, onboardIFC, exportBOM, exportOrder, exportIFC,
+        previewInBonsai, fullLoadInBonsai,
         loadSchedule, loadCost, loadCarbon, loadMaintenance, loadPortfolio,
         searchProducts, setQuery, executeQuery, clearQueryResults,
         selectPalette, filterDiscipline,
