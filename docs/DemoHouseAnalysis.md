@@ -187,6 +187,18 @@ swapProduct(orderLineId, buildingId, newProductId)
 4. **Mechanism:** BOM swap applied to m_bom_line (child_product_id SH_ROOF_STR→FK_DG_STR). Pipeline BOMWalker naturally resolves FK_DG_STR's 42 children. No pipeline code changes needed.
 5. **VERB stage:** PLACE BOM verb hits UNIQUE constraint (pre-existing, non-blocking). TRIM verb deferred to Session 4.
 
+### Lifecycle Correction (S59)
+BomDropConfigureTest currently copies SH_BOM.db as compile DB — incorrect.
+Correct lifecycle: work_output.db is the design workspace; compile reads from
+original BOM DBs (not copies); _BOM.db is created via Approve DocAction.
+See GENERATIVE_HOUSE_SRS.md §11.6 for the specified lifecycle.
+The geometric fingerprint test (§11) will follow the correct lifecycle.
+
+### What's Needed (Session 2+)
+1. **Geometric fingerprint test:** BOM-predicted vs compiled verification (§11)
+2. **TRIM verification:** CW panels bounded by FK pitched roof (P27 proof)
+3. **FP discipline (Session 3):** Sprinkler placement + NFPA 13 spacing
+
 ### Risks
 - FK roof AABB (13×11m) doesn't cover SH footprint (17×9m) — accepted, not a gate blocker
 - FP validateBatch() wiring is the largest remaining gap — Session 3 scope

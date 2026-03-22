@@ -722,3 +722,132 @@ The DemoHouse compiles when:
 4. TRIM verb clips curtain wall panels to pitched roof line
 5. All gates pass: G1-COUNT, G2-VOLUME, G5-PROVENANCE, G6-ISOLATION
 6. BIMEyes proofs: P27 WALL_ROOF_INTERSECTION, P28 ROOF_COVERAGE verified
+
+## 11. Geometric Fingerprint — Compiled Building Verification
+
+> **Purpose:** General-purpose verification that a compiled building's geometry matches
+> what its BOM tree promised. Works for any combination of parts from different buildings
+> (SH base + FK roof, DM rooms + SH furnishing, etc.). The fingerprint is the contract
+> between the BOM authoring phase and the compilation phase.
+
+### 11.1 Problem
+
+After BOM Drop + swaps + compile, how do we know the output is geometrically correct?
+Existing gates (G1-G6) verify EXTRACTED buildings against reference DBs. CONFIGURED
+buildings have no reference DB — the BOM tree IS the reference. We need a verification
+that derives expected geometry from the BOM and compares it to compiled output.
+
+### 11.2 The BOM Fingerprint
+
+The **BOM fingerprint** is computed by walking the BOM tree (after swaps) and
+predicting what the compiled output should contain. No compilation needed — pure
+BOM analysis.
+
+**Inputs:** BOM DB (with swaps applied) + component_library.db
+
+**Walk algorithm:** Same BOMWalker used by PlacementLoader. For each leaf:
+1. Resolve M_Product from component_library.db → get `ifc_class`
+2. Record: `{ifc_class, allocated_width_mm, allocated_depth_mm, allocated_height_mm}`
+3. Compute world position from parent chain offsets (dx/dy/dz)
+
+**Fingerprint record:**
+
+| Field | Source | Purpose |
+|-------|--------|---------|
+| `totalLeaves` | BOM walk leaf count | G1-COUNT prediction |
+| `classDistribution` | Map<ifcClass, count> | IFC class balance |
+| `structuralCategories` | Set of {ROOF, WALL, SLAB, DOOR, WINDOW, BEAM, ...} | Completeness check |
+| `buildingAABB` | min/max of all leaf world positions | Envelope prediction |
+| `roofPresent` | Any leaf with ifc_class containing 'Roof' or 'Slab' under ROOF BOM | Roof coverage |
+| `wallCount` | Count of IfcWall + IfcCurtainWall leaves | Enclosure check |
+
+### 11.3 Compiled Fingerprint
+
+The **compiled fingerprint** is extracted from the output.db after compilation.
+
+**Source tables:** `elements_meta`, `elements_rtree`
+
+| Field | Query | Purpose |
+|-------|-------|---------|
+| `totalElements` | `COUNT(*) FROM elements_meta` | Matches `totalLeaves` |
+| `classDistribution` | `GROUP BY ifc_class` | Matches BOM prediction |
+| `structuralCategories` | Distinct ifc_class mapped to categories | Matches BOM set |
+| `buildingAABB` | `MIN/MAX from elements_rtree` | Within BOM envelope + tolerance |
+| `zeroExtentCount` | Elements with width/depth/height ≤ 0 | Must be 0 |
+| `geoFallbackCount` | `guid LIKE 'GEO_%'` | G5: must be 0 |
+
+### 11.4 Fingerprint Comparison Rules
+
+| Check | Rule | Tolerance | Severity |
+|-------|------|-----------|----------|
+| **Count** | compiled.totalElements = bom.totalLeaves | Exact | FAIL |
+| **Class balance** | compiled.classDistribution[c] = bom.classDistribution[c] for each c | Exact | FAIL |
+| **Structural completeness** | compiled.structuralCategories ⊇ bom.structuralCategories | Exact | FAIL |
+| **Envelope** | compiled.AABB ⊆ bom.AABB + 1000mm (overhang tolerance) | 1m | WARN |
+| **Zero extent** | compiled.zeroExtentCount = 0 | Exact | FAIL |
+| **Provenance** | compiled.geoFallbackCount = 0 | Exact | FAIL |
+
+**Cross-building tolerance:** When parts come from different buildings (FK roof on SH
+base), the combined envelope may differ from either source building. The 1000mm overhang
+tolerance absorbs roof overhang, eave projection, and curtain wall offset.
+
+### 11.5 TRIM Verb Verification
+
+When a pitched roof replaces a flat roof on a building with glass curtain walls,
+the TRIM verb must clip the glass panels to the roof slope. This is verified as
+part of the fingerprint:
+
+**Pre-condition:** BOM has IfcCurtainWall (or IfcMember with CW role) + IfcRoof/IfcSlab
+with height > base building wall height (pitched roof).
+
+**Verification:**
+1. After compile, query curtain wall elements from `elements_meta`
+2. Query roof elements and compute tent model (ridge + eave Z)
+3. For each CW panel overlapping the roof in XY:
+   - Panel maxZ must not exceed roof surface Z at panel centroid + 50mm tolerance
+4. This is the existing P27 WALL_ROOF_INTERSECTION proof from BIMEyes
+
+**TRIM fires in VerbStage (Stage 6):** TrimWallsToRoofVerb reads elements_meta and
+elements_rtree from output.db. For each wall overlapping a pitched roof in XY,
+estimates roof surface Z via tent model. Walls exceeding roof surface are flagged.
+The fingerprint test verifies TRIM fired and CW panels are correctly bounded.
+
+### 11.6 Work Output Lifecycle
+
+The fingerprint test follows the correct design lifecycle:
+
+```
+work_output.db (design workspace)
+    ├─ bomDrop() → C_OrderLine tree created
+    ├─ swapProduct() → C_OrderLine.family_ref updated
+    └─ design complete
+         │
+         ▼
+compile(bomDbPath, ...) → output.db (compiled result)
+    Pipeline reads BOM from bomDbPath (original BOM DBs, not copies)
+    PlacementLoader walks m_bom/m_bom_line → collects placements
+    WriteStage emits elements → output.db
+         │
+         ▼
+Fingerprint verification:
+    Walk BOM → predicted fingerprint
+    Read output.db → compiled fingerprint
+    Compare → PASS/FAIL
+```
+
+**Key rule:** The test must NOT copy _BOM.db files. It reads from original BOM DBs.
+For cross-building swaps (SH + FK), the compile DB is assembled by importing only
+the swapped product's BOM data into a working DB — not by copying the entire source.
+The _BOM.db is created later via Approve DocAction, not by the test.
+
+### 11.7 Witnesses
+
+| ID | Claim | Status |
+|----|-------|--------|
+| W-FP-1 | BOM fingerprint leaf count = compiled element count | SPEC |
+| W-FP-2 | BOM IFC class distribution = compiled class distribution | SPEC |
+| W-FP-3 | All BOM structural categories present in compiled output | SPEC |
+| W-FP-4 | No zero-extent elements in compiled output | SPEC |
+| W-FP-5 | No GEO_ fallback elements (G5 provenance) | SPEC |
+| W-FP-6 | TRIM: CW panels bounded by roof surface (P27 proof) | SPEC |
+| W-FP-7 | Compiled envelope within BOM envelope + 1m tolerance | SPEC |
