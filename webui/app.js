@@ -535,9 +535,8 @@ const BIM = (() => {
         if (!currentBuilding) { alert('Select a building first'); return; }
         if (!currentBomDbPath) { alert('No BOM database path — do a BOM Drop first'); return; }
         const ds = document.getElementById('docStatus');
-        // completeIt compiles to output.db. The server auto-queues loadOutput
-        // for Bonsai to pick up via pollCommands (WebUIServer.afterCompile).
-        // No need for a second push — one action, server handles the rest.
+        // Step 1: compile to output.db (server does NOT auto-push to Bonsai)
+        // Step 2: explicitly push loadOutput — user controls when Bonsai loads
         ds.textContent = 'Compiling for Bonsai...';
         send('completeIt', {
             buildingId: currentBuilding,
@@ -551,9 +550,17 @@ const BIM = (() => {
                 return;
             }
             ds.textContent = 'Compiled: ' + (data.elementCount || '?') +
-                ' elements — Bonsai loading preview';
+                ' elements — pushing to Bonsai...';
+            // User-initiated loadOutput — server never auto-queues this
+            return send('applyScheme', {
+                schemeName: 'loadOutput',
+                objectName: currentBuilding,
+                guid: data.outputDbPath || ''
+            });
+        }).then(() => {
+            ds.textContent = 'Sent to Bonsai — preview loading';
             const fb = document.getElementById('applyFeedback');
-            if (fb) fb.textContent = 'Compiled + auto-pushed to Bonsai: ' + currentBuilding;
+            if (fb) fb.textContent = 'Compiled + sent to Bonsai: ' + currentBuilding;
             loadOrderLines();
         }).catch(e => {
             ds.textContent = 'Show in Bonsai failed';

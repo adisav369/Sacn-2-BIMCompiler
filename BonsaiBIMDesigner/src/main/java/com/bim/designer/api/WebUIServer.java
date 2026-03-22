@@ -474,7 +474,10 @@ public class WebUIServer implements AutoCloseable {
         }
     }
 
-    // ── Post-compile: auto-push to Bonsai viewport ─────────────────────
+    // ── Post-compile: notify browser only ───────────────────────────────
+    // loadOutput must come from user action (Show in Bonsai button or Bonsai
+    // Full Load panel), never auto-queued by the server. This prevents
+    // accidental Bonsai viewport loads during backend testing.
 
     private void afterCompile(String action, String response) {
         try {
@@ -485,23 +488,12 @@ public class WebUIServer implements AutoCloseable {
             String outputDbPath = resp.has("outputDbPath") ? resp.get("outputDbPath").getAsString() : null;
             int elementCount = resp.has("elementCount") ? resp.get("elementCount").getAsInt() : 0;
 
-            // 1. SSE broadcast compileComplete to browser
+            // SSE broadcast compileComplete to browser (notification only, no loadOutput)
             Map<String, Object> event = new LinkedHashMap<>();
             event.put("event", "compileComplete");
             event.put("outputDbPath", outputDbPath);
             event.put("elementCount", elementCount);
             sseBroadcast("compileComplete", JsonProtocol.toJson(event));
-
-            // 2. Queue loadOutput command for Bonsai to pick up
-            if (outputDbPath != null && !outputDbPath.isBlank()) {
-                Map<String, Object> cmd = new LinkedHashMap<>();
-                cmd.put("command", "loadOutput");
-                cmd.put("outputDbPath", outputDbPath);
-                cmd.put("elementCount", elementCount);
-                pendingCommands.add(cmd);
-                LOG.info("Compile complete → queued loadOutput for Bonsai: " +
-                        outputDbPath + " (" + elementCount + " elements)");
-            }
         } catch (Exception e) {
             LOG.log(Level.FINE, "afterCompile parse error (non-fatal)", e);
         }
