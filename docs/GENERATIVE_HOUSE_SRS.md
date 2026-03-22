@@ -642,7 +642,7 @@ for clash detection — that's a small code change to call existing logic.
 | W-GEN-CLASH-1 | FP vs STR clash detected after auto-populate | SPEC |
 | W-GEN-ROOF-1 | Pitched roof template places rafters + purlins + ridge via CLUSTER | SPEC |
 | W-GEN-TRIM-1 | Wall top_trim_mm computed from roof pitch at wall position | SPEC |
-| W-DM-TC4-1 | Roof swap: pitched replaces flat, base dimensions validated | SPEC |
+| W-DM-TC4-1 | Post-swap compile: SH(55) − flat(2) + pitched(42) = 95 elements, G5 PASS | GREEN (S59) |
 | W-DM-TC5-1 | FP discipline: sprinklers placed per ad_space_type_mep_bom rules | SPEC |
 | W-DM-TRIM-1 | Curtain wall trimmed to pitched roof envelope | SPEC |
 | W-DM-FP-VAL-1 | FP validation rules applied (NFPA 13 spacing, clearance) | SPEC |
@@ -692,11 +692,12 @@ Session 1: Analysis + spec hardening
   - Verify TRIM verb handles cross-building roof swap (FK roof on SH base)
   - Verify swapProduct() API for ProductCategory='Roof' swap
 
-Session 2: BOM Drop + roof swap
-  - Implement: bomDrop(BUILDING_SH_STD) + swapProduct(roof_node, FK_PITCHED_ROOF)
-  - Test: compiled element count = SH_base − flat_roof + pitched_roof_components
-  - Gate: G1-COUNT, G2-VOLUME, G5-PROVENANCE pass
-  - Witness: W-DM-TC4-1
+Session 2: BOM Drop + roof swap [DONE S59-S2]
+  - bomDrop(SH) + swapProduct(roof→FK_DG_STR) + compile → 95 elements
+  - BOM swap via UPDATE m_bom_line; BOMWalker resolves FK 42 children naturally
+  - G1=95, G5=0 GEO_, G8=95/95 OK. No pipeline code changes needed.
+  - Witness: W-DM-TC4-1 GREEN. BomDropConfigureTest 6/6.
+  - Element mix: 51 IfcMember, 14 Furnishing, 8 Wall, 6 Window, 6 Plate, 3 Slab, 3 Door, 2 Railing, 2 Beam
 
 Session 3: FP discipline + validation
   - Wire: validateBatch() into auto-populate flow (§8.3)

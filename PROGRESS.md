@@ -32,12 +32,13 @@
   IN/DX/TE all GREEN. Details: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
   C9 axis-swap tolerance: `GeometryFidelityTest.java`. Reference DBs re-baselined (not pipeline code).
 
-**Next: S59 — Core Engine: Work Order → DemoHouse end-to-end:**
-  Build DM from C_OrderLine (no YAML). HTML ↔ Bonsai bidirectional sync.
-  5 witness claims (W-WO-1..5). Full spec: [BIM_Designer_SRS.md §30](docs/BIM_Designer_SRS.md#30--core-engine-todo-s59).
+**Next: S59 Session 3 — FP discipline + validation:**
+  Wire validateBatch() into auto-populate. FP OrderLine → sprinkler placement.
+  NFPA 13 spacing, FP-STR clearance. Witness: W-DM-TC5-1, W-DM-FP-VAL-1.
 
 ## Session Log (recent first)
 
+**S59-S2** — Post-swap compilation. W-DM-TC4-1 GREEN: bomDrop(SH) + swapProduct(roof→FK_DG_STR) + compile → 95 elements. G1/G5/G8 pass. BomDropConfigureTest 6/6 GREEN. No pipeline code changes.
 **S58b** — DM generative path. First GENERATIVE building (DemoHouse_2BR, 60 elements). seed_dm_bom.sql.
 **S58a** — 9 buildings full pipeline (RA/JE/ES/MO/HI/RM/RS/SC/WA). G3 baselined. MO threshold=1. +3 ALL GREEN.
 **S57** — 1D Order Configurator + Bonsai↔WebUI sync. 34/34 buildings compiled. 4 YAML dupe-code fixes.

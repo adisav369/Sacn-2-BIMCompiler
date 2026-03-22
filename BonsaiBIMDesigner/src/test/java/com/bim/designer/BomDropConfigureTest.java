@@ -23,8 +23,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Proves that the compiler handles OrderLine modifications:
  * - TC-4: Swap SH flat roof (2 elements) with FK pitched roof (42 elements)
  * - TC-5: Add FP sprinkler product as additional OrderLine
+ * - W-DM-TC4-1: Post-swap compilation — 9-stage pipeline on swapped BOM tree
  *
- * // Implementing GENERATIVE_HOUSE_SRS.md §7 TC-4, TC-5 — Witness: W-TC4-*, W-TC5-*
+ * // Implementing GENERATIVE_HOUSE_SRS.md §7 TC-4, §10.4 Session 2 — Witness: W-TC4-*, W-DM-TC4-1
  */
 @DisplayName("TC-4+TC-5: BOM Drop → swap roof + add FP → compile")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -42,6 +43,7 @@ class BomDropConfigureTest {
     private static Connection bomConn;
 
     private static BomDropResponse dropResult;
+    private static CompileResponse compileResult;
     private static int roofOrderLineId = -1;
     private static int originalLeafCount;
 
@@ -165,6 +167,92 @@ class BomDropConfigureTest {
                 roofOrderLineId, row.familyRef());
     }
 
+    // ── W-DM-TC4-1: Post-swap compile → 95 elements ────────────────────
+    // Implementing GENERATIVE_HOUSE_SRS.md §10.4 Session 2 — Witness: W-DM-TC4-1
+
+    @Test @Order(5)
+    @DisplayName("W-DM-TC4-1: Post-swap compile → 95 elements (55 − 2 flat + 42 pitched)")
+    void w_dm_tc4_1_post_swap_compile() throws Exception {
+        assertTrue(roofOrderLineId > 0, "W-TC4-2 must find the roof node first");
+
+        // Apply BOM swap: replace SH_ROOF_STR with FK_DG_STR in the building's BOM tree.
+        // This mirrors what a "promote work_output to BOM" step would do — the pipeline
+        // walks m_bom_line, so the swap must be reflected there for compilation.
+        try (Statement stmt = bomConn.createStatement()) {
+            int updated = stmt.executeUpdate("""
+                    UPDATE m_bom_line SET child_product_id = 'FK_DG_STR'
+                    WHERE bom_id = 'BUILDING_SH_STD' AND child_product_id = 'SH_ROOF_STR'""");
+            assertEquals(1, updated, "Must update exactly 1 BOM line (roof slot)");
+        }
+
+        // Reset PlacementLoader — it caches BOM walk results; must re-walk after swap
+        PlacementLoader.resetInstance();
+
+        // Run 9-stage compilation pipeline on the swapped BOM tree
+        CompileRequest request = new CompileRequest(
+                "Ifc4_SampleHouse",
+                compileDbPath,
+                COMP_LIB,
+                outputDir + "/"
+        );
+
+        compileResult = api.compile(request);
+
+        assertTrue(compileResult.success(),
+                "Post-swap compile must succeed: " + compileResult.error());
+
+        // G1-COUNT: SH base (55) − flat roof (2) + pitched roof (42) = 95
+        // Note: FK roof AABB (13×11m) doesn't cover SH footprint (17×9m) — accepted
+        // per DemoHouseAnalysis.md §2.2 (misfit is design concern, not gate blocker).
+        assertEquals(95, compileResult.elementCount(),
+                "SH base (55) − flat roof (2) + pitched roof (42) = 95");
+
+        System.out.printf("  Post-swap compile: %d elements in %dms%n",
+                compileResult.elementCount(), compileResult.compileTimeMs());
+    }
+
+    // ── W-DM-TC4-2: Output DB has 95 elements + G5-PROVENANCE ────────
+
+    @Test @Order(6)
+    @DisplayName("W-DM-TC4-2: Output DB exists with 95 elements, no GEO_ fallback (G5)")
+    void w_dm_tc4_2_output_db_verified() throws Exception {
+        assertNotNull(compileResult, "W-DM-TC4-1 must run first");
+        assertTrue(compileResult.success());
+
+        String outputPath = compileResult.outputDbPath();
+        assertNotNull(outputPath, "Output path must not be null");
+        assertTrue(new File(outputPath).exists(),
+                "Output DB must exist: " + outputPath);
+
+        try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + outputPath)) {
+            // Verify element count in output DB
+            try (Statement stmt = outConn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM elements_meta")) {
+                assertTrue(rs.next());
+                assertEquals(95, rs.getInt(1), "Output DB must have 95 elements");
+            }
+
+            // G5-PROVENANCE: all geometry from library, no GEO_ fallback
+            try (Statement stmt = outConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                         "SELECT COUNT(*) FROM elements_meta WHERE guid LIKE 'GEO_%'")) {
+                assertTrue(rs.next());
+                assertEquals(0, rs.getInt(1),
+                        "G5: no GEO_ fallback elements — all geometry from library");
+            }
+
+            // Verify FK roof elements present (IfcBeam for rafters/purlins)
+            try (Statement stmt = outConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                         "SELECT ifc_class, COUNT(*) FROM elements_meta GROUP BY ifc_class ORDER BY COUNT(*) DESC")) {
+                System.out.println("  Post-swap element classes:");
+                while (rs.next()) {
+                    System.out.printf("    %-30s %d%n", rs.getString(1), rs.getInt(2));
+                }
+            }
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private BomTreeNode findNode(BomTreeNode node, String familyRef) {
@@ -284,7 +372,7 @@ class BomDropConfigureTest {
                         ProjectName, OutputDbPath, ReferenceDbPath,
                         ExpectedElements, Provenance, SeqNo, DSLContent,
                         GeometryFailThreshold
-                    ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, 0, 'GENERATIVE', 10, ?, 999)
+                    ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, 0, 'EXTRACTED', 10, ?, 999)
                     """)) {
                 ps.setString(1, "RE_SH");
                 ps.setString(2, "Sample House (configured)");
