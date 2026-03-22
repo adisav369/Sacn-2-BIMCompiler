@@ -632,3 +632,70 @@ VERIFIED ✓ (or drift detected ✗)
 | Learn the Blender bridge protocol | [`BlenderBridge.md`](BlenderBridge.md) |
 | Read infrastructure designer SRS | [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md) |
 | See market positioning & scorecard | [`StrategicIndustryPositioning.md`](StrategicIndustryPositioning.md) |
+
+---
+
+## Conventions
+
+### DAO Rule
+- Use DAO (`ModelQuery<X_M_BOMLine>` etc.) for all resolver code
+- Raw JDBC only for: complex JOINs in MetadataValidator, read-only inspection
+- Nullable getters: `MOrderLine.getHeightMmOrNull()` (asDoubleOrNull pattern)
+
+### iDempiere Naming
+- Conceptual sections: iDempiere entity names (C_Order, M_BOM, C_BPartner)
+- Implementation sections: actual table names
+- `c_bpartner` = C_BPartner = "Construction Building Pattern" (SH/DX/TB/MY/TE/ST)
+- Storeys, rooms, components are ALL M_BOMs — compiler is logistics forwarder
+- Buffer space (BOMCategory=ST) = explicit M_BOM_Line child for SpaceSize invariant
+
+### iDempiere ERP Layer Mapping
+- `M_Product` (BOM.db), `m_bom`/`m_bom_line`/`m_attribute`/`M_BomCategory` (BOM.db)
+- `c_order`/`c_orderline`/`co_empty_space`/`co_empty_space_line` (output.db)
+- `C_BPartner`/`C_Campaign`/`AD_User`/`C_DocType` (BOM.db lookup/config)
+
+---
+
+## Critical Traps
+
+### SQL / Schema
+- `element_instances` column is `guid` (NOT `element_guid`)
+- `M_Product` columns: `width`, `depth`, `height` — units are **metres**
+- `M_Product` column is `product_type` (NOT `product_category`) — no `ifc_class` column
+- `c_order.building_type` = category (RESIDENTIAL/COMMERCIAL), NOT building ID
+- `m_bom_line.child_name_pattern` = LIKE pattern — use `product_ref` FK for exact match
+- `c_orderline.family_ref` is NOT an FK to ad_opening_family
+- `c_orderline.height_extent_mm` = element height (MUST be set or dz=0 → P01/P03 CRITICAL)
+- `c_orderline.height_mm` = mounting height above floor (sill/outlet) — separate from extent
+- `lod_geometry_map.geometry_hash` REFERENCES `component_geometries(geometry_hash)` — FK must exist first
+- `RelationalResolver.loadRules()` ORDER BY id — insertion order = roofIndex numbering
+
+### BOM / component_type
+- Assembly relationships identified STRUCTURALLY: `child_product_id IN (SELECT bom_id FROM m_bom)`
+- BOMWalker uses structural detection (loadBom), NOT component_type — safe
+- MBOMLine.isNestedBom() still checks MAKE — fragile, prefer structural check
+- Never change component_type values without verifying ALL downstream consumers
+
+### Data Integrity — PRIME RULE
+- **All data produced by code, never manual SQL fixes** — that is cheating
+- `component_library.db` = LOD catalog data only (geometry, materials, dimensions)
+- `*_BOM.db` files are generative — always delete before regenerating (rm first)
+- Never produce or reference monolithic `library/BOM.db` — only `{PREFIX}_BOM.db`
+
+### Java / Compiler
+- PlacementProver: P01-P03/P16-P17/P22 = gate (critical); P04-P15/P18-P21/P23 = advisory
+- MeshBinder `isNS`: mesh-proximity comparison, NOT bbox aspect ratio
+- GUID ordinal: ALWAYS use `++ordinalCounter`, NEVER `line.getOrdinal()`
+- BOM furniture LOD: `tx=p.minX()-lb[0]*sX` (min-corner, NOT center)
+- DX compiles as "Ifc2x3_Duplex" (NOT MULTI_UNIT)
+- Metadata buildings: roof via `overrideRoofPosition()` ONLY — `BuildingSpec.roof()` NOT called
+
+### Geometry / Coord
+- WorldCoord: ONLY via `LocalCoord.toWorld(StoreyCoord)` or `StoreyCoord.asWorld()`. D8 ArchUnit enforces.
+- elements_rtree: id, minX, maxX, minY, maxY, minZ, maxZ (NOT interleaved)
+- Output DB R*Tree = metres, CO_EmptySpace = mm (multiply by 1000.0)
+- Library geometry (non-GEO_ hash) uses canonical coords, NOT world coords
+
+### IFC Type
+- Walls stored as `IfcPlate` (not IfcWall) — SQL must include IfcPlate
+- Duplex party walls ARE `IfcWall` (not IfcPlate) — assertion uses `IfcWall:Party`

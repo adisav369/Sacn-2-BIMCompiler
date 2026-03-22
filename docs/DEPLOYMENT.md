@@ -110,3 +110,31 @@ This deployment handles 3-10 concurrent users on a single server. For larger tea
 
 The DAO abstraction isolates all database access — swapping SQLite for PostgreSQL
 changes the connection factory, not the business logic.
+
+## Git Operations
+
+### .gitignore — Large Files
+- `library/component_library.db` (~433MB) — gitignored, regenerable via `--populate`
+- `backup/` — gitignored. NEVER commit database snapshots (1.5GB+, GitHub rejects >100MB)
+- `.venv/` — Python virtual environment, gitignored
+- `.claude/` — user-local, untracked
+- `IFC_research_files/bim_whale_samples/BasicHouse.ifc` — 50MB, under limit but watch for more
+
+### Git LFS
+- `component_library.db` was tracked via git-lfs (Phase 109B, history rewritten)
+- File is now in `.gitignore` — NEVER force-add without LFS
+
+### Migration Discipline
+- ALL schema changes MUST be idempotent SQL in `migration/` (append-only)
+- Use `INSERT OR IGNORE` / `INSERT OR REPLACE` / `CREATE TABLE IF NOT EXISTS`
+- Write migrations AS YOU MAKE changes, not after
+- After any migration, regen schema snapshots (`library/schema_snapshot_bom.sql`)
+
+### Commit Discipline
+- Commit at each phase boundary
+- `git add <specific files>` not `git add -A` (prevents accidental binary commits)
+- Commit message format: `[TAG] summary`
+- Seal: re-seal via `scripts/verify_test_seal.sh` when sealed files change
+
+### Incident Log
+- **S60-S2:** `backup/` (1.5GB) accidentally committed → `git filter-repo --invert-paths --path backup/` to strip from history. Added to `.gitignore`.
