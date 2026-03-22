@@ -549,17 +549,24 @@ const BIM = (() => {
                 alert('Show in Bonsai failed: ' + (data.error || 'Unknown error'));
                 return;
             }
+            var outputPath = data.outputDbPath || '';
             ds.textContent = 'Compiled: ' + (data.elementCount || '?') +
                 ' elements — pushing to Bonsai...';
+            // Set Tab 3 database path to compiled output — Preview/Full Load
+            // in Tab 3 or Bonsai panel reads this same database.
+            var dbPathEl = document.getElementById('fedDbPath');
+            if (dbPathEl) dbPathEl.textContent = outputPath;
+            // Update building registry so Tab 3 Preview/Full Load use the output
+            if (buildingDb[currentBuilding]) buildingDb[currentBuilding].dbFile = outputPath;
             // User-initiated loadOutput — server never auto-queues this
             return send('applyScheme', {
                 schemeName: 'loadOutput',
                 objectName: currentBuilding,
-                guid: data.outputDbPath || ''
+                guid: outputPath
             });
         }).then(() => {
             ds.textContent = 'Sent to Bonsai — preview loading';
-            const fb = document.getElementById('applyFeedback');
+            var fb = document.getElementById('applyFeedback');
             if (fb) fb.textContent = 'Compiled + sent to Bonsai: ' + currentBuilding;
             loadOrderLines();
         }).catch(e => {
