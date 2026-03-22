@@ -535,7 +535,9 @@ const BIM = (() => {
         if (!currentBuilding) { alert('Select a building first'); return; }
         if (!currentBomDbPath) { alert('No BOM database path — do a BOM Drop first'); return; }
         const ds = document.getElementById('docStatus');
-        // Step 1: completeIt — compile to output.db (real spatial positions)
+        // completeIt compiles to output.db. The server auto-queues loadOutput
+        // for Bonsai to pick up via pollCommands (WebUIServer.afterCompile).
+        // No need for a second push — one action, server handles the rest.
         ds.textContent = 'Compiling for Bonsai...';
         send('completeIt', {
             buildingId: currentBuilding,
@@ -549,18 +551,9 @@ const BIM = (() => {
                 return;
             }
             ds.textContent = 'Compiled: ' + (data.elementCount || '?') +
-                ' elements — pushing to Bonsai...';
-            // Step 2: push loadOutput to Bonsai via pollCommands queue
-            // Bonsai federation preview renders wireframe bboxes with correct positions
-            return send('applyScheme', {
-                schemeName: 'loadOutput',
-                objectName: currentBuilding,
-                guid: data.outputDbPath || ''
-            });
-        }).then(() => {
-            ds.textContent = 'Sent to Bonsai — preview loading';
+                ' elements — Bonsai loading preview';
             const fb = document.getElementById('applyFeedback');
-            if (fb) fb.textContent = 'Compiled + preview sent: ' + currentBuilding;
+            if (fb) fb.textContent = 'Compiled + auto-pushed to Bonsai: ' + currentBuilding;
             loadOrderLines();
         }).catch(e => {
             ds.textContent = 'Show in Bonsai failed';
