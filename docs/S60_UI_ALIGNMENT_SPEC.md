@@ -181,25 +181,30 @@ The federation addon's native **Preview BBoxes** button (`bpy.ops.bim.preview_fe
 renders wireframe bounding boxes from any SQLite federation database. This is the **production path**
 for Show in Bonsai.
 
-**Production flow — Save vs Complete distinction:**
+**Production flow:**
 
 ```
 BOM Drop → C_Order + C_OrderLine tree (HTML shows BOM tree, no compile)
     ↓
-Save → persist order to work_output.db (just save, no compile, no Bonsai push)
+Save → persist order to work_output.db (just save, no compile)
     ↓
-Complete → compile → output.db (with real spatial positions from compiler)
-    ↓ loadOutput command queued automatically
-Bonsai: pollCommands → _load_output_command → preview_federation_viewport
+Show in Bonsai → compile → output.db → push loadOutput → federation preview
+  (each click re-compiles, bboxes always reflect current order with correct positions)
     ↓
-Federation preview: wireframe bboxes with correct positions
+Complete → same as Show in Bonsai + finalise order status to CO
     ↓
-Show in Bonsai → re-sends output.db path (no re-compile, just pushes existing output)
-Full Load → user clicks in Bonsai panel when ready for full geometry
+Full Load → user clicks in Bonsai panel when ready for full mesh geometry
 ```
 
-**Key design rule:** Save is just save. Only Complete triggers a compile. Show in Bonsai
-only works after Complete — it pushes the already-compiled output.db for federation preview.
+**Key design rules:**
+- **BOM Drop** → creates order, no compile
+- **Save** → persists order only, no compile
+- **Show in Bonsai** → always compiles to output.db first, then pushes federation
+  preview. Each click re-compiles fresh so bboxes reflect current edits with correct
+  spatial positions (tack offsets, storey elevations, room packing from compiler).
+  No origin-bunching — the compiler produces real coordinates.
+- **Complete** → compile + finalise order (CO status)
+- **Full Load** → user-initiated in Bonsai panel for full mesh geometry
 
 **Do not break:**
 - `webui_sync._load_output_command()` — sets `federation_database_path`, calls preview operator
@@ -208,8 +213,8 @@ only works after Complete — it pushes the already-compiled output.db for feder
 - The `pollCommands` → `loadOutput` flow in `webui_sync.py`
 
 **S60 proof of concept** (257 wireframe cubes) used a temporary cube-creation fallback from
-raw order lines (dx/dy/dz=0, all at origin). The production path uses Complete → compile →
-output.db → federation preview, which has correct positions from the compiler.
+raw order lines (dx/dy/dz=0, all at origin). The production path compiles first, so the
+output.db has correct positions — no origin-bunching.
 
 **What's new vs what existed:**
 - **Existed:** Federation preview from a local DB file (click button in Bonsai panel)
