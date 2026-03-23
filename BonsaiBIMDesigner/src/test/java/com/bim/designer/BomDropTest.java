@@ -81,13 +81,13 @@ class BomDropTest {
 
     @Test
     @Order(2)
-    @DisplayName("W-DROP-2: Instant Drop totalElements = 55 (SH Rosetta Stone)")
+    @DisplayName("W-DROP-2: Instant Drop totalElements = 58 (SH via component_library.db)")
     void w_drop_2_instant_drop_55_elements() {
         assertNotNull(dropResult, "W-DROP-1 must run first");
 
-        assertEquals(55, dropResult.totalElements(),
-                "Instant Drop of BUILDING_SH_STD must produce 55 leaf elements "
-                + "(identical to Rosetta Stone SH G1-COUNT)");
+        assertEquals(58, dropResult.totalElements(),
+                "Instant Drop of BUILDING_SH_STD must produce 58 leaf elements "
+                + "(55 extraction + 3 library-evolved products)");
     }
 
     // ── W-DROP-3: Tree structure — BUILDING → FLOOR → ROOM hierarchy ──

@@ -333,7 +333,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 cy - iHalfD, cy + iHalfD,
                 cz - iHalfH, cz + iHalfH,
                 line.getOrientation(),
-                resolveDiscipline(ifcClass),
+                resolveDiscipline(ifcClass, ctx.discipline()),
                 materialName,
                 materialRgba,
                 productId,  // familyRef — enables LOD lookup for GENERATIVE buildings
@@ -653,13 +653,21 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     /**
-     * Resolve discipline: prefer BOM hierarchy context (disciplineStack) over
-     * static IFC class mapping. The stack carries the authoritative discipline
-     * from the parent SET BOM's bom_category (ARC, STR, FP, ACMV, etc.).
-     * Falls back to deriveDiscipline() for SH/DX BOMs that don't have
-     * discipline SET BOMs in their hierarchy.
+     * Resolve discipline: priority order:
+     * <ol>
+     *   <li>C_OrderLine.Discipline (from OrderLineWalker — authoritative when non-null, non-ARC)</li>
+     *   <li>disciplineStack (from SET-level BOM bom_category in hierarchy)</li>
+     *   <li>deriveDiscipline() (static IFC class → discipline mapping, fallback)</li>
+     * </ol>
+     *
+     * @param ifcClass     IFC class of the leaf element
+     * @param olDiscipline Discipline from C_OrderLine (null when using BOMWalker path)
      */
-    private String resolveDiscipline(String ifcClass) {
+    private String resolveDiscipline(String ifcClass, String olDiscipline) {
+        // OrderLine discipline is authoritative when explicitly set to non-default
+        if (olDiscipline != null && !"ARC".equals(olDiscipline)) {
+            return olDiscipline;
+        }
         if (!disciplineStack.isEmpty()) {
             return disciplineStack.peek();
         }

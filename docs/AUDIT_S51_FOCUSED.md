@@ -803,3 +803,34 @@ CL001_drop_dead_tables.sql is written but not applied. It drops 4 dead tables (a
 | Non-disturbance (SH/FK) | **VERIFIED** — 7/7 before and after |
 | DiscValidationDBTest 27/27 | **VERIFIED** |
 | M_Product_Image isolation | **CORRECT** — stays in component_library.db |
+
+### Watchdog Cross-Check (S65 Step 3, 2026-03-24)
+
+> **Auditor:** Watchdog (Appendix D–F author). Independent verification of S65 self-audit above.
+
+**Independently verified:**
+
+| Claim | Verification | Status |
+|-------|-------------|--------|
+| disc_validation.db M_Product = 2,475 | `SELECT COUNT(*) FROM M_Product` = 2475 | **CONFIRMED** |
+| disc_validation.db M_Product_Category = 46 | `SELECT COUNT(*) FROM M_Product_Category` = 46 | **CONFIRMED** |
+| component_library.db M_Product unchanged | `SELECT COUNT(*) FROM M_Product` = 2475 (not deleted) | **CONFIRMED** |
+| M_Product_Category backfill preserved | 2,098 of 2,475 products have M_Product_Category_ID | **CONFIRMED** |
+| disc_validation.db table count | 28 tables (was 25 pre-Step 3: +M_Product, +M_Product_Category, +sqlite_sequence) | **CONFIRMED** |
+| `mvn compile -q` | CLEAN | **CONFIRMED** |
+
+**Step 3 self-audit is accurate.** The migration, Java connection switching, and non-disturbance checks all hold. No discrepancies found between the self-audit claims and actual DB/build state.
+
+**Static Analysis (TestArchitecture.md §Layer 5) — Watchdog Opinion:**
+
+The Layer 5 spec is well-structured: advisory-not-blocking, triage workflow defined, baseline numbers published. The key findings worth acting on:
+
+1. **36 unchecked ResultSets (IFCtoBOM + BIM_COBOL)** — This is the highest-value finding. An unchecked `rs.next()` in the pipeline can produce null product IDs that flow through BOM walkers silently. The Rosetta Stone gates would catch count mismatches but NOT data corruption within a correct count.
+
+2. **44 empty catch blocks (mostly DAGCompiler)** — Directly contradicts S51 audit finding TEST-4 (BackOfficeServer exception swallowing). The S51 fix was targeted; the problem is systemic. T14 tamper rule ("no broad exception suppression") should flag these.
+
+3. **BIMLogger FileWriter default encoding** — SpotBugs HIGH priority. Silent corruption on non-UTF8 systems. Trivial fix (`new FileWriter(file, StandardCharsets.UTF_8)`). Should be fixed immediately — it's 2 lines.
+
+**Recommendation:** Fix the 2 BIMLogger encoding bugs (HIGH/trivial) and triage the 36 unchecked ResultSets (HIGH/moderate effort) before proceeding to Step 4. The remaining 469 PMD violations are cleanup work — defer to a dedicated housekeeping session.
+
+**Dirty tree note:** 9 files modified/untracked in working tree. Includes DV_FK_rules.sql and DV_SH_rules.sql (sacred files — verify append-only before commit). BomDropper.java and PlacementCollectorVisitor.java are production compiler core — likely Task 4A (FP discipline wiring) in progress.

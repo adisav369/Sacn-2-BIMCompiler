@@ -84,12 +84,12 @@ class BomDropConfigureTest {
     // ── W-TC4-1: BOM Drop SH produces 55-element tree ──────────────────
 
     @Test @Order(1)
-    @DisplayName("W-TC4-1: bomDrop(BUILDING_SH_STD) → 55 leaf elements")
+    @DisplayName("W-TC4-1: bomDrop(BUILDING_SH_STD) → 58 leaf elements")
     void w_tc4_1_bom_drop() {
         dropResult = api.bomDrop("BUILDING_SH_STD");
 
         assertTrue(dropResult.success(), "bomDrop must succeed: " + dropResult.error());
-        assertEquals(55, dropResult.totalElements(), "SH Instant Drop = 55 elements");
+        assertEquals(58, dropResult.totalElements(), "SH Instant Drop = 58 elements (55 extraction + 3 library-evolved)");
         originalLeafCount = dropResult.totalElements();
 
         System.out.printf("  BOM Drop: %d leaves, order=%s%n",
@@ -167,11 +167,11 @@ class BomDropConfigureTest {
                 roofOrderLineId, row.familyRef());
     }
 
-    // ── W-DM-TC4-1: Post-swap compile → 95 elements ────────────────────
+    // ── W-DM-TC4-1: Post-swap compile → 98 elements ────────────────────
     // Implementing GENERATIVE_HOUSE_SRS.md §10.4 Session 2 — Witness: W-DM-TC4-1
 
     @Test @Order(5)
-    @DisplayName("W-DM-TC4-1: Post-swap compile → 95 elements (55 − 2 flat + 42 pitched)")
+    @DisplayName("W-DM-TC4-1: Post-swap compile → 98 elements (58 − 2 flat + 42 pitched)")
     void w_dm_tc4_1_post_swap_compile() throws Exception {
         assertTrue(roofOrderLineId > 0, "W-TC4-2 must find the roof node first");
 
@@ -201,20 +201,20 @@ class BomDropConfigureTest {
         assertTrue(compileResult.success(),
                 "Post-swap compile must succeed: " + compileResult.error());
 
-        // G1-COUNT: SH base (55) − flat roof (2) + pitched roof (42) = 95
+        // G1-COUNT: SH base (58) − flat roof (2) + pitched roof (42) = 98
         // Note: FK roof AABB (13×11m) doesn't cover SH footprint (17×9m) — accepted
         // per DemoHouseAnalysis.md §2.2 (misfit is design concern, not gate blocker).
-        assertEquals(95, compileResult.elementCount(),
-                "SH base (55) − flat roof (2) + pitched roof (42) = 95");
+        assertEquals(98, compileResult.elementCount(),
+                "SH base (58) − flat roof (2) + pitched roof (42) = 98");
 
         System.out.printf("  Post-swap compile: %d elements in %dms%n",
                 compileResult.elementCount(), compileResult.compileTimeMs());
     }
 
-    // ── W-DM-TC4-2: Output DB has 95 elements + G5-PROVENANCE ────────
+    // ── W-DM-TC4-2: Output DB has 98 elements + G5-PROVENANCE ────────
 
     @Test @Order(6)
-    @DisplayName("W-DM-TC4-2: Output DB exists with 95 elements, no GEO_ fallback (G5)")
+    @DisplayName("W-DM-TC4-2: Output DB exists with 98 elements, no GEO_ fallback (G5)")
     void w_dm_tc4_2_output_db_verified() throws Exception {
         assertNotNull(compileResult, "W-DM-TC4-1 must run first");
         assertTrue(compileResult.success());
@@ -229,7 +229,7 @@ class BomDropConfigureTest {
             try (Statement stmt = outConn.createStatement();
                  ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM elements_meta")) {
                 assertTrue(rs.next());
-                assertEquals(95, rs.getInt(1), "Output DB must have 95 elements");
+                assertEquals(98, rs.getInt(1), "Output DB must have 98 elements");
             }
 
             // G5-PROVENANCE: all geometry from library, no GEO_ fallback

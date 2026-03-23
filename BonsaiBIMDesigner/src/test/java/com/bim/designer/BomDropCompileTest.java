@@ -83,13 +83,13 @@ class BomDropCompileTest {
     // ── W-TC1-1: bomDrop explodes 1 OrderLine into 55 leaves ─────────
 
     @Test @Order(1)
-    @DisplayName("W-TC1-1: bomDrop(BUILDING_SH_STD) → 55 leaf C_OrderLines with M_Product_ID")
+    @DisplayName("W-TC1-1: bomDrop(BUILDING_SH_STD) → 58 leaf C_OrderLines with M_Product_ID")
     void w_tc1_1_bom_drop_explodes() {
         dropResult = api.bomDrop("BUILDING_SH_STD");
 
         assertTrue(dropResult.success(), "bomDrop must succeed: " + dropResult.error());
-        assertEquals(55, dropResult.totalElements(),
-                "Instant Drop must produce 55 leaf elements");
+        assertEquals(58, dropResult.totalElements(),
+                "Instant Drop must produce 58 leaf elements (55 extraction + 3 library-evolved)");
 
         // Verify M_Product_ID is set in work_output.db
         try {
@@ -108,7 +108,7 @@ class BomDropCompileTest {
     // ── W-TC1-2: compile produces 55 elements from same BOM ──────────
 
     @Test @Order(2)
-    @DisplayName("W-TC1-2: compile → 55 elements (same as Rosetta Stone SH)")
+    @DisplayName("W-TC1-2: compile → 58 elements (SH via component_library.db)")
     void w_tc1_2_compile_produces_55() {
         assertNotNull(dropResult, "W-TC1-1 must run first");
 
@@ -123,14 +123,14 @@ class BomDropCompileTest {
 
         assertTrue(compileResult.success(),
                 "Compile should succeed: " + compileResult.error());
-        assertEquals(55, compileResult.elementCount(),
-                "Compilation must produce 55 elements (SH Rosetta Stone)");
+        assertEquals(58, compileResult.elementCount(),
+                "Compilation must produce 58 elements (SH via component_library.db)");
     }
 
     // ── W-TC1-3: output.db exists with correct element count ─────────
 
     @Test @Order(3)
-    @DisplayName("W-TC1-3: output.db has 55 elements in elements_meta")
+    @DisplayName("W-TC1-3: output.db has 58 elements in elements_meta")
     void w_tc1_3_output_db_exists() {
         assertNotNull(compileResult, "W-TC1-2 must run first");
         assertTrue(compileResult.success());
@@ -144,7 +144,7 @@ class BomDropCompileTest {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM elements_meta")) {
             assertTrue(rs.next());
-            assertEquals(55, rs.getInt(1), "Output DB must have 55 elements");
+            assertEquals(58, rs.getInt(1), "Output DB must have 58 elements");
         } catch (Exception e) {
             fail("Output DB should be valid: " + e.getMessage());
         }
@@ -153,7 +153,7 @@ class BomDropCompileTest {
     // ── W-TC1-4: BOM Drop leaf count equals compiled element count ───
 
     @Test @Order(4)
-    @DisplayName("W-TC1-4: bomDrop leaves (55) = compiled elements (55) — equivalence proof")
+    @DisplayName("W-TC1-4: bomDrop leaves (58) = compiled elements (58) — equivalence proof")
     void w_tc1_4_equivalence() {
         assertNotNull(dropResult, "W-TC1-1 must run first");
         assertNotNull(compileResult, "W-TC1-2 must run first");

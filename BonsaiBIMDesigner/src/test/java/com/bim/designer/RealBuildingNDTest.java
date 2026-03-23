@@ -102,7 +102,7 @@ class RealBuildingNDTest {
     // ── W-ND-REAL-3: BOM element count matches Rosetta Stone ──────────
 
     @Test @Order(3)
-    @DisplayName("W-ND-REAL-3: SH BOM has 55 leaf elements (G1-COUNT reference)")
+    @DisplayName("W-ND-REAL-3: SH BOM has 58 leaf elements (G1-COUNT via library)")
     void w_nd_real_3_element_count() throws Exception {
         try (var stmt = bomConn.createStatement();
              var rs = stmt.executeQuery("""
@@ -110,9 +110,9 @@ class RealBuildingNDTest {
                      WHERE component_type = 'LEAF' AND is_active = 1""")) {
             assertTrue(rs.next());
             int leafInstances = rs.getInt(1);
-            // SH has 55 extraction elements but BOM lines have qty > 1 for some
-            assertTrue(leafInstances >= 55,
-                    "SH BOM must have >= 55 leaf instances, got " + leafInstances);
+            // SH has 58 elements via component_library.db (55 extraction + 3 library-evolved)
+            assertTrue(leafInstances >= 58,
+                    "SH BOM must have >= 58 leaf instances, got " + leafInstances);
             System.out.printf("  BOM: %d leaf instances%n", leafInstances);
         }
     }
@@ -120,7 +120,7 @@ class RealBuildingNDTest {
     // ── W-ND-REAL-4: Output DB has compiled elements ──────────────────
 
     @Test @Order(4)
-    @DisplayName("W-ND-REAL-4: Output DB (ifc4_samplehouse.db) has 55 elements")
+    @DisplayName("W-ND-REAL-4: Output DB (ifc4_samplehouse.db) has 58 elements")
     void w_nd_real_4_output_db() throws Exception {
         File outputDb = new File("DAGCompiler/lib/output/ifc4_samplehouse.db");
         if (!outputDb.exists()) {
@@ -132,8 +132,8 @@ class RealBuildingNDTest {
              var stmt = conn.createStatement();
              var rs = stmt.executeQuery("SELECT COUNT(*) FROM elements_meta")) {
             assertTrue(rs.next());
-            assertEquals(55, rs.getInt(1), "Output must have 55 elements");
-            System.out.println("  Output: 55 elements confirmed");
+            assertEquals(58, rs.getInt(1), "Output must have 58 elements");
+            System.out.println("  Output: 58 elements confirmed");
         }
 
         // Check c_orderline table (populated for generative builds, empty for extracted)

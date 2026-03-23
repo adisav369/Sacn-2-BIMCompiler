@@ -301,6 +301,40 @@ class DemoHouseCompileTest {
 
                 st.execute("INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value) VALUES ('EXPECTED_ELEMENTS', '53')");
 
+                // ── FP_PIPE_ASSEMBLY: placement params for fire suppression piping ──
+                // BuildingWriter requires m_bom_line + m_attribute for FP_PIPE_ASSEMBLY/MAIN
+                // when sprinklers are detected by FireProtectionResolver.
+                st.execute("""
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+                        aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                    VALUES ('FP_PIPE_ASSEMBLY','FP Pipe Assembly','SET','FP','fp',
+                            0,0,0)""");
+                st.execute("""
+                    INSERT INTO m_bom_line (bom_id, child_product_id, component_type, role,
+                        sequence, z_rule)
+                    VALUES ('FP_PIPE_ASSEMBLY','FP_MAIN_PIPE','BUY','MAIN',10,'CEILING')""");
+                // m_attribute: spacing param required by BOMRuleAD.loadPlacementParams
+                st.execute("""
+                    CREATE TABLE IF NOT EXISTS m_attribute (
+                        m_attribute_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        bom_child_id INTEGER NOT NULL,
+                        param_key TEXT NOT NULL,
+                        param_value TEXT,
+                        is_active INTEGER DEFAULT 1)""");
+                // Get bom_child_id of the MAIN line we just inserted
+                try (ResultSet bcRs = st.executeQuery(
+                        "SELECT bom_child_id FROM m_bom_line WHERE bom_id='FP_PIPE_ASSEMBLY' AND role='MAIN'")) {
+                    if (bcRs.next()) {
+                        int fpBomChildId = bcRs.getInt(1);
+                        st.execute("INSERT INTO m_attribute (bom_child_id, param_key, param_value) VALUES ("
+                            + fpBomChildId + ", 'spacing', '3.0')");
+                        st.execute("INSERT INTO m_attribute (bom_child_id, param_key, param_value) VALUES ("
+                            + fpBomChildId + ", 'z_offset', '0.15')");
+                        st.execute("INSERT INTO m_attribute (bom_child_id, param_key, param_value) VALUES ("
+                            + fpBomChildId + ", 'diameter', '0.025')");
+                    }
+                }
+
                 // 5. Seed metadata tables — same tables that IFC extraction populates
                 //    For GENERATIVE: seeded from YAML room definitions instead of IFC
 
@@ -646,5 +680,118 @@ class DemoHouseCompileTest {
 
         assertTrue(violations.isEmpty(),
             "[W-GEN-COMPILE-5] BOM offset violations:\n  " + String.join("\n  ", violations));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  W-DM-TC5-1: Discipline wiring
+    //  // Implementing ACTION_ROADMAP.md §Task 4 Session A — Witness: W-DM-TC5-1
+    //
+    //  Two-part proof:
+    //  (a) Output has multi-discipline breakdown: STR (walls/slabs) + ARC
+    //      (doors/windows/furniture/roof) + MEP (sprinklers/alarms)
+    //  (b) BomDropper.drop() populates C_OrderLine.Discipline from bom_category
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test @Order(6)
+    @DisplayName("W-DM-TC5-1: Multi-discipline output (STR + ARC + MEP)")
+    void w_dm_tc5_1_output_disciplines() {
+        assertNotNull(compileResult, "W-GEN-COMPILE-1 must run first");
+        assertTrue(compileResult.success());
+
+        String outputPath = compileResult.outputDbPath();
+
+        try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + outputPath)) {
+            // ── (a) Multi-discipline breakdown ──────────────────────────
+            Map<String, Integer> disciplineCounts = new LinkedHashMap<>();
+            try (Statement st = outConn.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT discipline, COUNT(*) AS cnt FROM elements_meta "
+                   + "GROUP BY discipline ORDER BY cnt DESC")) {
+                while (rs.next()) {
+                    disciplineCounts.put(rs.getString("discipline"), rs.getInt("cnt"));
+                }
+            }
+
+            System.out.println("  [TC5] Discipline breakdown:");
+            disciplineCounts.forEach((d, c) ->
+                System.out.printf("    %-10s %d%n", d, c));
+
+            assertTrue(disciplineCounts.size() >= 3,
+                "Output must have at least 3 disciplines (STR, ARC, MEP), got: "
+                + disciplineCounts.keySet());
+
+            // ── MEP elements: fire-safety fittings ──────────────────────
+            assertTrue(disciplineCounts.containsKey("MEP"),
+                "Output must contain MEP discipline elements");
+            assertEquals(10, disciplineCounts.get("MEP"),
+                "10 MEP elements (5 rooms × sprinkler + alarm)");
+
+            // Verify IFC classes within MEP
+            Map<String, Integer> mepClasses = new LinkedHashMap<>();
+            try (Statement st = outConn.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT ifc_class, COUNT(*) AS cnt FROM elements_meta "
+                   + "WHERE discipline = 'MEP' GROUP BY ifc_class ORDER BY cnt DESC")) {
+                while (rs.next()) {
+                    mepClasses.put(rs.getString("ifc_class"), rs.getInt("cnt"));
+                }
+            }
+            assertEquals(5, mepClasses.get("IfcFireSuppressionTerminal"), "5 sprinklers");
+            assertEquals(5, mepClasses.get("IfcAlarm"), "5 alarms");
+
+            // ── STR elements: walls + slabs ─────────────────────────────
+            assertTrue(disciplineCounts.containsKey("STR"),
+                "Output must contain STR discipline elements");
+            assertTrue(disciplineCounts.get("STR") >= 25,
+                "≥25 STR elements (20 walls + 5 slabs), got " + disciplineCounts.get("STR"));
+
+            // ── ARC elements: doors, windows, furniture, roof ───────────
+            assertTrue(disciplineCounts.containsKey("ARC"),
+                "Output must contain ARC discipline elements");
+            assertTrue(disciplineCounts.get("ARC") >= 10,
+                "≥10 ARC elements (doors + windows + furniture + roof)");
+
+            int total = disciplineCounts.values().stream().mapToInt(Integer::intValue).sum();
+            assertEquals(53, total, "Total output elements");
+            System.out.printf("  [TC5] PASS: %s = %d total%n", disciplineCounts, total);
+        } catch (Exception e) {
+            fail("W-DM-TC5-1 failed: " + e.getMessage());
+        }
+    }
+
+    @Test @Order(7)
+    @DisplayName("W-DM-TC5-2: BomDropper populates C_OrderLine.Discipline from bom_category")
+    void w_dm_tc5_2_bomdropper_discipline() throws Exception {
+        // BomDropper.drop() creates C_OrderLine tree with Discipline column.
+        // Uses the Rosetta Stone pipeline path (BomDropper → OrderLineWalker).
+        var entry = com.bim.compiler.dsl.BuildingRegistry.loadByDocTypeId("RE_DM");
+        assertNotNull(entry, "RE_DM must exist in C_DocType");
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + compileDbPath)) {
+            int leaves = com.bim.compiler.bom.BomDropper.drop(conn, entry);
+            assertTrue(leaves > 0, "BomDropper must produce leaves, got " + leaves);
+            System.out.printf("  [TC5-2] BomDropper: %d leaves%n", leaves);
+
+            // Verify C_OrderLine.Discipline populated
+            Map<String, Integer> olDisciplines = new LinkedHashMap<>();
+            try (Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT Discipline, COUNT(*) AS cnt FROM C_OrderLine "
+                   + "GROUP BY Discipline ORDER BY cnt DESC")) {
+                while (rs.next()) {
+                    olDisciplines.put(rs.getString("Discipline"), rs.getInt("cnt"));
+                }
+            }
+
+            System.out.println("  [TC5-2] C_OrderLine.Discipline:");
+            olDisciplines.forEach((d, c) ->
+                System.out.printf("    %-10s %d%n", d, c));
+
+            assertFalse(olDisciplines.isEmpty(),
+                "C_OrderLine must have discipline rows after BomDropper");
+            assertTrue(olDisciplines.containsKey("ARC"),
+                "Must have ARC discipline rows (room-category BOMs)");
+            System.out.printf("  [TC5-2] PASS: %s%n", olDisciplines);
+        }
     }
 }

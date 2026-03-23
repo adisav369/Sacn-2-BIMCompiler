@@ -124,7 +124,7 @@ class CompileBridgeTest {
             String dslContent = Files.readString(Path.of(DSL_FILE));
 
             // 3. Read expected elements from ad_sysconfig
-            int expectedElements = 55;
+            int expectedElements = 58;
             try (Statement stmt = conn.createStatement();
                  var rs = stmt.executeQuery(
                          "SELECT config_value FROM ad_sysconfig WHERE config_key='EXPECTED_ELEMENTS'")) {
@@ -197,7 +197,7 @@ class CompileBridgeTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-COMPILE-1: compile() with SH_BOM.db produces output.db with 55 elements")
+    @DisplayName("W-COMPILE-1: compile() with SH_BOM.db produces output.db with 58 elements")
     void w_compile_1_pipeline_produces_elements() {
         CompileRequest request = new CompileRequest(
                 "Ifc4_SampleHouse",
@@ -210,8 +210,8 @@ class CompileBridgeTest {
 
         assertTrue(compileResult.success(),
                 "Compile should succeed: " + compileResult.error());
-        assertEquals(55, compileResult.elementCount(),
-                "SH produces exactly 55 elements");
+        assertEquals(58, compileResult.elementCount(),
+                "SH produces exactly 58 elements");
     }
 
     @Test
@@ -231,7 +231,7 @@ class CompileBridgeTest {
              Statement stmt = conn.createStatement();
              var rs = stmt.executeQuery("SELECT COUNT(*) FROM elements_meta")) {
             assertTrue(rs.next());
-            assertEquals(55, rs.getInt(1), "Output DB must contain 55 elements");
+            assertEquals(58, rs.getInt(1), "Output DB must contain 58 elements");
         } catch (Exception e) {
             fail("Output DB should be a valid SQLite database: " + e.getMessage());
         }

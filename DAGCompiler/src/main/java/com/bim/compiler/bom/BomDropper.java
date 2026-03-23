@@ -238,11 +238,12 @@ public class BomDropper {
                                    double dx, double dy, double dz,
                                    double widthMm, double depthMm, double heightMm,
                                    int qty) throws SQLException {
+        String discipline = deriveDiscipline(bomCategory);
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                    + " bom_category, bom_child_id, dx, dy, dz, "
-                   + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Qty) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                   + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, Qty) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, orderId);
             if (parentLineId != null) ps.setInt(2, parentLineId);
@@ -260,7 +261,8 @@ public class BomDropper {
             ps.setDouble(12, depthMm);
             ps.setDouble(13, heightMm);
             ps.setString(14, familyRef);  // M_Product_ID = family_ref
-            ps.setInt(15, qty);
+            ps.setString(15, discipline);
+            ps.setInt(16, qty);
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -274,6 +276,20 @@ public class BomDropper {
             case 0 -> "BUILDING";
             case 1 -> "FLOOR";
             default -> "ROOM";
+        };
+    }
+
+    /**
+     * Derive Discipline from bom_category — same logic as W003 backfill.
+     * RF/STR/SL → STR, FP → FPR, MEP/ELEC/PLB/ACMV → pass-through, else ARC.
+     */
+    static String deriveDiscipline(String bomCategory) {
+        if (bomCategory == null) return "ARC";
+        return switch (bomCategory) {
+            case "RF", "STR", "SL" -> "STR";
+            case "FP" -> "FPR";
+            case "MEP", "ELEC", "PLB", "ACMV" -> bomCategory;
+            default -> "ARC";
         };
     }
 }
