@@ -133,43 +133,32 @@ The work order's compiled output. IFC-compatible elements with world coordinates
 | `lod_*` | LOD geometry — extracted meshes, element placement, parametric meshes | component_library.db | lod_geometry_map, lod_element_placement, lod_parametric_mesh |
 | `c_*` | Construction order — document types + compiled order | {PREFIX}_BOM.db (C_DocType), output.db (C_Order, C_OrderLine) | C_DocType (domain config, {PREFIX}_BOM.db). C_Order + C_OrderLine (WHAT-only, output.db — created fresh each compile) |
 | `pp_*` | Production operations — HOW to place elements | output.db | PP_Order_Node, PP_Order_NodeProduct |
-| `co_*` | Construction output — compiled spatial resolution | output.db, work_output.db | co_empty_space, co_empty_space_line |
-| `w_*` | Work-output-specific — design workspace | work_output.db | W_BuildingConfig, W_Variant, W_Validation_Result |
+| `co_*` | Construction output — compiled spatial resolution | output.db, compile DB | co_empty_space, co_empty_space_line |
+| `w_*` | ~~Work-output-specific~~ **REMOVED (S61)** — see §1.4 | ~~work_output.db~~ | ~~W_BuildingConfig, W_Variant, W_Validation_Result~~ |
 
 The `ad_` prefix is iDempiere's system dictionary namespace. Using it for working
 construction data (BOM trees, spatial output) conflates configuration with runtime
 state. Historical mistake (`ad_bom`, `ad_bom_child`, `ad_bom_child_param`) corrected
 in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
 
-### 1.4 work_output.db — Designer Workspace (BIM Designer §17.10)
+### 1.4 ~~work_output.db~~ — REMOVED (S61)
 
-The BIM Designer's design-time workspace. Self-contained: YAML, Order, ASI
-embedded during init. Not a compilation output — this is where the user's
-design decisions live between Save/Recall cycles.
-
-| Table | iDempiere parallel | Content |
-|-------|-------------------|---------|
-| `W_BuildingConfig` | — | Embedded YAML + building identity (self-contained) |
-| `C_Order` | C_Order | Building-level header (DocStatus DR→IP→CO→VO) |
-| `C_OrderLine` | C_OrderLine | Design decisions: family_ref + tack dx/dy/dz + ASI FK |
-| `M_AttributeSetInstance` | M_AttributeSetInstance | Per-instance parameter overrides |
-| `M_AttributeInstance` | M_AttributeInstance | Individual attribute name/value pairs |
-| `CO_EmptySpace` | CO_EmptySpace | Site spatial header (origin + envelope) |
-| `CO_EmptySpaceLine` | CO_EmptySpaceLine | Slot spatial data: tack_from + capacity |
-| `PP_Order_Node` | PP_Order_Node | Construction routing / verb operations |
-| `PP_Order_NodeProduct` | PP_Order_NodeProduct | Verb parameters (name/value/type) |
-| `W_Variant` | — | Save/Recall snapshot metadata |
-| `W_Validation_Result` | AD_Validation_Result | Per-line compliance results |
-| `AD_SysConfig` | AD_SysConfig | Schema version + init metadata |
-
-DDL: `migration/W001_work_output_schema.sql`. SRS: `docs/G4_SRS.md`.
-
-**Three actions — increasing deliberation:**
-- **Save** → writes C_OrderLine + ASI (cheap, frequent)
-- **Recall** → loads previous variant (non-destructive browse)
-- **Promote** → governance gate → creates m_bom entries in {PREFIX}_BOM.db (rare, deliberate)
-
-See `BIM_Designer.md` §17.10 for the full persistence model.
+> **Superseded.** work_output.db is removed from the architecture.
+> The BOM is read-only (EntityType D). Save = Blender native save (.blend file).
+> There are no user edits to buffer — the BOM is the source of truth, the
+> viewport is purely visual confirmation.
+>
+> **4-DB architecture:** component_library / {PREFIX}_BOM / output / validation.
+>
+> C_OrderLine tree (from BOM Drop) lives in the compile DB. ASI overrides,
+> validation results, and verb audit trail also go to the compile DB.
+> CompleteIt compiles from compile DB → output.db (path editable by user).
+>
+> See [DocAction_SRS.md §1.10](DocAction_SRS.md) for the simplified lifecycle.
+>
+> **Promote conditions:** New BOMs must declare parent category, qualified name,
+> author/version, and have all child references validated. Without these,
+> promote is blocked — the selection list stays organized.
 
 ---
 
@@ -3275,3 +3264,4 @@ Filler distribution: `filler.space_width_mm = (parent - SUM(fixed)) / N_fillers`
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules
 - **TerminalAnalysis.md** — Terminal forensics + §ERP Model Architecture (discipline hierarchy, verb-to-AttributeSet, Val_Rule, ROUTE as BOM tree)
+- **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — Exception-based ordering (§1), C_Project site-as-BOM (§2), abstract category tree (§3), BOM mining via Approve (§4), nD as queries (§5), order inheritance (§6), rule-pack compliance library (§12)
