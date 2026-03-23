@@ -55,8 +55,8 @@ public class WalkThruVerb implements Verb<WalkThruVerb.WalkThruPayload> {
                     "No BUILDING BOM for DocSubType=" + docSubType,
                     new WalkThruPayload(null, docSubType, projectName, 0, 0));
 
-        // Walk the structured BOM hierarchy (M_Product from component_library.db)
-        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+        // Walk the structured BOM hierarchy (M_Product from disc_validation.db)
+        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
             BOMWalker walker = new BOMWalker(conn, compConn);
             walker.walkSelf(match.getBomId(), List.of(visitor), projectName);

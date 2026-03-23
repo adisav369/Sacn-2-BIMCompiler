@@ -2552,15 +2552,15 @@ public class DesignerAPIImpl implements DesignerAPI {
     // ── Assembly Builder (§18.2 Principle 4, G-7) ────────────────────
 
     /**
-     * Lazily open component_library.db for 6D/7D DAO queries.
+     * Lazily open disc_validation.db for 6D/7D DAO queries (M_Product master catalog).
      */
     private Connection getCompLibConn() throws Exception {
         if (compLibConn == null) {
             synchronized (this) {
                 if (compLibConn == null) {
-                    String libPath = "library/component_library.db";
+                    String libPath = "library/disc_validation.db";
                     compLibConn = DriverManager.getConnection("jdbc:sqlite:" + libPath);
-                    BIMLogger.info(TAG, "Opened component_library.db for 6D/7D queries");
+                    BIMLogger.info(TAG, "Opened disc_validation.db for 6D/7D queries");
                 }
             }
         }

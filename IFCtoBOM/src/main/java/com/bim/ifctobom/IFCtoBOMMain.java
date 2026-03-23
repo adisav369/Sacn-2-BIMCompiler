@@ -112,6 +112,7 @@ public class IFCtoBOMMain {
         System.out.printf("[populate] Building: %s (%s)%n", config.name(), buildingType);
 
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
+        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db");
         try {
             // 1. Extract + enrich in memory, fill geometry gaps in library
             Map<String, List<ExtractionElement>> storeyElements =
@@ -122,7 +123,7 @@ public class IFCtoBOMMain {
 
             // 2. Create M_Product in catalog (INSERT OR IGNORE = reuse)
             int cataloged = ProductRegistrar.ensureProductCatalog(
-                    compConn, allElements, buildingType);
+                    compConn, discConn, allElements, buildingType);
             System.out.printf("[populate] Products cataloged: %d new%n", cataloged);
 
             // 3. Link M_Product → geometry_hash via M_Product_Image
@@ -140,6 +141,7 @@ public class IFCtoBOMMain {
                     buildingType, allElements.size(), cataloged, images);
         } finally {
             compConn.close();
+            discConn.close();
         }
     }
 

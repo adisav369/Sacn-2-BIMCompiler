@@ -60,7 +60,7 @@ public class BackOfficeServer implements AutoCloseable {
     public BackOfficeServer(String libraryDir, int port) throws Exception {
         this.libraryDir = libraryDir;
         this.compLibConn = DriverManager.getConnection(
-                "jdbc:sqlite:" + libraryDir + "/component_library.db");
+                "jdbc:sqlite:" + libraryDir + "/disc_validation.db");
         String secret = System.getenv("BIM_SESSION_SECRET");
         this.sessionMgr = (secret != null && !secret.isBlank())
                 ? new SessionManager(secret)

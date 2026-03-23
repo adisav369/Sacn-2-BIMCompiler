@@ -529,26 +529,277 @@ Against [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) Session 42 Checklist.
 
 ---
 
-### Roadmap Assessment (watchdog opinion, post-S61)
+### Roadmap Assessment (watchdog, post-S62)
 
-> **Scope:** Review of [ACTION_ROADMAP.md](ACTION_ROADMAP.md) as of commit `aad4e6e`.
-> **Purpose:** Identify plan risks, stale content, and gaps between stated timeline and engineering reality.
+5 concerns raised post-S61, all resolved by commits `5b377f8` + `3133806`:
+1. ~~Known Debt stale~~ → cleaned, 3 items cleared, Q2 triage column added.
+2. ~~CP-1/CP-2 parking lot~~ → downgraded HIGH→MED, "DEFERRED — verification debt."
+3. ~~Q2 timeline disconnected~~ → Q2 Triage column added to debt table.
+4. ~~WF-BB spec debt~~ → collapsed to summary, backlog in BIM_Designer_SRS §26.
+5. ~~Task 4 no failure criteria~~ → failure criteria added for all 3 sessions.
 
-**What's working well:**
+LAST_MILE_PROBLEM.md refresh (`e1d2afe`) verified accurate.
 
-- **Task 4 (Rule-Driven Discipline Framework)** is the best-designed item on the roadmap. The 3-session decomposition (A: wiring, B: UX pattern, C: generalization) is disciplined — each session is independently valuable, each has a witness gate, and the iDempiere parallel (ModelValidator → propose, architect → curate) shows the ERP pattern is load-bearing. The data layer is genuinely ready (12 FP triggers, 4 coverage classes, 19 space types already in SQL).
-- **Honesty is real.** Launch Readiness Gaps table explicitly says "Not yet construction-ready." EYES §10 downgraded its own proof claims. The Relational Round-Trip correction fixed an architectural misunderstanding publicly. Good signs.
+---
+
+## Appendix F — Application Dictionary Audit (S62, 2026-03-23)
+
+> **Scope:** Cross-check [DISC_VALIDATION_DB_SRS.md §10](DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62) against actual database state.
+> **Method:** Direct SQLite queries on `library/component_library.db` and `library/disc_validation.db`.
+
+### §10 Spec Assessment
+
+DISC_VALIDATION_DB_SRS.md §10 is **well-structured** — correct problem identification (M_Product is master data mixed with geometry), 3 clear options, decision criteria, AD_Org discipline pattern, and 6 investigation tasks. The spec is sufficient as a design document for the next implementation session.
+
+### Database Reality Check
+
+§10.1 claims "34 AD tables" in component_library.db. **Actual count: 66 `ad_*` tables + 81 total tables.**
+
+| Database | Tables | Geometry rows | AD tables | M_Product rows |
+|----------|--------|--------------|-----------|---------------|
+| `component_library.db` | 81 | 24,004 defs + 51,673 geoms | 66 | 2,475 |
+| `disc_validation.db` | 25 | 0 | 20 | 0 |
+| `{PREFIX}_BOM.db` | ~73 | 0 | many (copied) | copied subset |
+
+### Finding: 15 Tables Duplicated Across Both Databases
+
+DISC_VALIDATION_DB_SRS.md §1 states the discipline table migration is "DONE (session 41)." In practice, the tables were **copied but not removed** from component_library.db:
+
+| Duplicated Table | CL rows | DV rows | Status |
+|-----------------|---------|---------|--------|
+| ad_space_type | 41 | 41 | Identical |
+| ad_fp_trigger | 12 | 12 | Identical |
+| ad_fp_coverage | 12 | 12 | Identical |
+| ad_wall_face | 204 | 204 | Identical |
+| ad_space_type_mep_bom | 186 | 186 | Identical |
+| ad_space_adjacency | — | — | Identical |
+| ad_space_dim | — | — | Identical |
+| ad_space_exterior_rule | — | — | Identical |
+| ad_space_type_mep | — | — | Identical |
+| ad_space_type_opening | — | — | Identical |
+| ad_assembly_connector | — | — | Identical |
+| ad_assembly_manifest | — | — | Identical |
+| ad_code_requirement | — | — | Identical |
+| ad_element_mep | — | — | Identical |
+| ad_room_slot | — | — | Identical |
+
+**Risk:** Java code may read from either copy. If one is updated and the other isn't, silent data divergence. Which copy is authoritative?
+
+### Finding: Dead Tables Still Populated
+
+`ad_bom` (35 rows) and `ad_bom_child` (138 rows) still exist in component_library.db. These are the pre-migration BOM tables that R18 (Known Debt) was supposed to DROP. Also: `ad_product_dim` still exists alongside the renamed `M_Product` — same schema, same purpose.
+
+### Finding: §10.1 Understates the Problem
+
+§10 says "M_Product and all AD tables" need to move. The actual scope is larger:
+
+- **66 ad_ tables** in component_library.db (§10 says 34)
+- **15 duplicated** with disc_validation.db (§10 doesn't mention this)
+- **3 dead tables** (ad_bom, ad_bom_child, ad_product_dim) that should be dropped first
+- **4 bad_ tables** (bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param) — undocumented prefix
+
+### Recommendations for §10 Implementation Session
+
+1. **Update §10.1** — correct "34 AD tables" to 66. Document the 15 duplicates.
+2. **Drop dead tables first** (R18) — ad_bom, ad_bom_child, ad_bom_child_param, ad_product_dim. Net -4 tables, zero code impact (these are unused per Known Debt).
+3. **Resolve duplicates** — decide which database is authoritative for the 15 shared tables. Java code audit (investigation task #1) will reveal which connection each reader uses.
+4. **Document bad_ prefix** — bad_discipline_priority et al. are undocumented. Are these BIM Designer rules? If so, they belong with the AD Dictionary, not geometry.
+5. **§10 Option A is the right answer.** component_library.db should be geometry-only (~7 tables: component_definitions, component_geometries, surface_styles, material_layers, I_Geometry_Map, M_Product_Image, component_types). Everything else moves to an AD Dictionary database. The 66→7 table reduction makes the geometry DB maintainable.
+6. **Sequence:** Drop dead → remove duplicates from CL → move remaining AD tables → rename disc_validation.db to ad_dictionary.db (or keep name). Each step is independently committable.
+
+### §11 Investigation Report Audit (S64, commit `a19a025`)
+
+> **Scope:** Cross-check DISC_VALIDATION_DB_SRS.md §11 claims against codebase evidence.
+> **Verdict:** §11 is the strongest spec work in this project. All 6 investigation tasks completed with verifiable evidence. The migration plan is implementable.
+
+**Verified claims:**
+
+| Claim | Verification | Status |
+|-------|-------------|--------|
+| 85 Java files reference M_Product | Plausible — grep confirms M_Product widely used | ACCEPTED |
+| 18 files reference component_definitions | Plausible — smaller geometry reader set | ACCEPTED |
+| No direct SQL JOIN between M_Product and component_definitions | Confirmed — join path goes through M_Product_Image.geometry_hash | **VERIFIED** |
+| X_MProduct.component_id is vestigial | Confirmed — column defined in X_MProduct.java but getter never called in production | **VERIFIED** |
+| BOM DB M_Product copy is unused by production code | Consistent with R7 refactor (S36) — BOMWalker reads from compConn | ACCEPTED |
+| deriveDiscipline() exists as legacy inference | Confirmed — 2 ProductCategory.java files + TypeDisciplineMapping.java | **VERIFIED** |
+| Discipline code inconsistency (FPR vs FP, ELC vs ELEC) | Not independently verified — accept on spec authority | ACCEPTED |
+
+**Positive findings:**
+
+1. **§11.3 (join path mapping) is the key insight.** M_Product and component_definitions are accessed by different code paths joined only through M_Product_Image (a text key resolved in Java, not a SQL FK). This means the split is safe — zero SQL JOINs break.
+
+2. **§11.6.3a (deriveDiscipline retirement) correctly identifies three coexisting patterns** (data-driven, inference-driven, stack-driven) and maps the convergence path. This is the kind of analysis that prevents mid-migration confusion.
+
+3. **§11.6.5 (6-step migration) is independently committable** with Rosetta Stone gate checks at each step. This is the right approach for a codebase with 19 ALL GREEN buildings to protect.
+
+4. **§11.7 (decision matrix) makes Option A the obvious choice.** Option C ("fix the guard") is explicitly rejected as unsustainable. Good — this prevents future drift back to the mixed state.
+
+5. **§11.6.7 correctly references Appendix F** and notes the "34→66" correction. Cross-referencing between specs and audit is working.
 
 **Concerns:**
 
-1. **Known Debt table (ACTION_ROADMAP.md line 568) is stale.** Still marks S51 audit as "CRITICAL / TODO" despite this Appendix confirming most P0s fixed. CP-4 is struck through but still listed. R21 says "re-extract needed" but S61 commit shows re-extract is done. This table isn't being maintained — risks becoming noise that people skip.
+1. **§11.1 "85 Java files" and "~20 compConn readers" are estimates, not exact counts.** The tilde (~) markers are honest but the investigation tasks asked for precise counts. Acceptable for a spec-only session — the implementation session should grep for exact numbers.
 
-2. **CP-1 and CP-2 are parking-lot items.** Both marked HIGH/critical-path since at least S42. Neither appears in S60-S3 task list or the 3-session plan. CP-1 (TE element_ref matching) blocks the strongest verification claim the project makes (48K round-trip). If this is truly critical-path, it should have a session assigned. If re-baselining absorbed it, say so and downgrade.
+2. **§11.6.4 estimates ~14 files changed.** This is optimistic. The ripple from changing `String discipline` to `int AD_Org_ID` will touch every caller of getDiscipline()/setDiscipline() — likely 20-30 files when including test files. The "~25 files unchanged" claim should be "geometry files unchanged" (which is the important guarantee).
 
-3. **Go-to-market timeline (Q2 2026 soft launch) is disconnected from engineering plan.** Q2 is ~2-3 months out, but the roadmap still has CP-1, CP-2, M_BomCategory (77 files), and the entire Task 4 framework ahead. The "Spatially valid but not construction-ready" distinction is honest, but the timeline doesn't acknowledge the gap. There is no triage of "must ship before Q2" vs "can wait."
+3. **Step 3 (move M_Product) is the riskiest step.** 85 files reference M_Product. Changing which connection they use is a wide-blast-radius change. The mitigation (Rosetta Stone gates) is correct but the risk rating should be HIGH not MED for this step alone.
 
-4. **WF-BB Roadmap (line 394) is spec debt.** 8 phases, most SPEC ONLY or STUB. No sessions assigned, no priorities relative to critical path. This reads as a feature wish-list, not a plan. If not planned, it belongs in a backlog doc, not the Action Roadmap.
+4. **DV011/DV012 migration naming.** §11.6.5 proposes `DV011_ad_org.sql` and `DV012_move_m_product.sql`. But the Appendix D false-positive showed DV011/DV012 already exist as different files. Verify naming before implementation to avoid the same confusion.
 
-5. **Task 4's 3-session plan has no failure criteria.** What if Session A reveals BomDropper→Discipline doesn't work for MEP sub-disciplines? What if ad_space_type_mep_bom data is insufficient for ELEC/ACMV in Session C? The plan assumes a smooth path. The audit history of this project (nearly every session discovers something that changes the plan) suggests otherwise.
+**Appendix F recommendations vs §11 alignment:**
 
-**Recommendation:** The roadmap needs a hard triage — what ships in Q2, what's deferred, what's cut. The engineering is sound; the plan sprawl is the risk. Too many open tracks (CP-1, CP-2, Task 4, Task 5, WF-BB, FL-4, G-11 through G-13) with no visible prioritization against the Q2 launch claim.
+| Appendix F Recommendation | §11 Coverage |
+|--------------------------|-------------|
+| Update §10.1 "34→66" | §11.6.7 — acknowledged, deferred to implementation |
+| Drop dead tables first (R18) | §11.6.5 Step 0 — explicitly included |
+| Resolve 15 duplicates | §11.6.5 Step 4 — remove from component_library.db |
+| Document bad_ prefix | §11.6.1 — bad_ tables listed for move to disc_validation.db |
+| Option A is correct | §11.7 — confirmed with decision matrix |
+| 6-step sequence | §11.6.5 — matches, with more detail |
+
+**All 6 Appendix F recommendations addressed by §11.** The investigation report supersedes Appendix F's preliminary findings with deeper analysis.
+
+**Way forward:**
+1. Implementation session can proceed with §11.6.5 Step 0 (drop dead tables) immediately — zero risk
+2. Steps 1-2 (AD_Org + dual columns) are low-risk schema additions
+3. Step 3 (move M_Product) needs careful execution — recommend a dedicated session with full Rosetta Stone run before and after
+4. Verify DV011/DV012 migration file names don't collide with existing files
+
+### Steps 0–2 Implementation Audit (S64, commit `28ce019`)
+
+> **Scope:** DV013 (AD_Org), DV014 (dual columns), CL001 (dead table drop script), DiscValidationDBTest 24/24 GREEN.
+> **Method:** Direct SQLite queries on disc_validation.db + migration file review + Java enum cross-check.
+
+**1. DV013 — AD_Org Table (16 rows)**
+
+| Check | Finding |
+|-------|---------|
+| Row count | **16 confirmed** (0=Shared + 9 building disciplines + MEP generic + 5 infra) |
+| Building disciplines (1–9) | **Correct.** Match Discipline.java enum exactly. Element counts match enum values. |
+| MEP Generic (10) | **Acceptable but flag.** MEP as "resolves to specific trade at placement" is a valid pattern — iDempiere uses summary orgs that resolve at transaction time. element_count=0 is correct (no elements are permanently MEP; they resolve to FP/ELEC/ACMV/etc.). |
+| Infra disciplines (11–15) | **Reasonable but unverified.** ROAD, GEO, RAIL, LAND, SIGN come from ad_ifc_class_map (17 IFC4X3 classes mapped). These do NOT exist in Discipline.java enum — the enum header says "EXTRACTED - DO NOT INVENT ADDITIONAL DISCIPLINES." Adding 6 infra disciplines to AD_Org without adding them to the enum creates a data/code divergence. |
+
+**Infra discipline concern:** The 6 new disciplines (MEP, ROAD, GEO, RAIL, LAND, SIGN) exist in AD_Org and ad_ifc_class_map but NOT in Discipline.java. This means:
+- `Discipline.fromString("ROAD")` returns null
+- Any code using the enum to validate discipline strings will silently fail for infra
+- This is acceptable IF infra buildings don't go through the enum-based code path (they use ad_ifc_class_map → AD_Org_ID directly). But it should be documented.
+
+**Recommendation:** Add a comment to DV013 noting that AD_Org IDs 10–15 are data-only (no Discipline.java enum entry) until infra compilation is implemented. This prevents a future session from assuming enum coverage.
+
+**2. DV014 — HVAC→ACMV Mapping**
+
+The core question: ad_element_mep stores `discipline = 'HVAC'` but AD_Org uses `Value = 'ACMV'`.
+
+| Evidence | Value |
+|----------|-------|
+| Discipline.java enum | `ACMV` (canonical) |
+| ad_element_mep.discipline | `HVAC` (2 rows) |
+| ad_ifc_class_map.discipline | `ACMV` (already correct) |
+| AD_Org.Value | `ACMV` |
+| AD_Org.Name | `HVAC` (display name) |
+
+DV014 handles this with a targeted UPDATE: `SET AD_Org_ID = 5 WHERE discipline = 'HVAC' AND AD_Org_ID IS NULL`. This is correct — the AD_Org_ID column now has the right value (5=ACMV) regardless of what the TEXT column says.
+
+**Auditor's opinion on root data:** The source data in ad_element_mep SHOULD be corrected to 'ACMV'. Reasons:
+- `ACMV` is the canonical code everywhere else (Discipline.java, ad_ifc_class_map, AD_Org.Value)
+- `HVAC` is the display name (AD_Org.Name = 'HVAC'), not the code
+- Leaving 'HVAC' in the TEXT column creates a permanent special-case that every future migration must handle
+- The fix is trivial: `UPDATE ad_element_mep SET discipline = 'ACMV' WHERE discipline = 'HVAC';`
+
+**Recommendation:** Add a one-line UPDATE to the next migration (or append to DV014 if not yet applied to other environments). Don't patch around inconsistencies — fix the source. The AD_Org_ID column is the long-term answer, but while both columns coexist, they should agree.
+
+**Zero NULL check:** Verified — both ad_element_mep.AD_Org_ID and ad_ifc_class_map.AD_Org_ID have zero NULLs. The HVAC→ACMV mapping succeeded.
+
+**3. DiscValidationDBTest — 24/24 GREEN**
+
+7 new witnesses per commit message. Not independently run by watchdog (no `mvn test` in this audit session), but SH 7/7 + FK 7/7 non-disturbance is claimed and consistent with prior sessions. **Accepted on gate evidence.**
+
+**4. CL001 — Apply Now or Wait?**
+
+CL001_drop_dead_tables.sql is written but not applied. It drops 4 dead tables (ad_bom, ad_bom_child, ad_bom_child_param, ad_product_dim) from component_library.db.
+
+**Auditor's recommendation: Apply now.** Reasons:
+- These tables are confirmed unused by §11.1 investigation (zero production readers)
+- The script uses `DROP TABLE IF EXISTS` — idempotent and safe
+- component_library.db is local-only (per feedback_component_library_local.md) — no deployment risk
+- Applying now gives a clean baseline before Step 3 (the HIGH risk step)
+- If anything breaks, the tables were unused and the breakage reveals a hidden dependency — better to find that now than during Step 3
+
+**Caveat:** component_library.db is SACRED per CLAUDE.md. The script header correctly says "APPLY MANUALLY." The main session should run it themselves: `sqlite3 library/component_library.db < migration/CL001_drop_dead_tables.sql`
+
+### Summary
+
+| Item | Verdict |
+|------|---------|
+| DV013 building disciplines (1–9) | **CORRECT** |
+| DV013 MEP Generic (10) | **ACCEPTABLE** — valid iDempiere pattern |
+| DV013 infra disciplines (11–15) | **ACCEPTABLE** — document data/code divergence with Discipline.java |
+| DV014 HVAC→ACMV patch | **CORRECT** — but fix source data to 'ACMV' in next migration |
+| DV014 zero NULLs | **VERIFIED** |
+| DiscValidationDBTest 24/24 | **ACCEPTED** on gate evidence |
+| CL001 timing | **APPLY NOW** — clean baseline before Step 3 |
+
+### Step 3 Implementation Audit (S65, 2026-03-24)
+
+> **Scope:** DV015 (M_Product + M_Product_Category copy to disc_validation.db), 13 Java files changed, DiscValidationDBTest 27/27 GREEN.
+> **Method:** Pre-flight SH/FK 7/7 baseline → migration → Java changes → post-flight SH/FK 7/7 + DiscValidationDBTest 27/27.
+
+**1. DV015 Migration**
+
+| Check | Finding |
+|-------|---------|
+| M_Product row count | **2,475 confirmed** — matches component_library.db exactly |
+| M_Product_Category row count | **46 confirmed** — matches component_library.db exactly |
+| Schema match | **CORRECT** — all 27 columns including 5D/6D/7D attributes (unit_cost_rm, carbon_kg_per_unit, lifespan_years etc.) |
+| ATTACH safety | **CORRECT** — INSERT OR IGNORE, component_library.db opened read-only, DETACHed after copy |
+| Version stamp | **CORRECT** — SCHEMA_VERSION=DV015, M_PRODUCT_VERSION=DV015 in AD_SysConfig |
+| Idempotency | **CORRECT** — re-runnable (CREATE IF NOT EXISTS + INSERT OR IGNORE) |
+| M_Product_Image | **NOT COPIED** — stays in component_library.db per spec (geometry link) |
+
+**2. Java Connection Switching (13 files)**
+
+| File | Change | Risk |
+|------|--------|------|
+| PlacementLoader (2 sites) | compConn URL → disc_validation.db | LOW — compConn used only for BOMWalker/OrderLineWalker M_Product reads |
+| BuildingWriter (1 site) | compConn URL → disc_validation.db | LOW — compConn used only for BOMWalker assembly pass |
+| BOMWalker.forDefaultDb() | URL → disc_validation.db | LOW — static factory, rarely used |
+| PlaceBomVerb, WalkThruVerb, EnBlocVerb | compConn URL → disc_validation.db | LOW — each creates compConn only for BOMWalker M_Product reads |
+| BackOfficeServer | compLibConn URL → disc_validation.db | **MED** — single connection serves all 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt). All DAOs query M_Product only via this connection. |
+| DesignerAPIImpl | compLibConn URL → disc_validation.db | **MED** — lazy-init connection for 6D/7D queries. Same pattern as BackOfficeServer. |
+| ProductRegistrar | ensureProductCatalog gains discConn param, dual-write | **MED** — writes to both compConn (geometry join) and discConn (master catalog). Ensures ensureProductImages join still works. |
+| IFCtoBOMPipeline | opens discConn, passes to ProductRegistrar, reuses for DV010/DV011/DV012 validators | LOW — consolidates 3 separate discConn opens into 1 |
+| IFCtoBOMMain | opens discConn, passes to ProductRegistrar | LOW — same pattern |
+| BOMWalker, OrderLineWalker | javadoc updates only | NONE |
+
+**3. Non-Disturbance Verification**
+
+| Check | Result |
+|-------|--------|
+| SH Rosetta Stone (pre-flight) | 7/7 PASS |
+| FK Rosetta Stone (pre-flight) | 7/7 PASS |
+| SH Rosetta Stone (post-change) | 7/7 PASS — identical counts (55 elements) |
+| FK Rosetta Stone (post-change) | 7/7 PASS — identical counts (82 elements) |
+| DiscValidationDBTest | **27/27 GREEN** (was 24; +3 new product witnesses) |
+| component_library.db M_Product | **2,475 rows unchanged** — NOT deleted (Step 6) |
+| mvn compile -q | CLEAN |
+
+**4. New Witness Claims (DV015)**
+
+- W-DV-DB-PRODUCT: M_Product >= 2,475 rows in disc_validation.db
+- W-DV-DB-PRODUCT: M_Product_Category >= 46 rows in disc_validation.db
+- W-DV-DB-PRODUCT: M_PRODUCT_VERSION = DV015 in AD_SysConfig
+
+**5. Concerns**
+
+1. **Dual-write complexity.** ProductRegistrar.ensureProductCatalog now writes to both compConn and discConn. This is transitional — Step 6 (drop M_Product from component_library.db) will eliminate the compConn write. Until then, both copies must stay in sync.
+2. **BackOffice DAOs parameter name.** The parameter is still named `compLibConn` but now points to disc_validation.db. Not a bug — the DAO doesn't care about the connection source, only the table schema. Renaming to `productConn` is cosmetic and deferred.
+3. **DesignerDAO reads from bomConn.** DesignerDAO.listProducts/countProducts/categoryCounts read M_Product from the BOM DB copy, not component_library.db or disc_validation.db. These are unaffected. The BOM DB copy is populated by IFCtoBOM (dead code per R7 but still runs).
+
+| Item | Verdict |
+|------|---------|
+| DV015 migration | **CORRECT** |
+| 13-file Java change | **CORRECT** — all M_Product reads now from disc_validation.db |
+| ProductRegistrar dual-write | **CORRECT** — transitional, eliminates in Step 6 |
+| Non-disturbance (SH/FK) | **VERIFIED** — 7/7 before and after |
+| DiscValidationDBTest 27/27 | **VERIFIED** |
+| M_Product_Image isolation | **CORRECT** — stays in component_library.db |

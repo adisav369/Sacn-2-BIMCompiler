@@ -1540,7 +1540,7 @@ public class BuildingWriter {
     private void applyADBOMRecipesViaWalker() {
         String bomDbPath = System.getProperty("bom.db");
         try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
-             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
             AssemblyStructureVisitor visitor = new AssemblyStructureVisitor(conn, bomConn);
             BOMWalker walker = new BOMWalker(bomConn, compConn);
 

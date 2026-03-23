@@ -45,19 +45,19 @@ import java.util.*;
 public class ProductRegistrar {
 
     /**
-     * Create M_Product rows in component_library.db as the persistent catalog.
-     * Products are created here first so they survive BOM rebuilds and can be
-     * reused across buildings. If a product already exists (same product_id
-     * from a prior extraction or another building), it is reused as-is.
+     * Create M_Product rows in both component_library.db and disc_validation.db.
+     * Products are created in component_library.db (for M_Product_Image geometry join)
+     * and disc_validation.db (authoritative master catalog for downstream readers).
      *
      * <p>Idempotent — INSERT OR IGNORE. Only new products are added.
      *
-     * @param compConn     writable connection to component_library.db
+     * @param compConn     writable connection to component_library.db (geometry join)
+     * @param discConn     writable connection to disc_validation.db (master catalog)
      * @param elements     all extraction elements for the building
      * @param buildingType the building_type string (for logging)
      * @return number of new products inserted (0 = all reused)
      */
-    public static int ensureProductCatalog(Connection compConn,
+    public static int ensureProductCatalog(Connection compConn, Connection discConn,
                                            List<ExtractionElement> elements,
                                            String buildingType) throws SQLException {
         // Create table if not exists (first run)
@@ -93,19 +93,39 @@ public class ProductRegistrar {
 
         int count = 0;
         int reused = 0;
-        try (PreparedStatement stmt = compConn.prepareStatement(sql)) {
+        // Dual-write: component_library.db (geometry join) + disc_validation.db (master catalog)
+        try (PreparedStatement stmt = compConn.prepareStatement(sql);
+             PreparedStatement discStmt = discConn.prepareStatement(sql)) {
             for (Map.Entry<String, ExtractionElement> entry : distinct.entrySet()) {
                 ExtractionElement e = entry.getValue();
-                stmt.setString(1, entry.getKey());
-                stmt.setString(2, deriveProductType(e.ifcClass()));
-                stmt.setDouble(3, e.maxX() - e.minX());
-                stmt.setDouble(4, e.maxY() - e.minY());
-                stmt.setDouble(5, e.maxZ() - e.minZ());
-                stmt.setString(6, e.ifcClass());
+                String productId = entry.getKey();
+                String productType = deriveProductType(e.ifcClass());
+                double w = e.maxX() - e.minX();
+                double d = e.maxY() - e.minY();
+                double h = e.maxZ() - e.minZ();
+                String ifcClass = e.ifcClass();
+
+                // Write to component_library.db (for ensureProductImages geometry join)
+                stmt.setString(1, productId);
+                stmt.setString(2, productType);
+                stmt.setDouble(3, w);
+                stmt.setDouble(4, d);
+                stmt.setDouble(5, h);
+                stmt.setString(6, ifcClass);
                 stmt.setString(7, buildingType);
                 int rows = stmt.executeUpdate();
                 if (rows > 0) count++;
                 else reused++;
+
+                // Write to disc_validation.db (authoritative master catalog)
+                discStmt.setString(1, productId);
+                discStmt.setString(2, productType);
+                discStmt.setDouble(3, w);
+                discStmt.setDouble(4, d);
+                discStmt.setDouble(5, h);
+                discStmt.setString(6, ifcClass);
+                discStmt.setString(7, buildingType);
+                discStmt.executeUpdate();
             }
         }
         if (reused > 0) {
@@ -116,15 +136,18 @@ public class ProductRegistrar {
     }
 
     /**
-     * Copy M_Product rows from component_library.db catalog to the BOM DB.
-     * The BOM DB must be self-contained for compilation — the compiler
-     * reads M_Product from the BOM DB, not from component_library.db.
+     * Copy M_Product rows from disc_validation.db catalog to the BOM DB.
+     * The BOM DB gets a local copy for backward compatibility — downstream
+     * readers (BOMWalker, OrderLineWalker) read from disc_validation.db directly.
+     *
+     * <p>DEAD CODE per R7: BOMWalker reads from compConn (now disc_validation.db).
+     * Kept for single-arg BOMWalker constructor used by some tests.
      *
      * <p>Only copies products referenced by the current building's extraction.
      * Uses INSERT OR IGNORE — safe for re-runs.
      *
      * @param bomConn  writable connection to output BOM DB
-     * @param compConn read connection to component_library.db
+     * @param compConn read connection to disc_validation.db (master product catalog)
      * @param elements all extraction elements for the building
      * @return number of products copied to BOM DB
      */

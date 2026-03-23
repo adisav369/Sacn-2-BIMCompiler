@@ -21,7 +21,7 @@
 | C9-AXIS | PASS | PASS | PASS | PASS (87 axis-swaps accepted) | PASS | — (no ref) |
 | W-TOT | PASS | PASS | — | PASS | PASS (48428/48428) | PASS |
 
-**Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output). 4D/5D/6D live on real library.
+**Pipeline:** 9 stages. 64 verbs. 2475 products. 4-DB architecture (24+20+6+output). 4D/5D/6D live on real library.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 392/392 GREEN (40 test classes).
 **Scorecard: 31/36.** 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
@@ -50,10 +50,15 @@
   **Remaining Task 4A:** BomDropper populates Discipline from bom_category. OrderLineWalker passes Discipline. W-DM-TC5-1 witness.
   **Specs:** [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case) · [ProjectOrderBlueprint.md §13](docs/ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) · [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md#6-fp-discipline--readiness-assessment)
   **Audit concerns:** ExtractionElement constructor growing (13+ params, consider builder). ELEC/ACMV product availability unknown.
-  **AD Dictionary (S62→S64):** Organize full application dictionary per iDempiere ERP — AD_Org for disciplines, clean DB boundaries. [DISC_VALIDATION_DB_SRS.md §10](docs/DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62). Spec only, no code until reviewed.
+
+**Post S63 — Enterprise Layer:** After S60 debt clear + Task 4A done, begin [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md):
+  §1 Exception-based ordering (~S63), §2 C_Project (~S65), §4 BOM Mining (~S66+), §9-§12 Phase H+ (needs iDempiere REST).
+  **AD Dictionary (S62→S65):** Steps 0–3 DONE. AD_Org, dual columns, M_Product moved to disc_validation.db. [DISC_VALIDATION_DB_SRS.md §11.6.5](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable). Next: Step 4 (remaining AD tables), Step 5 (AD_Org_ID FK), Step 6 (cleanup).
 
 ## Session Log (recent first)
 
+**S65** — DV015 M_Product migration (Step 3). Copied 2,475 M_Product + 46 M_Product_Category from component_library.db to disc_validation.db. 13 Java files: all M_Product reads switched to disc_validation.db. ProductRegistrar dual-write (geometry join + master catalog). SH/FK 7/7. DiscValidationDBTest 27/27 (+3). [AUDIT_S51_FOCUSED.md §Step 3](docs/AUDIT_S51_FOCUSED.md#step-3-implementation-audit-s65-2026-03-24).
+**S64** — AD Dictionary investigation §11. Steps 0–2: AD_Org (DV013), dual columns (DV014), CL001 dead table script. DiscValidationDBTest 24/24. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#11-investigation-report--application-dictionary-database-placement-s64).
 **S60-S3** — R21 re-extract + audit + EYES consolidation + ProjectOrderBlueprint §13. (1) Re-extracted SH/FK reference DBs with rel_fills_host (7+16 door/window→host mappings). host_element_ref populated on BOM lines. (2) Audit P0 cross-check: 5 FIXED, 1 JUSTIFIED, 1 RETRACTED (AUDIT_S51_FOCUSED.md Appendix D). DV006.DELETED cleaned. (3) VerbFactorizer delegates to BIMEyes ShapeClassifier — 40 lines duplication removed. (4) ProjectOrderBlueprint.md §13 Rule-Driven Discipline: validation-as-suggestion pattern, 3 states (Absent/Proposed/Accepted), NFPA-13 as first rule pack. (5) ACTION_ROADMAP triaged: Known Debt cleaned, Q2 column, CP-1/CP-2 downgraded MED, WF-BB collapsed, Task 4 failure criteria. Seal v28. SH/FK 7/7 PASS. 6 commits.
 **S60-UI** — Web UI alignment + Show in Bonsai. 10 tabs aligned to §30.3 (2D Spatial, 3D Geometry, 8 Validate, 9 BOM, 10 Colour). BOM tree container fixed (#bomTree was missing). Show in Bonsai: browser pushes previewBBoxes via schemeName field → Bonsai poll picks up → 257 wireframe cubes rendered. First browser-to-Bonsai BIM preview push. Federation gap analysis: 70+ ops in IfcOpenShell, 8 HIGH priority migration items. webui_sync.py fixed for Blender 5.0 (bpy.app attribute error).
 
@@ -70,10 +75,4 @@
 **S55** — BOM Drop frontend + panel renumbering (1D-7D, 8-10). 330/330 GREEN.
 **S54a** — Wire BOM Drop model. PlacementLoader isolation. TC-1 end-to-end (55 elements). 330/330 GREEN.
 **S53** — ERP-correct BOM tree model. Drop EN-BLOC/WALK-THRU. iDempiere OrderLine pattern. Roof proofs P27/P28.
-**S52b** — ASI authoring backend. 8 CRUD methods. 9 witnesses. 313/313 GREEN.
-**S52** — WALK-THRU selection cascade proof. 7 witnesses. DesignerDAO.findMatchingSets().
-**S51b** — FRAME/ROUTE LBD fix. ClusterReclassifier (345 groups, 47K instances).
-**S51** — Focused audit. 8 P0 fixes. DemoHouseTest rewritten. 297/297 GREEN.
-**S50** — BIMEyes Phase 1-3. 24 proof classes. FL-2 advisory. FL-5 EYES integration. 28 proofs.
-*Earlier: S39–S49 — BIMEyes, CP-4, DV010, G-8/G-9, scale-up to 34 buildings, LAST_MILE, DB consolidation.*
-**S39** — 6D SustainabilityDAO + 7D FacilityMgmtDAO + Audit ChangelogDAO. 14 witnesses.
+*Earlier: S39–S52b — ASI authoring, WALK-THRU, FRAME/ROUTE fix, focused audit, BIMEyes Phase 1-3, 6D/7D DAOs, CP-4, DV010, scale-up, LAST_MILE.*

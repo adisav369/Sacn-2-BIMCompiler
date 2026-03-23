@@ -29,7 +29,7 @@ import java.util.List;
 public class OrderLineWalker {
 
     private final Connection compileDb;  // has m_bom, m_bom_line, C_Order, C_OrderLine
-    private final Connection compConn;   // component_library.db (M_Product master catalog)
+    private final Connection compConn;   // disc_validation.db (M_Product master catalog)
     private static final int MAX_DEPTH = 20;
 
     public OrderLineWalker(Connection compileDb, Connection compConn) {
@@ -97,10 +97,10 @@ public class OrderLineWalker {
             }
 
             if ("LEAF".equals(row.hostType)) {
-                // Leaf — load M_Product from component_library.db
+                // Leaf — load M_Product from disc_validation.db
                 MProduct product = MProduct.get(compConn, row.familyRef);
                 BOMWalker.NodeContext ctx = new BOMWalker.NodeContext(
-                        product, line, parentBom, level, buildingType);
+                        product, line, parentBom, level, buildingType, row.discipline);
 
                 if (product == null) {
                     // Dangling reference — warn and skip (same as BOMWalker)
@@ -121,7 +121,7 @@ public class OrderLineWalker {
 
                 MProduct product = MProduct.getAssembly(compConn, row.familyRef);
                 BOMWalker.NodeContext ctx = new BOMWalker.NodeContext(
-                        product, line, childBom, level, buildingType);
+                        product, line, childBom, level, buildingType, row.discipline);
 
                 for (BOMVisitor v : visitors) v.onSubAssembly(ctx);
                 walkChildren(orderId, row.lineId, childBom, visitors, buildingType, level + 1);
@@ -133,7 +133,7 @@ public class OrderLineWalker {
     // ── Data access ──────────────────────────────────────────────────────────
 
     private OrderLineRow findRoot(String orderId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID IS NULL "
                    + "AND IsActive = 1 ORDER BY Line LIMIT 1";
         try (PreparedStatement ps = compileDb.prepareStatement(sql)) {
@@ -144,13 +144,14 @@ public class OrderLineWalker {
                         rs.getInt("C_OrderLine_ID"),
                         rs.getString("family_ref"),
                         rs.getString("host_type"),
-                        rs.getInt("bom_child_id"));
+                        rs.getInt("bom_child_id"),
+                        rs.getString("Discipline"));
             }
         }
     }
 
     private List<OrderLineRow> findChildren(String orderId, int parentLineId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID = ? "
                    + "AND IsActive = 1 ORDER BY Line";
         List<OrderLineRow> rows = new ArrayList<>();
@@ -163,7 +164,8 @@ public class OrderLineWalker {
                             rs.getInt("C_OrderLine_ID"),
                             rs.getString("family_ref"),
                             rs.getString("host_type"),
-                            rs.getInt("bom_child_id")));
+                            rs.getInt("bom_child_id"),
+                            rs.getString("Discipline")));
                 }
             }
         }
@@ -175,5 +177,6 @@ public class OrderLineWalker {
         return bom.load(bomId) ? bom : null;
     }
 
-    private record OrderLineRow(int lineId, String familyRef, String hostType, int bomChildId) {}
+    private record OrderLineRow(int lineId, String familyRef, String hostType, int bomChildId,
+                                    String discipline) {}
 }

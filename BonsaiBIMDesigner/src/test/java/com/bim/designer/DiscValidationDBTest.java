@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *   <li>W-DV-MINED-RULES: 415 mined dimension rules with 1245 params in ad_val_rule</li>
  *   <li>W-DV-DB-ORG: AD_Org table exists with 16 discipline orgs (DV013)</li>
  *   <li>W-DV-DB-ORG-COLS: AD_Org_ID columns populated with zero NULLs (DV014)</li>
+ *   <li>W-DV-DB-PRODUCT: M_Product (2475) + M_Product_Category (46) present (DV015)</li>
  * </ul>
  *
  * // Implementing DISC_VALIDATION_DB_SRS.md §9 — Witness: W-DV-DB-*
@@ -57,7 +58,7 @@ class DiscValidationDBTest {
         EXPECTED_COUNTS.put("ad_space_type_mep", 22);
     }
 
-    /** All 22 tables expected in disc_validation.db (19 original + 2 DV010 + 1 DV013 AD_Org). */
+    /** All 24 tables expected in disc_validation.db (22 prior + 2 DV015 M_Product). */
     static final List<String> ALL_TABLES = List.of(
             "ad_space_type", "ad_element_mep", "ad_space_type_mep_bom",
             "ad_fp_coverage", "ad_assembly_connector", "ad_assembly_manifest",
@@ -68,6 +69,7 @@ class DiscValidationDBTest {
             "ad_element_mep_alias",
             "ad_val_rule", "ad_val_rule_param",       // DV010: mined dimension rules
             "AD_Org",                                  // DV013: discipline org units
+            "M_Product", "M_Product_Category",         // DV015: master product catalog
             "W_Calibration_Result", "AD_SysConfig"
     );
 
@@ -90,7 +92,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-DV-DB-SCHEMA: All 22 tables exist in disc_validation.db")
+    @DisplayName("W-DV-DB-SCHEMA: All 24 tables exist in disc_validation.db")
     void allTablesExist() throws Exception {
         Set<String> actual = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         try (ResultSet rs = discConn.getMetaData().getTables(
@@ -173,11 +175,11 @@ class DiscValidationDBTest {
                 String elementType = rs.getString("element_type");
                 String ifcClass = rs.getString("ifc_class");
 
-                // Check M_Product has a matching ifc_class in component_library.db
-                try (PreparedStatement compPs = compConn.prepareStatement(
+                // DV015: M_Product now in disc_validation.db — resolve within same DB
+                try (PreparedStatement prodPs = discConn.prepareStatement(
                         "SELECT COUNT(*) FROM M_Product WHERE ifc_class = ?")) {
-                    compPs.setString(1, ifcClass);
-                    try (ResultSet crs = compPs.executeQuery()) {
+                    prodPs.setString(1, ifcClass);
+                    try (ResultSet crs = prodPs.executeQuery()) {
                         int count = crs.getInt(1);
                         System.out.printf("  %-20s ifc_class=%-35s → M_Product count=%d%n",
                                 elementType, ifcClass, count);
@@ -336,7 +338,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(31)
-    @DisplayName("W-DV-DB-ND: disc_validation.db has NO geometry tables")
+    @DisplayName("W-DV-DB-ND: disc_validation.db has NO geometry tables (M_Product moved here DV015)")
     void noGeometryInDiscValidation() throws Exception {
         Set<String> tables = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         try (ResultSet rs = discConn.getMetaData().getTables(
@@ -349,8 +351,11 @@ class DiscValidationDBTest {
                 "component_definitions must NOT be in disc_validation.db");
         assertFalse(tables.contains("component_geometries"),
                 "component_geometries must NOT be in disc_validation.db");
-        assertFalse(tables.contains("M_Product"),
-                "M_Product must NOT be in disc_validation.db");
+        // DV015: M_Product moved to disc_validation.db (master product catalog)
+        assertTrue(tables.contains("M_Product"),
+                "M_Product must be in disc_validation.db (DV015)");
+        assertTrue(tables.contains("M_Product_Category"),
+                "M_Product_Category must be in disc_validation.db (DV015)");
     }
 
     // ── W-DV-DB-DUAL-READ ──────────────────────────────────────────────
@@ -555,6 +560,48 @@ class DiscValidationDBTest {
              ResultSet rs = ps.executeQuery()) {
             assertTrue(rs.next(), "AD_ORG_COLS_VERSION row must exist");
             assertEquals("DV014", rs.getString(1));
+        }
+    }
+
+    // ── W-DV-DB-PRODUCT ────────────────────────────────────────────────
+
+    @Test
+    @Order(80)
+    @DisplayName("W-DV-DB-PRODUCT: M_Product >= 2475 rows in disc_validation.db (DV015)")
+    void mProductPresent() throws Exception {
+        int count = countRows(discConn, "M_Product");
+        System.out.printf("  M_Product rows in disc_validation.db: %d%n", count);
+        assertTrue(count >= 2475,
+                "M_Product must have >= 2475 rows, got " + count);
+
+        // Zero NULLs in critical columns
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM M_Product WHERE product_id IS NULL OR product_type IS NULL")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                assertEquals(0, rs.getInt(1), "No NULL product_id/product_type in M_Product");
+            }
+        }
+    }
+
+    @Test
+    @Order(81)
+    @DisplayName("W-DV-DB-PRODUCT: M_Product_Category >= 46 rows in disc_validation.db (DV015)")
+    void mProductCategoryPresent() throws Exception {
+        int count = countRows(discConn, "M_Product_Category");
+        System.out.printf("  M_Product_Category rows in disc_validation.db: %d%n", count);
+        assertTrue(count >= 46,
+                "M_Product_Category must have >= 46 rows, got " + count);
+    }
+
+    @Test
+    @Order(82)
+    @DisplayName("W-DV-DB-PRODUCT: AD_SysConfig has M_PRODUCT_VERSION = DV015")
+    void mProductVersionRecorded() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT Value FROM AD_SysConfig WHERE Name = 'M_PRODUCT_VERSION'");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next(), "M_PRODUCT_VERSION row must exist");
+            assertEquals("DV015", rs.getString(1));
         }
     }
 

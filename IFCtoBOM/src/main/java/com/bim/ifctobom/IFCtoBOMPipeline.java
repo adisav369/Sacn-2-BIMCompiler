@@ -103,6 +103,7 @@ public class IFCtoBOMPipeline {
 
         Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
+        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db");
 
         try {
             bomConn.setAutoCommit(false);
@@ -129,51 +130,49 @@ public class IFCtoBOMPipeline {
             // Advisory: check element dimensions against mined typical ranges
             // from disc_validation.db. Logs outliers but never blocks the pipeline.
             {
-                Path discDbPath = Path.of("library/disc_validation.db");
-                if (Files.exists(discDbPath)) {
-                    try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + discDbPath)) {
-                        // Layer 1: Dimension range check (DV010)
-                        DimensionRangeValidator drv = DimensionRangeValidator.load(discConn);
-                        if (drv.hasRules()) {
-                            DimensionRangeValidator.Report report =
-                                    drv.validate(allElements, config.buildingType());
-                            report.print();
-                            // FL-2: write advisories to W_Validation_Advisory (DV012)
-                            // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-4
-                            try {
-                                DimensionRangeValidator.writeAdvisories(discConn, report);
-                            } catch (SQLException e) {
-                                BIMLogger.warn("IFCtoBOM", "Dimension advisory write skipped: {}", e.getMessage());
-                            }
-                        }
-
-                        // Layer 2: Building profile check (DV011)
-                        BuildingProfileValidator bpv = BuildingProfileValidator.load(discConn);
-                        if (bpv.hasProfiles()) {
-                            BuildingProfileValidator.Report profileReport =
-                                    bpv.validate(allElements, config.buildingType());
-                            profileReport.print();
-                            // FL-2: write advisories to W_Validation_Advisory (DV012)
-                            // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-5
-                            try {
-                                BuildingProfileValidator.writeAdvisories(discConn, profileReport);
-                            } catch (SQLException e) {
-                                BIMLogger.warn("IFCtoBOM", "Profile advisory write skipped: {}", e.getMessage());
-                            }
-                        }
-
-                        // Layer 3: Shape-aware advisories (FL-5/EYES)
-                        // Implementing ACTION_ROADMAP.md §FL-5 — Witness: W-FL-SHAPE-1
+                // Reuse outer discConn (already connected to disc_validation.db)
+                try {
+                    // Layer 1: Dimension range check (DV010)
+                    DimensionRangeValidator drv = DimensionRangeValidator.load(discConn);
+                    if (drv.hasRules()) {
+                        DimensionRangeValidator.Report report =
+                                drv.validate(allElements, config.buildingType());
+                        report.print();
+                        // FL-2: write advisories to W_Validation_Advisory (DV012)
+                        // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-4
                         try {
-                            ShapeAdvisoryWriter.Report shapeReport =
-                                    ShapeAdvisoryWriter.analyze(discConn, allElements, config.buildingType());
-                            shapeReport.print();
+                            DimensionRangeValidator.writeAdvisories(discConn, report);
                         } catch (SQLException e) {
-                            BIMLogger.warn("IFCtoBOM", "Shape advisory write skipped: {}", e.getMessage());
+                            BIMLogger.warn("IFCtoBOM", "Dimension advisory write skipped: {}", e.getMessage());
                         }
-                    } catch (Exception e) {
-                        BIMLogger.warn("IFCtoBOM", "Dimension range check skipped: {}", e.getMessage());
                     }
+
+                    // Layer 2: Building profile check (DV011)
+                    BuildingProfileValidator bpv = BuildingProfileValidator.load(discConn);
+                    if (bpv.hasProfiles()) {
+                        BuildingProfileValidator.Report profileReport =
+                                bpv.validate(allElements, config.buildingType());
+                        profileReport.print();
+                        // FL-2: write advisories to W_Validation_Advisory (DV012)
+                        // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-5
+                        try {
+                            BuildingProfileValidator.writeAdvisories(discConn, profileReport);
+                        } catch (SQLException e) {
+                            BIMLogger.warn("IFCtoBOM", "Profile advisory write skipped: {}", e.getMessage());
+                        }
+                    }
+
+                    // Layer 3: Shape-aware advisories (FL-5/EYES)
+                    // Implementing ACTION_ROADMAP.md §FL-5 — Witness: W-FL-SHAPE-1
+                    try {
+                        ShapeAdvisoryWriter.Report shapeReport =
+                                ShapeAdvisoryWriter.analyze(discConn, allElements, config.buildingType());
+                        shapeReport.print();
+                    } catch (SQLException e) {
+                        BIMLogger.warn("IFCtoBOM", "Shape advisory write skipped: {}", e.getMessage());
+                    }
+                } catch (Exception e) {
+                    BIMLogger.warn("IFCtoBOM", "Dimension range check skipped: {}", e.getMessage());
                 }
             }
 
@@ -212,7 +211,7 @@ public class IFCtoBOMPipeline {
             // fail due to a skipped or partial populate step. Both methods are
             // idempotent (INSERT OR IGNORE), so running them twice is harmless.
             int cataloged = ProductRegistrar.ensureProductCatalog(
-                    compConn, allElements, config.buildingType());
+                    compConn, discConn, allElements, config.buildingType());
             int images = ProductRegistrar.ensureProductImages(compConn, config.buildingType());
             if (cataloged > 0 || images > 0) {
                 System.out.printf("[IFCtoBOM] Product catalog: %d new products, %d new image links%n",
@@ -409,13 +408,11 @@ public class IFCtoBOMPipeline {
             // DV011: Each building both uses and enriches the validation pool.
             // This makes the pipeline self-improving — no separate script needed.
             {
-                Path discDbPath = Path.of("library/disc_validation.db");
-                if (Files.exists(discDbPath)) {
-                    try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:" + discDbPath)) {
-                        mineProfile(discConn, allElements, config.buildingType());
-                    } catch (Exception e) {
-                        BIMLogger.warn("IFCtoBOM", "Profile mining skipped: {}", e.getMessage());
-                    }
+                // Reuse outer discConn (already connected to disc_validation.db)
+                try {
+                    mineProfile(discConn, allElements, config.buildingType());
+                } catch (Exception e) {
+                    BIMLogger.warn("IFCtoBOM", "Profile mining skipped: {}", e.getMessage());
                 }
             }
 
@@ -441,6 +438,7 @@ public class IFCtoBOMPipeline {
             BIMLogger.close();
             bomConn.close();
             compConn.close();
+            discConn.close();
         }
     }
 

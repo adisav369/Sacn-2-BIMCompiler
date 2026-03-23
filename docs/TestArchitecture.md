@@ -777,6 +777,86 @@ you'd have to fake the IFC source files themselves.
 
 ---
 
+## Layer 5 — Static Analysis (automated code defect detection)
+
+Layers 1–3 guard runtime correctness. Layer 4 guards data integrity.
+This layer guards **code quality** — defects that exist in the source but may
+not trigger a test failure until they hit a specific runtime path.
+
+### Tools
+
+| Tool | What It Catches | Runs Via |
+|------|-----------------|----------|
+| **SpotBugs** | Null dereference, resource leaks (unclosed DB connections/streams), concurrency bugs, infinite loops, type confusion | `mvn com.github.spotbugs:spotbugs-maven-plugin:4.8.3.1:check` |
+| **PMD** | Dead code, copy-paste duplication, overly complex methods (cyclomatic complexity), empty catch blocks, unused variables/imports | `mvn org.apache.maven.plugins:maven-pmd-plugin:3.21.2:pmd` |
+
+### Why This Layer Matters for BIM Compiler
+
+- **Resource leaks:** 10 modules open SQLite connections and file streams.
+  An unclosed connection in a walker or verb silently corrupts output under load.
+- **Null handling:** SQL query results flow through BOM walkers, placement loaders,
+  and verb pipelines. A null product_id that escapes a check produces wrong BOM
+  output — but all gates stay green because the count doesn't change.
+- **Dead code:** 60+ sprints of evolution leave unused methods and stale branches.
+  Dead code misleads readers and hides the real control flow.
+- **Complexity hotspots:** Methods above cyclomatic complexity 15 are where bugs hide.
+  Identifies candidates for refactoring before they become unmaintainable.
+
+### Reports
+
+- SpotBugs: each module's `target/spotbugsXml.xml` (machine) or run with `:gui` goal for interactive viewer
+- PMD: each module's `target/site/pmd.html` (human-readable)
+
+### Integration with Existing Gates
+
+Static analysis is **advisory, not blocking** at this stage. It does not replace
+G1–G6 Rosetta gates or D-1–D-5 data integrity checks. Promotion to blocking
+requires a triage pass to suppress false positives so the signal stays clean.
+
+**Triage workflow:**
+1. Run both tools on clean build
+2. Review findings — classify as TRUE (fix), FALSE (suppress), or DEFER
+3. Fix TRUE findings, add suppression annotations for FALSE
+4. Once suppressions are stable, add to CI as blocking check
+
+### Status
+
+- **2026-03-24:** Initial scan — SpotBugs + PMD run against full reactor. Awaiting audit review before triage.
+
+### Baseline Scan Results (2026-03-24)
+
+**SpotBugs — 4 unique bug types across all modules:**
+
+| Priority | Bug | Location | Risk |
+|----------|-----|----------|------|
+| High | Default encoding in `FileWriter` (2x) | `BIMLogger.java:76, 96` | Silent corruption on non-UTF8 systems |
+| Medium | SQL prepared stmt from non-constant String | `BasePO.java:157, 186` | Low (ORM internal, not user input) |
+| Medium | Mutable Connection stored in field | All DAO classes | Low (single-threaded compiler) |
+
+**PMD — 507 violations across 10 modules:**
+
+| Module | Count | Priority Findings |
+|--------|-------|-------------------|
+| DAGCompiler | 311 | 35 empty catches, 30 unused fields, 30 unused locals, 10 unused methods |
+| BonsaiBIMDesigner | 70 | 45 unnecessary FQN, 5 collapsible ifs, 3 empty catches |
+| BIM_COBOL | 42 | **5 unchecked ResultSets**, 2 empty catches |
+| IFCtoBOM | 42 | **31 unchecked ResultSets** |
+| BIMEyes | 20 | 3 empty catches |
+| ORMSandbox | 14 | 3 unused params |
+| BIMBackOffice | 4 | 1 empty catch |
+| TopologyMaker | 3 | 2 empty catches |
+| orm-core | 1 | 1 empty catch |
+| 2D_Layout | 0 | Clean |
+
+**High-value findings (recommend fixing first):**
+1. **36 unchecked ResultSets** (IFCtoBOM + BIM_COBOL) — `rs.next()` not checked, can produce null/wrong data silently
+2. **44 empty catch blocks** (mostly DAGCompiler) — exceptions swallowed, failures invisible
+3. **30 unused fields + 30 unused locals** (DAGCompiler) — dead code from prior sprints
+
+**Reproduce:** `mvn com.github.spotbugs:spotbugs-maven-plugin:4.8.3.1:spotbugs` and `mvn org.apache.maven.plugins:maven-pmd-plugin:3.21.2:pmd`
+
+---
+
 ## Drift Prevention Checklist
 
 Run these checks when adding BOMs, products, or geometry paths.
@@ -892,8 +972,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-23 (v28: S60-S3+S61, RosettaStoneGateTest G5 diagnostics, DemoHouseCompileTest W-GEN-COMPILE-5, EYES proof deepening, 73 files)
-**Super-hash:** `d30742fc7e74e7f2fc4ed42963a5dbd74ef37914bc7939a518fd79b6015c7ad6`
+**Sealed:** 2026-03-24 (v29: S65 DV015 M_Product move — BOMWalker/OrderLineWalker/verbs read from disc_validation.db, DiscValidationDBTest +3 witnesses)
+**Super-hash:** `9740e0682de99cdcd83f5463f070901075716454f985369d3be06f65522e8d91`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)

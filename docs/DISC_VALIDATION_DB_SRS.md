@@ -837,13 +837,15 @@ grep for exact numbers before starting (audit concern #1, #2).
 - Migration: `DV014_ad_org_columns.sql`
 - Gate: dual-column reads pass, no code changes yet
 
-**Step 3: Move M_Product + M_Product_Category to disc_validation.db** ⚠️ HIGH RISK
-- ATTACH component_library.db → INSERT INTO disc_validation.M_Product SELECT * FROM comp.M_Product
-- Migration: `DV015_move_m_product.sql`
-- Java: ProductRegistrar writes to discConn. BackOffice DAOs accept discConn for M_Product.
-- **Risk: HIGH** — 85 files reference M_Product, changing which connection they use is
-  wide-blast-radius. Recommend dedicated session with full Rosetta Stone run before AND after.
-- Gate: all 19 ALL GREEN Rosetta Stones still pass. M_Product reads resolve from new location.
+**Step 3: Move M_Product + M_Product_Category to disc_validation.db** ⚠️ HIGH RISK — **DONE (S65)**
+- Migration: `DV015_move_m_product.sql` — ATTACH + INSERT OR IGNORE. 2,475 M_Product + 46 M_Product_Category rows.
+- Java: 13 files changed. All compConn/compLibConn M_Product reads → disc_validation.db.
+  ProductRegistrar dual-writes (compConn for geometry join + discConn for master catalog).
+  BOMWalker, OrderLineWalker, PlacementLoader, BuildingWriter, 3 BIM_COBOL verbs,
+  BackOfficeServer, DesignerAPIImpl — all read M_Product from disc_validation.db.
+- M_Product_Image stays in component_library.db (geometry link intact).
+- component_library.db M_Product NOT deleted (Step 6).
+- Gate: SH 7/7, FK 7/7 PASS. DiscValidationDBTest 27/27 GREEN (+3 product witnesses).
 
 **Step 4: Move remaining AD tables from component_library.db**
 - bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param → disc_validation.db

@@ -168,7 +168,7 @@ public class PlacementLoader {
      */
     private void loadFromOrderLine() {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
-             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
             OrderLineWalker walker = new OrderLineWalker(conn, compConn);
 
             // Load C_Order rows → map to building types via C_DocType_ID
@@ -248,7 +248,7 @@ public class PlacementLoader {
      */
     private void loadFromBOM() {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
-             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/component_library.db")) {
+             Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
             BOMWalker walker = new BOMWalker(conn, compConn);
 
