@@ -167,7 +167,7 @@ class DemoHouseCompileTest {
                 ps.setString(4, "DM");
                 ps.setString(5, "DemoHouse_2BR");
                 ps.setString(6, outputPath);
-                ps.setInt(7, 35);  // estimated: 5 rooms × 7 elements
+                ps.setInt(7, 53);  // 5 rooms × 9 (7 struct + 2 FP) + 7 furniture + 1 roof
                 ps.setString(8, dslContent);
                 ps.setDouble(9, 11000);  // total width
                 ps.setDouble(10, 7000);  // total depth
@@ -266,9 +266,6 @@ class DemoHouseCompileTest {
                         addLeaf(st, bomId, "Furniture_Table_Dining_w-Chairs_Rectangular:2000x1000x750mm_w-6_Seats",
                                 "IfcFurnishingElement", seq, 1000, 1000, 0, 2000, 1000, 750);
                         seq += 10;
-                        addLeaf(st, bomId, "M_Refrigerator:850 x 760mm:850 x 760mm",
-                                "IfcFlowTerminal", seq, 100, 100, 0, 850, 760, 1800);
-                        seq += 10;
                     } else if ("BEDROOM".equals(cat)) {
                         addLeaf(st, bomId, "Furniture_Bed_1:1525x2007x355mm-Queen",
                                 "IfcFurnishingElement", seq, 500, 500, 0, 1525, 2007, 355);
@@ -276,24 +273,17 @@ class DemoHouseCompileTest {
                         addLeaf(st, bomId, "Furniture_Desk:1525x762mm",
                                 "IfcFurnishingElement", seq, 2500, 500, 0, 1525, 762, 750);
                         seq += 10;
-                    } else if ("BATHROOM".equals(cat)) {
-                        addLeaf(st, bomId, "M_Bath Tub:1525 mmx760 mm - Private:1525 mmx760 mm - Private",
-                                "IfcFlowTerminal", seq, 200, 200, 0, 1525, 760, 500);
-                        seq += 10;
                     }
 
-                    // ── MEP fittings per room ──
-                    // Light
-                    addLeaf(st, bomId, "M_Sconce Light - Sphere:100W - 120V:100W - 120V",
-                            "IfcFlowTerminal", seq, w / 2, d / 2, h - 50, 200, 200, 200);
+                    // ── FP fittings per room (real products from TE extraction) ──
+                    // Sprinkler head — ceiling-mounted, room centre
+                    // // Implementing BIM_Designer_SRS.md §30.7.4 — Witness: W-FP-TRIAL-1
+                    addLeaf(st, bomId, "jkrME18_spr_sprinkler head_pendent",
+                            "IfcFireSuppressionTerminal", seq, w / 2, d / 2, h - 58, 32, 27, 58);
                     seq += 10;
-                    // Outlet
-                    addLeaf(st, bomId, "M_Duplex Receptacle:Duplex Receptacle:Duplex Receptacle",
-                            "IfcFlowTerminal", seq, 300, 0, 300, 100, 50, 100);
-                    seq += 10;
-                    // Light switch
-                    addLeaf(st, bomId, "M_Lighting Switches:Single Pole:Single Pole",
-                            "IfcFlowTerminal", seq, w / 2 - 500, 0, 1100, 80, 50, 120);
+                    // Smoke detector — ceiling-mounted, offset from sprinkler
+                    addLeaf(st, bomId, "jkrME18_fir-al_smoke detector",
+                            "IfcAlarm", seq, w / 2 + 500, d / 2, h - 75, 170, 170, 75);
                     seq += 10;
                 }
 
@@ -309,7 +299,7 @@ class DemoHouseCompileTest {
                         "Basic Roof:Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr",
                         "IfcRoof", 10, 0, 0, 0, 11000, 7000, 500);
 
-                st.execute("INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value) VALUES ('EXPECTED_ELEMENTS', '75')");
+                st.execute("INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value) VALUES ('EXPECTED_ELEMENTS', '53')");
 
                 // 5. Seed metadata tables — same tables that IFC extraction populates
                 //    For GENERATIVE: seeded from YAML room definitions instead of IFC

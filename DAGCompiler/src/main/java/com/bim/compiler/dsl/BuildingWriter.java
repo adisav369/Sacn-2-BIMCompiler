@@ -1027,10 +1027,12 @@ public class BuildingWriter {
                 try {
                     be = binder.bind(p, guid, type);
                     if (be == null) {
-                        // Phase BOM-2a: BOM-generated furniture — resolve LOD mesh from familyRef catalog ID.
+                        // Phase BOM-2a: BOM-generated elements — resolve LOD mesh from familyRef catalog ID.
                         // binder.bind() returns null (no I_Geometry_Map entry for BOM children).
                         // Try ComponentLibrary.getByName(familyRef) → scale → transformAndWriteGeometryScaled.
-                        if ("FURN".equals(p.discipline()) && p.familyRef() != null
+                        // Applies to FURN (furniture) and MEP (sprinklers, alarms, etc.) — any discipline
+                        // with a familyRef pointing to a component_definitions entry.
+                        if (p.familyRef() != null
                                 && furnitureLibrary != null && libraryMapper != null) {
                             try {
                                 var cd = furnitureLibrary.getByName(p.familyRef());

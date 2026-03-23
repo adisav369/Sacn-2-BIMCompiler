@@ -123,6 +123,6 @@ class DimensionRangeValidatorTest {
         return new ExtractionElement(
                 storey, ifcClass, ifcClass + "_test", 0,
                 0, wMetres, 0, dMetres, 0, hMetres,  // min=0, max=dim
-                "N", "ARC", null, null, null, null);
+                "N", "ARC", null, null, null, null, null);
     }
 }

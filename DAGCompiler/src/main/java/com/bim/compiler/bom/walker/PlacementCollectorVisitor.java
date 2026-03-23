@@ -336,7 +336,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 resolveDiscipline(ifcClass),
                 materialName,
                 materialRgba,
-                null,  // familyRef
+                productId,  // familyRef — enables LOD lookup for GENERATIVE buildings
                 productId
             );
             placements.add(p);

@@ -113,6 +113,6 @@ class BuildingProfileValidatorTest {
         return new ExtractionElement(
                 "GF", ifcClass, ifcClass + "_test", 0,
                 0, 1, 0, 1, 0, 1,
-                "N", "ARC", null, null, null, null);
+                "N", "ARC", null, null, null, null, null);
     }
 }

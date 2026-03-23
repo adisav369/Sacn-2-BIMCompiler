@@ -257,9 +257,9 @@ class FlyAdvisoryTest {
         // planarity = 800/1000 = 0.80 >= 0.20 → violation!
         List<ExtractionElement> elements = List.of(
                 new ExtractionElement("GF", "IfcWall", "WALL_THICK", 1,
-                        0, 0.8, 0, 0.8, 0, 1.0, "N", "STR", null, null, null, "GUID_001"),
+                        0, 0.8, 0, 0.8, 0, 1.0, "N", "STR", null, null, null, "GUID_001", null),
                 new ExtractionElement("GF", "IfcColumn", "COL_FLAT", 2,
-                        0, 2.0, 0, 0.05, 0, 3.0, "N", "STR", null, null, null, "GUID_002")
+                        0, 2.0, 0, 0.05, 0, 3.0, "N", "STR", null, null, null, "GUID_002", null)
         );
 
         ShapeAdvisoryWriter.Report report =
@@ -291,9 +291,9 @@ class FlyAdvisoryTest {
         // A proper IfcDoor: 900x100x2100mm → planarity = 100/2100 = 0.048 < 0.35 ✓
         List<ExtractionElement> elements = List.of(
                 new ExtractionElement("GF", "IfcWall", "WALL_OK", 1,
-                        0, 5.0, 0, 0.2, 0, 3.0, "N", "STR", null, null, null, "GUID_003"),
+                        0, 5.0, 0, 0.2, 0, 3.0, "N", "STR", null, null, null, "GUID_003", null),
                 new ExtractionElement("GF", "IfcDoor", "DOOR_OK", 2,
-                        0, 0.9, 0, 0.1, 0, 2.1, "N", "ARC", null, null, null, "GUID_004")
+                        0, 0.9, 0, 0.1, 0, 2.1, "N", "ARC", null, null, null, "GUID_004", null)
         );
 
         // Clear previous test data first
