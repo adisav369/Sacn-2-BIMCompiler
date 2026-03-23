@@ -11,8 +11,8 @@ ALTER TABLE ad_element_mep ADD COLUMN AD_Org_ID INTEGER;
 UPDATE ad_element_mep SET AD_Org_ID = (
     SELECT AD_Org_ID FROM AD_Org WHERE AD_Org.Value = ad_element_mep.discipline
 );
--- HVAC→ACMV: ad_element_mep uses 'HVAC', AD_Org uses 'ACMV' (canonical trade code)
-UPDATE ad_element_mep SET AD_Org_ID = 5 WHERE discipline = 'HVAC' AND AD_Org_ID IS NULL;
+-- NOTE: If ad_element_mep.discipline contains 'HVAC', fix source data to 'ACMV' first.
+-- ACMV is the canonical code (Discipline.java, AD_Org.Value). HVAC is the display name.
 
 -- ── ad_ifc_class_map: discipline TEXT → AD_Org_ID INTEGER ───────────
 ALTER TABLE ad_ifc_class_map ADD COLUMN AD_Org_ID INTEGER;

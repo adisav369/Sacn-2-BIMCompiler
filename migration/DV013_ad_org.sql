@@ -5,6 +5,11 @@
 -- APPEND-ONLY: never modify this migration after first run
 --
 -- Implementing DISC_VALIDATION_DB_SRS.md §11.6.2 — Witness: W-DV-DB-ORG
+--
+-- NOTE: AD_Org_ID 10-15 (MEP, ROAD, GEO, RAIL, LAND, SIGN) exist in AD_Org
+-- but NOT in the Discipline.java enum. Discipline.fromString("ROAD") returns null.
+-- These are data-only entries for ad_ifc_class_map resolution. If Java code needs
+-- to work with infra disciplines, add them to the enum (Step 5 scope).
 
 CREATE TABLE IF NOT EXISTS AD_Org (
     AD_Org_ID     INTEGER PRIMARY KEY,
