@@ -398,6 +398,37 @@ public interface DesignerAPI extends AssemblyAPI {
             String error
     ) {}
 
+    // ── Add Discipline — Rule-Driven OrderLine Mutation (§14.3 Session A) ─
+
+    /**
+     * Add a discipline to an existing order by querying ad_space_type_mep_bom
+     * for each room and creating PROPOSED C_OrderLines.
+     *
+     * <p>The architect reviews proposed lines and accepts or rejects each.
+     * Proposed lines have bom_child_id=NULL (rule-driven, not BOM-derived)
+     * and proposal_status='PROPOSED'.
+     *
+     * <p>Delegates to {@link OrderMutationService#addDiscipline}.
+     *
+     * // Implementing ProjectOrderBlueprint.md §14.3 Session A — Witness: W-DM-TC5-1
+     *
+     * @param buildingId     building ID (for work_output.db lookup)
+     * @param orderId        C_Order_ID to add discipline lines to
+     * @param discipline     discipline code: FP, ELEC, SP, ACMV
+     * @param jurisdiction   ISO country code for rule selection (e.g., "MY")
+     */
+    AddDisciplineResponse addDiscipline(String buildingId, String orderId,
+                                         String discipline, String jurisdiction);
+
+    /** Response for addDiscipline. */
+    record AddDisciplineResponse(
+            boolean success,
+            int linesCreated,
+            int roomsProcessed,
+            String discipline,
+            String error
+    ) {}
+
     // ── Auto-Populate + ASI Authoring (BIM_Designer_SRS.md §28) ────
 
     /**

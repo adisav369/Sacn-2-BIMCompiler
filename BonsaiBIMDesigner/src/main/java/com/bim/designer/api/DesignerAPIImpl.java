@@ -1755,6 +1755,39 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
     }
 
+    // ── Add Discipline — Rule-Driven OrderLine Mutation (§14.3 Session A) ─
+
+    // Implementing ProjectOrderBlueprint.md §14.3 Session A — Witness: W-DM-TC5-1
+    @Override
+    public AddDisciplineResponse addDiscipline(String buildingId, String orderId,
+                                                String discipline, String jurisdiction) {
+        try {
+            BIMLogger.info(TAG, "ADD_DISCIPLINE building={} order={} disc={} juris={}",
+                    buildingId, orderId, discipline, jurisdiction);
+
+            WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+            Connection woConn = workOutputConns.get(buildingId);
+            Connection dvConn = getDiscValidationConn();
+            if (dvConn == null) {
+                return new AddDisciplineResponse(false, 0, 0, discipline,
+                        "disc_validation.db not available");
+            }
+
+            OrderMutationService mutationService = new OrderMutationService();
+            OrderMutationService.AddDisciplineResult result =
+                    mutationService.addDiscipline(woConn, dvConn, orderId, discipline, jurisdiction);
+
+            return new AddDisciplineResponse(true,
+                    result.linesCreated(), result.roomsProcessed(),
+                    result.discipline(), null);
+
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "addDiscipline failed", e);
+            BIMLogger.error(TAG, "ADD_DISCIPLINE failed: {}", e.getMessage());
+            return new AddDisciplineResponse(false, 0, 0, discipline, e.getMessage());
+        }
+    }
+
     /**
      * Recursively explode a BOM tree into C_OrderLine rows.
      *

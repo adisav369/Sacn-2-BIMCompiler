@@ -67,6 +67,35 @@ public class WorkOutputDAO {
         } catch (SQLException ignored) {
             // Backfill/index may fail on empty table — safe to ignore
         }
+        // W003: Add Discipline to C_OrderLine (S60 ERP alignment)
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE C_OrderLine ADD COLUMN Discipline TEXT DEFAULT 'ARC'");
+        } catch (SQLException e) {
+            if (!e.getMessage().contains("duplicate column")) throw e;
+        }
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_orderline_discipline ON C_OrderLine(Discipline)");
+        } catch (SQLException ignored) {}
+        // W003: Add Jurisdiction + OccupancyClass to C_Order
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE C_Order ADD COLUMN Jurisdiction TEXT DEFAULT 'MY'");
+        } catch (SQLException e) {
+            if (!e.getMessage().contains("duplicate column")) throw e;
+        }
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE C_Order ADD COLUMN OccupancyClass TEXT");
+        } catch (SQLException e) {
+            if (!e.getMessage().contains("duplicate column")) throw e;
+        }
+        // W004: Add proposal_status to C_OrderLine (Session A — addDiscipline)
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE C_OrderLine ADD COLUMN proposal_status TEXT DEFAULT 'ACCEPTED'");
+        } catch (SQLException e) {
+            if (!e.getMessage().contains("duplicate column")) throw e;
+        }
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_orderline_proposal ON C_OrderLine(proposal_status)");
+        } catch (SQLException ignored) {}
     }
 
     /**
