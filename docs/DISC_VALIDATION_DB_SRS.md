@@ -400,6 +400,66 @@ migration/
 
 ---
 
+---
+
+## 10. Open Question — Application Dictionary Database (S62)
+
+> **Status:** INVESTIGATE. Raised during S62 FP trial when M_Product_Category was
+> added to component_library.db. Another session found M_Product rows dropped to 19
+> after schema alignment — suggesting the DB boundaries need clarification.
+
+### 10.1 Problem — M_Product Is Master Data, Not Geometry
+
+`component_library.db` currently holds two unrelated concerns:
+
+1. **Geometry catalog** — component_definitions (23,888), component_geometries (23,901),
+   surface_styles, material_layers. This is LOD data: what things look like.
+2. **Master data** — M_Product (product dimensions, IFC class), M_Product_Category
+   (discipline hierarchy), 34 AD tables (ad_space_type, ad_wall_face, etc.).
+   This is ERP configuration: what things are and where they belong.
+
+In iDempiere, M_Product and all AD tables live in the central application database.
+Geometry is an attachment, not co-located. Mixing them means:
+
+- Schema changes to AD tables (e.g., adding M_Product_Category) risk disturbing
+  23K geometry rows
+- Querying "what products exist in FP category?" opens a 221MB geometry connection
+- Migration scripts that target master data must be careful not to touch geometry
+- DiscValidationDBTest.componentLibraryUndisturbed check fails when AD tables change
+
+### 10.2 Options
+
+**Option A: Split component_library.db** — Move M_Product, M_Product_Category, and
+all 34 AD tables to disc_validation.db (renamed to `ad_dictionary.db`). Keep
+component_library.db as pure geometry (component_definitions + component_geometries +
+surface_styles + material_layers). The runtime join by name (§2.2) already supports this.
+
+**Option B: Expand disc_validation.db** — Same as A but keep the disc_validation.db name.
+Add M_Product + M_Product_Category there. component_library.db becomes geometry-only.
+
+**Option C: Keep current split, fix the guard** — Leave M_Product in component_library.db
+but update DiscValidationDBTest to expect schema evolution (M_Product_Category column,
+product count changes). Accept the mixed concern.
+
+### 10.3 Decision Criteria
+
+- Which option minimizes code changes? (How many Java files open component_library.db
+  to read M_Product vs component_definitions?)
+- Which option aligns with iDempiere AD pattern? (M_Product belongs with AD tables)
+- Which option avoids breaking the 5-table LOD chain (§9.1)?
+- Does the BOM DB need M_Product? (m_bom_line.child_product_id resolves to M_Product)
+
+### 10.4 Investigation Tasks
+
+1. Count Java files that read M_Product from component_library.db vs disc_validation.db
+2. Count Java files that read component_definitions from component_library.db
+3. Map the M_Product→component_definitions join path (is it by name? by FK?)
+4. Check if BOM databases carry their own M_Product (TE_BOM.db has M_Product with
+   different schema — 28 columns vs 9 in component_library.db)
+5. Propose the split and migration plan
+
+---
+
 *References:
 [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9 (5-table LOD chain) |
 [DocAction_SRS.md](DocAction_SRS.md) §1.3 (processIt DocEvent) |

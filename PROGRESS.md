@@ -47,7 +47,8 @@
   **Done (S62):** M_Product_Category (46 cats), 3 FP products onboarded, DemoHouse 53/53 (was 43/60). See [AUDIT_S51_FOCUSED.md Appendix E](docs/AUDIT_S51_FOCUSED.md#appendix-e--s62-fp-trial-audit-2026-03-23).
   **Remaining Task 4A:** BomDropper populates Discipline from bom_category. OrderLineWalker passes Discipline. W-DM-TC5-1 witness.
   **Specs:** [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case) · [ProjectOrderBlueprint.md §13](docs/ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) · [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md#6-fp-discipline--readiness-assessment)
-  **Audit concerns:** DemoHouse count explanation needed. ExtractionElement constructor growing (13+ params, consider builder). ELEC/ACMV product availability unknown.
+  **Audit concerns:** ExtractionElement constructor growing (13+ params, consider builder). ELEC/ACMV product availability unknown.
+  **AD Dictionary question:** M_Product belongs with AD tables, not geometry. [DISC_VALIDATION_DB_SRS.md §10](docs/DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62) — investigate before next product onboarding.
 
 ## Session Log (recent first)
 
