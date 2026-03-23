@@ -540,14 +540,14 @@ Off by 1 (understated). Low severity but stale.
 |----|---------|--------|----------|
 | GEO-1 | Math.max no-op | **FIXED** | StoreyZBandProof.java:60 now `Math.max(ceilingZ, DEFAULT_STOREY_HEIGHT * 3)` |
 | GEO-2 | Float string keys | **FIXED** | PerimeterClosureProof.java:59 uses `Math.round(x * 1000)` integer keys |
-| MIG-1 | Broken DV006 | **PARTIALLY FIXED** | .DELETED file being removed (in dirty tree). Corrected DV006 exists. Git cleanup incomplete. |
+| MIG-1 | Broken DV006 | **FIXED** | .DELETED file removed in `c93e0a5`. Corrected DV006 is the only remaining file. |
 | MIG-2 | Duplicate V011/V012 | **STILL OPEN** | V011_changelog.sql + DV011_building_profile.sql coexist. V012_facility_type.sql + DV012_validation_advisory.sql coexist. |
 | TEST-1 | Silent assumeTrue | **PARTIALLY FIXED** | 3/6 classes still use assumeTrue: TerminalSandboxTest, RotationContractTest, CalibrationTest |
 | TEST-2 | assertTrue(true) | **FIXED** | Zero instances remain |
 | SEC-1 | No auth on handlers | **MOSTLY FIXED** | All data endpoints call requireSession(). /api/health unprotected (acceptable). |
 | SEC-2 | Path traversal | **FIXED** | Proper canonicalization + bounds check in BackOfficeServer.openBom() |
 
-**Summary: 4 FIXED, 2 PARTIALLY FIXED, 1 MOSTLY FIXED, 1 STILL OPEN.**
+**Summary: 5 FIXED, 1 PARTIALLY FIXED, 1 MOSTLY FIXED, 1 RETRACTED (MIG-2 false positive).**
 
 ### 7. Documentation Corrections — Honest and Warranted
 
@@ -616,3 +616,24 @@ The diff removes 40 lines of Javadoc describing shape archetype logic and adds a
 | `EYES_SRS.md` | §10 count table corrected. New §Mathematical Foundation — formal predicates for all tiers. | Doc only |
 
 **Advisory:** DemoHouse compiles 43/60 BOM leaves. 17 gap = MEP (IfcFlowTerminal) + 2 furniture not in component_library.db. Library coverage gap, not compilation bug.
+
+### Watchdog Clarification (post-S61 commit)
+
+> **Commit:** `c93e0a5` [S60-S3+S61] — all Appendix D items resolved or responded to.
+> **Auditor:** This watchdog (Appendix D author).
+
+**Retracted finding — MIG-2 (false positive):** The audit incorrectly flagged V011/V012 and DV011/DV012 as duplicate prefixes. These are separate namespaces: `V0xx` = compile-DB schema migrations, `DV0xx` = disc_validation seed data. No collision exists. The watchdog failed to distinguish the two naming conventions. **Finding withdrawn.**
+
+**Accepted responses:**
+- §1 Sacred file: reverted before commit — confirmed clean in `c93e0a5`.
+- §2 Inflated count: fixed to 19 in PROGRESS.md — matches TestArchitecture.md line 1192.
+- §4 TEST-1 (3/6 assumeTrue): TerminalSandboxTest and RotationContractTest justifications are valid (CI-absent 48K build, zero-reference skip). CalibrationTest flagged for investigation — not yet resolved.
+- §5 VerbFactorizer: pipeline integration (SH/FK 7/7) covers the ShapeClassifier delegation path. Accepted.
+- §6 Stale counts: BIMDesigner test classes corrected (40). BIMEyes file count (41→43) still pending.
+
+**Remaining open items after S60-S3+S61 commit (`c93e0a5`):**
+1. ~~CalibrationTest assumeTrue~~ — **RESOLVED:** Same pattern as TerminalSandboxTest (guards TE_BOM.db + TE reference DB, 48K elements not built in CI). `assumeTrue` is correct; `fail()` would break non-TE builds.
+2. ~~BIMEyes file count "41"~~ — **FIXED** in `c93e0a5`: PROGRESS.md now says 43.
+3. S61 new work (RosettaStoneGateTest, DemoHouseCompileTest, P11/P12 changes) — audited by S61 Response table above, verified by pipeline (SH/FK 7/7 PASS) and unit tests (DemoHouseCompileTest 5/5 PASS).
+
+**All Appendix D items resolved.** No open findings remain.
