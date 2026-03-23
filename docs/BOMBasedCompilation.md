@@ -543,6 +543,11 @@ fields: **BomCategory** and **AABB**.
 This is the same browse/filter pattern as iDempiere's product lookup:
 filter by M_Product_Category, then by dimensional fit.
 
+> **Beyond BOM Drop:** Exception-based ordering (§1), rule-driven discipline
+> addition (§13), order inheritance (§6), reference class compression (§1.2),
+> and the full Order Compilation Engine are specified in
+> [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md). Implementation plan: §14.
+
 ### 3.5.1 AttributeSetInstance — Per-Instance Customization
 
 The Selection Cascade picks the **BOM recipe** (WHAT). The `M_AttributeSetInstance`

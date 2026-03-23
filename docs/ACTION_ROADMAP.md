@@ -511,71 +511,10 @@ From AUDIT_S51_FOCUSED.md. 8 P0 findings across 4 areas:
 
 ### Task 4: Rule-Driven Discipline Framework (FP as first case)
 
-> **Reframed from S60-S3.** FP discipline is not a feature build — it is the first
-> application of a **rule-pack framework** where validation rules drive OrderLine
-> proposals. Building FP alone would be a one-off; building the framework means
-> FP, ELEC, ACMV, MEP all follow the same pattern.
+**Moved to [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md#14-implementation-plan--order-compilation-engine).**
+Full triage (§14.1), data/code inventory (§14.2), 5-session plan (§14.3), failure criteria (§14.4).
 
-**Spec references:**
-- [ProjectOrderBlueprint.md §1.1](ProjectOrderBlueprint.md#11-exception-algebra--four-complete-mutations) — Add mutation (4th type)
-- [ProjectOrderBlueprint.md §12](ProjectOrderBlueprint.md#12-callout-rule-library--compliance-packs-as-product) — Rule packs as importable SQL
-- [GENERATIVE_HOUSE_SRS.md §10.4](GENERATIVE_HOUSE_SRS.md#104-implementation-order) — TC-5 session plan
-- [DemoHouseAnalysis.md §6](DemoHouseAnalysis.md#6-fp-discipline--readiness-assessment) — FP readiness assessment
-
-**What already exists (data layer — READY):**
-- `ad_fp_trigger`: 12 rules (UBBL + IBC) — when sprinklers/alarms are required
-- `ad_fp_coverage`: 4 hazard classes (NFPA 13) — spacing, coverage area, K-factor
-- `ad_space_type_mep_bom`: 19 space types × SPRINKLER — per-room qty/placement rule
-- `ad_val_rule`: 415 mined rules, 1 IfcFireSuppressionTerminal (from TE extraction)
-- `FireProtectionAD.java`: trigger/riser/compartment queries, jurisdiction-aware
-- `FireSuppressionPlacer.java`: piping generation (riser/main/branch/tee)
-- `PlacementValidatorImpl.validateBatch()` + `checkClearance()`: discipline-aware
-- `C_OrderLine.Discipline` column (W003), `Discipline` enum with `FP.isMEP()=true`
-
-**What needs building (framework — 3 sessions):**
-
-**Session A: Add mutation + Discipline wiring**
-- Implement §1.1 Add mutation on C_OrderLine (addDiscipline API)
-- BomDropper populates `Discipline` from bom_category → W003 mapping
-- OrderLineWalker passes Discipline to compilation context
-- Test: DemoHouse order with 3 OrderLines (BOM Drop + Swap + Add FPR)
-- Witness: W-DM-TC5-1 (FP discipline OrderLine created, sprinklers placed per room)
-
-**Session B: Validation-as-suggestion pattern**
-- New pattern: validation rules → proposed OrderLines (architect curates)
-- `RuleSuggestionEngine`: reads ad_fp_trigger + ad_space_type_mep_bom for order context
-  (jurisdiction, occupancy, building height/area) → proposes C_OrderLine additions
-- Without FP OrderLine → validation **warns** ("UBBL By-Law 225 requires sprinklers")
-- With FP OrderLine → validation **checks** placement against ad_fp_coverage
-- Architect accepts/rejects each proposed line (not auto-populate)
-- Witness: W-DM-FP-VAL-1 (validation fires whether or not FP present)
-
-**Session C: Rule pack framing + generalization**
-- Frame ad_fp_trigger + ad_fp_coverage + ad_space_type_mep_bom as NFPA-13 rule pack
-- Add `pack_id` column to rule tables (migration, append-only)
-- Same pattern for ELEC (ad_space_type_mep_bom already has LIGHT, OUTLET, SWITCH)
-- Same pattern for ACMV (AIRCON_POINT, SUPPLY_DIFFUSER, EXHAUST_FAN in data)
-- Demonstrate: load UBBL-2024 pack for MY jurisdiction, IBC-2021 for US
-- Gate: DemoHouse compiles with FP + ELEC disciplines, all from rule packs
-
-**ERP parallel:** iDempiere `ModelValidator.docValidate(C_Order, TIMING_BEFORE_COMPLETE)`
-checks order context against rules and proposes mandatory lines. Architect = approver
-in the iDempiere workflow — system proposes, human disposes.
-
-**Why this order:** Session A is mechanical wiring (testable immediately). Session B
-introduces the new UX pattern (validation suggests, architect curates). Session C
-generalizes to multiple disciplines and formalizes rule packs. Each session is
-independently valuable and leaves the system in a working state.
-
-**Failure criteria (stop-and-reassess if):**
-- Session A: BomDropper→Discipline mapping doesn't compose with OrderLineWalker's
-  bom_child_id join-back (the FPR lines have no m_bom_line parent to walk). If so,
-  FP needs a different compilation path — not BOM walk but rule-driven placement.
-- Session B: ad_space_type_mep_bom data is too coarse for real placement (no room
-  geometry context in the rule rows). If so, the suggestion engine needs AABB from
-  CO_EmptySpaceLine, not just space_type lookup.
-- Session C: ELEC/ACMV products don't exist in component_library.db (no geometry
-  to place). If so, Session C is blocked on library population — defer to post-launch.
+**Status:** Session A partial (S66 `ac4150a` — Discipline wiring). Sessions B-E not started.
 
 ### Task 5: M_BomCategory replacement
 77 files across 6 layers. Orthogonal semantic axes (room templates vs IFC classification).

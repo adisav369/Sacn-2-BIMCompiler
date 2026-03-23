@@ -1180,3 +1180,134 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 | §9 DiffVerb + Callout | Moving a wall triggers FP recalculation (room area changed → sprinkler count changed) |
 | §10 AD_ChangeLog | Every Accept/Reject of a proposed line is audited |
 | §12 Rule packs | NFPA-13, UBBL-2024, IBC-2021 are importable rule packs that drive the suggestion engine |
+
+---
+
+## 14. Implementation Plan — Order Compilation Engine
+
+> **Status:** In progress. Session A partial (S66), Sessions B-C not started.
+> **Source:** Consolidated from ACTION_ROADMAP.md Task 4 (S60-S3 reframe).
+
+### 14.1 Triage — Blueprint Sections vs Codebase State
+
+| § | Feature | Codebase State | Gap |
+|---|---------|---------------|-----|
+| **§1** Exception-based ordering | BomDropper.drop() fully explodes. swapProduct() works (Replace). | Missing: locator_ref addressing, Remove (qty=0 skip), Compress (reference class) |
+| **§1.1** Four mutations | Replace ✓ (WorkOutputDAO.swapProduct). Add partial (Discipline column wired S66). | Remove + Compress not implemented. Add needs rule-driven C_OrderLine creation |
+| **§2** C_Project site-as-BOM | C_Order exists. No C_Project table or parent-order grouping. | Schema + model class needed. Future — not blocking |
+| **§3** Abstract category tree | M_Product_Category exists (46 rows). BOM Selection Cascade (§3.5) works. | Already emergent — no code change needed, taxonomy is data |
+| **§4** BOM mining via Approve | PromoteTest (G-10) exists. DocAction state machine works (DR→IP→AP→CO). | Promotion path proven. BOM diff (building vs building) not built |
+| **§5** nD dimensions as queries | 5D: M_Product.unit_cost_rm exists. 6D/7D columns exist. 4D: BOM tree = schedule. | All dimensions are columns, not systems. Queries work today |
+| **§6** Order inheritance | No Ref_Order_ID column on C_Order. | Schema addition. Exception stacking logic needed |
+| **§7** FOSS ecosystem | Architecture supports it. No packaging or contribution flow. | Strategic, not code |
+| **§8** Forward friction | 34 buildings compiled. IFC dialect coverage growing. | Operational, not code |
+| **§9** DiffVerb + Callout | PP_Order_Node exists (verb audit). No DIFF verb_type. No AD_Rule callout. | Future — needs §1 complete first |
+| **§10** AD_ChangeLog | ChangelogDAO fully implemented. SAVE/PLACE/MOVE/RESIZE/DELETE/PROMOTE/UNDO. | ✓ DONE |
+| **§11** 8th D — ERP as BI | All data in SQLite. Queries work. Federation addon shows breakdown. | ✓ Working today — it's queries, not features |
+| **§12** Callout rule library | AD_Val_Rule (63 rows). ad_fp_trigger (12). ad_code_requirement (23). InferenceEngine exists. | Rules validate. Transition to propose (§13) is the gap |
+| **§13** Rule-driven discipline | ad_space_type_mep_bom (186 rows). FireProtectionAD. BOMRuleAD. MEPBomAD. PlacementValidatorImpl. | Data ready. Framework (Absent→Proposed→Accepted) not built |
+
+### 14.2 What Already Exists (Data + Code — READY)
+
+**C_OrderLine operations (5 production files):**
+- `BomDropper.drop()` — explodes m_bom → C_Order + C_OrderLine tree
+- `OrderLineWalker.walkOrder()` — walks C_OrderLine tree, fires visitor events
+- `WorkOutputDAO` — CRUD on C_OrderLine (insert, list, update, swap, linkASI)
+- `DesignerAPIImpl` — orchestrates bomDrop, swapProduct, listOrderLines, compile
+- `PlacementLoader` — auto-detects OrderLine vs legacy BOM path
+
+**Rule infrastructure (8 AD tables, 325+ rows):**
+- `ad_fp_trigger` (12 rows) — when sprinklers/alarms are required
+- `ad_fp_coverage` (4 rows) — NFPA 13 spacing/coverage per hazard class
+- `ad_space_type_mep_bom` (186 rows) — per-room MEP qty/placement rules
+- `ad_element_mep` (12 rows) — MEP element definitions with placement constraints
+- `ad_bom_rule` (24 rows) — BOM quantity calculation (PER_AREA, PER_LUX, PER_CFM, etc.)
+- `ad_building_code` (14 rows) — code registry (NFPA, UBBL, IBC, NCC)
+- `ad_code_requirement` (23 rows) — detailed code rules per element × space type
+- `ad_mep_profile` (3 rows) — BUDGET/STANDARD/PREMIUM qty multiplexing
+- `AD_Val_Rule` (63 rows) — validation rules with discipline/jurisdiction filters
+
+**Java readers (all production, tested):**
+- `FireProtectionAD` — trigger/riser/compartment queries, jurisdiction-aware
+- `MEPBomAD` — space_type→product qty lookup, profile-driven
+- `BOMRuleAD` — parameterized quantity calculation engine
+- `MEPAD` — element definitions, discipline-aware lookup
+- `ADSession` — consolidated AD session (factory + cache)
+- `PlacementValidatorImpl` — discipline-aware validation
+- `InferenceEngine` — dependency-ordered rule evaluation (Kahn's topo sort)
+- `MValRuleException` — architect override (accept/reject with reason)
+
+**ERP infrastructure (all tested, GREEN):**
+- DocAction state machine (DR→IP→AP→CO→VO) with MOrder transitions
+- AD_ChangeLog (ChangelogDAO) — full audit trail
+- PP_Order_Node — verb execution audit with parameters
+- CO_EmptySpaceLine — spatial slot identity (before/next anchors, capacity)
+- M_AttributeSetInstance — per-instance customization (partial)
+- Three-concern separation enforced by OrderLineInterfaceContractTest (W-LOCK-1..6)
+
+### 14.3 Implementation Sessions
+
+**Session A: Complete the Add mutation (§1.1)**
+*Status: PARTIAL — Discipline wiring done (S66 ac4150a). Add API missing.*
+
+- `addDiscipline(orderId, discipline, jurisdictionContext)` on DesignerAPIImpl
+- Reads `ad_space_type_mep_bom` for each room in order → creates C_OrderLine per MEP element
+- C_OrderLine.status = 'PROPOSED' (new column, or reuse IsActive with state)
+- OrderLineWalker already passes Discipline to compilation context — no change needed
+- **Gate:** `run_RosettaStones.sh classify_dm.yaml` passes. SH/FK 7/7 GREEN
+- **Witness:** W-DM-TC5-1 (discipline OrderLine created, elements placed per room)
+
+**Session B: Validation-as-suggestion (§13)**
+
+- `OrderLineMutation` interface: `List<ProposedOrderLine> propose(C_Order, Connection ruleDb)`
+- `FPSuggestion implements OrderLineMutation` — reads ad_fp_trigger + ad_space_type_mep_bom
+- `ELECSuggestion implements OrderLineMutation` — same pattern, ELEC products
+- `ACMVSuggestion implements OrderLineMutation` — same pattern, ACMV products
+- Three states on proposed lines: Absent → Proposed → Accepted (§13.2)
+- PlacementValidatorImpl: if rule can_suggest → return ProposedOrderLine instead of BLOCK
+- Architect accepts/rejects each in BOM Tree tab or Compliance Review panel
+- **Gate:** Without FP → validation warns. With FP → validation checks placement
+- **Witness:** W-DM-FP-VAL-1 (validation fires whether or not FP present)
+
+**Session C: Rule pack framing (§12)**
+
+- Add `pack_id` column to rule tables (append-only migration)
+- Frame existing FP rules as NFPA-13 pack, existing building codes as jurisdiction packs
+- Demonstrate: load UBBL-2024 for MY, IBC-2021 for US
+- Apply same OrderLineMutation pattern for ELEC and ACMV
+- **Gate:** Order with 3+ disciplines from rule packs, all compiled via standard pipeline
+- **Witness:** W-RULEPACK-1 (jurisdiction-specific rule pack loads and suggests)
+
+**Session D: Remove + Compress mutations (§1.1, §1.2)**
+
+- Remove: qty=0 on C_OrderLine → BomDropper/OrderLineWalker skips branch
+- Compress: reference class flag → compiler instantiates N at computed offsets
+- locator_ref addressing: target specific node in exploded tree
+- **Gate:** 100-storey tower = 3 C_OrderLines (§1.2 example). Standard pipeline compiles
+- **Witness:** W-EXCEPTION-1 (remove skips subtree), W-REFCLASS-1 (qty=N instantiated)
+
+**Session E: Order inheritance (§6)**
+
+- Add `Ref_Order_ID` to C_Order (parent order FK)
+- Compiler walks inheritance chain → collects all exception lines → applies in sequence
+- Conflict resolution: last descendant wins at locator_ref
+- **Gate:** DX_SOLAR_PREMIUM = 3 lines on top of DX_SOLAR on top of DX_BASE
+- **Witness:** W-INHERIT-1 (stacked overlays compile correctly)
+
+### 14.4 Failure Criteria (stop-and-reassess if)
+
+- **Session A:** FPR C_OrderLines have no m_bom_line parent to walk (bom_child_id is NULL). If so, rule-driven lines need a different walker path — not BOM walk but direct placement from ad_space_type_mep_bom spatial data.
+- **Session B:** ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs CO_EmptySpaceLine geometry context.
+- **Session C:** ELEC/ACMV products don't exist in component_library.db (no geometry). S67 onboarded 2 ELEC products; remaining products may block Session C.
+- **Session D:** locator_ref addressing conflicts with existing m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT). If so, need separate exception_locator column.
+
+### 14.5 Relationship to Other Specs
+
+| Spec | Relationship | Action |
+|------|-------------|--------|
+| BBC.md §3.3-3.5 | Defines Instant Drop, BOM Drop, Selection Cascade — the foundation | Add forward reference to this §14 |
+| ACTION_ROADMAP.md Task 4 | Previous home of this plan — now a pointer here | Slim to pointer |
+| LAST_MILE_PROBLEM.md §Layer 2 | Generative buildings use same pipeline — no special test | Reference only |
+| ConstructionAsERP.md | ERP patterns (DocAction, three-concern separation) | Reference only |
+| DemoHouseAnalysis.md §6 | FP readiness assessment for DemoHouse | Data inventory for Session A |
+| GENERATIVE_HOUSE_SRS.md §10.4 | TC-5 session plan | Superseded by this §14 |
