@@ -557,6 +557,16 @@ introduces the new UX pattern (validation suggests, architect curates). Session 
 generalizes to multiple disciplines and formalizes rule packs. Each session is
 independently valuable and leaves the system in a working state.
 
+**Failure criteria (stop-and-reassess if):**
+- Session A: BomDropper→Discipline mapping doesn't compose with OrderLineWalker's
+  bom_child_id join-back (the FPR lines have no m_bom_line parent to walk). If so,
+  FP needs a different compilation path — not BOM walk but rule-driven placement.
+- Session B: ad_space_type_mep_bom data is too coarse for real placement (no room
+  geometry context in the rule rows). If so, the suggestion engine needs AABB from
+  CO_EmptySpaceLine, not just space_type lookup.
+- Session C: ELEC/ACMV products don't exist in component_library.db (no geometry
+  to place). If so, Session C is blocked on library population — defer to post-launch.
+
 ### Task 5: M_BomCategory replacement
 77 files across 6 layers. Orthogonal semantic axes (room templates vs IFC classification).
 Full assessment in S60_ERP_ALIGNMENT.md §M_BomCategory Assessment.
@@ -567,21 +577,26 @@ Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template 
 
 ## Known Debt (ordered by priority)
 
-| # | Item | Severity | Status |
-|---|------|----------|--------|
-| **S51** | **Audit fixes (SEC/GEO/TEST/MIG)** | **CRITICAL** | **TODO — see §S60-S3 Task 3** |
-| S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — see §M_BomCategory Assessment in S60_ERP_ALIGNMENT.md |
-| CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path |
-| CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path |
-| CP-4 | ~~Geometric archetype abstraction~~ | ~~HIGH~~ | **DONE** (S46+S48+S50) |
-| R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO (R20 first) |
-| R21 | Extract host_element_ref (IfcRelVoidsElement) | MED | **DONE** (S60-S2) — re-extract needed |
-| R22 | Extract I_Element_Connectivity | MED | TODO |
-| BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO |
-| BBC-002 | BomValidator verb fidelity in compliance report | LOW | TODO |
-| R18 | DROP dead ad_bom/ad_bom_child tables | LOW | TODO |
-| R19 | Update ConstructionAsERP.md dual architecture | DOC | TODO |
-| VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | Known limit |
+*Updated: S60-S3 (2026-03-23). Stale entries cleaned per AUDIT_S51_FOCUSED.md Appendix D.*
+
+| # | Item | Severity | Status | Q2 Triage |
+|---|------|----------|--------|-----------|
+| S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — S60_ERP_ALIGNMENT.md | DEFER — orthogonal to launch |
+| CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path | DEFER — TE passes via re-baselined reference; verification debt, not output bug |
+| CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path | DEFER — DX compiles correctly, C9 accepted; structured BOM is quality-of-proof |
+| Task 4 | Rule-driven discipline framework (FP first) | MED | PLANNED — 3 sessions (A/B/C) | **Q2** — Session A (Add mutation) is launch-relevant; B/C post-launch |
+| R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO | DEFER — cleanup, not blocking |
+| R22 | Extract I_Element_Connectivity | MED | TODO | DEFER — enables future MEP routing |
+| BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO | BACKLOG |
+| BBC-002 | BomValidator verb fidelity in compliance report | LOW | TODO | BACKLOG |
+| R18 | DROP dead ad_bom/ad_bom_child tables | LOW | TODO | BACKLOG |
+| R19 | Update ConstructionAsERP.md dual architecture | DOC | TODO | BACKLOG |
+| VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | Known limit | KNOWN LIMIT |
+
+**Cleared from debt table (S60-S3):**
+- ~~S51 Audit~~ → 5 FIXED, 1 JUSTIFIED, 1 RETRACTED. See AUDIT_S51_FOCUSED.md Appendix D.
+- ~~CP-4 Geometric archetype~~ → DONE (S46+S48+S50).
+- ~~R21 host_element_ref~~ → DONE (S60-S3, re-extracted SH/FK).
 
 ---
 
@@ -602,3 +617,4 @@ Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template 
 | `LAST_MILE_PROBLEM.md` | Gaps 1-8, R1-R27 actions |
 | `SourceCodeGuide.md` | Code navigation, entry points |
 | `BIM_Designer_SRS.md` §27 | FL-2 Advisory Panel spec (flywheel → Designer) |
+| `ProjectOrderBlueprint.md` | Exception ordering §1, C_Project §2, abstract tree §3, BOM mining §4, nD §5, rule packs §12 |

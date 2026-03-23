@@ -995,3 +995,188 @@ a knowledge asset that compounds. Every project that uses the pack
 generates feedback (which rules fired, which were overridden via
 MValRuleException). The feedback improves the rules. The rules improve
 the projects. This is the flywheel.
+
+---
+
+## 13. Rule-Driven Discipline — Validation as Ordering
+
+> **Status:** Specified — first implementation target.
+> **Foundation:** §1.1 Add mutation + §12 Rule packs.
+> **First case:** Fire Protection (FP) on DemoHouse.
+
+### 13.1 The Problem — Compliance Is Not a Product
+
+A building's structural elements are products the architect chose. Fire
+protection is not. Nobody orders sprinklers because they want them —
+they order them because the jurisdiction mandates them. The distinction:
+
+| Element type | Origin | Ordering mechanism |
+|-------------|--------|-------------------|
+| Walls, floors, roof | Architect's design intent | BOM Drop (§1) |
+| Upgraded finishes | Client preference | Product swap (§1.1 Replace) |
+| Garage removal | Site constraint | Exception (§1.1 Remove) |
+| Sprinklers, alarms, smoke detectors | Regulatory mandate | **Rule-driven Add** |
+| Electrical outlets, HVAC diffusers | Building code + room function | **Rule-driven Add** |
+
+The first three are authored. The last two are **derived from rules**.
+The rules already exist in the validation database. The missing pattern
+is: rules that currently only **validate** should also **propose**.
+
+### 13.2 Three States of a Discipline Line
+
+The architect sees a discipline (FP, ELEC, ACMV) in one of three states:
+
+| State | What the architect sees | System behaviour |
+|-------|----------------------|-----------------|
+| **Absent** | No FP OrderLine on the order | Validation fires **warnings**: "UBBL By-Law 225 requires sprinklers for this configuration." The order compiles without FP — the building is structurally valid but non-compliant. |
+| **Proposed** | System suggests FP OrderLine(s) based on rules | Architect reviews each proposed line. Accept → line becomes active. Reject → line is removed, warning persists. Partial accept → some sprinklers, some warnings. |
+| **Accepted** | FP OrderLine is active on the order | Compiler resolves placement from `ad_space_type_mep_bom`. Validator checks placement against `ad_fp_coverage`. The discipline is compiled like any other BOM branch. |
+
+This is not auto-populate. The architect is always in control. The system
+is an advisor with opinions backed by building code — not an enforcer.
+
+### 13.3 The Suggestion Engine — Rules Propose, Architect Disposes
+
+When the architect clicks "Apply Rules" (or when the order reaches
+`docValidate(TIMING_BEFORE_COMPLETE)`), the system:
+
+1. **Reads order context:** `C_Order.Jurisdiction`, `C_Order.OccupancyClass`,
+   building height (from BUILDING BOM AABB), total floor area (sum of
+   floor BOMs)
+2. **Queries trigger rules:** `ad_fp_trigger` WHERE jurisdiction matches
+   AND (height > min_height OR area > min_floor_area OR storeys > min_storeys)
+3. **For each triggered element type** (SPRINKLER, STANDPIPE, FIRE_ALARM,
+   SMOKE_DETECTION):
+   - Query `ad_space_type_mep_bom` for each room in the order
+   - Compute quantity: `qty_normal` or `per_area_normal × room_area_m2`
+   - Apply `ad_fp_coverage` constraints (max_spacing, min_spacing,
+     max_coverage_m2)
+   - Generate a **proposed C_OrderLine** with:
+     - `Discipline = 'FPR'`
+     - `M_Product_ID` from `ad_element_mep` (sprinkler head product)
+     - `locator_ref` = room locator (placement context)
+     - `Qty` = computed count
+     - `status = 'PROPOSED'` (not yet accepted)
+4. **Present to architect** in the BOM Tree tab or a dedicated
+   "Compliance Review" panel. Each proposed line shows:
+   - What rule triggered it (code reference: NFPA 13 §10.2.4)
+   - What it would place (3 sprinkler heads in LIVING, ceiling grid)
+   - Accept / Reject / Modify quantity
+
+```
+C_Order: "DemoHouse" (Jurisdiction=MY, OccupancyClass=R)
+├── C_OrderLine #1: BOM Drop    BUILDING_SH_STD           ← architect chose
+├── C_OrderLine #2: Replace     roof → FK pitched          ← architect chose
+│
+│   ── "Apply Rules" ──────────────────────────────────────
+│
+├── C_OrderLine #3: [PROPOSED]  discipline=FPR             ← system proposes
+│   LIVING:     2 sprinklers (37.2m² room ÷ 18.6m²/head)
+│   KITCHEN:    1 sprinkler  (fixed qty per ad_space_type_mep_bom)
+│   BEDROOM1:   1 sprinkler  (12m² < 18.6m² threshold)
+│   BEDROOM2:   1 sprinkler
+│   BATHROOM:   1 sprinkler  (ceiling center per NFPA 13)
+│   Rule: UBBL By-Law 225 + NFPA 13 Table 10.2.4.2.1
+│
+├── C_OrderLine #4: [PROPOSED]  discipline=ELEC            ← system proposes
+│   LIVING:     4 outlets, 2 switches, 1 light
+│   KITCHEN:    3 outlets (GFCI), 1 switch, 1 light
+│   ...per ad_space_type_mep_bom
+│   Rule: MS IEE Wiring Regulations
+│
+└── C_OrderLine #5: [PROPOSED]  discipline=ACMV            ← system proposes
+    LIVING:     1 aircon point, 1 supply diffuser
+    ...per ad_space_type_mep_bom
+    Rule: MS 1525 (Energy Efficiency)
+```
+
+The architect reviews. Accepts FP and ELEC, rejects ACMV ("client wants
+ceiling fans, not aircon"). The order now has 4 active OrderLines.
+Compile. The validator checks FP placement against NFPA 13 spacing.
+ELEC placement against wiring code. ACMV absence noted as advisory
+(not blocking — architect made a conscious choice).
+
+### 13.4 iDempiere Parallel — ModelValidator Proposes
+
+In iDempiere, `ModelValidator.docValidate(C_Order, TIMING_BEFORE_COMPLETE)`
+runs before an order is completed. It can:
+- Add lines (mandatory accessories, regulatory add-ons, tax lines)
+- Modify lines (recalculate prices, apply discounts)
+- Block completion (missing mandatory fields, credit limit exceeded)
+
+The suggestion engine is this pattern applied to construction:
+- **Add lines:** proposed discipline OrderLines
+- **Modify lines:** adjust sprinkler qty based on room area recalculation
+- **Block completion:** "Cannot complete — no fire protection on 3-storey
+  building in MY jurisdiction" (configurable: block or warn)
+
+The key difference from manufacturing ERP: in manufacturing, the
+ModelValidator auto-adds and the order proceeds. In construction,
+the architect reviews because building design requires professional
+judgement. The system is a **second pair of eyes**, not an autopilot.
+
+### 13.5 The Validation Spectrum — From Advisory to Gating
+
+Not all rules have equal weight. The system supports a spectrum:
+
+| Level | Behaviour | Example | Override |
+|-------|-----------|---------|----------|
+| **ADVISORY** | Log only — appears in compliance report | "Consider adding smoke detectors in bedrooms" | No override needed — it's information |
+| **WARNING** | Highlighted in UI, does not block compilation | "UBBL By-Law 225 recommends sprinklers for floor area > 500m²" | Architect acknowledges via `MValRuleException` |
+| **MANDATORY** | Blocks `docAction=Complete` unless accepted or excepted | "UBBL By-Law 225 **requires** sprinklers for buildings > 18m" | Architect must Accept the proposed line OR create a documented exception with reason |
+| **GATING** | Blocks compilation entirely | "Structural load path incomplete — cannot compile" | Cannot override — engineering constraint, not regulatory |
+
+The level is set per rule in `ad_fp_trigger.is_mandatory` and per rule
+pack. A Malaysian project under UBBL treats sprinklers for high-rise
+as MANDATORY. The same project might treat bedroom smoke detectors as
+ADVISORY. The architect's judgement space is between ADVISORY and
+MANDATORY — not above GATING.
+
+### 13.6 Feedback Loop — Exceptions Improve Rules
+
+When the architect **rejects** a proposed line or creates an
+`MValRuleException`, the system records:
+- Which rule was overridden
+- Which building / order / jurisdiction
+- The architect's reason (free text or coded: "client preference",
+  "alternative compliance path", "not applicable to this occupancy")
+
+Over time, this data reveals:
+- Rules that are always rejected → too aggressive, needs threshold adjustment
+- Rules that are rejected only in specific occupancies → needs occupancy filter
+- Rules that are never rejected → proven, promote to MANDATORY
+
+This is the §12 flywheel applied to compliance: the rule library
+self-improves through use. The same pattern as BOM Mining (§4) —
+accumulated practice converges toward better rules.
+
+### 13.7 Why This Is the First Framework Feature
+
+Fire Protection is the ideal first case because:
+
+1. **Data is ready.** 12 trigger rules, 4 coverage classes, 19 space types
+   already in disc_validation.db. No new data entry needed.
+2. **The rules are well-defined.** NFPA 13 is a prescriptive standard —
+   spacing and coverage are formulas, not judgement calls.
+3. **The validation path exists.** `PlacementValidatorImpl.validateBatch()`
+   is discipline-aware and `checkClearance()` handles FP-STR clearance.
+4. **The ERP pattern is proven.** iDempiere ModelValidator has been
+   proposing order lines in manufacturing for 20 years.
+5. **It generalises immediately.** The same `ad_space_type_mep_bom` table
+   already has ELEC (LIGHT, OUTLET, SWITCH) and ACMV (AIRCON_POINT,
+   SUPPLY_DIFFUSER) data. Session C of the implementation plan applies
+   the same engine to all three disciplines.
+
+Once FP works, ELEC and ACMV are configuration — same engine, different
+rule pack rows. The framework is the value; FP is the proof of concept.
+
+### 13.8 Relationship to Other Sections
+
+| Section | Relationship |
+|---------|-------------|
+| §1.1 Add mutation | The mechanism — FP is an Add OrderLine |
+| §5.2 5D Cost | Each proposed FP line has a cost — the compliance cost delta is instant |
+| §6 Order inheritance | A "fire-rated" overlay can add FP to any base order |
+| §9 DiffVerb + Callout | Moving a wall triggers FP recalculation (room area changed → sprinkler count changed) |
+| §10 AD_ChangeLog | Every Accept/Reject of a proposed line is audited |
+| §12 Rule packs | NFPA-13, UBBL-2024, IBC-2021 are importable rule packs that drive the suggestion engine |
