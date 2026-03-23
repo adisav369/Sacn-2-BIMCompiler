@@ -538,7 +538,7 @@ Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template 
 | R22 | Extract I_Element_Connectivity | MED | TODO | DEFER — enables future MEP routing |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO | BACKLOG |
 | BBC-002 | BomValidator verb fidelity in compliance report | LOW | TODO | BACKLOG |
-| R18 | DROP dead ad_bom/ad_bom_child tables | LOW | TODO | BACKLOG |
+| R18 | DROP dead ad_bom/ad_bom_child tables | LOW | **DONE** — V006 migration (`854741f`) | CLOSED |
 | R19 | Update ConstructionAsERP.md dual architecture | DOC | TODO | BACKLOG |
 | VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | Known limit | KNOWN LIMIT |
 

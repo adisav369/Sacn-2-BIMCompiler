@@ -685,6 +685,9 @@ Before implementation, verify each subsystem is ready:
 
 ### 10.4 Implementation Order
 
+> **Superseded by [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md#14-implementation-plan--order-compilation-engine).**
+> §14 consolidates the full implementation plan (Sessions A-E) with triage, failure criteria, and cross-references. The session plan below is retained for historical context only.
+
 ```
 Session 1: Analysis + spec hardening
   - Create docs/DemoHouseAnalysis.md (guardrails for DM)

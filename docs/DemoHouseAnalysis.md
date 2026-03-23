@@ -172,7 +172,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).
 
 - `FPValidationTest.java`: **does not exist** — documented as NEEDED in §10.3
 - DemoHouseTest has room geometry fixtures but no FP placement tests
-- DemoHouseCompileTest seeds invented MEP product IDs that don't exist in any DB — needs to use DocEvent path with real products after §30.7.4 onboarding
+- ~~DemoHouseCompileTest~~ removed (S67). DM compiles via standard Rosetta Stone pipeline (`run_RosettaStones.sh classify_dm.yaml`). MEP products onboarded via DocEvent path with real products (S67: 2 ELEC products from TE extraction)
 
 ## 7. Pre-Requisite Status (§10.3)
 

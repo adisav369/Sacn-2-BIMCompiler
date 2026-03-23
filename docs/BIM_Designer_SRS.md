@@ -3460,7 +3460,7 @@ containing space at compile time.
 4. Onboard 2-3 FP products into component_library.db M_Product (sprinkler + alarm)
    with M_Product_Category = FP_HEAD / FP_ALARM
 5. Copy geometry from TE extraction (component_definitions + component_geometries)
-6. DemoHouseCompileTest: enable FP discipline → DocEvent places sprinklers per room
+6. Rosetta Stone pipeline (`classify_dm.yaml`): enable FP discipline → DocEvent places sprinklers per room
 7. CompleteIt → verify IfcFireSuppressionTerminal appears in output.db
 
 **User swap scenario:** After DocEvent places a pendant sprinkler, user can
@@ -3473,7 +3473,7 @@ The category constrains the swap list.
 not hardcoded. Each room gets sprinklers per ad_space_type_mep_bom schedule.
 
 **S63 findings (Task 4A):**
-- DemoHouseCompileTest needs `FP_PIPE_ASSEMBLY` BOM + `m_attribute` seed (spacing, z_offset, diameter) — BuildingWriter calls `BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY","MAIN")` when FireProtectionResolver detects sprinklers. Without it the compile fails.
+- DM compilation needs `FP_PIPE_ASSEMBLY` BOM + `m_attribute` seed (spacing, z_offset, diameter) — BuildingWriter calls `BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY","MAIN")` when FireProtectionResolver detects sprinklers. Without it the compile fails. *(S67: DemoHouseCompileTest removed; DM compiles via standard Rosetta Stone pipeline.)*
 - FP elements currently resolve as discipline='MEP' (IFC class fallback: IfcFireSuppressionTerminal → MEP_TERMINAL → MEP). Finer FP discipline requires either: (a) FP-specific SET BOMs with `bom_category='FP'`, or (b) the addDiscipline API setting `C_OrderLine.Discipline='FPR'` explicitly — which is the Task 4B DocEvent path above.
 - `m_bom.bom_type` CHECK constraint is `('BUILDING','FLOOR','ROOM','SET','ITEM')` — no 'ASSEMBLY'. FP pipe assemblies should use 'SET'.
 

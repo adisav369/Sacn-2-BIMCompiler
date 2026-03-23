@@ -877,7 +877,7 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 **Super-hash:** `9740e0682de99cdcd83f5463f070901075716454f985369d3be06f65522e8d91`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
-- `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)
+- `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
 - `assertTrue(true)` tautologies removed (F5Integration, Calibration)
 
 Quick verify: `bash scripts/verify_test_seal.sh`
