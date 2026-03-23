@@ -43,13 +43,11 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**Next session:** FP trial + product category onboarding.
-  **FP trial:** [BIM_Designer_SRS.md §30.7.4](docs/BIM_Designer_SRS.md) — first MEP discipline via DocEvent 5-table chain.
-  **Product categories:** [BIM_Designer_SRS.md §30.7](docs/BIM_Designer_SRS.md) — M_Product_Category hierarchy (AD_Org pattern).
-  **MEP verbs:** [BIM_COBOL.md §4.2](docs/BIM_COBOL.md) — `ROUTE SPRINKLERS`, `WIRE LIGHTING`, `ROUTE DRAINAGE`, `ROUTE COLDWATER`, `ROUTE DUCTS`, `ROUTE GAS`.
-  **DemoHouse FP readiness:** [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md) — data layer READY, product catalog GAP (zero IfcFlowTerminal in library).
-  **work_output.db removed:** [DocAction_SRS.md §1.10](docs/DocAction_SRS.md) — 4-DB architecture, Save = Blender save.
-  **Audit correction:** BOM stores relative offsets, not world coords. 3-layer test architecture — [LAST_MILE_PROBLEM.md §Relational Round-Trip](docs/LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit).
+**Next session:** Complete Task 4A (BomDropper→Discipline wiring) + DemoHouse recount.
+  **Done (S62):** M_Product_Category (46 cats), 3 FP products onboarded, DemoHouse 53/53 (was 43/60). See [AUDIT_S51_FOCUSED.md Appendix E](docs/AUDIT_S51_FOCUSED.md#appendix-e--s62-fp-trial-audit-2026-03-23).
+  **Remaining Task 4A:** BomDropper populates Discipline from bom_category. OrderLineWalker passes Discipline. W-DM-TC5-1 witness.
+  **Specs:** [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case) · [ProjectOrderBlueprint.md §13](docs/ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) · [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md#6-fp-discipline--readiness-assessment)
+  **Audit concerns:** DemoHouse count explanation needed. ExtractionElement constructor growing (13+ params, consider builder). ELEC/ACMV product availability unknown.
 
 ## Session Log (recent first)
 
