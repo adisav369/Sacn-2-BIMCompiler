@@ -854,7 +854,7 @@ requires a triage pass to suppress false positives so the signal stays clean.
 
 **High-value findings (recommend fixing first):**
 1. ~~36 unchecked ResultSets~~ — **FALSE POSITIVE.** All 13 unique locations use ternary `rs.next()` guard. PMD rule limitation.
-2. **44 empty catch blocks** (mostly DAGCompiler) — exceptions swallowed, failures invisible
+2. **44 empty catch blocks** (mostly DAGCompiler) — exceptions swallowed, failures invisible. Contradicts T14 (no broad exception suppression). Next dedicated session.
 3. **30 unused fields + 30 unused locals** (DAGCompiler) — dead code from prior sprints
 
 **Reproduce:** `mvn com.github.spotbugs:spotbugs-maven-plugin:4.8.3.1:spotbugs` and `mvn org.apache.maven.plugins:maven-pmd-plugin:3.21.2:pmd`
