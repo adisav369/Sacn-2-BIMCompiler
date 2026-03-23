@@ -24,7 +24,7 @@ This document defines the fixes, grouped by severity.
 
 ---
 
-## CRITICAL Fixes (C1–C7)
+## CRITICAL Fixes (C1–C13)
 
 ### C1. Golden Digest Verification — PARTIAL
 
@@ -454,45 +454,6 @@ or document why custom executions are necessary.
 
 ---
 
-## Execution Order
-
-**Phase 1 — Stop the Bleeding:** DONE
-- ~~C5 (SQL injection)~~ — already PreparedStatement
-- ~~C7 (move witness test)~~ — already JUnit 5 in src/test/
-- ~~H5 (error suppression)~~ — all log [WARN], PlaceBomVerb try-with-resources fixed
-
-**Phase 2 — Golden Values:** DONE (2026-03-11)
-- ~~C1 (golden digests)~~ — PARTIAL: BOMDigestVerifyTest tree walk done, digests confirmed stable.
-  Remaining: store as constants + HelloWorldVerbTest.
-- G5 material_rgba pipeline: RosettaStoneExtract.py now writes all instance columns.
-- G4-TAMPER: 48→0 violations (T14 catch-ignored ×23, T15 assertNotNull ×5, T6 TICKET-exempt).
-
-**Phase 3 — Content Verification (next session):**
-- C1 remaining: golden digest assertEquals + HelloWorldVerbTest
-- C2 (spot-check contract)
-- C3 (live count queries)
-- C6 (negative tack offsets)
-- H1 (derive expected values)
-- H6 (semantic witness)
-
-**Phase 3b — Geometry Fidelity (cross-mode mesh verification): IMPLEMENTED (session 27)**
-- C8 (geometry diversity) — IMPLEMENTED advisory. SH: 4/11 product types lose diversity.
-  Known limitation: compiler assigns one mesh per product type. Real finding, not false positive.
-- C9 (per-element axis dimension) — IMPLEMENTED asserts. SH: 0 violations, all axes match exactly.
-  BOM tree copies AABB directly; regression guard for generative/BOM Drop paths.
-- C10 (mesh centroid fingerprint) — IMPLEMENTED advisory. Downstream of C8: same base mesh →
-  same centroid offset. Violations correlate with C8 diversity losses. Promote after C8 fix.
-- All three in `GeometryFidelityTest.java`. Needs compile DB from `run_RosettaStones.sh` to run.
-
-**Phase 4 — Architecture Cleanup (when stable):**
-- ~~C4 (DX furniture test)~~ DONE (partial) — @Disabled with TICKET. Actual coord fix pending.
-- ~~H2 (verb wrappers)~~ DONE — 6 verbs + T16 tamper rule (expanded to wm_empty_storage_line)
-- H3–H4 (data-driven mappings)
-- H7 (Maven config)
-- M1–M6 (medium fixes)
-
----
-
 ## Traceability Matrix — Spec → Test → Witness
 
 **Purpose:** When a BBC.md section changes, this table shows exactly which
@@ -892,87 +853,23 @@ Run these checks when adding BOMs, products, or geometry paths.
 
 ## Tamper Seal — Trust Boundary Hash Manifest
 
-### How It Works (Plain English)
+### How It Works
 
-The audit found that tests and production code can drift together silently —
-both change, tests still pass, but correctness is lost. The hash lock prevents
-this by creating a "wax seal" over all 73 critical files.
+SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash of all hashes. `verify_test_seal.sh` recomputes and compares.
 
-**The idea is simple:**
-1. We take a fingerprint (SHA256 hash) of every test file and every critical
-   production file. If even one byte changes, the fingerprint changes completely.
-2. We store all 68 fingerprints in this document (the manifest below).
-3. We also compute a single "super-hash" — a fingerprint of all fingerprints
-   combined. This is the one number you check.
-4. The script `./scripts/verify_test_seal.sh` recomputes everything and compares.
+**Three defense layers:**
+1. **Hash seal (L1)** — catches accidental/silent drift. Any byte change = SEAL BROKEN.
+2. **Structural guards (L2)** — ArchUnit bytecode scans (`DriftGuardTest`, `ArchitectureTest`), G4-TAMPER (T1–T16 scanning git diff + source), cross-DB joins (G1-G3, G5), Java reflection (`OrderLineInterfaceContractTest`), EntityType runtime guards. Can't be defeated by weakening assertions.
+3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff. `git diff <old>..<new> -- '*/src/test/**'` exposes weakened assertions.
 
-**What it catches:**
-- Someone (or Claude) weakens a test assertion → hash changes → SEAL BROKEN
-- Production code changes but test wasn't updated → hash changes → SEAL BROKEN
-- A test file is deleted or renamed → file missing → SEAL BROKEN
-- A new test is added but not sealed → super-hash won't match next time
+**Re-seal loophole:** L1 alone can be cheated (weaken test, re-seal). L2 blocks this — G4-TAMPER catches weakened assertions via T1-T16 rules. G4 itself is inside the seal, so modifying it breaks the seal AND shows in git diff.
 
-**What it does NOT catch (the re-seal loophole):**
-- Bugs in logic that existed at seal time (the seal locks the current state)
-- Changes to files not in the trust boundary (e.g., utility classes, POMs)
-- **Cheating re-seal:** someone weakens a test, re-seals, and commits — the
-  seal says INTACT but the test is now softer. The hash lock is Layer 1 only.
-
-**Layer 2 — Structural Guards (can't be re-sealed away):**
-The hash detects *that* something changed. These guards verify the change
-is *honest*. They live in the codebase and run automatically during `mvn test`.
-Crucially, they examine **bytecode, reflection, compiled output, and git history** —
-not test assertions. Weakening an assertion in one test doesn't affect what
-these guards find.
-
-| Guard | What It Enforces | Why It Can't Be Cheated |
-|-------|-----------------|------------------------|
-| `DriftGuardTest` (ArchUnit) | D1: no silent defaults, D2: no fake geometry, D5: no hardcoded identity, D6: no name-match guards, D8: no direct WorldCoord, D9: SQL isolation | Scans compiled **bytecode** — independent of test data or assertions |
-| `ArchitectureTest` (ArchUnit) | A1: contract types are interfaces, A2: BOM concretes not accessed outside approved packages, A3: no flat world-coord fields | Same — **bytecode** scan, can't be fooled by test changes |
-| `RosettaStoneGateTest` G1-G3 | Element counts, volume, spatial digest: **reference DB vs output DB** | Queries two **independent databases** and compares — if the compiler produced wrong output, this fails no matter what |
-| `RosettaStoneGateTest` G4-TAMPER | Scans **git diff** + **source files** for cheating patterns: `@Disabled` added (T1), no-op assertions (T2), stubs (T8), empty tests (T11), hardcoded coords (T12) | **This is the anti-cheat gate.** Even if you re-seal, G4 scans the git diff of recent commits and catches the weakened assertion. |
-| `RosettaStoneGateTest` G5 | Every output element traced to component_library | Queries output.db + component_library.db — **cross-DB join**, independent of test assertions |
-| `OrderLineInterfaceContractTest` | C_OrderLine has ONLY the declared columns | **Java reflection** on the actual compiled class |
-| EntityType guards in PO classes | `beforeSave()` throws on D record writes | **Runtime enforcement** in production code — can't weaken from test side |
-
-**How G4-TAMPER specifically blocks the re-seal cheat:**
-G4 has 16 tamper rules (T1–T16) that scan both git history (last 10 commits)
-and current source files. T6 exempts `@Disabled` with `TICKET:` reference
-(documented skip vs silent skip). T14 scans active modules only (excludes
-backup_phase_DE4). If you weaken a test and re-seal, the weakened code
-will trigger one of these rules:
-- Changed `assertEquals(55, x)` to `assertTrue(x > 0)` → T2 or T11 may catch
-- Added `@Disabled` → T1 catches in git diff AND T6/T7 in source scan
-- Inserted a stub `return null` in a validator → T8 catches
-- Added hardcoded coordinate > 1000 → T12 catches
-- Raw SQL on protected tables (m_bom, m_bom_line, c_order) → T16 catches
-
-To cheat G4 you'd have to also modify G4's tamper rules — but G4 is itself
-inside the hash seal (file `RosettaStoneGateTest.java`), so changing it
-breaks the seal AND shows in `git diff`.
-
-**G4-TAMPER scope extension (G-4):** Current scan paths cover `DAGCompiler`,
-`TopologyMaker`, `ORMSandbox` modules. When G-4 code lands, `BonsaiBIMDesigner`
-must be added to the scan scope. The promote path (C_OrderLine → m_bom) writes
-to protected tables and needs T16 coverage. New G-4 test classes
-(WorkOutputDAO, ConstructionModelSpawner, SaveRecall, Wire) must be added to
-the tamper seal. Until then, G-4 code operates outside the trust boundary.
-
-**Layer 3 — Git Diff Review (the human check):**
-Every `[SEAL]` commit shows the exact diff of what changed in the test files.
-`git log --oneline --all -- docs/TestArchitecture.md` lists every re-seal.
-`git diff <old-seal>..<new-seal> -- '*/src/test/**'` shows exactly what was
-weakened or strengthened. A cheating re-seal is visible in the diff history.
-
-**The three layers together:**
-1. **Hash seal** catches accidental/silent drift (run `verify_test_seal.sh`)
-2. **ArchUnit + reflection guards** catch structural cheats (run `mvn test`)
-3. **Git diff** catches intentional re-seal cheats (human review of `[SEAL]` commits)
+**G4-TAMPER scope extension:** When G-4 code lands, add `BonsaiBIMDesigner` to scan scope + new test classes to seal.
 
 **Daily workflow:**
-- Start of session: run `bash scripts/verify_test_seal.sh` — should say INTACT
-- After intentional changes: re-seal (see "How to Re-seal" below)
-- If BROKEN unexpectedly: run `bash scripts/verify_test_seal.sh --detail` to see which files changed
+- Start of session: `bash scripts/verify_test_seal.sh` — should say INTACT
+- After intentional changes: re-seal (see below)
+- If BROKEN unexpectedly: `bash scripts/verify_test_seal.sh --detail`
 
 ---
 
@@ -1105,85 +1002,9 @@ git commit -m "[SEAL] Re-seal after <change description>"
 
 ---
 
-## Addendum: Industry Precedent — "Who Watches The Watchers?"
+## Addendum: Industry Precedent
 
-The 4-layer defense above is not novel. Every high-integrity project converges
-on the same answer: **test data must come from outside the system being tested.**
-
-### Projects That Solve This
-
-**SQLite** — Most relevant to our scale. Single-team project, extreme quality.
-- Test:code ratio is ~600:1. For every line of SQLite, 600 lines of test.
-- 100% branch coverage (not line — branch).
-- Every test asserts an exact expected value. No `assertNotNull`. No "count > 0".
-- The proprietary TH3 test harness is worth more than the code itself.
-  You can rewrite SQLite from scratch; you cannot recreate TH3.
-- **Lesson for us:** Our gate tests must assert exact values (golden digests,
-  exact counts), not existence checks. The test data IS the specification.
-
-**NASA / JPL** (Mars rovers, spacecraft)
-- Every line of flight code traces to a requirement. No code exists "just because."
-- Independent Verification & Validation (IV&V): a separate team at a different
-  site writes their own tests from the same requirements. If the two teams'
-  tests agree, the code is probably right.
-- **Lesson for us:** This is exactly what Layer 4 does. `component_library.db`
-  is our IV&V — extracted by IfcOpenShell (external tool we don't control)
-  from IFC files (industry standard we didn't write). Cross-checking `{PREFIX}_BOM.db`
-  against it is our independent verification.
-
-**Chromium / Google Chrome** — 35M+ lines, thousands of contributors.
-- OWNERS files: every directory lists who can approve changes. You cannot merge
-  to `//net/` without a net-OWNER approving. Tests have owners too.
-- Sheriffs (rotating duty) monitor test dashboards. Flaky tests are reverted
-  immediately — not investigated later, reverted NOW.
-- "Layout tests" compare pixel-perfect screenshots against golden files.
-  Any pixel drift = FAIL.
-- **Lesson for us:** Golden digest comparison (C1) is our layout test equivalent.
-  The `[SEAL]` commit review is our Sheriff rotation.
-
-**Bitcoin Core** — If a test is wrong, real money is lost.
-- "Consensus tests" are sacred. The test vectors ARE the spec.
-  Changing one requires public peer review across hundreds of developers.
-- Test vectors are published independently (BIPs — Bitcoin Improvement Proposals).
-  You cannot silently weaken a consensus test.
-- **Lesson for us:** Our element count `55` and digest `496022db` should be
-  treated like a Bitcoin block hash. Change it and you need proof.
-
-**Linux Kernel** — Thousands of contributors, subsystem maintainers.
-- Every bug fix MUST include a test that would have caught the bug.
-- `git bisect` — binary-search finds the exact commit that introduced a
-  regression. The commit is either reverted or fixed. No hiding.
-- The git history itself is the seal: every commit's SHA includes its parent's
-  SHA. You cannot rewrite history without breaking the chain.
-- **Lesson for us:** Our git-based Layer 3 (`[SEAL]` commit diffs) follows
-  the same principle. The chain of `[SEAL]` commits is our audit trail.
-
-### How They Map To Our Layers
-
-| Challenge | Our Layer | Industry Equivalent |
-|-----------|-----------|-------------------|
-| Accidental code drift | L1: Hash seal | Chromium CQ (Commit Queue) |
-| Intentional test weakening | L2: G4-TAMPER (T1–T15) | Bitcoin consensus test review |
-| Data fraud | L3: Pre-commit Gate 4 (cross-DB) | NASA IV&V (independent oracle) |
-| Re-seal cheat | L4: Git diff of `[SEAL]` commits | Linux `git bisect` + maintainer review |
-| Test as specification | Golden digests (Phase 2) | SQLite TH3 exact-value tests |
-
-### The Convergence Principle
-
-All five projects arrive at the same conclusion:
-
-> **The oracle must be external.** No system can verify itself.
-
-- SQLite's expected values come from the SQL standard
-- NASA's V&V comes from a separate team at a separate site
-- Bitcoin's test vectors come from public, peer-reviewed BIPs
-- Chromium's golden screenshots come from a reference renderer
-- Our element counts come from `component_library.db` (IfcOpenShell extraction)
-
-The hash seal, tamper rules, and pre-commit hook are the enforcement mechanism.
-The real defense against fraud is the independent oracle — a database we didn't
-write, containing truth we cannot fake. To cheat our Layer 4, you would have
-to forge the IFC source files maintained by buildingSMART International.
+See [INDUSTRY_PRECEDENT.md](INDUSTRY_PRECEDENT.md) — SQLite, NASA/JPL, Chromium, Bitcoin Core, Linux Kernel. Core principle: **the oracle must be external.**
 
 ---
 
