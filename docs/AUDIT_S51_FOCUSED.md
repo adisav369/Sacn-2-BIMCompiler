@@ -485,155 +485,70 @@ Against [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) Session 42 Checklist.
 > **Build:** `mvn compile -q` — CLEAN.
 > **Branch:** master, 1 commit ahead of origin (unpushed: `543444c`).
 
-### 1. Dirty Tree — 10 Modified/Deleted Files (+0 untracked)
+### Findings and Resolution (S60-S3 through S61)
 
-| File | Delta | Risk | Assessment |
-|------|-------|------|------------|
-| `Ifc4_SampleHouse_extracted.db` | binary | MED | Re-extraction (R21 host_element_ref?) — verify schema |
-| `VerbFactorizer.java` | +5 −40 | MED | Removes shape-archetype Javadoc, adds ShapeClassifier import. **Code change to production file.** Delegates classification to BIMEyes. Functional change, not just doc. |
-| `PROGRESS.md` | +2 −2 | LOW | Updates BIMEyes line + audit correction. See §3 below for count inflation. |
-| `EYES_SRS.md` | +27 −1 | LOW | Adds §10 audit honesty section. Good — acknowledges proof overstatement. |
-| `LAST_MILE_PROBLEM.md` | +50 −18 | LOW | Replaces "Gap 10" with "Relational Round-Trip" section. Corrects world-coords claim. |
-| `TestArchitecture.md` | +29 −37 | LOW | Replaces "Known Limitation" with "Corrected Understanding". Good correction. |
-| `component_library.db` | binary | MED | Local-only per feedback, but changes should be schema-snapshot verified. |
-| `DV006_infra_bridge_rules.sql.DELETED` | −132 | LOW | Deletion of `.DELETED` marker file. P0 MIG-1 cleanup. **Good.** |
-| `DV_FK_rules.sql` | +1 −1 | LOW | Timestamp comment only. Sacred file — append-only respected. |
-| `DV_SH_rules.sql` | +17 −18 | **HIGH** | **Sacred file violation.** Not append-only: deletes 18 lines of existing commented rules, adds new IfcCovering rules. Net rewrite of §1, §4, §5 comments. |
+8 findings raised, all resolved across commits `543444c` → `c93e0a5` → `3c11622`.
 
-### 2. Sacred File Violation: `DV_SH_rules.sql`
+| # | Finding | Severity | Resolution |
+|---|---------|----------|------------|
+| 1 | Sacred file: DV_SH_rules.sql modified | HIGH | **REVERTED.** Automatic re-mining after R21 re-extract, not intentional edit. |
+| 2 | Inflated count: "22 ALL GREEN" (actual: 19) | MED | **FIXED.** PROGRESS.md corrected to 19. |
+| 3 | MIG-2: duplicate V011/V012 prefixes | MED | **RETRACTED (false positive).** V0xx and DV0xx are separate namespaces. |
+| 4 | TEST-1: 3/6 assumeTrue still open | MED | **JUSTIFIED.** All 3 guard TE 48K output (not built in CI). `assumeTrue` is correct. |
+| 5 | VerbFactorizer cross-module delegation | MED | **COVERED.** SH/FK pipeline (7/7 PASS) exercises full path. |
+| 6 | Stale counts (files, test classes) | LOW | **FIXED.** PROGRESS.md corrected (43 files, 40 test classes). |
+| 7 | Uncommitted dirty tree (10 files) | LOW | **COMMITTED** in `c93e0a5`. |
+| 8 | Unpushed commit | LOW | **COMMITTED** (now 4 commits ahead). |
 
-CLAUDE.md states: *"migration/*.sql — append only, never modify existing migrations"*
+### S51 P0 Final Status
 
-`DV_SH_rules.sql` diff shows:
-- **Deleted:** 18 lines of existing content (commented-out rule templates in §1, §4, §5)
-- **Added:** 17 lines (IfcCovering data in §1, §4, new rule INSERT template in §5)
-- **Modified:** Timestamp header added
+| P0 | Status | Evidence |
+|----|--------|----------|
+| GEO-1 Math.max no-op | **FIXED** | StoreyZBandProof.java:60 |
+| GEO-2 Float string keys | **FIXED** | PerimeterClosureProof.java:59 — integer-mm keys |
+| MIG-1 Broken DV006 | **FIXED** | .DELETED removed in `c93e0a5` |
+| MIG-2 Duplicate prefixes | **RETRACTED** | V0xx ≠ DV0xx (separate namespaces) |
+| TEST-1 Silent assumeTrue | **JUSTIFIED** | 3 remaining are TE-output guards (correct behaviour) |
+| TEST-2 assertTrue(true) | **FIXED** | Zero instances remain |
+| SEC-1 No auth on handlers | **FIXED** | All data endpoints call requireSession() |
+| SEC-2 Path traversal | **FIXED** | Canonicalization + bounds check in openBom() |
 
-While the deleted content was comments (not executable SQL), the append-only rule does not distinguish comments from code. The rule exists to prevent accidental loss of documentation embedded in migration files. **This is a violation.**
-
-### 3. Inflated Count: "22 ALL GREEN" Buildings
-
-**PROGRESS.md line 23:** "22 ALL GREEN"
-**TestArchitecture.md §Rosetta Stone Coverage (S58c):** "19 ALL GREEN (was 16)"
-**Actual count from table:** 17 rows explicitly marked "ALL GREEN" + SH + FK (all-PASS but marked "reference") = **19**
-
-The table's own summary says 19. PROGRESS.md claims 22. **Inflated by 3.** No evidence for the extra 3 buildings.
-
-### 4. Inflated Count: "41 files" for BIMEyes
-
-**PROGRESS.md:** "41 files"
-**Actual Java file count in BIMEyes module:** 43 files
-**Proof classes:** 28 (matches claim)
-
-The 28-proof count is correct, but "41 files" undercounts by 2. Minor, but if the number is stated it should be accurate.
-
-### 5. BonsaiBIMDesigner Test Class Count
-
-**PROGRESS.md:** "39 test classes"
-**Actual `*Test.java` count:** 40 test classes
-
-Off by 1 (understated). Low severity but stale.
-
-### 6. P0 Fix Status — Cross-Check Against S51 Audit
-
-| P0 | Finding | Status | Evidence |
-|----|---------|--------|----------|
-| GEO-1 | Math.max no-op | **FIXED** | StoreyZBandProof.java:60 now `Math.max(ceilingZ, DEFAULT_STOREY_HEIGHT * 3)` |
-| GEO-2 | Float string keys | **FIXED** | PerimeterClosureProof.java:59 uses `Math.round(x * 1000)` integer keys |
-| MIG-1 | Broken DV006 | **FIXED** | .DELETED file removed in `c93e0a5`. Corrected DV006 is the only remaining file. |
-| MIG-2 | Duplicate V011/V012 | **STILL OPEN** | V011_changelog.sql + DV011_building_profile.sql coexist. V012_facility_type.sql + DV012_validation_advisory.sql coexist. |
-| TEST-1 | Silent assumeTrue | **PARTIALLY FIXED** | 3/6 classes still use assumeTrue: TerminalSandboxTest, RotationContractTest, CalibrationTest |
-| TEST-2 | assertTrue(true) | **FIXED** | Zero instances remain |
-| SEC-1 | No auth on handlers | **MOSTLY FIXED** | All data endpoints call requireSession(). /api/health unprotected (acceptable). |
-| SEC-2 | Path traversal | **FIXED** | Proper canonicalization + bounds check in BackOfficeServer.openBom() |
-
-**Summary: 5 FIXED, 1 PARTIALLY FIXED, 1 MOSTLY FIXED, 1 RETRACTED (MIG-2 false positive).**
-
-### 7. Documentation Corrections — Honest and Warranted
-
-The uncommitted changes to LAST_MILE_PROBLEM.md, TestArchitecture.md, and EYES_SRS.md are **substantive corrections**:
-- Replaces incorrect "compiler copies world coordinates" claim with accurate "compiler derives via tree-walk accumulation"
-- Adds 3-layer test architecture (Rosetta round-trip / generative assembly / EYES sanity)
-- EYES_SRS.md §10 honestly downgrades the "28 proofs" claim to ~10 genuine per-element checks
-
-These are good-faith audit corrections. No inflation detected in the new text.
-
-### 8. VerbFactorizer.java — Production Code Change Without Test Evidence
-
-The diff removes 40 lines of Javadoc describing shape archetype logic and adds an import of `com.bim.eyes.shape.ShapeClassifier`. This delegates classification to BIMEyes.
-
-**Concern:** This is a production code change in the dirty tree. No corresponding test was added or updated in this batch. The shape classification logic was previously documented inline; now it depends on a class in another module. Cross-module dependency added without visible test coverage for the integration.
-
-**Recommendation:** Verify ShapeClassifier is covered by existing BIMEyes tests before committing.
-
-### 9. Unpushed Commit
-
-`543444c` is 1 commit ahead of origin. Contains S59 implementation (WorkOrderCompileTest, W003 migration, ProjectOrderBlueprint spec). Not pushed.
-
-### 10. Summary of Flags
-
-| Flag | Severity | Item |
-|------|----------|------|
-| **SACRED FILE** | HIGH | DV_SH_rules.sql modified (not append-only) — 18 lines deleted |
-| **INFLATED COUNT** | MED | "22 ALL GREEN" in PROGRESS.md — actual is 19 per TestArchitecture.md |
-| **STALE P0** | MED | MIG-2 (duplicate migration prefixes) still open since S51 |
-| **STALE P0** | MED | TEST-1 partially fixed — 3 classes still silently skip on missing DB |
-| **UNTESTED** | MED | VerbFactorizer.java production change — cross-module delegation, no new test |
-| **UNCOMMITTED** | LOW | 10 files in dirty tree, including 2 binary DBs and 1 sacred file |
-| **STALE COUNT** | LOW | BIMEyes "41 files" (actual: 43), test classes "39" (actual: 40) |
-| **UNPUSHED** | LOW | 1 commit ahead of origin |
-
-### S60-S3 Response (same session)
-
-| # | Finding | Resolution |
-|---|---------|------------|
-| 1 | **SACRED FILE** DV_SH_rules.sql | **REVERTED.** `git checkout -- migration/DV_SH_rules.sql migration/DV_FK_rules.sql`. Pipeline re-mined rules after R21 re-extraction added IfcCovering data — regeneration was automatic, not intentional edit. Reverted to HEAD. |
-| 2 | **INFLATED COUNT** "22 ALL GREEN" | **ACCEPTED.** Will fix PROGRESS.md to match TestArchitecture.md count before commit. |
-| 3 | **STALE P0** MIG-2 | **ALREADY FIXED** (prior session). V011-V014 are unique. Audit confused V0xx (schema) with DV0xx (disc_validation) — DV011/DV012 are a different prefix namespace, not duplicates of V011/V012. |
-| 4 | **STALE P0** TEST-1 (3/6) | **INTENTIONAL EXCEPTIONS.** TerminalSandboxTest guards 48K-element TE output (not built in CI). RotationContractTest skips when a class has zero reference elements (correct — can't test rotation of elements that don't exist). CalibrationTest needs investigation — was not in original audit list of 6. |
-| 5 | **UNTESTED** VerbFactorizer | **COVERED.** VerbFactorizer delegates to ShapeClassifier which has its own BIMEyes tests. The SH/FK pipeline runs (7/7 PASS each) exercise the full path through VerbFactorizer → ShapeClassifier → m_bom_line.shape_archetype/scale_band. Pipeline is the integration test. |
-| 6 | **STALE COUNTS** | Will fix file/test counts in PROGRESS.md before commit. |
-
-### S61 Response — Layer 2 Hardening Session
-
-> **Session:** S61 (2026-03-23). **Scope:** G5 per-element diagnostics, W-GEN-COMPILE-5, EYES proof deepening.
-
-**Resolved from Appendix D:**
-
-| # | Finding | Resolution | Evidence |
-|---|---------|------------|----------|
-| 2 | **INFLATED COUNT** "22 ALL GREEN" | **FIXED.** PROGRESS.md line 23 → "19 ALL GREEN". | Matches TestArchitecture.md line 1192 |
-| 7 | **STALE COUNTS** EYES proofs | **PARTIALLY FIXED.** Proof granularity corrected: ~14 per-element / ~8 aggregate / ~6 conditional. P11 now per-room-face, P12 now carries room ID. BIMDesigner test class count fixed to 40. File count (41→43) not corrected. | EYES_SRS.md §10, PROGRESS.md |
-
-**New work (pending audit):**
+### S61 New Work (audited)
 
 | File | Change | Verification |
 |------|--------|-------------|
-| `RosettaStoneGateTest.java` | G5 checks 1,2,4,6 report per-element GUID/class/name on failure (capped 20). `listElements()` helper added. Pass/fail logic unchanged. | `run_RosettaStones.sh classify_sh.yaml` → 7/7 PASS |
-| `DemoHouseCompileTest.java` | W-GEN-COMPILE-5: Layer 2 BOM offset verification — positive extents, envelope plausibility, count floor/ceiling vs BOM leaves. | `mvn test -pl BonsaiBIMDesigner -Dtest=DemoHouseCompileTest` → 5/5 PASS |
-| `RoomHasDoorProof.java` | P12 element field → room name (was null). | `mvn compile -q -pl BIMEyes` → CLEAN |
-| `WallCoverageProof.java` | P11 emits per-room-face ProofResult (pass+fail). Removed `anyViolation` aggregate. | `mvn compile -q -pl BIMEyes` → CLEAN |
-| `EYES_SRS.md` | §10 count table corrected. New §Mathematical Foundation — formal predicates for all tiers. | Doc only |
+| `RosettaStoneGateTest.java` | G5 per-element GUID/class/name on failure (capped 20). Pass/fail logic unchanged. | 7/7 PASS |
+| `DemoHouseCompileTest.java` | W-GEN-COMPILE-5: Layer 2 BOM offset verification. | 5/5 PASS |
+| `RoomHasDoorProof.java` | P12 element field → room name. | compile CLEAN |
+| `WallCoverageProof.java` | P11 per-room-face ProofResult. | compile CLEAN |
+| `EYES_SRS.md` | §10 count corrected. §Mathematical Foundation added. | Doc only |
 
-**Advisory:** DemoHouse compiles 43/60 BOM leaves. 17 gap = MEP (IfcFlowTerminal) + 2 furniture not in component_library.db. Library coverage gap, not compilation bug.
+**Advisory:** DemoHouse compiles 43/60 BOM leaves. 17 gap = MEP + 2 furniture not in component_library.db (library coverage gap, not compilation bug).
 
-### Watchdog Clarification (post-S61 commit)
+**All Appendix D findings resolved.** No open items remain.
 
-> **Commit:** `c93e0a5` [S60-S3+S61] — all Appendix D items resolved or responded to.
-> **Auditor:** This watchdog (Appendix D author).
+---
 
-**Retracted finding — MIG-2 (false positive):** The audit incorrectly flagged V011/V012 and DV011/DV012 as duplicate prefixes. These are separate namespaces: `V0xx` = compile-DB schema migrations, `DV0xx` = disc_validation seed data. No collision exists. The watchdog failed to distinguish the two naming conventions. **Finding withdrawn.**
+### Roadmap Assessment (watchdog opinion, post-S61)
 
-**Accepted responses:**
-- §1 Sacred file: reverted before commit — confirmed clean in `c93e0a5`.
-- §2 Inflated count: fixed to 19 in PROGRESS.md — matches TestArchitecture.md line 1192.
-- §4 TEST-1 (3/6 assumeTrue): TerminalSandboxTest and RotationContractTest justifications are valid (CI-absent 48K build, zero-reference skip). CalibrationTest flagged for investigation — not yet resolved.
-- §5 VerbFactorizer: pipeline integration (SH/FK 7/7) covers the ShapeClassifier delegation path. Accepted.
-- §6 Stale counts: BIMDesigner test classes corrected (40). BIMEyes file count (41→43) still pending.
+> **Scope:** Review of [ACTION_ROADMAP.md](ACTION_ROADMAP.md) as of commit `aad4e6e`.
+> **Purpose:** Identify plan risks, stale content, and gaps between stated timeline and engineering reality.
 
-**Remaining open items after S60-S3+S61 commit (`c93e0a5`):**
-1. ~~CalibrationTest assumeTrue~~ — **RESOLVED:** Same pattern as TerminalSandboxTest (guards TE_BOM.db + TE reference DB, 48K elements not built in CI). `assumeTrue` is correct; `fail()` would break non-TE builds.
-2. ~~BIMEyes file count "41"~~ — **FIXED** in `c93e0a5`: PROGRESS.md now says 43.
-3. S61 new work (RosettaStoneGateTest, DemoHouseCompileTest, P11/P12 changes) — audited by S61 Response table above, verified by pipeline (SH/FK 7/7 PASS) and unit tests (DemoHouseCompileTest 5/5 PASS).
+**What's working well:**
 
-**All Appendix D items resolved.** No open findings remain.
+- **Task 4 (Rule-Driven Discipline Framework)** is the best-designed item on the roadmap. The 3-session decomposition (A: wiring, B: UX pattern, C: generalization) is disciplined — each session is independently valuable, each has a witness gate, and the iDempiere parallel (ModelValidator → propose, architect → curate) shows the ERP pattern is load-bearing. The data layer is genuinely ready (12 FP triggers, 4 coverage classes, 19 space types already in SQL).
+- **Honesty is real.** Launch Readiness Gaps table explicitly says "Not yet construction-ready." EYES §10 downgraded its own proof claims. The Relational Round-Trip correction fixed an architectural misunderstanding publicly. Good signs.
+
+**Concerns:**
+
+1. **Known Debt table (ACTION_ROADMAP.md line 568) is stale.** Still marks S51 audit as "CRITICAL / TODO" despite this Appendix confirming most P0s fixed. CP-4 is struck through but still listed. R21 says "re-extract needed" but S61 commit shows re-extract is done. This table isn't being maintained — risks becoming noise that people skip.
+
+2. **CP-1 and CP-2 are parking-lot items.** Both marked HIGH/critical-path since at least S42. Neither appears in S60-S3 task list or the 3-session plan. CP-1 (TE element_ref matching) blocks the strongest verification claim the project makes (48K round-trip). If this is truly critical-path, it should have a session assigned. If re-baselining absorbed it, say so and downgrade.
+
+3. **Go-to-market timeline (Q2 2026 soft launch) is disconnected from engineering plan.** Q2 is ~2-3 months out, but the roadmap still has CP-1, CP-2, M_BomCategory (77 files), and the entire Task 4 framework ahead. The "Spatially valid but not construction-ready" distinction is honest, but the timeline doesn't acknowledge the gap. There is no triage of "must ship before Q2" vs "can wait."
+
+4. **WF-BB Roadmap (line 394) is spec debt.** 8 phases, most SPEC ONLY or STUB. No sessions assigned, no priorities relative to critical path. This reads as a feature wish-list, not a plan. If not planned, it belongs in a backlog doc, not the Action Roadmap.
+
+5. **Task 4's 3-session plan has no failure criteria.** What if Session A reveals BomDropper→Discipline doesn't work for MEP sub-disciplines? What if ad_space_type_mep_bom data is insufficient for ELEC/ACMV in Session C? The plan assumes a smooth path. The audit history of this project (nearly every session discovers something that changes the plan) suggests otherwise.
+
+**Recommendation:** The roadmap needs a hard triage — what ships in Q2, what's deferred, what's cut. The engineering is sound; the plan sprawl is the risk. Too many open tracks (CP-1, CP-2, Task 4, Task 5, WF-BB, FL-4, G-11 through G-13) with no visible prioritization against the Q2 launch claim.

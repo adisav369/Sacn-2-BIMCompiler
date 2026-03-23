@@ -1,7 +1,7 @@
 # DocAction SRS — Document Lifecycle Engine
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
 
-**Version:** 1.3 (2026-03-19, session 34 — §0.1 routing matrix, §1.3a error handling, §1.3b rotation_rule)
+**Version:** 1.4 (2026-03-23, session 61 — §1.9 work_output.db removal, simplified lifecycle)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
 **Scope:** The `processIt()` orchestration — iDempiere MOrder.processIt() mapped to
 BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
@@ -732,6 +732,67 @@ practice from a real building — not a specific code. They serve as:
    (from code). DocEvent uses typical for placement, max for validation.
 3. **Non-Disturbance baseline** — every mined rule must pass against the
    Terminal it was mined from. See `TE_MINING_RESULTS.md`.
+
+### 1.10 Architectural Simplification: work_output.db Removal (S61)
+
+**Decision:** `work_output.db` is removed from the architecture. The 5-DB split
+becomes a **4-DB split**: component_library / BOM / output / validation.
+
+**Rationale:** The BOM is read-only (EntityType D). The user cannot edit it — only
+promote it as a new BOM (approveIt). Save = Blender native save (.blend file).
+The viewport (Bonsai/Blender) holds all visual state. There is no intermediate
+design buffer to persist — work_output.db was a buffer between edits and
+compilation that has no edits to buffer.
+
+**Simplified lifecycle:**
+
+```
+bomDrop()     → DR    Explode BOM template into C_OrderLine tree (compile DB)
+CompleteIt    → CO    Compile BOM → output.db (path editable by user in UI)
+                      Preview BBoxes → coloured cubes in Bonsai
+                      Full Load → solid meshes in Blender
+[user works in Blender — drag, colour, verify. Save = .blend]
+[user wants BOM change → Web UI → swap product / pick different template]
+CompleteIt    → CO    Recompile → updated output.db → viewport refreshes
+approveIt     → AP    Promote as new BOM in catalog (governance gate)
+```
+
+**Output DB path:** The output path is editable in the Web UI (Tab 1 — Order).
+Defaults to `output/{project_name}.db` from C_DocType.OutputDbPath. User can
+rename before each CompleteIt to version their builds (e.g. `output/demo_v2.db`).
+
+**What moves where:**
+
+| Was in work_output.db | Now lives in | Notes |
+|-----------------------|-------------|-------|
+| C_Order + C_OrderLine | Compile DB | BomDropper already writes here |
+| M_AttributeSetInstance | Compile DB | ASI overrides per C_OrderLine |
+| CO_EmptySpaceLine | Compile DB | Spatial slots |
+| W_Validation_Result | Compile DB | Validation results |
+| PP_Order_Node | Compile DB | Verb audit trail |
+| W_Variant | **Removed** | No variants — BOM is read-only, no edit history |
+| W_BuildingConfig | **Removed** | YAML config lives in C_DocType.DSLContent |
+
+**Promote conditions (approveIt → AP):** A new BOM must declare:
+- **Parent category:** M_Product_Category_ID (e.g. RESIDENTIAL, COMMERCIAL) — determines where it appears in the selection list
+- **Qualified name:** Unique, descriptive (e.g. `BUILDING_SH_V2_KITCHEN_SWAP`) — prevents clutter
+- **Author / version:** Metadata for traceability
+- **Children validated:** All child BOM references must resolve (no dangling FKs)
+
+Without these, promote is blocked. The selection list stays organized.
+
+**Files affected by removal (code changes — future session):**
+- `WorkOutputDAO.java` — 29 methods, primary target for removal
+- `DesignerAPIImpl.java` — save/recall/listVariants methods
+- `W001_work_output_schema.sql` — migration file (archive, do not delete)
+- 8 test classes importing WorkOutputDAO
+- 2 Python files (client.py, operator.py)
+- 13 doc files referencing work_output.db
+- 7 physical `library/work_*.db` files
+
+**Supersedes:** §1.6 database writes table (work_output.db column), §1.7 work_output.db
+section. These sections describe the old architecture and are retained for historical
+reference but are no longer the active design.
 
 ---
 

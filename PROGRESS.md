@@ -43,9 +43,13 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**Next session:** [ACTION_ROADMAP.md §S60-S3](docs/ACTION_ROADMAP.md#s60-s3-next-session-tasks)
-  6 tasks: commit S59, re-extract R21, audit P0 fixes, FP discipline, M_BomCategory, re-baseline.
-  **Audit correction:** BOM stores relative offsets, not world coords. Compiler derives, not copies. 3-layer test architecture defined — [LAST_MILE_PROBLEM.md §Relational Round-Trip](docs/LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit).
+**Next session:** FP trial + product category onboarding.
+  **FP trial:** [BIM_Designer_SRS.md §30.7.4](docs/BIM_Designer_SRS.md) — first MEP discipline via DocEvent 5-table chain.
+  **Product categories:** [BIM_Designer_SRS.md §30.7](docs/BIM_Designer_SRS.md) — M_Product_Category hierarchy (AD_Org pattern).
+  **MEP verbs:** [BIM_COBOL.md §4.2](docs/BIM_COBOL.md) — `ROUTE SPRINKLERS`, `WIRE LIGHTING`, `ROUTE DRAINAGE`, `ROUTE COLDWATER`, `ROUTE DUCTS`, `ROUTE GAS`.
+  **DemoHouse FP readiness:** [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md) — data layer READY, product catalog GAP (zero IfcFlowTerminal in library).
+  **work_output.db removed:** [DocAction_SRS.md §1.10](docs/DocAction_SRS.md) — 4-DB architecture, Save = Blender save.
+  **Audit correction:** BOM stores relative offsets, not world coords. 3-layer test architecture — [LAST_MILE_PROBLEM.md §Relational Round-Trip](docs/LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit).
 
 ## Session Log (recent first)
 

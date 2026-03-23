@@ -133,6 +133,16 @@ swapProduct(orderLineId, buildingId, newProductId)
 
 ## 6. FP Discipline — Readiness Assessment
 
+> **Full spec:** [BIM_Designer_SRS.md §30.7.4](BIM_Designer_SRS.md#3074-fp-trial--first-mep-discipline-via-docevent) (FP trial via DocEvent).
+> **5-table chain:** [DISC_VALIDATE_SRS.md §9.1](DISC_VALIDATE_SRS.md) (ad_space_type_mep_bom → ad_element_mep → ad_fp_coverage → M_Product → component_definitions).
+> **Product categories:** [BIM_Designer_SRS.md §30.7](BIM_Designer_SRS.md#307-m_product_category--hierarchical-product-catalog-s61-spec) (M_Product_Category hierarchy, AD_Org pattern).
+
+**Key principle (S61):** The BOM records abstract ingredients (SPRINKLER, RISER),
+not every length variant. The 5-table chain infers quantity from room area,
+picks the product from the library, and the compiler determines actual
+dimensions from the containing space. User can swap the placed product for an
+alternative within the same category (FP_HEAD → other FP_HEAD).
+
 ### 6.1 Data Layer (READY)
 
 - `ad_space_type_mep_bom`: 186 rules seeded (DV001 migration)
@@ -144,16 +154,25 @@ swapProduct(orderLineId, buildingId, newProductId)
 - `MEPBomAD.getBOM(spaceType)`: queries ad_space_type_mep_bom for room type
 - `MEPBomAD.getQuantity()`: calculates qty per profile (BUDGET/STANDARD/PREMIUM)
 
-### 6.3 Validation Layer (PARTIAL)
+### 6.3 Product Catalog Layer (GAP — S61 finding)
+
+- component_library.db has **zero IfcFlowTerminal products** (100 products, all ARC/STR)
+- TE_BOM.db has 22 FP products but they are not onboarded to the library
+- **M_Product_Category table does not exist yet** — schema spec'd in §30.7.1
+- **Fix:** Onboard 2-3 FP products (sprinkler + alarm) with geometry from TE extraction.
+  See [BIM_Designer_SRS.md §30.7.4](BIM_Designer_SRS.md) for steps.
+
+### 6.4 Validation Layer (PARTIAL)
 
 - `PlacementValidatorImpl.validateBatch()`: exists, handles spatial rules
 - `PlacementValidatorImpl.checkClearance()`: FP-STR clearance check exists
 - **Gap:** `validateBatch()` not wired into auto-populate flow. FP sprinklers are placed but not validated against NFPA 13 spacing.
 
-### 6.4 Test Layer (MISSING)
+### 6.5 Test Layer (MISSING)
 
 - `FPValidationTest.java`: **does not exist** — documented as NEEDED in §10.3
 - DemoHouseTest has room geometry fixtures but no FP placement tests
+- DemoHouseCompileTest seeds invented MEP product IDs that don't exist in any DB — needs to use DocEvent path with real products after §30.7.4 onboarding
 
 ## 7. Pre-Requisite Status (§10.3)
 
@@ -187,12 +206,13 @@ swapProduct(orderLineId, buildingId, newProductId)
 4. **Mechanism:** BOM swap applied to m_bom_line (child_product_id SH_ROOF_STR→FK_DG_STR). Pipeline BOMWalker naturally resolves FK_DG_STR's 42 children. No pipeline code changes needed.
 5. **VERB stage:** PLACE BOM verb hits UNIQUE constraint (pre-existing, non-blocking). TRIM verb deferred to Session 4.
 
-### Lifecycle Correction (S59)
+### Lifecycle Correction (S59, updated S61)
 BomDropConfigureTest currently copies SH_BOM.db as compile DB — incorrect.
-Correct lifecycle: work_output.db is the design workspace; compile reads from
-original BOM DBs (not copies); _BOM.db is created via Approve DocAction.
-See GENERATIVE_HOUSE_SRS.md §11.6 for the specified lifecycle.
-The geometric fingerprint test (§11) will follow the correct lifecycle.
+~~Correct lifecycle: work_output.db is the design workspace.~~
+**Updated S61:** work_output.db removed from architecture ([DocAction_SRS.md §1.10](DocAction_SRS.md)).
+Correct lifecycle: BOM is read-only. Save = Blender save. CompleteIt compiles
+BOM → output.db (path editable by user). Approve promotes as new BOM with
+parent category, qualified name, and author/version metadata.
 
 ### What's Needed (Session 2+)
 1. **Geometric fingerprint test:** BOM-predicted vs compiled verification (§11)

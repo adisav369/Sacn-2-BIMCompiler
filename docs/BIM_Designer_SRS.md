@@ -2895,10 +2895,10 @@ BOM Drop follows the standard iDempiere DocAction pattern on C_Order:
 
 | DocAction | DocStatus | Backend behaviour |
 |-----------|-----------|------------------|
-| **bomDrop()** | → DR | Create C_Order + explode BOM tree into C_OrderLine hierarchy. Backend auto-explodes; GUI shows collapsed tree. |
-| **Save** | DR → IP | Backend validates C_OrderLine tree — AABB fit, category consistency, attribute compatibility. Returns adjustment suggestions or error messages. User corrects attribute selections based on backend feedback. |
-| **Approve** | IP → AP | Prompts for metadata to save configuration as a new M_Product (reusable BOM template in catalog). This is the promote step. |
-| **Complete** | AP → CO | Full 9-stage compilation into output.db. Loads solid geometry into Blender viewport. Order is frozen. |
+| **bomDrop()** | → DR | Create C_Order + explode BOM tree into C_OrderLine hierarchy (compile DB). Backend auto-explodes; GUI shows collapsed tree. |
+| **Save** | — | Blender native save (.blend file). No backend action — BOM is read-only. |
+| **Complete** | DR → CO | Full 9-stage compilation from compile DB → output.db (path editable in UI). Preview BBoxes → coloured cubes. Full Load → solid meshes in Blender. |
+| **Approve** | CO → AP | Promote as new BOM in catalog. Requires: parent category, qualified name, author/version, children validated. Governance gate. |
 
 **iDempiere OrderLine model:**
 - C_OrderLine references `M_Product_ID` (= `family_ref`). No BOMCategory on OrderLine level.
@@ -3047,9 +3047,8 @@ YAML can be *generated* from the order state if needed for the backend pipeline.
    Inline edit via `updateOrderLine`. Each line references an `M_Product_ID`.
 4. **ASI panel** (`readASI`, `updateASI`): per-line attribute editing — dimensions (W/D/H),
    material, finish, fire rating. From `M_AttributeSetInstance` (see §28, S52b).
-5. **Save** (`save` / `prepareIt`): validate ASI values, jurisdiction rules, kickback invalid.
-   Persist to `work_output.db`. Kicked-back items highlighted red.
-6. **Complete** (`compile` / `completeIt`): merge `work_output.db` → `output.db`.
+5. **Save**: Blender native save (.blend file). BOM is read-only — no backend persist.
+6. **Complete** (`compile` / `completeIt`): compile BOM (compile DB) → `output.db` (path editable).
    Push `COMPILE_COMPLETE` to Bonsai for viewport rendering.
 
 **Wire actions (implemented S57):**
@@ -3334,6 +3333,175 @@ The DemoHouse acceptance test (§30.4) passes when:
 6. Complete → compile → output.db with STR + FP elements
 7. Save/recall → identical element count **[backend DONE — needs UI test]**
 8. Promote → m_bom entries written, order frozen
+
+### 30.7 M_Product_Category — Hierarchical Product Catalog (S61 spec)
+
+> **iDempiere parallel:** `M_Product_Category` with self-referencing `Parent_Category_ID`,
+> same tree pattern as `AD_Org`. User browses by category to find products when
+> creating or swapping an OrderLine.
+
+#### 30.7.1 Schema
+
+```sql
+-- component_library.db
+CREATE TABLE M_Product_Category (
+    M_Product_Category_ID  TEXT PRIMARY KEY,
+    Parent_Category_ID     TEXT,          -- self-reference (NULL = root)
+    Name                   TEXT NOT NULL,
+    Description            TEXT,
+    IsActive               INTEGER DEFAULT 1,
+    FOREIGN KEY (Parent_Category_ID) REFERENCES M_Product_Category(M_Product_Category_ID)
+);
+
+-- Add FK column to existing M_Product
+ALTER TABLE M_Product ADD COLUMN M_Product_Category_ID TEXT
+    REFERENCES M_Product_Category(M_Product_Category_ID);
+```
+
+#### 30.7.2 Category Hierarchy (derived from extraction data)
+
+Data source: `m_bom.bom_category` from TE (48K elements, 8 disciplines) and
+SH/FK (architectural). The hierarchy is EXTRACTED, not invented.
+
+```
+ALL (root)
+├── ARC — Architecture (268 TE products, 24 SH products)
+│   ├── ARC_WALL — Walls (IfcWall)
+│   │   ├── ARC_WALL_EXT — Exterior (brick, block, curtain)
+│   │   └── ARC_WALL_INT — Interior (partition, stud)
+│   ├── ARC_DOOR — Doors (IfcDoor)
+│   ├── ARC_WINDOW — Windows (IfcWindow)
+│   ├── ARC_SLAB — Slabs/Floors (IfcSlab)
+│   ├── ARC_ROOF — Roofing (IfcRoof)
+│   ├── ARC_COVER — Ceilings (IfcCovering)
+│   └── ARC_FURN — Furniture (IfcFurnishingElement)
+├── STR — Structural (29 TE products)
+│   ├── STR_BEAM — Beams (IfcBeam)
+│   ├── STR_COL — Columns (IfcColumn)
+│   └── STR_MEMBER — Members/Rafters (IfcMember)
+├── FP — Fire Protection (22 TE products)
+│   ├── FP_HEAD — Sprinkler heads (IfcFlowTerminal)
+│   ├── FP_PIPE — Risers/laterals (IfcPipeSegment)
+│   └── FP_ALARM — Alarms (IfcAlarm)
+├── ELEC — Electrical (50 TE products)
+│   ├── ELEC_LIGHT — Light fixtures (IfcLightFixture)
+│   ├── ELEC_OUTLET — Outlets/receptacles (IfcOutlet)
+│   ├── ELEC_SWITCH — Switches (IfcSwitchingDevice)
+│   └── ELEC_CABLE — Cable trays (IfcCableSegment)
+├── CW — Cold Water (50 TE products)
+│   ├── CW_PIPE — Pipes (IfcPipeSegment)
+│   ├── CW_FITTING — Fittings (IfcPipeFitting)
+│   └── CW_TERMINAL — Taps/valves (IfcFlowTerminal)
+├── SP — Sanitary/Plumbing (21 TE products)
+│   ├── SP_FIXTURE — Basins/WC (IfcSanitaryTerminal)
+│   └── SP_PIPE — Waste pipes (IfcPipeSegment)
+├── ACMV — HVAC (60 TE products)
+│   ├── ACMV_DUCT — Ducts (IfcDuctSegment)
+│   ├── ACMV_DIFF — Diffusers (IfcAirTerminal)
+│   └── ACMV_FITTING — Fittings (IfcDuctFitting)
+└── LPG — Gas (18 TE products)
+    └── LPG_PIPE — Gas pipes (IfcPipeSegment)
+```
+
+Level 1 = discipline (`m_bom.bom_category`). Level 2 = IFC class grouping.
+Level 3 = product type (exterior/interior, fixture subtype).
+
+#### 30.7.3 Population Strategy
+
+Categories are derived from extraction data, not invented:
+
+1. **Level 1 (discipline):** Direct from `m_bom.bom_category` — already in every BOM
+2. **Level 2 (IFC class):** Direct from `M_Product.ifc_class` — already on every product
+3. **Level 3 (product type):** From naming convention (e.g. `Wall-Ext` vs `Wall-Partn`,
+   `E_Light` vs `E_Switch`) — pattern-matched, not manual
+
+**Onboarding script:** `scripts/onboard_products.py` (to be created)
+- Reads TE_BOM.db `m_bom_line` + `m_bom.bom_category`
+- Reads component_library.db existing products
+- For each TE product not in library: INSERT M_Product + assign M_Product_Category_ID
+- Geometry: copy from TE extraction (component_definitions + component_geometries)
+
+#### 30.7.4 FP Trial — First MEP Discipline via DocEvent
+
+**Goal:** Prove the DocEvent placement chain for FP (Fire Protection) end-to-end.
+The BOM does NOT record every pipe length — it records abstract ingredients
+(SPRINKLER, RISER). The engine infers quantity from room area, picks the product,
+and the compiler determines actual dimensions from the containing space.
+
+**The 5-table chain** (DISC_VALIDATE_SRS.md §9.1):
+
+```
+User enables FP for DemoHouse
+  → ad_space_type_mep_bom: BEDROOM needs 0.07 sprinklers/m²
+  → ad_element_mep: SPRINKLER → IfcFireSuppressionTerminal, host=CEILING
+  → ad_fp_coverage: LIGHT hazard → max_spacing=4.6m, coverage=18.6m²
+  → M_Product: sprinkler_pendant → width, depth, height (from library)
+  → component_definitions: geometry_hash → LOD mesh
+```
+
+**What TE extracted:** 22 FP products at many different lengths/placements.
+**What the BOM records:** Abstract ingredients (SPRINKLER, RISER, LATERAL).
+The BOM is not a catalog of every length — it's a recipe of common elements.
+The compiler computes spatial data (dx/dy/dz, actual length) from the
+containing space at compile time.
+
+**Steps:**
+1. Seed `ad_space_type_mep_bom` rows for DemoHouse room types (from TE mining)
+2. Seed `ad_element_mep` rows for FP elements (SPRINKLER, ALARM)
+3. Seed `ad_fp_coverage` for LIGHT hazard class
+4. Onboard 2-3 FP products into component_library.db M_Product (sprinkler + alarm)
+   with M_Product_Category = FP_HEAD / FP_ALARM
+5. Copy geometry from TE extraction (component_definitions + component_geometries)
+6. DemoHouseCompileTest: enable FP discipline → DocEvent places sprinklers per room
+7. CompleteIt → verify IfcFireSuppressionTerminal appears in output.db
+
+**User swap scenario:** After DocEvent places a pendant sprinkler, user can
+swap it for an upright sprinkler — same category (FP_HEAD), different product.
+The category constrains the swap list.
+
+**Witness:** W-FP-TRIAL-1: DocEvent FP placement via 5-table chain.
+
+**Success criteria:** DemoHouse compiles with FP elements placed by rules,
+not hardcoded. Each room gets sprinklers per ad_space_type_mep_bom schedule.
+
+#### 30.7.5 Two Browsing Modes — ARC vs MEP
+
+**ARC (manual selection):** User browses the category tree to pick products.
+
+```
+User clicks "Swap Product" on a wall OrderLine
+  → Category picker: [ARC_WALL ▼]
+    → Sub-category: [ARC_WALL_EXT ▼]  [ARC_WALL_INT ▼]
+    → Product list: Wall-Ext_102Bwk-75Ins-100LBlk, ...
+    → User picks product → UPDATE C_OrderLine.family_ref
+```
+
+The `browseItems()` API already exists (`DesignerAPIImpl.java`). It needs a
+`category` filter parameter to query `M_Product WHERE M_Product_Category_ID = ?`.
+
+**MEP (rule-driven placement via DocEvent):** User toggles a discipline ON.
+The system infers what goes where from validation rules + room geometry.
+
+```
+User enables: [✓ FP] for this building
+  → DocEvent engine (DocAction_SRS §1.3):
+    1. AD_Val_Rule WHERE discipline='FP' AND jurisdiction=order.jurisdiction
+       → spacing rules (NFPA 13 / UBBL), coverage, occupancy class
+    2. ad_space_type_mep_bom WHERE space_type=room.type AND discipline='FP'
+       → product_id (which sprinkler for this room type)
+    3. Room AABB from ad_room_boundary
+       → pitch = min(max_spacing, dim / ceil(dim / typical_spacing))
+       → grid positions computed per room
+    4. INSERT C_OrderLine per computed position
+       → family_ref from ad_space_type_mep_bom (not user-selected)
+       → dx/dy/dz from computed grid
+    5. Tier 1 validate each placement against same rules
+       → INSERT W_Validation_Result per C_OrderLine
+```
+
+**No manual product picking for MEP.** The user says "this building needs FP."
+The rules + containing space determine the product, quantity, and position.
+This is the DocEvent path — validation rules ARE the placement engine.
 
 ---
 
