@@ -1,5 +1,7 @@
 # PROGRESS — Current Development State
 
+> **⛔ Don't run ANY git command on `library/component_library.db`.** No stash, checkout, restore, reset. S63 lost 2400+ products this way.
+
 > **Rule:** PROGRESS.md is a thin status file. No specs here — specs live in `docs/` and PROGRESS
 > links to them. Keep this file under 80 lines.
 
@@ -48,7 +50,7 @@
   **Remaining Task 4A:** BomDropper populates Discipline from bom_category. OrderLineWalker passes Discipline. W-DM-TC5-1 witness.
   **Specs:** [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case) · [ProjectOrderBlueprint.md §13](docs/ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) · [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md#6-fp-discipline--readiness-assessment)
   **Audit concerns:** ExtractionElement constructor growing (13+ params, consider builder). ELEC/ACMV product availability unknown.
-  **AD Dictionary question:** M_Product belongs with AD tables, not geometry. [DISC_VALIDATION_DB_SRS.md §10](docs/DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62) — investigate before next product onboarding.
+  **AD Dictionary (S62→S64):** Organize full application dictionary per iDempiere ERP — AD_Org for disciplines, clean DB boundaries. [DISC_VALIDATION_DB_SRS.md §10](docs/DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62). Spec only, no code until reviewed.
 
 ## Session Log (recent first)
 
