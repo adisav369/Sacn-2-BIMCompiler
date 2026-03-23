@@ -53,8 +53,11 @@ public class WebUIServer implements AutoCloseable {
     private final Path libDir;
     private final int httpPort;
 
+    private static final long IDLE_TIMEOUT_MS = 4 * 60 * 60 * 1000L; // 4 hours
+
     private HttpServer httpServer;
     private volatile boolean running;
+    private volatile long lastActivityMs = System.currentTimeMillis();
 
     // ── Bidirectional sync state (Bonsai ↔ Web UI) ──────────
     private volatile Map<String, String> currentSelection = Map.of();
@@ -88,7 +91,22 @@ public class WebUIServer implements AutoCloseable {
         httpServer.createContext("/", this::handleStatic);
         httpServer.start();
         running = true;
+        lastActivityMs = System.currentTimeMillis();
         LOG.info("WebUIServer listening on http://localhost:" + httpPort);
+
+        // Idle watchdog — shuts down server after IDLE_TIMEOUT_MS of no API activity
+        Thread watchdog = new Thread(() -> {
+            while (running) {
+                try { Thread.sleep(60_000); } catch (InterruptedException e) { break; }
+                long idle = System.currentTimeMillis() - lastActivityMs;
+                if (idle > IDLE_TIMEOUT_MS) {
+                    LOG.info("WebUIServer idle for " + (idle / 60_000) + " min — shutting down");
+                    stop();
+                }
+            }
+        }, "webui-idle-watchdog");
+        watchdog.setDaemon(true);
+        watchdog.start();
 
         // Block until stop()
         try {
@@ -128,6 +146,7 @@ public class WebUIServer implements AutoCloseable {
         }
 
         addCorsHeaders(exchange);
+        lastActivityMs = System.currentTimeMillis();
 
         // Read request body
         String body;

@@ -2971,6 +2971,10 @@ selects building, configures BOM, compiles — all without Bonsai. Bonsai is opt
 If occupied (stale instance), warns and exits — prevents duplicate servers and unwanted
 browser tabs. Browser only opens after server confirms startup on the port.
 
+**Idle timeout:** WebUIServer shuts itself down after 4 hours of no API activity
+(no `POST /api` requests). A daemon watchdog thread checks every 60 seconds.
+This prevents stale server instances from accumulating across dev sessions.
+
 ### 29.2 HTTP API Protocol
 
 ```

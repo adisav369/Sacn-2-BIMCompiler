@@ -869,6 +869,7 @@ Same mechanism as "Show in Bonsai" but triggered by the Complete button:
 If port 9878 is already in use (stale instance), the script warns and exits — no duplicate
 server, no extra browser tab. Browser opens only after server confirms startup.
 User opens http://localhost:9878, selects a building, and works with BOM/schedule/cost data.
+Server auto-shuts down after 4 hours idle (no API requests) to prevent stale instances.
 
 **Global search:** Header search bar routes to NLP Query (questions) or Product Catalog (keywords).
 
