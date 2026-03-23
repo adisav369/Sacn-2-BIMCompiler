@@ -1135,6 +1135,25 @@ actual compilation correctness.
 **Until then:** The extracted Rosetta Stones prove **no data loss** (necessary)
 but not **correct computation** (sufficient). Document this honestly.
 
+### Per-Element Source Fidelity Test (generative variant oracle)
+
+For GENERATIVE buildings (no IFC source), the oracle is the **component library + BOM metadata**, tested per-element and per-verb — not by whole-building count.
+
+| Check | What It Proves | Oracle Source |
+|-------|---------------|---------------|
+| `geometry_hash` matches M_Product in component_library | PLACE verb picked the right geometry | Library DB |
+| `material_rgba` matches library source | No material corruption during compilation | Library DB |
+| AABB dimensions within `scale_band` on m_bom_line | SCALE verb respected bounds | BOM line metadata |
+| Rotation is valid transform (determinant = ±1) | ROTATE verb produced legal orientation | Mathematical invariant |
+| Storey assignment matches BOM tree depth | Spatial containment preserved | BOM tree structure |
+| Trimmed element AABB ⊆ host element AABB | TRIM verb bounded correctly | Host element geometry |
+
+**Why this works:** Each check is a contract between a specific verb and its source. The library and BOM metadata exist for every variant — no IFC needed. Generalizes to all future generative buildings, not just DemoHouse.
+
+**Existing pieces:** G5-PROVENANCE (coarse whole-building version), BIM_Designer_SRS.md §11 Geometric Fingerprint (spec), [Geometric Fingerprint §shape ratios](LAST_MILE_PROBLEM.md#geometric-fingerprint--shape-identity-proof-session-44). **Gap:** Wire as per-element, per-verb checks into a reusable test class.
+
+See also: [LAST_MILE_PROBLEM.md §Gap 10](LAST_MILE_PROBLEM.md#gap-10-generative-variant-source-fidelity).
+
 ---
 
 ## Rosetta Stone Coverage (S58c)

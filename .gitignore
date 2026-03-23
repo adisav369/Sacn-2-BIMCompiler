@@ -62,3 +62,6 @@ docs/sessions.txt
 reference/transient_rosetta/
 backup/
 .venv/
+
+# Archive (local docs, binaries, translations)
+archive/

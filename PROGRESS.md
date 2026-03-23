@@ -45,6 +45,7 @@
 
 **Next session:** [ACTION_ROADMAP.md §S60-S3](docs/ACTION_ROADMAP.md#s60-s3-next-session-tasks)
   6 tasks: commit S59, re-extract R21, audit P0 fixes, FP discipline, M_BomCategory, re-baseline.
+  **New:** Per-element source fidelity test for generative variants — [TestArchitecture.md §Per-Element Source Fidelity](docs/TestArchitecture.md#per-element-source-fidelity-test-generative-variant-oracle) + [LAST_MILE_PROBLEM.md §Gap 10](docs/LAST_MILE_PROBLEM.md#gap-10-generative-variant-source-fidelity).
 
 ## Session Log (recent first)
 

@@ -680,6 +680,33 @@ The fingerprints themselves are correct — the pairing algorithm needs refineme
 
 ---
 
+## Gap 10: Generative Variant Source Fidelity
+<!-- @Traces BBC.md §2 — Gospel Principle (extract, never invent) -->
+
+For GENERATIVE buildings (DemoHouse, future variants), there is no IFC source to extract a reference database from. Whole-building count assertions (e.g., `assertEquals(60, ...)`) are circular — they prove the pipeline agrees with itself.
+
+**The oracle for generative variants is the component library + BOM metadata, tested per-element.**
+
+Each compiled element must trace back to its source and satisfy verb-specific contracts:
+
+| Verb | Per-Element Check | Oracle |
+|------|-------------------|--------|
+| PLACE | `geometry_hash` matches M_Product in component_library | Library DB |
+| PLACE | `material_rgba` matches library source | Library DB |
+| SCALE | AABB dimensions within `scale_band` on m_bom_line | BOM line metadata |
+| ROTATE | Rotation matrix determinant = ±1 (valid transform) | Mathematical invariant |
+| TACK | Storey assignment matches BOM tree depth | BOM tree structure |
+| TRIM | Trimmed element AABB ⊆ host element AABB | Host element geometry |
+
+**Relation to existing work:**
+- G5-PROVENANCE does a coarse whole-building version (no GEO_ fallbacks). This gap requires per-element granularity.
+- [Geometric Fingerprint §shape ratios](#geometric-fingerprint--shape-identity-proof-session-44) proves shape equivalence via dimensionless ratios. This gap extends that to verb-level contracts.
+- BIM_Designer_SRS.md §11 specifies geometric fingerprint verification for BOM-predicted vs compiled output.
+
+**Action:** Create `SourceFidelityTest.java` — reusable per-element, per-verb check class. Run against any generative variant. First target: DemoHouse (60 elements). See also [TestArchitecture.md §Per-Element Source Fidelity Test](TestArchitecture.md#per-element-source-fidelity-test-generative-variant-oracle).
+
+---
+
 ## The Challenge Mantra (recall every session)
 
 > **The viewer is a confirmation tool, not a discovery tool. You open it to see
