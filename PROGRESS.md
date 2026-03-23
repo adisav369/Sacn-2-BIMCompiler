@@ -45,6 +45,10 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
+**S67 — §12 CompileProof: ELEC discipline + superclass extraction.**
+  **[DONE] Phase 1** (ELEC discipline): 2 ELEC products onboarded (E_Light, E_Data Point). ELEC SET sub-BOMs per room. DemoHouse 63 elements (was 53). 4 disciplines: STR=25, ARC=18, MEP=10, ELEC=10. W-DM-TC5-3 witness GREEN. [DISC_VALIDATION_DB_SRS.md §12](docs/DISC_VALIDATION_DB_SRS.md).
+  **[DONE] Phase 2** (CompileProof superclass): CompileProof.java + DisciplineBreakdownProof.java extracted from TC5-1/TC5-3. Three emission modes (TEST, PIPELINE_LOG, ADVISORY). Post-compile hook in WriteStage emits to FINE log. Both TC5-1 and TC5-3 run as CompileProof subclasses. SH/FK 7/7, DM 8/8.
+
 **S66 — Task 4A + CP-1 investigation.**
   **[DONE] Task 4A** (Discipline wiring): BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer priority. W-DM-TC5-1 witness (STR=25, ARC=18, MEP=10). 404/404 GREEN. [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case).
   **[DONE] CP-1** (TE per-element verification): Identity goal met via MA infrastructure. W-TOT: 48428/48428 identity-matched, 0 missing, 0 extra; 48336 within position tolerance, 92 FRAME mismatches remain (Gap 6). G3-DIGEST 1mm float precision tracked under Gap 6. [ACTION_ROADMAP.md §CP-1](docs/ACTION_ROADMAP.md#cp-1-te-per-element-verification-gap-5-closure) · [LAST_MILE_PROBLEM.md §Gap 5 S66](docs/LAST_MILE_PROBLEM.md#s66-investigation-2026-03-24-cp-1-identity-goal-already-met).
@@ -57,6 +61,7 @@
 
 ## Session Log (recent first)
 
+**S67** — §12 CompileProof: ELEC discipline + superclass extraction. (1) Phase 1: 2 ELEC products onboarded from TE extraction (S67_001 migration). ELEC SET sub-BOMs per room in DemoHouse. 63 elements, 4 disciplines (STR+ARC+MEP+ELEC). W-DM-TC5-3 GREEN. FP_PIPE_ASSEMBLY HEAD line added (pre-existing gap surfaced by fresh build). (2) Phase 2: CompileProof.java superclass + DisciplineBreakdownProof.java. 3 emission modes: TEST assertion, PIPELINE_LOG (BIMLogger.fine), ADVISORY (W_Validation_Advisory INSERT). Post-compile hook in CompilationPipeline WriteStage. TC5-1 and TC5-3 refactored as CompileProof subclass callers. SH/FK 7/7, DM 8/8.
 **S66** — Task 4A + CP-1 investigation. (1) Task 4A: BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer discipline priority. W-DM-TC5-1 (STR=25, ARC=18, MEP=10). 404/404 GREEN. (2) CP-1: confirmed identity goal already met via MA infrastructure — W-TOT 48428/48428 identity-matched, 92 FRAME mismatches = Gap 6. G3-DIGEST 1mm float precision tracked under Gap 6. (3) Test count sync 55→58, 95→98 (component_library.db evolution). SH/FK/DM gates GREEN. ACTION_ROADMAP + LAST_MILE_PROBLEM updated with cross-references.
 **S65** — DV015 M_Product migration (Step 3). Copied 2,475 M_Product + 46 M_Product_Category from component_library.db to disc_validation.db. 13 Java files: all M_Product reads switched to disc_validation.db. ProductRegistrar dual-write (geometry join + master catalog). SH/FK 7/7. DiscValidationDBTest 27/27 (+3). [AUDIT_S51_FOCUSED.md §Step 3](docs/AUDIT_S51_FOCUSED.md#step-3-implementation-audit-s65-2026-03-24).
 **S64** — AD Dictionary investigation §11. Steps 0–2: AD_Org (DV013), dual columns (DV014), CL001 dead table script. DiscValidationDBTest 24/24. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#11-investigation-report--application-dictionary-database-placement-s64).
@@ -73,7 +78,4 @@
 **S57** — 1D Order Configurator + Bonsai↔WebUI sync. 34/34 buildings compiled. 4 YAML dupe-code fixes.
 **S56b** — Last Mile re-check. 6 bugs fixed (geometry map rename, ProductRegistrar, stale paths).
 **S56** — Web UI frontend (port 9878, 10 tabs). DesignerServerTest 21/21.
-**S55** — BOM Drop frontend + panel renumbering (1D-7D, 8-10). 330/330 GREEN.
-**S54a** — Wire BOM Drop model. PlacementLoader isolation. TC-1 end-to-end (55 elements). 330/330 GREEN.
-**S53** — ERP-correct BOM tree model. Drop EN-BLOC/WALK-THRU. iDempiere OrderLine pattern. Roof proofs P27/P28.
-*Earlier: S39–S52b — ASI authoring, WALK-THRU, FRAME/ROUTE fix, focused audit, BIMEyes Phase 1-3, 6D/7D DAOs, CP-4, DV010, scale-up, LAST_MILE.*
+*Earlier: S39–S55 — ASI authoring, WALK-THRU, FRAME/ROUTE fix, focused audit, BIMEyes Phase 1-3, 6D/7D DAOs, CP-4, DV010, scale-up, LAST_MILE, BOM Drop frontend, ERP BOM tree.*

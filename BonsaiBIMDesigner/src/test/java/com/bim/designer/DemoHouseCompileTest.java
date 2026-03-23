@@ -167,7 +167,7 @@ class DemoHouseCompileTest {
                 ps.setString(4, "DM");
                 ps.setString(5, "DemoHouse_2BR");
                 ps.setString(6, outputPath);
-                ps.setInt(7, 53);  // 5 rooms × 9 (7 struct + 2 FP) + 7 furniture + 1 roof
+                ps.setInt(7, 63);  // 5 rooms × 11 (7 struct + 2 FP + 2 ELEC) + 7 furniture + 1 roof
                 ps.setString(8, dslContent);
                 ps.setDouble(9, 11000);  // total width
                 ps.setDouble(10, 7000);  // total depth
@@ -202,13 +202,14 @@ class DemoHouseCompileTest {
                     int w = (int) room[3], d = (int) room[4], h = (int) room[5];
                     double ox = (double) room[6], oy = (double) room[7];
 
-                    // Room BOM with origin
+                    // Room BOM — origin=(0,0,0) per BBC.md §4.1 (R16 lesson).
+                    // Position comes from FLOOR→ROOM m_bom_line.dx/dy only.
                     st.execute("""
                         INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
                             aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                             origin_x, origin_y, origin_z)
-                        VALUES ('%s','%s','ROOM','%s','ROOM',%d,%d,%d, %f,%f,0.0)"""
-                            .formatted(bomId, name, cat, w, d, h, ox, oy));
+                        VALUES ('%s','%s','ROOM','%s','ROOM',%d,%d,%d, 0.0,0.0,0.0)"""
+                            .formatted(bomId, name, cat, w, d, h));
 
                     // FLOOR → ROOM link
                     st.execute("""
@@ -285,6 +286,27 @@ class DemoHouseCompileTest {
                     addLeaf(st, bomId, "jkrME18_fir-al_smoke detector",
                             "IfcAlarm", seq, w / 2 + 500, d / 2, h - 75, 170, 170, 75);
                     seq += 10;
+
+                    // ── ELEC fittings per room (real products from TE extraction) ──
+                    // // Implementing DISC_VALIDATION_DB_SRS.md §12 — Witness: W-DM-TC5-3
+                    String elecBomId = "ELEC_DEMO_" + name;
+                    st.execute("""
+                        INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+                            aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                        VALUES ('%s','%s ELEC','SET','ELEC','elec', %d,%d,%d)"""
+                            .formatted(elecBomId, name, w, d, h));
+                    st.execute("""
+                        INSERT INTO m_bom_line (bom_id, child_product_id, component_type, role, sequence,
+                            dx, dy, dz, allocated_width_mm, allocated_depth_mm, allocated_height_mm)
+                        VALUES ('%s','%s','MAKE','ELEC',%d, 0,0,0, %d,%d,%d)"""
+                            .formatted(bomId, elecBomId, seq, w, d, h));
+                    seq += 10;
+                    // Light fixture — ceiling-mounted, room centre
+                    addLeaf(st, elecBomId, "E_Light_1 X 14W_Surface_LED T8_V1",
+                            "IfcLightFixture", 10, w / 2 - 27, d / 2 - 300, h - 81, 54, 600, 81);
+                    // Data point — wall-mounted near door
+                    addLeaf(st, elecBomId, "E_Data Point_V1",
+                            "IfcElectricAppliance", 20, w / 2 + 200, 100, 300, 87, 48, 87);
                 }
 
                 // ── Roof (building-level, covers full footprint) ──
@@ -299,7 +321,7 @@ class DemoHouseCompileTest {
                         "Basic Roof:Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr",
                         "IfcRoof", 10, 0, 0, 0, 11000, 7000, 500);
 
-                st.execute("INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value) VALUES ('EXPECTED_ELEMENTS', '53')");
+                st.execute("INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value) VALUES ('EXPECTED_ELEMENTS', '63')");
 
                 // ── FP_PIPE_ASSEMBLY: placement params for fire suppression piping ──
                 // BuildingWriter requires m_bom_line + m_attribute for FP_PIPE_ASSEMBLY/MAIN
@@ -313,6 +335,10 @@ class DemoHouseCompileTest {
                     INSERT INTO m_bom_line (bom_id, child_product_id, component_type, role,
                         sequence, z_rule)
                     VALUES ('FP_PIPE_ASSEMBLY','FP_MAIN_PIPE','BUY','MAIN',10,'CEILING')""");
+                st.execute("""
+                    INSERT INTO m_bom_line (bom_id, child_product_id, component_type, role,
+                        sequence, z_rule)
+                    VALUES ('FP_PIPE_ASSEMBLY','FP_HEAD','BUY','HEAD',20,'BELOW_SLAB')""");
                 // m_attribute: spacing param required by BOMRuleAD.loadPlacementParams
                 st.execute("""
                     CREATE TABLE IF NOT EXISTS m_attribute (
@@ -321,11 +347,12 @@ class DemoHouseCompileTest {
                         param_key TEXT NOT NULL,
                         param_value TEXT,
                         is_active INTEGER DEFAULT 1)""");
-                // Get bom_child_id of the MAIN line we just inserted
+                // Get bom_child_id of the MAIN and HEAD lines
                 try (ResultSet bcRs = st.executeQuery(
-                        "SELECT bom_child_id FROM m_bom_line WHERE bom_id='FP_PIPE_ASSEMBLY' AND role='MAIN'")) {
-                    if (bcRs.next()) {
+                        "SELECT bom_child_id, role FROM m_bom_line WHERE bom_id='FP_PIPE_ASSEMBLY' AND role IN ('MAIN','HEAD')")) {
+                    while (bcRs.next()) {
                         int fpBomChildId = bcRs.getInt(1);
+                        String fpRole = bcRs.getString(2);
                         st.execute("INSERT INTO m_attribute (bom_child_id, param_key, param_value) VALUES ("
                             + fpBomChildId + ", 'spacing', '3.0')");
                         st.execute("INSERT INTO m_attribute (bom_child_id, param_key, param_value) VALUES ("
@@ -409,14 +436,20 @@ class DemoHouseCompileTest {
         };
     }
 
+    /**
+     * Add a leaf BOM line.  dx/dy/dz are in mm (matching allocated_*_mm for
+     * readability); converted to metres on INSERT per BBC.md §4.0 tack convention.
+     */
     private static void addLeaf(Statement st, String bomId, String productId,
-            String role, int seq, int dx, int dy, int dz,
+            String role, int seq, int dxMm, int dyMm, int dzMm,
             int allocW, int allocD, int allocH) throws SQLException {
         st.execute("""
             INSERT INTO m_bom_line (bom_id, child_product_id, component_type, role, sequence,
                 dx, dy, dz, allocated_width_mm, allocated_depth_mm, allocated_height_mm)
-            VALUES ('%s','%s','LEAF','%s',%d, %d,%d,%d, %d,%d,%d)"""
-                .formatted(bomId, productId, role, seq, dx, dy, dz, allocW, allocD, allocH));
+            VALUES ('%s','%s','LEAF','%s',%d, %f,%f,%f, %d,%d,%d)"""
+                .formatted(bomId, productId, role, seq,
+                    dxMm / 1000.0, dyMm / 1000.0, dzMm / 1000.0,
+                    allocW, allocD, allocH));
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -616,12 +649,16 @@ class DemoHouseCompileTest {
             // at least that many elements (structural + furniture + MEP).
             int totalBomLeaves = 0;
             int bomRoomCount = 0;
+            // Count LEAF children in room BOMs AND their sub-BOMs (e.g. ELEC SET)
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "SELECT COUNT(*) FROM m_bom_line " +
-                    "WHERE bom_id = ? AND component_type = 'LEAF' AND is_active = 1")) {
+                    "WHERE component_type = 'LEAF' AND is_active = 1 " +
+                    "AND (bom_id = ? OR bom_id IN " +
+                    "  (SELECT child_product_id FROM m_bom_line WHERE bom_id = ? AND component_type = 'MAKE'))")) {
                 for (Object[] room : ROOMS) {
                     String bomId = (String) room[1];
                     ps.setString(1, bomId);
+                    ps.setString(2, bomId);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             int leafCount = rs.getInt(1);
@@ -693,7 +730,7 @@ class DemoHouseCompileTest {
     // ═══════════════════════════════════════════════════════════════════
 
     @Test @Order(6)
-    @DisplayName("W-DM-TC5-1: Multi-discipline output (STR + ARC + MEP)")
+    @DisplayName("W-DM-TC5-1: Multi-discipline output via CompileProof (STR + ARC + MEP)")
     void w_dm_tc5_1_output_disciplines() {
         assertNotNull(compileResult, "W-GEN-COMPILE-1 must run first");
         assertTrue(compileResult.success());
@@ -701,59 +738,40 @@ class DemoHouseCompileTest {
         String outputPath = compileResult.outputDbPath();
 
         try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + outputPath)) {
-            // ── (a) Multi-discipline breakdown ──────────────────────────
-            Map<String, Integer> disciplineCounts = new LinkedHashMap<>();
-            try (Statement st = outConn.createStatement();
-                 ResultSet rs = st.executeQuery(
-                     "SELECT discipline, COUNT(*) AS cnt FROM elements_meta "
-                   + "GROUP BY discipline ORDER BY cnt DESC")) {
-                while (rs.next()) {
-                    disciplineCounts.put(rs.getString("discipline"), rs.getInt("cnt"));
-                }
-            }
+            // ── CompileProof: DisciplineBreakdownProof (≥3 disciplines, 63 total) ──
+            var proof = new com.bim.compiler.validation.DisciplineBreakdownProof(3, 63);
+            var result = proof.evaluate(outConn);
+
+            assertEquals(com.bim.eyes.proof.ProofResult.Status.PROVEN, result.status(),
+                "DisciplineBreakdownProof must PASS: " + result.evidence());
+
+            // ── Detailed assertions on the breakdown ──
+            Map<String, Integer> disciplineCounts = proof.breakdown(outConn);
 
             System.out.println("  [TC5] Discipline breakdown:");
             disciplineCounts.forEach((d, c) ->
                 System.out.printf("    %-10s %d%n", d, c));
 
-            assertTrue(disciplineCounts.size() >= 3,
-                "Output must have at least 3 disciplines (STR, ARC, MEP), got: "
-                + disciplineCounts.keySet());
-
-            // ── MEP elements: fire-safety fittings ──────────────────────
             assertTrue(disciplineCounts.containsKey("MEP"),
                 "Output must contain MEP discipline elements");
             assertEquals(10, disciplineCounts.get("MEP"),
                 "10 MEP elements (5 rooms × sprinkler + alarm)");
 
-            // Verify IFC classes within MEP
-            Map<String, Integer> mepClasses = new LinkedHashMap<>();
-            try (Statement st = outConn.createStatement();
-                 ResultSet rs = st.executeQuery(
-                     "SELECT ifc_class, COUNT(*) AS cnt FROM elements_meta "
-                   + "WHERE discipline = 'MEP' GROUP BY ifc_class ORDER BY cnt DESC")) {
-                while (rs.next()) {
-                    mepClasses.put(rs.getString("ifc_class"), rs.getInt("cnt"));
-                }
-            }
-            assertEquals(5, mepClasses.get("IfcFireSuppressionTerminal"), "5 sprinklers");
-            assertEquals(5, mepClasses.get("IfcAlarm"), "5 alarms");
-
-            // ── STR elements: walls + slabs ─────────────────────────────
             assertTrue(disciplineCounts.containsKey("STR"),
                 "Output must contain STR discipline elements");
             assertTrue(disciplineCounts.get("STR") >= 25,
                 "≥25 STR elements (20 walls + 5 slabs), got " + disciplineCounts.get("STR"));
 
-            // ── ARC elements: doors, windows, furniture, roof ───────────
             assertTrue(disciplineCounts.containsKey("ARC"),
                 "Output must contain ARC discipline elements");
             assertTrue(disciplineCounts.get("ARC") >= 10,
                 "≥10 ARC elements (doors + windows + furniture + roof)");
 
             int total = disciplineCounts.values().stream().mapToInt(Integer::intValue).sum();
-            assertEquals(53, total, "Total output elements");
             System.out.printf("  [TC5] PASS: %s = %d total%n", disciplineCounts, total);
+
+            // ── Emit to FINE log (proves PIPELINE_LOG context works) ──
+            proof.emitLog(result);
         } catch (Exception e) {
             fail("W-DM-TC5-1 failed: " + e.getMessage());
         }
@@ -791,7 +809,74 @@ class DemoHouseCompileTest {
                 "C_OrderLine must have discipline rows after BomDropper");
             assertTrue(olDisciplines.containsKey("ARC"),
                 "Must have ARC discipline rows (room-category BOMs)");
+            assertTrue(olDisciplines.containsKey("ELEC"),
+                "Must have ELEC discipline rows (ELEC SET BOMs)");
             System.out.printf("  [TC5-2] PASS: %s%n", olDisciplines);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  W-DM-TC5-3: ELEC discipline wiring
+    //  // Implementing DISC_VALIDATION_DB_SRS.md §12 — Witness: W-DM-TC5-3
+    //
+    //  Proves ELEC discipline appears in compiled output alongside
+    //  STR, ARC, MEP — giving 4+ disciplines total.
+    //  ELEC products (light fixture, data point) placed via SET-level
+    //  sub-BOM with bom_category=ELEC.
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test @Order(8)
+    @DisplayName("W-DM-TC5-3: 4+ disciplines in output (STR + ARC + MEP + ELEC)")
+    void w_dm_tc5_3_elec_discipline() {
+        assertNotNull(compileResult, "W-GEN-COMPILE-1 must run first");
+        assertTrue(compileResult.success());
+
+        String outputPath = compileResult.outputDbPath();
+
+        try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + outputPath)) {
+            // ── CompileProof: DisciplineBreakdownProof (≥4 disciplines, 63 total) ──
+            var proof = new com.bim.compiler.validation.DisciplineBreakdownProof(4, 63);
+            var result = proof.evaluate(outConn);
+
+            assertEquals(com.bim.eyes.proof.ProofResult.Status.PROVEN, result.status(),
+                "DisciplineBreakdownProof must PASS with 4+ disciplines: " + result.evidence());
+
+            Map<String, Integer> disciplineCounts = proof.breakdown(outConn);
+
+            System.out.println("  [TC5-3] Discipline breakdown:");
+            disciplineCounts.forEach((d, c) ->
+                System.out.printf("    %-10s %d%n", d, c));
+
+            // ── ELEC-specific assertions ──
+            assertTrue(disciplineCounts.containsKey("ELEC"),
+                "Output must contain ELEC discipline elements");
+            assertEquals(10, disciplineCounts.get("ELEC"),
+                "10 ELEC elements (5 rooms × light + data point)");
+
+            Map<String, Integer> elecClasses = new LinkedHashMap<>();
+            try (Statement st = outConn.createStatement();
+                 ResultSet rs = st.executeQuery(
+                     "SELECT ifc_class, COUNT(*) AS cnt FROM elements_meta "
+                   + "WHERE discipline = 'ELEC' GROUP BY ifc_class ORDER BY cnt DESC")) {
+                while (rs.next()) {
+                    elecClasses.put(rs.getString("ifc_class"), rs.getInt("cnt"));
+                }
+            }
+            assertEquals(5, elecClasses.get("IfcLightFixture"), "5 light fixtures");
+            assertEquals(5, elecClasses.get("IfcElectricAppliance"), "5 data points");
+
+            assertTrue(disciplineCounts.containsKey("MEP"),
+                "MEP discipline must still be present");
+            assertEquals(10, disciplineCounts.get("MEP"),
+                "10 MEP elements (sprinklers + alarms) unchanged");
+
+            int total = disciplineCounts.values().stream().mapToInt(Integer::intValue).sum();
+            System.out.printf("  [TC5-3] PASS: %s = %d total%n", disciplineCounts, total);
+
+            // ── Emit to FINE log (proves PIPELINE_LOG context works) ──
+            proof.emitLog(result);
+        } catch (Exception e) {
+            fail("W-DM-TC5-3 failed: " + e.getMessage());
         }
     }
 }

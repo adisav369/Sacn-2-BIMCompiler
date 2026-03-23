@@ -873,8 +873,8 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 
 ---
 
-**Sealed:** 2026-03-24 (v29: S65 DV015 M_Product move — BOMWalker/OrderLineWalker/verbs read from disc_validation.db, DiscValidationDBTest +3 witnesses)
-**Super-hash:** `9740e0682de99cdcd83f5463f070901075716454f985369d3be06f65522e8d91`
+**Sealed:** 2026-03-24 (v30: S67 CompileProof + ELEC discipline — CompilationPipeline post-compile hook, DemoHouseCompileTest 8/8)
+**Super-hash:** `8611906b321efbfbd9145c695b91b071f65506b08f6c848d939e76ec8658f00b`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)

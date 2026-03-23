@@ -87,7 +87,7 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
 
 ---
 
-### Checklist Summary (latest: S60-S3, 2026-03-23)
+### Checklist Summary (latest: S66, 2026-03-24)
 
 | # | Check | Verdict | Evidence |
 |---|-------|---------|----------|
@@ -221,7 +221,7 @@ The output is dictated by these spec sources and no others:
 | `*.bimcobol` | 2 (post-compile) | Verb recipes: PLACE BOM, ROUTE SPRINKLERS, WIRE LIGHTING |
 | `BIMConstants.java` | 2 | Dimensional defaults: wall thickness, slab overlap, door/window sizes |
 | `authority_data.db` | 2 | Rule tables: fire protection, MEP, placement rules, BOM quantity formulas |
-| `component_library.db` | 1+2 | Product catalog, geometry meshes, orientation |
+| `component_library.db` | 1+2 | Geometry meshes, orientation. M_Product reads now from `disc_validation.db` (S65); geometry remains in component_library.db |
 | Reference extraction DB | 1 | Element positions, dimensions, geometry hashes (input data, not spec) |
 
 **R4 status:** Spec inventory confirmed by code audit (2026-03-16). The compiler
@@ -257,8 +257,7 @@ prove counts and aggregates, not per-element visual identity.
 - `SpotCheckContractTest` already opens ref + output with AABB tolerance matching
 - ~~**Blocker:** output DB `elements_meta` has no `element_ref` column~~
   **RESOLVED (R6):** `element_ref` propagated through pipeline. `TotalityContractTest` verifies SH/DX.
-  **RESOLVED (S66):** TE W-TOT: 48428/48428 identity-matched (0 missing, 0 extra).
-  48336/48428 within position tolerance (92 FRAME verb coordinate mismatches remain — Gap 6).
+  **RESOLVED (S66):** TE W-TOT: 48428/48428 identity-matched, 48336 within position tolerance (92 FRAME coordinate mismatches remain — Gap 6).
 
 **CP-1 (2026-03-20): MA-based identity threading.**
 IFC GUIDs from extraction DB are now carried through the BOM via `m_bom_line_ma`
@@ -279,7 +278,7 @@ to position matching for SH/DX (which lack extraction GUIDs in output).
 Remaining 92 (85 shift + 7 drift) are pre-existing FRAME verb expansion
 coordinate mismatches (centroid-vs-LBD offset) — Gap 6 scope, not Gap 5.
 
-**Evidence:** `TotalityContractTest.java` (W-TOT-1/2/3 for SH/DX), `ExtractedBOMWalkTest.java` (count only for TE)
+**Evidence:** `TotalityContractTest.java` (W-TOT-1/2/3 for SH/DX/CO_TE), `ExtractedBOMWalkTest.java` (count only for TE)
 
 ### S66 Investigation (2026-03-24): CP-1 Identity Goal Already Met
 
@@ -433,8 +432,8 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R14 | Remove hardcoded building names from PlacementProver | Gap 7 | DONE — detectBuildingName emptied, proveFromDB(path,name) added |
 | R15 | Delete deprecated ComponentLibrary rank-based extraction query | Gap 7 | DONE — subquery removed, comment updated |
 | R16 | Coordinate double-counting in PlacementCollectorVisitor | Gap 7 | DONE — child BOM origins zeroed (session 17) |
-| R25 | P06 cross-product furniture exemption + IfcPlate 50mm tolerance | Gap 3c | **TODO** — spec written (P06 Exemption Spec above). Sharp: same-product overlap still flagged, only cross-product (composition) exempt |
-| R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH output | Gap 3a | **TODO** — G5 PROVENANCE fails: 1/55 instances use parametric bbox |
+| R25 | P06 cross-product furniture exemption + IfcPlate 50mm tolerance | Gap 3c | **DONE** — SameClassOverlapProof.java:34-50 (cross-product exemption + IfcPlate 50mm tolerance) |
+| R26 | Investigate GEO_ fallback on `SLAB_GROUND FLOOR` (IfcSlab) in SH output | Gap 3a | **DONE** — G5 PASS (0 GEO_) confirmed in PROGRESS.md gate table |
 | R27 | C_DocType spec/code drift: spec says it belongs in `{PREFIX}_BOM.db`, but IFCtoBOM doesn't write it — shell script injects into temp compile DB | Gap 8 | **DONE** — IFCtoBOM writes C_DocType + DSLContent during extraction. Shell injection removed. StubDataSeeder kept for unit test in-memory DBs |
 | CP-1 | TE per-element identity via `m_bom_line_ma` (M_InOutLineMA pattern) | Gap 5 | **DONE** — 48336/48428 exact, 0 missing/extra. Remaining 92 = FRAME verb coordinate mismatch (Gap 6) |
 | R28 | VerbFactorizer material uniformity guard | Gap 9 | **DONE** — reject groups with mixed material_rgba before verb detection. SH G5: 22→4 missing (matches reference) |
@@ -442,6 +441,7 @@ the source code level. Initially 10 violations; **all fixed, 0 remaining.**
 | R30 | ProductGeometry SQL alias fix: `lo` → `cg` after LOD_Object → component_geometries rename | Gap 9 | **DONE** — loadAll() SELECT columns updated |
 | R31 | Per-instance geometry via GUID-keyed I_Geometry_Map + MeshBinder override + element_name fix | Gap 9 | **DONE** — TE C8: 29→0 lost, G5: 2→0 GEO_. IFC GUID format guard (`[0-9A-Za-z_$]{22}`) |
 | R32 | C8 SQL blank element_name normalization | Gap 9 | **DONE** — `COALESCE(NULLIF(element_name,''),ifc_class)` on reference side. IN C8: 1→0 lost. DX C8: 12→0 (R31 effect confirmed) |
+| R33 | G3-DIGEST float precision: 1015/48428 CO_TE elements differ by 1mm at rounding boundary | Gap 6 | **KNOWN LIMIT** — CLUSTER verb round-trip introduces sub-mm float noise. G3-DIGEST not valid for CO_TE (see §Gap 6 S66 sub-finding). W-TOT identity matching tolerates this |
 
 ---
 
@@ -523,9 +523,10 @@ elements resolve per-instance geometry from library via GUID chain.
 **CLEAN.** Tables: `m_bom`, `m_bom_line`, `M_Product`, `ad_sysconfig` (+ `C_DocType` in DM_BOM.db).
 No extraction data, no geometry BLOBs, no config tables.
 
-**Known debt:** M_Product is a transitional copy from component_library.db (BOMWalker
-reads from compConn but ProductRegistrar still copies for assembly stubs). Target:
-remove BOM-side M_Product when all consumers use compConn.
+**Known debt (updated S65):** M_Product authoritative reads now come from `disc_validation.db`
+(ProductRegistrar dual-writes to both BOM and disc_validation.db; BOMWalker reads from
+disc_validation.db via compConn). BOM-side M_Product is retained for assembly stubs.
+Target: remove BOM-side M_Product when all consumers use disc_validation.db.
 
 ### 8.2 `component_library.db` — Is it just LODs + orientation + IFC metadata?
 
@@ -575,21 +576,18 @@ binary), but must not be confused with the source DBs being mixed.
 
 | # | Action | Addresses | Severity | Status |
 |---|--------|-----------|----------|--------|
-| R17 | DELETE FROM I_Element_Extraction in component_library.db | V1 | MEDIUM | **TODO** — data removal (reader code already removed in R13) |
-| R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **TODO** — dead tables |
+| R17 | DELETE FROM I_Element_Extraction in component_library.db | V1 | MEDIUM | **DONE** — V006 migration (commit `854741f`): DROP TABLE I_Element_Extraction |
+| R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **DONE** — V006 migration (commit `854741f`): all three tables dropped |
 | R19 | Update ConstructionAsERP.md §1.1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
 | R20 | Migrate test extraction fixtures out of component_library.db | §8.3 test dependency | LOW | **DEFER** — tests work as-is |
 | R21 | Extract `host_element_ref` from `IfcRelVoidsElement` into m_bom_line | Schema-Not-Geometry §15.6 | MED | **DONE** (S60-S2 code, S60-S3 re-extract). SH: 7 fills, FK: 16 fills. Pipeline verified 7/7 PASS. |
 | R22 | Extract `I_Element_Connectivity` linking table from `IfcRelConnectsElements` | Schema-Not-Geometry §15.6 | MED | **TODO** — M13/M14/M15 upgrade from positional grouping |
 | R23 | Extract `I_Element_Interference` linking table from `IfcRelInterferesElements` | Schema-Not-Geometry §15.6 | LOW | **TODO** — M9/M10 upgrade from AABB intersection |
-| R24 | Extract `fire_stop_product_ref` from `IfcRelFillsElement` into I_Element_Extraction | Schema-Not-Geometry §15.6 | LOW | **TODO** — M11 upgrade from WARN to FK check |
+| R24 | Extract `fire_stop_product_ref` from `IfcRelFillsElement` into I_Element_Extraction | Schema-Not-Geometry §15.6 | LOW | **SUPERSEDED** — target table I_Element_Extraction dropped by R17 (V006). Needs new target table if revived |
 
-**R17/R20 coupling (2026-03-19):** R17 (delete 49K extraction rows) and R20
-(migrate test fixtures) are sequentially dependent. If R17 executes without R20,
-three tests break: PlacementCollectorVisitorTest, DataIntegrityTest,
-TerminalSandboxTest — all read I_Element_Extraction from component_library.db.
-**Execution order:** R20 first (create test-specific extraction fixtures),
-then R17 (delete from component_library.db). Verify with `mvn test` between steps.
+**R17/R20 coupling (resolved):** R17 completed via V006 migration (commit `854741f`) —
+I_Element_Extraction table dropped entirely. R20 (migrate test fixtures) still TODO
+but test suite passes without the table — tests adapted or use in-memory fixtures.
 
 **R21-R24 Schema-Not-Geometry (2026-03-19):** These extraction gaps were identified
 by auditing M1-M17 validation rules against the Schema-Not-Geometry principle
@@ -707,13 +705,11 @@ class is consistent with the measured geometry (binary, deterministic).
 | Witness | What It Proves | Status |
 |---------|---------------|--------|
 | **W-SHAPE** | Every element's geometry is consistent with its claimed IFC class | **PASS** SH 55/55, DX 1099/1099 |
-| **W-EQUIV** | Extracted↔compiled fingerprint ratios match within 5% epsilon | **PASS** SH 54/55 (98.2%), DX 881/1099 (80.2%) |
+| **W-MULTISET** | Extracted↔compiled fingerprint multiset match (superseded W-EQUIV, S49) | **PASS** — GeometricFingerprintTest.java:152-156 |
 | **W-CENSUS** | Building contains expected archetype distribution | **PASS** SH, DX |
 
-W-EQUIV DX 80.2%: the 218 differences are predominantly `IfcFlowSegment` (pipes)
-where dimension-sorted pairing conflates round pipes with rectangular waste pipes.
-The fingerprints themselves are correct — the pairing algorithm needs refinement
-(GUID-based matching when `element_ref` available, per Gap 3c R21).
+W-EQUIV superseded by W-MULTISET (S49): multiset matching eliminates the pairing
+algorithm issues that caused DX 80.2% false failures. GeometricFingerprintTest.java:152-156.
 
 #### Why This Works Where Previous Tests Don't
 
@@ -786,6 +782,8 @@ The last check is the critical one — it verifies the compiler used the BOM's r
 **EYES role (Layer 3): Reference-free geometric sanity**
 Independent of both layers: doors in walls, perimeter closure, roof coverage. Catches geometric violations that neither the round-trip nor the assembly test would detect. See [EYES_SRS.md §10](EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**Gap 10 (source fidelity):** EYES_SRS.md §10 defines source fidelity proofs — not yet implemented. These will verify that the compiler's output is faithful to the source IFC, independent of the BOM round-trip. Cross-reference: this is the EYES complement to Gap 5 (totality) and Gap 4 (spec sources).
+
 **Existing pieces:** G5-PROVENANCE (coarse library trace), Geometric Fingerprint §shape ratios (per-element shape identity), BIM_Designer_SRS.md §11 (BOM-predicted vs compiled).
 
 **Layer 2 first implementation (S61):** `DemoHouseCompileTest.w_gen_compile_5_bom_offset_verification()` — verifies positive extents, envelope plausibility, and count floor/ceiling vs BOM leaves for the generative DemoHouse (43/60 leaves compiled). This is the first test that checks "did the assembly honour the certified parts?" rather than round-trip matching.
@@ -808,7 +806,7 @@ See also: [TestArchitecture.md §Corrected Understanding](TestArchitecture.md#co
 > **R21 DONE** (S60-S2 code, S60-S3 re-extract: SH 7 + FK 16 host fills).
 > R25-R26 from P06 false-positive audit (session 28): furniture + curtain wall
 > exemptions spec'd, GEO_ slab fallback identified.
-> R27 from Compile Bridge audit (session 29): C_DocType spec/code drift.
+> R27 from Compile Bridge audit (session 29): C_DocType spec/code drift — **DONE** (IFCtoBOM writes C_DocType + DSLContent during extraction).
 > Rotation tested (R3). Parametric fallback gated (R2). BOMWalker reads from
 > master catalog (R7). Fidelity grouping key fixed (R9). ROUTE step-uniformity
 > enforced (R8) — non-uniform groups rejected, ROUTE 34K→533. Verb fidelity
