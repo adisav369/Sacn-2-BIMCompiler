@@ -299,18 +299,6 @@ public class CompilationPipeline {
                     }
                 }
 
-                // CompileProof: discipline breakdown (FINE log mode)
-                // // Implementing DISC_VALIDATION_DB_SRS.md §12.3 — Witness: W-DM-TC5-3
-                try {
-                    java.util.List<com.bim.compiler.validation.CompileProof> proofs = java.util.List.of(
-                        new com.bim.compiler.validation.DisciplineBreakdownProof());
-                    com.bim.compiler.validation.CompileProof.runAll(proofs, conn,
-                        java.util.EnumSet.of(
-                            com.bim.compiler.validation.CompileProof.Context.PIPELINE_LOG));
-                } catch (Exception proofEx) {
-                    System.err.printf("[COMPILE_PROOF] Non-fatal: %s%n", proofEx.getMessage());
-                }
-
                 // Phase X-Ray containment moved to populateSpaceContainment() (Gap #6)
 
                 // Phase X-Ray: BBox scan — log WARN for any furniture with placeholder geometry

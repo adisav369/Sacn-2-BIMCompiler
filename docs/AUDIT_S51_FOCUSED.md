@@ -834,3 +834,119 @@ The Layer 5 spec is well-structured: advisory-not-blocking, triage workflow defi
 **Recommendation:** Fix the 2 BIMLogger encoding bugs (HIGH/trivial) and triage the 36 unchecked ResultSets (HIGH/moderate effort) before proceeding to Step 4. The remaining 469 PMD violations are cleanup work — defer to a dedicated housekeeping session.
 
 **Dirty tree note:** 9 files modified/untracked in working tree. Includes DV_FK_rules.sql and DV_SH_rules.sql (sacred files — verify append-only before commit). BomDropper.java and PlacementCollectorVisitor.java are production compiler core — likely Task 4A (FP discipline wiring) in progress.
+
+---
+
+## Appendix G — S66 Post-Task 4A Watchdog Audit (2026-03-24)
+
+> **Scope:** (1) What does the 3-layer test architecture actually prove vs what it claims? (2) Is CP-1 the highest-value next step? (3) Does W-GEN-COMPILE-5 prove enough for Q2? (4) Post-ac4150a commit review. (5) DISC_VALIDATION_DB_SRS.md §12 consistency.
+> **Method:** Document cross-reference, git log/diff, code inspection. No pipeline run.
+> **Last reviewed commit:** `0ca152e` (S65 idle timeout).
+
+---
+
+### G.1 — Three-Layer Test Architecture: Claims vs Reality
+
+| Layer | Claim | What It Actually Proves | Honest Grade |
+|-------|-------|------------------------|-------------|
+| **Layer 1** — Rosetta Stone round-trip | BOM ↔ IFC lossless for extracted buildings | **Strong.** G1-G6 + C8/C9 + W-TOT prove counts, volumes, digests, provenance, diversity, axis alignment, and per-element totality for SH/FK. TE has 99.8% identity match via CP-1. 19/34 buildings ALL GREEN. | **B+** |
+| **Layer 2** — Generative assembly honours certified parts | Compiled generative buildings use BOM offsets correctly | **Weak.** W-GEN-COMPILE-5 checks: (a) positive extents, (b) envelope plausibility (<10km), (c) output count ≤ BOM leaves, (d) structural minimum (36 elements). It does NOT check per-element BOM offset fidelity (declared dx/dy/dz vs compiled position). | **D+** |
+| **Layer 3** — EYES reference-free sanity | Geometric invariants hold without an oracle | **Moderate.** 28 proof classes, ~14 per-element. Gap 10 (source fidelity) NOT YET IMPLEMENTED. EYES correctly disclaims offset verification (EYES_SRS.md:768). P05/P06 promoted to critical. But EYES runs only on extracted buildings with Rosetta Stone data — no evidence it runs on DemoHouse (generative). | **B−** |
+
+**Key gap: Layer 2 is the weakest link and the most important for Q2.** W-GEN-COMPILE-5's own comment (DemoHouseCompileTest.java:525) says "The BOM itself IS the oracle" but the test never joins BOM `m_bom_line.dx/dy/dz` to output `elements_rtree` positions.
+
+---
+
+### G.2 — CP-1 Priority Assessment
+
+**CP-1 is DONE.** The highest-value next steps, ranked:
+
+| Rank | Action | Why | Q2 Impact |
+|------|--------|-----|-----------|
+| 1 | **Sharpen W-GEN-COMPILE-5** — per-element BOM offset check | Only gate for generative buildings | HIGH |
+| 2 | **Run EYES on DemoHouse** | Layer 3 untested on generative | MED |
+| 3 | **CP-2 (DX MIRROR)** | Extracted building improvement | LOW for Q2 |
+
+---
+
+### G.3 — W-GEN-COMPILE-5 Sufficiency for Q2
+
+**No.** The test proves the DemoHouse output is non-degenerate. It does NOT prove correctness. The missing check (LAST_MILE_PROBLEM.md:780): `Compiled offset = BOM-declared dx/dy/dz`.
+
+---
+
+### G.4 — Post-ac4150a Commit Review
+
+One commit: `0ca152e` — WebUIServer idle timeout. **Clean.** No sacred file violations, no count inflation, no untested claims.
+
+Untracked `migration/S67_001_onboard_elec_products.sql` cites non-existent `DISC_VALIDATION_DB_SRS.md §12` and claims witness `W-DM-TC5-3` with no test.
+
+---
+
+## Appendix H — LAST_MILE_PROBLEM.md Gap Audit (2026-03-24)
+
+> **Scope:** Systematic cross-check of all claims, status markers, and internal consistency in LAST_MILE_PROBLEM.md against codebase state post-S66.
+> **Method:** 4 parallel code inspections (Gap 5 claims, Actions table, Gap 6/8, Checklist). No pipeline run.
+
+---
+
+### H.1 — Stale Status Markers
+
+| Line | Claim | Actual State | Severity |
+|------|-------|-------------|----------|
+| **90** | "Checklist Summary (latest: S60-S3, 2026-03-23)" | S66 added §Gap 5 investigation + §Gap 6 sub-finding on 2026-03-24 | LOW |
+| **260** | "TE now passes W-TOT via MA-based identity matching (48428/48428)" | Lines 26, 82, 277, 437, 824 all say 48336/48428 (99.8%). The 92 FRAME mismatches are identity-matched but not position-exact | **HIGH** |
+| **282** | "TotalityContractTest.java (W-TOT-1/2/3 for SH/DX)" | GATE_SCOPE includes CO_TE (TotalityContractTest.java:50). W-TOT runs on all three | MED |
+| **434** | R25 status: **TODO** | Implemented in SameClassOverlapProof.java:34-50 (cross-product exemption + IfcPlate 50mm) | **HIGH** |
+| **435** | R26 status: **TODO** — "G5 fails: 1/55 SH instances use parametric bbox" | PROGRESS.md gate table: G5 PASS (0 GEO_). Either fixed or stale when written | MED |
+| **437** | CP-1 Actions table: "48336/48428 exact" | Contradicts line 260 "48428/48428" — same file, different numbers | **HIGH** |
+| **576** | R17 status: **TODO** — "data removal" | I_Element_Extraction DROP'd via V006 migration (commit `854741f`) | **HIGH** |
+| **577** | R18 status: **TODO** — "dead tables" | ad_bom, ad_bom_child, ad_bom_child_param DROP'd via same V006 migration | **HIGH** |
+| **710** | W-EQUIV DX 80.2% | W-EQUIV removed in S49, superseded by W-MULTISET (GeometricFingerprintTest.java:152-156) | MED |
+
+### H.2 — Internal Contradictions
+
+| Lines | Issue | Resolution |
+|-------|-------|------------|
+| **260 vs 277** | 48428/48428 vs 48336/48428 | Likely: 48428 = identity-matched (all GUIDs found), 48336 = within position tolerance. Line 260 doesn't distinguish. Fix: "48428/48428 identity-matched, 48336 within position tolerance (92 FRAME coordinate mismatches remain)" |
+| **434 (R25 TODO) vs code** | R25 implemented in SameClassOverlapProof.java but doc says TODO | Fix: mark R25 DONE with evidence file:line |
+| **435 (R26 TODO) vs PROGRESS.md** | R26 says G5 fails for SH slab, PROGRESS.md says G5 PASS 0 GEO_ | Fix: verify which is true, update the wrong one |
+
+### H.3 — Missing Items
+
+| What | Where It Belongs | Why |
+|------|-----------------|-----|
+| S65 disc_validation.db as M_Product source | Gap 8 §8.1 (line 521-526) | "M_Product is a transitional copy" is stale — ProductRegistrar dual-writes, BOMWalker reads from disc_validation.db |
+| G3-DIGEST 1015-element precision issue | Actions table | Has no R-number. Every other finding gets one. Assign R33 or similar |
+| Gap 4 source table update | Line 224 | component_library.db listed for "Product catalog" — after S65, authoritative M_Product reads come from disc_validation.db |
+| R27 completion in Mantra | Line 811 | Mentioned but not marked DONE (Actions table line 436 says DONE) |
+| R24 orphaned by R17 | Line 583 | R24 wanted to extract into I_Element_Extraction, which R17 dropped. Needs new target table or SUPERSEDED status |
+
+### H.4 — Structural Gaps
+
+1. **No Gap 10.** EYES_SRS.md §10 mentions "Gap 10 (source fidelity) NOT YET IMPLEMENTED." LAST_MILE should either track it or cross-reference.
+
+2. **Layer 2 spec-vs-implementation gap undocumented.** The Two-Layer Architecture section (line 763-791) describes 6 per-element checks for Layer 2, including "Compiled offset = BOM-declared dx/dy/dz" (line 780). W-GEN-COMPILE-5 implements only envelope/count. The gap between what the spec describes and what the test does is not called out anywhere.
+
+3. **R24 orphaned.** R24 targets I_Element_Extraction which R17 dropped. Needs new target or SUPERSEDED.
+
+### H.5 — Summary for Next Session
+
+**Quick fixes (10 min):**
+- Update line 90 date to S66, 2026-03-24
+- Fix line 260: clarify "48428/48428 identity-matched, 48336 within position tolerance"
+- Mark R17, R18 as DONE (V006 migration, commit `854741f`)
+- Mark R25 as DONE (SameClassOverlapProof.java:34-50)
+- Verify R26 against live G5 output — mark DONE or update PROGRESS.md
+- Mark R24 SUPERSEDED (target table dropped by R17)
+- Update R27 in Mantra as DONE
+- Assign R-number to G3-DIGEST 1015-element precision finding
+
+**Content updates (20 min):**
+- Update Gap 8 §8.1 for S65 disc_validation.db migration
+- Update Gap 4 source table for disc_validation.db
+- Update Geometric Fingerprint witnesses: W-EQUIV → W-MULTISET
+- Add Gap 10 cross-reference or track in LAST_MILE
+- Note Layer 2 spec-vs-implementation gap explicitly
+
+**Counts:** 4 HIGH stale markers, 3 HIGH contradictions, 5 missing items, 3 structural gaps.
