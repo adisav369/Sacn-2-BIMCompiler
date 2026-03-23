@@ -786,9 +786,9 @@ Independent of both layers: doors in walls, perimeter closure, roof coverage. Ca
 
 **Existing pieces:** G5-PROVENANCE (coarse library trace), Geometric Fingerprint §shape ratios (per-element shape identity), BIM_Designer_SRS.md §11 (BOM-predicted vs compiled).
 
-**Layer 2 first implementation (S61):** `DemoHouseCompileTest.w_gen_compile_5_bom_offset_verification()` — verifies positive extents, envelope plausibility, and count floor/ceiling vs BOM leaves for the generative DemoHouse (43/60 leaves compiled). This is the first test that checks "did the assembly honour the certified parts?" rather than round-trip matching.
+**Layer 2 verification (S67 correction):** DemoHouse compiles through the same pipeline as every Rosetta Stone — `run_RosettaStones.sh classify_dm.yaml`. The existing G1-G6 gates, C8/C9 fidelity, and W-TOT totality checks apply uniformly. No special test infrastructure needed. The compilation process is persistent, consistent, abstract, reusable — it doesn't distinguish extracted from generative buildings.
 
-**Action:** Sharpen G5 to per-element granularity. Add BOM offset verification to gate tests. Wire EYES proofs as Layer 3 sanity gate. VerbFactorizer now delegates to BIMEyes ShapeClassifier (S60-S3) — single source of truth for shape classification across IFCtoBOM and EYES modules.
+**Action:** Wire EYES proofs as Layer 3 sanity gate. VerbFactorizer delegates to BIMEyes ShapeClassifier (S60-S3) — single source of truth for shape classification across IFCtoBOM and EYES modules.
 
 **Validation-as-ordering (future):** [ProjectOrderBlueprint.md §13](ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) defines how validation rules evolve from checking to proposing. Gap 4 source #5 (authority_data.db) becomes not just a constraint checker but a **suggestion engine** — rules propose OrderLines, architect curates. This changes the relationship between validation and compilation: rules don't just gate the output, they help author the input. First case: FP discipline via ad_fp_trigger + ad_space_type_mep_bom.
 

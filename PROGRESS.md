@@ -45,9 +45,9 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**S67 — §12 CompileProof: ELEC discipline + superclass extraction.**
-  **[DONE] Phase 1** (ELEC discipline): 2 ELEC products onboarded (E_Light, E_Data Point). ELEC SET sub-BOMs per room. DemoHouse 63 elements (was 53). 4 disciplines: STR=25, ARC=18, MEP=10, ELEC=10. W-DM-TC5-3 witness GREEN. [DISC_VALIDATION_DB_SRS.md §12](docs/DISC_VALIDATION_DB_SRS.md).
-  **[DONE] Phase 2** (CompileProof superclass): CompileProof.java + DisciplineBreakdownProof.java extracted from TC5-1/TC5-3. Three emission modes (TEST, PIPELINE_LOG, ADVISORY). Post-compile hook in WriteStage emits to FINE log. Both TC5-1 and TC5-3 run as CompileProof subclasses. SH/FK 7/7, DM 8/8.
+**S67 — ELEC product onboarding + watchdog cleanup.**
+  2 ELEC products onboarded from TE extraction (E_Light, E_Data Point). ELEC SET sub-BOMs in DM_BOM.db.
+  **Watchdog cleanup:** Removed CompileProof.java, DisciplineBreakdownProof.java, DemoHouseCompileTest.java, CompilationPipeline post-compile hook. DemoHouse compiles via standard Rosetta Stone pipeline. Seal v31.
 
 **S66 — Task 4A + CP-1 investigation.**
   **[DONE] Task 4A** (Discipline wiring): BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer priority. W-DM-TC5-1 witness (STR=25, ARC=18, MEP=10). 404/404 GREEN. [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case).
