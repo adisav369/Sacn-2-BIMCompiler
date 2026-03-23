@@ -514,7 +514,7 @@ From AUDIT_S51_FOCUSED.md. 8 P0 findings across 4 areas:
 **Moved to [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md#14-implementation-plan--order-compilation-engine).**
 Full triage (§14.1), data/code inventory (§14.2), 5-session plan (§14.3), failure criteria (§14.4).
 
-**Status:** Session A partial (S66 `ac4150a` — Discipline wiring). Sessions B-E not started.
+**Status:** Session A **DONE** (S67 `fac5e8f` — addDiscipline API). Sessions B-E not started.
 
 ### Task 5: M_BomCategory replacement
 77 files across 6 layers. Orthogonal semantic axes (room templates vs IFC classification).
@@ -533,7 +533,7 @@ Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template 
 | S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — S60_ERP_ALIGNMENT.md | DEFER — orthogonal to launch |
 | CP-1 | TE element_ref matching for G3/Totality | MED | **DONE** (S66) — MA identity threading, W-TOT passes | CLOSED — 92 FRAME position mismatches tracked in Gap 6 |
 | CP-2 | DX MIRROR verb + structured BOM | MED | DEFERRED — verification debt | DEFER — DX compiles correctly, C9 accepted; quality-of-proof |
-| Task 4 | Rule-driven discipline framework (FP first) | MED | **Session A DONE** (S66) — B/C remaining | **Q2** — Session A delivered; B/C post-launch |
+| Task 4 | Rule-driven discipline framework (FP first) | MED | **Session A DONE** (S67 `fac5e8f`) — B-E remaining | **Q2** — Session A delivered; B-E post-launch |
 | R17 | Delete 49K I_Element_Extraction from component_library.db | MED | **DONE** — V006 migration (commit `854741f`) | CLOSED |
 | R22 | Extract I_Element_Connectivity | MED | TODO | DEFER — enables future MEP routing |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO | BACKLOG |

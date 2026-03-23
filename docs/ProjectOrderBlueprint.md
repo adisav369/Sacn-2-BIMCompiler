@@ -239,6 +239,164 @@ analysis. All of these are solved problems in iDempiere. By making the
 development a C_Project, every ERP feature that works on projects
 works on building developments — without new code.
 
+### 2.1 CTFL Test Plan — C_Project (S67 Watchdog)
+
+> **Method:** ISTQB test design techniques. Test framework BEFORE code.
+> **Blocking bug found:** R-PROJ-3 (see §2.1.4).
+
+#### 2.1.1 Equivalence Partitions
+
+| EP | Category | Representative Value |
+|----|----------|---------------------|
+| EP-1 | Single-variant project | 200 orders, all base_bom='BUILDING_SH_STD' |
+| EP-2 | Multi-variant project | 180 SH_STD + 15 DX_STD + 4 SH_PREMIUM + 1 SH_CORNER |
+| EP-3 | Project with infrastructure | EP-2 + C_Order(type=INFRA) |
+| EP-4 | Indexed exception | EP-1 + exception on plot[12] swap SH_STD→SH_CORNER |
+| EP-5 | Empty project (invalid) | C_Project with no C_ProjectLines |
+| EP-6 | Exceeds site AABB (invalid) | Aggregate footprint > 400m × 300m |
+| EP-7 | Invalid base_bom ref (invalid) | References nonexistent 'BUILDING_XX_PHANTOM' |
+| EP-8 | Overlapping footprints (invalid) | Two buildings at identical (dx, dy) |
+
+**Boundary values:** qty=1 (minimum project), qty=2 (minimum multi-building), qty=200 (target scale), site AABB exactly full, site AABB overflow by 1mm, exception index [0], [199], [200].
+
+#### 2.1.2 Test Cases (derived from §2 spec)
+
+| Case | Covers | Input | Expected |
+|------|--------|-------|----------|
+| CASE-01 | Minimal project | 1 C_ProjectLine, qty=1 | 1 C_Order, FK to project |
+| CASE-02 | Multi-variant | 3 lines: SH×3, DX×2, PREMIUM×1 | 6 C_Orders, correct base_bom each |
+| CASE-03 | Reference class | qty=180, base_bom=SH_STD | 180 C_Orders, sequential plot indices |
+| CASE-04 | Exception | CASE-03 + plot[12]→SH_CORNER | 179 SH_STD + 1 SH_CORNER at index 12 |
+| CASE-05 | Infrastructure | C_Order(type=INFRA) alongside buildings | INFRA compiles, no spatial conflict |
+| CASE-06 | Full §2 example | 5-line spec (180+15+1+4) | 200 C_Orders, all compile, all gates pass |
+| CASE-07 | Site AABB violation | Footprint > site dims | Validation error, compile blocked |
+| CASE-08 | Isolation | 3 orders, compile order[1] only | Only order[1] output, others unaffected |
+| CASE-09 | Determinism | Same project compiled twice | Identical spatial digests |
+
+#### 2.1.3 Test Framework (test-first — write BEFORE code)
+
+| Test Class | Level | Witnesses |
+|-----------|-------|-----------|
+| `ProjectDropperTest` | Unit | W-PROJ-DROP-1: create C_Project + C_ProjectLine |
+| | | W-PROJ-DROP-2: expand qty=180 → 180 unique C_Orders |
+| | | W-PROJ-DROP-3: plot exception swaps one order only |
+| | | W-PROJ-DROP-4: zero-qty rejected |
+| | | W-PROJ-DROP-5: out-of-range index rejected |
+| `ProjectCompileTest` | Integration | W-PROJ-COMPILE-1: 3 orders compile via standard pipeline |
+| | | W-PROJ-COMPILE-2: correct element count per order |
+| | | W-PROJ-COMPILE-3: orders isolated (no cross-contamination) |
+| `ProjectSiteValidationTest` | Integration | W-PROJ-SITE-1: buildings within AABB pass |
+| | | W-PROJ-SITE-2: buildings exceeding AABB fail |
+| | | W-PROJ-SITE-3: overlapping footprints detected |
+| `ProjectDeterminismTest` | System | W-PROJ-DETERM-1: identical digests on recompile |
+
+**Gate integration:** G7-PROJECT (project-level aggregate: total = SUM per-order). G8-SITE (site AABB containment). Existing G1-G6 run per order unchanged.
+
+**Failure criteria:**
+1. R-PROJ-3 unresolvable → current C_Order_ID = C_DocType_ID pattern breaks multi-order
+2. Performance wall → 10 SH_STD > 10s → need compile-once-copy-many
+3. INFRA spatial model incompatible → defer INFRA, test multi-building without it
+4. Output consolidation → 200 output.db files impractical → need consolidated output
+
+#### 2.1.4 Blocking Bug: R-PROJ-3 — C_Order_ID Collision
+
+**`BomDropper.createOrder()` (BomDropper.java:48)** uses `entry.docTypeId()` as the C_Order primary key. When 180 orders share docType `RE_SH`:
+- Line 85: `DELETE FROM C_Order WHERE C_Order_ID = 'RE_SH'` wipes the previous order
+- Only the last of 180 orders survives
+- **Fix:** Generate unique C_Order_IDs per plot (e.g., `RE_SH_001` through `RE_SH_180`), or accept an explicit orderId parameter
+
+This must be resolved before any multi-order work. The fix is small (parameterize orderId) but touches BomDropper (sacred file adjacent — many dependencies).
+
+#### 2.1.5 Dependencies
+
+| Dependency | Status | Blocking? |
+|-----------|--------|-----------|
+| Unique C_Order_ID generation (R-PROJ-3) | NOT implemented | **YES** |
+| C_Project + C_ProjectLine schema (migration) | NOT implemented | YES |
+| §1 Reference Class (Compress) | NOT implemented (Session D) | NO — expand at project level before BomDropper |
+| §1 Exception ordering (full) | Partial (Replace works) | NO — plot exceptions are order-level swaps |
+| §6 Order Inheritance | NOT implemented (Session E) | NO — each order carries own base_bom |
+| Infrastructure BOM library | Partial (BR/RD/RL exist) | NO — defer INFRA to phase 2 |
+
+**Implementation sequence:** Schema migration → Model classes → Fix R-PROJ-3 → ProjectDropper → Unit tests → Integration tests → Scale test → Site validation → INFRA (phase 2).
+
+### 2.2 Site Layout as Warehouse Put-Away (S67)
+
+> **Principle:** A housing development site IS a warehouse. Plots are locators.
+> Buildings are inventory. The put-away strategy assigns buildings to plots.
+> Terrain topology defines the locator grid (ABL = Street/Lot/Terrace).
+
+**iDempiere mapping:**
+
+| Warehouse | Site | Entity |
+|-----------|------|--------|
+| M_Warehouse | C_Project | Site development |
+| M_Locator (Aisle/Bin/Level) | Plot (Street/Lot/Terrace) | ABL addressing |
+| M_LocatorType | PlotType (STANDARD/CORNER/PREMIUM/INFRA/GREEN) | Plot classification |
+| M_Locator.capacity | Plot frontage × depth - setbacks | Buildable area |
+| M_PutAwayStrategy | SitePlacementStrategy | Which building goes where |
+| M_InOutLine | C_Order FK → Plot | One building placed on one plot |
+| M_InOutLineMA | Plot attribution | Variant, exceptions, terrain Z |
+
+**Terrain as Locator ABL.** The terrain survey (PDFTerrain: 689 points, 294m × 229m,
+Z range 28-48m) defines the physical warehouse floor. Natural terrace bands become
+Levels. Roads cut across contours to define Aisles. Lots are sequential along each
+road. Each plot's Z is interpolated from the survey via `AlignmentContext.elevationAt(x, y)`.
+
+```
+Terrace 2 (Z ≈ 44-48m)  ═══ Street 3 ═══  [P][P][P][P][S][P][P]
+                                             PREMIUM lots (hilltop view)
+Terrace 1 (Z ≈ 38-44m)  ═══ Street 2 ═══  [C][S][S][S][S][S][S][C]
+                                             STANDARD + CORNER lots
+Terrace 0 (Z ≈ 28-38m)  ═══ Street 1 ═══  [S][S][S][S][S][S][S][S][S]
+                                             STANDARD lots (river valley)
+```
+
+**Put-away rules (ad_site_placement_rule):**
+
+| Plot Type | Building Variant | Orientation | Priority |
+|-----------|-----------------|-------------|----------|
+| CORNER | SH_CORNER | FACE_STREET | 10 |
+| PREMIUM | SH_PREMIUM | FACE_VIEW | 20 |
+| STANDARD | SH_STD | FACE_STREET | 99 |
+| INFRA | SITE_INFRA_STD | ALONG_STREET | 1 |
+| GREEN | NULL (no building) | — | 1 |
+
+**Validation constraints:**
+- Building AABB fits within plot (frontage, depth, setback)
+- Adjacent buildings: gap ≥ side_setback × 2
+- Building height ≤ zoning maximum
+- Aggregate footprint ≤ site_aabb
+- Infrastructure easements respected
+
+**Test case:** 689-point survey site, 24 houses on 3 terraces:
+- Terrace 0: 9 SH_STD (river level, Z ≈ 30m)
+- Terrace 1: 8 SH_STD + 2 SH_CORNER (mid-slope, Z ≈ 40m)
+- Terrace 2: 4 SH_PREMIUM + 1 GREEN (hilltop, Z ≈ 46m)
+- Infrastructure: 3 road segments connecting terraces
+
+**Source data:** `IfcOpenShell/.../pdf_terrain/samples/survey_highres_extracted.json`
+
+**Existing infrastructure (all proven, all tested):**
+- PDFTerrain: 689-point survey extraction (W-CONTEXT-TERRAIN-1)
+- AlignmentContext: `elevationAt(x, y)` interpolation
+- TerrainSnap: ON_SURFACE/ABOVE/BELOW snap modes
+- CutFillCalculator: earthwork volumes (cut/fill/net m³)
+- GradingStrategy: CONTOUR/STRAIGHT/BLEND modes
+
+**What must be built:**
+- `ad_site_layout` table: street × lot × terrace grid from terrain topology
+- `ad_plot_type` table: STANDARD/CORNER/PREMIUM/INFRA/GREEN classification
+- `ad_site_placement_rule` table: put-away rules (plot_type → building_variant)
+- `SitePlacementStrategy` class: walks plots, applies rules, assigns C_Orders
+- CO_EmptySpaceLine at site scale: plot slots with ABL addressing
+
+**Recursive pattern:** Site-scale CO_EmptySpaceLine (plots) → Building-scale
+CO_EmptySpaceLine (rooms) → same table, different scale. The spatial slot
+concept works at both levels without new infrastructure.
+
+See [SystemContract.md §6](SystemContract.md) for the full allocation model.
+
 ---
 
 ## 3. Abstract Category Tree — Domain by Taxonomy, Not by Code
@@ -1185,7 +1343,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 
 ## 14. Implementation Plan — Order Compilation Engine
 
-> **Status:** In progress. Session A partial (S66), Sessions B-C not started.
+> **Status:** In progress. Session A DONE (S67 `fac5e8f`), Sessions B-E not started.
 > **Source:** Consolidated from ACTION_ROADMAP.md Task 4 (S60-S3 reframe).
 
 ### 14.1 Triage — Blueprint Sections vs Codebase State
@@ -1193,8 +1351,8 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 | § | Feature | Codebase State | Gap |
 |---|---------|---------------|-----|
 | **§1** Exception-based ordering | BomDropper.drop() fully explodes. swapProduct() works (Replace). | Missing: locator_ref addressing, Remove (qty=0 skip), Compress (reference class) |
-| **§1.1** Four mutations | Replace ✓ (WorkOutputDAO.swapProduct). Add partial (Discipline column wired S66). | Remove + Compress not implemented. Add needs rule-driven C_OrderLine creation |
-| **§2** C_Project site-as-BOM | C_Order exists. No C_Project table or parent-order grouping. | Schema + model class needed. Future — not blocking |
+| **§1.1** Four mutations | Replace ✓ (WorkOutputDAO.swapProduct). **Add ✓** (OrderMutationService.addDiscipline, S67). | Remove + Compress not implemented |
+| **§2** C_Project site-as-BOM | C_Order exists. No C_Project table or parent-order grouping. **R-PROJ-3:** C_Order_ID = docTypeId collision blocks multi-order (§2.1.4). | Schema + model + R-PROJ-3 fix needed. CTFL test plan in §2.1 |
 | **§3** Abstract category tree | M_Product_Category exists (46 rows). BOM Selection Cascade (§3.5) works. | Already emergent — no code change needed, taxonomy is data |
 | **§4** BOM mining via Approve | PromoteTest (G-10) exists. DocAction state machine works (DR→IP→AP→CO). | Promotion path proven. BOM diff (building vs building) not built |
 | **§5** nD dimensions as queries | 5D: M_Product.unit_cost_rm exists. 6D/7D columns exist. 4D: BOM tree = schedule. | All dimensions are columns, not systems. Queries work today |
@@ -1247,15 +1405,35 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 
 ### 14.3 Implementation Sessions
 
-**Session A: Complete the Add mutation (§1.1)**
-*Status: PARTIAL — Discipline wiring done (S66 ac4150a). Add API missing.*
+**Session 0: Fix R-PROJ-3 — C_Order_ID collision (prerequisite for §2)**
+*Status: NOT STARTED. Blocking bug found by S67 CTFL audit.*
 
-- `addDiscipline(orderId, discipline, jurisdictionContext)` on DesignerAPIImpl
-- Reads `ad_space_type_mep_bom` for each room in order → creates C_OrderLine per MEP element
-- C_OrderLine.status = 'PROPOSED' (new column, or reuse IsActive with state)
-- OrderLineWalker already passes Discipline to compilation context — no change needed
-- **Gate:** `run_RosettaStones.sh classify_dm.yaml` passes. SH/FK 7/7 GREEN
-- **Witness:** W-DM-TC5-1 (discipline OrderLine created, elements placed per room)
+BomDropper.java:48 uses `entry.docTypeId()` as C_Order PK (`orderId = entry.docTypeId()`).
+Line 85-86 DELETEs any existing order with that ID before INSERT. When multiple orders
+share the same DocType (e.g., 180 houses all type RE_SH), each drop wipes the previous.
+Only the last order survives.
+
+- **Fix:** Parameterize `drop()` to accept an explicit `orderId`. Default to `entry.docTypeId()`
+  for backward compatibility (single-building Rosetta Stone path unchanged). C_Project path
+  passes unique IDs per plot (e.g., `RE_SH_001`).
+- **Scope:** BomDropper.drop() signature + createOrder() + callers that pass orderId.
+  Small change but BomDropper has many dependents — verify all callers.
+- **Gate:** Existing Rosetta Stone tests pass unchanged (default orderId = docTypeId).
+  New test: drop two SH orders with different IDs → both survive in compile DB.
+- **Witness:** W-PROJ-ID-1 (two orders of same DocType coexist)
+
+---
+
+**Session A: Complete the Add mutation (§1.1)**
+*Status: **DONE** (S67 `fac5e8f`). Discipline wiring (S66) + addDiscipline API (S67).*
+
+- `OrderMutationService.addDiscipline()` — extracted from DesignerAPIImpl (prevents God Object growth)
+- Reads `ad_space_type_mep_bom` for each ROOM in order → creates PROPOSED C_OrderLine per MEP product
+- `proposal_status` column on C_OrderLine (W004 migration). Values: PROPOSED, ACCEPTED
+- `Discipline` column on C_OrderLine (W003 migration, applied in initSchema)
+- bom_child_id = NULL on work_output path (rule-driven, not BOM-derived)
+- **Gate:** DM 5/5, SH 7/7, FK 7/7. AddDisciplineTest 4/4. BomDropTest 6/6. BomDropConfigureTest 6/6
+- **Witness:** W-DM-TC5-1 extended: ELEC 15 lines / 4 rooms, FP 4 lines / 4 rooms on SH
 
 **Session B: Validation-as-suggestion (§13)**
 
@@ -1300,6 +1478,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 - **Session B:** ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs CO_EmptySpaceLine geometry context.
 - **Session C:** ELEC/ACMV products don't exist in component_library.db (no geometry). S67 onboarded 2 ELEC products; remaining products may block Session C.
 - **Session D:** locator_ref addressing conflicts with existing m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT). If so, need separate exception_locator column.
+- **Session E:** Inheritance chain conflict — two sibling ancestors both modify the same locator_ref. "Last descendant wins" is undefined for sibling branches. If so, need explicit precedence ordering on Ref_Order_ID.
 
 ### 14.5 Relationship to Other Specs
 
