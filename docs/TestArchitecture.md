@@ -824,8 +824,8 @@ requires a triage pass to suppress false positives so the signal stays clean.
 - **2026-03-24:** Initial scan — SpotBugs + PMD run against full reactor.
 - **2026-03-24:** Audit assessment:
   - **FIXED:** 2 BIMLogger default encoding bugs (SpotBugs HIGH) — `FileWriter` now explicit UTF-8
-  - **Fix before Step 4:** 36 unchecked ResultSets in IFCtoBOM + BIM_COBOL (silent data corruption risk)
-  - **Deferred:** 469 remaining PMD violations (cleanup session)
+  - **FALSE POSITIVE:** 36 CheckResultSet violations (IFCtoBOM + BIM_COBOL) — all 13 unique locations already use `rs.next() ? rs.getInt(1) : 0` ternary guard. PMD rule does not recognize ternary as a valid check and double-counts reassigned `rs` variables within methods. No code change needed.
+  - **Deferred:** 471 remaining PMD violations (cleanup session). Suppressions deferred until static analysis is promoted to blocking per triage workflow.
 
 ### Baseline Scan Results (2026-03-24)
 
@@ -843,8 +843,8 @@ requires a triage pass to suppress false positives so the signal stays clean.
 |--------|-------|-------------------|
 | DAGCompiler | 311 | 35 empty catches, 30 unused fields, 30 unused locals, 10 unused methods |
 | BonsaiBIMDesigner | 70 | 45 unnecessary FQN, 5 collapsible ifs, 3 empty catches |
-| BIM_COBOL | 42 | **5 unchecked ResultSets**, 2 empty catches |
-| IFCtoBOM | 42 | **31 unchecked ResultSets** |
+| BIM_COBOL | 42 | ~~5 unchecked ResultSets~~ (FALSE POSITIVE), 2 empty catches |
+| IFCtoBOM | 42 | ~~31 unchecked ResultSets~~ (FALSE POSITIVE) |
 | BIMEyes | 20 | 3 empty catches |
 | ORMSandbox | 14 | 3 unused params |
 | BIMBackOffice | 4 | 1 empty catch |
@@ -853,7 +853,7 @@ requires a triage pass to suppress false positives so the signal stays clean.
 | 2D_Layout | 0 | Clean |
 
 **High-value findings (recommend fixing first):**
-1. **36 unchecked ResultSets** (IFCtoBOM + BIM_COBOL) — `rs.next()` not checked, can produce null/wrong data silently
+1. ~~36 unchecked ResultSets~~ — **FALSE POSITIVE.** All 13 unique locations use ternary `rs.next()` guard. PMD rule limitation.
 2. **44 empty catch blocks** (mostly DAGCompiler) — exceptions swallowed, failures invisible
 3. **30 unused fields + 30 unused locals** (DAGCompiler) — dead code from prior sprints
 
