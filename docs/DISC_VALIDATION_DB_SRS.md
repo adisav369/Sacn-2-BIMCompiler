@@ -814,7 +814,9 @@ validation scoping, and BOM filtering — all from standard iDempiere patterns.
 | ComponentLibrary: no change (reads component_definitions only) | 0 | NONE |
 | MeshBinder: no change (resolves via M_Product_Image → geometry) | 0 | NONE |
 
-**Total: ~14 files changed, ~25 files unchanged.** No geometry code touched.
+**Total: ~14 production files changed, ~10 test files changed, ~25 geometry files unchanged.**
+No geometry code touched. File counts are estimates — implementation session should
+grep for exact numbers before starting (audit concern #1, #2).
 
 #### 11.6.5 Migration Sequence (6 steps, each independently committable)
 
@@ -824,7 +826,7 @@ validation scoping, and BOM filtering — all from standard iDempiere patterns.
 
 **Step 1: Create AD_Org in disc_validation.db**
 - DDL: AD_Org table + seed 10 rows (0='*', 1–9=disciplines)
-- Migration: `DV011_ad_org.sql`
+- Migration: `DV013_ad_org.sql` (DV011/DV012 already taken — audit concern #4)
 - Gate: DiscValidationDBTest adds W-DV-DB-ORG witness
 
 **Step 2: Add AD_Org_ID columns alongside existing TEXT columns**
@@ -832,12 +834,15 @@ validation scoping, and BOM filtering — all from standard iDempiere patterns.
 - ALTER TABLE ad_element_mep ADD COLUMN AD_Org_ID INTEGER
 - UPDATE ... SET AD_Org_ID = (SELECT AD_Org_ID FROM AD_Org WHERE Value = discipline)
 - Same for component_types, placement_rules
+- Migration: `DV014_ad_org_columns.sql`
 - Gate: dual-column reads pass, no code changes yet
 
-**Step 3: Move M_Product + M_Product_Category to disc_validation.db**
+**Step 3: Move M_Product + M_Product_Category to disc_validation.db** ⚠️ HIGH RISK
 - ATTACH component_library.db → INSERT INTO disc_validation.M_Product SELECT * FROM comp.M_Product
-- Migration: `DV012_move_m_product.sql`
+- Migration: `DV015_move_m_product.sql`
 - Java: ProductRegistrar writes to discConn. BackOffice DAOs accept discConn for M_Product.
+- **Risk: HIGH** — 85 files reference M_Product, changing which connection they use is
+  wide-blast-radius. Recommend dedicated session with full Rosetta Stone run before AND after.
 - Gate: all 19 ALL GREEN Rosetta Stones still pass. M_Product reads resolve from new location.
 
 **Step 4: Move remaining AD tables from component_library.db**
@@ -880,13 +885,13 @@ when implementation begins.
 
 | Criterion | Option A (Split) | Option B (Expand DV) | Option C (Fix guard) |
 |-----------|-----------------|---------------------|---------------------|
-| Code changes | ~14 files | ~14 files (same) | ~2 files |
+| Code changes | ~14 prod + ~10 test files | ~14 + ~10 (same) | ~2 files |
 | iDempiere alignment | **FULL** — M_Product with AD tables | FULL (same as A) | PARTIAL — mixed DB |
 | Geometry isolation | **CLEAN** — 7 tables, pure LOD | CLEAN (same) | MIXED — 66+ tables |
 | LOD chain breakage | **NONE** — M_Product_Image stays in geometry DB | NONE | N/A |
 | Future maintainability | **HIGH** — clear concern boundaries | HIGH | LOW — grows worse |
 | Discipline unification | **YES** — AD_Org eliminates 'FPR'/'FP' inconsistency | YES | NO |
-| Risk | MED — multi-step migration | MED (same) | LOW |
+| Risk | MED overall, **HIGH for Step 3** (M_Product move) | MED/HIGH (same) | LOW |
 
 **Recommendation: Option A.** It's the same work as Option B but with a clearer name
 (disc_validation.db is already the AD Dictionary in practice). The 6-step migration
