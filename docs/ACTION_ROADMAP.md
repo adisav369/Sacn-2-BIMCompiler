@@ -437,7 +437,7 @@ fix is permanent — but don't claim LOD 400 completeness before they're resolve
 | Verb fidelity for non-uniform spacing | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-30 | 533 ROUTE instances have step-uniformity gap | PENDING — fixable, not architectural |
 | depth_mm semantics | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) R-17 | Extraction data leaked into product catalog | PENDING — schema fix |
 | Vocabulary gaps block real projects | Market Report §6.1 | Each new building type may hit missing verbs | MITIGATED by compound enrichment model |
-| TE per-element verification | CP-1 below | Cannot auto-verify all 48K elements | PENDING — element_ref matching |
+| TE per-element verification | CP-1 ✓ | W-TOT 48428/48428 identity-matched (92 FRAME position mismatches = Gap 6) | DONE — MA identity threading |
 | DX MIRROR verb | CP-2 below | Duplex 85 axis mismatches pre-existing | PENDING — large effort |
 
 **Position:** "Spatially valid" (proven by 6 mathematical gates). Not yet "construction-ready"
@@ -592,9 +592,9 @@ Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template 
 | # | Item | Severity | Status | Q2 Triage |
 |---|------|----------|--------|-----------|
 | S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — S60_ERP_ALIGNMENT.md | DEFER — orthogonal to launch |
-| CP-1 | TE element_ref matching for G3/Totality | MED | DEFERRED — verification debt | DEFER — TE passes via re-baselined reference; not output bug |
+| CP-1 | TE element_ref matching for G3/Totality | MED | **DONE** (S66) — MA identity threading, W-TOT passes | CLOSED — 92 FRAME position mismatches tracked in Gap 6 |
 | CP-2 | DX MIRROR verb + structured BOM | MED | DEFERRED — verification debt | DEFER — DX compiles correctly, C9 accepted; quality-of-proof |
-| Task 4 | Rule-driven discipline framework (FP first) | MED | PLANNED — 3 sessions (A/B/C) | **Q2** — Session A (Add mutation) is launch-relevant; B/C post-launch |
+| Task 4 | Rule-driven discipline framework (FP first) | MED | **Session A DONE** (S66) — B/C remaining | **Q2** — Session A delivered; B/C post-launch |
 | R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO | DEFER — cleanup, not blocking |
 | R22 | Extract I_Element_Connectivity | MED | TODO | DEFER — enables future MEP routing |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | TODO | BACKLOG |

@@ -257,7 +257,8 @@ prove counts and aggregates, not per-element visual identity.
 - `SpotCheckContractTest` already opens ref + output with AABB tolerance matching
 - ~~**Blocker:** output DB `elements_meta` has no `element_ref` column~~
   **RESOLVED (R6):** `element_ref` propagated through pipeline. `TotalityContractTest` verifies SH/DX.
-  **RESOLVED (S66):** TE now passes W-TOT via MA-based identity matching (48428/48428).
+  **RESOLVED (S66):** TE W-TOT: 48428/48428 identity-matched (0 missing, 0 extra).
+  48336/48428 within position tolerance (92 FRAME verb coordinate mismatches remain — Gap 6).
 
 **CP-1 (2026-03-20): MA-based identity threading.**
 IFC GUIDs from extraction DB are now carried through the BOM via `m_bom_line_ma`
@@ -289,7 +290,8 @@ element_ref instead of position."
 **Finding: the identity goal is already met via MA infrastructure (documented above).**
 - All 48428 TE output elements have unique IFC GUID `element_ref` (from `m_bom_line_ma`)
 - All 48428 match reference DB `guid` values 1:1 (verified: same sorted GUIDs both sides)
-- W-TOT passes for CO_TE: SpatialDiff identity-matches all elements, 0 missing, 0 extra
+- W-TOT passes for CO_TE: SpatialDiff identity-matches all 48428, 0 missing, 0 extra.
+  48336 within position tolerance; 92 FRAME verb coordinate mismatches remain (Gap 6)
 - The CLUSTER verb encoding approach in ACTION_ROADMAP is redundant — MA path delivers
   the same result without modifying verb format
 
