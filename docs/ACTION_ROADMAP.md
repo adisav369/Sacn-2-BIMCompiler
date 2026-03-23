@@ -393,16 +393,18 @@ Python side.
 
 ## WF-BB Roadmap — Wireframe-First Interaction Protocol (§26)
 
-| Phase | Items | Status | Next action |
-|-------|-------|--------|-------------|
-| **Core** | WF-01..WF-05, WF-09, WF-10: Phase 1/2 toggle, BOUNDS, focus, restore, detect | CODE DONE | Blender visual test |
-| **Peek** | WF-07, WF-08: Properties popup + orientation markers, getElementMetadata verb | CODE DONE | Blender visual test, wire material/cost from library |
-| **Add-in-Phase2** | WF-06: New items appear as bbox while existing stays BOUNDS | SPEC ONLY | Wire add_room operator to Phase 2 context |
-| **Chain** | WF-11: Chain highlight (getChain verb, system_id query) | STUB | Wire to elements_meta system_id (Federation DB) |
-| **Ghost Drag** | WF-12, WF-13: Ghost drag proxy + commit/cancel | SPEC ONLY | Modal operator for drag, bbox proxy tracking |
-| **Cost** | WF-14..WF-16: Live cost-of-change during drag | STUB | Wire BOM diff engine + M_Product pricing |
-| **CR** | WF-17..WF-20: R_Request change request on cross-discipline move | SPEC ONLY | R_Request table + discipline assignment |
-| **Audit** | WF-21..WF-25: AD_ChangeLog, undo, multi-user, sessions | SPEC ONLY | bim_changelog DDL + DAO interceptor |
+> **Status:** Core + Peek are CODE DONE. Remaining 6 phases are SPEC ONLY / STUB — no sessions assigned, not Q2-relevant. Full backlog in [BIM_Designer_SRS.md §26](BIM_Designer_SRS.md).
+
+| Phase | Status | Q2 Triage |
+|-------|--------|-----------|
+| **Core** (WF-01..05, 09, 10) | CODE DONE | **Q2** — needs Blender visual test only |
+| **Peek** (WF-07, 08) | CODE DONE | **Q2** — needs Blender visual test |
+| **Add-in-Phase2** (WF-06) | SPEC ONLY | POST-LAUNCH |
+| **Chain** (WF-11) | STUB | POST-LAUNCH |
+| **Ghost Drag** (WF-12, 13) | SPEC ONLY | POST-LAUNCH — depends on §9 DiffVerb |
+| **Cost** (WF-14..16) | STUB | POST-LAUNCH — depends on §5 5D Cost |
+| **CR** (WF-17..20) | SPEC ONLY | POST-LAUNCH |
+| **Audit** (WF-21..25) | SPEC ONLY | POST-LAUNCH — depends on §10 AD_ChangeLog |
 
 ## Go-to-Market Timeline
 
@@ -582,8 +584,8 @@ Remaining: BIM_COBOL verbs, template grammar (M_BomCategoryLine), AABB template 
 | # | Item | Severity | Status | Q2 Triage |
 |---|------|----------|--------|-----------|
 | S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — S60_ERP_ALIGNMENT.md | DEFER — orthogonal to launch |
-| CP-1 | TE element_ref matching for G3/Totality | HIGH | TODO — critical path | DEFER — TE passes via re-baselined reference; verification debt, not output bug |
-| CP-2 | DX MIRROR verb + structured BOM | HIGH | TODO — critical path | DEFER — DX compiles correctly, C9 accepted; structured BOM is quality-of-proof |
+| CP-1 | TE element_ref matching for G3/Totality | MED | DEFERRED — verification debt | DEFER — TE passes via re-baselined reference; not output bug |
+| CP-2 | DX MIRROR verb + structured BOM | MED | DEFERRED — verification debt | DEFER — DX compiles correctly, C9 accepted; quality-of-proof |
 | Task 4 | Rule-driven discipline framework (FP first) | MED | PLANNED — 3 sessions (A/B/C) | **Q2** — Session A (Add mutation) is launch-relevant; B/C post-launch |
 | R17 | Delete 49K I_Element_Extraction from component_library.db | MED | TODO | DEFER — cleanup, not blocking |
 | R22 | Extract I_Element_Connectivity | MED | TODO | DEFER — enables future MEP routing |
