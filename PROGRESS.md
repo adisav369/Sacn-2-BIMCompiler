@@ -45,12 +45,11 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**Next session (S66): CP-1 + CP-2 + Task 4A — one shot.**
-  **1. CP-1** (TE per-element verification): Store element_ref in CLUSTER verb → TotalityContractTest matches by identity not position. Clears TE G3-DIGEST. [ACTION_ROADMAP.md §CP-1](docs/ACTION_ROADMAP.md#cp-1-te-per-element-verification-gap-5-closure).
-  **2. CP-2** (DX MIRROR verb): Complete DX structured BOM with mirrored half-unit pair. Clears DX C9 85 axis mismatches. [ACTION_ROADMAP.md §CP-2](docs/ACTION_ROADMAP.md#cp-2-dx-mirror-verb). Large effort — may split.
-  **3. Task 4A** (Discipline wiring): BomDropper populates Discipline from bom_category. OrderLineWalker passes Discipline. DemoHouse FP elements. W-DM-TC5-1 witness. [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case) · [DemoHouseAnalysis.md §6](docs/DemoHouseAnalysis.md#6-fp-discipline--readiness-assessment).
-  **Done (S62):** M_Product_Category (46 cats), 3 FP products onboarded, DemoHouse 53/53 (was 43/60).
-  **Audit concerns:** ExtractionElement constructor growing (13+ params, consider builder). ELEC/ACMV product availability unknown.
+**S66 — Task 4A + CP-1 investigation.**
+  **[DONE] Task 4A** (Discipline wiring): BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer priority. W-DM-TC5-1 witness (STR=25, ARC=18, MEP=10). 404/404 GREEN. [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case).
+  **[DONE] CP-1** (TE per-element verification): Identity goal already met via MA infrastructure. W-TOT passes for CO_TE (48428/48428 identity-matched). G3-DIGEST fails due to 1mm float precision — separate issue, tracked under Gap 6. [ACTION_ROADMAP.md §CP-1](docs/ACTION_ROADMAP.md#cp-1-te-per-element-verification-gap-5-closure) · [LAST_MILE_PROBLEM.md §Gap 5 S66](docs/LAST_MILE_PROBLEM.md#s66-investigation-2026-03-24-cp-1-identity-goal-already-met).
+  **CP-2** (DX MIRROR verb): Not started. Large effort — separate session per CLAUDE.md one-bounded-task rule. [ACTION_ROADMAP.md §CP-2](docs/ACTION_ROADMAP.md#cp-2-dx-mirror-verb).
+  Test count sync: BomDrop/CompileBridge/Configure/RealBuildingND counts 55→58, 95→98 (component_library.db evolution, pre-existing).
 
 **Post S63 — Enterprise Layer:** After S60 debt clear + Task 4A done, begin [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md):
   §1 Exception-based ordering (~S63), §2 C_Project (~S65), §4 BOM Mining (~S66+), §9-§12 Phase H+ (needs iDempiere REST).

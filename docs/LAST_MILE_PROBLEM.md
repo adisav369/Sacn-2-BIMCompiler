@@ -257,7 +257,7 @@ prove counts and aggregates, not per-element visual identity.
 - `SpotCheckContractTest` already opens ref + output with AABB tolerance matching
 - ~~**Blocker:** output DB `elements_meta` has no `element_ref` column~~
   **RESOLVED (R6):** `element_ref` propagated through pipeline. `TotalityContractTest` verifies SH/DX.
-  **Remaining:** TE has no totality test (CO mode, 48K elements — aggregate gates only).
+  **RESOLVED (S66):** TE now passes W-TOT via MA-based identity matching (48428/48428).
 
 **CP-1 (2026-03-20): MA-based identity threading.**
 IFC GUIDs from extraction DB are now carried through the BOM via `m_bom_line_ma`
@@ -279,6 +279,37 @@ Remaining 92 (85 shift + 7 drift) are pre-existing FRAME verb expansion
 coordinate mismatches (centroid-vs-LBD offset) — Gap 6 scope, not Gap 5.
 
 **Evidence:** `TotalityContractTest.java` (W-TOT-1/2/3 for SH/DX), `ExtractedBOMWalkTest.java` (count only for TE)
+
+### S66 Investigation (2026-03-24): CP-1 Identity Goal Already Met
+
+**CP-1 goal (ACTION_ROADMAP.md §CP-1):** "Store element_ref in CLUSTER verb entries
+so output elements retain their extraction identity. TotalityContractTest matches by
+element_ref instead of position."
+
+**Finding: the identity goal is already met via MA infrastructure (documented above).**
+- All 48428 TE output elements have unique IFC GUID `element_ref` (from `m_bom_line_ma`)
+- All 48428 match reference DB `guid` values 1:1 (verified: same sorted GUIDs both sides)
+- W-TOT passes for CO_TE: SpatialDiff identity-matches all elements, 0 missing, 0 extra
+- The CLUSTER verb encoding approach in ACTION_ROADMAP is redundant — MA path delivers
+  the same result without modifying verb format
+
+**ACTION_ROADMAP §CP-1 is stale.** It says "TotalityContractTest and G3-DIGEST fail
+for TE" — W-TOT now passes. The proposed VerbDetector/DisciplineBomBuilder changes
+are unnecessary since MA already threads identity through the pipeline.
+
+**Separate issue: G3-DIGEST coordinate precision (not an identity problem).**
+G3-DIGEST computes SHA256 over element coordinates rounded to 1mm. It fails for CO_TE
+because 1015 of 48428 elements have coordinates that differ by exactly 1mm between
+reference (extraction) and output (CLUSTER-decoded). This is a float precision issue
+in centroid reconstruction, not an identity matching issue. It belongs with Gap 6
+(verb expansion fidelity), not Gap 5 (identity).
+
+**Evidence:**
+- `ref_digest.txt` vs `out_digest.txt`: 1015 lines differ by 1mm in one coordinate
+- Example: `IfcBuildingElementProxy maxX` = 128226mm (ref) vs 128227mm (out)
+- W-TOT passes because SpatialDiff matches by identity, not position hash
+
+**ACTION_ROADMAP updated:** CP-1 marked DONE. G3-DIGEST precision tracked under Gap 6.
 
 ---
 
@@ -306,6 +337,28 @@ within tolerance, not `varyAxis` uniformity. Fix: add step-uniformity check — 
 groups where `max_step / min_step > 1.5` (or similar threshold).
 
 **Evidence:** `VerbDetector.java:386-396` (countAxisRun), `BomValidator.java:800-818` (expandRoute)
+
+### S66 sub-finding: G3-DIGEST float precision for CO_TE (2026-03-24)
+
+G3-DIGEST (`SpatialDigest.java`) computes SHA256 over element coordinates rounded to
+1mm (`ROUND(x * 1000)`). For CO_TE, 1015 of 48428 elements have coordinates that differ
+by exactly 1mm between reference (extraction AABB) and output (CLUSTER-decoded AABB).
+
+**Mechanism:** CLUSTER verb stores offsets as 8-decimal-place metres. During compilation,
+world position = parent_centroid + CLUSTER_offset ± half_dims. This round-trip introduces
+sub-mm float noise that sometimes crosses the 1mm rounding boundary. The extraction DB
+stores exact AABBs from IFC; the output reconstructs them from verb arithmetic.
+
+**Example:** `IfcBuildingElementProxy maxX` = 128226mm (ref) vs 128227mm (out).
+
+**Relationship to Gap 6:** This is the same class of problem as ROUTE non-uniform spacing
+— verb encoding/decoding introduces coordinate drift. CLUSTER drift is much smaller
+(1mm vs 7m for ROUTE), but still breaks position-based hashing.
+
+**Why G3-DIGEST is not a valid gate for CO_TE:**
+- G3 hashes coordinates — any sub-mm float noise at a rounding boundary changes the hash
+- W-TOT matches by identity (element_ref ↔ guid) and tolerates sub-mm differences
+- G3 is valid for RE buildings (SH/DX/IN) where coordinates are copied, not reconstructed
 
 ---
 

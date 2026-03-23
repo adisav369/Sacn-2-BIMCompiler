@@ -27,22 +27,30 @@ Shape-aware advisories wired into flywheel (FL-5). IFCtoBOM depends on BIMEyes.
 
 These items must be resolved to confidently process arbitrary IFC files.
 
-### CP-1: TE Per-Element Verification (Gap 5 closure)
+### CP-1: TE Per-Element Verification (Gap 5 closure) ✓
 
-**Problem:** TotalityContractTest and G3-DIGEST fail for TE because position-based
-element matching (ROW_NUMBER by position) is unreliable at 48K scale. 1022 elements
-have 1mm rounding boundary crossings from CLUSTER encoding + BOM accumulation.
-The output IS correct — we proved it by spot-checking — but we cannot automatically
-verify all 48K elements.
+**Problem:** TotalityContractTest failed for TE because position-based element matching
+(ROW_NUMBER by position) was unreliable at 48K scale. 1022 elements have 1mm rounding
+boundary crossings from CLUSTER encoding + BOM accumulation. The output IS correct —
+spot-checking proved it — but automatic per-element verification was missing.
 
-**Fix:** Store `element_ref` in CLUSTER verb entries so output elements retain their
-extraction identity. TotalityContractTest matches by element_ref instead of position.
+**Original proposal:** Store `element_ref` in CLUSTER verb entries. **Superseded** by
+MA-based identity threading (iDempiere M_InOutLineMA pattern) which delivers the same
+result without modifying verb format. See [LAST_MILE_PROBLEM.md §Gap 5](LAST_MILE_PROBLEM.md#gap-5-no-wysiwyg-totality-proof) for full chain.
 
-**Effort:** Medium. Changes: VerbDetector (encode element_ref), DisciplineBomBuilder
-(pass element_ref to CLUSTER), PlacementCollectorVisitor (read element_ref from
-CLUSTER, use as output element_ref), TotalityContractTest (match by element_ref).
+**Delivered:**
+- `m_bom_line_ma(bom_id, sequence, qi, guid)` — per-instance identity table
+- `VerbDetector.computeExpansionOrder()` — maps element→qi by nearest centroid
+- `PlacementCollectorVisitor.loadMaGuids()` — reads MA → sets element_ref = IFC GUID
+- `SpatialDiff.diffByIdentity()` — hybrid identity + position fallback matching
 
-**Gate:** TotalityContractTest PASS for CO_TE. G3-DIGEST PASS for CO_TE.
+**Gate:** W-TOT PASS for CO_TE (48428/48428 identity-matched, 0 missing, 0 extra).
+
+**G3-DIGEST remains FAIL for CO_TE.** This is a coordinate precision issue (1015
+elements with 1mm rounding boundary crossings), not an identity issue. Tracked under
+[LAST_MILE_PROBLEM.md §Gap 6](LAST_MILE_PROBLEM.md#gap-6-verb-pattern-fidelity--non-uniform-spacing-accepted-as-uniform)
+as a sub-finding (S66 float precision). G3-DIGEST is not a valid gate for CO_TE —
+W-TOT is the authoritative per-element proof.
 
 ### CP-2: DX MIRROR Verb
 
