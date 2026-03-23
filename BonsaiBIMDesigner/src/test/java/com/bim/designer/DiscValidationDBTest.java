@@ -20,6 +20,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *   <li>W-DV-DB-REF: Reference pointers resolve across databases</li>
  *   <li>W-DV-DB-ND: Migration does not disturb component_library.db</li>
  *   <li>W-DV-MINED-RULES: 415 mined dimension rules with 1245 params in ad_val_rule</li>
+ *   <li>W-DV-DB-ORG: AD_Org table exists with 16 discipline orgs (DV013)</li>
+ *   <li>W-DV-DB-ORG-COLS: AD_Org_ID columns populated with zero NULLs (DV014)</li>
  * </ul>
  *
  * // Implementing DISC_VALIDATION_DB_SRS.md §9 — Witness: W-DV-DB-*
@@ -55,7 +57,7 @@ class DiscValidationDBTest {
         EXPECTED_COUNTS.put("ad_space_type_mep", 22);
     }
 
-    /** All 21 tables expected in disc_validation.db (19 original + 2 DV010 mined rules). */
+    /** All 22 tables expected in disc_validation.db (19 original + 2 DV010 + 1 DV013 AD_Org). */
     static final List<String> ALL_TABLES = List.of(
             "ad_space_type", "ad_element_mep", "ad_space_type_mep_bom",
             "ad_fp_coverage", "ad_assembly_connector", "ad_assembly_manifest",
@@ -65,6 +67,7 @@ class DiscValidationDBTest {
             "ad_space_type_mep",
             "ad_element_mep_alias",
             "ad_val_rule", "ad_val_rule_param",       // DV010: mined dimension rules
+            "AD_Org",                                  // DV013: discipline org units
             "W_Calibration_Result", "AD_SysConfig"
     );
 
@@ -87,7 +90,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-DV-DB-SCHEMA: All 21 tables exist in disc_validation.db")
+    @DisplayName("W-DV-DB-SCHEMA: All 22 tables exist in disc_validation.db")
     void allTablesExist() throws Exception {
         Set<String> actual = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         try (ResultSet rs = discConn.getMetaData().getTables(
@@ -445,6 +448,113 @@ class DiscValidationDBTest {
              ResultSet rs = ps.executeQuery()) {
             assertTrue(rs.next(), "MINED_RULES_VERSION row must exist");
             assertEquals("DV010", rs.getString(1));
+        }
+    }
+
+    // ── W-DV-DB-ORG ─────────────────────────────────────────────────────
+
+    @Test
+    @Order(60)
+    @DisplayName("W-DV-DB-ORG: AD_Org has 16 discipline orgs (DV013)")
+    void adOrgTablePopulated() throws Exception {
+        int orgCount = countRows(discConn, "AD_Org");
+        System.out.printf("  AD_Org rows: %d%n", orgCount);
+        assertTrue(orgCount >= 16,
+                "AD_Org must have >= 16 rows (10 building + 6 infra), got " + orgCount);
+
+        // Verify shared org exists
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT Value, AD_Org_Type FROM AD_Org WHERE AD_Org_ID = 0");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next(), "AD_Org_ID=0 (shared org) must exist");
+            assertEquals("*", rs.getString("Value"));
+            assertEquals("SHARED", rs.getString("AD_Org_Type"));
+        }
+    }
+
+    @Test
+    @Order(61)
+    @DisplayName("W-DV-DB-ORG: All 9 building disciplines present")
+    void adOrgBuildingDisciplines() throws Exception {
+        List<String> required = List.of("ARC", "STR", "FP", "ELEC", "ACMV", "CW", "SP", "LPG", "REB");
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT Value FROM AD_Org WHERE AD_Org_Type = 'DISCIPLINE'");
+             ResultSet rs = ps.executeQuery()) {
+            Set<String> actual = new TreeSet<>();
+            while (rs.next()) actual.add(rs.getString(1));
+
+            for (String disc : required) {
+                assertTrue(actual.contains(disc),
+                        "Missing building discipline in AD_Org: " + disc);
+            }
+        }
+    }
+
+    @Test
+    @Order(62)
+    @DisplayName("W-DV-DB-ORG: AD_SysConfig has AD_ORG_VERSION = DV013")
+    void adOrgVersionRecorded() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT Value FROM AD_SysConfig WHERE Name = 'AD_ORG_VERSION'");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next(), "AD_ORG_VERSION row must exist");
+            assertEquals("DV013", rs.getString(1));
+        }
+    }
+
+    // ── W-DV-DB-ORG-COLS ──────────────────────────────────────────────
+
+    @Test
+    @Order(70)
+    @DisplayName("W-DV-DB-ORG-COLS: ad_element_mep.AD_Org_ID fully populated (DV014)")
+    void elementMepOrgIdPopulated() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM ad_element_mep WHERE AD_Org_ID IS NULL");
+             ResultSet rs = ps.executeQuery()) {
+            int nullCount = rs.getInt(1);
+            assertEquals(0, nullCount, "No NULL AD_Org_ID in ad_element_mep");
+        }
+
+        // Verify FK integrity: every AD_Org_ID references a valid AD_Org row
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM ad_element_mep e " +
+                "WHERE NOT EXISTS (SELECT 1 FROM AD_Org o WHERE o.AD_Org_ID = e.AD_Org_ID)");
+             ResultSet rs = ps.executeQuery()) {
+            int orphans = rs.getInt(1);
+            assertEquals(0, orphans, "All AD_Org_ID values must reference valid AD_Org rows");
+        }
+    }
+
+    @Test
+    @Order(71)
+    @DisplayName("W-DV-DB-ORG-COLS: ad_ifc_class_map.AD_Org_ID fully populated (DV014)")
+    void ifcClassMapOrgIdPopulated() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM ad_ifc_class_map WHERE AD_Org_ID IS NULL");
+             ResultSet rs = ps.executeQuery()) {
+            int nullCount = rs.getInt(1);
+            assertEquals(0, nullCount, "No NULL AD_Org_ID in ad_ifc_class_map");
+        }
+
+        // Verify FK integrity
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT COUNT(*) FROM ad_ifc_class_map m " +
+                "WHERE NOT EXISTS (SELECT 1 FROM AD_Org o WHERE o.AD_Org_ID = m.AD_Org_ID)");
+             ResultSet rs = ps.executeQuery()) {
+            int orphans = rs.getInt(1);
+            assertEquals(0, orphans, "All AD_Org_ID values must reference valid AD_Org rows");
+        }
+    }
+
+    @Test
+    @Order(72)
+    @DisplayName("W-DV-DB-ORG-COLS: AD_SysConfig has AD_ORG_COLS_VERSION = DV014")
+    void adOrgColsVersionRecorded() throws Exception {
+        try (PreparedStatement ps = discConn.prepareStatement(
+                "SELECT Value FROM AD_SysConfig WHERE Name = 'AD_ORG_COLS_VERSION'");
+             ResultSet rs = ps.executeQuery()) {
+            assertTrue(rs.next(), "AD_ORG_COLS_VERSION row must exist");
+            assertEquals("DV014", rs.getString(1));
         }
     }
 
