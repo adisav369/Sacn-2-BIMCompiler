@@ -449,14 +449,49 @@ product count changes). Accept the mixed concern.
 - Which option avoids breaking the 5-table LOD chain (§9.1)?
 - Does the BOM DB need M_Product? (m_bom_line.child_product_id resolves to M_Product)
 
-### 10.4 Investigation Tasks
+### 10.4 AD_Org — Disciplines as Organizational Units
+
+iDempiere uses AD_Org to partition data by organizational unit. In construction,
+disciplines ARE organizational units — each is a trade with its own contractor,
+products, rules, and scope of work.
+
+```
+AD_Client = 'BIM_PROJECT' (tenant — the whole project)
+└── AD_Org = '*'    (shared data: building grid, space types, structural frame)
+└── AD_Org = 'ARC'  (architectural: doors, windows, furniture, finishes)
+└── AD_Org = 'STR'  (structural: beams, columns, slabs, foundations)
+└── AD_Org = 'FP'   (fire protection: sprinklers, alarms, risers)
+└── AD_Org = 'ELEC' (electrical: lights, outlets, switches, cable trays)
+└── AD_Org = 'ACMV' (HVAC: ducts, diffusers, AHUs)
+└── AD_Org = 'CW'   (cold water: pipes, fittings, valves)
+└── AD_Org = 'SP'   (sanitary/plumbing: fixtures, waste pipes)
+└── AD_Org = 'LPG'  (gas: gas pipes, meters)
+```
+
+**Two orthogonal axes:**
+- `M_Product_Category` = taxonomy (WHAT type: sprinkler head, pipe segment, alarm)
+- `AD_Org` = ownership (WHO manages: FP trade, ELEC trade)
+
+**What AD_Org replaces:**
+- `m_bom.bom_category` string → `AD_Org_ID` FK
+- `C_OrderLine.Discipline` string → `AD_Org_ID` FK
+- `component_types.discipline` string → `AD_Org_ID` FK
+- Scattered `resolveDiscipline(ifcClass)` logic → single FK lookup
+
+**iDempiere data partitioning:** Every row with `AD_Org_ID = 'FP'` is visible
+only to the FP trade. Shared infrastructure (`AD_Org = '*'`) is visible to all.
+This enables per-discipline BOM views, validation scoping, and trade-specific
+product catalogs — all from a single FK.
+
+### 10.5 Investigation Tasks
 
 1. Count Java files that read M_Product from component_library.db vs disc_validation.db
 2. Count Java files that read component_definitions from component_library.db
 3. Map the M_Product→component_definitions join path (is it by name? by FK?)
 4. Check if BOM databases carry their own M_Product (TE_BOM.db has M_Product with
    different schema — 28 columns vs 9 in component_library.db)
-5. Propose the split and migration plan
+5. Audit all `bom_category` / `discipline` string usage — candidates for AD_Org FK
+6. Propose the split and migration plan (including AD_Org table placement)
 
 ---
 
