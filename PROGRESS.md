@@ -20,10 +20,10 @@
 | W-TOT | PASS | PASS | — | PASS | PASS (48428/48428) | PASS |
 
 **Pipeline:** 9 stages. 64 verbs. 2459 products. 4-DB architecture (22+20+6+output). 4D/5D/6D live on real library.
-**Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 22 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
-**BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 392/392 GREEN (39 test classes).
+**Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
+**BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 392/392 GREEN (40 test classes).
 **Scorecard: 31/36.** 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
-**BIMEyes:** 41 files, 28 proofs. FL-2 advisory + FL-5 EYES integration DONE.
+**BIMEyes:** 43 files, 28 proof classes (~14 per-element, ~8 aggregate, ~6 conditional). [EYES_SRS.md §10 audit](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit). Gap 10 (source fidelity) NOT YET IMPLEMENTED.
 
 ## What's Next
 
@@ -45,7 +45,7 @@
 
 **Next session:** [ACTION_ROADMAP.md §S60-S3](docs/ACTION_ROADMAP.md#s60-s3-next-session-tasks)
   6 tasks: commit S59, re-extract R21, audit P0 fixes, FP discipline, M_BomCategory, re-baseline.
-  **New:** Per-element source fidelity test for generative variants — [TestArchitecture.md §Per-Element Source Fidelity](docs/TestArchitecture.md#per-element-source-fidelity-test-generative-variant-oracle) + [LAST_MILE_PROBLEM.md §Gap 10](docs/LAST_MILE_PROBLEM.md#gap-10-generative-variant-source-fidelity).
+  **Audit correction:** BOM stores relative offsets, not world coords. Compiler derives, not copies. 3-layer test architecture defined — [LAST_MILE_PROBLEM.md §Relational Round-Trip](docs/LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit).
 
 ## Session Log (recent first)
 

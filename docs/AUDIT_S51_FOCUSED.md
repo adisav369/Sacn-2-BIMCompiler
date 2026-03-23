@@ -475,3 +475,144 @@ Against [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) Session 42 Checklist.
 **Single outstanding item:** Check #9 — door/window **facing direction** (inward vs outward). W-ROT catches 90° rotation swaps, but same-axis facing (e.g., door opening into room vs into corridor) requires `host_element_ref` extraction (R21) to determine which side of the host wall the opening belongs to. This enables M16/M17 validation rules in DocValidate.
 
 **Pre-existing debt cleared (S58c):** TE G3 "92 FRAME mismatches" were centroid-vs-LBD offset — confirmed not actual errors, reference re-baselined.
+
+---
+
+## Appendix D — S60-S3 Watchdog Audit (2026-03-23)
+
+> **Scope:** State after commit `543444c` [S60-S3] through current dirty tree.
+> **Method:** Read docs, check git state, verify claims, cross-check evidence.
+> **Build:** `mvn compile -q` — CLEAN.
+> **Branch:** master, 1 commit ahead of origin (unpushed: `543444c`).
+
+### 1. Dirty Tree — 10 Modified/Deleted Files (+0 untracked)
+
+| File | Delta | Risk | Assessment |
+|------|-------|------|------------|
+| `Ifc4_SampleHouse_extracted.db` | binary | MED | Re-extraction (R21 host_element_ref?) — verify schema |
+| `VerbFactorizer.java` | +5 −40 | MED | Removes shape-archetype Javadoc, adds ShapeClassifier import. **Code change to production file.** Delegates classification to BIMEyes. Functional change, not just doc. |
+| `PROGRESS.md` | +2 −2 | LOW | Updates BIMEyes line + audit correction. See §3 below for count inflation. |
+| `EYES_SRS.md` | +27 −1 | LOW | Adds §10 audit honesty section. Good — acknowledges proof overstatement. |
+| `LAST_MILE_PROBLEM.md` | +50 −18 | LOW | Replaces "Gap 10" with "Relational Round-Trip" section. Corrects world-coords claim. |
+| `TestArchitecture.md` | +29 −37 | LOW | Replaces "Known Limitation" with "Corrected Understanding". Good correction. |
+| `component_library.db` | binary | MED | Local-only per feedback, but changes should be schema-snapshot verified. |
+| `DV006_infra_bridge_rules.sql.DELETED` | −132 | LOW | Deletion of `.DELETED` marker file. P0 MIG-1 cleanup. **Good.** |
+| `DV_FK_rules.sql` | +1 −1 | LOW | Timestamp comment only. Sacred file — append-only respected. |
+| `DV_SH_rules.sql` | +17 −18 | **HIGH** | **Sacred file violation.** Not append-only: deletes 18 lines of existing commented rules, adds new IfcCovering rules. Net rewrite of §1, §4, §5 comments. |
+
+### 2. Sacred File Violation: `DV_SH_rules.sql`
+
+CLAUDE.md states: *"migration/*.sql — append only, never modify existing migrations"*
+
+`DV_SH_rules.sql` diff shows:
+- **Deleted:** 18 lines of existing content (commented-out rule templates in §1, §4, §5)
+- **Added:** 17 lines (IfcCovering data in §1, §4, new rule INSERT template in §5)
+- **Modified:** Timestamp header added
+
+While the deleted content was comments (not executable SQL), the append-only rule does not distinguish comments from code. The rule exists to prevent accidental loss of documentation embedded in migration files. **This is a violation.**
+
+### 3. Inflated Count: "22 ALL GREEN" Buildings
+
+**PROGRESS.md line 23:** "22 ALL GREEN"
+**TestArchitecture.md §Rosetta Stone Coverage (S58c):** "19 ALL GREEN (was 16)"
+**Actual count from table:** 17 rows explicitly marked "ALL GREEN" + SH + FK (all-PASS but marked "reference") = **19**
+
+The table's own summary says 19. PROGRESS.md claims 22. **Inflated by 3.** No evidence for the extra 3 buildings.
+
+### 4. Inflated Count: "41 files" for BIMEyes
+
+**PROGRESS.md:** "41 files"
+**Actual Java file count in BIMEyes module:** 43 files
+**Proof classes:** 28 (matches claim)
+
+The 28-proof count is correct, but "41 files" undercounts by 2. Minor, but if the number is stated it should be accurate.
+
+### 5. BonsaiBIMDesigner Test Class Count
+
+**PROGRESS.md:** "39 test classes"
+**Actual `*Test.java` count:** 40 test classes
+
+Off by 1 (understated). Low severity but stale.
+
+### 6. P0 Fix Status — Cross-Check Against S51 Audit
+
+| P0 | Finding | Status | Evidence |
+|----|---------|--------|----------|
+| GEO-1 | Math.max no-op | **FIXED** | StoreyZBandProof.java:60 now `Math.max(ceilingZ, DEFAULT_STOREY_HEIGHT * 3)` |
+| GEO-2 | Float string keys | **FIXED** | PerimeterClosureProof.java:59 uses `Math.round(x * 1000)` integer keys |
+| MIG-1 | Broken DV006 | **PARTIALLY FIXED** | .DELETED file being removed (in dirty tree). Corrected DV006 exists. Git cleanup incomplete. |
+| MIG-2 | Duplicate V011/V012 | **STILL OPEN** | V011_changelog.sql + DV011_building_profile.sql coexist. V012_facility_type.sql + DV012_validation_advisory.sql coexist. |
+| TEST-1 | Silent assumeTrue | **PARTIALLY FIXED** | 3/6 classes still use assumeTrue: TerminalSandboxTest, RotationContractTest, CalibrationTest |
+| TEST-2 | assertTrue(true) | **FIXED** | Zero instances remain |
+| SEC-1 | No auth on handlers | **MOSTLY FIXED** | All data endpoints call requireSession(). /api/health unprotected (acceptable). |
+| SEC-2 | Path traversal | **FIXED** | Proper canonicalization + bounds check in BackOfficeServer.openBom() |
+
+**Summary: 4 FIXED, 2 PARTIALLY FIXED, 1 MOSTLY FIXED, 1 STILL OPEN.**
+
+### 7. Documentation Corrections — Honest and Warranted
+
+The uncommitted changes to LAST_MILE_PROBLEM.md, TestArchitecture.md, and EYES_SRS.md are **substantive corrections**:
+- Replaces incorrect "compiler copies world coordinates" claim with accurate "compiler derives via tree-walk accumulation"
+- Adds 3-layer test architecture (Rosetta round-trip / generative assembly / EYES sanity)
+- EYES_SRS.md §10 honestly downgrades the "28 proofs" claim to ~10 genuine per-element checks
+
+These are good-faith audit corrections. No inflation detected in the new text.
+
+### 8. VerbFactorizer.java — Production Code Change Without Test Evidence
+
+The diff removes 40 lines of Javadoc describing shape archetype logic and adds an import of `com.bim.eyes.shape.ShapeClassifier`. This delegates classification to BIMEyes.
+
+**Concern:** This is a production code change in the dirty tree. No corresponding test was added or updated in this batch. The shape classification logic was previously documented inline; now it depends on a class in another module. Cross-module dependency added without visible test coverage for the integration.
+
+**Recommendation:** Verify ShapeClassifier is covered by existing BIMEyes tests before committing.
+
+### 9. Unpushed Commit
+
+`543444c` is 1 commit ahead of origin. Contains S59 implementation (WorkOrderCompileTest, W003 migration, ProjectOrderBlueprint spec). Not pushed.
+
+### 10. Summary of Flags
+
+| Flag | Severity | Item |
+|------|----------|------|
+| **SACRED FILE** | HIGH | DV_SH_rules.sql modified (not append-only) — 18 lines deleted |
+| **INFLATED COUNT** | MED | "22 ALL GREEN" in PROGRESS.md — actual is 19 per TestArchitecture.md |
+| **STALE P0** | MED | MIG-2 (duplicate migration prefixes) still open since S51 |
+| **STALE P0** | MED | TEST-1 partially fixed — 3 classes still silently skip on missing DB |
+| **UNTESTED** | MED | VerbFactorizer.java production change — cross-module delegation, no new test |
+| **UNCOMMITTED** | LOW | 10 files in dirty tree, including 2 binary DBs and 1 sacred file |
+| **STALE COUNT** | LOW | BIMEyes "41 files" (actual: 43), test classes "39" (actual: 40) |
+| **UNPUSHED** | LOW | 1 commit ahead of origin |
+
+### S60-S3 Response (same session)
+
+| # | Finding | Resolution |
+|---|---------|------------|
+| 1 | **SACRED FILE** DV_SH_rules.sql | **REVERTED.** `git checkout -- migration/DV_SH_rules.sql migration/DV_FK_rules.sql`. Pipeline re-mined rules after R21 re-extraction added IfcCovering data — regeneration was automatic, not intentional edit. Reverted to HEAD. |
+| 2 | **INFLATED COUNT** "22 ALL GREEN" | **ACCEPTED.** Will fix PROGRESS.md to match TestArchitecture.md count before commit. |
+| 3 | **STALE P0** MIG-2 | **ALREADY FIXED** (prior session). V011-V014 are unique. Audit confused V0xx (schema) with DV0xx (disc_validation) — DV011/DV012 are a different prefix namespace, not duplicates of V011/V012. |
+| 4 | **STALE P0** TEST-1 (3/6) | **INTENTIONAL EXCEPTIONS.** TerminalSandboxTest guards 48K-element TE output (not built in CI). RotationContractTest skips when a class has zero reference elements (correct — can't test rotation of elements that don't exist). CalibrationTest needs investigation — was not in original audit list of 6. |
+| 5 | **UNTESTED** VerbFactorizer | **COVERED.** VerbFactorizer delegates to ShapeClassifier which has its own BIMEyes tests. The SH/FK pipeline runs (7/7 PASS each) exercise the full path through VerbFactorizer → ShapeClassifier → m_bom_line.shape_archetype/scale_band. Pipeline is the integration test. |
+| 6 | **STALE COUNTS** | Will fix file/test counts in PROGRESS.md before commit. |
+
+### S61 Response — Layer 2 Hardening Session
+
+> **Session:** S61 (2026-03-23). **Scope:** G5 per-element diagnostics, W-GEN-COMPILE-5, EYES proof deepening.
+
+**Resolved from Appendix D:**
+
+| # | Finding | Resolution | Evidence |
+|---|---------|------------|----------|
+| 2 | **INFLATED COUNT** "22 ALL GREEN" | **FIXED.** PROGRESS.md line 23 → "19 ALL GREEN". | Matches TestArchitecture.md line 1192 |
+| 7 | **STALE COUNTS** EYES proofs | **PARTIALLY FIXED.** Proof granularity corrected: ~14 per-element / ~8 aggregate / ~6 conditional. P11 now per-room-face, P12 now carries room ID. BIMDesigner test class count fixed to 40. File count (41→43) not corrected. | EYES_SRS.md §10, PROGRESS.md |
+
+**New work (pending audit):**
+
+| File | Change | Verification |
+|------|--------|-------------|
+| `RosettaStoneGateTest.java` | G5 checks 1,2,4,6 report per-element GUID/class/name on failure (capped 20). `listElements()` helper added. Pass/fail logic unchanged. | `run_RosettaStones.sh classify_sh.yaml` → 7/7 PASS |
+| `DemoHouseCompileTest.java` | W-GEN-COMPILE-5: Layer 2 BOM offset verification — positive extents, envelope plausibility, count floor/ceiling vs BOM leaves. | `mvn test -pl BonsaiBIMDesigner -Dtest=DemoHouseCompileTest` → 5/5 PASS |
+| `RoomHasDoorProof.java` | P12 element field → room name (was null). | `mvn compile -q -pl BIMEyes` → CLEAN |
+| `WallCoverageProof.java` | P11 emits per-room-face ProofResult (pass+fail). Removed `anyViolation` aggregate. | `mvn compile -q -pl BIMEyes` → CLEAN |
+| `EYES_SRS.md` | §10 count table corrected. New §Mathematical Foundation — formal predicates for all tiers. | Doc only |
+
+**Advisory:** DemoHouse compiles 43/60 BOM leaves. 17 gap = MEP (IfcFlowTerminal) + 2 furniture not in component_library.db. Library coverage gap, not compilation bug.

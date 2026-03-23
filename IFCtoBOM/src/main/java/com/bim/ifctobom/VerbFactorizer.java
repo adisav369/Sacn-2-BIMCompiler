@@ -1,5 +1,6 @@
 package com.bim.ifctobom;
 
+import com.bim.eyes.shape.ShapeClassifier;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 
 import java.sql.*;
@@ -213,55 +214,19 @@ public class VerbFactorizer {
 
     /**
      * Classify shape archetype from AABB dimensions.
-     *
-     * <p>Mirrors {@code GeometricFingerprint.ShapeArchetype} logic. Dimensionless
-     * ratios from sorted dimensions (S ≤ M ≤ L):
-     * <pre>
-     *   planarity  = S / L    (0 = infinitely thin, 1 = cube)
-     *   elongation = M / L    (0 = needle, 1 = square cross-section)
-     *
-     *   PLANAR:    planarity < 0.15, elongation ≥ 0.40  → wall, slab, plate
-     *   ELONGATED: planarity < 0.15, elongation < 0.40  → column, beam, pipe
-     *   COMPACT:   planarity ≥ 0.25, elongation ≥ 0.50  → furniture, equipment
-     *   MIXED:     transitional
-     * </pre>
-     *
+     * Delegates to canonical {@link ShapeClassifier} — single source of truth.
      * // Implementing BBC.md §2.2.1 — Witness: W-ARCHETYPE-BOM
-     *
-     * @param widthMm  allocated_width_mm (X extent)
-     * @param depthMm  allocated_depth_mm (Y extent)
-     * @param heightMm allocated_height_mm (Z extent)
-     * @return archetype string: PLANAR, ELONGATED, COMPACT, or MIXED
      */
     static String classifyArchetype(double widthMm, double depthMm, double heightMm) {
-        double[] dims = {widthMm, depthMm, heightMm};
-        java.util.Arrays.sort(dims);
-        double S = dims[0], L = dims[2];
-        if (L < 0.01) return "MIXED"; // degenerate
-        double planarity = S / L;
-        double elongation = dims[1] / L;
-        if (planarity < 0.15 && elongation >= 0.40) return "PLANAR";
-        if (planarity < 0.15 && elongation < 0.40)  return "ELONGATED";
-        if (planarity >= 0.25 && elongation >= 0.50) return "COMPACT";
-        return "MIXED";
+        return ShapeClassifier.classifyArchetype(widthMm, depthMm, heightMm).name();
     }
 
     /**
      * Classify scale band from AABB dimensions.
-     *
-     * <p>Mirrors {@code GeometricFingerprint.ScaleBand} logic.
-     * Volume in m³ = (S × M × L) / 1e9  (mm³ → m³).
-     *
-     * @return scale band string: ARCHITECTURAL, FURNITURE, FITTING, or TINY
+     * Delegates to canonical {@link ShapeClassifier} — single source of truth.
      */
     static String classifyScaleBand(double widthMm, double depthMm, double heightMm) {
-        double[] dims = {widthMm, depthMm, heightMm};
-        java.util.Arrays.sort(dims);
-        double volumeM3 = (dims[0] * dims[1] * dims[2]) / 1e9;
-        if (volumeM3 > 1.0)    return "ARCHITECTURAL";
-        if (volumeM3 > 0.01)   return "FURNITURE";
-        if (volumeM3 > 0.0001) return "FITTING";
-        return "TINY";
+        return ShapeClassifier.classifyScaleBand(widthMm, depthMm, heightMm).name();
     }
 
     // ── SQL helpers ──────────────────────────────────────────────────────────

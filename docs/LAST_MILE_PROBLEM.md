@@ -680,30 +680,62 @@ The fingerprints themselves are correct — the pairing algorithm needs refineme
 
 ---
 
-## Gap 10: Generative Variant Source Fidelity
-<!-- @Traces BBC.md §2 — Gospel Principle (extract, never invent) -->
+## Relational Round-Trip Verification (S60 post-audit)
+<!-- @Traces BBC.md §2 — Gospel Principle, BBC.md §4.0 — tack convention -->
 
-For GENERATIVE buildings (DemoHouse, future variants), there is no IFC source to extract a reference database from. Whole-building count assertions (e.g., `assertEquals(60, ...)`) are circular — they prove the pipeline agrees with itself.
+### Corrected Understanding
 
-**The oracle for generative variants is the component library + BOM metadata, tested per-element.**
+**Previous claim:** "The compiler copies world coordinates from the BOM."
 
-Each compiled element must trace back to its source and satisfy verb-specific contracts:
+**Actual finding:** The BOM stores **relative parent-child offsets** (tack convention §3.4), not world coordinates. The compiler **derives** world positions by walking the tree and accumulating offsets: `world = building.origin + Σ(parent_origin + line_offset)`.
 
-| Verb | Per-Element Check | Oracle |
-|------|-------------------|--------|
-| PLACE | `geometry_hash` matches M_Product in component_library | Library DB |
-| PLACE | `material_rgba` matches library source | Library DB |
-| SCALE | AABB dimensions within `scale_band` on m_bom_line | BOM line metadata |
-| ROTATE | Rotation matrix determinant = ±1 (valid transform) | Mathematical invariant |
-| TACK | Storey assignment matches BOM tree depth | BOM tree structure |
-| TRIM | Trimmed element AABB ⊆ host element AABB | Host element geometry |
+Example from BA_BOM.db:
+```
+BUILDING origin:  (-29.64, -14.99, -1.30)      ← world anchor (m_bom.origin_x/y/z)
+FLOOR MAKE line:  dx=32.64, dy=17.99, dz=1.05  ← relative offset (m_bom_line.dx/dy/dz)
+kitchen leaf:     dx=4.55,  dy=2.5,   dz=0.25  ← relative offset from FLOOR
+```
 
-**Relation to existing work:**
-- G5-PROVENANCE does a coarse whole-building version (no GEO_ fallbacks). This gap requires per-element granularity.
-- [Geometric Fingerprint §shape ratios](#geometric-fingerprint--shape-identity-proof-session-44) proves shape equivalence via dimensionless ratios. This gap extends that to verb-level contracts.
-- BIM_Designer_SRS.md §11 specifies geometric fingerprint verification for BOM-predicted vs compiled output.
+No world coordinate is stored for the kitchen leaf. The compiler computes it during the tree walk. Decomposition (IFC → relative offsets) and recomposition (tree walk → world coords) are mathematical inverses.
 
-**Action:** Create `SourceFidelityTest.java` — reusable per-element, per-verb check class. Run against any generative variant. First target: DemoHouse (60 elements). See also [TestArchitecture.md §Per-Element Source Fidelity Test](TestArchitecture.md#per-element-source-fidelity-test-generative-variant-oracle).
+### What the Rosetta Stone Gates Actually Prove
+
+The gates prove the **relational round-trip is lossless**: IFC world coords → decompose into BOM hierarchy → recompose via compiler → output world coords == original. This tests:
+
+1. **BOM faithfulness:** The relative offsets correctly encode the IFC spatial relationships
+2. **Compiler correctness:** The tree-walk accumulation reconstructs positions accurately
+3. **No data loss:** Every element survives the round-trip
+
+This is stronger than "copying." The BOM is a relational model of the building's spatial hierarchy, and the compiler is an engine that derives world geometry from that model.
+
+### Two-Layer Test Architecture
+
+**Layer 1 (proven): BOM ↔ IFC round-trip (Rosetta Stones)**
+For each extracted building, the gate proves the BOM's relative offsets faithfully represent the IFC. Once a BOM passes all gates, its spatial relationships are **certified** — it is a proven stone.
+
+**Layer 2 (needed): Generative assembly honours certified parts**
+A generative building combines parts from multiple certified BOMs. The test is: did the assembly preserve the relative relationships when grafting parts into a new hierarchy?
+
+Per-element checks for Layer 2 (consolidated from Gaps 1, 5, 9):
+
+| Check | What It Proves | Oracle |
+|-------|---------------|--------|
+| geometry_hash matches M_Product in library | Correct part selected | Library DB (leaf LOD) |
+| material_rgba preserved | No corruption during assembly | Library DB |
+| AABB within scale_band on m_bom_line | Scale verb respected bounds | BOM line metadata |
+| Rotation determinant = ±1 | Valid transform | Mathematical invariant |
+| Storey matches BOM tree depth | Containment preserved | BOM tree structure |
+| Compiled offset = BOM-declared dx/dy/dz | Relative relationship honoured | BOM.db (the certified stone) |
+
+The last check is the critical one — it verifies the compiler used the BOM's relative offsets, not that it produced the right world coordinate. The world coordinate is a consequence.
+
+**EYES role (Layer 3): Reference-free geometric sanity**
+Independent of both layers: doors in walls, perimeter closure, roof coverage. Catches geometric violations that neither the round-trip nor the assembly test would detect. See [EYES_SRS.md §10](EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
+
+**Existing pieces:** G5-PROVENANCE (coarse library trace), Geometric Fingerprint §shape ratios (per-element shape identity), BIM_Designer_SRS.md §11 (BOM-predicted vs compiled).
+**Action:** Sharpen G5 to per-element granularity. Add BOM offset verification to gate tests. Wire EYES proofs as Layer 3 sanity gate.
+
+See also: [TestArchitecture.md §Corrected Understanding](TestArchitecture.md#corrected-understanding-rosetta-stone-gates-prove-relational-round-trip).
 
 ---
 

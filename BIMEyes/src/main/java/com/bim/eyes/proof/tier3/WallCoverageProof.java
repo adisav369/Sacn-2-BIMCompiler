@@ -19,7 +19,6 @@ public final class WallCoverageProof {
             return results;
         }
 
-        boolean anyViolation = false;
         int checkedFaces = 0;
 
         for (var roomEntry : rooms.entrySet()) {
@@ -32,12 +31,19 @@ public final class WallCoverageProof {
                     ? (room.maxY() - room.minY())
                     : (room.maxX() - room.minX());
 
-                if (Math.abs(wallLength - expectedLength) > EyesConstants.COVERAGE_TOLERANCE_M + EyesConstants.CONTAINMENT_TOLERANCE_M) {
+                String faceId = "%s_%s".formatted(roomEntry.getKey(), wall.face());
+                double gap = Math.abs(wallLength - expectedLength);
+
+                if (gap > EyesConstants.COVERAGE_TOLERANCE_M + EyesConstants.CONTAINMENT_TOLERANCE_M) {
                     results.add(new ProofResult("P11_WALL_COVERAGE", ProofResult.Status.VIOLATED,
-                        null, "room %s face %s: wall=%.3f expected=%.3f".formatted(
+                        faceId, "room %s face %s: wall=%.3f expected=%.3f".formatted(
                             roomEntry.getKey(), wall.face(), wallLength, expectedLength),
-                        Math.abs(wallLength - expectedLength)));
-                    anyViolation = true;
+                        gap));
+                } else {
+                    results.add(new ProofResult("P11_WALL_COVERAGE", ProofResult.Status.PROVEN,
+                        faceId, "room %s face %s: wall=%.3f covers expected=%.3f".formatted(
+                            roomEntry.getKey(), wall.face(), wallLength, expectedLength),
+                        gap));
                 }
             }
         }
@@ -45,9 +51,6 @@ public final class WallCoverageProof {
         if (checkedFaces == 0) {
             results.add(new ProofResult("P11_WALL_COVERAGE", ProofResult.Status.SKIPPED,
                 null, "no wall-to-room face mappings found", 0));
-        } else if (!anyViolation) {
-            results.add(new ProofResult("P11_WALL_COVERAGE", ProofResult.Status.PROVEN,
-                null, "%d room faces checked, all covered".formatted(checkedFaces), 0));
         }
         return results;
     }

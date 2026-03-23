@@ -892,8 +892,8 @@ weakened or strengthened. A cheating re-seal is visible in the diff history.
 
 ---
 
-**Sealed:** 2026-03-22 (v27: session 54b, WalkThruCompilationTest removed, single compilation path, 73 files)
-**Super-hash:** `e4c7fd17fd9973592f6500fc1a59cd98a8501963dfa8d37157b5439b86a92747`
+**Sealed:** 2026-03-23 (v28: S60-S3+S61, RosettaStoneGateTest G5 diagnostics, DemoHouseCompileTest W-GEN-COMPILE-5, EYES proof deepening, 73 files)
+**Super-hash:** `d30742fc7e74e7f2fc4ed42963a5dbd74ef37914bc7939a518fd79b6015c7ad6`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (DemoHouse, CompileBridge, MEPBOMQuery, RotationContract)
@@ -1103,56 +1103,48 @@ to forge the IFC source files maintained by buildingSMART International.
 
 ---
 
-## Known Limitation: Rosetta Stone Gates Prove Copying, Not Compilation
+## Corrected Understanding: Rosetta Stone Gates Prove Relational Round-Trip
 
-The current Rosetta Stone pipeline for EXTRACTED buildings (SH, DX) is:
+**Previous claim (incorrect):** "The compiler copies world coordinates from the BOM."
 
-```
-IFC file → IfcOpenShell → extraction positions → IFCtoBOM pipeline → {PREFIX}_BOM.db
-                                                      (copies positions)
-{PREFIX}_BOM.db → Compiler → output.db → Gate test: output == extraction?  → YES (always)
-              (copies positions again)
-```
-
-The gate proves the copy pipeline didn't drop rows. It does NOT prove the
-compiler can derive geometry from abstract rules. Getting 55-for-55 with
-matching digests proves data integrity, not compilation correctness.
-
-**True compilation proof requires the GENERATIVE path (Phase E):**
+**Actual architecture (verified S60 post-audit):**
 
 ```
-EXTRACTED (current):     BOM stores dx=0.046, dy=0.503  ← position from IFC
-GENERATIVE (Phase E):    BOM stores role=AGAINST_WALL, wall=NORTH, offset=50mm
-                         Compiler must FIND the wall, COMPUTE the position
-                         Gate checks: computed position matches extraction
+IFC file → IfcOpenShell → world coordinates
+                              ↓
+                    IFCtoBOM DECOMPOSES into relative parent-child offsets
+                              ↓
+                    {PREFIX}_BOM.db stores:
+                      m_bom.origin_x/y/z      (world anchor per assembly)
+                      m_bom_line.dx/dy/dz      (offset from parent to child)
+                              ↓
+                    Compiler RECOMPOSES: walks tree, accumulates
+                      world = building.origin + Σ(parent_origin + line_offset)
+                              ↓
+                    output.db → Gate test: output == extraction?
 ```
 
-The Rosetta Stone concept is sound — the flaw is that the BOM currently
-encodes COORDINATES (the answer) instead of INTENT (the rules). When the
-generative path is implemented, the same gate infrastructure will prove
-actual compilation correctness.
+**The BOM does NOT store world coordinates.** It stores a hierarchy of relative offsets (tack convention §3.4). Example from BA_BOM.db:
 
-**Until then:** The extracted Rosetta Stones prove **no data loss** (necessary)
-but not **correct computation** (sufficient). Document this honestly.
+```
+BUILDING origin:  (-29.64, -14.99, -1.30)   ← world anchor
+FLOOR MAKE line:  dx=32.64, dy=17.99, dz=1.05  ← offset from BUILDING
+kitchen leaf:     dx=4.55, dy=2.5, dz=0.25     ← offset from FLOOR
+```
 
-### Per-Element Source Fidelity Test (generative variant oracle)
+No world coordinate is stored for the kitchen. The compiler derives it: `(-29.64+32.64+0) + 4.55 = 7.55`. This is real computation — decomposition and recomposition are inverse operations, and the gates prove the round-trip is lossless.
 
-For GENERATIVE buildings (no IFC source), the oracle is the **component library + BOM metadata**, tested per-element and per-verb — not by whole-building count.
+**What the gates actually prove:**
+1. The relational decomposition (IFC → parent-child offsets) is faithful
+2. The compiler's tree-walk recomposition is correct
+3. No data is lost through the BOM's relational model
 
-| Check | What It Proves | Oracle Source |
-|-------|---------------|---------------|
-| `geometry_hash` matches M_Product in component_library | PLACE verb picked the right geometry | Library DB |
-| `material_rgba` matches library source | No material corruption during compilation | Library DB |
-| AABB dimensions within `scale_band` on m_bom_line | SCALE verb respected bounds | BOM line metadata |
-| Rotation is valid transform (determinant = ±1) | ROTATE verb produced legal orientation | Mathematical invariant |
-| Storey assignment matches BOM tree depth | Spatial containment preserved | BOM tree structure |
-| Trimmed element AABB ⊆ host element AABB | TRIM verb bounded correctly | Host element geometry |
+**What remains for generative buildings:**
+Generative buildings assemble parts from multiple proven BOMs. Each part's relative offsets were verified by its source Rosetta Stone. The test is: does the assembly preserve those relationships when combining parts into a new hierarchy?
 
-**Why this works:** Each check is a contract between a specific verb and its source. The library and BOM metadata exist for every variant — no IFC needed. Generalizes to all future generative buildings, not just DemoHouse.
+**EYES role:** Reference-free geometric validation (spatial sanity — doors in walls, perimeter closure, roof coverage). Cannot prove correctness against intent, but can catch geometric violations independent of any reference. See [EYES_SRS.md §10](EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
-**Existing pieces:** G5-PROVENANCE (coarse whole-building version), BIM_Designer_SRS.md §11 Geometric Fingerprint (spec), [Geometric Fingerprint §shape ratios](LAST_MILE_PROBLEM.md#geometric-fingerprint--shape-identity-proof-session-44). **Gap:** Wire as per-element, per-verb checks into a reusable test class.
-
-See also: [LAST_MILE_PROBLEM.md §Gap 10](LAST_MILE_PROBLEM.md#gap-10-generative-variant-source-fidelity).
+See also: [LAST_MILE_PROBLEM.md §Relational Round-Trip](LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit).
 
 ---
 

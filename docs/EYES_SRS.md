@@ -700,4 +700,75 @@ lives in DAGCompiler.
 
 ---
 
-*End of EYES_SRS.md — Implementation begins Phase 1 next session.*
+## 10. Audit Finding: Proof Coverage Honesty (S60 post-audit)
+
+Post-S60 audit ([AUDIT_S51_FOCUSED.md §Oracle Independence](AUDIT_S51_FOCUSED.md)) found the 28-proof claim overstates actual per-element coverage:
+
+| Category | Count | Nature |
+|----------|-------|--------|
+| Genuine per-element checks | ~14 | P01-P06, P07-P09, P10, P11 (per-face), P12 (per-room), P15-P18 |
+| Aggregate (single building verdict) | ~8 | P10b, P13, P14, P25-P28 |
+| Conditional (skipped without relational context) | ~6 | P20-P23, P07-P09 when no wall/room data |
+
+S61 update: P11 (WallCoverage) now emits per-room-face results. P12 (RoomHasDoor) now populates element field with room identifier. P16-P18 (WasteGradient, SystemConnected, VentAboveRoof) confirmed per-element.
+
+**FL-2/FL-5 are advisory output** (`W_Validation_Advisory` with `severity='SUGGESTION'`), not gating proofs. Zero pipeline gate impact.
+
+**SpatialDiff** exists in EYES but is not integrated into G3 gate failure reporting.
+
+### EYES Role in 3-Layer Test Architecture
+
+EYES is **Layer 3: reference-free geometric sanity** — independent of both the Rosetta Stone round-trip (Layer 1) and generative assembly verification (Layer 2). EYES catches geometric violations (doors outside walls, open perimeters, missing roofs) that neither layer would detect.
+
+Layer 1 and Layer 2 verification (BOM offset fidelity, library provenance) belong in the **gate tests**, not EYES, because they require BOM + library joins that EYES has no access to.
+
+Two EYES checks support Layer 2: rotation validity (pure math, P-ROT candidate) and spatial containment (P07 already exists). All other Layer 2 checks are gate-test scope.
+
+See [LAST_MILE_PROBLEM.md §Relational Round-Trip](LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit) and [TestArchitecture.md §Corrected Understanding](TestArchitecture.md#corrected-understanding-rosetta-stone-gates-prove-relational-round-trip).
+
+### Mathematical Foundation of EYES Proofs
+
+Each EYES proof is a predicate `P: Element → {PROVEN, VIOLATED, SKIPPED}` over the compiled output database. The proofs are grouped by the mathematical structure they verify.
+
+**Tier 1 — Per-element arithmetic invariants.** These are necessary conditions for any valid physical object. Given an element `e` with axis-aligned bounding box `AABB(e) = [minX, maxX] × [minY, maxY] × [minZ, maxZ]`:
+
+- **P01 (PositiveExtent):** `∀e: maxX-minX > 0 ∧ maxY-minY > 0 ∧ maxZ-minZ > 0` — a physical object occupies positive volume in all three axes.
+- **P02 (FiniteCoords):** `∀e: |minX|, |maxX|, ..., |maxZ| < ∞` — coordinates are finite (rejects NaN, ±∞ from degenerate transforms).
+- **P03 (MinDimension):** `∀e: min(dx, dy, dz) ≥ ε` where `ε = 10mm` — below this, the element is sub-resolution (parametric degeneration).
+- **P04 (StoreyZBand):** `∀e: minZ(e) ∈ [z_storey - δ, z_storey + H + δ]` where `z_storey` is the storey elevation and `H` is storey height — elements must lie within their declared storey's vertical band.
+
+**Tier 2 — Pairwise spatial relations.** These verify topological relationships between elements using AABB containment and intersection predicates.
+
+Let `contains(A, B) ≡ A.minX ≤ B.minX ∧ B.maxX ≤ A.maxX ∧ ...` (all 6 faces).
+Let `overlaps(A, B) ≡ A.minX < B.maxX ∧ B.minX < A.maxX ∧ ...` (all 3 axes).
+
+- **P07 (OpeningContainment):** `∀ opening ∈ {IfcDoor, IfcWindow}: ∃ wall: contains(AABB(wall) ⊕ τ, AABB(opening))` where `⊕ τ` is Minkowski dilation by containment tolerance `τ = 150mm`. A door or window must project within its host wall, within tolerance.
+- **P08 (FurnitureInRoom):** `∀ furniture: ∃ room: contains(AABB(room) ⊕ τ, AABB(furniture))`. Furniture must lie within its assigned room.
+- **P09 (FixtureOnSurface):** `∀ fixture: ∃ wall: |centroid(fixture) - face(wall)| < τ_depth`. Fixtures (outlets, switches) must be surface-mounted on a wall face.
+- **P15 (DuplicatePosition):** `∀ e_i, e_j where class(e_i) = class(e_j): ¬(|centroid(e_i) - centroid(e_j)| < ε)`. No two elements of the same IFC class may occupy the same position (detects copy errors).
+- **P06 (SameClassOverlap):** `∀ e_i, e_j where class(e_i) = class(e_j) ∧ i ≠ j: overlap_volume(e_i, e_j) / min(vol(e_i), vol(e_j)) < 0.5`. Same-class elements must not substantially overlap (≥50% volume intersection is a collision).
+
+**Tier 2 — Wall orientation and roof coverage.** Verified against cardinal geometry:
+
+- **P-ORIENT (WallOrientation):** `∀ wall: aspect_ratio(wall) > 3:1 → orientation(wall) ∈ {NS, EW}` where `NS ≡ dy/dx > 3`, `EW ≡ dx/dy > 3`. Elongated walls must be axis-aligned.
+- **P-ROOF (RoofCoverage):** `∀ room: ∃ roof: projection_XY(AABB(roof)) ⊇ projection_XY(AABB(room)) ⊖ τ`. Every room must have a roof element whose XY projection covers the room footprint.
+
+**Tier 3 — Conservation laws and topological invariants.** These are building-level constraints that cannot be decomposed per-element:
+
+- **P10b (PerimeterClosure):** The exterior wall graph `G = (V, E)` where `V` = wall endpoints and `E` = wall segments forms an **Eulerian cycle**: `∀v ∈ V: deg(v) = 2`. An open perimeter means a gap in the building envelope.
+- **P13 (PerimeterLength):** `|Σ_i length(wall_i) - L_expected| < τ_perim` where `L_expected` is derived from room boundary geometry. Wall lengths must sum to the declared perimeter.
+- **P14 (FloorArea):** `|Σ_j area(slab_j) - Σ_k area(room_k)| / Σ_k area(room_k) < 0.1`. Total slab area must approximate total room area within 10%.
+
+**Tier 3 — Per-room structural completeness:**
+
+- **P11 (WallCoverage):** `∀ room, ∀ face ∈ {N,S,E,W}: ∃ wall: |length(wall ∩ face) - length(face)| < τ_coverage`. Each room face must be covered by a wall segment. Emits one `ProofResult` per room face (S61 update).
+- **P12 (RoomHasDoor):** `∀ room ∉ {utility, porch}: ∃ door ∈ children(room)`. Every habitable room must have at least one door. Emits one `ProofResult` per room with room identifier (S61 update).
+- **P25 (RoomValidity):** `∀ room (IfcSpace): has_walls(room) ∧ has_floor(room) ∧ has_ceiling(room) ∧ has_door(room)`. Composite per-room structural completeness.
+
+**Why EYES cannot prove offset correctness.** EYES operates on the output database only — it has no access to the BOM tables (m_bom, m_bom_line) or the compilation parameters. It can verify that the *result* is geometrically sane (doors in walls, positive extents, no overlaps), but it cannot verify that the result *honours the BOM's declared offsets*. That verification belongs in Layer 2 gate tests (W-GEN-COMPILE-5), which join the BOM and output databases.
+
+**What EYES replaces.** Without EYES, a human must visually inspect every compiled building in a 3D viewer to detect misplaced doors, floating furniture, open perimeters, and missing roofs. EYES automates this inspection with mathematical predicates that are faster, exhaustive, and reproducible. The human viewer becomes a confirmation tool — you open it to see what EYES has already proven, not to find what might be wrong.
+
+---
+
+*End of EYES_SRS.md*

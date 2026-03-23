@@ -43,10 +43,10 @@ public final class RoomHasDoorProof {
 
             if (entry.getValue() >= 1) {
                 results.add(new ProofResult("P12_ROOM_HAS_DOOR", ProofResult.Status.PROVEN,
-                    null, "room %s has %d door(s)".formatted(roomName, entry.getValue()), 0));
+                    roomName, "room %s has %d door(s)".formatted(roomName, entry.getValue()), 0));
             } else {
                 results.add(new ProofResult("P12_ROOM_HAS_DOOR", ProofResult.Status.VIOLATED,
-                    null, "room %s has no doors".formatted(roomName), 0));
+                    roomName, "room %s has no doors".formatted(roomName), 0));
             }
         }
         return results;

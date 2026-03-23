@@ -433,12 +433,19 @@ class RosettaStoneGateTest {
                     int refMissing = queryInt(refConn,
                         "SELECT COUNT(*) FROM elements_meta WHERE material_rgba IS NULL OR material_rgba = ''");
                     if (outMissing > refMissing) {
-                        issues.add(String.format("material_rgba: output missing %d > reference missing %d (lost provenance)",
-                            outMissing, refMissing));
+                        String detail1 = listElements(conn,
+                            "SELECT guid, ifc_class, element_name FROM elements_meta "
+                            + "WHERE material_rgba IS NULL OR material_rgba = ''", 20);
+                        issues.add(String.format("material_rgba: output missing %d > reference missing %d: %s",
+                            outMissing, refMissing, detail1));
                     }
                 }
             } else if (outMissing > 0) {
-                issues.add(String.format("%d/%d elements missing material_rgba", outMissing, totalElements));
+                String detail1 = listElements(conn,
+                    "SELECT guid, ifc_class, element_name FROM elements_meta "
+                    + "WHERE material_rgba IS NULL OR material_rgba = ''", 20);
+                issues.add(String.format("%d/%d elements missing material_rgba: %s",
+                    outMissing, totalElements, detail1));
             }
 
             // Check 2: Every element_instance has a geometry_hash linked to base_geometries
@@ -449,8 +456,14 @@ class RosettaStoneGateTest {
                 + "WHERE NOT EXISTS (SELECT 1 FROM base_geometries bg "
                 + "WHERE bg.geometry_hash = ei.geometry_hash)");
             if (orphanGeom > 0) {
-                issues.add(String.format("%d/%d instances have no base_geometry (invented?)",
-                    orphanGeom, totalInstances));
+                String detail2 = listElements(conn,
+                    "SELECT ei.guid, em.ifc_class, em.element_name "
+                    + "FROM element_instances ei "
+                    + "LEFT JOIN elements_meta em ON ei.guid = em.guid "
+                    + "WHERE NOT EXISTS (SELECT 1 FROM base_geometries bg "
+                    + "WHERE bg.geometry_hash = ei.geometry_hash)", 20);
+                issues.add(String.format("%d/%d instances have no base_geometry: %s",
+                    orphanGeom, totalInstances, detail2));
             }
 
             // Check 3: base_geometries have real mesh (vertex_count >= 4 = at least a tetrahedron)
@@ -468,7 +481,13 @@ class RosettaStoneGateTest {
                 "SELECT COUNT(*) FROM element_instances "
                 + "WHERE geometry_hash IS NULL OR geometry_hash = ''");
             if (nullHash > 0) {
-                issues.add(String.format("%d instances with null/empty geometry_hash", nullHash));
+                String detail4 = listElements(conn,
+                    "SELECT ei.guid, em.ifc_class, em.element_name "
+                    + "FROM element_instances ei "
+                    + "LEFT JOIN elements_meta em ON ei.guid = em.guid "
+                    + "WHERE ei.geometry_hash IS NULL OR ei.geometry_hash = ''", 20);
+                issues.add(String.format("%d instances with null/empty geometry_hash: %s",
+                    nullHash, detail4));
             }
 
             // Check 5: elements_meta.ifc_class is a known IFC class (not invented)
@@ -501,8 +520,13 @@ class RosettaStoneGateTest {
                 "SELECT COUNT(*) FROM element_instances "
                 + "WHERE geometry_hash LIKE 'GEO_%'");
             if (geoFallback > 0) {
-                issues.add(String.format("%d/%d instances use parametric BBox fallback (GEO_ hash, not library mesh)",
-                    geoFallback, totalInstances));
+                String detail6 = listElements(conn,
+                    "SELECT ei.guid, em.ifc_class, em.element_name "
+                    + "FROM element_instances ei "
+                    + "LEFT JOIN elements_meta em ON ei.guid = em.guid "
+                    + "WHERE ei.geometry_hash LIKE 'GEO_%'", 20);
+                issues.add(String.format("%d/%d instances use parametric BBox fallback (GEO_): %s",
+                    geoFallback, totalInstances, detail6));
             }
 
             // Check 7: surface_styles populated when materials exist —
@@ -647,6 +671,23 @@ class RosettaStoneGateTest {
              ResultSet rs = st.executeQuery(sql)) {
             return rs.next() ? rs.getInt(1) : 0;
         }
+    }
+
+    /** List up to {@code limit} elements from a query returning (guid, ifc_class, element_name). */
+    private static String listElements(Connection conn, String sql, int limit) throws SQLException {
+        List<String> items = new ArrayList<>();
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql + " LIMIT " + limit)) {
+            while (rs.next()) {
+                String guid = rs.getString(1);
+                String cls = rs.getString(2);
+                String name = rs.getString(3);
+                items.add("%s(%s)".formatted(
+                    cls != null ? cls : "?",
+                    name != null ? name : (guid != null ? guid.substring(0, Math.min(8, guid.length())) : "?")));
+            }
+        }
+        return "[" + String.join(", ", items) + "]";
     }
 
     // =====================================================================
