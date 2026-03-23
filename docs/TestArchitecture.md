@@ -821,7 +821,11 @@ requires a triage pass to suppress false positives so the signal stays clean.
 
 ### Status
 
-- **2026-03-24:** Initial scan — SpotBugs + PMD run against full reactor. Awaiting audit review before triage.
+- **2026-03-24:** Initial scan — SpotBugs + PMD run against full reactor.
+- **2026-03-24:** Audit assessment:
+  - **FIXED:** 2 BIMLogger default encoding bugs (SpotBugs HIGH) — `FileWriter` now explicit UTF-8
+  - **Fix before Step 4:** 36 unchecked ResultSets in IFCtoBOM + BIM_COBOL (silent data corruption risk)
+  - **Deferred:** 469 remaining PMD violations (cleanup session)
 
 ### Baseline Scan Results (2026-03-24)
 

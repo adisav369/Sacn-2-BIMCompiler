@@ -1,6 +1,7 @@
 package com.bim.orm;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -73,7 +74,7 @@ public class BIMLogger {
         try {
             Files.createDirectories(logDir);
             logFilePath = logDir.resolve(filename).toString();
-            logFile = new PrintWriter(new FileWriter(logFilePath, false));
+            logFile = new PrintWriter(new FileWriter(logFilePath, StandardCharsets.UTF_8, false));
             logFile.println("# BIM Compiler Pipeline Log");
             logFile.printf("# Run:   %s%n", tag);
             logFile.printf("# Start: %s%n", LocalDateTime.now().format(TIME_FMT));
@@ -93,7 +94,7 @@ public class BIMLogger {
         currentLevel = level;
         logFilePath = logPath;
         try {
-            logFile = new PrintWriter(new FileWriter(logPath, true));
+            logFile = new PrintWriter(new FileWriter(logPath, StandardCharsets.UTF_8, true));
         } catch (IOException e) {
             System.err.println("[BIMLogger] Could not open log file: " + logPath);
         }
