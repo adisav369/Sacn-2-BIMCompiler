@@ -866,6 +866,8 @@ Same mechanism as "Show in Bonsai" but triggered by the Complete button:
 - `GET /events` → SSE stream (selectionChanged, compileComplete, schemeApplied)
 
 **Standalone operation:** `./scripts/run_webui.sh` starts the server. No Bonsai needed.
+If port 9878 is already in use (stale instance), the script warns and exits — no duplicate
+server, no extra browser tab. Browser opens only after server confirms startup.
 User opens http://localhost:9878, selects a building, and works with BOM/schedule/cost data.
 
 **Global search:** Header search bar routes to NLP Query (questions) or Product Catalog (keywords).

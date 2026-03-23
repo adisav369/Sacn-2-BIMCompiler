@@ -2967,6 +2967,10 @@ WebSocket browser compatibility issues and is simpler to debug/proxy/firewall.
 selects building, configures BOM, compiles — all without Bonsai. Bonsai is optional
 (viewport only — receives `COMPILE_COMPLETE` via TCP/NDJSON on port 9876).
 
+**Startup guard:** `run_webui.sh` checks if port 9878 is already in use before starting.
+If occupied (stale instance), warns and exits — prevents duplicate servers and unwanted
+browser tabs. Browser only opens after server confirms startup on the port.
+
 ### 29.2 HTTP API Protocol
 
 ```
@@ -3463,6 +3467,11 @@ The category constrains the swap list.
 
 **Success criteria:** DemoHouse compiles with FP elements placed by rules,
 not hardcoded. Each room gets sprinklers per ad_space_type_mep_bom schedule.
+
+**S63 findings (Task 4A):**
+- DemoHouseCompileTest needs `FP_PIPE_ASSEMBLY` BOM + `m_attribute` seed (spacing, z_offset, diameter) — BuildingWriter calls `BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY","MAIN")` when FireProtectionResolver detects sprinklers. Without it the compile fails.
+- FP elements currently resolve as discipline='MEP' (IFC class fallback: IfcFireSuppressionTerminal → MEP_TERMINAL → MEP). Finer FP discipline requires either: (a) FP-specific SET BOMs with `bom_category='FP'`, or (b) the addDiscipline API setting `C_OrderLine.Discipline='FPR'` explicitly — which is the Task 4B DocEvent path above.
+- `m_bom.bom_type` CHECK constraint is `('BUILDING','FLOOR','ROOM','SET','ITEM')` — no 'ASSEMBLY'. FP pipe assemblies should use 'SET'.
 
 #### 30.7.5 Two Browsing Modes — ARC vs MEP
 
