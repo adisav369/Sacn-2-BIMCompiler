@@ -79,13 +79,11 @@ A product catalog (`M_Product`) becomes building elements. A Bill of Materials (
 ## The Rosetta Stone Strategy
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
-  <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex compiled in Blender — 48,428 elements" width="480">
-  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">The Terminal — 48,428 elements, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
+  <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">48,428 elements. 8 disciplines. Compiled from BOM.</figcaption>
 </figure>
 
-Real buildings become reference databases. The compiler reads a BOM describing the same building and produces output. If every element lands at the **same position** as the reference, the BOM grammar is **certified** — and any new building composed from certified grammar inherits the proof.
-
-**35 buildings compiled.** From a 55-element house to a 48,428-element airport terminal. 19 pass all 6 gates. [:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
+Compile a building from its BOM. If every element lands at the same position as the reference, the grammar is certified. **35 buildings proven.** [:octicons-arrow-right-24: How it works](TheRosettaStoneStrategy.md)
 
 <div style="clear: right;"></div>
 
