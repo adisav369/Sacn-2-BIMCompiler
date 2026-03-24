@@ -90,7 +90,7 @@
 -- IfcFooting               STR         4   
 -- IfcBuildingElementProxy  ARC         2   
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcRailing_Unknown (2066 instances, avg 117.0x25.0x1113.0 mm)

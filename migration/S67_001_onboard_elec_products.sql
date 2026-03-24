@@ -1,7 +1,7 @@
 -- S67_001_onboard_elec_products.sql
--- Per TE extraction: 2 ELEC products onboarded to disc_validation.db M_Product
+-- Per TE extraction: 2 ELEC products onboarded to ERP.db M_Product
 --
--- Onboards 2 ELEC products from TE extraction into disc_validation.db M_Product.
+-- Onboards 2 ELEC products from TE extraction into ERP.db M_Product.
 -- Geometry already exists in component_library.db component_definitions.
 -- Same pattern as S62 FP onboarding (S62_001_product_category_fp.sql Step 6).
 --

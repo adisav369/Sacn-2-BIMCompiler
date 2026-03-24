@@ -1,5 +1,5 @@
 -- DV012_validation_advisory.sql
--- Creates W_Validation_Advisory table in disc_validation.db
+-- Creates W_Validation_Advisory table in ERP.db
 -- Purpose: Flywheel advisory output — surfaces dimension outliers and profile
 -- anomalies to the BIM Designer panel for user review.
 -- APPEND-ONLY: never modify this migration after first run

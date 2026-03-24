@@ -18,7 +18,7 @@
 -- §4: IFC class inventory
 
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 

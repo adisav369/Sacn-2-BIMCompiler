@@ -49,13 +49,13 @@ class CalibrationTest {
     static final Path TE_REF_DB = Path.of("DAGCompiler/lib/input/SJTII_Terminal_extracted.db");
     static final Path VALIDATION_DB = Path.of("library/validation.db");
     static final Path COMPONENT_DB = Path.of("library/component_library.db");
-    static final Path DISC_DB = Path.of("library/disc_validation.db");
+    static final Path DISC_DB = Path.of("library/ERP.db");
 
     static Connection bomConn;
     static Connection teConn;
     static Connection valConn;
     static Connection compConn;
-    /** Phase 2: discipline metadata from disc_validation.db, falls back to compConn. */
+    /** Phase 2: discipline metadata from ERP.db, falls back to compConn. */
     static Connection discConn;
     static CalibrationDAO dao;
 
@@ -108,7 +108,7 @@ class CalibrationTest {
             compConn = DriverManager.getConnection("jdbc:sqlite:" + COMPONENT_DB);
         }
 
-        // Phase 2: prefer disc_validation.db for discipline metadata, fallback to compConn
+        // Phase 2: prefer ERP.db for discipline metadata, fallback to compConn
         if (Files.exists(DISC_DB)) {
             discConn = DriverManager.getConnection("jdbc:sqlite:" + DISC_DB);
         }
@@ -404,7 +404,7 @@ class CalibrationTest {
             // DocEvent prediction
             int docEventQty;
             double docEventDensity;
-            // Phase 2: prefer disc_validation.db, fallback to component_library.db
+            // Phase 2: prefer ERP.db, fallback to component_library.db
             Connection metaConn = discConn != null ? discConn : compConn;
             if (metaConn != null) {
                 docEventQty = dao.docEventQty(metaConn, mepProduct, floorAreaM2);

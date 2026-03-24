@@ -32,7 +32,7 @@
 -- IfcChimney               ARC         1  
 -- IfcFooting               STR         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcBeam_Unknown (6 instances, avg 193.0x4117.0x210.0 mm)

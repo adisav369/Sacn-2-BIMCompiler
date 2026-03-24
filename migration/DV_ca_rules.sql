@@ -50,7 +50,7 @@
 -- IfcWindow             ARC         58  
 -- IfcRailing            STR         9   
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWall_First_Floor (656 instances, avg 1363.0x1296.0x4082.0 mm)

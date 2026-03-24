@@ -42,7 +42,7 @@ def c(color, text):
 
 def load_library_state(project_dir):
     comp_db = project_dir / "library" / "component_library.db"
-    disc_db = project_dir / "library" / "disc_validation.db"
+    disc_db = project_dir / "library" / "ERP.db"
 
     existing_classes = set()
     registered_classes = set()

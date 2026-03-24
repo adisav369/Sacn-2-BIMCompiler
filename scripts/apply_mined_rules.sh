@@ -1,15 +1,15 @@
 #!/bin/bash
 # apply_mined_rules.sh — Uncomment and apply all DV_*_rules.sql candidate rules
-# to disc_validation.db ad_val_rule + ad_val_rule_param tables.
+# to ERP.db ad_val_rule + ad_val_rule_param tables.
 #
 # Usage: ./scripts/apply_mined_rules.sh [--dry-run]
 #
 # Reads 22 DV_*_rules.sql files from migration/, strips "-- " comment prefix
-# from INSERT statements in §5, and applies them to disc_validation.db.
+# from INSERT statements in §5, and applies them to ERP.db.
 
 set -euo pipefail
 
-DB="library/disc_validation.db"
+DB="library/ERP.db"
 MIGRATION_DIR="migration"
 DRY_RUN=0
 

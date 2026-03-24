@@ -283,7 +283,7 @@ public interface DesignerAPI extends AssemblyAPI {
 
     /**
      * List advisories for a building from the flywheel validation pool.
-     * Reads W_Validation_Advisory from disc_validation.db.
+     * Reads W_Validation_Advisory from ERP.db.
      *
      * // Implementing BIM_Designer_SRS.md §27 — Witness: W-FL-ADVISORY-1
      */

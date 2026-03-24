@@ -158,9 +158,9 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
       <div class="lbl">material_layers<br>thermal props</div>
     </div>
 
-    <!-- disc_validation.db -->
+    <!-- ERP.db -->
     <div class="db-box disc">
-      <div class="db-title">disc_validation.db</div>
+      <div class="db-title">ERP.db</div>
       <div class="db-sub">Discipline Validation Rules + Calibration</div>
       <div class="tbl" onclick="showDetail('dv_element_mep')">ad_element_mep</div>
       <div class="tbl" onclick="showDetail('dv_space_mep_bom')">ad_space_type_mep_bom</div>
@@ -231,7 +231,7 @@ code { background: #0f172a; border: 1px solid #334155; border-radius: 4px; paddi
     <span style="font-size:0.8rem;color:#64748b;line-height:1.8;">
       See <code>docs/DATA_MODEL.md</code> for full cross-database relationship mapping.<br>
       Key chain: <code style="color:#60a5fa;">m_bom_line.child_product_id</code> → <code style="color:#60a5fa;">M_Product</code> → <code style="color:#fbbf24;">M_Product_Image [geometry_hash]</code> → <code style="color:#4ade80;">component_geometries [mesh BLOB]</code><br>
-      4 databases: <span style="color:#fbbf24;">component_library.db</span> (geometry), <span style="color:#f59e0b;">disc_validation.db</span> (rules), <span style="color:#60a5fa;">{PREFIX}_BOM.db</span> (dictionary), <span style="color:#4ade80;">output.db</span> (orders + compiled result).
+      4 databases: <span style="color:#fbbf24;">component_library.db</span> (geometry), <span style="color:#f59e0b;">ERP.db</span> (rules), <span style="color:#60a5fa;">{PREFIX}_BOM.db</span> (dictionary), <span style="color:#4ade80;">output.db</span> (orders + compiled result).
     </span>
   </div>
 </div>
@@ -717,7 +717,7 @@ const details = {
   dv_space_type:'<span class="key">ad_space_type</span> — space type definitions and constraints.<br>Holds: <span class="val">space_type</span>, <span class="val">min/max_area_m2</span>, <span class="val">min_height_mm</span>, <span class="val">ventilation_req</span>.<br><span class="note">Defines what constitutes a valid BEDROOM, BATHROOM, KITCHEN etc. Used by discipline validation.</span>',
   dv_asm_manifest:'<span class="key">ad_assembly_manifest</span> — assembly validation manifests.<br>Holds: <span class="val">assembly_type</span>, <span class="val">required_components</span>, <span class="val">min_count</span>, <span class="val">validation_rule</span>.<br><span class="note">Ensures assemblies contain all required sub-components before compilation proceeds.</span>',
   dv_wall_face:'<span class="key">ad_wall_face</span> — wall face classification for placement.<br>Holds: <span class="val">wall_id</span>, <span class="val">face_direction</span> (N/S/E/W), <span class="val">surface_area_m2</span>, <span class="val">has_opening</span>.<br><span class="note">Used by placement_rules to determine which wall face receives mounted elements (cabinets, fixtures).</span>',
-  dv_place_rules:'<span class="key">placement_rules</span> (disc_validation copy) — discipline-specific placement constraints.<br>Holds: <span class="val">discipline</span>, <span class="val">ifc_class</span>, <span class="val">host_type</span>, <span class="val">clearance_mm</span>, <span class="val">grid_spacing_mm</span>.<br><span class="note">Validation-side placement rules. Checked against compiled output to verify code compliance.</span>',
+  dv_place_rules:'<span class="key">placement_rules</span> (ERP copy) — discipline-specific placement constraints.<br>Holds: <span class="val">discipline</span>, <span class="val">ifc_class</span>, <span class="val">host_type</span>, <span class="val">clearance_mm</span>, <span class="val">grid_spacing_mm</span>.<br><span class="note">Validation-side placement rules. Checked against compiled output to verify code compliance.</span>',
   dv_sysconfig:'<span class="key">AD_SysConfig</span> — system configuration key-value pairs for validation.<br>Holds: <span class="val">Name</span> (config key), <span class="val">Value</span>, <span class="val">Description</span>.<br><span class="note">Thresholds, tolerances, and feature flags for discipline validation (e.g. MAX_SPRINKLER_SPACING=4600).</span>',
   dv_cal_result:'<span class="key">W_Calibration_Result</span> — calibration test results and witness data.<br>Holds: <span class="val">test_name</span>, <span class="val">expected</span>, <span class="val">actual</span>, <span class="val">pass_fail</span>, <span class="val">timestamp</span>.<br><span class="note">Records calibration runs. W_ prefix = iDempiere workbench/temporary table convention.</span>',
   bom_line_ma: '<span class="key">m_bom_line_ma</span> — BOM line material attributes (many-to-many).<br>Holds: <span class="val">bom_line_id</span> (FK to m_bom_line), <span class="val">M_AttributeSetInstance_ID</span>, <span class="val">material_name</span>, <span class="val">qty</span>.<br><span class="note">Attaches specific material instances to BOM lines. Supports multi-material leaves (e.g. composite wall layers).</span>',

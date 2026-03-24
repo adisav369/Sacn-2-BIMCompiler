@@ -70,7 +70,7 @@ validation.db — RULES + VERDICTS (compliance engine)
 | Database | Concern | Opened By | Read/Write | Size |
 |----------|---------|-----------|------------|------|
 | `component_library.db` | Product LOD (geometry, dimensions) | Compile pipeline, Designer LOD fetch | Read-only at runtime | ~5 MB (23K geometries) |
-| `disc_validation.db` | Discipline metadata (schedules, types, connectors) | DocEvent engine, CalibrationTest | Read at runtime, write at seed/migrate | ~50 KB (5K rows) |
+| `ERP.db` | Discipline metadata (schedules, types, connectors) | DocEvent engine, CalibrationTest | Read at runtime, write at seed/migrate | ~50 KB (5K rows) |
 | `validation.db` | Compliance rules + verdicts | PlacementValidator, InferenceEngine | Read rules, write results | ~20 KB |
 
 ### 2.2 Reference Pointers — No LOD Copies
@@ -79,7 +79,7 @@ DiscValidation.db references component_library.db products by **name**, not
 by FK or by copying LOD data:
 
 ```
-disc_validation.db                          component_library.db
+ERP.db                          component_library.db
 ┌─────────────────────────┐                ┌──────────────────────┐
 │ ad_element_mep          │                │ M_Product            │
 │   element_type: SPRINKLER──── name ────▶│   name: SPRINKLER    │
@@ -104,18 +104,18 @@ disc_validation.db                          component_library.db
 
 **The join is at runtime, in Java**, not via SQL FK. When DocEvent places a
 SPRINKLER, it:
-1. Reads discipline metadata from `disc_validation.db` (how many, where)
+1. Reads discipline metadata from `ERP.db` (how many, where)
 2. Reads product dimensions + LOD from `component_library.db` (what it looks like)
 3. The link is `ad_element_mep.element_type` = `ad_space_type_mep_bom.mep_product_id`
    → at LOD fetch time, resolves to `M_Product` via alias cascade (§5.1)
 
-**No geometry in disc_validation.db. No discipline metadata in component_library.db.**
+**No geometry in ERP.db. No discipline metadata in component_library.db.**
 
 ---
 
 ## 3. Tables — What Moves, What Stays, What's New
 
-### 3.1 Tables Moving FROM component_library.db TO disc_validation.db
+### 3.1 Tables Moving FROM component_library.db TO ERP.db
 
 | Table | Rows | Why It Moves |
 |-------|------|-------------|
@@ -162,7 +162,7 @@ SPRINKLER, it:
 | `AD_Val_Rule_Mining_Source` | ~15 | Mining provenance |
 | `AD_Validation_Result` | writes | Runtime validation results |
 
-### 3.4 NEW Tables in disc_validation.db
+### 3.4 NEW Tables in ERP.db
 
 | Table | Purpose | Source |
 |-------|---------|--------|
@@ -173,9 +173,9 @@ SPRINKLER, it:
 
 ---
 
-## 4. Schema — disc_validation.db
+## 4. Schema — ERP.db
 
-**Authoritative schema:** `migration/DV001_disc_validation_schema.sql` (DDL),
+**Authoritative schema:** `migration/DV001_ERP_schema.sql` (DDL),
 `migration/DV003_element_mep_alias.sql` (alias cascade).
 Schemas match the actual column layout in component_library.db source tables.
 
@@ -214,10 +214,10 @@ Schemas match the actual column layout in component_library.db source tables.
 SQLite does not support cross-database foreign keys. The reference is by
 **name convention** — same pattern as iDempiere's `AD_Reference` lookups:
 
-| disc_validation.db column | Resolves to | Resolution method |
+| ERP.db column | Resolves to | Resolution method |
 |--------------------------|-------------|-------------------|
 | `ad_element_mep.element_type` | `M_Product` by alias cascade | Java: try ifc_class → predefined_type → type_class → element_name LIKE |
-| `ad_space_type_mep_bom.mep_product_id` | `ad_element_mep.element_type` | SQL within disc_validation.db (same DB) |
+| `ad_space_type_mep_bom.mep_product_id` | `ad_element_mep.element_type` | SQL within ERP.db (same DB) |
 | `ad_assembly_connector.assembly_id` | `M_Product.name` | Java: `SELECT * FROM M_Product WHERE name = ?` |
 | `placement_rules.element_name` | `M_Product.name` or `m_bom.bom_id` | Java: lookup by name |
 
@@ -263,10 +263,10 @@ String resolve(String ifcClass, String predefinedType, String typeClass, String 
 it needs:
 
 ```java
-// DocEvent placement: reads disc_validation.db + component_library.db
+// DocEvent placement: reads ERP.db + component_library.db
 void placeElements(Connection discConn, Connection compConn, ...)
 
-// Calibration: reads disc_validation.db + validation.db + TE reference DB
+// Calibration: reads ERP.db + validation.db + TE reference DB
 void calibrate(Connection discConn, Connection valConn, Connection teConn, ...)
 
 // LOD fetch: reads component_library.db only
@@ -280,7 +280,7 @@ CATEGORY_MAP, ATTACHMENT_MAP). Adding a new IFC element type required editing Py
 Infrastructure IFC4X3 brought 11 new types (IfcTrackElement, IfcCourse, etc.) and more
 will appear as new IFC domains are encountered.
 
-**Solution:** Authority table `ad_ifc_class_map` in disc_validation.db. `extract.py`
+**Solution:** Authority table `ad_ifc_class_map` in ERP.db. `extract.py`
 reads this table at startup and populates all 4 maps from it. Falls back to hardcoded
 defaults if DB is unavailable.
 
@@ -326,8 +326,8 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 
 ## 6. Migration Plan — Phased, Non-Destructive
 
-### Phase 1: Create disc_validation.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)
-1. `DV001_disc_validation_schema.sql` — 19 tables matching component_library.db schemas
+### Phase 1: Create ERP.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)
+1. `DV001_ERP_schema.sql` — 19 tables matching component_library.db schemas
 2. `DV002_seed_from_component.sql` — ATTACH + INSERT OR IGNORE (17 tables, 5613 rows)
 3. `DV003_element_mep_alias.sql` — IFC version-agnostic alias cascade (84 rows)
 4. `DV005_ifc_class_map.sql` — IFC class extraction authority (46 rows, building + infra)
@@ -336,7 +336,7 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 ### Phase 2–3: COMPLETE (sessions 36b–41)
 
 All discipline metadata migrated. Java code (CalibrationDAO, MEPAD, MEPBOMResolver,
-ManifestResolver) reads from disc_validation.db. component_library.db reduced from
+ManifestResolver) reads from ERP.db. component_library.db reduced from
 81→21 tables. See [`database/DATABASE_SCHEMA.md`](../database/DATABASE_SCHEMA.md)
 for the current table inventory.
 
@@ -348,17 +348,17 @@ for the current table inventory.
 ```
 CompilationPipeline     → component_library.db (LOD only — 21 tables)
 PlacementValidator      → validation.db (rules)
-CalibrationDAO          → disc_validation.db + validation.db + TE_BOM.db
-MEPAD/MEPBOMResolver    → disc_validation.db (discipline metadata)
-ManifestResolver        → disc_validation.db (discipline metadata)
-DocEvent (future)       → disc_validation.db (schedules) + component_library.db (LOD fetch)
-Handler cascade H1-H6  → disc_validation.db (connectors, schedules) + validation.db (rules)
+CalibrationDAO          → ERP.db + validation.db + TE_BOM.db
+MEPAD/MEPBOMResolver    → ERP.db (discipline metadata)
+ManifestResolver        → ERP.db (discipline metadata)
+DocEvent (future)       → ERP.db (schedules) + component_library.db (LOD fetch)
+Handler cascade H1-H6  → ERP.db (connectors, schedules) + validation.db (rules)
 ```
 
 ### Connection parameter naming convention
 ```java
 Connection compConn;   // component_library.db — LOD catalog
-Connection discConn;   // disc_validation.db   — discipline metadata
+Connection discConn;   // ERP.db   — discipline metadata
 Connection valConn;    // validation.db         — compliance rules
 Connection bomConn;    // {prefix}_BOM.db       — building BOM
 Connection workConn;   // work_output.db        — design workspace
@@ -372,7 +372,7 @@ Connection teConn;     // TE reference DB       — Terminal oracle (tests only)
 ```
 library/
 ├── component_library.db     ← LOD catalog (M_Product, geometries)
-├── disc_validation.db       ← NEW: discipline metadata (schedules, types, connectors)
+├── ERP.db       ← NEW: discipline metadata (schedules, types, connectors)
 ├── validation.db            ← compliance rules (AD_Val_Rule)
 ├── work_*.db                ← per-building design workspaces
 ├── SH_BOM.db                ← Sample House BOM
@@ -380,7 +380,7 @@ library/
 └── TE_BOM.db                ← Terminal BOM
 
 migration/
-├── DV001_disc_validation_schema.sql    ← schema DDL (19 tables)
+├── DV001_ERP_schema.sql    ← schema DDL (19 tables)
 ├── DV002_seed_from_component.sql       ← seed via ATTACH (17 tables)
 ├── DV003_element_mep_alias.sql         ← IFC alias cascade (84 rows)
 ├── V001..V006                          ← validation.db migrations
@@ -430,11 +430,11 @@ Geometry is an attachment, not co-located. Mixing them means:
 ### 10.2 Options
 
 **Option A: Split component_library.db** — Move M_Product, M_Product_Category, and
-all 34 AD tables to disc_validation.db (renamed to `ad_dictionary.db`). Keep
+all 34 AD tables to ERP.db (renamed to `ad_dictionary.db`). Keep
 component_library.db as pure geometry (component_definitions + component_geometries +
 surface_styles + material_layers). The runtime join by name (§2.2) already supports this.
 
-**Option B: Expand disc_validation.db** — Same as A but keep the disc_validation.db name.
+**Option B: Expand ERP.db** — Same as A but keep the ERP.db name.
 Add M_Product + M_Product_Category there. component_library.db becomes geometry-only.
 
 **Option C: Keep current split, fix the guard** — Leave M_Product in component_library.db
@@ -485,7 +485,7 @@ product catalogs — all from a single FK.
 
 ### 10.5 Investigation Tasks
 
-1. Count Java files that read M_Product from component_library.db vs disc_validation.db
+1. Count Java files that read M_Product from component_library.db vs ERP.db
 2. Count Java files that read component_definitions from component_library.db
 3. Map the M_Product→component_definitions join path (is it by name? by FK?)
 4. Check if BOM databases carry their own M_Product (TE_BOM.db has M_Product with
@@ -514,7 +514,7 @@ product catalogs — all from a single FK.
 | `conn` (PO layer) | any DB with M_Product | ~12 | MProduct.java, X_MProduct.java, X_M_BOM.java, X_M_BOMLine.java |
 | Test files | mixed | ~45 | DataIntegrityTest, MetadataIntegrityTest, DiscValidationDBTest, Tier1Test, etc. |
 
-**Key finding:** Zero files read M_Product from disc_validation.db. The discipline DB has no
+**Key finding:** Zero files read M_Product from ERP.db. The discipline DB has no
 M_Product table. All master product reads go through component_library.db (compConn).
 
 **Column read patterns by purpose:**
@@ -645,8 +645,8 @@ ELEC (1172), SP (979), LPG (209).
 | m_bom.bom_category | BOM DB | TEXT | 'RF', 'STR', 'FP', 'MEP' | YES (proxy for discipline) |
 | AD_Val_Rule.discipline | validation.db | TEXT nullable | 'FPR', 'ELC', 'PLB' | YES |
 | AD_Clash_Rule.discipline_a/b | validation.db | TEXT NOT NULL | 'ELC' vs 'PLB' | YES |
-| ad_ifc_class_map.discipline | disc_validation.db | TEXT | 'ARC','STR','FP','ELEC','ACMV' etc. | YES |
-| ad_element_mep.discipline | disc_validation.db | TEXT | 'FP','ELEC','ACMV','CW','SP' | YES |
+| ad_ifc_class_map.discipline | ERP.db | TEXT | 'ARC','STR','FP','ELEC','ACMV' etc. | YES |
+| ad_element_mep.discipline | ERP.db | TEXT | 'FP','ELEC','ACMV','CW','SP' | YES |
 | bad_discipline_priority.higher/lower | component_library.db | TEXT NOT NULL | Priority pairs | YES |
 
 **Java code patterns:**
@@ -691,7 +691,7 @@ component_library.db  — WHAT things look like (geometry-only, 7 tables)
 ├── I_Geometry_Map            (extraction geometry mapping)
 └── M_Product_Image           (product → geometry_hash link)
 
-disc_validation.db  — WHERE things go + WHO owns them (AD Dictionary, ~30 tables)
+ERP.db  — WHERE things go + WHO owns them (AD Dictionary, ~30 tables)
 ├── AD_Org                    (NEW: discipline org units — 10 rows)
 ├── AD_Org_Type               (NEW: org type enum — DISCIPLINE, SHARED)
 ├── M_Product                 (MOVED: product master data — 2,472 rows)
@@ -704,7 +704,7 @@ disc_validation.db  — WHERE things go + WHO owns them (AD Dictionary, ~30 tabl
 ├── placement_rules           (existing: 4,801 rules)
 ├── ad_wall_face              (existing: 204 faces)
 ├── component_types           (SHARED: discipline column → AD_Org_ID)
-├── ... (remaining 15+ AD tables already in disc_validation.db)
+├── ... (remaining 15+ AD tables already in ERP.db)
 ├── bad_discipline_priority   (MOVED from component_library.db)
 └── AD_SysConfig              (existing: version tracking)
 
@@ -743,7 +743,7 @@ INSERT INTO AD_Org (AD_Org_ID, Value, Name, AD_Org_Type, element_count) VALUES
     (9,  'REB',  'Reinforcement',       'DISCIPLINE', 2660);
 ```
 
-**Placement:** AD_Org lives in disc_validation.db (the AD Dictionary). All databases
+**Placement:** AD_Org lives in ERP.db (the AD Dictionary). All databases
 reference it by `AD_Org_ID` (integer FK) or `Value` (text lookup for human-readable
 contexts). Same pattern as iDempiere: AD_Org is a central lookup table.
 
@@ -756,8 +756,8 @@ contexts). Same pattern as iDempiere: AD_Org is a central lookup table.
 | `component_types.discipline` = 'FP' | component_library.db | `component_types.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
 | `AD_Val_Rule.discipline` = 'FPR' | validation.db | `AD_Val_Rule.AD_Org_ID` = 3 | ALTER + UPDATE (unify codes) |
 | `AD_Clash_Rule.discipline_a` = 'ELC' | validation.db | `AD_Clash_Rule.AD_Org_A_ID` = 4 | ALTER + UPDATE |
-| `ad_ifc_class_map.discipline` = 'FP' | disc_validation.db | `ad_ifc_class_map.AD_Org_ID` = 3 | ALTER + UPDATE |
-| `ad_element_mep.discipline` = 'FP' | disc_validation.db | `ad_element_mep.AD_Org_ID` = 3 | ALTER + UPDATE |
+| `ad_ifc_class_map.discipline` = 'FP' | ERP.db | `ad_ifc_class_map.AD_Org_ID` = 3 | ALTER + UPDATE |
+| `ad_element_mep.discipline` = 'FP' | ERP.db | `ad_element_mep.AD_Org_ID` = 3 | ALTER + UPDATE |
 | `bad_discipline_priority.higher_discipline` | component_library.db | `bad_discipline_priority.higher_AD_Org_ID` | MOVE table + ALTER |
 
 **Bonus: unifies the code inconsistency.** 'FPR' (validation.db) and 'FP' (everywhere
@@ -809,7 +809,7 @@ validation scoping, and BOM filtering — all from standard iDempiere patterns.
 | Discipline.java enum: add AD_Org_ID field | 1 | LOW |
 | SustainabilityDAO/FacilityMgmtDAO: GROUP BY AD_Org_ID | 2 | LOW |
 | BackOffice DAOs: compConn M_Product → discConn M_Product | 4 | MED — connection param change |
-| ProductRegistrar: write M_Product to disc_validation.db | 1 | MED — target DB change |
+| ProductRegistrar: write M_Product to ERP.db | 1 | MED — target DB change |
 | MProduct.get(): accept discConn instead of compConn | 1 | LOW — param type same |
 | ComponentLibrary: no change (reads component_definitions only) | 0 | NONE |
 | MeshBinder: no change (resolves via M_Product_Image → geometry) | 0 | NONE |
@@ -824,7 +824,7 @@ grep for exact numbers before starting (audit concern #1, #2).
 - DROP: ad_bom, ad_bom_child, ad_bom_child_param, ad_product_dim from component_library.db
 - Net: −4 tables, zero code impact (unused per Known Debt audit)
 
-**Step 1: Create AD_Org in disc_validation.db**
+**Step 1: Create AD_Org in ERP.db**
 - DDL: AD_Org table + seed 10 rows (0='*', 1–9=disciplines)
 - Migration: `DV013_ad_org.sql` (DV011/DV012 already taken — audit concern #4)
 - Gate: DiscValidationDBTest adds W-DV-DB-ORG witness
@@ -837,19 +837,19 @@ grep for exact numbers before starting (audit concern #1, #2).
 - Migration: `DV014_ad_org_columns.sql`
 - Gate: dual-column reads pass, no code changes yet
 
-**Step 3: Move M_Product + M_Product_Category to disc_validation.db** ⚠️ HIGH RISK — **DONE (S65)**
+**Step 3: Move M_Product + M_Product_Category to ERP.db** ⚠️ HIGH RISK — **DONE (S65)**
 - Migration: `DV015_move_m_product.sql` — ATTACH + INSERT OR IGNORE. 2,475 M_Product + 46 M_Product_Category rows.
-- Java: 13 files changed. All compConn/compLibConn M_Product reads → disc_validation.db.
+- Java: 13 files changed. All compConn/compLibConn M_Product reads → ERP.db.
   ProductRegistrar dual-writes (compConn for geometry join + discConn for master catalog).
   BOMWalker, OrderLineWalker, PlacementLoader, BuildingWriter, 3 BIM_COBOL verbs,
-  BackOfficeServer, DesignerAPIImpl — all read M_Product from disc_validation.db.
+  BackOfficeServer, DesignerAPIImpl — all read M_Product from ERP.db.
 - M_Product_Image stays in component_library.db (geometry link intact).
 - component_library.db M_Product NOT deleted (Step 6).
 - Gate: SH 7/7, FK 7/7 PASS. DiscValidationDBTest 27/27 GREEN (+3 product witnesses).
 
 **Step 4: Move remaining AD tables from component_library.db**
-- bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param → disc_validation.db
-- Remove 15 duplicate tables from component_library.db (already in disc_validation.db)
+- bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param → ERP.db
+- Remove 15 duplicate tables from component_library.db (already in ERP.db)
 - Net: component_library.db drops from ~66 tables to ~7
 - Gate: DiscValidationDBTest updated. Rosetta Stones GREEN.
 
@@ -870,7 +870,7 @@ grep for exact numbers before starting (audit concern #1, #2).
 |------|-----------|
 | component_library.db is SACRED (no git operations) | Steps 3-4 only ATTACH+read from it. No schema changes to component_library.db until Step 4 (table drops). |
 | BOM DB M_Product removal breaks backward compat | Step 6 only — verify zero reads from bomConn M_Product first (Task 4 confirms this). |
-| 15 duplicate tables: which copy is authoritative? | disc_validation.db copy is authoritative (Phase 2-3 migration already completed). component_library.db copies are stale remnants. |
+| 15 duplicate tables: which copy is authoritative? | ERP.db copy is authoritative (Phase 2-3 migration already completed). component_library.db copies are stale remnants. |
 | AD_Org_ID = 0 ('*') conflicts with SQLite auto-increment | Use explicit INSERT, not AUTOINCREMENT. iDempiere convention: 0 = system org. |
 | BackOffice DAOs need connection parameter change | All 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt) already receive compLibConn — just rename to discConn. Same JDBC pattern. |
 
@@ -896,7 +896,7 @@ when implementation begins.
 | Risk | MED overall, **HIGH for Step 3** (M_Product move) | MED/HIGH (same) | LOW |
 
 **Recommendation: Option A.** It's the same work as Option B but with a clearer name
-(disc_validation.db is already the AD Dictionary in practice). The 6-step migration
+(ERP.db is already the AD Dictionary in practice). The 6-step migration
 is independently committable, each step gated by existing Rosetta Stone tests.
 
 ---

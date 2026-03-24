@@ -153,16 +153,16 @@ REFERENCE_SCHEMA = """
 """
 
 # ---------------------------------------------------------------------------
-# Authority table loader — reads ad_ifc_class_map from disc_validation.db.
+# Authority table loader — reads ad_ifc_class_map from ERP.db.
 # Falls back to hardcoded defaults if DB is unavailable.
-# Adding a new IFC type = one INSERT into disc_validation.db, zero code changes.
+# Adding a new IFC type = one INSERT into ERP.db, zero code changes.
 # See migration/DV005_ifc_class_map.sql for the schema and seed data.
 # ---------------------------------------------------------------------------
 
 def _load_ifc_class_map():
-    """Load IFC class extraction maps from disc_validation.db authority table."""
+    """Load IFC class extraction maps from ERP.db authority table."""
     db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                           "library", "disc_validation.db")
+                           "library", "ERP.db")
     classes, disciplines, categories, attachments = [], {}, {}, {}
     try:
         conn = sqlite3.connect(db_path)
@@ -177,7 +177,7 @@ def _load_ifc_class_map():
                 disciplines[ifc_class] = discipline
                 categories[ifc_class] = category
                 attachments[ifc_class] = attachment
-            print(f"  [extract] Loaded {len(rows)} IFC class mappings from disc_validation.db")
+            print(f"  [extract] Loaded {len(rows)} IFC class mappings from ERP.db")
             return classes, disciplines, categories, attachments
     except (sqlite3.OperationalError, FileNotFoundError):
         pass

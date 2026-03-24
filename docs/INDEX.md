@@ -34,7 +34,7 @@ Single-page entry point. All active docs by tier.
 | [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) | Multi-discipline BOM tree, LOD resolution, handlers H1-H6 |
 | [ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md) | G-7 SRS: layer-by-layer TACK, U-value calc, 17 witnesses |
 | [CALIBRATION_SRS.md](CALIBRATION_SRS.md) | DocEvent generic vs Terminal, density/spacing comparison |
-| [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) | disc_validation.db: CalibrationDAO, IFC class map |
+| [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) | ERP.db: CalibrationDAO, IFC class map |
 | [CORE_SRS.md](CORE_SRS.md) | Scale research, Report Engine 4D-7D, compliance, schema |
 | [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) | Infra Designer: terrain, alignment, 5 phases I-1..I-5 |
 | [TIER1_SRS.md](TIER1_SRS.md) | 6D carbon, 7D FM, audit trail, 3D native |

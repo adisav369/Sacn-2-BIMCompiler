@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * <p>Witness claims:
  * <ul>
- *   <li>W-DV-PROFILE-1: Loads 36+ building profiles from disc_validation.db</li>
+ *   <li>W-DV-PROFILE-1: Loads 36+ building profiles from ERP.db</li>
  *   <li>W-DV-PROFILE-2: Normal residential building (35% wall, 15% window) passes</li>
  *   <li>W-DV-PROFILE-3: Wall-dominant building with 0 doors/windows flagged</li>
  *   <li>W-DV-PROFILE-4: Novel IFC class flagged</li>
@@ -29,12 +29,12 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class BuildingProfileValidatorTest {
 
-    static final Path DISC_DB = Path.of("library/disc_validation.db");
+    static final Path DISC_DB = Path.of("library/ERP.db");
     static BuildingProfileValidator validator;
 
     @BeforeAll
     static void load() throws Exception {
-        assumeTrue(Files.exists(DISC_DB), "disc_validation.db must exist");
+        assumeTrue(Files.exists(DISC_DB), "ERP.db must exist");
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DISC_DB)) {
             validator = BuildingProfileValidator.load(conn);
         }

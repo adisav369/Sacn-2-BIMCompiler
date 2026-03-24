@@ -92,7 +92,7 @@
 -- IfcFireSuppressionTerminal  FP          6   
 -- IfcStair                    ARC         4   
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcMember_Unknown (1450 instances, avg 851.0x564.0x851.0 mm)

@@ -57,7 +57,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
     /** Rules keyed by m_product_category_id (or "*" for any-category rules). */
     private Map<String, List<CachedRule>> rulesByCategory = Map.of();
 
-    /** Mined dimension rules from disc_validation.db, keyed by ifc_class. */
+    /** Mined dimension rules from ERP.db, keyed by ifc_class. */
     private Map<String, List<CachedRule>> minedRulesByClass = Map.of();
 
     private boolean active;
@@ -247,7 +247,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
     }
 
     /**
-     * Loads mined DIMENSION_RANGE rules from disc_validation.db (DV010).
+     * Loads mined DIMENSION_RANGE rules from ERP.db (DV010).
      * Groups by ifc_class for O(1) lookup during validation.
      *
      * // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE
@@ -288,7 +288,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
                 }
             }
         } catch (SQLException e) {
-            BIMLogger.warn(TAG, "Failed to load mined rules from disc_validation.db: {}", e.getMessage());
+            BIMLogger.warn(TAG, "Failed to load mined rules from ERP.db: {}", e.getMessage());
             return Map.of();
         }
 

@@ -45,7 +45,7 @@ public interface OrderLineMutation {
      * Backward-compatible: no pack filter (all rules apply).
      *
      * @param woConn   work_output.db connection (C_Order + C_OrderLine)
-     * @param ruleDb   disc_validation.db connection (ad_space_type_mep_bom)
+     * @param ruleDb   ERP.db connection (ad_space_type_mep_bom)
      * @param orderId  C_Order_ID to propose lines for
      * @return list of proposed order lines (empty if no rules match)
      */
@@ -58,7 +58,7 @@ public interface OrderLineMutation {
      * Propose OrderLines filtered by rule pack.
      *
      * @param woConn   work_output.db connection (C_Order + C_OrderLine)
-     * @param ruleDb   disc_validation.db connection (ad_space_type_mep_bom)
+     * @param ruleDb   ERP.db connection (ad_space_type_mep_bom)
      * @param orderId  C_Order_ID to propose lines for
      * @param packIds  rule packs to include (empty = all packs, no filter)
      * @return list of proposed order lines (empty if no rules match)

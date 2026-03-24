@@ -37,7 +37,7 @@
 -- IfcMember          STR         2   
 -- IfcStairFlight     ARC         1   
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcReinforcingBar_Unknown (3680 instances, avg 1210.0x767.0x899.0 mm)

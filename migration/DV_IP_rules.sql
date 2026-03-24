@@ -27,7 +27,7 @@
 -- IfcElementAssembly       STR         2  
 -- IfcBuildingElementProxy  ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcFlowSegment_Unknown (24 instances, avg 2555.0x1850.0x700.0 mm)

@@ -55,7 +55,7 @@
 -- IfcStair              ARC         4  
 -- IfcColumn             STR         2  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcFurnishingElement_Erdgeschoss (76 instances, avg 764.0x942.0x682.0 mm)

@@ -45,7 +45,7 @@
 -- IfcRailing               ARC         2  
 -- IfcBuildingElementProxy  ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcMember_railbridge_-_superstructure (8 instances, avg 6080.0x5531.0x4084.0 mm)

@@ -221,7 +221,7 @@ The output is dictated by these spec sources and no others:
 | `*.bimcobol` | 2 (post-compile) | Verb recipes: PLACE BOM, ROUTE SPRINKLERS, WIRE LIGHTING |
 | `BIMConstants.java` | 2 | Dimensional defaults: wall thickness, slab overlap, door/window sizes |
 | `authority_data.db` | 2 | Rule tables: fire protection, MEP, placement rules, BOM quantity formulas |
-| `component_library.db` | 1+2 | Geometry meshes, orientation. M_Product reads now from `disc_validation.db` (S65); geometry remains in component_library.db |
+| `component_library.db` | 1+2 | Geometry meshes, orientation. M_Product reads now from `ERP.db` (S65); geometry remains in component_library.db |
 | Reference extraction DB | 1 | Element positions, dimensions, geometry hashes (input data, not spec) |
 
 **R4 status:** Spec inventory confirmed by code audit (2026-03-16). The compiler
@@ -523,10 +523,10 @@ elements resolve per-instance geometry from library via GUID chain.
 **CLEAN.** Tables: `m_bom`, `m_bom_line`, `M_Product`, `ad_sysconfig` (+ `C_DocType` in DM_BOM.db).
 No extraction data, no geometry BLOBs, no config tables.
 
-**Known debt (updated S65):** M_Product authoritative reads now come from `disc_validation.db`
-(ProductRegistrar dual-writes to both BOM and disc_validation.db; BOMWalker reads from
-disc_validation.db via compConn). BOM-side M_Product is retained for assembly stubs.
-Target: remove BOM-side M_Product when all consumers use disc_validation.db.
+**Known debt (updated S65):** M_Product authoritative reads now come from `ERP.db`
+(ProductRegistrar dual-writes to both BOM and ERP.db; BOMWalker reads from
+ERP.db via compConn). BOM-side M_Product is retained for assembly stubs.
+Target: remove BOM-side M_Product when all consumers use ERP.db.
 
 ### 8.2 `component_library.db` — Is it just LODs + orientation + IFC metadata?
 

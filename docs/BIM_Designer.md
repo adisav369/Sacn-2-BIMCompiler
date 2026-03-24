@@ -2944,7 +2944,7 @@ a ceiling area). The system:
 
 1. **Identifies context** — which room, storey, and surface was clicked
 2. **Looks up rules** — `ad_space_type_mep_bom` (what goes in this room type)
-   + `AD_Val_Rule` (spacing, coverage, clearance) + `disc_validation.db`
+   + `AD_Val_Rule` (spacing, coverage, clearance) + `ERP.db`
 3. **Places the seed object** — first item at the click point (e.g., sprinkler head)
 4. **Auto-chains** — rule engine extends from the seed: connectors, branch
    pipes, main connections, following spacing and coverage rules

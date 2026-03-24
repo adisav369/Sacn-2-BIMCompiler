@@ -45,7 +45,7 @@
 -- IfcRampFlight   ARC         1  
 -- IfcStairFlight  STR         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcBeam_First_Floor (415 instances, avg 1051.0x6414.0x390.0 mm)

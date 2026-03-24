@@ -1,4 +1,4 @@
--- DV019: Move bad_* tables from component_library.db to disc_validation.db
+-- DV019: Move bad_* tables from component_library.db to ERP.db
 -- Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 4
 -- No Java readers exist for these tables (confirmed S69)
 

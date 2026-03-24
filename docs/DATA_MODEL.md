@@ -15,7 +15,7 @@ No hand-editing. No patching. Code produces data.
 **Updated:** 2026-03-19
 **Principle:** 4-DB split.
 - `component_library.db` = product LOD catalog (M_Product, geometry, orientation)
-- `disc_validation.db` = discipline metadata (schedules, types, placement rules, alias cascade) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
+- `ERP.db` = discipline metadata (schedules, types, placement rules, alias cascade) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
 - `{PREFIX}_BOM.db` = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz)
 - `output.db` = transactional (fresh each compile)
 
@@ -23,8 +23,8 @@ At compile time, `run_RosettaStones.sh` creates `library/_SH_compile.db` (or `_D
 
 **Note:** Discipline metadata migration complete (session 41). All discipline tables
 (ad_space_type, ad_element_mep, ad_wall_face, placement_rules, etc.) now live exclusively
-in disc_validation.db. Java code (MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO)
-reads from disc_validation.db. component_library.db reduced from 81→21 tables (LOD catalog only).
+in ERP.db. Java code (MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO)
+reads from ERP.db. component_library.db reduced from 81→21 tables (LOD catalog only).
 See DISC_VALIDATION_DB_SRS.md §6.
 
 ---
@@ -298,7 +298,7 @@ INSERT OR IGNORE = reused across buildings). `M_Product_Image` links products to
 See [`WorkOrderGuide.md`](WorkOrderGuide.md) §"Drift Prevention" for enforced guards.
 
 **Discipline metadata (ad_space_type, ad_element_mep, ad_wall_face, placement_rules,
-etc.) is migrating to disc_validation.db** — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).
+etc.) is migrating to ERP.db** — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).
 Tables remain here temporarily (Phase 2 pending).
 
 ### I_Element_Extraction (IFC extraction archive)
@@ -412,7 +412,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 
 ### 6.1 Current State — Where AD Tables Live
 
-| Table | disc_validation.db | component_library.db | {PREFIX}_BOM.db | Purpose |
+| Table | ERP.db | component_library.db | {PREFIX}_BOM.db | Purpose |
 |-------|:--:|:--:|:--:|---------|
 | **AD_Org** | 16 rows | — | — | Discipline definitions (ARC, STR, FP...) |
 | **M_Product_Category** | IFC→discipline map | IFC→discipline map | 0 rows (DM only) | Product classification |
@@ -427,14 +427,14 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 
 **M_Product** is the most duplicated table:
 - **component_library.db** is the master catalog (created by `ProductRegistrar.ensureProductCatalog()`)
-- **disc_validation.db** has a near-identical copy (2,477 vs 2,475) used for validation queries
+- **ERP.db** has a near-identical copy (2,477 vs 2,475) used for validation queries
 - **{PREFIX}_BOM.db** has small transitional copies for BOMWalker compatibility (target: remove)
 
-**M_Product_Category** exists in both disc_validation.db and component_library.db with
+**M_Product_Category** exists in both ERP.db and component_library.db with
 identical IFC class mappings. Only one authoritative copy is needed.
 
 **AD_SysConfig** is NOT truly duplicated — different schemas serve different purposes:
-- disc_validation.db: `Name/Value` pairs tracking schema migration versions (DV001–DV015)
+- ERP.db: `Name/Value` pairs tracking schema migration versions (DV001–DV015)
 - BOM databases: `config_key/config_value` pairs tracking per-building integrity hashes
 
 **C_DocType** lives only in BOM databases (1 row each, e.g., RE_SH, RE_DX). In iDempiere,
@@ -445,14 +445,14 @@ the compile DB with additional C_DocType rows.
 ### 6.3 The ERP.db Concept
 
 In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
-They live once, centrally — not per-product or per-order. The current `disc_validation.db`
+They live once, centrally — not per-product or per-order. The current `ERP.db`
 already serves this role for most AD data but has a misleading name and incomplete coverage.
 
-**Proposed consolidation** (rename disc_validation.db → ERP.db or create as superset):
+**Proposed consolidation** (rename ERP.db → ERP.db or create as superset):
 
 | Layer | Database | Contains |
 |-------|----------|----------|
-| **ERP shared** | `ERP.db` (was disc_validation.db) | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata |
+| **ERP shared** | `ERP.db` (was ERP.db) | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata |
 | **Product catalog** | `component_library.db` | M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry |
 | **Per-building BOM** | `{PREFIX}_BOM.db` | m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy) |
 | **Transactional** | `output.db` | c_order, c_orderline, elements_meta, PP_Order_Node, co_empty_space* |
@@ -460,7 +460,7 @@ already serves this role for most AD data but has a misleading name and incomple
 **What changes:**
 - C_DocType master definitions move to ERP.db (all 6+ rows). BOM databases get a copy at compile time (already happens via schema_snapshot_bom.sql).
 - M_Product_Category: single authoritative copy in ERP.db. Remove from component_library.db (or make it a compile-time copy).
-- M_Product in disc_validation.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.
+- M_Product in ERP.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.
 
 **What stays the same:**
 - BOM databases keep their per-building ad_sysconfig (different schema, per-building data)
@@ -476,9 +476,9 @@ already serves this role for most AD data but has a misleading name and incomple
 
 ### 6.5 Risks and Open Questions
 
-- **Migration complexity:** Renaming disc_validation.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.
+- **Migration complexity:** Renaming ERP.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.
 - **Backward compatibility:** Existing BOM databases expect schema_snapshot_bom.sql enrichment at compile time. This mechanism continues regardless.
-- **M_Product consolidation:** Removing the disc_validation.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.
+- **M_Product consolidation:** Removing the ERP.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.
 
 > **Decision:** No action this session. This section documents the investigation.
 > Implementation would be a separate bounded task with its own migration plan.
@@ -546,7 +546,7 @@ BomDropConfigureTest, CompileBridgeTest, ASIAuthoringTest, DemoHouseTest, Select
 
 ### 7.4 M_Product_Category Hierarchy — Current vs Target
 
-**Current (disc_validation.db, 46 rows):** IFC element classification only (IFC_WALL→STR,
+**Current (ERP.db, 46 rows):** IFC element classification only (IFC_WALL→STR,
 IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.
 
 **Missing for cascade model (need migration to add):**
@@ -556,12 +556,12 @@ IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.
 - Infra segments: SUP, DCK, ABT, TRK, ROAD, RAIL
 
 These values already exist as `bom_category` strings on `m_bom` rows in BOM databases — they just
-aren't registered as M_Product_Category rows in disc_validation.db. Migration: INSERT OR IGNORE
+aren't registered as M_Product_Category rows in ERP.db. Migration: INSERT OR IGNORE
 from the existing bom_category vocabulary.
 
 ### 7.5 ERP.db Rename — Touchpoint Count
 
-Renaming `disc_validation.db` → `ERP.db` affects:
+Renaming `ERP.db` → `ERP.db` affects:
 - Java system property references: `disc.validation.db` (grep needed for exact count)
 - Shell scripts: `run_RosettaStones.sh`, `run_tests.sh`, extraction scripts
 - Python scripts: `RosettaStoneToBOM.py`, `RosettaStoneExtract.py`
@@ -570,11 +570,11 @@ Renaming `disc_validation.db` → `ERP.db` affects:
 
 ### 7.6 Migration Plan (follow-up sessions)
 
-1. **Session N+1:** Add missing M_Product_Category rows to disc_validation.db (DV018 migration)
+1. **Session N+1:** Add missing M_Product_Category rows to ERP.db (DV018 migration)
 2. **Session N+2:** Populate `m_product_category_id` on BUILDING BOMs (currently NULL where doc_base_type is set)
 3. **Session N+3:** Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)
 4. **Session N+4:** Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)
-5. **Session N+5:** Rename disc_validation.db → ERP.db + propagate all touchpoints
+5. **Session N+5:** Rename ERP.db → ERP.db + propagate all touchpoints
 6. **Each session:** Propagate doc corrections to 1–2 specs from §7.2 list
 
 ---

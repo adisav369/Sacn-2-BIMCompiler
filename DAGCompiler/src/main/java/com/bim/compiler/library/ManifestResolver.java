@@ -12,8 +12,8 @@ import java.util.*;
  */
 public class ManifestResolver {
 
-    // Phase 2b: reads from disc_validation.db (discipline metadata)
-    private static final String LIB_PATH = "library/disc_validation.db";
+    // Phase 2b: reads from ERP.db (discipline metadata)
+    private static final String LIB_PATH = "library/ERP.db";
 
     private static ManifestResolver instance;
 

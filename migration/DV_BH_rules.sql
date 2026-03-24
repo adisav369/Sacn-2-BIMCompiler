@@ -27,7 +27,7 @@
 -- IfcFlowTerminal          MEP         2  
 -- IfcFlowSegment           MEP         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 

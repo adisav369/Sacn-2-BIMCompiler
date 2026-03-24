@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Query ad_space_type_mep_bom from disc_validation.db for Click-to-Place.
+ * Query ad_space_type_mep_bom from ERP.db for Click-to-Place.
  *
  * <p>Maps (space_type, discipline) → list of MEP products with qty and placement rules.
  * This is the data-driven replacement for hardcoded discipline→product keyword mapping.
  *
- * <p>Discipline grouping (extracted from disc_validation.db product inventory):
+ * <p>Discipline grouping (extracted from ERP.db product inventory):
  * <ul>
  *   <li>FP: SPRINKLER, EMERGENCY_LIGHT</li>
  *   <li>ELEC: LIGHT, OUTLET, OUTLET_20A, OUTLET_GFCI, SWITCH, DATA_POINT, CEILING_FAN</li>
@@ -167,7 +167,7 @@ public class MEPBOMQuery {
 
     /**
      * Map discipline code to mep_product_id set.
-     * Extracted from disc_validation.db product inventory analysis.
+     * Extracted from ERP.db product inventory analysis.
      */
     public static List<String> disciplineProducts(String discipline) {
         return switch (discipline) {

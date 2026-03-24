@@ -1,4 +1,4 @@
--- DV015: Copy M_Product + M_Product_Category from component_library.db to disc_validation.db
+-- DV015: Copy M_Product + M_Product_Category from component_library.db to ERP.db
 -- Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 3
 --
 -- SAFE: INSERT OR IGNORE — idempotent, re-runnable.

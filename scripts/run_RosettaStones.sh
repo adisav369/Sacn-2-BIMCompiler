@@ -739,7 +739,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
         ./scripts/extract_validation_rules.sh "$PREFIX" > "$RULES_FILE" 2>/dev/null
         rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null || echo "0")
         if [ "$rule_count" -gt 0 ]; then
-            sqlite3 library/disc_validation.db < "$RULES_FILE" 2>/dev/null || true
+            sqlite3 library/ERP.db < "$RULES_FILE" 2>/dev/null || true
             echo "  [validation] ${PREFIX}: ${rule_count} rules extracted + applied"
         fi
     fi

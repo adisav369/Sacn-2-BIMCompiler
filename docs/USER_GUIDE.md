@@ -540,7 +540,7 @@ Computes SHA-256 hash of all element bounding boxes at 1mm precision. Same input
 
 When onboarding a new IFC file, the pipeline checks every extracted element's
 dimensions (W, D, H) against typical ranges mined from 20 real buildings
-(415 rules, 25 IFC classes, stored in `disc_validation.db`).
+(415 rules, 25 IFC classes, stored in `ERP.db`).
 
 The check runs automatically as a pre-flight in the IFC-to-BOM pipeline:
 

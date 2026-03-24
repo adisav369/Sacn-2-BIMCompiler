@@ -43,7 +43,7 @@
 -- IfcSlab     ARC         1  
 -- IfcStair    ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcMember_Dachgeschoss (42 instances, avg 80.0x5500.0x3360.0 mm)

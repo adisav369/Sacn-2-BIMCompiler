@@ -2508,7 +2508,7 @@ user can act on them, not just read log files.
 IFC onboarding (IFCtoBOMPipeline)
   → DimensionRangeValidator.validate()
   → BuildingProfileValidator.validate()
-  → Writes to W_Validation_Advisory table in disc_validation.db
+  → Writes to W_Validation_Advisory table in ERP.db
 
 BIM Designer loads building
   → listAdvisories(buildingId)
@@ -2569,7 +2569,7 @@ record ListAdvisoriesResponse(boolean success,
 
 - **Java:** DesignerAPIImpl +1 method (`listAdvisories`), DesignerServer +1 dispatch case
 - **Python:** client.py +1 verb (`list_advisories`), panel.py +1 section (`_draw_advisory_panel`)
-- **Schema:** DV012 migration creates `W_Validation_Advisory` table in disc_validation.db
+- **Schema:** DV012 migration creates `W_Validation_Advisory` table in ERP.db
 - **No new validation logic on Python side** — all intelligence stays in Java
 - **Backward compatible:** advisory panel is additive, existing panels unchanged
 - **Write-side:** DimensionRangeValidator and BuildingProfileValidator gain `writeAdvisories(Connection discConn, Report report)` methods, called from IFCtoBOMPipeline after `validate()`
@@ -3296,7 +3296,7 @@ exercise the full BOM Drop → configure → validate → compile → promote fl
 
 Current data path for fire protection:
 ```
-ad_space_type_mep_bom (disc_validation.db)
+ad_space_type_mep_bom (ERP.db)
   → WHERE discipline = 'FPR' AND space_type = 'BEDROOM'
   → Returns: element_type = 'SPRINKLER', qty_per_room = 1, ifc_class = 'IfcFireSuppressionTerminal'
 

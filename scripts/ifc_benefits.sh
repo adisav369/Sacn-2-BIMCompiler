@@ -26,7 +26,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
 COMP_DB="library/component_library.db"
-DISC_DB="library/disc_validation.db"
+DISC_DB="library/ERP.db"
 INPUT_DIR="DAGCompiler/lib/input"
 
 B="\033[1m"

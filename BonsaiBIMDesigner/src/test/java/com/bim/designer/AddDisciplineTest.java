@@ -40,8 +40,8 @@ class AddDisciplineTest {
 
         assertTrue(new File(SH_BOM_DB).exists(),
                 "SH_BOM.db not found — run IFCtoBOM pipeline first");
-        assertTrue(new File("library/disc_validation.db").exists(),
-                "disc_validation.db not found");
+        assertTrue(new File("library/ERP.db").exists(),
+                "ERP.db not found");
 
         bomConn = DriverManager.getConnection("jdbc:sqlite:" + SH_BOM_DB);
         System.setProperty("bom.db", SH_BOM_DB);

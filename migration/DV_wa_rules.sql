@@ -67,7 +67,7 @@
 -- IfcStairFlight           ARC         9   
 -- IfcRampFlight            ARC         2   
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcFurnishingElement_1_-_First_Floor (1228 instances, avg 986.0x933.0x1169.0 mm)

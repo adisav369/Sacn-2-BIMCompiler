@@ -14,14 +14,14 @@ import java.util.List;
  * NORM-3a: Single BOM tree traversal engine.
  *
  * <p>Walks {@code m_bom} / {@code m_bom_line} from {@code {PREFIX}_BOM.db} and resolves
- * {@code M_Product} from {@code disc_validation.db} (master product catalog, moved S65 Step 3).
+ * {@code M_Product} from {@code ERP.db} (master product catalog, moved S65 Step 3).
  * Fires {@link BOMVisitor} events for each node. Multiple visitors can be registered
  * to accumulate independent results (assembly structure, spatial placement) in a single
  * pass.
  *
  * <h3>Two-connection architecture</h3>
  * <p>{@code bomConn} reads BOM structure (m_bom, m_bom_line — spatial arrangement).
- * {@code compConn} reads M_Product (master product catalog in disc_validation.db).
+ * {@code compConn} reads M_Product (master product catalog in ERP.db).
  * The deprecated single-arg constructor bridges tests that use one in-memory DB.
  *
  * <h3>Dispatch logic — structural, not by component_type</h3>
@@ -63,7 +63,7 @@ public class BOMWalker {
      * Primary constructor — reads BOM structure from bomConn, M_Product from compConn.
      *
      * @param bomConn  connection to {PREFIX}_BOM.db (m_bom, m_bom_line)
-     * @param compConn connection to disc_validation.db (M_Product master catalog)
+     * @param compConn connection to ERP.db (M_Product master catalog)
      */
     public BOMWalker(Connection bomConn, Connection compConn) {
         this.bomConn = bomConn;
@@ -188,7 +188,7 @@ public class BOMWalker {
             // PHANTOM is the only component_type that matters (skipped at output).
             MBOM childBom = loadBom(childProductId);
 
-            // Load M_Product from disc_validation.db (compConn) — master product catalog.
+            // Load M_Product from ERP.db (compConn) — master product catalog.
             // Use getAssembly() for sub-assemblies (stubs may be is_active=0).
             MProduct product = (childBom != null)
                 ? MProduct.getAssembly(compConn, childProductId)
@@ -234,11 +234,11 @@ public class BOMWalker {
     // ── Static factory ───────────────────────────────────────────────────────
 
     /**
-     * Create a BOMWalker connected to the standard BOM.db + disc_validation.db paths.
+     * Create a BOMWalker connected to the standard BOM.db + ERP.db paths.
      */
     public static BOMWalker forDefaultDb() throws SQLException {
         Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"));
-        Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db");
+        Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db");
         return new BOMWalker(bomConn, compConn);
     }
 }

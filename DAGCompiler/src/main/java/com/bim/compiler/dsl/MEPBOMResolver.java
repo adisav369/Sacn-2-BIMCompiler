@@ -16,8 +16,8 @@ import java.util.*;
  */
 public class MEPBOMResolver {
 
-    // Phase 2b: reads from disc_validation.db (discipline metadata)
-    private static final String LIB_PATH = CompilerConfig.DISC_VALIDATION_DB_PATH;
+    // Phase 2b: reads from ERP.db (discipline metadata)
+    private static final String LIB_PATH = CompilerConfig.ERP_DB_PATH;
 
     /** Ceiling MEP products our pipeline can place */
     private static final Set<String> CEILING_PRODUCTS = Set.of(

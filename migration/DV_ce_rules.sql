@@ -28,7 +28,7 @@
 -- IfcFlowTerminal          MEP         2081
 -- IfcBuildingElementProxy  ARC         29  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcFlowTerminal_Level_1 (1162 instances, avg 366.0x307.0x164.0 mm)

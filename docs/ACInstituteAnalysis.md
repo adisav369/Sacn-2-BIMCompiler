@@ -175,7 +175,7 @@ Canonical references: `docs/SourceCodeGuide.md` §Chapter 4 (Steps 1-5),
 
 ### Step 0 — Seed databases (BEFORE extraction)
 
-#### 0a. Register IFC element types in disc_validation.db
+#### 0a. Register IFC element types in ERP.db
 
 **All types already registered.** No action needed.
 

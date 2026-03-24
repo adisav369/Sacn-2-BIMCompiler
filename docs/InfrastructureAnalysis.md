@@ -221,7 +221,7 @@ downstream filtering. This is the iDempiere approach — AD_Ref_List, not new do
 
 ### 6.1 Extraction Layer (Python) — DONE via `ad_ifc_class_map`
 
-IFC class maps are now data-driven from `disc_validation.db` authority table
+IFC class maps are now data-driven from `ERP.db` authority table
 `ad_ifc_class_map` (46 rows). Adding a new IFC type = one SQL INSERT, zero code.
 See [`DISC_VALIDATION_DB_SRS.md`](DISC_VALIDATION_DB_SRS.md) §5.2 and
 [`SourceCodeGuide.md`](SourceCodeGuide.md) for implementation details.

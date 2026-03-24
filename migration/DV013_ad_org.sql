@@ -1,5 +1,5 @@
 -- DV013_ad_org.sql
--- Creates AD_Org table in disc_validation.db — disciplines as organizational units.
+-- Creates AD_Org table in ERP.db — disciplines as organizational units.
 -- Pattern: iDempiere AD_Org partitions data by organizational unit.
 -- In construction, disciplines ARE organizational units (each is a trade).
 -- APPEND-ONLY: never modify this migration after first run

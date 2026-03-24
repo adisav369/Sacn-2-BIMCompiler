@@ -12,7 +12,7 @@
 -- (see AUDIT Appendix O.2). The rename is to m_product_category_id because the
 -- column classifies the PRODUCT, not the BOM structure.
 --
--- APPLIES TO: {PREFIX}_BOM.db, output.db, disc_validation.db
+-- APPLIES TO: {PREFIX}_BOM.db, output.db, ERP.db
 -- Run with: sqlite3 <db> < migration/DV017_product_category_rename.sql
 -- Non-existent tables are silently skipped (IF EXISTS not needed for ALTER
 -- in SQLite 3.25+ — errors are suppressed by the runner).
@@ -32,14 +32,14 @@ ALTER TABLE m_bom RENAME COLUMN bom_category TO m_product_category_id;
 ALTER TABLE C_OrderLine RENAME COLUMN bom_category TO m_product_category_id;
 
 -- ════════════════════════════════════════════════════════════════
--- 3. ad_pattern_rule (lives in disc_validation.db via V003)
+-- 3. ad_pattern_rule (lives in ERP.db via V003)
 -- ════════════════════════════════════════════════════════════════
 ALTER TABLE ad_pattern_rule RENAME COLUMN bom_category TO m_product_category_id;
 
 -- ════════════════════════════════════════════════════════════════
 -- 4. ad_val_rule_param — data-level rename
 --    param_name='bom_category' → 'm_product_category_id'
---    (lives in disc_validation.db via V002/DV010)
+--    (lives in ERP.db via V002/DV010)
 -- ════════════════════════════════════════════════════════════════
 UPDATE ad_val_rule_param
    SET param_name = 'm_product_category_id'

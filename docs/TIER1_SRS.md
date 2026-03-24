@@ -48,7 +48,7 @@
 │  └─────────────────────────────────────────────────┘    │
 │                                                         │
 │  databases: component_library.db  {P}_BOM.db            │
-│             work_output.db        disc_validation.db     │
+│             work_output.db        ERP.db     │
 └─────────────────────────────────────────────────────────┘
 ```
 

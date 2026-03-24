@@ -63,8 +63,8 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
             return VerbResult.fail(keyword(),
                     "No BUILDING BOM for DocSubType=" + docSubType, null);
 
-        // 3. Walk BOM → collect placements (M_Product from disc_validation.db)
-        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        // 3. Walk BOM → collect placements (M_Product from ERP.db)
+        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, projectName);
             BOMWalker walker = new BOMWalker(bomConn, compConn);
             walker.walkSelf(match.getBomId(), List.of(visitor), projectName);

@@ -260,7 +260,7 @@ It was a short composition — but enough to infer the grammar.
 
     RuleDrivenFragmentVerifier — fragment from AD rules (FP/ELEC/ACMV)
       checks: product exists, placement satisfies spatial rule, spacing correct
-      source: disc_validation.db AD tables
+      source: ERP.db AD tables
 
     UserModifiedFragmentVerifier — fragment with ASI override
       checks: EYES spatial invariants hold post-mutation

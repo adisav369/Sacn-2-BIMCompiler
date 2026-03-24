@@ -194,7 +194,7 @@ Loads parametric mesh definitions from `component_library.db`, generates the pri
 ROUTE SPRINKLERS <building_type> <storey> <room_name> [SPACING <mm>] [HAZARD <class>]
 ```
 
-First MEP routing verb. Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single statement. Read-only against component_library.db (`ad_room_boundary` for room AABB) and disc_validation.db (`ad_fp_coverage` for hazard class rules) (LIGHT: max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m).
+First MEP routing verb. Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single statement. Read-only against component_library.db (`ad_room_boundary` for room AABB) and ERP.db (`ad_fp_coverage` for hazard class rules) (LIGHT: max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m).
 
 **Key classes:**
 - `SprinklerGrid` — pure geometry: grid generation within rectangular AABB, spacing/2 offset, center fallback for narrow rooms

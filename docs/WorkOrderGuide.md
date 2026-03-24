@@ -289,7 +289,7 @@ See `docs/DuplexAnalysis.md` for the three-tier partition algorithm.
 ### Step 0 — Ensure IFC element types are registered (one-time)
 
 `extract.py` reads its list of supported IFC classes from the authority table
-`ad_ifc_class_map` in `library/disc_validation.db`. If the new IFC file contains
+`ad_ifc_class_map` in `library/ERP.db`. If the new IFC file contains
 element types not in that table, they will be **silently skipped**.
 
 Check coverage:
@@ -298,7 +298,7 @@ Check coverage:
 python3 -c "import ifcopenshell; f=ifcopenshell.open('source.ifc'); print(sorted(set(e.is_a() for e in f.by_type('IfcElement'))))"
 
 # Compare with registered types
-sqlite3 library/disc_validation.db "SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class"
+sqlite3 library/ERP.db "SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class"
 ```
 
 Add missing types:

@@ -114,7 +114,7 @@ database and emits structured data (JSON/CSV/XML).
 │                                                         │
 │  DATA LAYER (existing databases)                        │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │component_lib │ │ {P}_BOM.db   │ │ disc_validation  │ │
+│  │component_lib │ │ {P}_BOM.db   │ │ ERP  │ │
 │  │ M_Product    │ │ m_bom        │ │ ad_space_type    │ │
 │  │ geometries   │ │ m_bom_line   │ │ placement_rules  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
@@ -562,7 +562,7 @@ CREATE TABLE IF NOT EXISTS AD_Report_Config (
 | component_library.db | Product catalog + geometries | Stable (616 products, 24K geometries) |
 | {PREFIX}_BOM.db | Per-building compiled BOM | Stable (4 buildings) |
 | validation.db | AD_Val_Rule + params | Growing (63 rules, 132 params) |
-| disc_validation.db | Discipline metadata (split from component_lib) | Phase 2 in progress |
+| ERP.db | Discipline metadata (split from component_lib) | Phase 2 in progress |
 | work_output.db | Designer save/recall/promote | Stable (G4 schema) |
 
 ---

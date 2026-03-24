@@ -202,7 +202,7 @@ public class CalibrationDAO {
      *   <li>Per-area: ceil(floor_area_m2 × per_area_normal)</li>
      * </ul>
      *
-     * @param discConn      connection to disc_validation.db (Phase 2; falls back to component_library.db)
+     * @param discConn      connection to ERP.db (Phase 2; falls back to component_library.db)
      * @param mepProduct    e.g. "SPRINKLER", "LIGHT"
      * @param floorAreaM2   floor area in m²
      * @return predicted element count, or -1 if no rule found

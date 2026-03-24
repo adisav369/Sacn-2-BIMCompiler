@@ -80,7 +80,7 @@
 -- IfcStair                 ARC         9   
 -- IfcMember                STR         4   
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcCovering_00_begane_grond (417 instances, avg 738.0x671.0x1172.0 mm)

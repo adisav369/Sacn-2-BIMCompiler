@@ -51,8 +51,8 @@ public class EnBlocVerb implements Verb<EnBlocVerb.EnBlocPayload> {
             return VerbResult.fail(keyword(),
                     "No BUILDING BOM for DocSubType=" + docSubType, null);
 
-        // Walk the BOM — singularity: take it whole (M_Product from disc_validation.db)
-        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        // Walk the BOM — singularity: take it whole (M_Product from ERP.db)
+        try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
             BOMWalker walker = new BOMWalker(conn, compConn);
             walker.walkSelf(match.getBomId(), List.of(visitor), projectName);

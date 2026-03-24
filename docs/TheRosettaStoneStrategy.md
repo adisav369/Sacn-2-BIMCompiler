@@ -124,7 +124,7 @@ is a **proven word**. A composed building is a **sentence** built from proven wo
 | Fragment type | Source | What to check |
 |--------------|--------|--------------|
 | **Proven** (from Rosetta Stone) | Stone's BOM.db | Tack offset match, product dimensions, verb pattern |
-| **Rule-driven** (FP/ELEC/ACMV) | disc_validation.db AD tables | Product exists, placement satisfies spatial rule, spacing correct |
+| **Rule-driven** (FP/ELEC/ACMV) | ERP.db AD tables | Product exists, placement satisfies spatial rule, spacing correct |
 | **User-modified** (ASI override) | output.db | EYES spatial invariants hold post-mutation |
 | **Freehand** (viewport drawing) | output.db + M_BOM_Line dx/dy/dz | Containment, adjacency, no clashes |
 

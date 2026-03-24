@@ -51,7 +51,7 @@ The Prime Rule ("Extract or Compile Only") is enforced by 6 verification gates, 
 |----------|---------|------|------------|
 | `*_BOM.db` | The **menu** | Per-building BOM dictionary. Built by IFCtoBOM pipeline | Read-only at compile time |
 | `component_library.db` | The **pantry** | LOD catalog: product geometry, meshes, materials (21 tables) | Read-only (external tool output) |
-| `disc_validation.db` | The **recipe book** | Discipline metadata: schedules, types, placement rules, alias cascade | Read-only (migration-seeded) |
+| `ERP.db` | The **recipe book** | Discipline metadata: schedules, types, placement rules, alias cascade | Read-only (migration-seeded) |
 | `output.db` | The **plated dish** | Compiled output: elements, instances, spatial structure | Written fresh each compile |
 
 If the plate has anchovies that aren't on the menu or in the pantry — *that's drift*.
@@ -458,7 +458,7 @@ The extension pattern: adding a new building type requires **zero Java code**.
 | 7 | Run `./scripts/run_RosettaStones.sh classify_xx.yaml` | Compilation + DimensionRangeValidator pre-flight |
 | 8 | Interpret results (G4 FAIL = uncommitted, C8 = library gaps, DimRange = outliers) | Gate report |
 | 9 | Mine dimension rules: `./scripts/extract_validation_rules.sh {type}` | `migration/DV_{prefix}_rules.sql` |
-| 10 | Apply mined rules: `./scripts/apply_mined_rules.sh` | Updates `disc_validation.db` ad_val_rule |
+| 10 | Apply mined rules: `./scripts/apply_mined_rules.sh` | Updates `ERP.db` ad_val_rule |
 
 Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every element's W/D/H is checked against mined ranges from 20 buildings (415 rules, 25 IFC classes). Steps 9–10 feed new building data back into the validation pool. See [`ACInstituteAnalysis.md`](ACInstituteAnalysis.md) for a worked example (699 elements).
 
@@ -482,14 +482,14 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 
 | File | Role |
 |------|------|
-| `tools/extract.py` | IFC extraction (LOD + Rosetta) — reads `ad_ifc_class_map` from `disc_validation.db` |
+| `tools/extract.py` | IFC extraction (LOD + Rosetta) — reads `ad_ifc_class_map` from `ERP.db` |
 | `scripts/run_tests.sh` | Full gate — compile + all tests + 6 gates |
 | `scripts/run_RosettaStones.sh` | YAML-driven: IFCtoBOM → compile → delta |
 | `scripts/verify_test_seal.sh` | SHA-256 seal verification (74 critical files) |
 | `scripts/construction_manifest.yaml` | Building identity registry |
 | `scripts/onboard_ifc.sh` | End-to-end IFC onboarding (steps 0–8 automated) |
 | `scripts/extract_validation_rules.sh` | Mine dimension rules from compiled output DBs |
-| `scripts/apply_mined_rules.sh` | Uncomment + apply all DV_*_rules.sql to disc_validation.db |
+| `scripts/apply_mined_rules.sh` | Uncomment + apply all DV_*_rules.sql to ERP.db |
 
 ### Java — IFCtoBOM
 
@@ -541,7 +541,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 | SH/DX/FK/IN BOM | `library/{PREFIX}_BOM.db` | Per-building BOM dictionary |
 | Geometry oracle | `library/component_library.db` | Meshes, materials from IfcOpenShell |
 | Validation rules | `library/validation.db` | AD_Val_Rule + AD_Val_Rule_Param |
-| Discipline validation | `library/disc_validation.db` | Phase 2 CalibrationDAO, IFC class map |
+| Discipline validation | `library/ERP.db` | Phase 2 CalibrationDAO, IFC class map |
 | SH/DX output | `DAGCompiler/lib/output/*.db` | Compiled output |
 | SH/DX reference | `DAGCompiler/lib/input/*_extracted.db` | IFC extraction oracle |
 
@@ -553,7 +553,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 IFC File (.ifc)
     │ IfcOpenShell (tools/extract.py)
     ▼
-component_library.db                    disc_validation.db
+component_library.db                    ERP.db
   ├─ component_geometries (mesh blobs)    ├─ ad_ifc_class_map (46 rows)
   ├─ I_Geometry_Map (element→geom)        ├─ AD_Val_Rule (placement rules)
   ├─ M_Product (catalog)                  └─ ad_space_type_mep_bom

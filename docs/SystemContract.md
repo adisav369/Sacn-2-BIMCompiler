@@ -45,7 +45,7 @@ Every table in the system serves one of five roles. No table serves two roles.
 
 ### 2.1 Dictionary (AD) — System Configuration
 
-**Database:** {PREFIX}_BOM.db, disc_validation.db
+**Database:** {PREFIX}_BOM.db, ERP.db
 **Lifecycle:** Static. Changed by migration SQL only. Never by runtime code.
 **iDempiere equivalent:** AD_Table, AD_Column, AD_Val_Rule, AD_Process.
 
@@ -65,7 +65,7 @@ Every table in the system serves one of five roles. No table serves two roles.
 
 ### 2.2 Master Data (M) — Product Catalog & BOM Recipes
 
-**Database:** {PREFIX}_BOM.db, component_library.db, disc_validation.db
+**Database:** {PREFIX}_BOM.db, component_library.db, ERP.db
 **Lifecycle:** Grows with each building onboarded. Changed by IFCtoBOM extraction or manual migration.
 **iDempiere equivalent:** M_Product, M_BOM, M_BOM_Line.
 

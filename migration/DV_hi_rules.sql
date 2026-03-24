@@ -75,7 +75,7 @@
 -- IfcRailing               STR         14 
 -- IfcStair                 ARC         14 
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWall_2.etg (250 instances, avg 2090.0x2631.0x3321.0 mm)

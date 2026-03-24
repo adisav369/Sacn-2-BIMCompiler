@@ -37,8 +37,8 @@ class OrderLineMutationTest {
 
         assertTrue(new File(SH_BOM_DB).exists(),
                 "SH_BOM.db not found — run IFCtoBOM pipeline first");
-        assertTrue(new File("library/disc_validation.db").exists(),
-                "disc_validation.db not found");
+        assertTrue(new File("library/ERP.db").exists(),
+                "ERP.db not found");
 
         bomConn = DriverManager.getConnection("jdbc:sqlite:" + SH_BOM_DB);
         System.setProperty("bom.db", SH_BOM_DB);
@@ -74,7 +74,7 @@ class OrderLineMutationTest {
 
         String dbPath = com.bim.designer.dao.WorkOutputDAO.dbPathFor("BUILDING_SH_STD");
         try (Connection woConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
 
             FPSuggestion fp = new FPSuggestion();
             assertEquals("FP", fp.discipline());
@@ -105,7 +105,7 @@ class OrderLineMutationTest {
 
         String dbPath = com.bim.designer.dao.WorkOutputDAO.dbPathFor("BUILDING_SH_STD");
         try (Connection woConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
 
             ELECSuggestion elec = new ELECSuggestion();
             assertEquals("ELEC", elec.discipline());
@@ -134,7 +134,7 @@ class OrderLineMutationTest {
 
         String dbPath = com.bim.designer.dao.WorkOutputDAO.dbPathFor("BUILDING_SH_STD");
         try (Connection woConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
 
             ACMVSuggestion acmv = new ACMVSuggestion();
             assertEquals("ACMV", acmv.discipline());
@@ -188,7 +188,7 @@ class OrderLineMutationTest {
 
         String dbPath = com.bim.designer.dao.WorkOutputDAO.dbPathFor("BUILDING_SH_STD");
         try (Connection woConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
 
             // Verify: no FP lines exist
             try (PreparedStatement ps = woConn.prepareStatement(
@@ -222,7 +222,7 @@ class OrderLineMutationTest {
 
         String dbPath = com.bim.designer.dao.WorkOutputDAO.dbPathFor("BUILDING_SH_STD");
         try (Connection woConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+             Connection dvConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
 
             OrderMutationService service = new OrderMutationService();
             List<ProposedOrderLine> all = service.proposeAll(woConn, dvConn, freshDrop.orderId());

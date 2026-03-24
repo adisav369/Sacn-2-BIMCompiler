@@ -1,6 +1,6 @@
 #!/bin/bash
 # cleanup_complib_duplicates.sh — Drop stale duplicate tables from component_library.db
-# These tables now live authoritatively in disc_validation.db (Steps 1-4 of §11.6.5)
+# These tables now live authoritatively in ERP.db (Steps 1-4 of §11.6.5)
 #
 # DESTRUCTIVE — manual run only, NOT in pipeline
 # component_library.db is SACRED — no git operations on it
@@ -16,7 +16,7 @@ if [ ! -f "$DB" ]; then
     exit 1
 fi
 
-# Tables that now live authoritatively in disc_validation.db
+# Tables that now live authoritatively in ERP.db
 TABLES=(
     # AD discipline tables (moved Steps 1-2)
     ad_assembly_connector

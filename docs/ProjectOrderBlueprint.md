@@ -1435,7 +1435,7 @@ accumulated practice converges toward better rules.
 Fire Protection is the ideal first case because:
 
 1. **Data is ready.** 12 trigger rules, 4 coverage classes, 19 space types
-   already in disc_validation.db. No new data entry needed.
+   already in ERP.db. No new data entry needed.
 2. **The rules are well-defined.** NFPA 13 is a prescriptive standard —
    spacing and coverage are formulas, not judgement calls.
 3. **The validation path exists.** `PlacementValidatorImpl.validateBatch()`

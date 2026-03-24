@@ -69,7 +69,7 @@
 -- IfcStairFlight           STR         2  
 -- IfcRoof                  ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcMember_Unknown (144 instances, avg 645.0x606.0x1059.0 mm)

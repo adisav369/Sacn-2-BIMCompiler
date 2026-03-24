@@ -13,7 +13,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * MEP BOM Query — data-driven product requirements from disc_validation.db.
+ * MEP BOM Query — data-driven product requirements from ERP.db.
  *
  * <p>Implements BIM_Designer.md §18.8 (Click-to-Place data layer).
  * "Clicking defines the context, rules define the content."
@@ -38,10 +38,10 @@ class MEPBOMQueryTest {
 
     @BeforeAll
     static void setUp() throws Exception {
-        String dbPath = "library/disc_validation.db";
+        String dbPath = "library/ERP.db";
         dbAvailable = new File(dbPath).exists();
         if (!dbAvailable) {
-            fail("disc_validation.db required — MEPBOMQueryTest cannot run without it");
+            fail("ERP.db required — MEPBOMQueryTest cannot run without it");
         }
 
         conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);

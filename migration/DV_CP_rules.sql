@@ -36,7 +36,7 @@
 -- IfcFlowController  MEP         254 
 -- IfcFlowTerminal    MEP         119 
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcFlowSegment_Level_1 (1880 instances, avg 501.0x454.0x263.0 mm)

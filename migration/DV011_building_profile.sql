@@ -1,5 +1,5 @@
 -- DV011_building_profile.sql
--- Creates building profile table in disc_validation.db
+-- Creates building profile table in ERP.db
 -- Source: mined from 34 extracted DBs — element class distribution per building
 -- Purpose: Layer 2 flywheel — "does this building's composition make sense?"
 -- APPEND-ONLY: never modify this migration after first run

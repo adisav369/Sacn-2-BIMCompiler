@@ -38,7 +38,7 @@ BIMDesigner/
 │   └── start-server.sh (.bat)    # Launch script (uses bundled JRE)
 ├── data/
 │   ├── component_library.db      # Product catalog (800 products)
-│   ├── disc_validation.db        # 63 validation rules
+│   ├── ERP.db        # 63 validation rules
 │   ├── SH_BOM.db                 # Sample House BOM (demo)
 │   └── DM_BOM.db                 # DemoHouse generative BOM
 ├── addon/

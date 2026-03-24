@@ -116,7 +116,7 @@ FZKHaus (FK) ──extract──→ component_library.db (81 M_Products)
                                     │  2,459 products total
                                     │  All with geometry, orientation, IFC class
                                     ▼
-Building codes ──encode──→ disc_validation.db
+Building codes ──encode──→ ERP.db
   NEC 2020, IPC 2021      (MEP schedules, opening rules)
   NFPA 13, MS 1228         (37 residential MEP entries)
   UBBL (Malaysian)          (room compliance rules)
@@ -668,7 +668,7 @@ The DemoHouse Work Order consists of 3 C_OrderLines:
 |-------------|------|--------------------------|
 | Roof fits base | G2-VOLUME | Pitched roof AABB must not exceed building envelope. Compiler validates replacement roof dims against the BUILDING BOM AABB it replaces. |
 | Curtain wall trims to roof | TRIM verb | Glass wall panels that exceed the pitched roof cover line are trimmed down. Panels that don't reach the cover line are extended up. TrimWallsToRoofVerb (S53) handles this. |
-| FP compliance | AD_Val_Rule | Sprinkler placement follows NFPA 13 spacing rules from disc_validation.db. validateBatch() applies AD_Clash_Rule for FP vs STR clearance. |
+| FP compliance | AD_Val_Rule | Sprinkler placement follows NFPA 13 spacing rules from ERP.db. validateBatch() applies AD_Clash_Rule for FP vs STR clearance. |
 
 ### 10.3 Pre-Requisite Analysis
 
@@ -721,7 +721,7 @@ Session 4: TRIM verb + integration
 The DemoHouse compiles when:
 1. `bomDrop(BUILDING_SH_STD)` produces full SH house in OrderLine tree
 2. `swapProduct(roof_node, FK_pitched)` replaces flat roof, validates base dims
-3. FP OrderLine adds sprinklers per room (NFPA 13 from disc_validation.db)
+3. FP OrderLine adds sprinklers per room (NFPA 13 from ERP.db)
 4. TRIM verb clips curtain wall panels to pitched roof line
 5. All gates pass: G1-COUNT, G2-VOLUME, G5-PROVENANCE, G6-ISOLATION
 6. BIMEyes proofs: P27 WALL_ROOF_INTERSECTION, P28 ROOF_COVERAGE verified

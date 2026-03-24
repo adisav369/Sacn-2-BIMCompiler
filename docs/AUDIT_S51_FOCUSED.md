@@ -545,7 +545,7 @@ LAST_MILE_PROBLEM.md refresh (`e1d2afe`) verified accurate.
 ## Appendix F — Application Dictionary Audit (S62, 2026-03-23)
 
 > **Scope:** Cross-check [DISC_VALIDATION_DB_SRS.md §10](DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62) against actual database state.
-> **Method:** Direct SQLite queries on `library/component_library.db` and `library/disc_validation.db`.
+> **Method:** Direct SQLite queries on `library/component_library.db` and `library/ERP.db`.
 
 ### §10 Spec Assessment
 
@@ -558,7 +558,7 @@ DISC_VALIDATION_DB_SRS.md §10 is **well-structured** — correct problem identi
 | Database | Tables | Geometry rows | AD tables | M_Product rows |
 |----------|--------|--------------|-----------|---------------|
 | `component_library.db` | 81 | 24,004 defs + 51,673 geoms | 66 | 2,475 |
-| `disc_validation.db` | 25 | 0 | 20 | 0 |
+| `ERP.db` | 25 | 0 | 20 | 0 |
 | `{PREFIX}_BOM.db` | ~73 | 0 | many (copied) | copied subset |
 
 ### Finding: 15 Tables Duplicated Across Both Databases
@@ -594,7 +594,7 @@ DISC_VALIDATION_DB_SRS.md §1 states the discipline table migration is "DONE (se
 §10 says "M_Product and all AD tables" need to move. The actual scope is larger:
 
 - **66 ad_ tables** in component_library.db (§10 says 34)
-- **15 duplicated** with disc_validation.db (§10 doesn't mention this)
+- **15 duplicated** with ERP.db (§10 doesn't mention this)
 - **3 dead tables** (ad_bom, ad_bom_child, ad_product_dim) that should be dropped first
 - **4 bad_ tables** (bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param) — undocumented prefix
 
@@ -605,7 +605,7 @@ DISC_VALIDATION_DB_SRS.md §1 states the discipline table migration is "DONE (se
 3. **Resolve duplicates** — decide which database is authoritative for the 15 shared tables. Java code audit (investigation task #1) will reveal which connection each reader uses.
 4. **Document bad_ prefix** — bad_discipline_priority et al. are undocumented. Are these BIM Designer rules? If so, they belong with the AD Dictionary, not geometry.
 5. **§10 Option A is the right answer.** component_library.db should be geometry-only (~7 tables: component_definitions, component_geometries, surface_styles, material_layers, I_Geometry_Map, M_Product_Image, component_types). Everything else moves to an AD Dictionary database. The 66→7 table reduction makes the geometry DB maintainable.
-6. **Sequence:** Drop dead → remove duplicates from CL → move remaining AD tables → rename disc_validation.db to ad_dictionary.db (or keep name). Each step is independently committable.
+6. **Sequence:** Drop dead → remove duplicates from CL → move remaining AD tables → rename ERP.db to ad_dictionary.db (or keep name). Each step is independently committable.
 
 ### §11 Investigation Report Audit (S64, commit `a19a025`)
 
@@ -653,7 +653,7 @@ DISC_VALIDATION_DB_SRS.md §1 states the discipline table migration is "DONE (se
 | Update §10.1 "34→66" | §11.6.7 — acknowledged, deferred to implementation |
 | Drop dead tables first (R18) | §11.6.5 Step 0 — explicitly included |
 | Resolve 15 duplicates | §11.6.5 Step 4 — remove from component_library.db |
-| Document bad_ prefix | §11.6.1 — bad_ tables listed for move to disc_validation.db |
+| Document bad_ prefix | §11.6.1 — bad_ tables listed for move to ERP.db |
 | Option A is correct | §11.7 — confirmed with decision matrix |
 | 6-step sequence | §11.6.5 — matches, with more detail |
 
@@ -668,7 +668,7 @@ DISC_VALIDATION_DB_SRS.md §1 states the discipline table migration is "DONE (se
 ### Steps 0–2 Implementation Audit (S64, commit `28ce019`)
 
 > **Scope:** DV013 (AD_Org), DV014 (dual columns), CL001 (dead table drop script), DiscValidationDBTest 24/24 GREEN.
-> **Method:** Direct SQLite queries on disc_validation.db + migration file review + Java enum cross-check.
+> **Method:** Direct SQLite queries on ERP.db + migration file review + Java enum cross-check.
 
 **1. DV013 — AD_Org Table (16 rows)**
 
@@ -741,7 +741,7 @@ CL001_drop_dead_tables.sql is written but not applied. It drops 4 dead tables (a
 
 ### Step 3 Implementation Audit (S65, 2026-03-24)
 
-> **Scope:** DV015 (M_Product + M_Product_Category copy to disc_validation.db), 13 Java files changed, DiscValidationDBTest 27/27 GREEN.
+> **Scope:** DV015 (M_Product + M_Product_Category copy to ERP.db), 13 Java files changed, DiscValidationDBTest 27/27 GREEN.
 > **Method:** Pre-flight SH/FK 7/7 baseline → migration → Java changes → post-flight SH/FK 7/7 + DiscValidationDBTest 27/27.
 
 **1. DV015 Migration**
@@ -760,12 +760,12 @@ CL001_drop_dead_tables.sql is written but not applied. It drops 4 dead tables (a
 
 | File | Change | Risk |
 |------|--------|------|
-| PlacementLoader (2 sites) | compConn URL → disc_validation.db | LOW — compConn used only for BOMWalker/OrderLineWalker M_Product reads |
-| BuildingWriter (1 site) | compConn URL → disc_validation.db | LOW — compConn used only for BOMWalker assembly pass |
-| BOMWalker.forDefaultDb() | URL → disc_validation.db | LOW — static factory, rarely used |
-| PlaceBomVerb, WalkThruVerb, EnBlocVerb | compConn URL → disc_validation.db | LOW — each creates compConn only for BOMWalker M_Product reads |
-| BackOfficeServer | compLibConn URL → disc_validation.db | **MED** — single connection serves all 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt). All DAOs query M_Product only via this connection. |
-| DesignerAPIImpl | compLibConn URL → disc_validation.db | **MED** — lazy-init connection for 6D/7D queries. Same pattern as BackOfficeServer. |
+| PlacementLoader (2 sites) | compConn URL → ERP.db | LOW — compConn used only for BOMWalker/OrderLineWalker M_Product reads |
+| BuildingWriter (1 site) | compConn URL → ERP.db | LOW — compConn used only for BOMWalker assembly pass |
+| BOMWalker.forDefaultDb() | URL → ERP.db | LOW — static factory, rarely used |
+| PlaceBomVerb, WalkThruVerb, EnBlocVerb | compConn URL → ERP.db | LOW — each creates compConn only for BOMWalker M_Product reads |
+| BackOfficeServer | compLibConn URL → ERP.db | **MED** — single connection serves all 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt). All DAOs query M_Product only via this connection. |
+| DesignerAPIImpl | compLibConn URL → ERP.db | **MED** — lazy-init connection for 6D/7D queries. Same pattern as BackOfficeServer. |
 | ProductRegistrar | ensureProductCatalog gains discConn param, dual-write | **MED** — writes to both compConn (geometry join) and discConn (master catalog). Ensures ensureProductImages join still works. |
 | IFCtoBOMPipeline | opens discConn, passes to ProductRegistrar, reuses for DV010/DV011/DV012 validators | LOW — consolidates 3 separate discConn opens into 1 |
 | IFCtoBOMMain | opens discConn, passes to ProductRegistrar | LOW — same pattern |
@@ -785,20 +785,20 @@ CL001_drop_dead_tables.sql is written but not applied. It drops 4 dead tables (a
 
 **4. New Witness Claims (DV015)**
 
-- W-DV-DB-PRODUCT: M_Product >= 2,475 rows in disc_validation.db
-- W-DV-DB-PRODUCT: M_Product_Category >= 46 rows in disc_validation.db
+- W-DV-DB-PRODUCT: M_Product >= 2,475 rows in ERP.db
+- W-DV-DB-PRODUCT: M_Product_Category >= 46 rows in ERP.db
 - W-DV-DB-PRODUCT: M_PRODUCT_VERSION = DV015 in AD_SysConfig
 
 **5. Concerns**
 
 1. **Dual-write complexity.** ProductRegistrar.ensureProductCatalog now writes to both compConn and discConn. This is transitional — Step 6 (drop M_Product from component_library.db) will eliminate the compConn write. Until then, both copies must stay in sync.
-2. **BackOffice DAOs parameter name.** The parameter is still named `compLibConn` but now points to disc_validation.db. Not a bug — the DAO doesn't care about the connection source, only the table schema. Renaming to `productConn` is cosmetic and deferred.
-3. **DesignerDAO reads from bomConn.** DesignerDAO.listProducts/countProducts/categoryCounts read M_Product from the BOM DB copy, not component_library.db or disc_validation.db. These are unaffected. The BOM DB copy is populated by IFCtoBOM (dead code per R7 but still runs).
+2. **BackOffice DAOs parameter name.** The parameter is still named `compLibConn` but now points to ERP.db. Not a bug — the DAO doesn't care about the connection source, only the table schema. Renaming to `productConn` is cosmetic and deferred.
+3. **DesignerDAO reads from bomConn.** DesignerDAO.listProducts/countProducts/categoryCounts read M_Product from the BOM DB copy, not component_library.db or ERP.db. These are unaffected. The BOM DB copy is populated by IFCtoBOM (dead code per R7 but still runs).
 
 | Item | Verdict |
 |------|---------|
 | DV015 migration | **CORRECT** |
-| 13-file Java change | **CORRECT** — all M_Product reads now from disc_validation.db |
+| 13-file Java change | **CORRECT** — all M_Product reads now from ERP.db |
 | ProductRegistrar dual-write | **CORRECT** — transitional, eliminates in Step 6 |
 | Non-disturbance (SH/FK) | **VERIFIED** — 7/7 before and after |
 | DiscValidationDBTest 27/27 | **VERIFIED** |
@@ -812,11 +812,11 @@ CL001_drop_dead_tables.sql is written but not applied. It drops 4 dead tables (a
 
 | Claim | Verification | Status |
 |-------|-------------|--------|
-| disc_validation.db M_Product = 2,475 | `SELECT COUNT(*) FROM M_Product` = 2475 | **CONFIRMED** |
-| disc_validation.db M_Product_Category = 46 | `SELECT COUNT(*) FROM M_Product_Category` = 46 | **CONFIRMED** |
+| ERP.db M_Product = 2,475 | `SELECT COUNT(*) FROM M_Product` = 2475 | **CONFIRMED** |
+| ERP.db M_Product_Category = 46 | `SELECT COUNT(*) FROM M_Product_Category` = 46 | **CONFIRMED** |
 | component_library.db M_Product unchanged | `SELECT COUNT(*) FROM M_Product` = 2475 (not deleted) | **CONFIRMED** |
 | M_Product_Category backfill preserved | 2,098 of 2,475 products have M_Product_Category_ID | **CONFIRMED** |
-| disc_validation.db table count | 28 tables (was 25 pre-Step 3: +M_Product, +M_Product_Category, +sqlite_sequence) | **CONFIRMED** |
+| ERP.db table count | 28 tables (was 25 pre-Step 3: +M_Product, +M_Product_Category, +sqlite_sequence) | **CONFIRMED** |
 | `mvn compile -q` | CLEAN | **CONFIRMED** |
 
 **Step 3 self-audit is accurate.** The migration, Java connection switching, and non-disturbance checks all hold. No discrepancies found between the self-audit claims and actual DB/build state.
@@ -916,9 +916,9 @@ Untracked `migration/S67_001_onboard_elec_products.sql` cites non-existent `DISC
 
 | What | Where It Belongs | Why |
 |------|-----------------|-----|
-| S65 disc_validation.db as M_Product source | Gap 8 §8.1 (line 521-526) | "M_Product is a transitional copy" is stale — ProductRegistrar dual-writes, BOMWalker reads from disc_validation.db |
+| S65 ERP.db as M_Product source | Gap 8 §8.1 (line 521-526) | "M_Product is a transitional copy" is stale — ProductRegistrar dual-writes, BOMWalker reads from ERP.db |
 | G3-DIGEST 1015-element precision issue | Actions table | Has no R-number. Every other finding gets one. Assign R33 or similar |
-| Gap 4 source table update | Line 224 | component_library.db listed for "Product catalog" — after S65, authoritative M_Product reads come from disc_validation.db |
+| Gap 4 source table update | Line 224 | component_library.db listed for "Product catalog" — after S65, authoritative M_Product reads come from ERP.db |
 | R27 completion in Mantra | Line 811 | Mentioned but not marked DONE (Actions table line 436 says DONE) |
 | R24 orphaned by R17 | Line 583 | R24 wanted to extract into I_Element_Extraction, which R17 dropped. Needs new target table or SUPERSEDED status |
 
@@ -943,8 +943,8 @@ Untracked `migration/S67_001_onboard_elec_products.sql` cites non-existent `DISC
 - Assign R-number to G3-DIGEST 1015-element precision finding
 
 **Content updates (20 min):**
-- Update Gap 8 §8.1 for S65 disc_validation.db migration
-- Update Gap 4 source table for disc_validation.db
+- Update Gap 8 §8.1 for S65 ERP.db migration
+- Update Gap 4 source table for ERP.db
 - Update Geometric Fingerprint witnesses: W-EQUIV → W-MULTISET
 - Add Gap 10 cross-reference or track in LAST_MILE
 - Note Layer 2 spec-vs-implementation gap explicitly
@@ -1676,7 +1676,7 @@ merges them: `m_bom` carries both product identity and assembly structure.
 | Entity | Table | Database | Role |
 |--------|-------|----------|------|
 | Assembly structure | m_bom + m_bom_line | {PREFIX}_BOM.db | Hierarchy, tack offsets |
-| Leaf product catalog | M_Product | component_library.db → disc_validation.db | Dimensions, geometry_hash |
+| Leaf product catalog | M_Product | component_library.db → ERP.db | Dimensions, geometry_hash |
 | Product-geometry link | M_Product_Image | component_library.db | product_id → geometry_hash |
 
 **Classes touching m_bom (assembly):** BOMWalker, BomDropper, DesignerDAO, CalibrationDAO,

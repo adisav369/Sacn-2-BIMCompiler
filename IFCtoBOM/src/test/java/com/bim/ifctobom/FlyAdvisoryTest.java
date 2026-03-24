@@ -14,19 +14,19 @@ import static org.junit.jupiter.api.Assertions.*;
  * FL-2 Flywheel Advisory witnesses.
  *
  * <p>Tests the write-side: validators → W_Validation_Advisory table,
- * and the read-side: querying advisories back from disc_validation.db.
+ * and the read-side: querying advisories back from ERP.db.
  *
  * // Implementing BIM_Designer_SRS.md §27.7 — Witness: W-FL-ADVISORY-1..5
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class FlyAdvisoryTest {
 
-    static final Path DISC_DB = Path.of("library/disc_validation.db");
+    static final Path DISC_DB = Path.of("library/ERP.db");
     static Connection discConn;
 
     @BeforeAll
     static void openDb() throws Exception {
-        assertTrue(Files.exists(DISC_DB), "disc_validation.db must exist");
+        assertTrue(Files.exists(DISC_DB), "ERP.db must exist");
         discConn = DriverManager.getConnection("jdbc:sqlite:" + DISC_DB);
 
         // Ensure DV012 schema exists

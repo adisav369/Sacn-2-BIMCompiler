@@ -10,7 +10,7 @@ import java.util.*;
 /**
  * DV010: Validates extracted IFC element dimensions against mined typical ranges.
  *
- * <p>Reads ad_val_rule from disc_validation.db — 415 DIMENSION_RANGE rules
+ * <p>Reads ad_val_rule from ERP.db — 415 DIMENSION_RANGE rules
  * mined from 20 real buildings. For each IFC class, aggregates the min/max
  * observed typical W/D/H across all provenances, then flags elements whose
  * dimensions fall outside [min/ratio, max×ratio].
@@ -43,9 +43,9 @@ public class DimensionRangeValidator {
     }
 
     /**
-     * Load mined dimension rules from disc_validation.db and aggregate per IFC class.
+     * Load mined dimension rules from ERP.db and aggregate per IFC class.
      *
-     * @param discConn connection to disc_validation.db
+     * @param discConn connection to ERP.db
      * @return validator with aggregated ranges, or empty validator if load fails
      */
     public static DimensionRangeValidator load(Connection discConn) {

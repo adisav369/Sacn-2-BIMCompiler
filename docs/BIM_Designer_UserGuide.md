@@ -78,7 +78,7 @@ User clicks button in Blender
 │  │  browseItems, placeItem, bomDrop, listOrderLines,    │
 │  │  approve, promote, costBreakdown, schedule, ...)     │
 │  │                                                      │
-│  │  PlacementValidator ←── disc_validation.db (63 rules)│
+│  │  PlacementValidator ←── ERP.db (63 rules)│
 │  │  BomValidator ←── 9 checks + verb fidelity           │
 │  │  AssemblyBuilder ←── thermal U-value calculation     │
 │  └─────────────────────────┬────────────────────────────┘
@@ -91,7 +91,7 @@ User clicks button in Blender
 │                                                          │
 │  Databases:                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │ component_   │ │ {PREFIX}_    │ │ disc_validation  │ │
+│  │ component_   │ │ {PREFIX}_    │ │ ERP  │ │
 │  │ library.db   │ │ BOM.db       │ │ .db (63 rules)   │ │
 │  │ (800 prods)  │ │ (recipes)    │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
@@ -108,7 +108,7 @@ User clicks button in Blender
 |----|------|------|
 | `component_library.db` | Product catalog (800 products, meshes, materials, thermal properties) | ~500 MB |
 | `{PREFIX}_BOM.db` | Assembly recipes per building (BOM hierarchy, tack offsets, verb patterns) | ~10 MB |
-| `disc_validation.db` | Validation rules (63 rules: residential + infrastructure bridge/road/rail) | ~100 KB |
+| `ERP.db` | Validation rules (63 rules: residential + infrastructure bridge/road/rail) | ~100 KB |
 | `output_*.db` | Compiled result (elements, R-tree index, QTO, spatial structure) | varies |
 | `work_output.db` | Design Mode persistence (C_Order, C_OrderLine, W_Variant, bim_changelog) | per-building |
 | `AD_PrintFormat` | Print configurator (in work_output.db — which output tables to include) | per-building |
@@ -405,7 +405,7 @@ Response includes `items` (with `fitStatus`), `totalCount`, and `categories`
 
 ## 6. Validation Rules
 
-The system validates placements against building codes from `disc_validation.db`.
+The system validates placements against building codes from `ERP.db`.
 Rules are **data, not code** — adding a jurisdiction = SQL INSERTs.
 
 ### 6.1 Supported Jurisdictions
@@ -550,7 +550,7 @@ Location: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/`
 | `WorkOutputDAO.java` | work_output.db persistence (save/recall/listVariants) |
 | `AssemblyAPI.java` | Assembly builder interface (G-7) |
 | `PlacementValidator.java` | Interface (dual-mode: building + infrastructure) |
-| `PlacementValidatorImpl.java` | Implementation (reads disc_validation.db, FacilityType routing) |
+| `PlacementValidatorImpl.java` | Implementation (reads ERP.db, FacilityType routing) |
 | `JsonProtocol.java` | Gson codec for ndjson wire format |
 
 Location: `BonsaiBIMDesigner/src/main/java/com/bim/designer/`

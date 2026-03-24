@@ -69,7 +69,7 @@
 -- IfcStairFlight           ARC         20 
 -- IfcSlab                  STR         15 
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcBuildingElementProxy_Katus (175 instances, avg 1872.0x2286.0x668.0 mm)

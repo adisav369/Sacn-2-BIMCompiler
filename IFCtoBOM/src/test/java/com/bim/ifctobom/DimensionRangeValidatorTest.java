@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * <p>Witness claims:
  * <ul>
- *   <li>W-DV-PIPELINE-1: Loads 415+ rules from disc_validation.db (25 IFC classes)</li>
+ *   <li>W-DV-PIPELINE-1: Loads 415+ rules from ERP.db (25 IFC classes)</li>
  *   <li>W-DV-PIPELINE-2: Normal IfcWall (3000×3500×3000mm) passes</li>
  *   <li>W-DV-PIPELINE-3: Absurd IfcWall (500000mm width) flagged as outlier</li>
  *   <li>W-DV-PIPELINE-4: Unknown IFC class produces zero outliers</li>
@@ -29,12 +29,12 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DimensionRangeValidatorTest {
 
-    static final Path DISC_DB = Path.of("library/disc_validation.db");
+    static final Path DISC_DB = Path.of("library/ERP.db");
     static DimensionRangeValidator validator;
 
     @BeforeAll
     static void load() throws Exception {
-        assumeTrue(Files.exists(DISC_DB), "disc_validation.db must exist");
+        assumeTrue(Files.exists(DISC_DB), "ERP.db must exist");
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + DISC_DB)) {
             validator = DimensionRangeValidator.load(conn);
         }
@@ -42,7 +42,7 @@ class DimensionRangeValidatorTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-DV-PIPELINE-1: Loads 25+ IFC classes from disc_validation.db")
+    @DisplayName("W-DV-PIPELINE-1: Loads 25+ IFC classes from ERP.db")
     void loadRules() {
         assertTrue(validator.hasRules(), "Must have loaded rules");
         assertTrue(validator.classCount() >= 25,

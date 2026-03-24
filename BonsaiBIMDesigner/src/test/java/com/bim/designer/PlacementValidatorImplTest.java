@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>W-PV-3: KITCHEN 2000x2000x2800 BLOCK on min_area (4.0 < 4.5)</li>
  *   <li>W-PV-4: Deactivated validator always returns PASS</li>
  *   <li>W-PV-5: US jurisdiction loads different rules (IRC thresholds)</li>
- *   <li>W-DV-MINED-WIRE-1: Mined rules loaded from disc_validation.db (415 rules, 25 IFC classes)</li>
+ *   <li>W-DV-MINED-WIRE-1: Mined rules loaded from ERP.db (415 rules, 25 IFC classes)</li>
  *   <li>W-DV-MINED-WIRE-2: IfcWall within range PASS</li>
  *   <li>W-DV-MINED-WIRE-3: IfcWall way outside range WARN</li>
  *   <li>W-DV-MINED-WIRE-4: Unknown IFC class PASS (no mined data)</li>
@@ -326,11 +326,11 @@ class PlacementValidatorImplTest {
 
     @Test
     @Order(50)
-    @DisplayName("W-DV-MINED-WIRE-1: Mined rules loaded from disc_validation.db")
+    @DisplayName("W-DV-MINED-WIRE-1: Mined rules loaded from ERP.db")
     void w_dv_mined_wire_1_load() throws Exception {
         // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-1
         validator.activate("MY", FacilityType.BUILDING, valConn);
-        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             validator.activateMinedRules(discConn);
         }
         // 10 compliance + 415 mined = 425+
@@ -344,7 +344,7 @@ class PlacementValidatorImplTest {
     void w_dv_mined_wire_2_pass() throws Exception {
         // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-2
         validator.activate("MY", FacilityType.BUILDING, valConn);
-        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             validator.activateMinedRules(discConn);
         }
         // Typical IfcWall: ~3000x3500x3000mm — well within mined range
@@ -366,7 +366,7 @@ class PlacementValidatorImplTest {
     void w_dv_mined_wire_3_warn() throws Exception {
         // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-3
         validator.activate("MY", FacilityType.BUILDING, valConn);
-        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             validator.activateMinedRules(discConn);
         }
         // Absurdly large wall: 500000mm width = 500m — way outside any mined range
@@ -386,7 +386,7 @@ class PlacementValidatorImplTest {
     void w_dv_mined_wire_4_unknown_class() throws Exception {
         // Implementing DISC_VALIDATION_DB_SRS.md §DV010 — Witness: W-DV-MINED-WIRE-4
         validator.activate("MY", FacilityType.BUILDING, valConn);
-        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             validator.activateMinedRules(discConn);
         }
         // IfcChimney has no mined data — should pass silently

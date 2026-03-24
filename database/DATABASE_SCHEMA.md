@@ -57,7 +57,7 @@ Read-only geometry oracle. Populated by IFC extraction (Python + IfcOpenShell). 
 
 ---
 
-## 2. disc_validation.db — Discipline Metadata (20 tables, ~1 MB)
+## 2. ERP.db — Discipline Metadata (20 tables, ~1 MB)
 
 Migration-seeded, read-only at runtime. Populated by `migration/DV*.sql` scripts. All discipline metadata migrated here from component_library.db in session 41 (Phase 2b+3).
 
@@ -175,7 +175,7 @@ Written fresh each compile. Schema created from `output_template.db`.
 
 | File | Issue | Fix |
 |------|-------|-----|
-| BIM_COBOL.md:197 | Said ROUTE reads from {PREFIX}_BOM.db | Fixed: reads component_library.db + disc_validation.db |
+| BIM_COBOL.md:197 | Said ROUTE reads from {PREFIX}_BOM.db | Fixed: reads component_library.db + ERP.db |
 | ConstructionAsERP.md:2737,3092 | "3-DB separation/split" | Fixed: "4-DB" |
 | INDEX.md:12 | "3-DB architecture" | Fixed: "4-DB" |
 | SourceCodeGuide.md:606 | "3-DB schema" | Fixed: "4-DB" |
@@ -190,15 +190,15 @@ Written fresh each compile. Schema created from `output_template.db`.
 |-------|----------|--------|
 | ad_building_registry | component_library.db | 0 Java references — orphaned schema |
 | ad_geometry_map | component_library.db | Renamed to I_Geometry_Map — old name was orphan |
-| ad_space_type_furniture | disc_validation.db | Only in archived FurnitureTypeResolver — deprecated |
+| ad_space_type_furniture | ERP.db | Only in archived FurnitureTypeResolver — deprecated |
 
 ### Remaining Low-Use Tables
 
 | Table | Database | Status |
 |-------|----------|--------|
-| **ad_ifc_class_map** | disc_validation.db | Used by Python `tools/extract.py` only — keep |
-| **ad_space_adjacency** | disc_validation.db | Test seed only — reserved for future adjacency validation |
-| **ad_assembly_connector** | disc_validation.db | Test seed only — assembly builder feature in progress |
+| **ad_ifc_class_map** | ERP.db | Used by Python `tools/extract.py` only — keep |
+| **ad_space_adjacency** | ERP.db | Test seed only — reserved for future adjacency validation |
+| **ad_assembly_connector** | ERP.db | Test seed only — assembly builder feature in progress |
 | **M_Product (BOM copy)** | {PREFIX}_BOM.db | Transitional — target: read from library only |
 
 ---

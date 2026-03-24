@@ -37,7 +37,7 @@ import java.util.List;
 public class OrderLineWalker {
 
     private final Connection compileDb;  // has m_bom, m_bom_line, C_Order, C_OrderLine
-    private final Connection compConn;   // disc_validation.db (M_Product master catalog)
+    private final Connection compConn;   // ERP.db (M_Product master catalog)
     private static final int MAX_DEPTH = 20;
 
     public OrderLineWalker(Connection compileDb, Connection compConn) {
@@ -119,7 +119,7 @@ public class OrderLineWalker {
             }
 
             if ("LEAF".equals(row.hostType)) {
-                // Leaf — load M_Product from disc_validation.db
+                // Leaf — load M_Product from ERP.db
                 MProduct product = MProduct.get(compConn, row.familyRef);
                 BOMWalker.NodeContext ctx = new BOMWalker.NodeContext(
                         product, line, parentBom, level, buildingType, row.discipline);

@@ -45,14 +45,14 @@ import java.util.*;
 public class ProductRegistrar {
 
     /**
-     * Create M_Product rows in both component_library.db and disc_validation.db.
+     * Create M_Product rows in both component_library.db and ERP.db.
      * Products are created in component_library.db (for M_Product_Image geometry join)
-     * and disc_validation.db (authoritative master catalog for downstream readers).
+     * and ERP.db (authoritative master catalog for downstream readers).
      *
      * <p>Idempotent — INSERT OR IGNORE. Only new products are added.
      *
      * @param compConn     writable connection to component_library.db (geometry join)
-     * @param discConn     writable connection to disc_validation.db (master catalog)
+     * @param discConn     writable connection to ERP.db (master catalog)
      * @param elements     all extraction elements for the building
      * @param buildingType the building_type string (for logging)
      * @return number of new products inserted (0 = all reused)
@@ -93,7 +93,7 @@ public class ProductRegistrar {
 
         int count = 0;
         int reused = 0;
-        // Dual-write: component_library.db (geometry join) + disc_validation.db (master catalog)
+        // Dual-write: component_library.db (geometry join) + ERP.db (master catalog)
         try (PreparedStatement stmt = compConn.prepareStatement(sql);
              PreparedStatement discStmt = discConn.prepareStatement(sql)) {
             for (Map.Entry<String, ExtractionElement> entry : distinct.entrySet()) {
@@ -117,7 +117,7 @@ public class ProductRegistrar {
                 if (rows > 0) count++;
                 else reused++;
 
-                // Write to disc_validation.db (authoritative master catalog)
+                // Write to ERP.db (authoritative master catalog)
                 discStmt.setString(1, productId);
                 discStmt.setString(2, productType);
                 discStmt.setDouble(3, w);
@@ -136,18 +136,18 @@ public class ProductRegistrar {
     }
 
     /**
-     * Copy M_Product rows from disc_validation.db catalog to the BOM DB.
+     * Copy M_Product rows from ERP.db catalog to the BOM DB.
      * The BOM DB gets a local copy for backward compatibility — downstream
-     * readers (BOMWalker, OrderLineWalker) read from disc_validation.db directly.
+     * readers (BOMWalker, OrderLineWalker) read from ERP.db directly.
      *
-     * <p>DEAD CODE per R7: BOMWalker reads from compConn (now disc_validation.db).
+     * <p>DEAD CODE per R7: BOMWalker reads from compConn (now ERP.db).
      * Kept for single-arg BOMWalker constructor used by some tests.
      *
      * <p>Only copies products referenced by the current building's extraction.
      * Uses INSERT OR IGNORE — safe for re-runs.
      *
      * @param bomConn  writable connection to output BOM DB
-     * @param compConn read connection to disc_validation.db (master product catalog)
+     * @param compConn read connection to ERP.db (master product catalog)
      * @param elements all extraction elements for the building
      * @return number of products copied to BOM DB
      */

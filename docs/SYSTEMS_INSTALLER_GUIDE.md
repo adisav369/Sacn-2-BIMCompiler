@@ -66,7 +66,7 @@ The `library/` directory contains all SQLite databases. These ship with the repo
 | File | Size | Purpose |
 |------|------|---------|
 | `component_library.db` | ~5 MB | Master product catalog: 608 products, 23.9K geometries, thermal properties |
-| `disc_validation.db` | ~1 MB | Discipline validation rules, IFC class mapping, MEP metadata (20 tables) |
+| `ERP.db` | ~1 MB | Discipline validation rules, IFC class mapping, MEP metadata (20 tables) |
 | `validation.db` | ~100 KB | Compliance thresholds and verdicts |
 
 ### 3.2 Per-Building BOM Databases (one per building)
@@ -104,7 +104,7 @@ sqlite3 library/SH_BOM.db "SELECT bom_type, name, bom_category FROM m_bom"
 sqlite3 library/component_library.db "SELECT COUNT(*) FROM M_Product"
 
 # Check validation rules
-sqlite3 library/disc_validation.db "SELECT COUNT(*) FROM AD_Val_Rule"
+sqlite3 library/ERP.db "SELECT COUNT(*) FROM AD_Val_Rule"
 ```
 
 ---
@@ -165,7 +165,7 @@ pip install datasette
 ```bash
 source .venv/bin/activate
 datasette library/component_library.db \
-          library/disc_validation.db \
+          library/ERP.db \
           library/SH_BOM.db library/DX_BOM.db library/TE_BOM.db \
           library/BR_BOM.db library/RD_BOM.db library/RL_BOM.db \
           --port 8001 --host 127.0.0.1 \
@@ -179,7 +179,7 @@ datasette library/component_library.db \
 - JSON API: append `.json` to any URL for machine-readable output
 
 **Datasette reads SQLite files live** — no restart needed after migrations or recompiles.
-Changes to `component_library.db`, `disc_validation.db`, or `*_BOM.db` are visible immediately.
+Changes to `component_library.db`, `ERP.db`, or `*_BOM.db` are visible immediately.
 
 ### 4.4 All Servers (typical setup)
 
@@ -344,7 +344,7 @@ A typical development setup runs 4 services:
 ┌─────────────────┐                    ┌──────────────────────┐
 │  federation.db  │                    │  library/*.db        │
 │  (IFC spatial)  │                    │  component_library   │
-└─────────────────┘                    │  disc_validation     │
+└─────────────────┘                    │  ERP     │
                                        │  *_BOM.db files      │
   http://localhost:8001                └──────────────────────┘
 ┌─────────────────┐                               │
@@ -444,7 +444,7 @@ SQL migrations are in `migration/` — **append-only, never modify existing**.
 **Running a migration:**
 
 ```bash
-sqlite3 library/disc_validation.db < migration/DV007_infra_road_rules.sql
+sqlite3 library/ERP.db < migration/DV007_infra_road_rules.sql
 ```
 
 ---
@@ -546,7 +546,7 @@ immediately.
 |-----|---------------|
 | `http://localhost:8001/` | All databases, table counts |
 | `http://localhost:8001/component_library` | All 21 tables with row counts and schema |
-| `http://localhost:8001/disc_validation` | All 21 discipline metadata tables |
+| `http://localhost:8001/ERP` | All 21 discipline metadata tables |
 | `http://localhost:8001/SH_BOM` | Sample House BOM structure |
 | `http://localhost:8001/component_library/M_Product` | Paginated product catalog rows |
 
@@ -584,7 +584,7 @@ sqlite3 library/component_library.db ".schema" > database/schema_snapshot_compon
 Full table inventory with purpose, Java access patterns, and review status:
 **[`database/DATABASE_SCHEMA.md`](../database/DATABASE_SCHEMA.md)**
 
-Quick summary: component_library.db (21 tables), disc_validation.db (20 tables),
+Quick summary: component_library.db (21 tables), ERP.db (20 tables),
 {PREFIX}_BOM.db (6 tables per building), output.db (written fresh each compile).
 
 ---
@@ -626,7 +626,7 @@ Docker wraps the **Back Office HTTP server** for WAN deployment. This is the onl
          ┌───────────▼───────────┐
          │  /data/library/       │  ← bind-mounted volume
          │  component_library.db │
-         │  disc_validation.db   │
+         │  ERP.db   │
          │  *_BOM.db files       │
          └───────────────────────┘
 ```
@@ -657,7 +657,7 @@ The `library/` directory is bind-mounted, so database updates are live:
 
 ```bash
 # Run a migration against the mounted volume
-sqlite3 ./library/disc_validation.db < migration/DV008_infra_rail_rules.sql
+sqlite3 ./library/ERP.db < migration/DV008_infra_rail_rules.sql
 
 # Recompile a building (output goes to same library/)
 ./scripts/run_RosettaStones.sh classify_sh.yaml

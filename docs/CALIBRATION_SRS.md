@@ -103,7 +103,7 @@ INPUT:
   - TE_BOM.db (extracted discipline BOMs — oracle)
   - TE reference DB (elements_meta + element_transforms — positions)
   - validation.db (AD_Val_Rule — mined rules, the basis for DocEvent)
-  - disc_validation.db (ad_space_type_mep_bom, ad_fp_coverage, ad_element_mep)
+  - ERP.db (ad_space_type_mep_bom, ad_fp_coverage, ad_element_mep)
   - component_library.db (M_Product dimensions, LOD geometry)
 
 PROCESS:
@@ -344,7 +344,7 @@ Phase 3 proves the PLACEMENT ENGINE produces correct positions.
 
 ## 7. Seed Data Gaps — 3 Fixes (session 33 analysis)
 
-Three seed data issues were identified in session 33 during disc_validation.db
+Three seed data issues were identified in session 33 during ERP.db
 creation. Each fix is scoped, testable, and does NOT touch existing passing tests.
 
 ### 7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into validation.db
@@ -362,7 +362,7 @@ references rule 803 — CalibrationTest is currently advisory for ELEC.
 
 **Migration:** `V007_elec_spacing_rule.sql` (append-only, validation.db).
 
-### 7.2 Fix 2: LIGHT per_area_normal — UPDATE in disc_validation.db
+### 7.2 Fix 2: LIGHT per_area_normal — UPDATE in ERP.db
 
 **Problem:** `ad_space_type_mep_bom` has `per_area_normal=0.0` for LIGHT across
 most space types. DocEvent computes qty=0 → density=0 → UNCALIBRATED.
@@ -371,11 +371,11 @@ Terminal shows ~0.05 lights/m² (814 lights across ~16,000 m² total floor area)
 **Fix:** UPDATE `ad_space_type_mep_bom SET per_area_normal=0.05` WHERE
 `mep_product_id='LIGHT' AND per_area_normal=0`.
 
-**Impact:** disc_validation.db only. component_library.db copy untouched
+**Impact:** ERP.db only. component_library.db copy untouched
 (Phase 2 not yet active). No Java changes. CalibrationTest ELEC density
 should move from UNCALIBRATED to DRIFT or CALIBRATED.
 
-**Migration:** `DV004_light_per_area.sql` (disc_validation.db).
+**Migration:** `DV004_light_per_area.sql` (ERP.db).
 
 ### 7.3 Fix 3: FP NN head-only filter — CalibrationDAO code change
 
@@ -400,7 +400,7 @@ result flips to UNCALIBRATED.
 | Fix | DB | File Changed | Existing Tests | Risk |
 |-----|-----|-------------|----------------|------|
 | Rule 803 | validation.db | V007 migration | None reference 803 | Zero |
-| LIGHT per_area | disc_validation.db | DV004 migration | DiscValidationDBTest seed counts unchanged (UPDATE not INSERT) | Zero |
+| LIGHT per_area | ERP.db | DV004 migration | DiscValidationDBTest seed counts unchanged (UPDATE not INSERT) | Zero |
 | FP NN filter | — | CalibrationDAO.java | CalibrationTest FP spacing may shift verdict | Low — run before/after |
 
 ---

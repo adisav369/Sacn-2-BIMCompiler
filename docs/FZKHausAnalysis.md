@@ -316,7 +316,7 @@ Canonical references: `docs/SourceCodeGuide.md` §Chapter 4 (Steps 1–5), `docs
 
 ### Step 0 — Seed databases (BEFORE extraction)
 
-**Both** `disc_validation.db` and `component_library.db` must be seeded before
+**Both** `ERP.db` and `component_library.db` must be seeded before
 `extract.py` runs. `extract.py` reads `ad_ifc_class_map` at startup to decide
 which IFC classes to extract — unregistered types are **silently skipped**.
 Classification tables (`ad_material_thermal`, `ad_wall_type`, `ad_beam_type`)
@@ -324,7 +324,7 @@ must also exist before the pipeline creates products.
 
 Spec: `docs/SourceCodeGuide.md` §Step 1 (IFC Class Authority Table), `docs/DISC_VALIDATION_DB_SRS.md` §5.2
 
-#### 0a. Register IFC element types in disc_validation.db
+#### 0a. Register IFC element types in ERP.db
 
 ```bash
 # 0a-i. List IFC types in the file
@@ -337,11 +337,11 @@ for t in types:
 "
 
 # 0a-ii. Compare with registered types
-sqlite3 library/disc_validation.db \
+sqlite3 library/ERP.db \
     "SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class"
 
 # 0a-iii. Add missing types (example: IfcMember for timber rafters)
-sqlite3 library/disc_validation.db "
+sqlite3 library/ERP.db "
 INSERT OR IGNORE INTO ad_ifc_class_map
     (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)
 VALUES

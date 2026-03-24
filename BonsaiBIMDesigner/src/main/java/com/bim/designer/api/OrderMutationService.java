@@ -65,7 +65,7 @@ public class OrderMutationService {
      * Backward compatible — same signature, same result type, same behavior.
      *
      * @param woConn          work_output.db connection (has C_Order + C_OrderLine)
-     * @param discValConn     disc_validation.db connection (has ad_space_type_mep_bom)
+     * @param discValConn     ERP.db connection (has ad_space_type_mep_bom)
      * @param orderId         C_Order_ID to add discipline lines to
      * @param discipline      discipline code: FP, ELEC, SP, ACMV
      * @param jurisdiction    ISO country code for rule selection (e.g., "MY", "US")

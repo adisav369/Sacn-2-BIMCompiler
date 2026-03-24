@@ -225,8 +225,8 @@ class ClickToPlaceTest {
         double cx = (room.minX() + room.maxX()) / 2;
         double cy = (room.minY() + room.maxY()) / 2;
 
-        // ELEC discipline in a room should place multiple items if disc_validation.db has data
-        // With stub data (no disc_validation.db), falls back to browse, which may find 0 items
+        // ELEC discipline in a room should place multiple items if ERP.db has data
+        // With stub data (no ERP.db), falls back to browse, which may find 0 items
         // Either way, the method should succeed without error
         ClickToPlaceResponse resp = api.clickToPlace(new ClickToPlaceRequest(
                 "ClickTest", cx, cy, room.minZ(),
@@ -235,7 +235,7 @@ class ClickToPlaceTest {
         assertTrue(resp.success(), "clickToPlace ELEC should succeed: " + resp.error());
         assertEquals(room.bomId(), resp.resolvedRoomBomId());
         assertEquals("ELEC", resp.discipline());
-        // mepRequirements should be populated if disc_validation.db is available
+        // mepRequirements should be populated if ERP.db is available
         assertNotNull(resp.mepRequirements(), "mepRequirements must not be null");
     }
 

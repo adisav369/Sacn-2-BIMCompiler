@@ -54,14 +54,14 @@ print(sorted(set(e.is_a() for e in f.by_type('IfcElement'))))
 "
 
 # Compare with registered types
-sqlite3 library/disc_validation.db \
+sqlite3 library/ERP.db \
     "SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class"
 ```
 
 **If types are missing**, register them (no code change):
 
 ```sql
--- In library/disc_validation.db
+-- In library/ERP.db
 INSERT INTO ad_ifc_class_map
     (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)
 VALUES ('IfcNewType', 'ARC', 'NEW_CATEGORY', 'BOTTOM', 'IFC4', 'BUILDING', 'Description');

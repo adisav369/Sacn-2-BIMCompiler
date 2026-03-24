@@ -42,7 +42,7 @@
 -- IfcColumn  STR         4  
 -- IfcStair   ARC         2  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWall_Erdgeschoss (16 instances, avg 2421.0x2296.0x2700.0 mm)

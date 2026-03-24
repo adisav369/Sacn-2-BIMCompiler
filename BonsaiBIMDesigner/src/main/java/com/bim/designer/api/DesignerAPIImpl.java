@@ -85,7 +85,7 @@ public class DesignerAPIImpl implements DesignerAPI {
     /** Lazily initialised changelog DAOs, keyed by buildingId. */
     private final java.util.Map<String, ChangelogDAO> changelogDaos = new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** Lazily opened disc_validation.db for MEP BOM queries (Click-to-Place §18.8). */
+    /** Lazily opened ERP.db for MEP BOM queries (Click-to-Place §18.8). */
     private volatile Connection discValConn;
 
     /** Lazily initialised MEP BOM query (reads ad_space_type_mep_bom). */
@@ -659,7 +659,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             Connection dvConn = getDiscValidationConn();
             if (dvConn == null) {
                 return new ListAdvisoriesResponse(false, List.of(), 0, 0, 0,
-                        "disc_validation.db not available");
+                        "ERP.db not available");
             }
 
             // Resolve building_type from buildingId (C_DocType lookup)
@@ -709,7 +709,7 @@ public class DesignerAPIImpl implements DesignerAPI {
     }
 
     /**
-     * Get or lazily open disc_validation.db connection.
+     * Get or lazily open ERP.db connection.
      * Reuses existing discValConn if already opened by getMEPBOMQuery().
      */
     private Connection getDiscValidationConn() {
@@ -717,16 +717,16 @@ public class DesignerAPIImpl implements DesignerAPI {
         synchronized (this) {
             if (discValConn != null) return discValConn;
             try {
-                String dbPath = "library/disc_validation.db";
+                String dbPath = "library/ERP.db";
                 if (!new File(dbPath).exists()) {
-                    BIMLogger.warn(TAG, "disc_validation.db not found at {}", dbPath);
+                    BIMLogger.warn(TAG, "ERP.db not found at {}", dbPath);
                     return null;
                 }
                 discValConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-                BIMLogger.info(TAG, "Opened disc_validation.db for advisory queries");
+                BIMLogger.info(TAG, "Opened ERP.db for advisory queries");
                 return discValConn;
             } catch (Exception e) {
-                BIMLogger.warn(TAG, "Failed to open disc_validation.db: {}", e.getMessage());
+                BIMLogger.warn(TAG, "Failed to open ERP.db: {}", e.getMessage());
                 return null;
             }
         }
@@ -1134,11 +1134,11 @@ public class DesignerAPIImpl implements DesignerAPI {
                     facilityTypeStr, e.getMessage());
         }
 
-        // DV010: load mined dimension rules from disc_validation.db
-        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db")) {
+        // DV010: load mined dimension rules from ERP.db
+        try (Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             validator.activateMinedRules(discConn);
         } catch (Exception e) {
-            BIMLogger.warn(TAG, "Mined rules not loaded (disc_validation.db): {}", e.getMessage());
+            BIMLogger.warn(TAG, "Mined rules not loaded (ERP.db): {}", e.getMessage());
         }
 
         BIMLogger.info(TAG, "Activated validator: jurisdiction={}, facilityType={}, rules={}",
@@ -1770,7 +1770,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             Connection dvConn = getDiscValidationConn();
             if (dvConn == null) {
                 return new AddDisciplineResponse(false, 0, 0, discipline,
-                        "disc_validation.db not available");
+                        "ERP.db not available");
             }
 
             OrderMutationService mutationService = new OrderMutationService();
@@ -2018,7 +2018,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             double contD = targetRoom.maxY() - targetRoom.minY();
             double contH = targetRoom.maxZ() - targetRoom.minZ();
 
-            // 2. Query MEP requirements from disc_validation.db (data-driven)
+            // 2. Query MEP requirements from ERP.db (data-driven)
             List<MEPRequirementInfo> mepReqs = List.of();
             if (!"ARC".equals(discipline)) {
                 mepReqs = queryMEPRequirements(targetRoom.category(), discipline);
@@ -2182,8 +2182,8 @@ public class DesignerAPIImpl implements DesignerAPI {
     }
 
     /**
-     * Query MEP requirements from disc_validation.db ad_space_type_mep_bom.
-     * Returns empty list if disc_validation.db is unavailable (graceful degradation).
+     * Query MEP requirements from ERP.db ad_space_type_mep_bom.
+     * Returns empty list if ERP.db is unavailable (graceful degradation).
      */
     private List<MEPRequirementInfo> queryMEPRequirements(String roomCategory, String discipline) {
         try {
@@ -2206,7 +2206,7 @@ public class DesignerAPIImpl implements DesignerAPI {
     }
 
     /**
-     * Lazily open disc_validation.db and create MEPBOMQuery.
+     * Lazily open ERP.db and create MEPBOMQuery.
      * Returns null if the DB file doesn't exist (graceful degradation).
      */
     private MEPBOMQuery getMEPBOMQuery() {
@@ -2214,17 +2214,17 @@ public class DesignerAPIImpl implements DesignerAPI {
         synchronized (this) {
             if (mepBomQuery != null) return mepBomQuery;
             try {
-                String dbPath = "library/disc_validation.db";
+                String dbPath = "library/ERP.db";
                 if (!new File(dbPath).exists()) {
-                    BIMLogger.warn(TAG, "disc_validation.db not found at {}", dbPath);
+                    BIMLogger.warn(TAG, "ERP.db not found at {}", dbPath);
                     return null;
                 }
                 discValConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
                 mepBomQuery = new MEPBOMQuery(discValConn);
-                BIMLogger.info(TAG, "Opened disc_validation.db for MEP BOM queries");
+                BIMLogger.info(TAG, "Opened ERP.db for MEP BOM queries");
                 return mepBomQuery;
             } catch (Exception e) {
-                BIMLogger.warn(TAG, "Failed to open disc_validation.db: {}", e.getMessage());
+                BIMLogger.warn(TAG, "Failed to open ERP.db: {}", e.getMessage());
                 return null;
             }
         }
@@ -2585,15 +2585,15 @@ public class DesignerAPIImpl implements DesignerAPI {
     // ── Assembly Builder (§18.2 Principle 4, G-7) ────────────────────
 
     /**
-     * Lazily open disc_validation.db for 6D/7D DAO queries (M_Product master catalog).
+     * Lazily open ERP.db for 6D/7D DAO queries (M_Product master catalog).
      */
     private Connection getCompLibConn() throws Exception {
         if (compLibConn == null) {
             synchronized (this) {
                 if (compLibConn == null) {
-                    String libPath = "library/disc_validation.db";
+                    String libPath = "library/ERP.db";
                     compLibConn = DriverManager.getConnection("jdbc:sqlite:" + libPath);
-                    BIMLogger.info(TAG, "Opened disc_validation.db for 6D/7D queries");
+                    BIMLogger.info(TAG, "Opened ERP.db for 6D/7D queries");
                 }
             }
         }

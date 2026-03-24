@@ -49,7 +49,7 @@ public class BuildingProfileValidator {
     }
 
     /**
-     * Load mined building profiles from disc_validation.db.
+     * Load mined building profiles from ERP.db.
      */
     public static BuildingProfileValidator load(Connection discConn) {
         Map<String, Map<String, Double>> profiles = new LinkedHashMap<>();

@@ -112,7 +112,7 @@ public class IFCtoBOMMain {
         System.out.printf("[populate] Building: %s (%s)%n", config.name(), buildingType);
 
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
-        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db");
+        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db");
         try {
             // 1. Extract + enrich in memory, fill geometry gaps in library
             Map<String, List<ExtractionElement>> storeyElements =

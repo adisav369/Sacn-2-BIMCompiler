@@ -36,7 +36,7 @@ public class ShapeAdvisoryWriter {
     /**
      * Analyze elements for shape-class mismatches and write advisories.
      *
-     * @param discConn     connection to disc_validation.db (with W_Validation_Advisory)
+     * @param discConn     connection to ERP.db (with W_Validation_Advisory)
      * @param elements     all extracted elements for this building
      * @param buildingType building type prefix (e.g. "SH", "DX")
      * @return report with mismatch counts

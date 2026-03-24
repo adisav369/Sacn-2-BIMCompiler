@@ -91,11 +91,7 @@ public class BuildingRegistryTest {
                 entry.id() + ": spatial digest should be computed");
         }
 
-        // 3. EmptySpaceChecksum — transactional, checked from C_Order in output.db
-        if (result.emptySpaceChecksum() != null) {
-            assertNotNull(result.emptySpaceChecksum(),
-                entry.id() + ": empty space checksum should be computed");
-        }
+        // 3. EmptySpaceChecksum — removed S74 (CO_EmptySpaceLine retired, RoomSlot in-memory)
 
         // 4. Critical proofs (if prover ran)
         // GENERATIVE buildings use GeometryFailThreshold for critical proofs too —

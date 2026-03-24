@@ -1,5 +1,5 @@
--- DV002: Seed disc_validation.db from component_library.db
--- Run against disc_validation.db AFTER DV001 schema is created.
+-- DV002: Seed ERP.db from component_library.db
+-- Run against ERP.db AFTER DV001 schema is created.
 -- Requires: ATTACH DATABASE 'library/component_library.db' AS comp;
 --
 -- Implementing DISC_VALIDATION_DB_SRS.md §6 Phase 1 — Witness: W-DV-DB-SEED

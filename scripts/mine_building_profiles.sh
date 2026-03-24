@@ -1,15 +1,15 @@
 #!/bin/bash
 # mine_building_profiles.sh — Mine element class distributions from extracted DBs
-# and populate ad_building_profile in disc_validation.db.
+# and populate ad_building_profile in ERP.db.
 #
 # Usage: ./scripts/mine_building_profiles.sh [--dry-run]
 #
 # Scans all *_extracted.db files, computes IFC class distribution per building,
-# and inserts into disc_validation.db. Idempotent (INSERT OR REPLACE).
+# and inserts into ERP.db. Idempotent (INSERT OR REPLACE).
 
 set -euo pipefail
 
-DB="library/disc_validation.db"
+DB="library/ERP.db"
 INPUT_DIR="DAGCompiler/lib/input"
 DRY_RUN=0
 

@@ -324,4 +324,4 @@ CREATE TABLE IF NOT EXISTS AD_SysConfig (
 );
 
 INSERT OR IGNORE INTO AD_SysConfig (Name, Value, Description)
-VALUES ('SCHEMA_VERSION', 'DV001', 'disc_validation.db schema version');
+VALUES ('SCHEMA_VERSION', 'DV001', 'ERP.db schema version');

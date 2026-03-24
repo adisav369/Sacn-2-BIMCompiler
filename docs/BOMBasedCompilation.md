@@ -983,7 +983,7 @@ Pipeline compiles the building into BOM
   ↓
 extract_validation_rules.sh mines new dimension patterns
   ↓
-apply_mined_rules.sh feeds them back into disc_validation.db
+apply_mined_rules.sh feeds them back into ERP.db
   ↓
 The validation pool grows — better ranges for the next IFC
 ```
@@ -1003,7 +1003,7 @@ emergent property — none of them intended it:
 2. **CP-3: "Scale up the corpus"** (session 44) — onboarded 34 buildings,
    creating enough statistical mass for meaningful ranges.
 
-3. **disc_validation.db architecture** (DISC_VALIDATION_DB_SRS) — established
+3. **ERP.db architecture** (DISC_VALIDATION_DB_SRS) — established
    a clean separation between product geometry and discipline metadata,
    giving the mined rules a natural home.
 
@@ -1060,7 +1060,7 @@ A hospital with unusual element ratios (high IfcFurnishingElement, low
 IfcWall) teaches the system what "institutional" looks like. The next
 hospital benefits from that knowledge.
 
-**Storage:** `ad_building_profile` table in disc_validation.db.
+**Storage:** `ad_building_profile` table in ERP.db.
 One row per (building, ifc_class) — same pattern as ad_val_rule.
 
 **Integration:** `BuildingProfileValidator` runs as a second pre-flight

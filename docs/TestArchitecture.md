@@ -609,8 +609,8 @@ are waste.
 |---|---|---|---|---|
 | §6 Phase 1 | DV001 schema, DV002 seed, 19 tables match | DiscValidationDBTest | W-DV-DB-SCHEMA, W-DV-DB-SEED | PASS |
 | §6 Phase 1 | Reference pointers resolve across DBs | DiscValidationDBTest | W-DV-DB-REF | PASS |
-| §6 Phase 1 | No geometry in disc_validation.db | DiscValidationDBTest | W-DV-DB-ND | PASS |
-| §6 Phase 2 | CalibrationDAO reads from disc_validation.db | DiscValidationDBTest | W-DV-DB-DUAL-READ | PASS |
+| §6 Phase 1 | No geometry in ERP.db | DiscValidationDBTest | W-DV-DB-ND | PASS |
+| §6 Phase 2 | CalibrationDAO reads from ERP.db | DiscValidationDBTest | W-DV-DB-DUAL-READ | PASS |
 | §6 Phase 2b | DAGCompiler DAOs (MEPAD, MEPBOMResolver) switch | — | — | **SPEC ONLY** |
 | §6 Phase 3 | Drop moved tables from component_library.db | — | — | **SPEC ONLY** |
 
@@ -621,7 +621,7 @@ are waste.
 | PASS | 36 | Spec → test → green. Proven. +9 FL-2/FL-5 advisory witnesses (session 50). |
 | IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. +2 disc_validation Phase 2b/3. |
+| SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. +2 ERP Phase 2b/3. |
 | PENDING | 3 | Spec exists, no test spec yet. |
 
 **Rule:** No code change without checking this matrix first. If the change
@@ -874,7 +874,7 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 ---
 
 **Sealed:** 2026-03-25 (v33: S74 Phase 3 — remove CO_EmptySpaceLine, pipeline migrated to M_BOM_Line RoomSlot)
-**Super-hash:** `d9c257f315e3bcd5d5fb1d28aa2cedbf81b43904c8a384fdfe15c8b74894e8db`
+**Super-hash:** `3e082991e6bfd1b0b6a4f1fde12284bac6d85e891e383cb510b654d3d54f829d`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

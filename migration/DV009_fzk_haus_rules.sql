@@ -1,5 +1,5 @@
 -- DV009: FZK-Haus validation rules — mined from Ifc4_FZKHaus_enbloc.db
--- Target: disc_validation.db (requires AD_Val_Rule table — not yet created)
+-- Target: ERP.db (requires AD_Val_Rule table — not yet created)
 -- Append-only. Do not modify existing migrations.
 -- Mined: session 38, 2026-03-20
 -- STATUS: DEFERRED — apply when AD_Val_Rule DDL is available

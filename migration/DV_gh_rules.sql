@@ -50,7 +50,7 @@
 -- IfcBuildingElementProxy  ARC         1  
 -- IfcColumn                ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWall_Keller (21 instances, avg 2221.0x2341.0x2625.0 mm)

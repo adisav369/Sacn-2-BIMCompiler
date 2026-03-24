@@ -35,7 +35,7 @@
 -- IfcWindow             ARC         5  
 -- IfcRoof               ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWall_Ground_Floor (20 instances, avg 2145.0x1695.0x2800.0 mm)

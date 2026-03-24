@@ -103,7 +103,7 @@ public class IFCtoBOMPipeline {
 
         Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
         Connection compConn = DriverManager.getConnection("jdbc:sqlite:" + compDbPath);
-        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/disc_validation.db");
+        Connection discConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db");
 
         try {
             bomConn.setAutoCommit(false);
@@ -128,9 +128,9 @@ public class IFCtoBOMPipeline {
 
             // ── PRE-FLIGHT: Dimension range validation (DV010) ──────────────────
             // Advisory: check element dimensions against mined typical ranges
-            // from disc_validation.db. Logs outliers but never blocks the pipeline.
+            // from ERP.db. Logs outliers but never blocks the pipeline.
             {
-                // Reuse outer discConn (already connected to disc_validation.db)
+                // Reuse outer discConn (already connected to ERP.db)
                 try {
                     // Layer 1: Dimension range check (DV010)
                     DimensionRangeValidator drv = DimensionRangeValidator.load(discConn);
@@ -408,7 +408,7 @@ public class IFCtoBOMPipeline {
             // DV011: Each building both uses and enriches the validation pool.
             // This makes the pipeline self-improving — no separate script needed.
             {
-                // Reuse outer discConn (already connected to disc_validation.db)
+                // Reuse outer discConn (already connected to ERP.db)
                 try {
                     mineProfile(discConn, allElements, config.buildingType());
                 } catch (Exception e) {
@@ -632,7 +632,7 @@ public class IFCtoBOMPipeline {
     }
 
     /**
-     * Mine this building's element profile back into disc_validation.db.
+     * Mine this building's element profile back into ERP.db.
      * Part of the data flywheel — each compiled building enriches the
      * validation pool for the next one. Idempotent (INSERT OR REPLACE).
      *
@@ -673,7 +673,7 @@ public class IFCtoBOMPipeline {
             ps.executeBatch();
         }
 
-        BIMLogger.info("PIPELINE", "Mined profile: {} — {} classes, {} elements → disc_validation.db",
+        BIMLogger.info("PIPELINE", "Mined profile: {} — {} classes, {} elements → ERP.db",
                 buildingType, classCount, total);
     }
 }

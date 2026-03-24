@@ -30,7 +30,7 @@
 -- IfcEarthworksFill        ARC         1  
 -- IfcFurnishingElement     ARC         1  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWall_00_groundfloor (4 instances, avg 156.0x3950.0x2926.0 mm)

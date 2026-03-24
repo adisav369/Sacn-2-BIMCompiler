@@ -3,7 +3,7 @@
 # BIM Compiler — Validation Rules Extraction
 #
 # Mines structural dimension patterns from compiled output DBs
-# to generate validation rule SQL for disc_validation.db.
+# to generate validation rule SQL for ERP.db.
 #
 # Usage:
 #   ./scripts/extract_validation_rules.sh BA          # single building
@@ -144,7 +144,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
 
     # ── 5. Candidate validation rule SQL ─────────────────────
 
-    echo "-- §5: Candidate validation rules for disc_validation.db"
+    echo "-- §5: Candidate validation rules for ERP.db"
     echo "-- Review and adjust before applying. Rule IDs are placeholders."
     echo ""
 

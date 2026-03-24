@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
- * DiscValidation DB Test — proves disc_validation.db schema and seed integrity.
+ * DiscValidation DB Test — proves ERP.db schema and seed integrity.
  *
  * <p>Witness claims:
  * <ul>
@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DiscValidationDBTest {
 
-    static final Path DISC_DB = Path.of("library/disc_validation.db");
+    static final Path DISC_DB = Path.of("library/ERP.db");
     static final Path COMP_DB = Path.of("library/component_library.db");
 
     static Connection discConn;
@@ -58,7 +58,7 @@ class DiscValidationDBTest {
         EXPECTED_COUNTS.put("ad_space_type_mep", 22);
     }
 
-    /** All 24 tables expected in disc_validation.db (22 prior + 2 DV015 M_Product). */
+    /** All 24 tables expected in ERP.db (22 prior + 2 DV015 M_Product). */
     static final List<String> ALL_TABLES = List.of(
             "ad_space_type", "ad_element_mep", "ad_space_type_mep_bom",
             "ad_fp_coverage", "ad_assembly_connector", "ad_assembly_manifest",
@@ -75,7 +75,7 @@ class DiscValidationDBTest {
 
     @BeforeAll
     static void openConnections() throws Exception {
-        assumeTrue(Files.exists(DISC_DB), "disc_validation.db must exist");
+        assumeTrue(Files.exists(DISC_DB), "ERP.db must exist");
         assumeTrue(Files.exists(COMP_DB), "component_library.db must exist");
 
         discConn = DriverManager.getConnection("jdbc:sqlite:" + DISC_DB);
@@ -92,7 +92,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(1)
-    @DisplayName("W-DV-DB-SCHEMA: All 24 tables exist in disc_validation.db")
+    @DisplayName("W-DV-DB-SCHEMA: All 24 tables exist in ERP.db")
     void allTablesExist() throws Exception {
         Set<String> actual = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         try (ResultSet rs = discConn.getMetaData().getTables(
@@ -102,7 +102,7 @@ class DiscValidationDBTest {
             }
         }
 
-        System.out.printf("  disc_validation.db tables: %d%n", actual.size());
+        System.out.printf("  ERP.db tables: %d%n", actual.size());
         for (String expected : ALL_TABLES) {
             assertTrue(actual.contains(expected),
                     "Missing table: " + expected);
@@ -128,10 +128,10 @@ class DiscValidationDBTest {
 
     @Test
     @Order(10)
-    @DisplayName("W-DV-DB-SEED: Row counts meet minimums in disc_validation.db (Phase 3: comp tables dropped)")
+    @DisplayName("W-DV-DB-SEED: Row counts meet minimums in ERP.db (Phase 3: comp tables dropped)")
     void seedRowCountsMatch() throws Exception {
         // Phase 3 complete: discipline tables removed from component_library.db.
-        // disc_validation.db is now the ONLY source — verify minimum row counts.
+        // ERP.db is now the ONLY source — verify minimum row counts.
         int pass = 0;
         for (var entry : EXPECTED_COUNTS.entrySet()) {
             String table = entry.getKey();
@@ -175,7 +175,7 @@ class DiscValidationDBTest {
                 String elementType = rs.getString("element_type");
                 String ifcClass = rs.getString("ifc_class");
 
-                // DV015: M_Product now in disc_validation.db — resolve within same DB
+                // DV015: M_Product now in ERP.db — resolve within same DB
                 try (PreparedStatement prodPs = discConn.prepareStatement(
                         "SELECT COUNT(*) FROM M_Product WHERE ifc_class = ?")) {
                     prodPs.setString(1, ifcClass);
@@ -195,7 +195,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(21)
-    @DisplayName("W-DV-DB-REF: ad_space_type_mep_bom.mep_product_id resolves within disc_validation.db")
+    @DisplayName("W-DV-DB-REF: ad_space_type_mep_bom.mep_product_id resolves within ERP.db")
     void mepBomResolvesInternally() throws Exception {
         // Every mep_product_id in the schedule should exist in ad_element_mep
         try (PreparedStatement ps = discConn.prepareStatement(
@@ -338,7 +338,7 @@ class DiscValidationDBTest {
 
     @Test
     @Order(31)
-    @DisplayName("W-DV-DB-ND: disc_validation.db has NO geometry tables (M_Product moved here DV015)")
+    @DisplayName("W-DV-DB-ND: ERP.db has NO geometry tables (M_Product moved here DV015)")
     void noGeometryInDiscValidation() throws Exception {
         Set<String> tables = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         try (ResultSet rs = discConn.getMetaData().getTables(
@@ -348,23 +348,23 @@ class DiscValidationDBTest {
             }
         }
         assertFalse(tables.contains("component_definitions"),
-                "component_definitions must NOT be in disc_validation.db");
+                "component_definitions must NOT be in ERP.db");
         assertFalse(tables.contains("component_geometries"),
-                "component_geometries must NOT be in disc_validation.db");
-        // DV015: M_Product moved to disc_validation.db (master product catalog)
+                "component_geometries must NOT be in ERP.db");
+        // DV015: M_Product moved to ERP.db (master product catalog)
         assertTrue(tables.contains("M_Product"),
-                "M_Product must be in disc_validation.db (DV015)");
+                "M_Product must be in ERP.db (DV015)");
         assertTrue(tables.contains("M_Product_Category"),
-                "M_Product_Category must be in disc_validation.db (DV015)");
+                "M_Product_Category must be in ERP.db (DV015)");
     }
 
     // ── W-DV-DB-DUAL-READ ──────────────────────────────────────────────
 
     @Test
     @Order(40)
-    @DisplayName("W-DV-DB-CANONICAL: CalibrationDAO.docEventQty reads from disc_validation.db only (Phase 3)")
+    @DisplayName("W-DV-DB-CANONICAL: CalibrationDAO.docEventQty reads from ERP.db only (Phase 3)")
     void canonicalReadDocEventQty() throws Exception {
-        // Phase 3 complete: disc_validation.db is the ONLY source for discipline metadata.
+        // Phase 3 complete: ERP.db is the ONLY source for discipline metadata.
         // component_library.db no longer has ad_space_type_mep_bom.
         CalibrationDAO dao = new CalibrationDAO();
         double testAreaM2 = 500.0;  // typical TE floor area
@@ -373,13 +373,13 @@ class DiscValidationDBTest {
         System.out.printf("  docEventQty(SPRINKLER, %.0fm²): disc=%d%n",
                 testAreaM2, discSprinkler);
         assertTrue(discSprinkler > 0,
-                "disc_validation.db must have SPRINKLER in ad_space_type_mep_bom");
+                "ERP.db must have SPRINKLER in ad_space_type_mep_bom");
 
         int discLight = dao.docEventQty(discConn, "LIGHT", testAreaM2);
         System.out.printf("  docEventQty(LIGHT, %.0fm²): disc=%d%n",
                 testAreaM2, discLight);
         assertTrue(discLight > 0,
-                "disc_validation.db must return >0 for LIGHT (DV004 per_area_normal=0.05)");
+                "ERP.db must return >0 for LIGHT (DV004 per_area_normal=0.05)");
     }
 
     // ── W-DV-MINED-RULES ──────────────────────────────────────────────
@@ -567,10 +567,10 @@ class DiscValidationDBTest {
 
     @Test
     @Order(80)
-    @DisplayName("W-DV-DB-PRODUCT: M_Product >= 2475 rows in disc_validation.db (DV015)")
+    @DisplayName("W-DV-DB-PRODUCT: M_Product >= 2475 rows in ERP.db (DV015)")
     void mProductPresent() throws Exception {
         int count = countRows(discConn, "M_Product");
-        System.out.printf("  M_Product rows in disc_validation.db: %d%n", count);
+        System.out.printf("  M_Product rows in ERP.db: %d%n", count);
         assertTrue(count >= 2475,
                 "M_Product must have >= 2475 rows, got " + count);
 
@@ -585,10 +585,10 @@ class DiscValidationDBTest {
 
     @Test
     @Order(81)
-    @DisplayName("W-DV-DB-PRODUCT: M_Product_Category >= 46 rows in disc_validation.db (DV015)")
+    @DisplayName("W-DV-DB-PRODUCT: M_Product_Category >= 46 rows in ERP.db (DV015)")
     void mProductCategoryPresent() throws Exception {
         int count = countRows(discConn, "M_Product_Category");
-        System.out.printf("  M_Product_Category rows in disc_validation.db: %d%n", count);
+        System.out.printf("  M_Product_Category rows in ERP.db: %d%n", count);
         assertTrue(count >= 46,
                 "M_Product_Category must have >= 46 rows, got " + count);
     }

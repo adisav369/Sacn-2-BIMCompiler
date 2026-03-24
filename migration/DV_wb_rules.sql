@@ -36,7 +36,7 @@
 -- IfcBuildingElementProxy  ARC         4  
 -- IfcSlab                  STR         3  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcFurnishingElement_Floor_0 (71 instances, avg 833.0x765.0x828.0 mm)

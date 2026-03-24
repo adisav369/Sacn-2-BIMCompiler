@@ -1,5 +1,5 @@
 -- DV010_ad_val_rule_schema.sql
--- Creates mined dimension rule tables in disc_validation.db
+-- Creates mined dimension rule tables in ERP.db
 -- Source: 22 DV_*_rules.sql files (415 rules mined from 34 onboarded buildings)
 -- Purpose: typical element dimensions per (ifc_class, storey, building) — reference data
 -- NOT the same as validation.db AD_Val_Rule (compliance rules).

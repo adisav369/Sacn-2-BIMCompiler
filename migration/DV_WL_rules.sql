@@ -38,7 +38,7 @@
 -- IfcCovering              ARC         5  
 -- IfcSlab                  ARC         4  
 
--- §5: Candidate validation rules for disc_validation.db
+-- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
 
 -- Rule: IfcWindow_Level_1 (28 instances, avg 558.0x558.0x1830.0 mm)

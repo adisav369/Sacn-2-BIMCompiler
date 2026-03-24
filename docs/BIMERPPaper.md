@@ -162,7 +162,7 @@ Construction compliance is not optional. Buildings must meet fire codes, structu
 
 - **Jurisdiction scoping via AD_Val_Rule:** Currently Malaysian UBBL (30 rules). The target is 200+ rules across 6 jurisdictions (SG, UK, AU, US, EU, HK). Each jurisdiction is a set of AD_Val_Rule rows with threshold parameters — not a code branch. The architecture is proven; the rule population is the work ahead.
 
-- **IFC version bridging:** A 4-tier alias cascade in disc_validation.db resolves IFC2x3's generic classes (IfcFlowTerminal) to IFC4's specific classes (IfcOutlet) — 84 alias rows covering 85% of MEP element names. New IFC types are added via INSERT into `ad_ifc_class_map` (46 rows), not code changes (see `docs/DISC_VALIDATION_DB_SRS.md`).
+- **IFC version bridging:** A 4-tier alias cascade in ERP.db resolves IFC2x3's generic classes (IfcFlowTerminal) to IFC4's specific classes (IfcOutlet) — 84 alias rows covering 85% of MEP element names. New IFC types are added via INSERT into `ad_ifc_class_map` (46 rows), not code changes (see `docs/DISC_VALIDATION_DB_SRS.md`).
 
 - **Calibration against real buildings:** CalibrationDAO compares rule predictions (what the validator *thinks* should be placed) against actual engineer decisions extracted from the Terminal model (what *was* placed). This grounds the rules in professional practice, not just regulatory text (see `docs/CALIBRATION_SRS.md`).
 

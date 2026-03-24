@@ -397,7 +397,7 @@ ASI overrides instance sizing:
 ### 9.1 DocEvent LOD Resolution Chain
 
 When `YAML.discipline = DocEvent`, the engine resolves default products per
-space type and area via a 5-table chain spanning disc_validation.db (steps 1-3)
+space type and area via a 5-table chain spanning ERP.db (steps 1-3)
 and component_library.db (steps 4-5):
 
 ```
@@ -701,17 +701,17 @@ Handlers that auto-fix also update `C_OrderLine.dx/dy/dz` (nudge/snap).
 **Status (session 34):** H1-H6 handlers are **DESIGNED, NOT IMPLEMENTED**.
 Zero handler code exists. The cascade above is the target specification.
 
-**Metadata table readiness (disc_validation.db created session 33):**
+**Metadata table readiness (ERP.db created session 33):**
 
 | Table | DB | Status | Seeded? | Blocks |
 |-------|-----|--------|---------|--------|
-| `ad_space_type_mep_bom` | disc_validation.db | CREATED (DV001+DV002) | YES — 186 rows (41 space types × 12 MEP products) | H6 |
-| `ad_element_mep` | disc_validation.db | CREATED (DV001+DV002) | YES — 12 element types | H1, H4 |
-| `ad_element_mep_alias` | disc_validation.db | CREATED (DV003) | YES — 84 alias rows (4-tier IFC cascade) | H1, H4 |
-| `ad_fp_coverage` | disc_validation.db | CREATED (DV001+DV002) | YES — 4 hazard classes | H1, H3 |
-| `ad_assembly_connector` | disc_validation.db | CREATED (DV001+DV002) | YES — 10 connector rows | H1 |
-| `ad_wall_face` | disc_validation.db | CREATED (DV001+DV002) | YES — 204 rows | H4 |
-| `placement_rules` | disc_validation.db | CREATED (DV001+DV002) | YES — 4801 rows | H4 |
+| `ad_space_type_mep_bom` | ERP.db | CREATED (DV001+DV002) | YES — 186 rows (41 space types × 12 MEP products) | H6 |
+| `ad_element_mep` | ERP.db | CREATED (DV001+DV002) | YES — 12 element types | H1, H4 |
+| `ad_element_mep_alias` | ERP.db | CREATED (DV003) | YES — 84 alias rows (4-tier IFC cascade) | H1, H4 |
+| `ad_fp_coverage` | ERP.db | CREATED (DV001+DV002) | YES — 4 hazard classes | H1, H3 |
+| `ad_assembly_connector` | ERP.db | CREATED (DV001+DV002) | YES — 10 connector rows | H1 |
+| `ad_wall_face` | ERP.db | CREATED (DV001+DV002) | YES — 204 rows | H4 |
+| `placement_rules` | ERP.db | CREATED (DV001+DV002) | YES — 4801 rows | H4 |
 | `AD_Clash_Rule` | validation.db | **SCHEMA ONLY** | NO — 0 rows | **H2 blocked** |
 | `AD_Val_Rule` (SPACING) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type SPACING | **H3 blocked** |
 | `AD_Val_Rule` (CONTINUITY) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type CONTINUITY | **H5 blocked** |
