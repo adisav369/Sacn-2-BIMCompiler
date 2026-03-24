@@ -1419,3 +1419,77 @@ No products missing from `component_library.db` blocked this session.
 None. ACMV products were available. The refactor was clean — `addDiscipline()` continues to work
 identically through the interface delegation path. CalibrationTest 6 errors are pre-existing
 (confirmed by running on stashed code).
+
+## Appendix M — Session C: Rule Pack Framing Report (2026-03-24)
+
+### M.1 — What Changed
+
+Session C implements jurisdiction-based rule pack framing (Blueprint §12, §14.3 Session C).
+Existing AD rule rows are tagged with `pack_id` to identify which jurisdiction/standard they
+belong to. The `propose()` interface accepts pack filters so different jurisdictions produce
+different proposals from the same building.
+
+### M.2 — Files Changed
+
+| File | Action | Detail |
+|------|--------|--------|
+| `migration/DV016_pack_id.sql` | **NEW** | ALTER TABLE + UPDATE on 4 AD tables to add/populate pack_id |
+| `api/OrderLineMutation.java` | **MODIFIED** | Added `JURISDICTION_PACKS` map, `packsForJurisdiction()`, `propose(woConn, ruleDb, orderId, packIds)` with backward-compatible default |
+| `dao/MEPBOMQuery.java` | **MODIFIED** | `queryForDiscipline(spaceType, discipline, packIds)` overload with pack_id IN filter |
+| `api/ELECSuggestion.java` | **MODIFIED** | `propose()` accepts and passes packIds to MEPBOMQuery |
+| `api/FPSuggestion.java` | **MODIFIED** | `propose()` accepts and passes packIds to MEPBOMQuery |
+| `api/ACMVSuggestion.java` | **MODIFIED** | `propose()` accepts and passes packIds to MEPBOMQuery |
+| `api/OrderMutationService.java` | **MODIFIED** | `addDiscipline()` resolves jurisdiction→packIds. `proposeAll(woConn, ruleDb, orderId, packIds)` overload |
+| `RulePackTest.java` | **NEW** | 6 tests: W-RULEPACK-1 (MY vs US jurisdiction), backward compat, addDiscipline with pack context |
+
+### M.3 — AD Tables Tagged with pack_id
+
+| Table | Total Rows | BASE | UBBL-2024 | IBC-2021 | NFPA-13 |
+|-------|-----------|------|-----------|----------|---------|
+| ad_space_type_mep_bom | 186 | 97 | 34 | 45 | 10 |
+| ad_fp_trigger | 12 | 0 | 7 | 0 | 5 |
+| ad_fp_coverage | 4 | 0 | 0 | 0 | 4 |
+| ad_code_requirement | 23 | 0 | 4 | 12 | 7 |
+
+### M.4 — Jurisdiction → Pack Mapping
+
+| Jurisdiction | Packs | Source Standards |
+|-------------|-------|-----------------|
+| MY (Malaysia) | BASE, UBBL-2024, NFPA-13 | UBBL 291, MS 1228, MS IEC 60364, MS1525, NFPA 13/101 |
+| US (USA) | BASE, IBC-2021, NFPA-13 | NEC 2020, IPC 2021, IMC 2021, TIA-568, NFPA 13/101 |
+| SG (Singapore) | BASE, BCA-2019, NFPA-13 | No BCA rows yet — mapped for future use |
+| AU (Australia) | BASE, NCC-2022, NFPA-13 | No NCC rows yet — mapped for future use |
+| (default) | BASE, NFPA-13 | Fallback for unknown jurisdictions |
+
+### M.5 — Gate Results
+
+| Gate | Result |
+|------|--------|
+| `mvn compile -q` | CLEAN |
+| AddDisciplineTest (Session A) | 4/4 PASS |
+| OrderLineMutationTest (Session B) | 8/8 PASS |
+| RulePackTest (Session C, W-RULEPACK-1) | 6/6 PASS |
+| SH Rosetta Stone | 6/7 (G4 T5 pre-existing false positive — rule file self-references `--no-verify`) |
+| Full gate (`run_tests.sh`) | GREEN |
+| BonsaiBIMDesigner | 409/415 (6 CalibrationTest pre-existing) |
+
+### M.6 — Witness Results
+
+**W-RULEPACK-1:** Jurisdiction-specific rule pack loads and suggests differently.
+- MY packs [BASE, UBBL-2024, NFPA-13] → 13 proposals on SH (MS1525 ACMV, NFPA FP, BASE generic)
+- US packs [BASE, IBC-2021, NFPA-13] → 17 proposals on SH (NEC ELEC, IMC ACMV, NFPA FP, BASE generic)
+- Unfiltered (empty packs) → 26 proposals on SH (all rules, backward compatible with Session B)
+- MY and US produce different proposal counts AND different building code references
+
+### M.7 — GAP-SC-4 Status
+
+GAP-SC-4 (Rule pack versioning) remains **OPEN**. Session C adds `pack_id` as a tag but does
+NOT implement effectivity dates, version precedence, or pack lifecycle management. This is
+explicitly deferred per the session prompt and Appendix J §J.3.
+
+### M.8 — Design Decisions
+
+1. **Backward-compatible default method:** `propose(woConn, ruleDb, orderId)` delegates to `propose(..., List.of())`. Empty packIds = no filter = all rules apply. Existing tests pass unchanged.
+2. **JURISDICTION_PACKS on interface:** Static map on OrderLineMutation. Avoids config files. Extensible by adding map entries.
+3. **Pack_id column defaults:** BASE for generic rules, NFPA-13 for FP coverage. Mapping derived from existing `building_code` values in ad_space_type_mep_bom.
+4. **No new AD tables:** pack_id added to existing tables per spec constraint.

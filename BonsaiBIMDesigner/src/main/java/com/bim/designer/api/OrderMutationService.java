@@ -18,7 +18,7 @@ import java.util.Map;
  * implementations (FPSuggestion, ELECSuggestion, ACMVSuggestion). The propose()
  * call generates ProposedOrderLines, then this service persists them.
  *
- * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
+ * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session C — Witness: W-RULEPACK-1
  */
 public class OrderMutationService {
 
@@ -78,14 +78,15 @@ public class OrderMutationService {
             return new AddDisciplineResult(0, 0, discipline, List.of());
         }
 
-        // Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
-        // Look up the OrderLineMutation for this discipline
+        // Implementing ProjectOrderBlueprint.md §14.3 Session C — Witness: W-RULEPACK-1
+        // Resolve jurisdiction to pack_ids for rule filtering
+        List<String> packIds = OrderLineMutation.packsForJurisdiction(jurisdiction);
         OrderLineMutation mutation = SUGGESTIONS.get(discipline);
 
         List<ProposedOrderLine> proposals;
         if (mutation != null) {
-            // Session B path: delegate to interface implementation
-            proposals = mutation.propose(woConn, discValConn, orderId);
+            // Session C: delegate with pack_id filter
+            proposals = mutation.propose(woConn, discValConn, orderId, packIds);
         } else {
             // Fallback for disciplines without an OrderLineMutation (e.g., SP)
             // Uses the original inline logic
@@ -113,14 +114,18 @@ public class OrderMutationService {
     /**
      * Propose all disciplines at once via OrderLineMutation interface.
      * Returns proposals without persisting — caller decides what to do.
-     *
-     * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
      */
     public List<ProposedOrderLine> proposeAll(Connection woConn, Connection ruleDb,
                                                String orderId) throws SQLException {
+        return proposeAll(woConn, ruleDb, orderId, List.of());
+    }
+
+    // Implementing ProjectOrderBlueprint.md §14.3 Session C — Witness: W-RULEPACK-1
+    public List<ProposedOrderLine> proposeAll(Connection woConn, Connection ruleDb,
+                                               String orderId, List<String> packIds) throws SQLException {
         List<ProposedOrderLine> all = new ArrayList<>();
         for (OrderLineMutation mutation : SUGGESTIONS.values()) {
-            all.addAll(mutation.propose(woConn, ruleDb, orderId));
+            all.addAll(mutation.propose(woConn, ruleDb, orderId, packIds));
         }
         return all;
     }

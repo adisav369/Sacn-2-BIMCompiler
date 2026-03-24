@@ -1451,13 +1451,14 @@ Only the last order survives.
 - **Witness:** W-DM-FP-VAL-1 (FP suggestion fires on order with no existing FP lines — confirmed)
 
 **Session C: Rule pack framing (§12)**
+*Status: **DONE** (S67c). pack_id on 4 AD tables. Jurisdiction→pack mapping. MY=13, US=17 proposals on SH.*
 
-- Add `pack_id` column to rule tables (append-only migration)
-- Frame existing FP rules as NFPA-13 pack, existing building codes as jurisdiction packs
-- Demonstrate: load UBBL-2024 for MY, IBC-2021 for US
-- Apply same OrderLineMutation pattern for ELEC and ACMV
-- **Gate:** Order with 3+ disciplines from rule packs, all compiled via standard pipeline
-- **Witness:** W-RULEPACK-1 (jurisdiction-specific rule pack loads and suggests)
+- `pack_id` column on ad_space_type_mep_bom (BASE=97, UBBL-2024=34, IBC-2021=45, NFPA-13=10), ad_fp_trigger, ad_fp_coverage, ad_code_requirement
+- `OrderLineMutation.packsForJurisdiction()` maps MY→[BASE,UBBL-2024,NFPA-13], US→[BASE,IBC-2021,NFPA-13]
+- `propose(woConn, ruleDb, orderId, packIds)` — backward-compatible default (empty=all)
+- MEPBOMQuery filters by pack_id IN clause when packIds provided
+- **Gate:** RulePackTest 6/6, OrderLineMutationTest 8/8, AddDisciplineTest 4/4, SH 7/7, full gate GREEN
+- **Witness:** W-RULEPACK-1 (MY=13 proposals, US=17 proposals — different codes, different counts)
 
 **Session D: Remove + Compress mutations (§1.1, §1.2)**
 

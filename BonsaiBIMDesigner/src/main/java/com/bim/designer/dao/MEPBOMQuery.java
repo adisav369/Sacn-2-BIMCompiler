@@ -57,30 +57,54 @@ public class MEPBOMQuery {
      * @return list of MEP requirements, ordered by mep_product_id
      */
     public List<MEPRequirement> queryForDiscipline(String spaceType, String discipline) throws SQLException {
+        return queryForDiscipline(spaceType, discipline, List.of());
+    }
+
+    // Implementing ProjectOrderBlueprint.md §14.3 Session C — Witness: W-RULEPACK-1
+    public List<MEPRequirement> queryForDiscipline(String spaceType, String discipline,
+                                                    List<String> packIds) throws SQLException {
         if (spaceType == null || discipline == null) return List.of();
 
         // Map discipline to the set of mep_product_ids it covers
         List<String> productIds = disciplineProducts(discipline);
         if (productIds.isEmpty()) return List.of();
 
-        // Build IN clause
+        // Build IN clause for products
         StringBuilder inClause = new StringBuilder();
         for (int i = 0; i < productIds.size(); i++) {
             if (i > 0) inClause.append(",");
             inClause.append("?");
         }
 
+        // Build pack_id filter (empty = no filter, backward compatible)
+        String packFilter = "";
+        if (packIds != null && !packIds.isEmpty()) {
+            StringBuilder packIn = new StringBuilder();
+            for (int i = 0; i < packIds.size(); i++) {
+                if (i > 0) packIn.append(",");
+                packIn.append("?");
+            }
+            packFilter = " AND pack_id IN (" + packIn + ")";
+        }
+
         String sql = "SELECT space_type_id, mep_product_id, qty_min, qty_normal, qty_max, "
                 + "per_area_normal, placement_rule, host_surface, building_code, code_clause "
                 + "FROM ad_space_type_mep_bom "
-                + "WHERE space_type_id = ? AND mep_product_id IN (" + inClause + ") "
-                + "ORDER BY mep_product_id";
+                + "WHERE space_type_id = ? AND mep_product_id IN (" + inClause + ")"
+                + packFilter
+                + " ORDER BY mep_product_id";
 
         List<MEPRequirement> result = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, spaceType);
-            for (int i = 0; i < productIds.size(); i++) {
-                ps.setString(i + 2, productIds.get(i));
+            int idx = 1;
+            ps.setString(idx++, spaceType);
+            for (String pid : productIds) {
+                ps.setString(idx++, pid);
+            }
+            if (packIds != null) {
+                for (String pack : packIds) {
+                    ps.setString(idx++, pack);
+                }
             }
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -101,8 +125,8 @@ public class MEPBOMQuery {
             }
         }
 
-        BIMLogger.info(TAG, "QUERY {} + {} → {} requirements",
-                spaceType, discipline, result.size());
+        BIMLogger.info(TAG, "QUERY {} + {} packs={} → {} requirements",
+                spaceType, discipline, packIds, result.size());
         return result;
     }
 
