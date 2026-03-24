@@ -61,7 +61,7 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
     C_Order, C_OrderLine, M_Product, M_BOM — iDempiere patterns.
     A compiled building IS a manufacturing work order.
 
-    [:octicons-arrow-right-24: Construction as ERP](ConstructionAsERP.md)
+    [:octicons-arrow-right-24: Data model](DATA_MODEL.md)
 
 </div>
 

@@ -55,9 +55,8 @@ nav:
   - Architecture:
       - System Contract: SystemContract.md
       - BOM Compilation (Master Spec): BOMBasedCompilation.md
-      - Construction as ERP: ConstructionAsERP.md
-      - Rosetta Stone Strategy: TheRosettaStoneStrategy.md
       - Data Model: DATA_MODEL.md
+      - Rosetta Stone Strategy: TheRosettaStoneStrategy.md
       - Source Code Guide: SourceCodeGuide.md
 
   # ─── DOMAIN: Compilation engine ─────────────────────────
