@@ -61,6 +61,19 @@ Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for
 *[Open Source ERP](https://www.amazon.com/Open-Source-ERP-Redhuan-Oon/dp/9673490228)*
 (Pearson Malaysia, 2010). Two decades of ERP manufacturing BOM expertise applied to construction.
 
+## Project Stats
+
+| | |
+|---|---|
+| **Java** | 1,140 files, 261K lines across 12 Maven modules |
+| **Tests** | 129 test classes, 392+ assertions, all GREEN |
+| **SQL** | 106 migration scripts (append-only) |
+| **Databases** | 55 SQLite DBs (4-DB architecture per building) |
+| **Specifications** | 50 docs, governed by SystemContract.md |
+| **Buildings** | 35 compiled (34 extracted + 1 generative) |
+
+**Alpha v1.0** — March 2026
+
 **License:** Code: GPL v2. Documentation: CC BY-SA 4.0.
 
 Copyright (c) 2026 Redhuan D. Oon. All rights reserved.
