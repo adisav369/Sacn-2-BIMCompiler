@@ -9,8 +9,8 @@ hide:
 ## Construction is manufacturing. A building IS its Bill of Materials.
 
 
-<figure style="float: right; margin: -12px 0 8px 20px; max-width: 240px; text-align: center;">
-  <img src="assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded" width="240">
+<figure style="float: right; margin: -12px 0 8px 20px; max-width: 360px; text-align: center;">
+  <img src="assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded" width="360">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Compiled in Blender/Bonsai. Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP).</figcaption>
 </figure>
 
@@ -78,8 +78,8 @@ A product catalog (`M_Product`) becomes building elements. A Bill of Materials (
 
 ## The Rosetta Stone Strategy
 
-<figure style="float: right; margin: -8px 0 8px 20px; max-width: 320px; text-align: center;">
-  <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex compiled in Blender — 48,428 elements" width="320">
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
+  <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex compiled in Blender — 48,428 elements" width="480">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">The Terminal — 48,428 elements, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
 </figure>
 
@@ -101,8 +101,8 @@ The compiler can see. BIMEyes reduces every element's shape to three dimensionle
 
 ## Design in Blender, Compile from BOM
 
-<figure style="float: right; margin: -8px 0 8px 20px; max-width: 380px; text-align: center;">
-  <img src="assets/images/HTMLYAML.png" alt="BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel" width="380">
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 570px; text-align: center;">
+  <img src="assets/images/HTMLYAML.png" alt="BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel" width="570">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">BIM Designer web UI. BOM tree, DocAction lifecycle buttons (Approve, Complete, Promote).</figcaption>
 </figure>
 
