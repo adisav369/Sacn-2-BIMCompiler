@@ -2,6 +2,10 @@
 
 **Construction is manufacturing. A building IS its Bill of Materials.**
 
+<p align="center">
+  <img src="docs/assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded in Blender/Bonsai viewport" width="480">
+</p>
+
 A metadata-driven, deterministic compiler that reads BOM data and produces 3D building coordinates — the same thing an ERP system does when it explodes a manufacturing BOM into work orders. Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.
 
 | | |

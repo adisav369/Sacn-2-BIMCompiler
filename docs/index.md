@@ -10,6 +10,11 @@ hide:
 
 A metadata-driven, deterministic compiler that reads BOM data and produces 3D building coordinates — the same thing an ERP system does when it explodes a manufacturing BOM into work orders. Every output element traces to a library input. Nothing is invented.
 
+<figure markdown="span">
+  ![Multi-storey building compiled from BOM — 6 disciplines colour-coded](assets/images/GeneralTall.png){ width="520" }
+  <figcaption>A compiled building in the Blender/Bonsai viewport. Every element placed by arithmetic from a Bill of Materials. Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP).</figcaption>
+</figure>
+
 ---
 
 <div class="grid cards" markdown>
@@ -90,6 +95,11 @@ land at the **same position** as the reference?
 Once a stone passes exact sameness, its BOM grammar is **certified**. Any new building
 composed from certified grammar inherits the proof.
 
+<figure markdown="span">
+  ![Terminal complex compiled in Blender — 48,428 elements](assets/images/TerminalExternal.jpeg){ width="600" }
+  <figcaption>The Terminal (TE) — 48,428 elements, 505 products, 8 disciplines. Compiled from BOM, verified by 6 gates. The largest known BOM-based BIM compilation.</figcaption>
+</figure>
+
 [:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
 
 ---
@@ -121,6 +131,11 @@ promote a design to a construction-ready work order.
 
 392 passing tests. The full BOM-to-output pipeline runs behind the GUI — what the user
 sees IS what the compiler produces, deterministically.
+
+<figure markdown="span">
+  ![BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel](assets/images/HTMLYAML.png){ width="600" }
+  <figcaption>The BIM Designer web UI. BOM tree on the left, DocAction lifecycle buttons (Approve, Complete, Promote) across the top. Every tab is a query, not a tool.</figcaption>
+</figure>
 
 [:octicons-arrow-right-24: Designer guide](BIM_Designer_UserGuide.md)
 
@@ -178,6 +193,8 @@ mvn compile -q                              # Compile all modules
 
     From July 2025, all projects >= RM10M require BIM.
     This compiler produces compliant IFC output.
+
+    ![Sample House floor plan](assets/images/2D_FLOOR_SAMPLEHOUSE.png){ width="280" }
 
 -   **By Redhuan D. Oon**
 

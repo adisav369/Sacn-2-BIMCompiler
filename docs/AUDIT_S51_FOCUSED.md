@@ -1154,3 +1154,201 @@ ISTQB test design techniques applied to ProjectOrderBlueprint.md §2. Full test 
 5. **Performance risk:** 180 identical compiles may hit O(180n) wall. If > 60s, need compile-once-copy-many pattern (reference class lazy compilation).
 
 **Written to:** ProjectOrderBlueprint.md §2.1.
+
+---
+
+## Appendix J — S67b Watchdog Audit: Post-Session A Verification + Direction Advisory (2026-03-24)
+
+> **Scope:** (1) Verify Session A code matches blueprint §14.3 spec. (2) Check SystemContract §4 three-concern matrix accuracy post-Session A. (3) Verify mkdocs site deployment. (4) Assess Session B readiness. (5) Advise on priority: Session 0 vs Session B vs GAP-SC-1.
+> **Method:** Document cross-reference, code inspection via subagent, HTTP check. No pipeline run.
+> **Last reviewed commit:** `0822ce1` (S67 README hyperlinks).
+
+---
+
+### J.1 — Gate Check
+
+| Check | Result |
+|-------|--------|
+| mkdocs site (https://red1oon.github.io/BIMCompiler/) | **HTTP 200** — renders correctly. Title: "BIM Intent Compiler". mkdocs-material 9.7.6. Full-text search, dark mode, sidebar nav all present. |
+| Dirty tree | `library/component_library.db` (modified, local-only — expected). No other changes. |
+| Branch | master, up to date with origin. |
+| Commits since last watchdog (bd49b1d) | 5 README commits (0822ce1..bf99c80) — all docs/site work, no code changes. |
+
+---
+
+### J.2 — Session A Code vs Blueprint §14.3 Spec Compliance
+
+**Verdict: FULLY COMPLIANT.** All 5 spec claims verified against code.
+
+| Spec Claim | Code Evidence | Status |
+|------------|--------------|--------|
+| OrderMutationService extracted from DesignerAPIImpl | `BonsaiBIMDesigner/.../api/OrderMutationService.java`. DesignerAPIImpl delegates at line ~1776. Pre-flight citation at line 19: `// Implementing ProjectOrderBlueprint.md §14.3 Session A — Witness: W-DM-TC5-1` | **PASS** |
+| addDiscipline() reads ad_space_type_mep_bom | `MEPBOMQuery.queryForDiscipline()` queries `ad_space_type_mep_bom WHERE space_type_id = ? AND mep_product_id IN (...)` | **PASS** |
+| proposal_status column (W004 migration) | `migration/W004_orderline_proposal_status.sql`: `ALTER TABLE C_OrderLine ADD COLUMN proposal_status TEXT DEFAULT 'ACCEPTED'` + index | **PASS** |
+| bom_child_id = NULL for rule-driven lines | INSERT statement omits bom_child_id. Comments at lines 61, 184 document the design intent. OrderLineWalker handles null gracefully. | **PASS** |
+| AddDisciplineTest 4/4 | 4 ordered test methods: step1_bom_drop, step2_add_discipline_elec, step3_verify_proposed_lines, step4_add_discipline_fp | **PASS** |
+
+**Architectural note:** The Appendix I.4 Risk 1 recommendation — "extract a delegation class in Session B" — was proactively addressed in Session A. OrderMutationService IS that delegation class. The God Object risk for the mutation path is mitigated. DesignerAPIImpl still has 57 methods for other concerns, but the mutation path is cleanly separated.
+
+---
+
+### J.3 — SystemContract §4 Three-Concern Matrix: Post-Session A Accuracy
+
+**Verdict: ACCURATE with one update needed.**
+
+| Section | Status Shown | Actual Status | Accurate? |
+|---------|-------------|--------------|-----------|
+| §4.2 Scale 2 (Building) | ✓ DONE (all 3) | Confirmed — C_OrderLine, PP_Order_Node, CO_EmptySpaceLine all implemented | **YES** |
+| §4.3 Scale 3 (Room) | ✓ DONE (all 3) | Confirmed — M_BOM_Line, Verb, tack offset all implemented | **YES** |
+| §4.1 Scale 1 (Site) | NOT IMPL (all 3) | Confirmed — C_ProjectLine, SitePlacementStrategy, Plot locator not implemented | **YES** |
+| §4.4 Mutations WHAT | PARTIAL | Session A delivered addDiscipline() + PROPOSED status. OrderLineMutation interface (HOW) and locator_ref (WHERE) still NOT IMPL. | **YES** |
+| §4.5 ASI/Viewport | NOT SPECCED (HOW/WHERE) | Unchanged — GAP-SC-1 still open | **YES** |
+| §4.6 Freehand | NOT SPECCED (all 3) | Unchanged — GAP-SC-2 still open | **YES** |
+
+**GAP-SC register check (all 8 gaps):**
+
+| Gap | Still Valid? | Notes |
+|-----|------------|-------|
+| GAP-SC-1 (ASI mutation) | **YES** | Session A did not touch ASI/recompile path |
+| GAP-SC-2 (Freehand) | **YES** | No work done |
+| GAP-SC-3 (Site grid) | **YES** | Blocks C_Project |
+| GAP-SC-4 (Rule pack versioning) | **YES** | Blocks Session C |
+| GAP-SC-5 (Order inheritance conflict) | **YES** | Blocks Session E. Appendix I.3 flagged missing failure criterion here — still unfixed. |
+| GAP-SC-6 (Compile-once-copy-many) | **YES** | Blocks C_Project at scale |
+| GAP-SC-7 (Output consolidation) | **YES** | Blocks C_Project |
+| GAP-SC-8 (R-PROJ-3 C_Order_ID collision) | **YES — BLOCKING** | Session A did not change BomDropper.drop() PK logic |
+
+**No gaps closed by Session A.** This is expected — Session A was about adding the mutation API, not resolving architectural gaps. The first gap closure opportunity is Session 0 (GAP-SC-8).
+
+---
+
+### J.4 — Session B Readiness Assessment
+
+**Is Session A's OrderMutationService the right foundation for Session B?**
+
+**YES — with one caveat.**
+
+Session B needs:
+1. `OrderLineMutation` interface — `List<ProposedOrderLine> propose(C_Order, Connection ruleDb)`
+2. Three implementations: FPSuggestion, ELECSuggestion, ACMVSuggestion
+3. Three-state lifecycle: Absent → Proposed → Accepted
+
+Session A provides:
+- OrderMutationService as the delegation class (the right home for Session B logic)
+- addDiscipline() as a working reference implementation of the propose pattern
+- proposal_status column already in schema (W004)
+- MEPBOMQuery as a working AD table reader
+
+**The caveat:** Session A's addDiscipline() is a *specific* method, not a *generic* interface. Session B must extract the `OrderLineMutation` interface FROM addDiscipline() — refactoring the existing method into the first implementation of the new interface. This is a clean refactor path, not a rewrite.
+
+**Spec readiness:** Blueprint §14.3 Session B spec is well-defined. The three implementations, the interface contract, and the gate/witness are all specified. No SRS gap blocks Session B.
+
+**Product readiness:** S67 onboarded 2 ELEC products (E_Light, E_Data Point). FP products exist from prior sessions. ACMV products may need onboarding — the failure criterion in Appendix I.3 flagged this: "ELEC/ACMV products don't exist in component_library.db". This should be checked before starting Session B.
+
+---
+
+### J.5 — Priority Advisory: Session 0 vs Session B vs GAP-SC-1
+
+**Recommended order: Session 0 → Session B → GAP-SC-1.**
+
+| Option | Effort | Impact | Risk | Verdict |
+|--------|--------|--------|------|---------|
+| **Session 0** (R-PROJ-3 fix) | SMALL — parameterize one method + callers | Unblocks ALL multi-order work (C_Project, inheritance, testing) | LOW — small change, backward-compatible default | **DO FIRST** |
+| **Session B** (Suggestion engine) | MEDIUM — interface + 3 implementations + UI integration | Demonstrates the rule-driven mutation pattern at scale | MEDIUM — ACMV product gap, room AABB geometry risk | **DO SECOND** |
+| **GAP-SC-1** (ASI mutation SRS) | LARGE — requires SRS before any code | Unblocks viewport drag-to-recompile | HIGH — underspecified, no working reference | **DEFER** |
+
+**Rationale:**
+
+1. **Session 0 is a prerequisite, not a choice.** GAP-SC-8 is the only BLOCKING gap. Every multi-order scenario (C_Project §2, Order inheritance §6, even testing two orders of the same type) hits this wall. The fix is small and backward-compatible. Do it first.
+
+2. **Session B builds momentum.** It extends Session A's working pattern (addDiscipline → OrderLineMutation interface). The suggestion engine is the most user-visible feature in the pipeline — architects seeing "PROPOSED" lines in their BOM tree is the first real product experience. Three implementations (FP/ELEC/ACMV) prove the abstract framework claim.
+
+3. **GAP-SC-1 needs an SRS, not code.** The ASI mutation path ("drag wall in viewport → which verbs re-fire?") is genuinely underspecified. Writing the SRS requires answering questions that touch BIM_COBOL verb execution, EYES spatial proofs, and the Bonsai bridge — three distinct subsystems. This is a thinking session, not a coding session. It can wait until after Sessions B-C establish the rule engine foundation.
+
+**Alternative if short on time:** Session 0 alone is a valuable standalone commit. It unblocks future work without requiring Sessions B-E to follow immediately.
+
+---
+
+### J.6 — README Post-Session A Assessment
+
+The 5 README commits (0822ce1..bf99c80) slimmed README from ~209 lines to 80 lines. Current state:
+
+- **Stats table accurate:** 35 buildings, 64 verbs, 2,475 products, 392 tests — all match PROGRESS.md
+- **Quick Start works:** clone → compile → run gates → run tests
+- **Docs link correct:** points to https://red1oon.github.io/BIMCompiler/ (verified HTTP 200)
+- **YouTube link present:** walkthrough of Claude pair programming
+- **Project structure accurate:** 7 modules + 5 support dirs
+- **Alpha v1.0 date:** March 2026 — matches current session timeline
+
+**One minor discrepancy:** README says "1,140 files, 261K lines" — this is a snapshot. Not wrong, but will drift as code is added. Consider removing exact counts or noting "as of S67".
+
+---
+
+### J.7 — Housekeeping
+
+| Item | Action | Owner |
+|------|--------|-------|
+| Appendix I.6 items | `memory/project_s62_fp_trial.md` deletion + LAST_MILE stale markers (R17/R18/R25/R26) still open from prior watchdog | Next session |
+| Session E failure criterion | Missing conflict resolution spec for sibling inheritance branches (flagged in I.3, still unfixed) | Before Session E |
+| ACMV product check | Verify ACMV products exist in component_library.db before starting Session B | Before Session B |
+| README line counts | "1,140 files, 261K lines" will drift — consider softening to "1,100+ files" or removing | LOW |
+| §4.4 Mutations WHAT status | Could be updated from PARTIAL to "Session A DONE, Sessions B-D remain" for clarity | LOW |
+
+---
+
+### J.8 — Verdict
+
+**Project is well-aligned and accelerating.** Session A landed cleanly — spec-compliant, properly extracted, well-tested. The Appendix I.4 God Object risk was proactively mitigated. mkdocs site is live. README is clean. All 8 SystemContract gaps remain valid and accurately documented.
+
+**Next move: Session 0 (R-PROJ-3 fix).** Small, unblocking, low-risk. Then Session B to prove the mutation pattern at scale.
+
+---
+
+## Appendix K — Session 0: R-PROJ-3 Fix Report (2026-03-24)
+
+### K.1 — What Changed
+
+**Bug:** `BomDropper.drop()` used `entry.docTypeId()` as C_Order_ID primary key (line 48). When multiple orders share the same DocType (e.g., 180 houses all type RE_SH), each `drop()` call DELETEd the previous order. Only the last order survived.
+
+**Fix:** Added overloaded `drop(Connection, BuildingEntry, String orderId)` method. The original `drop(Connection, BuildingEntry)` delegates to the new method with `entry.docTypeId()` as default — backward compatibility preserved.
+
+### K.2 — Files Modified
+
+| File | Lines Changed | Nature |
+|------|--------------|--------|
+| `DAGCompiler/src/main/java/com/bim/compiler/bom/BomDropper.java` | 38–60 (was 38–59) | Added 3-arg `drop()` overload; original 2-arg delegates to it |
+| `DAGCompiler/src/test/java/com/bim/compiler/contract/BomDropperOrderIdTest.java` | NEW (170 lines) | W-PROJ-ID-1 witness test |
+| `docs/SystemContract.md` | Line 520 | GAP-SC-8 status: BLOCKING → CLOSED |
+| `docs/ProjectOrderBlueprint.md` | Line 1409 | Session 0 status: NOT STARTED → DONE |
+| `PROGRESS.md` | Line 48 | Session 0 completion entry |
+
+### K.3 — What Was NOT Changed
+
+- `createOrder()` (private, line 93) already accepted `orderId` as parameter — no change needed.
+- DELETE statements (lines 97-98) already used the `orderId` parameter — no change needed.
+- `BuildingRegistryTest.java:78` — sole active caller, uses `drop(conn, entry)` (2-arg default path) — unchanged, compiles and passes.
+- No callers in BonsaiBIMDesigner (those tests use DesignerAPIImpl, not BomDropper directly).
+
+### K.4 — Gate Results
+
+| Gate | Result |
+|------|--------|
+| `mvn compile -q` | CLEAN |
+| `run_RosettaStones.sh classify_sh.yaml` | 7/7 PASS |
+| W-PROJ-ID-1 witness test | PASS (3 leaves × 3 orders, 2 coexisting + 1 default path) |
+| `run_tests.sh` (full gate) | GREEN (all 5 buildings, 118 PASS, 72 pre-existing RED) |
+
+### K.5 — Witness: W-PROJ-ID-1
+
+**Claim:** Two orders of the same DocType (RE_SH) coexist in compile DB when given distinct explicit orderIds.
+
+**Test:** `BomDropperOrderIdTest.twoOrdersSameDocTypeBothSurvive()`
+- Creates in-memory SQLite DB with S60 schema + minimal SH BOM (1 BUILDING BOM, 2 leaf products)
+- Drops `RE_SH_001` → 3 leaves
+- Drops `RE_SH_002` → 3 leaves
+- Asserts: 2 C_Order rows, both have C_OrderLines
+- Also tests default path: `drop(conn, entry)` → orderId=`RE_SH` → 3 leaves (backward compat)
+
+### K.6 — Surprises
+
+None. The fix was exactly as specced in ProjectOrderBlueprint.md §14.3. The `createOrder()` method already accepted orderId as a parameter — only the public `drop()` entry point needed the overload.
