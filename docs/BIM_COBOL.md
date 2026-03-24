@@ -2349,7 +2349,7 @@ CREATE ROOM KITCHEN 3500 2500 2800
     -- Selection: AABB fit → largest volume → seq_no tiebreaker (§3.3)
 
 CREATE ROOM BEDROOM 4000 3000 2800 FROM DX
-    -- Prefer DX-owned products (doc_sub_type filter)
+    -- Prefer DX-owned products (building prefix filter)
     -- Falls back to catalog-wide if no DX match
 
 CREATE ROOM LIVING 8000 5000 2800 EMPTY

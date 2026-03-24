@@ -60,7 +60,7 @@ Every table in the system serves one of five roles. No table serves two roles.
 | `ad_code_requirement` | Code rules per element × space | [DocValidate.md](DocValidate.md) |
 | `ad_mep_profile` | Budget/Standard/Premium multiplier | [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) |
 | `AD_Val_Rule` | Validation rules | [DocValidate.md](DocValidate.md) |
-| `C_DocType` | Building type classification | [SystemContract.md §2](SystemContract.md) |
+| `C_DocType` | "Construction Order" — one document type (see MANIFESTO.md §The Order) | [SystemContract.md §2](SystemContract.md) |
 | `M_Product_Category` | Product taxonomy (46 rows) | [BBC.md §1](BOMBasedCompilation.md) |
 
 ### 2.2 Master Data (M) — Product Catalog & BOM Recipes
@@ -431,7 +431,7 @@ Rules, BOMs, and prices change over time. The system must know
 | Valid From | m_bom.valid_from | '2026-01-01' |
 | Supersedes | m_bom.supersedes_id | FK to previous version |
 
-Not implemented. Current model: one active BOM per DocBaseType + DocSubType.
+Not implemented. Current model: one active BOM per M_Product_Category + building prefix.
 
 ---
 

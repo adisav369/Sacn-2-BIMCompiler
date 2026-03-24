@@ -35,8 +35,9 @@
 
 The parallel session established the infra Rosetta Stone pattern. Key decisions:
 
-**`doc_base_type: IN`** is the infrastructure discriminator. All infra YAMLs use this.
-The Designer API can check `docBaseType == "IN"` to select infra mode.
+**`doc_base_type: IN`** is the infrastructure discriminator in YAML (deprecated — will migrate
+to M_Product_Category=IN, see DATA_MODEL.md §7). All infra YAMLs use this.
+The Designer API checks the top-level M_Product_Category to select infra mode.
 
 **`segments:` is an alias for `storeys:`** in the YAML schema. The pipeline treats
 them identically — same hierarchy, different label. This preserves the
@@ -637,8 +638,8 @@ Proven on 689-point real survey terrain. 16 PlacementContext witnesses GREEN.
 | Rail BOM compilation | RL_BOM.db: 5 lines, 70 CLUSTER (93% compression) | **RL 4/4 PASS** |
 | Bridge recompiled with verb detection | BR_BOM.db: 26 lines, 28 CLUSTER | **BR 10/10 PASS** |
 
-**Key fix:** `doc_base_type: IN` was falling into RE path (StructuralBomBuilder, no verb
-detection). One-line fix routes IN to DisciplineBomBuilder (same as CO), enabling
+**Key fix:** M_Product_Category=IN was falling into the residential path (StructuralBomBuilder,
+no verb detection). One-line fix routes IN to DisciplineBomBuilder (same as CO), enabling
 VerbDetector cascade for all infrastructure.
 
 ### Phase I-4: Wire TerrainSnap into Designer snap() Loop — DONE (S38b)

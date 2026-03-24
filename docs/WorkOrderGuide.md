@@ -179,8 +179,8 @@ mvn exec:java -pl IFCtoBOM \
 | `building_type` | string | Must match reference DB name: `{building_type}_extracted.db` |
 | `prefix` | string | Short code (SH, DX, TE). Used for BOM DB name: `{prefix}_BOM.db` |
 | `building_bom_id` | string | Root BOM ID (e.g., `BUILDING_SH_STD`) |
-| `doc_sub_type` | string | DocType sub-type for C_DocType (e.g., `SH`, `DX`) |
-| `doc_base_type` | string | DocType base: `RE` (residential), `CO` (commercial/institutional), `IN` (infrastructure). See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.1 G4 for infrastructure usage. |
+| `doc_sub_type` | string | **Deprecated** — redundant with prefix (see DATA_MODEL.md §7). Currently still read by pipeline. |
+| `doc_base_type` | string | **Deprecated** — redundant with M_Product_Category (RE/CO/IN). See DATA_MODEL.md §7 migration plan. |
 | `name` | string | Human-readable building name |
 | `dsl_file` | string | BIM COBOL script filename (e.g., `dsl_sh.bim`) |
 
@@ -701,7 +701,7 @@ is the default, always-available baseline.
 |---------------|-------------|------------|
 | v1 (current) | building, storeys, floor_rooms, static_children | — |
 | v2 (TE) | disciplines section (ifc_class → bom_category map) | v1 |
-| v2+ (infra) | `segments:` alias for `storeys:`, `doc_base_type: IN`, infrastructure discipline map | v2. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3 |
+| v2+ (infra) | `segments:` alias for `storeys:`, M_Product_Category=IN, infrastructure discipline map | v2. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3 |
 | **v3 (planned)** | **mep section (rules-based MEP auto-population)** | v2 + AD_Val_Rule + work_output.db |
 
 ---
@@ -726,7 +726,7 @@ Step 2: SELECT FACILITY TYPE
   User picks: BRIDGE / ROAD / RAILWAY / TUNNEL from facility dropdown
   API: listFacilityTypes() → FacilityType enum
   Effect: loads provenance-scoped validation rules (30 infra rules)
-  YAML: doc_base_type: IN, segments: alias for storeys:
+  YAML: M_Product_Category=IN, segments: alias for storeys:
 
 Step 3: DEFINE ALIGNMENT
   User draws polyline over terrain in viewport

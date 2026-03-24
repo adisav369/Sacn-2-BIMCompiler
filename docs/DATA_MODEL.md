@@ -93,9 +93,9 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
 | bom_type | BUILDING | Fixed (abstract root — used for both buildings and infrastructure facilities) |
-| doc_base_type | RE / CO / IN | RE=Residential, CO=Commercial, IN=Infrastructure |
-| doc_sub_type | SH / DX / BR / RD | Building or facility variant |
-| bom_category | RE / CO / IN | Template category matching doc_base_type |
+| doc_base_type | RE / CO / IN | **Deprecated** — redundant with m_product_category_id (see §7 migration plan) |
+| doc_sub_type | SH / DX / BR / RD | **Deprecated** — redundant with building prefix/bom_id (see §7 migration plan) |
+| m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification lives here |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
 | entity_type | D | Dictionary (read-only) |
@@ -176,7 +176,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 ### C_DocType (6 rows — domain config)
 
-Building type classification. Prime Rule three-key match: DocBaseType + DocSubType + AABB.
+"Construction Order" — one document type. Classification lives on M_Product_Category, not here. Legacy columns (DocBaseType, DocSubType) exist but are deprecated (see §7 migration plan).
 
 > **RESOLVED (session 30, R27):** IFCtoBOM now writes C_DocType into `{PREFIX}_BOM.db`
 > during extraction. Shell injection removed from `run_RosettaStones.sh`.
@@ -187,8 +187,8 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 |--------|------|-------|
 | C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |
 | Name | TEXT | Display name |
-| DocBaseType | TEXT | RE (Residential), CO (Commercial), IN (Industrial) |
-| DocSubType | TEXT | SH, DX, TB, TE, ST — drives BOM scoping. ST = template path |
+| DocBaseType | TEXT | **Deprecated** — RE/CO/IN. Redundant with M_Product_Category (see §7) |
+| DocSubType | TEXT | **Deprecated** — SH/DX/TB/TE/ST. Redundant with building prefix (see §7) |
 | ProjectName | TEXT | Building instance name |
 | DSLContent | TEXT | DSL template text |
 | OutputDbPath | TEXT | Output DB path |
@@ -200,7 +200,7 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 
 ### m_bom (BOM headers)
 
-4 dimensions: DocType + DocSubType + Category + SpaceSize (AABB fit).
+2 selection dimensions: M_Product_Category + SpaceSize (AABB fit). Legacy columns doc_base_type/doc_sub_type exist but are deprecated (see §7).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -208,8 +208,8 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 | bom_name | TEXT | Display name |
 | bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
-| doc_base_type | TEXT | RE/CO/IN — Prime Rule key |
-| doc_sub_type | TEXT | SH/DX/TB/TE — variant scope |
+| doc_base_type | TEXT | **Deprecated** — RE/CO/IN. Redundant with m_product_category_id (see §7) |
+| doc_sub_type | TEXT | **Deprecated** — SH/DX/TB/TE. Redundant with bom_id prefix (see §7) |
 | origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
 | aabb_width_mm, aabb_depth_mm, aabb_height_mm | INTEGER | Envelope dimensions |
 | group_by | TEXT | Grouping key |

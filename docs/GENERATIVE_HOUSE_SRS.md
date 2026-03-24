@@ -13,7 +13,7 @@ A GENERATIVE building does not need new code. It needs **data** — BOM entries
 selected from the library by the same three dimensions that govern all compilation:
 
 1. **BomCategory** (WHAT) — LIVING, KITCHEN, BEDROOM, BATHROOM
-2. **DocBaseType / DocSubType** (WHICH) — RE/DM borrows from RE/SH, RE/DX
+2. **M_Product_Category** (WHICH) — RE/DM borrows from RE/SH, RE/DX (same top-level category)
 3. **SpaceSize** (HOW MUCH) — AABB on the slot determines which child BOM fits
 
 The BOM walker, tack convention, verb expansion, ESLine placement, and all 6 gates
@@ -79,14 +79,14 @@ Compile explodes the tree. Instant BOM Drop pattern.
 | Dimension | iDempiere Pattern | DemoHouse Application |
 |-----------|------------------|----------------------|
 | **Category** | `M_Product_Category` — what kind of recipe | BATHROOM slot → look for BATHROOM BOMs |
-| **Owner** | `C_DocType.DocSubType` — which variant | DM building → prefer DM BOMs, fallback to SH/DX BOMs with same DocBaseType |
+| **Owner** | Building prefix (M_Product identity) — which variant | DM building → prefer DM BOMs, fallback to SH/DX BOMs with same M_Product_Category |
 | **SpaceSize** | `M_BOM_Line` AABB — how big | 2000×1500×2800 slot → child BOM must fit |
 
-When the DocSubType doesn't match (DM has no dedicated BATHROOM BOM), the cascade
-falls back to the same DocBaseType (RE). SH is RE. DX is RE. Their BOMs are available
-to DM because they share the base type. This is the iDempiere pattern: a Sales Order
-(SOO) uses the same products as a Purchase Order (POO) — different document type,
-same product catalog.
+When the building prefix doesn't match (DM has no dedicated BATHROOM BOM), the cascade
+falls back to the same M_Product_Category (RE). SH is RE. DX is RE. Their BOMs are
+available to DM because they share the top-level category. This is the iDempiere
+pattern: products in the same M_Product_Category are interchangeable — the category
+defines the swap pool.
 
 ### 2.3 What the Authority Data Tables Provide
 
@@ -124,7 +124,7 @@ Building codes ──encode──→ disc_validation.db
                                     ▼
 DemoHouse (DM) ──borrow──→ Same products, same BOMs, same rules
   Via Selection Cascade §3.5:
-    bom_category + DocBaseType + AABB fit
+    bom_category + M_Product_Category + AABB fit
   No new products created.
   No new geometry invented.
   Every element traces to a real IFC or a building code.
@@ -138,7 +138,7 @@ selected yet), the Designer can **auto-suggest** using the BOM Chooser (§3.5):
 ```
 DesignerAPI.suggestRoomContents(buildingId)
     For each room C_OrderLine with bom_category:
-        1. Query m_bom WHERE bom_category = ? AND DocBaseType = parent's DocBaseType
+        1. Query m_bom WHERE bom_category = ? AND m_product_category_id = parent's M_Product_Category
         2. Filter by AABB fit (child ≤ room slot)
         3. Rank by §3.5 cascade
         4. Return best-match BOM as suggestion

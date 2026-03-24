@@ -41,20 +41,19 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
 
 ### 1.1 Disciplines Are Metadata, Not Structure
 
-In iDempiere, `C_DocType.DocBaseType` (SOO, API, MOP) classifies documents.
-The document engine is generic — it processes all types identically. What
-differs per type is the **validation rules** (tax on Invoice, credit check on
-Order, BOM explosion on Manufacturing Order). The engine never has a
-`switch(docBaseType)` — it fires AD_Val_Rule / ModelValidator / Column Callout
-based on metadata.
+In iDempiere, the document engine is generic — it processes all document types
+identically. What differs per type is the **validation rules** (tax on Invoice,
+credit check on Order, BOM explosion on Manufacturing Order). The engine fires
+AD_Val_Rule / ModelValidator / Column Callout based on metadata, never via
+hardcoded type checks.
 
 Disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG) follow the same pattern:
 
 | iDempiere | BIM Compiler |
 |-----------|-------------|
-| C_DocType.DocBaseType | m_bom.bom_category (the discipline marker) |
+| Document classification via metadata | m_bom.bom_category (the discipline marker) |
 | Same document engine | Same BOM walker (§2.2, §4) |
-| AD_Val_Rule per DocType | AD_Val_Rule per bom_category (sprinkler spacing, clearances) |
+| AD_Val_Rule per document type | AD_Val_Rule per bom_category (sprinkler spacing, clearances) |
 | Column Callout on field change | Per-discipline product validation |
 | Invoice → tax/charge validation | FP BOM → fire code compliance |
 | ModelValidator.docValidate() | PlacementValidator per jurisdiction |
@@ -294,8 +293,8 @@ sit on M_Product_Category with `doc_type='CO'` and how ROUTE/TILE verbs map to
 M_AttributeSet/Instance.
 
 Single-discipline buildings (SH, schema_version 1) skip this layer — no
-discipline wrapper needed. DocBaseType (RE/CO) on M_Product_Category determines
-which L2 axis is used: rooms (RE) or disciplines (CO).
+discipline wrapper needed. The top-level M_Product_Category (RE/CO) determines
+which L2 axis is used: rooms (RE) or disciplines (CO). See MANIFESTO.md §Category Cascade.
 
 ### 2.1.6 Recipe vs Placement — The BOM Contract
 
@@ -1146,8 +1145,8 @@ names in source code. The Python/shell side is not:
 
 | # | File | Lines | What is hardcoded |
 |---|------|-------|-------------------|
-| 1 | `scripts/RosettaStoneExtract.py` | 37–60 | `BUILDINGS` dict: prefixes (`SH`, `DX`), doc_sub_type, building_bom_id, storey name→code mappings, roles, seq_no |
-| 2 | `scripts/RosettaStoneToBOM.py` | 48–55 | `C_DOCTYPE` list: doc_type_id, DocBaseType, DocSubType, output/reference paths, ExpectedElements (55, 1099, 139, 51088) |
+| 1 | `scripts/RosettaStoneExtract.py` | 37–60 | `BUILDINGS` dict: prefixes (`SH`, `DX`), building prefix, building_bom_id, storey name→code mappings, roles, seq_no |
+| 2 | `scripts/RosettaStoneToBOM.py` | 48–55 | `C_DOCTYPE` list: doc_type_id, M_Product_Category, building prefix, output/reference paths, ExpectedElements (55, 1099, 139, 51088) |
 | 3 | `scripts/RosettaStoneToBOM.py` | 345–439 | `M_BOM` / `M_BOM_LINE`: BUILDING BOM headers with AABB, TACK children with dx/dy/dz offsets |
 | 4 | `scripts/run_RosettaStones.sh` | 39–40, 418–435 | `SH_BASE` / `DX_BASE` path variables, `case` dispatch with literal `"SH"` / `"DX"` |
 | 5 | `scripts/run_tests.sh` | 125–136 | `run_preflight "Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` — literal building names |
@@ -1169,8 +1168,8 @@ and structure. The manifest is an index into extraction truth — it names thing
 buildings:
   Ifc4_SampleHouse:
     prefix: SH
-    doc_sub_type: SH
-    doc_base_type: RE
+    doc_sub_type: SH                  # deprecated — redundant with prefix + M_Product_Category (see DATA_MODEL.md §7)
+    doc_base_type: RE                 # deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)
     provenance: EXTRACTED
     output_path: DAGCompiler/lib/output/ifc4_samplehouse.db
     reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
@@ -1182,8 +1181,8 @@ buildings:
 
   Ifc2x3_Duplex:
     prefix: DX
-    doc_sub_type: DX
-    doc_base_type: RE
+    doc_sub_type: DX                  # deprecated — redundant with prefix + M_Product_Category (see DATA_MODEL.md §7)
+    doc_base_type: RE                 # deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)
     provenance: EXTRACTED
     output_path: DAGCompiler/lib/output/ifc2x3_duplex.db
     reference_path: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
@@ -1226,7 +1225,7 @@ After migration, adding a new building follows the same pattern as adding a new 
 ERP system — one BOM entry, zero code changes:
 
 1. **Manifest entry** — add one YAML block to `construction_manifest.yaml` (name, prefix,
-   doc_sub_type, storeys, paths)
+   prefix, storeys, paths)
 2. **Extract IFC** — run extraction pipeline; reference DB appears at the declared path
 3. **Regenerate BOM dictionary** — IFCtoBOM Java pipeline (SH/DX) or `RosettaStoneToBOM.py` (TE)
    reads classification YAML + extraction, writes M_BOM, M_BOM_Line with derived counts and dimensions
@@ -1242,7 +1241,7 @@ Each script transitions from hardcoded values to manifest-driven or `{PREFIX}_BO
 |--------|-----------|-------------|-------------|
 | `RosettaStoneExtract.py` | `BUILDINGS` dict (lines 37–60): prefixes, storey maps, BOM IDs | `construction_manifest.yaml`: same data, external file | Replace dict literal with `yaml.safe_load()`. Storey mappings move verbatim. |
 | `RosettaStoneToBOM.py` | `C_DOCTYPE` list (lines 48–55): paths, ExpectedElements. `M_BOM` / `M_BOM_LINE` (lines 345–439): AABB, offsets | Manifest for identity; extraction DBs for counts, AABB, offsets | Biggest change. Builder loops derive dimensions from extraction instead of literals. |
-| `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT DocSubType, output_path FROM C_DocType WHERE IsActive=1` from `{PREFIX}_BOM.db` | Shell reads `{PREFIX}_BOM.db` via `sqlite3`. Loop replaces case statement. |
+| `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT C_DocType_ID, output_path FROM C_DocType WHERE IsActive=1` from `{PREFIX}_BOM.db` | Shell reads `{PREFIX}_BOM.db` via `sqlite3`. Loop replaces case statement. |
 | `run_tests.sh` | Literal `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` in preflight calls (lines 125–136); hardcoded expected counts (lines 145–183) | Preflight: query C_DocType for active EXTRACTED buildings. Counts: read from `{PREFIX}_BOM.db` or test output. | Preflight becomes a loop. Expected counts derived, not literal. |
 
 ### 10.6 Invariants

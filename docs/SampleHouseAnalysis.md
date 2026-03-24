@@ -16,8 +16,8 @@
 | Type | Single-storey residential |
 | Elements | 55 |
 | Disciplines | 2 (ARC: 35, STR: 20) |
-| DocSubType | SH |
-| DocBaseType | RE (Residential) |
+| M_Product_Category | RE (Residential) |
+| Prefix | SH |
 | C_DocType_ID | RE_SH |
 | Reference DB | `DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db` |
 | BOM DB | `library/SH_BOM.db` |

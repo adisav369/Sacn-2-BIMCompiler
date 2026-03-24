@@ -1225,13 +1225,13 @@ defaults — they don't build from scratch. This is the iDempiere pattern:
 ### 14.2 What Gets Spawned
 
 ```
-User action: "Create New" → selects DocSubType + jurisdiction + AABB
+User action: "Create New" → selects building product + jurisdiction + AABB
 
 Engine spawns (in work_output.db):
 
 1. C_Order
-   ├── doc_base_type = RE/CO
-   ├── doc_sub_type = user's choice (or ST for template mode)
+   ├── M_Product_Category = RE/CO/IN (from building product)
+   ├── M_Product_ID = user's choice (building product identity)
    ├── jurisdiction = user's choice (MY/US/UK/AU/SG)
    └── aabb = user's envelope dimensions
 
@@ -1262,7 +1262,7 @@ Engine spawns (in work_output.db):
 ```
 iDempiere MOrder.prepareIt():              BIM CreateNew:
 ──────────────────────────────             ──────────────
-1. Validate header (C_DocType)             1. Validate DocSubType + AABB
+1. Validate header (C_DocType)             1. Validate M_Product_Category + AABB
 2. Create default lines from template      2. Create C_OrderLines from BOM tree
 3. Calculate taxes per line                3. Run Tier 1 validation per line
 4. Check credit limit                      4. Check AABB containment
@@ -1444,7 +1444,7 @@ public class ConstructionModelSpawner {
 
 ```
 1. Create C_Order (building-level header)
-   → doc_base_type, doc_sub_type, jurisdiction, aabb from BOM
+   → M_Product_Category, building product, jurisdiction, aabb from BOM
 
 2. Walk BOM tree (same BOMWalker used for compilation)
    For each m_bom encountered during walk:
@@ -1452,7 +1452,7 @@ public class ConstructionModelSpawner {
      → Create CO_EmptySpaceLine (tack_from = line.dx/dy/dz, aabb = slot capacity)
      → Create default M_AttributeSetInstance (from M_Product.M_AttributeSet_ID)
 
-3. Create PP_Order_Node (default routing from doc_base_type template)
+3. Create PP_Order_Node (default routing from M_Product_Category template)
    → RE: Foundation → Frame → Envelope → MEP → Finishes
    → CO: Substructure → Superstructure → Envelope → MEP Risers → MEP Horizontal → Finishes
 

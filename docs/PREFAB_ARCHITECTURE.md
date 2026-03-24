@@ -3,7 +3,7 @@
 
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
 *Extends: `SystemContract.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
-*Dimension model: [BBC.md](BOMBasedCompilation.md) §1 — Category (M_Product_Category) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)*
+*Dimension model: [BBC.md](BOMBasedCompilation.md) §1 — Category (M_Product_Category) + Owner (M_Product identity) + SpaceSize (AABB)*
 
 > **Update (2026-03-06):** Phase G-1 completed. Class renames applied throughout this document:
 > - `FixturePlacer` → deleted (placement logic absorbed into `BOMTierResolver`)

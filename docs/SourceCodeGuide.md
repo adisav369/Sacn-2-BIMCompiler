@@ -289,7 +289,7 @@ Creates C_Order + walks m_bom/m_bom_line recursively. IsBOM products (matching m
 leaves become C_OrderLine LEAF rows. Returns `BomTreeNode` for Outliner (expand/collapse).
 DocAction: Save(validate) → Approve(new product config) → Complete(compile+viewport).
 
-**CO mode (Terminal/Institutional):** CompileStage is skipped for `DocBaseType=CO`. All elements come from BOM extraction — no DSL compilation path needed.
+**CO mode (Terminal/Institutional):** CompileStage is skipped for M_Product_Category=CO buildings. All elements come from BOM extraction — no DSL compilation path needed.
 
 > **Full pipeline spec:** [`BOMBasedCompilation.md`](BOMBasedCompilation.md) — per-stage walkthrough, CO mode forensics, data integrity chain.
 
@@ -586,7 +586,7 @@ VERIFIED ✓ (or drift detected ✗)
 | **Anti-Drift** | Policy: no output data may be invented — everything traces to extraction or computation |
 | **BIM COBOL** | Domain-specific verb language for construction mutations |
 | **BOM** | Bill of Materials — hierarchical tree of parts and sub-assemblies |
-| **C_DocType** | iDempiere document type — building type identity (DocBaseType + DocSubType) |
+| **C_DocType** | iDempiere document type — "Construction Order" (one type; classification lives on M_Product_Category) |
 | **Instant Drop** | No modifications — 1 C_OrderLine, compile explodes BOM tree (BBC.md §3.3) |
 | **EntityType** | Data provenance: D=Dictionary (read-only), U=User (verb-created), A=Application |
 | **G1-G6** | Six verification gates in RosettaStoneGateTest |

@@ -17,8 +17,8 @@
 | Type | 2-storey residential with pitched roof |
 | Elements | 99 building elements (see census below) |
 | Disciplines | 3 proposed: ARC, STR, ROOF (see §Discipline Breakdown) |
-| Proposed DocSubType | FK |
-| Proposed DocBaseType | RE (Residential) |
+| M_Product_Category | RE (Residential) |
+| Prefix | FK |
 | C_DocType_ID | RE_FK |
 | Reference IFC | `DAGCompiler/lib/input/IFC/FZK_Haus_IFC4.ifc` |
 | Source | KIT ifcwiki — freely downloadable |
@@ -512,8 +512,8 @@ building:
   building_type: Ifc4_FZKHaus        # must match {name}_extracted.db
   prefix: FK                          # → FK_BOM.db
   building_bom_id: BUILDING_FK_STD
-  doc_sub_type: FK
-  doc_base_type: RE                   # Residential
+  doc_sub_type: FK                    # deprecated — redundant with prefix (see DATA_MODEL.md §7)
+  doc_base_type: RE                   # deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)
   name: FZK-Haus
   dsl_file: dsl_fk.bim               # BIM COBOL script
 

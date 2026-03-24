@@ -91,10 +91,10 @@ before any code changes** (per `memory/feedback_srs_before_code.md`).
 
 | # | Spec | Section | Conflict | Severity |
 |---|------|---------|----------|----------|
-| **G1** | BBC.md §1 | "A building is a manufactured product" | Infrastructure is a **linear asset**, not a manufactured product. Road sections are poured layers, not assembled components. The manufacturing metaphor breaks for in-situ work. | **Conceptual — does not block extraction pipeline**, but `doc_base_type` vocabulary needs extension (RE=Residential, CO=Commercial, **IN=Infrastructure?**) |
+| **G1** | BBC.md §1 | "A building is a manufactured product" | Infrastructure is a **linear asset**, not a manufactured product. Road sections are poured layers, not assembled components. The manufacturing metaphor breaks for in-situ work. | **Conceptual — does not block extraction pipeline**. M_Product_Category=IN covers infrastructure (see MANIFESTO.md §Category Cascade) |
 | **G2** | DATA_MODEL.md §1.3 | "Storey-to-Floor BOM Mapping" | Infrastructure has no storeys. Segments are functional (pier, deck, carriageway), not spatial (ground floor, level 1). | **Naming only** — the mapping logic is generic, just the column name `storey` and YAML key `storeys:` are misleading |
 | **G3** | DATA_MODEL.md §1.4 | `bom_type = 'BUILDING'`, `doc_base_type = 'RE'` | Infrastructure needs `bom_type = 'FACILITY'` (or keep BUILDING as abstract root) and new `doc_base_type` values | **Schema vocabulary** — m_bom schema already stores bom_type as TEXT, no migration needed |
-| **G4** | WorkOrderGuide.md §Schema v1 | `doc_base_type: RE` "always RE for residential" | Infrastructure is not residential. Need `doc_base_type` IN/CI/LI for infra. | **Spec text incorrect** — should say "RE for residential, CO for commercial, IN for infrastructure" |
+| **G4** | WorkOrderGuide.md §Schema v1 | `doc_base_type: RE` "always RE for residential" | Infrastructure is not residential. M_Product_Category=IN covers infrastructure. | **Spec text corrected (S71)** — doc_base_type deprecated, M_Product_Category carries classification |
 | **G5** | WorkOrderGuide.md §storeys | "required" | Infrastructure has no storeys. The key should accept `segments:` as alias. | **Parser change needed** — ClassificationYaml.java reads hardcoded key `"storeys"` |
 | **G6** | BomValidator.java:49 | `WORLD_COORD_THRESHOLD_M = 500` | Infrastructure elements within a facility span max ~80m (these demo files). The 500m guard applies to **parent-relative offsets**, not absolute coords. **Actually safe** — but needs explicit documentation. | **No conflict** — the guard is correct as-is (checks dx/dy/dz on m_bom_line, which are parent-relative). Document this explicitly. |
 | **G7** | BomValidator.java:114 | `buildingCount == 1` | Multi-facility IFC files would violate this if extracted whole. | **Blocked by extraction strategy** — if we extract per-facility (§2.4 option a), this is not hit |
@@ -108,7 +108,7 @@ before any code changes** (per `memory/feedback_srs_before_code.md`).
 
 | # | Gap | What's needed | Priority |
 |---|-----|---------------|----------|
-| **N1** | No `classify_bridge.yaml` example | Draft a sample infra YAML with `segments:` key, IN doc_base_type, and infra disciplines | HIGH — needed before any extraction attempt |
+| **N1** | No `classify_bridge.yaml` example | Draft a sample infra YAML with `segments:` key, M_Product_Category=IN, and infra disciplines | HIGH — needed before any extraction attempt |
 | **N2** | No infra discipline taxonomy | Define mapping: IfcCourse→ROAD_STR, IfcTrackElement→RAIL, IfcGeographicElement→LAND, IfcPipeSegment→MEP, IfcSign→SIGN | MEDIUM |
 | **N3** | No LOD strategy for infra elements | Infrastructure LODs differ from buildings. A road course is a prismatic extrusion, not a catalog item. IfcGeographicElement (trees) may have parametric LODs. | HIGH — must define before `--to library` extraction |
 | **N4** | No `IfcMapConversion` handling in extraction | extract.py uses `USE_WORLD_COORDS = True`. Infra world coords are UTM (hundreds of km from origin). Need to either (a) subtract IfcMapConversion origin at extraction, or (b) use local coords. | HIGH — affects all coordinate values in elements_rtree |
@@ -198,7 +198,7 @@ keep `BUILDING`/`FLOOR` (abstract, reused)? Recommendation: **keep BUILDING/FLOO
 as abstract terms** — they are already in the BOM schema, all validators, all tests.
 Introducing new values requires touching every WHERE clause. Instead, add a
 `facility_domain` column to m_bom (values: BUILDING, ROAD, BRIDGE, RAILWAY) for
-downstream filtering. This is the iDempiere approach — AD_Ref_List, not new DocBaseType.
+downstream filtering. This is the iDempiere approach — AD_Ref_List, not new document types.
 
 ---
 
@@ -242,7 +242,7 @@ See [`DISC_VALIDATION_DB_SRS.md`](DISC_VALIDATION_DB_SRS.md) §5.2 and
 | `StructuralBomBuilder.java:70,75,107,112` | Parameterize "BUILDING"/"FLOOR" literals from config | G3 |
 | `BomValidator.java:114` | Accept multi-facility if extraction splits per-facility (no change if option a) | G7 |
 | `ExtractionPopulator.java:240` | Extend orientation classification to infra element types | G11 |
-| `WorkOrderGuide.md` | Update doc_base_type docs: RE/CO/IN | G4 |
+| `WorkOrderGuide.md` | Update M_Product_Category docs: RE/CO/IN (doc_base_type deprecated S71) | G4 |
 | `DATA_MODEL.md §1.3` | Rename "Storey-to-Floor" → "Segment Mapping" in prose | G2 |
 
 ### 6.3 Component Library (one-time LOD)
@@ -429,7 +429,7 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
    - BR 10/10 PASS (48 elements, 26 BOM lines, 28 CLUSTER instances)
    - RD 4/4 PASS (53 elements, 34 BOM lines, 20 CLUSTER instances)
    - RL 4/4 PASS (73 elements, 5 BOM lines, 70 CLUSTER instances)
-2. Key fix: `IFCtoBOMPipeline.java` — route `doc_base_type: IN` to DisciplineBomBuilder
+2. Key fix: `IFCtoBOMPipeline.java` — route M_Product_Category=IN to DisciplineBomBuilder
    (was falling into RE/StructuralBomBuilder path which skips VerbDetector)
 3. Bridge delta test: enbloc=48 == walkthru=48, 0 geometry divergences
 
@@ -462,7 +462,7 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 | Recommended approach? | Extract per-facility, keep BUILDING/FLOOR as abstract bom_type, add facility_domain column |
 
 **Completed (2026-03-19):**
-1. SRS: Updated `WorkOrderGuide.md` §Schema — documented `segments:` alias, IN doc_base_type, pre-flight checklist
+1. SRS: Updated `WorkOrderGuide.md` §Schema — documented `segments:` alias, M_Product_Category=IN, pre-flight checklist
 2. SRS: Updated `DATA_MODEL.md` §1.3 — renamed "Storey-to-Floor" to "Segment Mapping"
 3. Code: Extended extract.py — REFERENCE_CLASSES (+11), DISCIPLINE_MAP (+7), CATEGORY_MAP (+11), ATTACHMENT_MAP (+10)
 4. Code: Fixed extract.py spatial structure to extract IfcRoad/IfcBridge/IfcRailway + IfcFacilityPart children (G10)

@@ -82,7 +82,7 @@ to generate a building from scratch. No IFC file, no extraction — pure intent.
 | Field | Source | iDempiere analogy |
 |-------|--------|-------------------|
 | Building name | User input | C_Order.DocumentNo |
-| Building type | Dropdown from C_DocType (DocSubType) | C_DocType selector |
+| Building type | Dropdown from M_Product_Category (building products) | M_Product selector |
 | Jurisdiction | Dropdown: MY, US, UK, AU, SG | C_Order.C_Country_ID |
 | Rooms | Checklist: LIVING, KITCHEN, BEDROOM×n, BATHROOM×n | C_OrderLine product selection |
 | Site dimensions | Width × depth (mm) | AABB envelope |
@@ -357,7 +357,7 @@ to GUI chooser panels:
 | Dimension | Drives | GUI panel |
 |-----------|--------|-----------|
 | **Category** (M_Product_Category) — WHAT | Room type: kitchen, bedroom, bathroom | Typology chooser |
-| **Owner** (C_DocType.DocSubType) — WHICH | Building variant: SH, DX, TB | Building type selector |
+| **Owner** (M_Product identity) — WHICH | Building variant: SH, DX, TB | Building type selector |
 | **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH | Spatial fit in mm | Dimension sliders |
 | **Theme** (C_Campaign) — STYLE | Design palette: Bali, Scandinavian | Theme chooser (planned) |
 
@@ -2413,13 +2413,13 @@ shows its parent set context. "Show Parent Set" expands the full set for
 cherry-picking. "Browse Tree" drops into the folder hierarchy for traditional
 category navigation. The tree is always available but never mandatory.
 
-#### 17.18.2 Category Hierarchy (DocSubType-Filtered)
+#### 17.18.2 Category Hierarchy (M_Product_Category-Filtered)
 
-The category tree correlates with DocSubType — a Malaysian terrace house
-user never sees terminal-specific equipment:
+The category tree correlates with the building's M_Product_Category — a Malaysian
+terrace house user never sees terminal-specific equipment:
 
 ```
-BOMCategory (filtered by active DocSubType):
+M_Product_Category (filtered by active building category):
   FURNITURE
     BEDROOM_SET      → 23 items (MY, SH, DX)
     LIVING_SET       → 18 items
@@ -2508,7 +2508,7 @@ Response:
 ```
 
 Java does the heavy lifting — SQL `LIKE` query against `component_library.db`
-with AABB comparison and DocSubType filter. Python renders the paginated
+with AABB comparison and M_Product_Category filter. Python renders the paginated
 results. As the user scrolls, Python requests the next page. Same pattern as
 iDempiere's Info Window with lazy loading.
 

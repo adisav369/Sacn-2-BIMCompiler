@@ -17,8 +17,8 @@
 | Type | 5-storey institutional (offices, labs, meeting rooms) |
 | Elements | 699 building elements (excluding 287 openings, 3 virtual) |
 | Disciplines | 2: ARC (doors, windows, furnishing, railing, stair), STR (walls, slabs, columns) |
-| Proposed DocSubType | IN |
-| Proposed DocBaseType | RE |
+| M_Product_Category | RE (Residential) |
+| Prefix | IN |
 | C_DocType_ID | RE_IN |
 | Reference IFC | `DAGCompiler/lib/input/IFC/AC11_Institute_IFC2x3.ifc` |
 | Source | opensourceBIM — freely downloadable |

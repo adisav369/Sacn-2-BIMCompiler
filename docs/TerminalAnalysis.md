@@ -36,7 +36,7 @@ sections below. Code changes spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 | Type | Airport terminal, 4+ storeys, institutional |
 | Elements | 48,428 (51,092 - 4 IfcSensor - 2,660 rebar — both Federation addons) |
 | Disciplines | 8 (ARC, STR, FP, ACMV, CW, ELEC, SP, LPG) — REB removed (Bonsai addon) |
-| DocSubType | TE |
+| M_Product_Category | CO (Commercial) |
 | C_DocType_ID | CO_TE |
 | Reference DB | `DAGCompiler/lib/input/Terminal_Extracted.db` |
 
@@ -158,7 +158,7 @@ where the underlying pattern is truly regular. Non-uniform groups stay CLUSTER.
 
 **Predicted** (pre-implementation, 5-level with assembly groupings):
 ```
-Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
+Level 0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
 ├── Level 1: TERMINAL_TE_GF (FLOOR) — Ground, ~4166 elements
 ├── ...
 └── Each FLOOR contains:
@@ -303,7 +303,7 @@ TACK lines as dx/dy/dz. BUILDING origin holds the world LBD anchor.
 | **TE-1** | Z-centroid band assignment, 7 storeys normalised | **DONE** |
 | **TE-2** | ExtractionPopulator: 51,088→48,428 active, REBAR deactivated | **DONE** |
 | **TE-3** | BUILDING→FLOOR→DISCIPLINE→LEAF for CO mode | **DONE** |
-| **TE-4** | doc_base_type from YAML, DocBaseType=CO dispatch | **DONE** |
+| **TE-4** | M_Product_Category=CO from YAML, commercial dispatch | **DONE** |
 | **TE-5** | CO_TE in GATE_SCOPE, surefire property forwarding | **DONE** |
 | **TE-5B** | Output DB produced, 216 IfcSlab gap diagnosed + fixed | **DONE** |
 | **TE-6/7** | Verb factorization: TILE/ROUTE/FRAME/CLUSTER (1,131 lines, 42.8:1) | **DONE** |
@@ -321,7 +321,7 @@ Step 1: EXTRACT — Python IfcOpenShell → component_library.db
    └── Output: component_library.db tables populated
 
 Step 2: CLASSIFY — YAML declares building identity + discipline mapping
-   ├── classify_te.yaml: prefix, building_type, doc_base_type, doc_sub_type
+   ├── classify_te.yaml: prefix, building_type, M_Product_Category (doc_base_type/doc_sub_type deprecated — §7)
    ├── disciplines: map ifc_class → discipline code (ARC, STR, FP, ...)
    ├── storey_bands: Z-centroid ranges → storey names
    └── Output: YAML file (only human invention in the chain)
@@ -343,7 +343,7 @@ Step 4: BUILD BOM — Java DisciplineBomBuilder creates BOM hierarchy
 Step 5: PREPARE COMPILE DB — Shell prepares per-building temp DB
    ├── cp {PREFIX}_BOM.db → _XX_compile.db
    ├── Apply schema_snapshot_bom.sql (adds tables: C_DocType, c_order, etc.)
-   ├── Inject C_DocType row (DocBaseType, OutputDbPath, ExpectedElements)
+   ├── Inject C_DocType row (OutputDbPath, ExpectedElements)
    ├── Load DSL content from YAML-referenced .bim file
    └── Output: library/_XX_compile.db (temp, auto-cleaned)
 
@@ -658,12 +658,16 @@ correspondence between BIM construction hierarchy and ERP document flow.
 > to fitting, beam to column) with port semantics and verification status. Natural
 > extension of ROUTE-as-BOM-tree. Candidate for G8 gate (connection audit).
 
-### DocBaseType/DocSubType — Real Semantic Work
+### M_Product_Category — Hierarchy Shape by Top-Level Category
 
-DocBaseType determines the **hierarchy shape** (not just a label):
+> *Aligns to MANIFESTO.md §The Category Cascade. DocBaseType/DocSubType are
+> deprecated artifacts on C_DocType and m_bom — classification lives on
+> M_Product_Category at every cascade level (see DATA_MODEL.md §7).*
 
-| DocBaseType | Hierarchy | L2 Axis | Compilation Path |
-|------------|-----------|---------|-----------------|
+The top-level M_Product_Category determines the **hierarchy shape**:
+
+| M_Product_Category | Hierarchy | L2 Axis | Compilation Path |
+|-------------------|-----------|---------|-----------------|
 | RE (Residential) | BUILDING → FLOOR → **ROOM** → SET → ITEM | Room type (LI, KT, BD) | EN-BLOC (singularity) |
 | CO (Commercial) | BUILDING → FLOOR → **DISCIPLINE** → ASSEMBLY → COMPONENT | Discipline (ARC, FP, STR) | WALK THRU (discipline-driven) |
 
@@ -672,29 +676,28 @@ rooms to find furniture sets. The CO path expects `disciplines` and never looks
 for rooms. Forcing Terminal through the RE path would require fake "rooms" for
 discipline zones — that's technical debt avoided.
 
-DocSubType (SH/DX/TE) carries identity for the Prime Rule three-key match.
-When a second commercial building arrives (mall, factory), it will be CO with
-a different DocSubType. The hierarchy shape stays FLOOR→DISCIPLINE→ASSEMBLY.
+The building prefix (SH/DX/TE) carries identity for BOM selection. When a second
+commercial building arrives (mall, factory), it will be M_Product_Category=CO with
+a different prefix. The hierarchy shape stays FLOOR→DISCIPLINE→ASSEMBLY.
 
-### M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type
+### M_Product_Category — Cascade Levels
 
-M_Product_Category already has `doc_type` (DocBaseType) and `doc_sub_type` columns.
-These columns on the category row itself determine which building types can use
-that category. Room categories have `doc_type='RE'`, discipline categories will
-have `doc_type='CO'`, and shared categories (storeys, structural) have `doc_type=NULL`.
+M_Product_Category forms a cascade where each level's category defines the swap
+pool at that level. Room categories appear under RE buildings, discipline
+categories under CO buildings, and shared categories (storeys, structural) appear
+under both:
 
-| Category Type | Codes | BOM Level | doc_type | doc_sub_type |
-|--------------|-------|-----------|----------|-------------|
-| Storey | GF, L1, L2, L3, L4, RF, FN | Level 1 (FLOOR) | NULL (shared) | NULL |
-| Room | LI, KT, BD, BT, DN, FR | Level 2 (RE only) | RE | NULL |
-| Discipline | ARC, STR, FP, ACMV, ELEC, CW, SP, LPG | Level 2 (CO only) | CO | NULL |
-| Assembly | (verb-specific groupings) | Level 3 | NULL (shared) | NULL |
-| Template | ST-SH, ST-DX | Template root | RE | ST |
+| Category Type | Codes | BOM Level | Scope |
+|--------------|-------|-----------|-------|
+| Storey | GF, L1, L2, L3, L4, RF, FN | Level 1 (FLOOR) | Shared (RE + CO) |
+| Room | LI, KT, BD, BT, DN, FR | Level 2 (RE only) | RE buildings |
+| Discipline | ARC, STR, FP, ACMV, ELEC, CW, SP, LPG | Level 2 (CO only) | CO buildings |
+| Assembly | (verb-specific groupings) | Level 3 | Shared |
 
 Room and discipline codes operate at **different BOM levels** and never compete.
 Storeys are shared across RE and CO — always at Level 1. The Level 2 axis
-changes from room-type to discipline-type based on DocBaseType. No new tables
-needed; M_Product_Category holds both sets, scoped by the doc_type column.
+changes from room-type to discipline-type based on the top-level M_Product_Category.
+No new tables needed; M_Product_Category holds both sets, scoped by cascade level.
 
 ### M_AttributeSet/Instance — Per-Verb Usage
 
@@ -842,7 +845,7 @@ form; the compiler generates the transactional records.
 ### Full BOM Tree With ERP Mapping
 
 ```
-L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
+L0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
     C_Order = CO_TE
     ├─ L1: FLOOR_TE_GF (FLOOR, bom_category=GF)
     │  C_OrderLine #20

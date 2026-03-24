@@ -55,15 +55,15 @@ DesignerAPIImpl.createNew(request)
 │      │
 │      ├── 3b. INSERT W_BuildingConfig (embedded YAML + identity)
 │      │       → yaml_content  = full classify_{prefix}.yaml text
-│      │       → doc_base_type = from YAML building.doc_base_type ('RE')
-│      │       → doc_sub_type  = from YAML building.doc_sub_type ('DM')
+│      │       → doc_base_type = from YAML building.doc_base_type ('RE')  # deprecated — see DATA_MODEL.md §7
+│      │       → doc_sub_type  = from YAML building.doc_sub_type ('DM')  # deprecated — see DATA_MODEL.md §7
 │      │       → jurisdiction  = from request.jurisdiction ('MY')
 │      │       → aabb_*_mm     = from request site dimensions
 │      │       → provenance    = 'GENERATIVE'
 │      │
 │      ├── 3c. INSERT C_Order (building header, DocStatus='DR')
 │      │       → C_Order_ID    = building_id (master — Parent_Order_ID = NULL)
-│      │       → C_DocType_ID  = doc_sub_type
+│      │       → C_DocType_ID  = building prefix
 │      │       → aabb_*        = from W_BuildingConfig
 │      │
 │      ├── 3d. Walk BOM tree → C_OrderLine + CO_EmptySpaceLine + ASI
@@ -134,9 +134,9 @@ DesignerAPIImpl.createNew(request)
 │      │   │
 │      │   └── COUNTS tracked: orderLineCount, esLineCount, asiCount
 │      │
-│      ├── 3e. INSERT PP_Order_Node (default routing from doc_base_type)
+│      ├── 3e. INSERT PP_Order_Node (default routing from M_Product_Category)
 │      │       │
-│      │       │ SELECT routing template by doc_base_type:
+│      │       │ SELECT routing template by M_Product_Category:
 │      │       │
 │      │       │ RE (Residential):
 │      │       │   10: Foundation (STR)
@@ -554,7 +554,7 @@ class ConstructionModelSpawnerTest {
         //   expectedLines = walk m_bom tree from BUILDING_DM_STD, count nodes
         //   expectedESLines = count ROOM-level BOMs (each gets one ESLine)
         //   expectedASI = count LEAF products with M_AttributeSet_ID != null
-        //   expectedPPNodes = count from doc_base_type routing template
+        //   expectedPPNodes = count from M_Product_Category routing template
         //
         //   assertEquals(expectedLines, actualOrderLineCount)
         //   assertEquals(expectedESLines, actualESLineCount)

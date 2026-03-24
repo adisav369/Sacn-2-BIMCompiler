@@ -52,7 +52,7 @@ Source: `CompilationPipeline.java` (DAGCompiler)
 | 1. MetadataValidator | MetadataValidator | YES | Validates referential integrity of BOM + OrderLine data |
 | 2. ParseStage | ParseStage | YES | Parses DSL → BuildingDefinition (dsl_sh.bim) |
 | 3. CompileStage | CompileStage | YES | BuildingCompiler resolves OrderLine tree → BuildingSpec. BOM explosion uses swapped FK_DG_STR for roof node. |
-| 4. TemplateStage | TemplateStage | NO | Only fires when DocSubType='ST'. SH is not ST. |
+| 4. TemplateStage | TemplateStage | NO | Only fires in template mode (ST). SH is not ST. |
 | 5. WriteStage | WriteStage | YES | Writes compiled spec to output.db. FLAT path emits un-consumed elements. Registers C_Order via REGISTER BUILDING verb. |
 | 6. VerbStage | VerbStage | YES (if .bimcobol exists) | Executes BIM COBOL verbs: **TRIM WALLS TO ROOF** fires here. |
 | 7. DigestStage | DigestStage | YES | SpatialDigest hashes spatial structure, COMPLETE BUILDING verb. |
