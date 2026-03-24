@@ -170,18 +170,13 @@ IFC file → extract → classify_XX.yaml → IFCtoBOM → {XX}_BOM.db → compi
 
 ## Documentation
 
-Start here, in order:
+Browse the full documentation site locally:
 
-| # | Document | What |
-|---|----------|------|
-| 1 | [SystemContract.md](docs/SystemContract.md) | **Governing document** — entity registry, transaction catalogue, three-concern matrix, gap register |
-| 2 | [ACTION_ROADMAP.md](docs/ACTION_ROADMAP.md) | **Quick reference** — "go to the roadmap" navigation hub for all specs |
-| 3 | [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | Master spec — tack convention, BOM walker, compilation gospel |
-| 4 | [ConstructionAsERP.md](docs/ConstructionAsERP.md) | iDempiere mapping, C_Order model, 4-DB architecture |
-| 5 | [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md) | Future features — exception ordering, C_Project, rule packs, implementation plan §14 |
-| 6 | [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
-| 7 | [IFC_ONBOARDING_RUNBOOK.md](docs/IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline |
-| 8 | [docs/INDEX.md](docs/INDEX.md) | Complete documentation index (53 docs by tier) |
+```bash
+./scripts/serve_docs.sh                 # http://localhost:8000
+```
+
+50 specs organized by audience: **Start Here** | **Architecture** | **Compiler** | **Designer** | **Disciplines** | **Enterprise** | **Roadmap** | **Buildings** | **Guides** — with full-text search, dark mode, and sidebar navigation.
 
 Interactive database ERD: [`database/bim_architecture_viz.html`](database/bim_architecture_viz.html) — open in any browser.
 
