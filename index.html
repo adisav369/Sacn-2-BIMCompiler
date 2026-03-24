@@ -2726,7 +2726,8 @@
 </figure>
 
 <p>A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an ERP system explodes a manufacturing BOM into work orders.</p>
-<p>Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.</p>
+<p>Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic. The same 9-stage pipeline compiles a 55-element house and a 48,428-element airport terminal. 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) generate geometry from rules. 2,475 products in the library. 6 mathematical gates prove every output correct — not sampled, proven.</p>
+<p>Built on <a href="https://idempiere.org/">iDempiere</a> ERP conventions, <a href="https://www.sqlite.org/">SQLite</a>, and the <a href="https://www.blender.org/">Blender</a>/<a href="https://bonsaibim.org/">Bonsai</a> open-source 3D viewport. From Kuala Lumpur, Malaysia — where BIM is mandated for all projects &gt;= RM10M from July 2025.</p>
 <div style="clear: right;"></div>
 
 <hr />
@@ -2764,42 +2765,43 @@ A compiled building IS a manufacturing work order.</p>
 </ul>
 </div>
 <hr />
-<h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<h2 id="how-it-works"><strong>How It Works</strong><a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
 </code></pre></div>
 <p>A product catalog (<code>M_Product</code>) becomes building elements. A Bill of Materials (<code>M_BOM</code>) becomes assembly recipes. A work order (<code>C_Order</code>) becomes a construction project. The same ERP tables that run a factory floor now compile a building.</p>
 <hr />
-<h2 id="the-rosetta-stone-strategy">The Rosetta Stone Strategy<a class="headerlink" href="#the-rosetta-stone-strategy" title="Permanent link">&para;</a></h2>
+<h2 id="the-rosetta-stone-strategy"><strong>The Rosetta Stone Strategy</strong><a class="headerlink" href="#the-rosetta-stone-strategy" title="Permanent link">&para;</a></h2>
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">48,428 elements. 8 disciplines. Compiled from BOM.</figcaption>
 </figure>
 
-<p>Compile a building from its BOM. If every element lands at the same position as the reference, the grammar is certified. <strong>35 buildings proven.</strong> <a href="TheRosettaStoneStrategy/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> How it works</a></p>
+<p>Real IFC buildings are decomposed into reference databases. The compiler reads a BOM describing the same building and produces output. If every compiled element lands at the <strong>same position</strong> as the reference — same coordinates, same dimensions, same 3D space — the BOM grammar is <strong>certified</strong>.</p>
+<p>35 buildings compiled. From a 55-element house to a 48,428-element airport terminal. 19 pass all 6 mathematical gates. Once a stone is certified, any new building composed from its proven grammar inherits the proof — no new reference needed.</p>
+<p><a href="TheRosettaStoneStrategy/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Read the full strategy</a></p>
 <div style="clear: right;"></div>
 
 <hr />
-<h2 id="we-got-eyes">We Got Eyes<a class="headerlink" href="#we-got-eyes" title="Permanent link">&para;</a></h2>
-<p>The compiler can see. BIMEyes reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall <em>must</em> be planar. A column <em>must</em> be elongated. Per-element, pairwise, and aggregate — 28 proof classes verify that elements are sane, relate correctly, and form coherent buildings.</p>
-<p>97% of 90,310 elements pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic. <a href="EYES_SRS/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> EYES specification</a></p>
+<h2 id="we-got-eyes"><strong>We Got Eyes</strong><a class="headerlink" href="#we-got-eyes" title="Permanent link">&para;</a></h2>
+<p>The compiler can see. BIMEyes reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall <em>must</em> be planar. A column <em>must</em> be elongated. A slab <em>must</em> be flat. These are mathematical facts, not heuristics.</p>
+<p>Three verification tiers: <strong>per-element</strong> (each element is geometrically sane), <strong>pairwise</strong> (doors inside walls, furniture inside rooms), and <strong>aggregate</strong> (every room has walls, floor, ceiling, and a door). 28 proof classes across 90,310 elements. 97% pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic.</p>
+<p><a href="EYES_SRS/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> EYES specification</a></p>
 <hr />
-<h2 id="design-in-blender-compile-from-bom">Design in Blender, Compile from BOM<a class="headerlink" href="#design-in-blender-compile-from-bom" title="Permanent link">&para;</a></h2>
+<h2 id="design-in-blender-compile-from-bom"><strong>Design in Blender, Compile from BOM</strong><a class="headerlink" href="#design-in-blender-compile-from-bom" title="Permanent link">&para;</a></h2>
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 570px; text-align: center;">
   <img src="assets/images/HTMLYAML.png" alt="BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel" width="570">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">BIM Designer web UI. BOM tree, DocAction lifecycle buttons (Approve, Complete, Promote).</figcaption>
 </figure>
 
-<p>The compiler powers a live GUI inside <a href="https://www.blender.org/">Blender</a> via the
-<a href="https://bonsaibim.org/">Bonsai</a> addon. Create a building from a single click, edit
-room dimensions with sliders, switch jurisdictions, save/recall design versions, and
-promote a design to a construction-ready work order.</p>
+<p>The compiler powers a live GUI inside <a href="https://www.blender.org/">Blender</a> via the <a href="https://bonsaibim.org/">Bonsai</a> addon. Create a building from a single click, edit room dimensions with sliders, switch jurisdictions, save/recall design versions, and promote a design to a construction-ready work order.</p>
+<p>The HTML web UI (port 9878) provides 10 tabs: spatial views, geometry inspection, validation, BOM tree, and colour-coded discipline breakdown. DocAction lifecycle buttons (Draft → Approve → Complete → Promote) drive the design through ERP-standard approval stages. Bidirectional sync: browser pushes commands to Bonsai, Bonsai renders the compiled output live.</p>
 <p>392 passing tests. What the user sees IS what the compiler produces, deterministically.</p>
 <p><a href="BIM_Designer_UserGuide/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Designer guide</a></p>
 <div style="clear: right;"></div>
 
 <hr />
-<h2 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<h2 id="quick-start"><strong>Quick Start</strong><a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Prerequisites: Java 17+, Maven 3.8+, SQLite3</span>
 git<span class="w"> </span>clone<span class="w"> </span>https://github.com/red1oon/bim-compiler.git
 <span class="nb">cd</span><span class="w"> </span>bim-compiler
@@ -2810,7 +2812,7 @@ mvn<span class="w"> </span>compile<span class="w"> </span>-q<span class="w">    
 </code></pre></div>
 <p><a href="WorkOrderGuide/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Full getting started guide</a> · <a href="IFC_ONBOARDING_RUNBOOK/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> IFC onboarding runbook</a></p>
 <hr />
-<h2 id="documentation-map">Documentation Map<a class="headerlink" href="#documentation-map" title="Permanent link">&para;</a></h2>
+<h2 id="documentation-map"><strong>Documentation Map</strong><a class="headerlink" href="#documentation-map" title="Permanent link">&para;</a></h2>
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 560px; text-align: center;">
   <img src="assets/images/2D_FLOOR_SAMPLEHOUSE.png" alt="Sample House 2D floor plan — Pelan Lantai" width="560">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Sample House floor plan (Pelan Lantai) — the reference input for the simplest Rosetta Stone.</figcaption>

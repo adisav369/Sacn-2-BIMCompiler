@@ -6063,7 +6063,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.</p>
 <hr />
 <h2 id="14-implementation-plan-order-compilation-engine">14. Implementation Plan — Order Compilation Engine<a class="headerlink" href="#14-implementation-plan-order-compilation-engine" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>Status:</strong> In progress. Session A DONE (S67 <code>fac5e8f</code>), Sessions B-E not started.
+<p><strong>Status:</strong> In progress. Session A DONE (S67 <code>fac5e8f</code>), Session B DONE (S67b). Sessions C-E not started.
 <strong>Source:</strong> Consolidated from ACTION_ROADMAP.md Task 4 (S60-S3 reframe).</p>
 </blockquote>
 <h3 id="141-triage-blueprint-sections-vs-codebase-state">14.1 Triage — Blueprint Sections vs Codebase State<a class="headerlink" href="#141-triage-blueprint-sections-vs-codebase-state" title="Permanent link">&para;</a></h3>
@@ -6225,17 +6225,20 @@ Only the last order survives.</p>
 <li><strong>Gate:</strong> DM 5/5, SH 7/7, FK 7/7. AddDisciplineTest 4/4. BomDropTest 6/6. BomDropConfigureTest 6/6</li>
 <li><strong>Witness:</strong> W-DM-TC5-1 extended: ELEC 15 lines / 4 rooms, FP 4 lines / 4 rooms on SH</li>
 </ul>
-<p><strong>Session B: Validation-as-suggestion (§13)</strong></p>
+<p><strong>Session B: Validation-as-suggestion (§13)</strong>
+<em>Status: </em><em>DONE</em><em> (S67b). OrderLineMutation interface + 3 implementations. OrderMutationService refactored to delegate.</em></p>
 <ul>
-<li><code>OrderLineMutation</code> interface: <code>List&lt;ProposedOrderLine&gt; propose(C_Order, Connection ruleDb)</code></li>
-<li><code>FPSuggestion implements OrderLineMutation</code> — reads ad_fp_trigger + ad_space_type_mep_bom</li>
-<li><code>ELECSuggestion implements OrderLineMutation</code> — same pattern, ELEC products</li>
-<li><code>ACMVSuggestion implements OrderLineMutation</code> — same pattern, ACMV products</li>
-<li>Three states on proposed lines: Absent → Proposed → Accepted (§13.2)</li>
-<li>PlacementValidatorImpl: if rule can_suggest → return ProposedOrderLine instead of BLOCK</li>
-<li>Architect accepts/rejects each in BOM Tree tab or Compliance Review panel</li>
-<li><strong>Gate:</strong> Without FP → validation warns. With FP → validation checks placement</li>
-<li><strong>Witness:</strong> W-DM-FP-VAL-1 (validation fires whether or not FP present)</li>
+<li><code>OrderLineMutation</code> interface: <code>List&lt;ProposedOrderLine&gt; propose(woConn, ruleDb, orderId)</code></li>
+<li><code>FPSuggestion implements OrderLineMutation</code> — FP products (SPRINKLER, EMERGENCY_LIGHT), 4 lines on SH</li>
+<li><code>ELECSuggestion implements OrderLineMutation</code> — ELEC products (7 types), 15 lines on SH</li>
+<li><code>ACMVSuggestion implements OrderLineMutation</code> — ACMV products (3 types), 7 lines on SH</li>
+<li><code>ProposedOrderLine</code> record — discipline, qty, placement rule, building code, code clause</li>
+<li><code>RoomContext</code> record — shared room discovery across all implementations</li>
+<li><code>OrderMutationService.addDiscipline()</code> refactored: delegates to *Suggestion via SUGGESTIONS map</li>
+<li><code>OrderMutationService.proposeAll()</code> — proposes all disciplines without persisting</li>
+<li>Three states on proposed lines: Absent → Proposed → Accepted (§13.2) — via proposal_status column (W004)</li>
+<li><strong>Gate:</strong> AddDisciplineTest 4/4 (backward compat). OrderLineMutationTest 8/8. SH 7/7. Full gate GREEN</li>
+<li><strong>Witness:</strong> W-DM-FP-VAL-1 (FP suggestion fires on order with no existing FP lines — confirmed)</li>
 </ul>
 <p><strong>Session C: Rule pack framing (§12)</strong></p>
 <ul>
