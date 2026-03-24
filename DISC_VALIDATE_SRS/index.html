@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -1518,10 +1548,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-m_bomcategory-as-discipline-classifier" class="md-nav__link">
+  <a href="#3-m_product_category-as-discipline-classifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. M_BomCategory as Discipline Classifier
+        3. M_Product_Category as Discipline Classifier
       
     </span>
   </a>
@@ -3039,10 +3069,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-m_bomcategory-as-discipline-classifier" class="md-nav__link">
+  <a href="#3-m_product_category-as-discipline-classifier" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. M_BomCategory as Discipline Classifier
+        3. M_Product_Category as Discipline Classifier
       
     </span>
   </a>
@@ -3398,7 +3428,7 @@
 
 <h1 id="multi-discipline-bom-design">Multi-Discipline BOM Design<a class="headerlink" href="#multi-discipline-bom-design" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <h2 id="ctfl-review-status-session-33-2026-03-19">CTFL Review Status (session 33, 2026-03-19)<a class="headerlink" href="#ctfl-review-status-session-33-2026-03-19" title="Permanent link">&para;</a></h2>
 <p><strong>Last reviewed:</strong> 2026-03-19 session 34 — CTFL review: §10.4 H3 blocker added,
@@ -3569,8 +3599,8 @@ within his trade. He completes Floor 1 electrical, then moves up. He doesn't
 install all conduits in the building top-to-bottom. Exception: risers
 (vertical trunks spanning storeys) sit at BUILDING level, not under any floor.</p>
 <hr />
-<h2 id="3-m_bomcategory-as-discipline-classifier">3. M_BomCategory as Discipline Classifier<a class="headerlink" href="#3-m_bomcategory-as-discipline-classifier" title="Permanent link">&para;</a></h2>
-<p><code>M_BomCategory</code> (= iDempiere M_Product_Category) serves as the shared catalog
+<h2 id="3-m_product_category-as-discipline-classifier">3. M_Product_Category as Discipline Classifier<a class="headerlink" href="#3-m_product_category-as-discipline-classifier" title="Permanent link">&para;</a></h2>
+<p><code>M_Product_Category</code> (the former M_BomCategory, now aligned with iDempiere naming) serves as the shared catalog
 classifier. Discipline codes become new bom_category values:</p>
 <table>
 <thead>
@@ -3666,7 +3696,7 @@ in multiple discipline BOMs — same screw in 50 BOMs (pure iDempiere pattern).<
 </thead>
 <tbody>
 <tr>
-<td><strong>M_BomCategory</strong></td>
+<td><strong>M_Product_Category</strong></td>
 <td><code>m_bom</code> (the BOM node)</td>
 <td>Organizational grouping — which trade</td>
 <td>PLB, ELC, FPR</td>
@@ -4730,7 +4760,7 @@ Implementation is BLOCKED until these claims are written as <code>@Test</code> m
 </tbody>
 </table>
 <hr />
-<p><em>References: ConstructionAsERP.md §11.38 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
+<p><em>References: BBC.md §1 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
 TheRosettaStoneStrategy.md (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
 DocAction_SRS.md §1 (processIt lifecycle), DocValidate.md §13 (three-tier cascade),
 BIM_COBOL.md §4.6 (joining verbs)</em></p>

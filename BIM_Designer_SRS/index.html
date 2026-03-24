@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -7472,7 +7502,7 @@
 
 <h1 id="bim-designer-srs-ux-requirements-user-journeys">BIM Designer SRS — UX Requirements &amp; User Journeys<a class="headerlink" href="#bim-designer-srs-ux-requirements-user-journeys" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><strong>Version:</strong> 1.1 (2026-03-20)
 <strong>Depends on:</strong> <a href="../BIM_Designer/">BIM_Designer.md</a> §17-18, <a href="../G4_SRS/">G4_SRS.md</a>, <a href="../DocValidate/">DocValidate.md</a> §15,
@@ -14009,7 +14039,7 @@ The BOM Drop explodes the structural BOM only — FP elements come from
 <p><strong>Architectural changes (S60):</strong>
 - Compiler walks C_OrderLine tree, not C_DocType (#2)
 - run_RosettaStones.sh uses bomDrop + completeIt path (#4)
-- M_BomCategory replaced by M_Product_Category (#6)
+- The former M_BomCategory, now M_Product_Category (#6)
 - OrderLineHydrationDAO bridges C_OrderLine → PlacementRequest (#7)</p>
 <h4 id="3067-uat-acceptance-criteria">30.6.7 UAT Acceptance Criteria<a class="headerlink" href="#3067-uat-acceptance-criteria" title="Permanent link">&para;</a></h4>
 <p>The DemoHouse acceptance test (§30.4) passes when:</p>
@@ -14176,7 +14206,7 @@ This is the DocEvent path — validation rules ARE the placement engine.</p>
 <a href="../TestArchitecture/">TestArchitecture.md</a> (traceability matrix, witness convention) |
 <a href="../BIM_COBOL/">BIM_COBOL.md</a> §20 (spatial predicate verbs) |
 <a href="../BlenderBridge/">BlenderBridge.md</a> (Java-smart/Python-dumb, incremental viewport) |
-<a href="ConstructionAsERP.md">ConstructionAsERP.md</a> (iDempiere M_Product/C_Order model) |
+<a href="../SystemContract/">SystemContract.md</a> (iDempiere M_Product/C_Order model) |
 <a href="../WorkOrderGuide/">WorkOrderGuide.md</a> (pipeline flow, invention boundary)</em></p>
 
 

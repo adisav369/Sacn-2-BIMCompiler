@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -4250,7 +4280,7 @@
 
 <h1 id="docaction-srs-document-lifecycle-engine">DocAction SRS — Document Lifecycle Engine<a class="headerlink" href="#docaction-srs-document-lifecycle-engine" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><strong>Version:</strong> 1.4 (2026-03-23, session 61 — §1.9 work_output.db removal, simplified lifecycle)
 <strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a> §1.2, <a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9-10, <a href="../DocValidate/">DocValidate.md</a> §9-§15, <a href="../TE_MINING_RESULTS/">TE_MINING_RESULTS.md</a>, <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> §19
@@ -6370,13 +6400,13 @@ Groups spanning 3+ storeys with &lt;50mm drift = MEP risers.</p>
 <h2 id="6-data-flow-the-three-tier-cascade-code-level">6. Data Flow — The Three-Tier Cascade (Code-Level)<a class="headerlink" href="#6-data-flow-the-three-tier-cascade-code-level" title="Permanent link">&para;</a></h2>
 <h3 id="91-tier-1-per-discipline-modelvalidatorbeforesave">9.1 Tier 1: Per-Discipline (ModelValidator.beforeSave)<a class="headerlink" href="#91-tier-1-per-discipline-modelvalidatorbeforesave" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>Input:
-  PlacementRequest { bomCategory, areaSqM, minDimMm, heightMm, widthMm,
+  PlacementRequest { productCategory, areaSqM, minDimMm, heightMm, widthMm,
                      ifcClass, discipline, storeyId, centerX, centerY, centerZ,
                      productWidth, productDepth, productHeight }
 
 Engine:
   PlacementValidatorImpl.validate(request)
-    → rulesByCategory.get(request.bomCategory)  // O(1) lookup
+    → rulesByCategory.get(request.productCategory)  // O(1) lookup
     → for each CachedRule:
         if check_method present → dispatch to named evaluator
         else → threshold comparison (existing logic)

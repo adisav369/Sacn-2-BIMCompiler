@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3610,7 +3640,7 @@
 
 <h1 id="the-last-mile-problem-six-honest-gaps">The Last Mile Problem: Six Honest Gaps<a class="headerlink" href="#the-last-mile-problem-six-honest-gaps" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><strong>Date:</strong> 2026-03-17
 <strong>Previous version:</strong> <code>docs/archive/LAST_MILE_PROBLEM.md</code> (2026-02-20)</p>
@@ -4412,7 +4442,7 @@ elements resolve per-instance geometry from library via GUID chain.</p>
 <hr />
 <h2 id="gap-8-database-separation-drift-non-drift-audit-session-21">Gap 8: Database Separation Drift — Non-Drift Audit (session 21)<a class="headerlink" href="#gap-8-database-separation-drift-non-drift-audit-session-21" title="Permanent link">&para;</a></h2>
 <!-- @Traces BBC.md §2.1 — IFC→BOM stage (5-split DB architecture) -->
-<!-- @Traces ConstructionAsERP.md §1.4 — DB separation (library/BOM/output/validation/work_output) -->
+<!-- @Traces DATA_MODEL.md §1 — DB separation (library/BOM/output/validation/work_output) -->
 
 <p><strong>Audit date:</strong> 2026-03-18. Four spec claims checked against reality.</p>
 <h3 id="81-prefix_bomdb-is-it-purely-bom-relationships">8.1 <code>{PREFIX}_BOM.db</code> — Is it purely BOM relationships?<a class="headerlink" href="#81-prefix_bomdb-is-it-purely-bom-relationships" title="Permanent link">&para;</a></h3>
@@ -4447,7 +4477,7 @@ Target: remove BOM-side M_Product when all consumers use disc_validation.db.</p>
 <td>60+ <code>ad_*</code> config tables (ad_space_type, ad_wall_type, ad_floor_type, ad_building_storey, etc.)</td>
 <td>~34 populated</td>
 <td>HIGH</td>
-<td>ConstructionAsERP.md §1.1 says component_library.db = "LOD geometry store + product catalog". Config tables are Application Dictionary — they should be in {PREFIX}_BOM.db or a dedicated config.db.</td>
+<td>DATA_MODEL.md §1 says component_library.db = "LOD geometry store + product catalog". Config tables are Application Dictionary — they should be in {PREFIX}_BOM.db or a dedicated config.db.</td>
 </tr>
 <tr>
 <td>~~V3~~</td>
@@ -4512,10 +4542,10 @@ binary), but must not be confused with the source DBs being mixed.</p>
 </tr>
 <tr>
 <td>R19</td>
-<td>Update ConstructionAsERP.md §1.1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean)</td>
+<td>Update DATA_MODEL.md §1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean)</td>
 <td>V2</td>
 <td>DOC</td>
-<td><strong>TODO</strong></td>
+<td><strong>MOOT</strong> — ConstructionAsERP.md archived (S67). DATA_MODEL.md §1 is now the sole schema authority.</td>
 </tr>
 <tr>
 <td>R20</td>

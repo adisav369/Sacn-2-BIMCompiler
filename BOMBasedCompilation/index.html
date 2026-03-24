@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -762,15 +792,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-why-bom-metadata-solves-construction" class="md-nav__link">
+  <a href="#1-idempiere-entity-mapping" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Why BOM Metadata Solves Construction
+        1. iDempiere Entity Mapping
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1. Why BOM Metadata Solves Construction">
+    <nav class="md-nav" aria-label="1. iDempiere Entity Mapping">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3305,15 +3335,15 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-why-bom-metadata-solves-construction" class="md-nav__link">
+  <a href="#1-idempiere-entity-mapping" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Why BOM Metadata Solves Construction
+        1. iDempiere Entity Mapping
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1. Why BOM Metadata Solves Construction">
+    <nav class="md-nav" aria-label="1. iDempiere Entity Mapping">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4001,15 +4031,10 @@
 <p><em>If you can bill it, you can build it. If you can BOM it, you can compile it.</em></p>
 <blockquote>
 <p><strong>Core thesis:</strong> A building is a manufactured product. Its Bill of Materials IS the
-building — every wall, door, pipe, and cabinet is a line item with a position.
-A compiler that reads BOM data and produces 3D coordinates is doing the same thing
-an ERP system does when it explodes a manufacturing BOM into work orders.</p>
+building. See <strong><a href="../MANIFESTO/">MANIFESTO.md</a></strong> for the full ERP world view.</p>
 </blockquote>
 <hr />
-<h2 id="1-why-bom-metadata-solves-construction">1. Why BOM Metadata Solves Construction<a class="headerlink" href="#1-why-bom-metadata-solves-construction" title="Permanent link">&para;</a></h2>
-<p>Construction software treats buildings as geometry problems — draw walls, place
-doors, route pipes. ERP software treats products as data problems — BOMs, work
-orders, procurement. This project proves they are the <strong>same problem</strong>.</p>
+<h2 id="1-idempiere-entity-mapping">1. iDempiere Entity Mapping<a class="headerlink" href="#1-idempiere-entity-mapping" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4070,15 +4095,11 @@ orders, procurement. This project proves they are the <strong>same problem</stro
  building  storey    room    furniture  leaf product
                               group    (door, pipe, cabinet)
 </code></pre></div>
-<p><strong>Two selection dimensions</strong> (iDempiere product pattern):</p>
+<p><strong>Two selection dimensions</strong> (see <a href="../MANIFESTO/">MANIFESTO.md</a> §The Pattern for the full rationale):</p>
 <ol>
-<li><strong>Category</strong> (M_Product_Category) — WHAT: ARC, STR, FP, KITCHEN, BEDROOM, BATHROOM. Products belong to categories. No separate M_BomCategory table needed — the product category IS the classification</li>
-<li><strong>SpaceSize</strong> (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm. Determines which child BOM fits in a given slot</li>
+<li><strong>Category</strong> (M_Product_Category) — WHAT: ARC, STR, FP, KITCHEN, BEDROOM, BATHROOM</li>
+<li><strong>SpaceSize</strong> (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm</li>
 </ol>
-<p><strong>Provenance</strong> (m_bom.doc_sub_type: SH, DX, TE) is metadata — WHO extracted it. Not a selection dimension. Stays on m_bom as audit trail but does not drive compilation or BOM Drop.</p>
-<p><strong>Why this is powerful:</strong> Adding a new building type requires zero Java code.
-Create an M_Product with IsBOM=Y, add M_BOM + M_BOM_Line children, and the
-compiler handles it. The same way an ERP handles a new product — data, not code.</p>
 <h3 id="11-disciplines-are-metadata-not-structure">1.1 Disciplines Are Metadata, Not Structure<a class="headerlink" href="#11-disciplines-are-metadata-not-structure" title="Permanent link">&para;</a></h3>
 <p>In iDempiere, <code>C_DocType.DocBaseType</code> (SOO, API, MOP) classifies documents.
 The document engine is generic — it processes all types identically. What
@@ -4403,10 +4424,10 @@ line per instance. This is the iDempiere pattern: 47 duplex receptacles =
 inserts a discipline BOM level between STOREY and SCOPE SPACE. See
 <code>DISC_BOM_DESIGN.md</code> §2 for the 5-level hierarchy and §5 for YAML schema v2.
 See <code>TerminalAnalysis.md</code> §ERP Model Architecture for how discipline codes
-sit on M_BomCategory with <code>doc_type='CO'</code> and how ROUTE/TILE verbs map to
+sit on M_Product_Category with <code>doc_type='CO'</code> and how ROUTE/TILE verbs map to
 M_AttributeSet/Instance.</p>
 <p>Single-discipline buildings (SH, schema_version 1) skip this layer — no
-discipline wrapper needed. DocBaseType (RE/CO) on M_BomCategory determines
+discipline wrapper needed. DocBaseType (RE/CO) on M_Product_Category determines
 which L2 axis is used: rooms (RE) or disciplines (CO).</p>
 <h3 id="216-recipe-vs-placement-the-bom-contract">2.1.6 Recipe vs Placement — The BOM Contract<a class="headerlink" href="#216-recipe-vs-placement-the-bom-contract" title="Permanent link">&para;</a></h3>
 <p><strong><code>{PREFIX}_BOM.db</code> is a recipe.</strong> Each m_bom_line is a <strong>type line</strong> — one row per
@@ -5135,7 +5156,7 @@ its own half-width — the formula becomes context-dependent. LBD offsets are al
 <tr>
 <td>4</td>
 <td><strong>Template</strong></td>
-<td>ST-mode: walks M_BomCategoryLine slots</td>
+<td>ST-mode: walks M_Product_Category_Line slots</td>
 </tr>
 <tr>
 <td>5</td>
@@ -5734,8 +5755,8 @@ where N = number of extra slabs per storey beyond the first.</p>
 (IFC4 superclass). Analysis docs should note both forms. The <code>ad_ifc_class_map</code> must
 have the form that <code>extract.py</code> actually emits — check extraction output, not IFC source.</p>
 <hr />
-<p><em>Detailed architecture: <a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a> |
-BOM dimensions: <a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a> Appendix A |
+<p><em>Detailed architecture: <a href="../SystemContract/"><code>SystemContract.md</code></a> |
+BOM dimensions: <a href="../SystemContract/"><code>SystemContract.md</code></a> Appendix A |
 Assembly hierarchy: <a href="../PREFAB_ARCHITECTURE/"><code>PREFAB_ARCHITECTURE.md</code></a> |
 Terminal ERP model: <a href="../TerminalAnalysis/"><code>TerminalAnalysis.md</code></a> §ERP Model Architecture |
 Action roadmap: <a href="../ACTION_ROADMAP/"><code>ACTION_ROADMAP.md</code></a></em></p>

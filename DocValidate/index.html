@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -4352,10 +4382,10 @@
 
 <h1 id="docvalidate-construction-validation-engine">DocValidate — Construction Validation Engine<a class="headerlink" href="#docvalidate-construction-validation-engine" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><strong>Version:</strong> 1.1 (2026-03-18)
-<strong>Depends on:</strong> <a href="ConstructionAsERP.md">ConstructionAsERP.md</a>, <a href="../BIM_Designer/">BIM_Designer.md</a> §4/§9, <a href="DISC_BOM_DESIGN.md">DISC_BOM_DESIGN.md</a></p>
+<strong>Depends on:</strong> <a href="../SystemContract/">SystemContract.md</a>, <a href="../BIM_Designer/">BIM_Designer.md</a> §4/§9, <a href="DISC_BOM_DESIGN.md">DISC_BOM_DESIGN.md</a></p>
 <p><em>iDempiere's <code>IDocActionInterceptor</code> / <code>ModelValidator</code> architecture applied to
 BIM placement compliance, clash detection, and building code enforcement.</em></p>
 <blockquote>
@@ -5241,7 +5271,7 @@ certificate (BIM_Designer.md §4.3).</p>
 
 <span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">validateBomLine</span><span class="p">(</span><span class="n">MBOMLine</span><span class="w"> </span><span class="n">line</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// 1. Determine applicable rules</span>
-<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">line</span><span class="p">.</span><span class="na">getParentBom</span><span class="p">().</span><span class="na">getBomCategory</span><span class="p">();</span><span class="w">  </span><span class="c1">// BEDROOM, KITCHEN, etc.</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">line</span><span class="p">.</span><span class="na">getParentBom</span><span class="p">().</span><span class="na">getProductCategory</span><span class="p">();</span><span class="w">  </span><span class="c1">// BEDROOM, KITCHEN, etc.</span>
 <span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">jurisdiction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">line</span><span class="p">.</span><span class="na">getParentBom</span><span class="p">().</span><span class="na">getJurisdiction</span><span class="p">();</span><span class="w">  </span><span class="c1">// MY, US, SG</span>
 
 <span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">ValRule</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ValRuleDAO</span><span class="p">.</span><span class="na">findByCategory</span><span class="p">(</span><span class="n">valConn</span><span class="p">,</span><span class="w"> </span><span class="n">category</span><span class="p">,</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">);</span>
@@ -6749,7 +6779,7 @@ predicate upgrades internally (AABB fallback → FK join) without changing calle
 <hr />
 <p><em>References:
 <a href="DISC_BOM_DESIGN.md">DISC_BOM_DESIGN.md</a> (discipline BOM structure) |
-<a href="ConstructionAsERP.md">ConstructionAsERP.md</a> §11 (C_Order model) |
+<a href="../BOMBasedCompilation/">BBC.md</a> §1 (C_Order model) |
 <a href="../BIM_Designer/">BIM_Designer.md</a> §4 (compliance as compilation constraint), §9 (container rules), §11 (BonsaiBIMDesigner) |
 <a href="../TestArchitecture/">TestArchitecture.md</a> (ProveStage gates) |
 <a href="../phase27-tb-lktn/DSL_DICTIONARY/">phase27-tb-lktn/DSL_DICTIONARY.md</a> (TB-LKTN generative reference) |

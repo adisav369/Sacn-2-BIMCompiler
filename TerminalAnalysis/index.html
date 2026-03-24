@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2572,10 +2602,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#m_bomcategory-dual-axis-scoped-by-doc_typedoc_sub_type" class="md-nav__link">
+  <a href="#m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type" class="md-nav__link">
     <span class="md-ellipsis">
       
-        M_BomCategory — Dual Axis, Scoped by doc_type/doc_sub_type
+        M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type
       
     </span>
   </a>
@@ -3914,10 +3944,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#m_bomcategory-dual-axis-scoped-by-doc_typedoc_sub_type" class="md-nav__link">
+  <a href="#m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type" class="md-nav__link">
     <span class="md-ellipsis">
       
-        M_BomCategory — Dual Axis, Scoped by doc_type/doc_sub_type
+        M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type
       
     </span>
   </a>
@@ -4426,7 +4456,7 @@
 
 <h1 id="terminal-recomposition-sjtii_terminal-forensics">Terminal Recomposition — SJTII_Terminal Forensics<a class="headerlink" href="#terminal-recomposition-sjtii_terminal-forensics" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <h2 id="ctfl-review-status-session-31-34-2026-03-19">CTFL Review Status (session 31-34, 2026-03-19)<a class="headerlink" href="#ctfl-review-status-session-31-34-2026-03-19" title="Permanent link">&para;</a></h2>
 <p><strong>Last reviewed:</strong> 2026-03-19 session 34 — CTFL static review + SRS gap analysis.
@@ -5562,7 +5592,7 @@ These get flat per-element BOM lines (qty=1 each).</p>
 <h2 id="erp-model-architecture-terminal-as-third-stone">ERP Model Architecture — Terminal as Third Stone<a class="headerlink" href="#erp-model-architecture-terminal-as-third-stone" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>Interactive ERD:</strong> <code>docs/terminal_erd.html</code> — 5-tab visualization with
-entity relationships, BOM hierarchy, verb→ERP mapping, M_BomCategory scoping,
+entity relationships, BOM hierarchy, verb→ERP mapping, M_Product_Category scoping,
 and ROUTE-as-BOM tree with M_AttributeSetInstance.</p>
 </blockquote>
 <p>Terminal is the first building to stress the full iDempiere ERP model. SH/DX
@@ -5614,8 +5644,8 @@ discipline zones — that's technical debt avoided.</p>
 <p>DocSubType (SH/DX/TE) carries identity for the Prime Rule three-key match.
 When a second commercial building arrives (mall, factory), it will be CO with
 a different DocSubType. The hierarchy shape stays FLOOR→DISCIPLINE→ASSEMBLY.</p>
-<h3 id="m_bomcategory-dual-axis-scoped-by-doc_typedoc_sub_type">M_BomCategory — Dual Axis, Scoped by doc_type/doc_sub_type<a class="headerlink" href="#m_bomcategory-dual-axis-scoped-by-doc_typedoc_sub_type" title="Permanent link">&para;</a></h3>
-<p>M_BomCategory already has <code>doc_type</code> (DocBaseType) and <code>doc_sub_type</code> columns.
+<h3 id="m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type">M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type<a class="headerlink" href="#m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type" title="Permanent link">&para;</a></h3>
+<p>M_Product_Category already has <code>doc_type</code> (DocBaseType) and <code>doc_sub_type</code> columns.
 These columns on the category row itself determine which building types can use
 that category. Room categories have <code>doc_type='RE'</code>, discipline categories will
 have <code>doc_type='CO'</code>, and shared categories (storeys, structural) have <code>doc_type=NULL</code>.</p>
@@ -5670,7 +5700,7 @@ have <code>doc_type='CO'</code>, and shared categories (storeys, structural) hav
 <p>Room and discipline codes operate at <strong>different BOM levels</strong> and never compete.
 Storeys are shared across RE and CO — always at Level 1. The Level 2 axis
 changes from room-type to discipline-type based on DocBaseType. No new tables
-needed; M_BomCategory holds both sets, scoped by the doc_type column.</p>
+needed; M_Product_Category holds both sets, scoped by the doc_type column.</p>
 <h3 id="m_attributesetinstance-per-verb-usage">M_AttributeSet/Instance — Per-Verb Usage<a class="headerlink" href="#m_attributesetinstance-per-verb-usage" title="Permanent link">&para;</a></h3>
 <p>SH/DX: zero elements needed instance attributes. Terminal changes that:</p>
 <table>
@@ -6602,10 +6632,10 @@ same product-set signature (ignoring absolute position). If yes, a template sub-
 with per-floor ESLine placement compresses further. If not, the current per-floor
 independent BOMs are correct and 42.8:1 is the natural compression limit.</p>
 <p><strong>This is a future investigation</strong> — does not block current compilation. The spec
-(BOMBasedCompilation.md §3.3) supports recurrence via M_BomCategoryLine templates.</p>
+(BOMBasedCompilation.md §3.3) supports recurrence via M_Product_Category_Line templates.</p>
 <hr />
 <p><strong>Cross-references:</strong>
-<a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a> §11.8 |
+<a href="../BOMBasedCompilation/"><code>BBC.md</code></a> §1.8 |
 <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a> §3-§4 (governing spec) |
 <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> |
 <a href="terminal_erd.html"><code>terminal_erd.html</code></a> (interactive ERD) |

@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -3514,7 +3544,7 @@
 this document says which spec answers which question, for whom, and when.
 Like iDempiere's Application Dictionary governs modules, this contract
 governs the 53 docs in <code>docs/</code>.</p>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> ·
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="./">SystemContract</a> ·
 <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint</a> ·
 <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a> · <a href="../INDEX/">INDEX</a></p>
 </blockquote>
@@ -3536,7 +3566,7 @@ WHERE: Plot (ABL)       WHERE: CO_EmptySpaceLine  WHERE: tack offset (dx/dy/dz)
 <p>A site is to plots what a building is to rooms what a room is to elements.
 The compiler, the gates, the DocAction lifecycle, the three-concern separation
 — all work unchanged at every scale. New scales are configuration, not code.</p>
-<p><strong>Spec authority:</strong> <a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a> (three-concern separation),
+<p><strong>Spec authority:</strong> §4 below (three-concern matrix),
 <a href="../BOMBasedCompilation/">BBC.md §3.3-3.5</a> (BOM Drop, Selection Cascade),
 <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §2</a> (C_Project site-as-BOM).</p>
 <hr />
@@ -3603,7 +3633,7 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>C_DocType</code></td>
 <td>Building type classification</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><code>M_Product_Category</code></td>
@@ -3653,22 +3683,22 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>M_AttributeSet</code></td>
 <td>Attribute templates</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md</a></td>
 </tr>
 <tr>
 <td><code>component_definitions</code></td>
 <td>Component metadata + bounds</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §1.1</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md §1</a></td>
 </tr>
 <tr>
 <td><code>component_geometries</code></td>
 <td>Vertex/face BLOBs (deduplicated)</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §1.1</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md §1</a></td>
 </tr>
 <tr>
 <td><code>placement_rules</code></td>
 <td>Host-relative placement</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §1.1</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md §1</a></td>
 </tr>
 <tr>
 <td><code>surface_styles</code></td>
@@ -3693,12 +3723,12 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>C_Order</code></td>
 <td>Construction order (one per building)</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><code>C_OrderLine</code></td>
 <td>Order line (one per BOM node)</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><code>C_Project</code></td>
@@ -3713,17 +3743,17 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>M_AttributeSetInstance</code></td>
 <td>Per-instance customer options</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><code>elements_meta</code></td>
 <td>Compiled elements (world xyz)</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §1.3</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md §4</a></td>
 </tr>
 <tr>
 <td><code>element_instances</code></td>
 <td>Geometry instances (transform)</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §1.3</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md §4</a></td>
 </tr>
 </tbody>
 </table>
@@ -3773,12 +3803,12 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>co_empty_space</code></td>
 <td>Spatial envelope header</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><code>co_empty_space_line</code></td>
 <td>Spatial slot (room/plot)</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><code>elements_rtree</code></td>
@@ -4002,7 +4032,7 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>WHAT</strong></td>
 <td>C_OrderLine (which elements)</td>
 <td>✓ DONE</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><strong>HOW</strong></td>
@@ -4014,7 +4044,7 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>WHERE</strong></td>
 <td>CO_EmptySpaceLine (room slots)</td>
 <td>✓ DONE</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 </tbody>
 </table>
@@ -4095,7 +4125,7 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>WHAT</strong></td>
 <td>M_AttributeSetInstance (dimension override)</td>
 <td>PARTIAL</td>
-<td><a href="ConstructionAsERP.md">ConstructionAsERP.md §2</a></td>
+<td><a href="./">SystemContract.md §2</a></td>
 </tr>
 <tr>
 <td><strong>HOW</strong></td>
@@ -4574,21 +4604,21 @@ VALIDATION:
 <h2 id="9-spec-dependency-graph">9. Spec Dependency Graph<a class="headerlink" href="#9-spec-dependency-graph" title="Permanent link">&para;</a></h2>
 <p>Which spec governs which, and what order to read.</p>
 <div class="highlight"><pre><span></span><code>                    SystemContract.md (THIS FILE)
-                    ┌──────────┼──────────┐
-                    │          │          │
-              BBC.md    ConstructionAsERP  TestArchitecture
-              (engine)    (ERP model)      (verification)
-                │          │          │
-         ┌──────┼──────┐   │    ┌─────┼─────┐
-         │      │      │   │    │     │     │
-    BIM_COBOL  DATA   Source  DocAction  EYES  TheRosettaStone
-    (verbs)   MODEL   Code    (lifecycle) (proofs) Strategy
-              (schema) Guide                    (tiers 1-4)
-                              │
-                    ┌─────────┼─────────┐
-                    │         │         │
-              DocValidate  DISC_VAL   G4_SRS
-              (rules)     (disciplines) (tamper)
+              ┌──────────┼──────────┬──────────┐
+              │          │          │          │
+          BBC.md    DATA_MODEL  DocAction  TestArchitecture
+          (engine)  (schema)   (lifecycle) (verification)
+              │          │                    │
+       ┌──────┼──────┐   │          ┌────────┼────────┐
+       │      │      │   │          │        │        │
+  BIM_COBOL Source  BIM_   │        EYES  TheRosetta  G4_SRS
+  (verbs)   Code   Designer │      (proofs) Stone     (tamper)
+            Guide  (UX)    │               (tiers 1-4)
+                           │
+                 ┌─────────┼─────────┐
+                 │         │         │
+           DocValidate  DISC_VAL  CALIBRATION
+           (rules)     (disciplines) (density)
 
               ProjectOrderBlueprint.md
               (§1-§14: the frontier — what&#39;s next)
@@ -4597,12 +4627,13 @@ VALIDATION:
               (infrastructure: terrain, alignment, cut-fill)
 </code></pre></div>
 <p><strong>Reading order for a new contributor:</strong>
-1. This file (SystemContract.md) — the map
-2. BBC.md — the compilation model
-3. ConstructionAsERP.md — the ERP mapping
-4. TestArchitecture.md — how verification works
-5. ProjectOrderBlueprint.md — what's planned
-6. SourceCodeGuide.md — where the code is</p>
+1. <strong><a href="../MANIFESTO/">MANIFESTO.md</a></strong> — the ERP world view (read this first, always)
+2. BBC.md — entity mapping table + compilation model
+3. This file (SystemContract.md) — entity registry, three-concern matrix, gap register
+4. DATA_MODEL.md — schema, 4-DB architecture
+5. TestArchitecture.md — how verification works
+6. ProjectOrderBlueprint.md — what's planned
+7. SourceCodeGuide.md — where the code is</p>
 <hr />
 <h2 id="10-gap-register">10. Gap Register<a class="headerlink" href="#10-gap-register" title="Permanent link">&para;</a></h2>
 <p>Computational areas where the spec is incomplete.
@@ -4638,14 +4669,14 @@ Each gap must be closed with an SRS before code is written.</p>
 <tr>
 <td><strong>GAP-SC-4</strong></td>
 <td>Rule pack versioning</td>
-<td>Effectivity dates, jurisdiction scoping, precedence</td>
-<td>MED (blocks Session C)</td>
+<td>Effectivity dates, version precedence, pack lifecycle. <strong>Tagging done</strong> (S67c pack_id on 4 AD tables). Versioning/lifecycle deferred.</td>
+<td>MED (partially addressed)</td>
 </tr>
 <tr>
 <td><strong>GAP-SC-5</strong></td>
 <td>Order inheritance conflict</td>
-<td>Resolution for sibling branches modifying same locator_ref</td>
-<td>LOW (blocks Session E)</td>
+<td><strong>SPEC COMPLETE</strong> — Single-parent FK prevents sibling DAG; linear chain resolved by depth (deepest wins). See ProjectOrderBlueprint.md §6.3</td>
+<td>LOW (unblocks Session E)</td>
 </tr>
 <tr>
 <td><strong>GAP-SC-6</strong></td>

@@ -481,6 +481,8 @@
       
         
       
+        
+      
     
     
     
@@ -533,6 +535,34 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -2118,6 +2148,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. Order Inheritance — Composable Variants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-chain-walking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Chain Walking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-override-rule-last-descendant-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Override Rule — Last Descendant Wins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-sibling-conflict-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Sibling Conflict Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-ordering-within-a-single-chain-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Ordering Within a Single Chain Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -3602,6 +3682,56 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="6. Order Inheritance — Composable Variants">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-chain-walking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Chain Walking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-override-rule-last-descendant-wins" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Override Rule — Last Descendant Wins
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-sibling-conflict-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Sibling Conflict Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-ordering-within-a-single-chain-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Ordering Within a Single Chain Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4108,7 +4238,7 @@
 
 <h1 id="project-order-blueprint">Project Order Blueprint<a class="headerlink" href="#project-order-blueprint" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_Designer_SRS/">BIM_Designer_SRS</a></p>
+<p><strong>Foundation:</strong> <a href="../SystemContract/">SystemContract</a> · <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_Designer_SRS/">BIM_Designer_SRS</a></p>
 </blockquote>
 <h2 id="executive-brief">Executive Brief<a class="headerlink" href="#executive-brief" title="Permanent link">&para;</a></h2>
 <p><strong>What this is.</strong> A BIM compiler that treats buildings as manufactured
@@ -4231,9 +4361,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>The core thesis.</strong> Manufacturing solved procurement, scheduling, cost
-control, and quality decades ago with MRP/ERP. Construction never had a
-Bill of Materials. This project provides one. Everything else follows.</p>
+<p><strong>The core thesis.</strong> See <a href="../MANIFESTO/">MANIFESTO.md</a>.</p>
 <hr />
 <h2 id="1-exception-based-ordering-configure-to-order-for-buildings">1. Exception-Based Ordering — Configure-to-Order for Buildings<a class="headerlink" href="#1-exception-based-ordering-configure-to-order-for-buildings" title="Permanent link">&para;</a></h2>
 <blockquote>
@@ -4302,10 +4430,10 @@ will always reproduce the same output from the same order. The asset is the
 order library; the engine is infrastructure.</p>
 <p><strong>Relationship to existing patterns:</strong>
 - Extends bomDrop (BBC §3.4) with selective explosion
-- Uses swapProduct from the Universal Configurator (ConstructionAsERP §D.5) at targeted locator_refs
+- Uses swapProduct from the Universal Configurator (ProjectOrderBlueprint.md §1) at targeted locator_refs
 - Category constraint enforced by M_Product_Category (same as BOM Selection Cascade BBC §3.5)
 - Validation exceptions via AD_Val_Rule_Exception (§U6, <code>MValRuleException</code>)
-- Compatible with BIM Designer Save/Recall/Promote lifecycle (ConstructionAsERP §1.4) — the exception order is what gets Promoted</p>
+- Compatible with BIM Designer Save/Recall/Promote lifecycle (DATA_MODEL.md §1) — the exception order is what gets Promoted</p>
 <h3 id="11-exception-algebra-four-complete-mutations">1.1 Exception Algebra — Four Complete Mutations<a class="headerlink" href="#11-exception-algebra-four-complete-mutations" title="Permanent link">&para;</a></h3>
 <p>Any building variant expressible as a finite diff against a base BOM can be
 described with exactly four operations:</p>
@@ -5050,6 +5178,103 @@ each combination from scratch.</p>
 <p><strong>iDempiere mapping:</strong> C_Order.Ref_Order_ID (reference to parent order).
 The compiler walks the Ref_Order chain to root, collects all exception
 lines, applies in sequence. Standard iDempiere FK, no schema changes.</p>
+<h3 id="61-chain-walking">6.1 Chain Walking<a class="headerlink" href="#61-chain-walking" title="Permanent link">&para;</a></h3>
+<p>The compiler resolves inheritance by walking <code>C_Order.Ref_Order_ID</code> from
+the current order to root, collecting exception C_OrderLines at each level.</p>
+<div class="highlight"><pre><span></span><code>resolveInheritanceChain(orderId):
+  chain = []
+  current = orderId
+  while current != NULL:
+    chain.prepend(current)           // root-first ordering
+    current = C_Order[current].Ref_Order_ID
+  return chain                       // [root, ..., leaf]
+</code></pre></div>
+<p>The chain is walked <strong>root-first</strong>. Each order's exception lines are
+applied in sequence. When two orders in the chain modify the same
+<code>locator_ref</code>, the deeper (closer to leaf) order wins — this is the
+"last descendant wins" rule.</p>
+<p><strong>Depth</strong> is defined as distance from root. Root has depth 0. A child
+of root has depth 1. Deeper = higher priority.</p>
+<h3 id="62-override-rule-last-descendant-wins">6.2 Override Rule — Last Descendant Wins<a class="headerlink" href="#62-override-rule-last-descendant-wins" title="Permanent link">&para;</a></h3>
+<p>At each <code>locator_ref</code> in the exploded BOM tree, at most one exception
+applies. If multiple orders in the chain target the same <code>locator_ref</code>,
+the override from the deepest order in the chain takes effect.</p>
+<div class="highlight"><pre><span></span><code>Example: DX_BASE → DX_SOLAR → DX_SOLAR_PREMIUM (3-deep chain)
+
+DX_BASE (depth 0):
+  locator_ref = &#39;Rm_Kitchen.Light_1&#39;   → product = LIGHT_STD
+
+DX_SOLAR (depth 1, parent = DX_BASE):
+  locator_ref = &#39;Rm_Roof.Panel_1&#39;      → product = SOLAR_PANEL_400W
+  locator_ref = &#39;Rm_Garage.Switchboard&#39; → product = SOLAR_SWITCHBOARD
+
+DX_SOLAR_PREMIUM (depth 2, parent = DX_SOLAR):
+  locator_ref = &#39;Rm_Kitchen.Light_1&#39;   → product = LIGHT_PREMIUM   ← overrides DX_BASE
+  locator_ref = &#39;Rm_Bathroom.Tile_1&#39;   → product = TILE_MARBLE
+  locator_ref = &#39;Rm_Garage.Switchboard&#39; → product = SOLAR_SWITCHBOARD_SMART  ← overrides DX_SOLAR
+
+Resolved exception set (depth wins):
+  &#39;Rm_Kitchen.Light_1&#39;    → LIGHT_PREMIUM           (depth 2 beats depth 0)
+  &#39;Rm_Roof.Panel_1&#39;       → SOLAR_PANEL_400W        (depth 1, no conflict)
+  &#39;Rm_Garage.Switchboard&#39; → SOLAR_SWITCHBOARD_SMART  (depth 2 beats depth 1)
+  &#39;Rm_Bathroom.Tile_1&#39;    → TILE_MARBLE             (depth 2, no conflict)
+</code></pre></div>
+<p><strong>Algorithm:</strong> Build a <code>Map&lt;locator_ref, ExceptionLine&gt;</code>. Walk chain
+root-to-leaf. Each order's exceptions overwrite earlier entries. After
+the walk, the map contains the resolved set. O(N) where N = total
+exception lines across the chain.</p>
+<h3 id="63-sibling-conflict-resolution">6.3 Sibling Conflict Resolution<a class="headerlink" href="#63-sibling-conflict-resolution" title="Permanent link">&para;</a></h3>
+<p><strong>The gap (GAP-SC-5):</strong> The chain is linear (parent → child → grandchild).
+But two orders at the <strong>same depth</strong> could both modify the same <code>locator_ref</code>
+if the user creates two sibling variants from the same parent:</p>
+<div class="highlight"><pre><span></span><code>DX_BASE (depth 0)
+  ├─ DX_SOLAR   (depth 1, parent = DX_BASE)
+  │    locator_ref = &#39;Rm_Garage.Switchboard&#39; → SOLAR_SWITCHBOARD
+  │
+  └─ DX_PREMIUM (depth 1, parent = DX_BASE)
+       locator_ref = &#39;Rm_Garage.Switchboard&#39; → PREMIUM_SWITCHBOARD
+</code></pre></div>
+<p>If a third order DX_SOLAR_PREMIUM tries to inherit from <strong>both</strong>
+DX_SOLAR and DX_PREMIUM, the chain is no longer linear — it's a DAG.</p>
+<p><strong>Resolution: Single-parent inheritance only (error-on-conflict).</strong></p>
+<p><code>C_Order.Ref_Order_ID</code> is a single FK — one parent per order. This is
+the iDempiere pattern: C_Order references at most one parent order.
+Diamond inheritance (inheriting from two siblings) is structurally
+impossible because the FK is scalar, not a list.</p>
+<p>The conflict scenario above cannot arise in the data model. The user
+must choose one lineage:</p>
+<div class="highlight"><pre><span></span><code>DX_SOLAR_PREMIUM (parent = DX_SOLAR)
+  → inherits solar + adds premium finishes     ← valid: linear chain
+
+DX_PREMIUM_SOLAR (parent = DX_PREMIUM)
+  → inherits premium + adds solar panels       ← valid: different linear chain
+
+DX_BOTH (parent = DX_SOLAR AND DX_PREMIUM)
+  → IMPOSSIBLE: Ref_Order_ID is scalar FK      ← structurally prevented
+</code></pre></div>
+<p><strong>iDempiere precedent:</strong> PP_Order_BOM uses <code>SeqNo</code> for ordering within
+a single parent. M_PriceList_Version uses <code>ValidFrom</code> — latest wins.
+Both assume a linear resolution path, not a DAG. We follow the same
+assumption.</p>
+<p><strong>If sibling combination is needed:</strong> The user authors a new order that
+manually includes both sets of exceptions. This is explicit, auditable,
+and avoids hidden precedence rules. Three lines (solar + premium + smart
+switchboard) instead of an implicit merge of two branches.</p>
+<p><strong>Validation rule:</strong> At compile time, detect cycles in the Ref_Order_ID
+chain (A → B → A). Error immediately — cycles indicate data corruption,
+not a design intent. Implementation: track visited order IDs during
+chain walk; if a repeat is found, throw <code>IllegalStateException</code> with
+the cycle path.</p>
+<h3 id="64-ordering-within-a-single-chain-level">6.4 Ordering Within a Single Chain Level<a class="headerlink" href="#64-ordering-within-a-single-chain-level" title="Permanent link">&para;</a></h3>
+<p>When a single order carries multiple exception lines, they are applied
+in <code>C_OrderLine.Line</code> order (iDempiere's standard line numbering,
+analogous to <code>PP_Order_BOM.SeqNo</code>). If two lines in the same order
+target the same <code>locator_ref</code>, the higher <code>Line</code> number wins —
+consistent with "last writer wins" within a document.</p>
+<p><strong>Validation:</strong> At order entry time, warn if two lines in the same
+order target the same <code>locator_ref</code>. This is likely a user error
+(duplicate exception), not intentional layering. The warning does not
+block — it informs.</p>
 <hr />
 <h2 id="7-foss-ecosystem-model-open-commons-for-construction">7. FOSS Ecosystem Model — Open Commons for Construction<a class="headerlink" href="#7-foss-ecosystem-model-open-commons-for-construction" title="Permanent link">&para;</a></h2>
 <blockquote>
@@ -6270,7 +6495,7 @@ Only the last order survives.</p>
 <td>Reference only</td>
 </tr>
 <tr>
-<td>ConstructionAsERP.md</td>
+<td>SystemContract.md</td>
 <td>ERP patterns (DocAction, three-concern separation)</td>
 <td>Reference only</td>
 </tr>
