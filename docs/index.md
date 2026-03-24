@@ -137,13 +137,20 @@ mvn compile -q                              # Compile all modules
 
 ## Documentation Map
 
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 560px; text-align: center;">
+  <img src="assets/images/2D_FLOOR_SAMPLEHOUSE.png" alt="Sample House 2D floor plan — Pelan Lantai" width="560">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Sample House floor plan (Pelan Lantai) — the reference input for the simplest Rosetta Stone.</figcaption>
+</figure>
+
 | I want to... | Start here |
 |--------------|-----------|
-| Understand the system | [System Contract](SystemContract.md) — the governing document |
-| Read the master spec | [BOM-Based Compilation](BOMBasedCompilation.md) — tack, walker, gospel |
-| Navigate the code | [Source Code Guide](SourceCodeGuide.md) — entry points, DAOs, patterns |
-| Onboard a new IFC | [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) — 8-step recipe |
-| See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) — exception ordering, C_Project |
+| Understand the system | [System Contract](SystemContract.md) |
+| Read the master spec | [BOM-Based Compilation](BOMBasedCompilation.md) |
+| Navigate the code | [Source Code Guide](SourceCodeGuide.md) |
+| Onboard a new IFC | [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) |
+| See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) |
+
+<div style="clear: right;"></div>
 
 ---
 
@@ -169,8 +176,6 @@ mvn compile -q                              # Compile all modules
 
     From July 2025, all projects >= RM10M require BIM.
     This compiler produces compliant IFC output.
-
-    ![Sample House floor plan](assets/images/2D_FLOOR_SAMPLEHOUSE.png){ width="280" }
 
 -   **By Redhuan D. Oon**
 
