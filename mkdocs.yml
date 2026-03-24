@@ -1,7 +1,7 @@
 site_name: BIM Intent Compiler
 site_description: Construction is manufacturing. A building IS its Bill of Materials.
 site_author: Redhuan D. Oon
-repo_url: https://github.com/red1oon/bim-compiler
+repo_url: https://github.com/red1oon/BIMCompiler
 
 theme:
   name: material
