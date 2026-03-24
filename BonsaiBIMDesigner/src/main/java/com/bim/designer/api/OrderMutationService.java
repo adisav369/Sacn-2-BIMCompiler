@@ -8,19 +8,27 @@ import com.bim.orm.BIMLogger;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Order mutation operations — extracted from DesignerAPIImpl to prevent
  * God Object growth across Sessions A-E (ProjectOrderBlueprint.md §14.3).
  *
- * <p>Each mutation type (Add, Remove, Compress, Replace) will be a method here.
- * DesignerAPIImpl delegates to this service.
+ * <p>Session B refactor: addDiscipline() now delegates to {@link OrderLineMutation}
+ * implementations (FPSuggestion, ELECSuggestion, ACMVSuggestion). The propose()
+ * call generates ProposedOrderLines, then this service persists them.
  *
- * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session A — Witness: W-DM-TC5-1
+ * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
  */
 public class OrderMutationService {
 
     private static final String TAG = "OrderMutation";
+
+    private static final Map<String, OrderLineMutation> SUGGESTIONS = Map.of(
+            "ELEC", new ELECSuggestion(),
+            "FP",   new FPSuggestion(),
+            "ACMV", new ACMVSuggestion()
+    );
 
     /**
      * Result of an addDiscipline operation.
@@ -50,16 +58,11 @@ public class OrderMutationService {
     ) {}
 
     /**
-     * Add a discipline to an existing order by querying ad_space_type_mep_bom
-     * for each ROOM in the order and creating PROPOSED C_OrderLines.
+     * Add a discipline to an existing order via the OrderLineMutation interface.
      *
-     * <p>For each room C_OrderLine, derives space_type from bom_category
-     * (BEDROOM, BATHROOM, KITCHEN, etc.), queries disc_validation.db for
-     * MEP products matching the given discipline, and inserts LEAF
-     * C_OrderLines as children of the room with proposal_status='PROPOSED'.
-     *
-     * <p>bom_child_id is NULL — these are rule-driven lines, not BOM-derived.
-     * OrderLineWalker handles null bom_child_id gracefully.
+     * <p>Session B refactor: delegates to the appropriate *Suggestion implementation
+     * to compute proposals, then persists each as a PROPOSED C_OrderLine.
+     * Backward compatible — same signature, same result type, same behavior.
      *
      * @param woConn          work_output.db connection (has C_Order + C_OrderLine)
      * @param discValConn     disc_validation.db connection (has ad_space_type_mep_bom)
@@ -75,79 +78,87 @@ public class OrderMutationService {
             return new AddDisciplineResult(0, 0, discipline, List.of());
         }
 
-        MEPBOMQuery mepQuery = new MEPBOMQuery(discValConn);
+        // Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
+        // Look up the OrderLineMutation for this discipline
+        OrderLineMutation mutation = SUGGESTIONS.get(discipline);
+
+        List<ProposedOrderLine> proposals;
+        if (mutation != null) {
+            // Session B path: delegate to interface implementation
+            proposals = mutation.propose(woConn, discValConn, orderId);
+        } else {
+            // Fallback for disciplines without an OrderLineMutation (e.g., SP)
+            // Uses the original inline logic
+            proposals = proposeInline(woConn, discValConn, orderId, discipline);
+        }
+
+        // Persist each proposal as a PROPOSED C_OrderLine
         List<ProposedLine> details = new ArrayList<>();
-        int roomsProcessed = 0;
+        java.util.Set<Integer> roomsSeen = new java.util.HashSet<>();
 
-        // 1. Find all ROOM-level C_OrderLines in this order
-        List<RoomRow> rooms = findRooms(woConn, orderId);
-        BIMLogger.info(TAG, "ADD_DISCIPLINE {} on order {} — {} rooms found",
-                discipline, orderId, rooms.size());
-
-        for (RoomRow room : rooms) {
-            // 2. Derive space_type from bom_category (BEDROOM → BEDROOM, etc.)
-            String spaceType = deriveSpaceType(room.bomCategory);
-            if (spaceType == null) continue;
-
-            // 3. Query MEP requirements for this space type + discipline
-            List<MEPRequirement> requirements = mepQuery.queryForDiscipline(spaceType, discipline);
-            if (requirements.isEmpty()) continue;
-
-            roomsProcessed++;
-
-            // 4. Insert PROPOSED C_OrderLine per MEP product
-            for (MEPRequirement req : requirements) {
-                int qty = req.qtyNormal();  // STANDARD profile
-                if (qty <= 0) qty = 1;
-
-                // Compute qty from per_area if available
-                if (req.perAreaNormal() > 0 && room.areaSqM > 0) {
-                    int areaQty = (int) Math.ceil(room.areaSqM * req.perAreaNormal());
-                    qty = Math.max(qty, areaQty);
-                }
-
-                int lineId = insertProposedLine(woConn, orderId, room.orderLineId,
-                        req.mepProductId(), discipline, room.bomCategory,
-                        req.placementRule(), qty);
-
-                details.add(new ProposedLine(lineId, room.orderLineId,
-                        room.bomCategory, req.mepProductId(), qty, req.placementRule()));
-            }
+        for (ProposedOrderLine p : proposals) {
+            int lineId = insertProposedLine(woConn, orderId, p.parentRoomLineId(),
+                    p.mepProductId(), p.discipline(), p.roomCategory(),
+                    p.placementRule(), p.qty());
+            details.add(new ProposedLine(lineId, p.parentRoomLineId(),
+                    p.roomCategory(), p.mepProductId(), p.qty(), p.placementRule()));
+            roomsSeen.add(p.parentRoomLineId());
         }
 
         BIMLogger.info(TAG, "ADD_DISCIPLINE {} → {} lines across {} rooms",
-                discipline, details.size(), roomsProcessed);
-        return new AddDisciplineResult(details.size(), roomsProcessed, discipline, details);
+                discipline, details.size(), roomsSeen.size());
+        return new AddDisciplineResult(details.size(), roomsSeen.size(), discipline, details);
     }
-
-    // ── Room discovery ──────────────────────────────────────────────
-
-    private record RoomRow(int orderLineId, String bomCategory, double areaSqM) {}
 
     /**
-     * Find ROOM-level C_OrderLines in the given order.
-     * Room area is computed from AABB width × depth (mm² → m²).
+     * Propose all disciplines at once via OrderLineMutation interface.
+     * Returns proposals without persisting — caller decides what to do.
+     *
+     * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
      */
-    private List<RoomRow> findRooms(Connection woConn, String orderId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, bom_category, "
-                + "COALESCE(aabb_width_mm, 0) * COALESCE(aabb_depth_mm, 0) / 1e6 AS area_sqm "
-                + "FROM C_OrderLine "
-                + "WHERE C_Order_ID = ? AND host_type = 'ROOM' "
-                + "ORDER BY Line";
-        List<RoomRow> rooms = new ArrayList<>();
-        try (PreparedStatement ps = woConn.prepareStatement(sql)) {
-            ps.setString(1, orderId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    rooms.add(new RoomRow(
-                            rs.getInt("C_OrderLine_ID"),
-                            rs.getString("bom_category"),
-                            rs.getDouble("area_sqm")));
-                }
+    public List<ProposedOrderLine> proposeAll(Connection woConn, Connection ruleDb,
+                                               String orderId) throws SQLException {
+        List<ProposedOrderLine> all = new ArrayList<>();
+        for (OrderLineMutation mutation : SUGGESTIONS.values()) {
+            all.addAll(mutation.propose(woConn, ruleDb, orderId));
+        }
+        return all;
+    }
+
+    /**
+     * Get the OrderLineMutation for a given discipline, or null if none registered.
+     */
+    public static OrderLineMutation getMutation(String discipline) {
+        return SUGGESTIONS.get(discipline);
+    }
+
+    // ── Fallback inline proposal (for disciplines without an OrderLineMutation) ──
+
+    private List<ProposedOrderLine> proposeInline(Connection woConn, Connection discValConn,
+                                                   String orderId, String discipline) throws SQLException {
+        MEPBOMQuery mepQuery = new MEPBOMQuery(discValConn);
+        List<ProposedOrderLine> proposals = new ArrayList<>();
+
+        List<RoomContext> rooms = RoomContext.findRooms(woConn, orderId);
+        BIMLogger.info(TAG, "PROPOSE_INLINE {} on order {} — {} rooms", discipline, orderId, rooms.size());
+
+        for (RoomContext room : rooms) {
+            String spaceType = deriveSpaceType(room.bomCategory());
+            if (spaceType == null) continue;
+
+            List<MEPRequirement> reqs = mepQuery.queryForDiscipline(spaceType, discipline);
+            for (MEPRequirement req : reqs) {
+                int qty = ELECSuggestion.computeQty(req, room.areaSqM());
+                proposals.add(new ProposedOrderLine(
+                        room.orderLineId(), room.bomCategory(),
+                        req.mepProductId(), discipline, qty,
+                        req.placementRule(), req.buildingCode(), req.codeClause()));
             }
         }
-        return rooms;
+        return proposals;
     }
+
+    // ── Space type mapping ──────────────────────────────────────────
 
     /**
      * Derive ad_space_type_mep_bom.space_type_id from bom_category.

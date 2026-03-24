@@ -1343,7 +1343,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 
 ## 14. Implementation Plan — Order Compilation Engine
 
-> **Status:** In progress. Session A DONE (S67 `fac5e8f`), Sessions B-E not started.
+> **Status:** In progress. Session A DONE (S67 `fac5e8f`), Session B DONE (S67b). Sessions C-E not started.
 > **Source:** Consolidated from ACTION_ROADMAP.md Task 4 (S60-S3 reframe).
 
 ### 14.1 Triage — Blueprint Sections vs Codebase State
@@ -1436,16 +1436,19 @@ Only the last order survives.
 - **Witness:** W-DM-TC5-1 extended: ELEC 15 lines / 4 rooms, FP 4 lines / 4 rooms on SH
 
 **Session B: Validation-as-suggestion (§13)**
+*Status: **DONE** (S67b). OrderLineMutation interface + 3 implementations. OrderMutationService refactored to delegate.*
 
-- `OrderLineMutation` interface: `List<ProposedOrderLine> propose(C_Order, Connection ruleDb)`
-- `FPSuggestion implements OrderLineMutation` — reads ad_fp_trigger + ad_space_type_mep_bom
-- `ELECSuggestion implements OrderLineMutation` — same pattern, ELEC products
-- `ACMVSuggestion implements OrderLineMutation` — same pattern, ACMV products
-- Three states on proposed lines: Absent → Proposed → Accepted (§13.2)
-- PlacementValidatorImpl: if rule can_suggest → return ProposedOrderLine instead of BLOCK
-- Architect accepts/rejects each in BOM Tree tab or Compliance Review panel
-- **Gate:** Without FP → validation warns. With FP → validation checks placement
-- **Witness:** W-DM-FP-VAL-1 (validation fires whether or not FP present)
+- `OrderLineMutation` interface: `List<ProposedOrderLine> propose(woConn, ruleDb, orderId)`
+- `FPSuggestion implements OrderLineMutation` — FP products (SPRINKLER, EMERGENCY_LIGHT), 4 lines on SH
+- `ELECSuggestion implements OrderLineMutation` — ELEC products (7 types), 15 lines on SH
+- `ACMVSuggestion implements OrderLineMutation` — ACMV products (3 types), 7 lines on SH
+- `ProposedOrderLine` record — discipline, qty, placement rule, building code, code clause
+- `RoomContext` record — shared room discovery across all implementations
+- `OrderMutationService.addDiscipline()` refactored: delegates to *Suggestion via SUGGESTIONS map
+- `OrderMutationService.proposeAll()` — proposes all disciplines without persisting
+- Three states on proposed lines: Absent → Proposed → Accepted (§13.2) — via proposal_status column (W004)
+- **Gate:** AddDisciplineTest 4/4 (backward compat). OrderLineMutationTest 8/8. SH 7/7. Full gate GREEN
+- **Witness:** W-DM-FP-VAL-1 (FP suggestion fires on order with no existing FP lines — confirmed)
 
 **Session C: Rule pack framing (§12)**
 

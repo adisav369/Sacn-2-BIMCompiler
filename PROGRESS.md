@@ -23,7 +23,7 @@
 
 **Pipeline:** 9 stages. 64 verbs. 2475 products. 4-DB architecture (24+20+6+output). 4D/5D/6D live on real library.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. Full table: [TestArchitecture.md §Rosetta Stone Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
-**BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 392/392 GREEN (40 test classes).
+**BIMBackOffice:** 5/5 GREEN. **BonsaiBIMDesigner:** 403/409 GREEN (41 test classes, 6 CalibrationTest pre-existing).
 **Scorecard: 31/36.** 4D/5D live DAOs + 6D=2, 7D=2, 3D=3, CR/Audit=2. Nearest competitor: 9.
 **BIMEyes:** 43 files, 28 proof classes (~14 per-element, ~8 aggregate, ~6 conditional). [EYES_SRS.md §10 audit](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit). Gap 10 (source fidelity) NOT YET IMPLEMENTED.
 
@@ -47,6 +47,8 @@
 
 **[DONE] Session 0** (2026-03-24): R-PROJ-3 C_Order_ID collision fix. BomDropper.drop() parameterized with explicit orderId; default path backward-compatible. W-PROJ-ID-1 witness: two RE_SH orders coexist. GAP-SC-8 CLOSED. SH 7/7, full gate GREEN.
 
+**[DONE] Session B** (2026-03-24): OrderLineMutation suggestion engine. Interface + 3 implementations (ELECSuggestion, FPSuggestion, ACMVSuggestion). OrderMutationService refactored to delegate via SUGGESTIONS map. proposeAll() returns FP=4, ELEC=15, ACMV=7 on SH. W-DM-FP-VAL-1: FP fires on FP-absent order. AddDisciplineTest 4/4 (backward compat). OrderLineMutationTest 8/8. SH 7/7, full gate GREEN.
+
 **S67 — ELEC onboarding + watchdog + Session A + specs consolidation.**
   2 ELEC products onboarded from TE extraction (E_Light, E_Data Point). ELEC SET sub-BOMs in DM_BOM.db.
   **Watchdog cleanup:** Removed CompileProof.java, DisciplineBreakdownProof.java, DemoHouseCompileTest.java, CompilationPipeline post-compile hook. DemoHouse compiles via standard Rosetta Stone pipeline. Seal v31.
@@ -65,6 +67,7 @@
 
 ## Session Log (recent first)
 
+**S67b** — Session B: OrderLineMutation suggestion engine. (1) OrderLineMutation interface + ProposedOrderLine record. (2) 3 implementations: ELECSuggestion (15 lines/SH), FPSuggestion (4 lines/SH), ACMVSuggestion (7 lines/SH). (3) RoomContext shared room discovery. (4) OrderMutationService refactored: SUGGESTIONS map delegates to interface. proposeAll() added. (5) OrderLineMutationTest 8/8 GREEN. W-DM-FP-VAL-1 confirmed. AddDisciplineTest 4/4 backward compat. (6) 41 test classes, 403/409 GREEN (6 CalibrationTest pre-existing). SH 7/7, full gate GREEN. AUDIT Appendix L.
 **S67** — ELEC onboarding + Session A + watchdog + specs consolidation. (1) 2 ELEC products onboarded (S67_001). 4 disciplines (STR+ARC+MEP+ELEC). W-DM-TC5-3 GREEN. (2) Watchdog: removed CompileProof/DemoHouseCompileTest/post-compile hook. Seal v31. (3) Blueprint §14 consolidated (5-session plan). (4) **Session A** (`fac5e8f`): OrderMutationService + addDiscipline() API + AddDisciplineTest 4/4 + W004 migration. (5) **SystemContract.md**: governing document (entity registry, transaction catalogue, three-concern matrix, allocation model). (6) Rosetta Dictionary: Tier 4 compositional verification in TheRosettaStoneStrategy.txt. (7) Blueprint §2.1 CTFL test plan + §2.2 site layout as warehouse put-away. R-PROJ-3 blocking bug (C_Order_ID collision). (8) ACTION_ROADMAP slimmed to navigation hub. LAST_MILE stale markers fixed. AUDIT Appendix I (9 sections).
 **S66** — Task 4A + CP-1 investigation. (1) Task 4A: BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer discipline priority. W-DM-TC5-1 (STR=25, ARC=18, MEP=10). 404/404 GREEN. (2) CP-1: confirmed identity goal already met via MA infrastructure — W-TOT 48428/48428 identity-matched, 92 FRAME mismatches = Gap 6. G3-DIGEST 1mm float precision tracked under Gap 6. (3) Test count sync 55→58, 95→98 (component_library.db evolution). SH/FK/DM gates GREEN. ACTION_ROADMAP + LAST_MILE_PROBLEM updated with cross-references.
 **S65** — DV015 M_Product migration (Step 3). Copied 2,475 M_Product + 46 M_Product_Category from component_library.db to disc_validation.db. 13 Java files: all M_Product reads switched to disc_validation.db. ProductRegistrar dual-write (geometry join + master catalog). SH/FK 7/7. DiscValidationDBTest 27/27 (+3). [AUDIT_S51_FOCUSED.md §Step 3](docs/AUDIT_S51_FOCUSED.md#step-3-implementation-audit-s65-2026-03-24).

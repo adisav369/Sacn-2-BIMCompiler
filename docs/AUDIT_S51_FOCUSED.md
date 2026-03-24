@@ -1352,3 +1352,70 @@ The 5 README commits (0822ce1..bf99c80) slimmed README from ~209 lines to 80 lin
 ### K.6 — Surprises
 
 None. The fix was exactly as specced in ProjectOrderBlueprint.md §14.3. The `createOrder()` method already accepted orderId as a parameter — only the public `drop()` entry point needed the overload.
+
+---
+
+## Appendix L — Session B: OrderLineMutation Engine Report (2026-03-24)
+
+### L.1 — What Changed
+
+Session B implements the validation-as-suggestion pattern (Blueprint §13, §14.3 Session B).
+The existing `OrderMutationService.addDiscipline()` method was refactored to delegate to
+an `OrderLineMutation` interface. Three implementations cover three MEP disciplines.
+
+### L.2 — Files Changed
+
+| File | Action | Lines |
+|------|--------|-------|
+| `api/OrderLineMutation.java` | **NEW** | Interface: `propose(woConn, ruleDb, orderId) → List<ProposedOrderLine>` + `discipline()` |
+| `api/ProposedOrderLine.java` | **NEW** | Record: parentRoomLineId, roomCategory, mepProductId, discipline, qty, placementRule, buildingCode, codeClause |
+| `api/RoomContext.java` | **NEW** | Record + `findRooms()` static method — shared room discovery extracted from OrderMutationService |
+| `api/ELECSuggestion.java` | **NEW** | `implements OrderLineMutation` — ELEC discipline (7 product types), `computeQty()` shared |
+| `api/FPSuggestion.java` | **NEW** | `implements OrderLineMutation` — FP discipline (SPRINKLER, EMERGENCY_LIGHT) |
+| `api/ACMVSuggestion.java` | **NEW** | `implements OrderLineMutation` — ACMV discipline (SUPPLY_DIFFUSER, EXHAUST_FAN, AIRCON_POINT) |
+| `api/OrderMutationService.java` | **MODIFIED** | `addDiscipline()` delegates to SUGGESTIONS map. `proposeAll()` added. `getMutation()` static accessor. Fallback inline path for unmapped disciplines (SP) |
+| `OrderLineMutationTest.java` | **NEW** | 8 tests: interface propose (FP/ELEC/ACMV), delegation backward compat, W-DM-FP-VAL-1, proposeAll, getMutation |
+
+### L.3 — Gate Results
+
+| Gate | Result |
+|------|--------|
+| `mvn compile -q` | CLEAN |
+| AddDisciplineTest (Session A) | 4/4 PASS — backward compat confirmed |
+| OrderLineMutationTest (Session B) | 8/8 PASS |
+| SH Rosetta Stone | 7/7 PASS |
+| Full gate (`run_tests.sh`) | GREEN (6 CalibrationTest errors = pre-existing) |
+
+### L.4 — Witness Results
+
+**W-DM-FP-VAL-1:** FP suggestion fires on order with no existing FP lines.
+- Fresh BOM Drop → 0 FP C_OrderLines exist → `FPSuggestion.propose()` → 4 proposals generated
+- Confirms: validation-as-suggestion fires whether or not FP is present (Absent state in §13.2)
+
+### L.5 — Proposal Counts on SH
+
+| Discipline | Rooms | Lines | Products |
+|-----------|-------|-------|----------|
+| ELEC | 4 | 15 | LIGHT, OUTLET, OUTLET_GFCI, SWITCH, DATA_POINT, CEILING_FAN |
+| FP | 4 | 4 | SPRINKLER |
+| ACMV | 4 | 7 | SUPPLY_DIFFUSER, EXHAUST_FAN, AIRCON_POINT |
+| **Total** | **4** | **26** | **10 unique products** |
+
+### L.6 — ACMV Product Availability
+
+ACMV products exist in `ad_space_type_mep_bom`: AIRCON_POINT, EXHAUST_FAN, SUPPLY_DIFFUSER.
+All three are present across room types. ACMVSuggestion implementation proceeded without issues.
+No products missing from `component_library.db` blocked this session.
+
+### L.7 — Design Decisions
+
+1. **Interface signature:** `propose(Connection woConn, Connection ruleDb, String orderId)` instead of spec's `C_Order order, Connection ruleDb`. No `C_Order` Java class exists — adapted to match existing infrastructure.
+2. **Shared qty computation:** `ELECSuggestion.computeQty()` is package-visible, reused by FP and ACMV. Avoids duplication of the qty_normal / per_area_normal logic.
+3. **SUGGESTIONS map:** Static `Map<String, OrderLineMutation>` on OrderMutationService. Fallback inline path for unmapped disciplines (SP) preserves forward compatibility.
+4. **Propose-then-persist:** Interface `propose()` returns proposals without database mutation. OrderMutationService persists them. Clean separation: rules compute, service persists.
+
+### L.8 — Surprises
+
+None. ACMV products were available. The refactor was clean — `addDiscipline()` continues to work
+identically through the interface delegation path. CalibrationTest 6 errors are pre-existing
+(confirmed by running on stashed code).
