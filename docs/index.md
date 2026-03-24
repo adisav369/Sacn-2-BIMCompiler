@@ -9,13 +9,14 @@ hide:
 ## Construction is manufacturing. A building IS its Bill of Materials.
 
 
-<img align="right" src="assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded" width="240" style="margin-left: 24px; margin-bottom: 12px;">
+<figure style="float: right; margin: 0 0 12px 24px; max-width: 240px; text-align: center;">
+  <img src="assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded" width="240">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">A compiled building in Blender/Bonsai. Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP). Every element placed by arithmetic from a Bill of Materials.</figcaption>
+</figure>
 
 A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an ERP system explodes a manufacturing BOM into work orders.
 
 Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.
-
-*Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP). Every element placed by arithmetic from a Bill of Materials.*
 
 <br clear="right"/>
 
@@ -96,15 +97,18 @@ land at the **same position** as the reference?
 | Duplex (DX) | 1,099 | ALL GREEN | 2-storey, 3 disciplines |
 | Terminal (TE) | 48,428 | ALL GREEN | Airport, 8 disciplines, 505 products |
 
+
+<figure style="float: right; margin: 0 0 12px 24px; max-width: 320px; text-align: center;">
+  <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex compiled in Blender — 48,428 elements" width="320">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">The Terminal (TE) — 48,428 elements, 505 products, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
+</figure>
+
 Once a stone passes exact sameness, its BOM grammar is **certified**. Any new building
 composed from certified grammar inherits the proof.
 
-<figure markdown="span">
-  ![Terminal complex compiled in Blender — 48,428 elements](assets/images/TerminalExternal.jpeg){ width="480" }
-  <figcaption>The Terminal (TE) — 48,428 elements, 505 products, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
-</figure>
-
 [:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
+
+<br clear="right"/>
 
 ---
 
@@ -128,6 +132,12 @@ be elongated. These are mathematical facts, not heuristics.
 
 ## Design in Blender, Compile from BOM
 
+
+<figure style="float: right; margin: 0 0 12px 24px; max-width: 380px; text-align: center;">
+  <img src="assets/images/HTMLYAML.png" alt="BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel" width="380">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">The BIM Designer web UI. BOM tree on the left, DocAction lifecycle buttons (Approve, Complete, Promote) across the top.</figcaption>
+</figure>
+
 The compiler powers a live GUI inside [Blender](https://www.blender.org/) via the
 [Bonsai](https://bonsaibim.org/) addon. Create a building from a single click, edit
 room dimensions with sliders, switch jurisdictions, save/recall design versions, and
@@ -136,12 +146,9 @@ promote a design to a construction-ready work order.
 392 passing tests. The full BOM-to-output pipeline runs behind the GUI — what the user
 sees IS what the compiler produces, deterministically.
 
-<figure markdown="span">
-  ![BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel](assets/images/HTMLYAML.png){ width="480" }
-  <figcaption>The BIM Designer web UI. BOM tree on the left, DocAction lifecycle buttons (Approve, Complete, Promote) across the top.</figcaption>
-</figure>
-
 [:octicons-arrow-right-24: Designer guide](BIM_Designer_UserGuide.md)
+
+<br clear="right"/>
 
 ---
 
