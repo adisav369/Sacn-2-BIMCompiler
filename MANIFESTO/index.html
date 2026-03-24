@@ -642,6 +642,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-application-dictionary-heritage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Application Dictionary Heritage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-three-concerns" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2764,6 +2775,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-application-dictionary-heritage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Application Dictionary Heritage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-three-concerns" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2939,6 +2961,73 @@ problem, we use iDempiere's solution.</p>
 We add three columns to M_BOM_Line: <code>dx</code>, <code>dy</code>, <code>dz</code> — parent-relative
 tack offsets in millimetres. That is the entire difference between a flat
 BOM and a spatial BOM. Three integers turn procurement into construction.</p>
+<hr />
+<h2 id="the-application-dictionary-heritage">The Application Dictionary Heritage<a class="headerlink" href="#the-application-dictionary-heritage" title="Permanent link">&para;</a></h2>
+<p>Compiere introduced the Application Dictionary (AD) in 2000 — metadata that
+defines the system itself. ADempiere inherited it. iDempiere perfected it.
+This project leans on it heavily. If you've administered an iDempiere instance,
+every pattern below will feel familiar.</p>
+<p><em>iDempiere references: <a href="https://wiki.idempiere.org">wiki.idempiere.org</a> ·
+<a href="https://wiki.idempiere.org/en/Application_Dictionary">Application Dictionary</a> ·
+<a href="https://wiki.idempiere.org/en/Manufacturing">Manufacturing</a> ·
+<a href="https://wiki.idempiere.org/en/Validation_Rules">Validation Rules</a> ·
+<a href="https://wiki.idempiere.org/en/Document_Process">DocAction</a></em></p>
+<p><strong>AD_Val_Rule — Validation rules as data, not code.</strong>
+In iDempiere, <code>AD_Val_Rule</code> restricts field values (e.g., "only active Business
+Partners"). Here, the same table enforces building codes: sprinkler spacing</p>
+<blockquote>
+<p>= 3000mm, emergency light within 6m of exit, fire door on every corridor.
+Jurisdiction-scoped — MY/UBBL rules fire for Malaysian buildings, US/IBC for
+American ones. Exactly like tax rules scoped by <code>C_Country</code>.
+→ <a href="../DocValidate/">DocValidate.md</a> · <a href="../DocAction_SRS/">DocAction_SRS.md §5</a></p>
+</blockquote>
+<p><strong>Column Callout — Reactive field logic.</strong>
+In iDempiere, a Callout fires when a user changes a field value (e.g., selecting
+a Business Partner auto-fills the address). Here, <code>DiffVerb + Callout</code> means:
+drag a wall in the viewport → cascading consequences fire (room AABB recalculates,
+furniture re-validates, MEP re-routes). Same pattern, spatial domain.
+→ <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §9</a></p>
+<p><strong>ModelValidator — Event-driven hooks.</strong>
+iDempiere's <code>ModelValidator</code> fires before/after save, before/after delete. Our
+<code>processIt()</code> orchestration follows the identical lifecycle: <code>prepareIt()</code> →
+<code>completeIt()</code> → <code>approveIt()</code>. Each discipline routes through DocEvent — the
+validation engine discovers applicable rules and fires them. No hardcoded logic.
+→ <a href="../DocAction_SRS/">DocAction_SRS.md §1</a></p>
+<p><strong>C_Project — Multi-order grouping.</strong>
+Any ERP person recognises <code>C_Project</code> instantly: project accounting, milestone
+tracking, cross-order budgets. Here, a housing development IS a C_Project.
+200 houses = 200 C_Orders under one C_Project. Site layout = C_ProjectLine
+per plot. The same entity that manages a manufacturing program manages a
+construction site.
+→ <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §2</a></p>
+<p><strong>AD_Org — Discipline as organisational unit.</strong>
+In iDempiere, <code>AD_Org</code> partitions data by business unit. Here, engineering
+disciplines (ARC, STR, FP, ELEC, ACMV) partition the BOM validation space.
+Each discipline is an organisational concern with its own rules, its own
+AD_Val_Rule set, its own validation pass — but sharing the same product catalog.
+→ <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a></p>
+<p><strong>AD_ChangeLog — Full provenance.</strong>
+iDempiere logs every field change: who, when, old value, new value. Our
+<code>ChangelogDAO</code> does the same for every PLACE/DELETE/MOVE/RESIZE. Undo via
+replay. Wikipedia edit history for BOMs. Auditors love this.
+→ <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §10</a></p>
+<p><strong>EntityType (D/U/A) — Dictionary vs User vs Application.</strong>
+iDempiere protects shipped dictionary records from user modification. Our
+<code>X_M_BOM</code> enforces the same: Dictionary records (shipped BOM templates) are
+read-only. User records (verb-created BOMs) are fully mutable. GodMode
+bypass for migrations only. Three-tier protection at the ORM layer.
+→ <a href="../BOMBasedCompilation/">BBC.md §1</a> · <a href="../AUDIT_S51_FOCUSED/">AUDIT Appendix O.7</a></p>
+<p><strong>AD_PrintFormat — Output selection.</strong>
+In iDempiere, <code>AD_PrintFormat</code> controls which columns appear on a printed
+document. Here, the same concept controls which elements render in the
+viewport, which disciplines show in the HTML UI, and which BOM levels
+expand in the tree view. Presentation is configuration, not code.</p>
+<p><strong>Configure-to-Order — Exception-based ordering.</strong>
+iDempiere's BOM Configurator lets a sales rep exclude optional components
+or set quantities at order time. Our exception-based ordering (qty=0 removes
+a subtree, reference class compresses N copies) is the identical pattern
+applied to buildings. 200 houses, 6 lines of exceptions each.
+→ <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §1</a></p>
 <hr />
 <h2 id="the-three-concerns">The Three Concerns<a class="headerlink" href="#the-three-concerns" title="Permanent link">&para;</a></h2>
 <p>iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
