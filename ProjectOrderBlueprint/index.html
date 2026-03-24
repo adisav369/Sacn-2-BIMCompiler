@@ -6198,7 +6198,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.</p>
 - Three-concern separation enforced by OrderLineInterfaceContractTest (W-LOCK-1..6)</p>
 <h3 id="143-implementation-sessions">14.3 Implementation Sessions<a class="headerlink" href="#143-implementation-sessions" title="Permanent link">&para;</a></h3>
 <p><strong>Session 0: Fix R-PROJ-3 — C_Order_ID collision (prerequisite for §2)</strong>
-<em>Status: NOT STARTED. Blocking bug found by S67 CTFL audit.</em></p>
+<em>Status: DONE (2026-03-24). BomDropper.drop() parameterized with explicit orderId. W-PROJ-ID-1 witness passes. GAP-SC-8 CLOSED.</em></p>
 <p>BomDropper.java:48 uses <code>entry.docTypeId()</code> as C_Order PK (<code>orderId = entry.docTypeId()</code>).
 Line 85-86 DELETEs any existing order with that ID before INSERT. When multiple orders
 share the same DocType (e.g., 180 houses all type RE_SH), each drop wipes the previous.
