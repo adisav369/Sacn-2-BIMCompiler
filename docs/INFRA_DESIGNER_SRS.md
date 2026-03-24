@@ -1,5 +1,5 @@
 # Infrastructure Designer SRS
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 2.0 | **Date:** 2026-03-20
 **Scope:** Designer UX for infrastructure (bridge/road/rail/tunnel) + terrain-following placement

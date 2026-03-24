@@ -1,5 +1,5 @@
 # TACK-FIX Method Specification
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 (2026-03-18, session 21)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §4, [DATA_MODEL.md](DATA_MODEL.md) §1.2

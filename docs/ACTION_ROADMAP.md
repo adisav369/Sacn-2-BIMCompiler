@@ -33,7 +33,7 @@
 | **Onboard a new IFC** | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) (8-step recipe) |
 | **Check what's broken** | §Known Debt below + [SystemContract.md §10](SystemContract.md) (gap register) |
 | **Run the pipeline** | [WorkOrderGuide.md](WorkOrderGuide.md) (step-by-step) |
-| **Understand ERP mapping** | [ConstructionAsERP.md](ConstructionAsERP.md) (C_Order, three-concern) |
+| **Understand ERP mapping** | [SystemContract.md](SystemContract.md) (C_Order, three-concern) |
 | **See the schema** | [DATA_MODEL.md](DATA_MODEL.md) + [DATABASE_SCHEMA.md](../database/DATABASE_SCHEMA.md) |
 | **Check the audit trail** | [AUDIT_S51_FOCUSED.md](AUDIT_S51_FOCUSED.md) (Appendix A-I) |
 
@@ -107,7 +107,7 @@ R-PROJ-3 (Session 0) must be fixed before C_Project work.
 | R22 | Extract I_Element_Connectivity | MED | TODO — enables future MEP routing |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | BACKLOG |
 | BBC-002 | BomValidator verb fidelity in compliance report | LOW | BACKLOG |
-| R19 | Update ConstructionAsERP.md dual architecture | DOC | BACKLOG |
+| R19 | Update SystemContract.md dual architecture | DOC | BACKLOG |
 | VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | KNOWN LIMIT |
 
 ---

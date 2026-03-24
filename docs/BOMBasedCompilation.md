@@ -5,17 +5,11 @@
 *If you can bill it, you can build it. If you can BOM it, you can compile it.*
 
 > **Core thesis:** A building is a manufactured product. Its Bill of Materials IS the
-> building — every wall, door, pipe, and cabinet is a line item with a position.
-> A compiler that reads BOM data and produces 3D coordinates is doing the same thing
-> an ERP system does when it explodes a manufacturing BOM into work orders.
+> building. See **[MANIFESTO.md](MANIFESTO.md)** for the full ERP world view.
 
 ---
 
-## 1. Why BOM Metadata Solves Construction
-
-Construction software treats buildings as geometry problems — draw walls, place
-doors, route pipes. ERP software treats products as data problems — BOMs, work
-orders, procurement. This project proves they are the **same problem**.
+## 1. iDempiere Entity Mapping
 
 | Manufacturing concept | Construction equivalent |
 |----------------------|----------------------|
@@ -40,16 +34,10 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
                               group    (door, pipe, cabinet)
 ```
 
-**Two selection dimensions** (iDempiere product pattern):
+**Two selection dimensions** (see [MANIFESTO.md](MANIFESTO.md) §The Pattern for the full rationale):
 
-1. **Category** (M_Product_Category) — WHAT: ARC, STR, FP, KITCHEN, BEDROOM, BATHROOM. Products belong to categories. No separate M_BomCategory table needed — the product category IS the classification
-2. **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm. Determines which child BOM fits in a given slot
-
-**Provenance** (m_bom.doc_sub_type: SH, DX, TE) is metadata — WHO extracted it. Not a selection dimension. Stays on m_bom as audit trail but does not drive compilation or BOM Drop.
-
-**Why this is powerful:** Adding a new building type requires zero Java code.
-Create an M_Product with IsBOM=Y, add M_BOM + M_BOM_Line children, and the
-compiler handles it. The same way an ERP handles a new product — data, not code.
+1. **Category** (M_Product_Category) — WHAT: ARC, STR, FP, KITCHEN, BEDROOM, BATHROOM
+2. **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm
 
 ### 1.1 Disciplines Are Metadata, Not Structure
 
@@ -1311,8 +1299,8 @@ have the form that `extract.py` actually emits — check extraction output, not 
 
 ---
 
-*Detailed architecture: [`ConstructionAsERP.md`](ConstructionAsERP.md) |
-BOM dimensions: [`ConstructionAsERP.md`](ConstructionAsERP.md) Appendix A |
+*Detailed architecture: [`SystemContract.md`](SystemContract.md) |
+BOM dimensions: [`SystemContract.md`](SystemContract.md) Appendix A |
 Assembly hierarchy: [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 Terminal ERP model: [`TerminalAnalysis.md`](TerminalAnalysis.md) §ERP Model Architecture |
 Action roadmap: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md)*

@@ -1,6 +1,6 @@
 # BIM COBOL — The Construction Programming Language
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 **Version:** 1.0
 **Date:** 2026-03-08
@@ -8,7 +8,7 @@
 **Status:** ACTIVE — **63 verbs implemented, 196 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
-**Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
+**Supplements:** SystemContract.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (PP_Order_Node lineage)
 
 ---
 
@@ -1566,7 +1566,7 @@ Verb invocations are stored as structured rows, following the iDempiere Manufact
 
 **Rationale:** Multi-user GUI editing, per-verb lifecycle tracking (DR→IP→CO→VO),
 queryable parameters, Bonsai form-based verb editing, and familiar iDempiere ERP pattern.
-See `docs/ADHistory.md` §Manufacturing Workflow for the iDempiere parallel.
+See `docs/DocAction_SRS.md` §1 for the iDempiere parallel.
 
 ```sql
 -- iDempiere Manufacturing: PP_Order_Node = one production operation step
@@ -1665,7 +1665,7 @@ Spatial containers stay in `co_empty_space_line` (WHERE).
 - Verb line targets ESLine via `co_emptyspace_line_id` FK
 - Multiple verbs target the same ESLine (TILE + ARRAY + ROUTE on one slab)
 - ESLine WMS columns (capacity_mm, filled_mm, remaining_mm) track verb consumption
-- See `ADHistory.md` §S_Resource Parallel
+- Parallels iDempiere S_Resource (warehouse slot) — see `DocAction_SRS.md` §1
 
 **BomCategory unchanged:** Still drives template composition (BomCategoryLine.Sequence
 = priority). Verbs attach downstream at the ESLine level, not at category level.
@@ -1679,7 +1679,7 @@ The deprecation path (NORM-3a Phase D→E) aligns with this migration.
 2. **Phase 2** — VerbStage with fallback to RelationalResolver for legacy buildings.
 3. **Phase 3** — Drop placement columns from c_orderline schema. Remove RelationalResolver. SH/DX migrated to verb recipes.
 
-Full analysis: `ConstructionAsERP.md` §11.9.
+Full analysis: `BBC.md` §1.
 
 > **Phase 1 — CURRENT:** Create verb tables in {PREFIX}_BOM.db (DDL above). Additive, no breakage.
 > c_orderline becomes WHAT-only — Java PO class has no placement setters.
@@ -3421,7 +3421,7 @@ Flat (unfactored): 770 lines
 
 **Status:** SPEC (2026-03-19, session 24)
 **Depends on:** output.db schema (`elements_meta`, `elements_rtree`, `element_instances`),
-DocValidate.md §15.5 (M1-M17 rules), ConstructionAsERP.md §1.3 (output.db)
+DocValidate.md §15.5 (M1-M17 rules), DATA_MODEL.md §4 (output.db)
 
 ### 20.1 The Problem: Spatial Boilerplate
 

@@ -1,6 +1,6 @@
 # BIM Intent Compiler — Source Code Guide
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md)
 
 **Version 3.0**
 
@@ -37,7 +37,7 @@ The Prime Rule ("Extract or Compile Only") is enforced by 6 verification gates, 
 > **Further reading:**
 > - Challenge paper: `docs/IntentBIMChallengePaper.pdf`
 > - Full compilation spec: `docs/BOMBasedCompilation.md`
-> - Construction-as-ERP model: `docs/ConstructionAsERP.md`
+> - Construction-as-ERP model: `docs/SystemContract.md`
 
 ---
 
@@ -60,7 +60,7 @@ If the plate has anchovies that aren't on the menu or in the pantry — *that's 
 
 iDempiere's Manufacturing BOM tables (`M_BOM`, `M_BOM_Line`, `M_Product`, `C_DocType`, `C_Order`) already encode the relationships between finished goods, sub-assemblies, and raw materials. A building is just a very large finished good.
 
-> **Deep dive:** Schema details → [`DATA_MODEL.md`](DATA_MODEL.md) | iDempiere mapping → [`ConstructionAsERP.md`](ConstructionAsERP.md)
+> **Deep dive:** Schema details → [`DATA_MODEL.md`](DATA_MODEL.md) | iDempiere mapping → [`SystemContract.md`](SystemContract.md)
 
 ---
 
@@ -615,7 +615,7 @@ VERIFIED ✓ (or drift detected ✗)
 | If you want to... | Read this |
 |-------------------|-----------|
 | Understand the full compilation spec | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
-| See the ERP-to-construction mapping | [`ConstructionAsERP.md`](ConstructionAsERP.md) |
+| See the ERP-to-construction mapping | [`SystemContract.md`](SystemContract.md) |
 | Learn the 4-DB schema in detail | [`DATA_MODEL.md`](DATA_MODEL.md) |
 | Read the BIM COBOL verb catalog | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Understand test architecture & anti-drift | [`TestArchitecture.md`](TestArchitecture.md) |

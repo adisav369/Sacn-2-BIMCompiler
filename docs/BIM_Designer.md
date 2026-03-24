@@ -1,8 +1,8 @@
 # BIM Designer — GUI Architecture from Existing Infrastructure
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-17)
-**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [ConstructionAsERP.md](ConstructionAsERP.md), [BIM_COBOL.md](BIM_COBOL.md)
+**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [SystemContract.md](SystemContract.md), [BIM_COBOL.md](BIM_COBOL.md)
 
 > The compiler already knows how to build. The GUI is a parameter chooser that
 > triggers compilation and shows the result. Every concept the designer needs
@@ -55,7 +55,7 @@ repeating patterns into formulas with quantities; the compiler expands them
 to output instances. This factorization (TE-6 TILE SURFACE compression: 34K
 ARC plates → ~20 formulas) is a prerequisite for the designer — you edit
 pattern rules, not 48K individual placements. See
-[ConstructionAsERP.md](ConstructionAsERP.md) §11 for the BOM dimension model.
+[BBC.md](BOMBasedCompilation.md) §1 for the BOM dimension model.
 
 ### Federation Menu — Item 0: Compile / Item 1: Preview / Item 2: Create New
 
@@ -351,7 +351,7 @@ editable designs. `GodMode.txt` override exists for developers.
 
 ### 2.6 Three BOM Dimensions → Chooser Panels
 
-The 3 BOM dimensions ([ConstructionAsERP.md](ConstructionAsERP.md) Appendix A) map directly
+The 3 BOM dimensions ([BBC.md](BOMBasedCompilation.md) §1) map directly
 to GUI chooser panels:
 
 | Dimension | Drives | GUI panel |
@@ -368,7 +368,7 @@ options from the catalog automatically.
 
 ## 3. Three-Concern Lock → GUI Safety
 
-The three-concern lock ([ConstructionAsERP.md §11.9](ConstructionAsERP.md))
+The three-concern lock ([SystemContract.md §4](SystemContract.md))
 prevents the GUI from corrupting spatial data:
 
 | Table | Concern | GUI access |
@@ -1310,7 +1310,7 @@ Real projects would use the full component_library.db catalog.
 
 *Related docs:
 [BOMBasedCompilation.md](BOMBasedCompilation.md) (compilation method, tack convention) |
-[ConstructionAsERP.md](ConstructionAsERP.md) (4-DB architecture, three-concern lock) |
+[DATA_MODEL.md](DATA_MODEL.md) (4-DB architecture) + [SystemContract.md](SystemContract.md) (three-concern) |
 [BIM_COBOL.md](BIM_COBOL.md) (verb language spec) |
 [DocValidate.md](DocValidate.md) (validation engine, building codes, jurisdiction) |
 [SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |
@@ -3031,7 +3031,7 @@ Implementation target: G-8 or parallel track.
 *References:
 [DocValidate.md](DocValidate.md) (validation rules, AD_Val_Rule schema) |
 [BlenderBridge.md](BlenderBridge.md) (incremental viewport, delta applicator) |
-[ConstructionAsERP.md](ConstructionAsERP.md) (C_Order, iDempiere patterns) |
+[SystemContract.md](SystemContract.md) (C_Order, iDempiere patterns) |
 [SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |
 [InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping) |
 [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) (market analysis, paradigm shift) |

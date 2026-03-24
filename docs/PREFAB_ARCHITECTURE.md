@@ -1,9 +1,9 @@
 # Prefab Assembly Architecture
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
-*Extends: `ConstructionAsERP.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
-*Dimension model: [ConstructionAsERP.md](ConstructionAsERP.md) Appendix A — Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)*
+*Extends: `SystemContract.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
+*Dimension model: [BBC.md](BOMBasedCompilation.md) §1 — Category (M_Product_Category) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)*
 
 > **Update (2026-03-06):** Phase G-1 completed. Class renames applied throughout this document:
 > - `FixturePlacer` → deleted (placement logic absorbed into `BOMTierResolver`)
@@ -13,7 +13,7 @@
 > - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
 > - `RelationalResolver` → deleted (PlacementLoader now loads from `{PREFIX}_BOM.db` via `loadFromBOM()`)
 > - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
-> - `ARCHITECTURE.md` → archived (use `ConstructionAsERP.md` + `SourceCodeGuide.md`)
+> - `ARCHITECTURE.md` → archived (use `SystemContract.md` + `SourceCodeGuide.md`)
 >
 > Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
 > Core BOM hierarchy content is current. Examples referencing deleted classes have been updated below.
@@ -53,7 +53,7 @@ MRP Execution      MRP Run             mvn test (compile)                      V
 > `PP_Order_Node` (verb invocation = production operation) and `PP_Order_NodeProduct`
 > (structured parameters per verb). No custom names — BIM semantics in column comments only.
 > Each verb invocation has per-line doc_status lifecycle (DR→IP→CO→VO).
-> See `docs/BIM_COBOL.md` §15.6 for full schema. See `docs/ADHistory.md` §Manufacturing Workflow.
+> See `docs/BIM_COBOL.md` §15.6 for full schema. See `docs/DocAction_SRS.md` §1 for iDempiere parallel.
 
 **The compilation model:**
 - **BIM** = the C_Order (Construction Order). Scoped by `C_BPartner`.
@@ -77,8 +77,8 @@ compiling. The compiler reads the final schedule — it does not care what edits
 > c_orderline; placement moves to `PP_Order_Node` + `PP_Order_NodeProduct`.
 > CO_EmptySpaceLine is promoted to spatial workstation (≈ `S_Resource`), targeted by verbs
 > via `co_emptyspace_line_id` FK. BomCategory is unaffected — still drives template
-> composition via Sequence priority. See `ConstructionAsERP.md` §11.9 for migration phases.
-> See `ADHistory.md` §S_Resource Parallel for the iDempiere mapping.
+> composition via Sequence priority. See `BBC.md` §1 for migration phases.
+> Parallels iDempiere S_Resource (warehouse slot) — see `DocAction_SRS.md` §1.
 
 ## BOM Drop Positional Chain — Where Each Level Sits
 
@@ -102,7 +102,7 @@ BUILDING_SH_STD                       ← building unit C_OrderLine
 │   host_type=BUILDING             family_ref=BUILDING_SH_STD
 │   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
 │
-├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see ConstructionAsERP.md)
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see SystemContract.md)
 ├── ROOF_ASSEMBLY  dZ=3000mm         ← roof (pending)
 │
 └── FLOOR_SH_GF_STD  "Ground Floor"    ← floor Orderline
@@ -132,7 +132,7 @@ BUILDING_SH_STD                       ← building unit C_OrderLine
 BUILDING_DX_STD                    ← building unit Orderline
 │   world footprint: 8383 × 17384mm
 │
-├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see ConstructionAsERP.md)
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see SystemContract.md)
 │
 ├── FLOOR_DX_L1_STD  "Level 1"     ← floor Orderline
 │   │   dZ = 0mm
@@ -187,7 +187,7 @@ For **ROOM-level** Orderlines (Phase BOM-1, already live):
 
 ### iDempiere Naming Convention
 
-> **Full dimension model:** see [ConstructionAsERP.md](ConstructionAsERP.md) Appendix A §1–§2.
+> **Full dimension model:** see [BBC.md](BOMBasedCompilation.md) §1.
 > M_Product is flattened into M_BOM. `m_bom_line` = M_BOM_Line.
 > Three orthogonal dimensions: `BOMCategory` (M_BomCategory — WHAT), `C_BPartner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
 
@@ -1413,7 +1413,7 @@ orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 
 The PhantomLayout is the Empty Storage record for the SpaceSize M_Locator.
 M_Locator = the grid cell (SpaceSize AABB in mm) that bounds the placement position.
-Full SpaceSize AABB spatial model: see `ConstructionAsERP.md`.
+Full SpaceSize AABB spatial model: see `SystemContract.md`.
 
 ---
 

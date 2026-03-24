@@ -1,5 +1,5 @@
 # BIM Designer SRS — UX Requirements & User Journeys
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-20)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §17-18, [G4_SRS.md](G4_SRS.md), [DocValidate.md](DocValidate.md) §15,
@@ -3526,5 +3526,5 @@ This is the DocEvent path — validation rules ARE the placement engine.
 [TestArchitecture.md](TestArchitecture.md) (traceability matrix, witness convention) |
 [BIM_COBOL.md](BIM_COBOL.md) §20 (spatial predicate verbs) |
 [BlenderBridge.md](BlenderBridge.md) (Java-smart/Python-dumb, incremental viewport) |
-[ConstructionAsERP.md](ConstructionAsERP.md) (iDempiere M_Product/C_Order model) |
+[SystemContract.md](SystemContract.md) (iDempiere M_Product/C_Order model) |
 [WorkOrderGuide.md](WorkOrderGuide.md) (pipeline flow, invention boundary)*

@@ -1,8 +1,8 @@
 # DocValidate — Construction Validation Engine
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-18)
-**Depends on:** [ConstructionAsERP.md](ConstructionAsERP.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md)
+**Depends on:** [SystemContract.md](SystemContract.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md)
 
 *iDempiere's `IDocActionInterceptor` / `ModelValidator` architecture applied to
 BIM placement compliance, clash detection, and building code enforcement.*
@@ -1670,7 +1670,7 @@ predicate upgrades internally (AABB fallback → FK join) without changing calle
 
 *References:
 [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md) (discipline BOM structure) |
-[ConstructionAsERP.md](ConstructionAsERP.md) §11 (C_Order model) |
+[BBC.md](BOMBasedCompilation.md) §1 (C_Order model) |
 [BIM_Designer.md](BIM_Designer.md) §4 (compliance as compilation constraint), §9 (container rules), §11 (BonsaiBIMDesigner) |
 [TestArchitecture.md](TestArchitecture.md) (ProveStage gates) |
 [phase27-tb-lktn/DSL_DICTIONARY.md](phase27-tb-lktn/DSL_DICTIONARY.md) (TB-LKTN generative reference) |

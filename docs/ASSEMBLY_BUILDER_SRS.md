@@ -1,5 +1,5 @@
 # Assembly Builder SRS — G-7 Layer-by-Layer TACK
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 (2026-03-19, session 35)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §18.2 Principle 4, §18.5 MAKE path;

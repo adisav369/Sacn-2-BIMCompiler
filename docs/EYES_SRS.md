@@ -1,5 +1,5 @@
 # BIMEyes SRS — Geometric Comprehension Engine
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 (2026-03-21, session 49)
 **Depends on:** [LAST_MILE_PROBLEM](LAST_MILE_PROBLEM.md) §Geometric Fingerprint, [DISC_VALIDATE_SRS](DISC_VALIDATE_SRS.md) §DV010, [TestArchitecture](TestArchitecture.md) §Traceability Matrix

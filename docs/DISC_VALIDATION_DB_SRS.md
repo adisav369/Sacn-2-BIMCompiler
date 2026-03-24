@@ -1,5 +1,5 @@
 # DiscValidation.db SRS — Discipline Validation Database
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
 **Depends on:** [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocAction_SRS.md](DocAction_SRS.md) §1.3, [CALIBRATION_SRS.md](CALIBRATION_SRS.md)
@@ -499,7 +499,7 @@ product catalogs — all from a single FK.
 
 > **Status:** COMPLETE (investigation). No code changes. Findings ready for implementation review.
 > **Method:** Grep + read of all Java source, SQL migrations, schema snapshots.
-> **Cross-referenced against:** AUDIT_S51_FOCUSED.md Appendix F, ConstructionAsERP.md, BBC.md §2.
+> **Cross-referenced against:** AUDIT_S51_FOCUSED.md Appendix F, SystemContract.md, BBC.md §2.
 
 ---
 

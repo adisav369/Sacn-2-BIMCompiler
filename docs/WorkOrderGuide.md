@@ -1,6 +1,6 @@
 # Work Order Guide
 > *Renamed from YAMLGuide.md — the pipeline follows ERP Manufacturing BOM / Work Order patterns, not YAML-specific workflow.*
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 ## Quick Start — For Users
 
@@ -438,7 +438,7 @@ The BOM DB references products by ID. The library is the source of truth for pro
 definitions, geometry, and orientation. Products are reused across buildings.
 
 BOM data model: [`BOMBasedCompilation.md`](BOMBasedCompilation.md).
-ERP context (C_Order, BOM decisions): [`ConstructionAsERP.md`](ConstructionAsERP.md) §11.
+ERP context (C_Order, BOM decisions): [`BBC.md`](BOMBasedCompilation.md) §1.
 Schema reference: [`DATA_MODEL.md`](DATA_MODEL.md).
 
 ### Step 6 — Compilation and delta verification
@@ -512,7 +512,7 @@ Existing migration: `migration/DV006_infra_bridge_rules.sql` (13 rules, 29 param
 | Delta count mismatch | Composition pairing issue | Check mirror `position` matches party wall center |
 
 QA architecture: [`TestArchitecture.md`](TestArchitecture.md).
-ERP model context: [`ConstructionAsERP.md`](ConstructionAsERP.md).
+ERP model context: [`SystemContract.md`](SystemContract.md).
 
 ## What NOT to Do
 
@@ -795,10 +795,10 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 
 | Topic | Document |
 |-------|----------|
-| ERP model (C_Order, BOM, decisions) | [`ConstructionAsERP.md`](ConstructionAsERP.md) |
+| ERP model (C_Order, BOM, decisions) | [`SystemContract.md`](SystemContract.md) |
 | Spatial MRP (construction as ERP II) | [`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) |
 | BOM compilation, tack §4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
-| BIM as BOM concept | [`ConstructionAsERP.md`](ConstructionAsERP.md) Appendix A |
+| BIM as BOM concept | [`SystemContract.md`](SystemContract.md) Appendix A |
 | Conceptual blueprint | [`CONCEPTUAL BLUEPRINT.txt`](CONCEPTUAL%20BLUEPRINT.txt) |
 | Rosetta Stone strategy | [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md) |
 | BIM Designer vision | [`BIM_Designer.md`](BIM_Designer.md) |

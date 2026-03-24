@@ -1,5 +1,5 @@
 # The Last Mile Problem: Six Honest Gaps
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Date:** 2026-03-17
 **Previous version:** `docs/archive/LAST_MILE_PROBLEM.md` (2026-02-20)
@@ -514,7 +514,7 @@ elements resolve per-instance geometry from library via GUID chain.
 
 ## Gap 8: Database Separation Drift — Non-Drift Audit (session 21)
 <!-- @Traces BBC.md §2.1 — IFC→BOM stage (5-split DB architecture) -->
-<!-- @Traces ConstructionAsERP.md §1.4 — DB separation (library/BOM/output/validation/work_output) -->
+<!-- @Traces DATA_MODEL.md §1 — DB separation (library/BOM/output/validation/work_output) -->
 
 **Audit date:** 2026-03-18. Four spec claims checked against reality.
 
@@ -535,7 +535,7 @@ Target: remove BOM-side M_Product when all consumers use disc_validation.db.
 | # | Violation | Rows | Severity | Spec says |
 |---|-----------|------|----------|-----------|
 | ~~V1~~ | ~~`I_Element_Extraction` still has 49,582 rows~~ | ~~49,582~~ | ~~MEDIUM~~ | **DONE** — R17/V006 migration DROP'd I_Element_Extraction (commit `854741f`) |
-| V2 | 60+ `ad_*` config tables (ad_space_type, ad_wall_type, ad_floor_type, ad_building_storey, etc.) | ~34 populated | HIGH | ConstructionAsERP.md §1.1 says component_library.db = "LOD geometry store + product catalog". Config tables are Application Dictionary — they should be in {PREFIX}_BOM.db or a dedicated config.db. |
+| V2 | 60+ `ad_*` config tables (ad_space_type, ad_wall_type, ad_floor_type, ad_building_storey, etc.) | ~34 populated | HIGH | DATA_MODEL.md §1 says component_library.db = "LOD geometry store + product catalog". Config tables are Application Dictionary — they should be in {PREFIX}_BOM.db or a dedicated config.db. |
 | ~~V3~~ | ~~Legacy BOM tables: `ad_bom`, `ad_bom_child`, `ad_bom_child_param`~~ | ~~~173~~ | ~~LOW~~ | **DONE** — R18/V006 migration DROP'd all three tables (commit `854741f`) |
 
 **V2 is the most significant.** The compiler reads ad_space_type, ad_wall_type,
@@ -578,7 +578,7 @@ binary), but must not be confused with the source DBs being mixed.
 |---|--------|-----------|----------|--------|
 | R17 | DELETE FROM I_Element_Extraction in component_library.db | V1 | MEDIUM | **DONE** — V006 migration (commit `854741f`): DROP TABLE I_Element_Extraction |
 | R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **DONE** — V006 migration (commit `854741f`): all three tables dropped |
-| R19 | Update ConstructionAsERP.md §1.1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
+| R19 | Update DATA_MODEL.md §1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
 | R20 | Migrate test extraction fixtures out of component_library.db | §8.3 test dependency | LOW | **DEFER** — tests work as-is |
 | R21 | Extract `host_element_ref` from `IfcRelVoidsElement` into m_bom_line | Schema-Not-Geometry §15.6 | MED | **DONE** (S60-S2 code, S60-S3 re-extract). SH: 7 fills, FK: 16 fills. Pipeline verified 7/7 PASS. |
 | R22 | Extract `I_Element_Connectivity` linking table from `IfcRelConnectsElements` | Schema-Not-Geometry §15.6 | MED | **TODO** — M13/M14/M15 upgrade from positional grouping |

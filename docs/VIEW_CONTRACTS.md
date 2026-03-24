@@ -1,11 +1,11 @@
 # View Contracts — The Compiler's Data Access Layer
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 2.1
 **Date:** 2026-02-23
 **Status:** GOVERNING — defines the data contract between base AD tables and the compiler
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Supplements:** PREFAB_ARCHITECTURE.md, METADATA_DRIVEN_ARCHITECTURE.md
+**Supplements:** PREFAB_ARCHITECTURE.md, DATA_MODEL.md
 **iDempiere analogues:** C_Order/C_OrderLine lifecycle, M_Product catalog, MRP BOM explosion
 
 **Changes from v1.9:**

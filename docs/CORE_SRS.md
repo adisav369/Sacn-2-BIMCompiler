@@ -1,5 +1,5 @@
 # CORE SRS — BIM Intent Compiler Platform
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 | **Date:** 2026-03-19
 **Scope:** Scale research, reporting engine, industry gap closure, moat strategy
@@ -629,7 +629,7 @@ CREATE TABLE IF NOT EXISTS AD_Report_Config (
 | `BIM_Designer.md` | UI specification (all presentation-layer details) |
 | `StrategicIndustryPositioning.md` | Market analysis, competitive matrix, moat thesis |
 | `BOMBasedCompilation.md` | Master spec: tack, walker, verb grammar, pipeline |
-| `ConstructionAsERP.md` | iDempiere table mapping, C_Order model |
+| `SystemContract.md` | iDempiere table mapping, C_Order model |
 | `DocValidate.md` | Validation architecture, AD_Val_Rule |
 | `InfrastructureAnalysis.md` | Infrastructure IFC4X3, segment mapping |
 | `CALIBRATION_SRS.md` | Extraction oracle vs rule prediction |

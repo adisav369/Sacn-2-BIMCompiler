@@ -1,8 +1,8 @@
 # G-4 SRS — work_output.db + Validation Engine
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
-**Depends on:** [BIM_Designer.md](BIM_Designer.md) §17.10, [DocValidate.md](DocValidate.md) §15, [ConstructionAsERP.md](ConstructionAsERP.md) §2-3
+**Depends on:** [BIM_Designer.md](BIM_Designer.md) §17.10, [DocValidate.md](DocValidate.md) §15, [SystemContract.md](SystemContract.md) §2
 **Pre-requisite:** TACK-FIX (see [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md))
 
 ---
@@ -877,6 +877,6 @@ grid pitch formula) — both addressable as data changes, no schema changes need
 *References:
 [BIM_Designer.md](BIM_Designer.md) §17.10 (three-tier persistence) |
 [DocValidate.md](DocValidate.md) §15 (code-level specs) |
-[ConstructionAsERP.md](ConstructionAsERP.md) §2-3 (C_Order model) |
+[SystemContract.md](SystemContract.md) §2 (C_Order model) |
 [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md) (pre-requisite fix) |
 [ACTION_ROADMAP.md](ACTION_ROADMAP.md) Phase G (task list)*

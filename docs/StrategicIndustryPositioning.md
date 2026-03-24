@@ -616,6 +616,6 @@ They solve design. This solves construction.
 *[`BIM_Designer_SRS.md`](BIM_Designer_SRS.md) — UX requirements, user journeys, Inference Engine (§14), WF-BB Protocol (§26)*
 *[`TerminalAnalysis.md`](TerminalAnalysis.md) — forensics + ERP architecture*
 *[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) — bridge/road/rail domain mapping*
-*[`ConstructionAsERP.md`](ConstructionAsERP.md) — full ERP model documentation*
+*[`SystemContract.md`](SystemContract.md) — ERP model documentation*
 *[`bim_designer_erd.html`](bim_designer_erd.html) — interactive ERD (4 tabs)*
 *[`BIM_Designer_UserGuide.md`](BIM_Designer_UserGuide.md) — setup + usage guide (v0.4)*

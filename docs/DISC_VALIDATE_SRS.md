@@ -1,5 +1,5 @@
 # Multi-Discipline BOM Design
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 ## CTFL Review Status (session 33, 2026-03-19)
 
@@ -764,7 +764,7 @@ Implementation is BLOCKED until these claims are written as `@Test` methods.
 
 ---
 
-*References: ConstructionAsERP.md §11.38 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
+*References: BBC.md §1 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
 TheRosettaStoneStrategy.md (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
 DocAction_SRS.md §1 (processIt lifecycle), DocValidate.md §13 (three-tier cascade),
 BIM_COBOL.md §4.6 (joining verbs)*

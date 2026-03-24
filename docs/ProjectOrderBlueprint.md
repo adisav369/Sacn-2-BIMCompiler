@@ -1,6 +1,6 @@
 # Project Order Blueprint
 
-> **Foundation:** [ConstructionAsERP](ConstructionAsERP.md) · [BBC](BOMBasedCompilation.md) · [BIM_Designer_SRS](BIM_Designer_SRS.md)
+> **Foundation:** [SystemContract](SystemContract.md) · [BBC](BOMBasedCompilation.md) · [BIM_Designer_SRS](BIM_Designer_SRS.md)
 
 ## Executive Brief
 
@@ -41,9 +41,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.
 | §11 | The 8th D — ERP as Business Intelligence | $500B/yr industry waste becomes queryable from one database |
 | §12 | Callout rule library — compliance packs by jurisdiction | UBBL, IBC, NFPA as importable rule sets — name-dropping that sells |
 
-**The core thesis.** Manufacturing solved procurement, scheduling, cost
-control, and quality decades ago with MRP/ERP. Construction never had a
-Bill of Materials. This project provides one. Everything else follows.
+**The core thesis.** See [MANIFESTO.md](MANIFESTO.md).
 
 ---
 
@@ -100,10 +98,10 @@ order library; the engine is infrastructure.
 
 **Relationship to existing patterns:**
 - Extends bomDrop (BBC §3.4) with selective explosion
-- Uses swapProduct from the Universal Configurator (ConstructionAsERP §D.5) at targeted locator_refs
+- Uses swapProduct from the Universal Configurator (ProjectOrderBlueprint.md §1) at targeted locator_refs
 - Category constraint enforced by M_Product_Category (same as BOM Selection Cascade BBC §3.5)
 - Validation exceptions via AD_Val_Rule_Exception (§U6, `MValRuleException`)
-- Compatible with BIM Designer Save/Recall/Promote lifecycle (ConstructionAsERP §1.4) — the exception order is what gets Promoted
+- Compatible with BIM Designer Save/Recall/Promote lifecycle (DATA_MODEL.md §1) — the exception order is what gets Promoted
 
 ### 1.1 Exception Algebra — Four Complete Mutations
 
@@ -1491,6 +1489,6 @@ Only the last order survives.
 | BBC.md §3.3-3.5 | Defines Instant Drop, BOM Drop, Selection Cascade — the foundation | Add forward reference to this §14 |
 | ACTION_ROADMAP.md Task 4 | Previous home of this plan — now a pointer here | Slim to pointer |
 | LAST_MILE_PROBLEM.md §Layer 2 | Generative buildings use same pipeline — no special test | Reference only |
-| ConstructionAsERP.md | ERP patterns (DocAction, three-concern separation) | Reference only |
+| SystemContract.md | ERP patterns (DocAction, three-concern separation) | Reference only |
 | DemoHouseAnalysis.md §6 | FP readiness assessment for DemoHouse | Data inventory for Session A |
 | GENERATIVE_HOUSE_SRS.md §10.4 | TC-5 session plan | Superseded by this §14 |

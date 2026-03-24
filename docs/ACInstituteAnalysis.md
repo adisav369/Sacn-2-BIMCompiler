@@ -1,5 +1,5 @@
 # AC11 Institute Analysis — AC11_Institute_IFC2x3.ifc Guardrails
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Stone:** candidate #5 (German institutional — IFC2x3 ArchiCAD export)
 **Created:** 2026-03-20 (session 38b preparation)

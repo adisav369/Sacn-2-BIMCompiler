@@ -1,5 +1,5 @@
 # Terminal Recomposition — SJTII_Terminal Forensics
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 ## CTFL Review Status (session 31-34, 2026-03-19)
 
@@ -1443,7 +1443,7 @@ independent BOMs are correct and 42.8:1 is the natural compression limit.
 ---
 
 **Cross-references:**
-[`ConstructionAsERP.md`](ConstructionAsERP.md) §11.8 |
+[`BBC.md`](BOMBasedCompilation.md) §1.8 |
 [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §3-§4 (governing spec) |
 [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 [`terminal_erd.html`](terminal_erd.html) (interactive ERD) |

@@ -1,5 +1,5 @@
 # Tier 1 SRS — 4D, 5D, 6D, 7D, Audit Trail, 3D Native
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 | **Date:** 2026-03-20
 **Scope:** Six bounded items, +4 scorecard points (27→31/36) + live 4D/5D DAOs
@@ -640,7 +640,7 @@ Step 8 is independent of everything else.
 
 | Out of Scope | Why | Where Instead |
 |-------------|-----|---------------|
-| Work order CRUD | ERP system's job (iDempiere PP_Order) | `ConstructionAsERP.md` §3 |
+| Work order CRUD | ERP system's job (iDempiere PP_Order) | `DocAction_SRS.md` §1 |
 | Technician assignment | FM system's job | Federation addon PoC |
 | Sensor/IoT monitoring | Requires live infra, not compile-time | Federation addon PoC |
 | Multi-user audit | Needs AD_User + AD_Session | Tier 3, CORE_SRS.md |

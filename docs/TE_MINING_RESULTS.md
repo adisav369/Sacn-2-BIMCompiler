@@ -1,5 +1,5 @@
 # Terminal Mining Results — §7.4 AD_Val_Rule Seed Data
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
 
 **Date:** 2026-03-18 (session 21)
 **Source:** `component_library.db` / `I_Element_Extraction` WHERE building_type='SJTII_Terminal'

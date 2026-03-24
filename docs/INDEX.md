@@ -4,10 +4,11 @@ Single-page entry point. All active docs by tier.
 
 ---
 
-## T0 Governing — System Contract
+## T0 Governing — Read First
 
 | Doc | What |
 |-----|------|
+| [MANIFESTO.md](MANIFESTO.md) | **READ FIRST:** The ERP world view — why construction is manufacturing, iDempiere pattern, three concerns |
 | [SystemContract.md](SystemContract.md) | GOVERNING DOC: entity registry, transaction catalogue, three-concern matrix, allocation model, gap register |
 | [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) | FRONTIER: §1-§14 future features, §2.1 CTFL test plan, §2.2 site layout, §14 implementation sessions |
 
@@ -18,7 +19,6 @@ Single-page entry point. All active docs by tier.
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, gospel |
 | [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 4-DB architecture |
 | [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 63 verbs, TILE/CLUSTER/ROUTE/FRAME |
-| [ConstructionAsERP.md](ConstructionAsERP.md) | iDempiere mapping, C_Order model, BOM dimension model (Appendix A) |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix |
 | [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
@@ -99,5 +99,6 @@ Superseded docs live in `docs/archive/`. Key archived docs:
 | Doc | Superseded by |
 |-----|---------------|
 | `DEVELOPER_GUIDE.md` | [SourceCodeGuide.md](SourceCodeGuide.md) (DAO patterns merged) |
-| `BIMasBOMConcept.md` | [ConstructionAsERP.md](ConstructionAsERP.md) Appendix A (dimension model merged) |
+| `BIMasBOMConcept.md` | [BBC.md](BOMBasedCompilation.md) §1 (dimension model merged) |
+| `ConstructionAsERP.md` | [SystemContract.md](SystemContract.md) §2 (entity registry) + [BBC.md](BOMBasedCompilation.md) §1 (iDempiere mapping) + [DATA_MODEL.md](DATA_MODEL.md) §1 (4-DB) |
 | `VerbPatternArchitecture.md` | [BIM_COBOL.md](BIM_COBOL.md) §19 (verb detection, formats, results merged) |

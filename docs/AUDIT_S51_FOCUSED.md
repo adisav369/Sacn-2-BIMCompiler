@@ -1493,3 +1493,397 @@ explicitly deferred per the session prompt and Appendix J §J.3.
 2. **JURISDICTION_PACKS on interface:** Static map on OrderLineMutation. Avoids config files. Extensible by adding map entries.
 3. **Pack_id column defaults:** BASE for generic rules, NFPA-13 for FP coverage. Mapping derived from existing `building_code` values in ad_space_type_mep_bom.
 4. **No new AD tables:** pack_id added to existing tables per spec constraint.
+
+---
+
+## Appendix N — S67 Watchdog: Post-Session-C Audit (2026-03-24)
+
+### N.0 — ConstructionAsERP.md Archive Cleanup
+
+**Problem:** ConstructionAsERP.md was archived in S67 (commit `783dd26`) but 80+ stale
+references remained across 44 live docs.
+
+**Action taken (this session):**
+- Replaced all `[ConstructionAsERP](ConstructionAsERP.md)` foundation breadcrumbs → `[SystemContract](SystemContract.md)` (25 files)
+- Mapped deep section references to correct live targets: §1.1/§1.3/§1.4 → DATA_MODEL.md, §2/§3 → SystemContract.md, §11/Appendix A → BBC.md §1, §D.5 → ProjectOrderBlueprint.md (19 files)
+- Fixed INDEX.md: removed duplicate SystemContract entry from T1, added ConstructionAsERP to Archived table
+- Fixed BIM_COBOL.md: ADHistory.md/METADATA_DRIVEN_ARCHITECTURE.md refs → DocAction_SRS.md
+- Fixed PREFAB_ARCHITECTURE.md: M_BomCategory → M_Product_Category
+- Fixed MEMORY.md: removed stale ConstructionAsERP.md §1.4 ref
+
+**M_BomCategory deprecation confirmed.** User clarified (S67 watchdog): M_BomCategory was
+a project-specific drift from iDempiere's standard pattern. In iDempiere/Libero MFG, a BOM
+IS a product with `IsBOM=Y` and has child products via `PP_Product_BOM`. Product typing is
+via `M_Product_Category`, not a separate BomCategory entity. Example: "Patio Furniture Set"
+is an M_Product, IsBOM=Y, children = chairs + table + shade. Live docs now consistently use
+M_Product_Category. The `bom_category` column in SQL schemas is legacy naming only.
+
+**SUM/MAX/MAX AABB validation (W-SPACESIZE-1) — never implemented.** This concept from
+archived ConstructionAsERP.md Appendix A proposed that child AABBs must tile within parent
+(width=SUM, depth=MAX, height=MAX). No Java code, no witness, no live doc implements it.
+User confirmed this is unnecessary: product selection via M_Product_Category already solves
+building type identification. The SUM/MAX/MAX check would actively block exception-based
+ordering (ProjectOrderBlueprint §1) where qty=0 removals break parent-child AABB sums.
+Correctly abandoned — the iDempiere parallel holds: Libero MRP explodes BOMs by recipe
+structure, not by validating child spatial fit within parent dimensions.
+
+### N.1 — Scope
+
+S67 produced four coding sessions (0, A, B, C) plus docs/site work. This appendix
+audits the aggregate state after Session C, checks Session D readiness, and resolves
+open housekeeping from Appendix J §J.7.
+
+### N.2 — Session C Code vs Blueprint §14.3 Verification
+
+| Blueprint §14.3 Spec | Code | Verdict |
+|---|---|---|
+| `pack_id` on ad_space_type_mep_bom, ad_fp_trigger, ad_fp_coverage, ad_code_requirement | DV016_pack_id.sql adds column to all 4 tables | **MATCH** |
+| `packsForJurisdiction()` maps MY→[BASE,UBBL-2024,NFPA-13], US→[BASE,IBC-2021,NFPA-13] | OrderLineMutation.java:26-31 — static map with MY, US, SG, AU | **MATCH** (SG/AU bonus) |
+| `propose(woConn, ruleDb, orderId, packIds)` — backward-compatible default | OrderLineMutation.java:52-54 — default delegates with empty list | **MATCH** |
+| MEPBOMQuery filters by pack_id IN clause | MEPBOMQuery.java:87 — `AND pack_id IN (?)` with parameterized binding | **MATCH** |
+| W-RULEPACK-1: MY=13, US=17, different counts | RulePackTest.java Step 4: `assertNotEquals(myProposals.size(), usProposals.size())` | **MATCH** |
+| RulePackTest 6/6 | 6 @Test methods, ordered Step 1-6 | **MATCH** |
+
+**Pre-flight citations present:** DV016_pack_id.sql line 2, OrderLineMutation.java line 20/24, RulePackTest.java line 23. All cite `ProjectOrderBlueprint.md §14.3 Session C — Witness: W-RULEPACK-1`. **PASS.**
+
+### N.3 — Session D Readiness Assessment
+
+**Question:** Does Session C provide the right foundation for Session D (Remove + Compress)?
+
+**Answer: YES — Session D is independent.** Per Appendix I.3, Session D is about BomDropper mechanics (qty=0 skip, reference class, locator_ref addressing). It does not depend on Sessions B or C — those add mutation types, while D modifies compilation behavior.
+
+**Prerequisites for Session D:**
+1. BomDropper.java — parameterized orderId (Session 0 DONE) — **READY**
+2. OrderLineWalker — must learn to skip qty=0 branches — **CODE CHANGE NEEDED**
+3. locator_ref addressing — new concept, needs spec clarity — **GAP: locator_ref syntax not yet defined in any spec**
+4. Reference class flag — new column on C_OrderLine — **MIGRATION NEEDED**
+
+**Blockers:** None hard. The locator_ref syntax should be specced in the Session D coder prompt (or in BBC.md §3 addendum). Not a gap register item — it's session-scoped design.
+
+### N.4 — Priority: Session D vs Session E
+
+| Factor | Session D (Remove + Compress) | Session E (Inheritance) |
+|---|---|---|
+| **Dependency** | Independent of B/C | Needs D (locator_ref) |
+| **Gap register** | No blocking gaps | GAP-SC-5 OPEN (conflict resolution) |
+| **Impact** | Enables exception-based ordering (§1) | Enables order overlays (§6) |
+| **Complexity** | Medium (BomDropper + walker) | High (chain walking + conflict) |
+| **Recommendation** | **DO NEXT** | After D + GAP-SC-5 closed |
+
+**Verdict: Session D first.** It is prerequisite for E (locator_ref concept needed), has no open gaps, and directly enables the §1 exception-based ordering thesis.
+
+### N.5 — Housekeeping Resolution (J.7 Items)
+
+| J.7 Item | Status | Action |
+|---|---|---|
+| `memory/project_s62_fp_trial.md` deletion | **DONE** — file does not exist (already deleted) | CLOSED |
+| LAST_MILE stale markers R17/R18/R25/R26 | **NOT STALE** — all 4 marked DONE with commit refs/evidence in LAST_MILE_PROBLEM.md | CLOSED (false alarm) |
+| Session E failure criterion | **STILL OPEN** — GAP-SC-5 says "Resolution for sibling branches modifying same locator_ref" but no spec for conflict detection or error reporting | Remains open — blocks Session E |
+| ACMV product check (before Session B) | **MOOT** — Session B completed successfully, ACMV products existed | CLOSED |
+| README line counts | **LOW** — cosmetic, defer | Remains open |
+
+### N.6 — Gap Register Status (SystemContract §10)
+
+| Gap | Status | Change Since Last Watchdog |
+|---|---|---|
+| GAP-SC-1 (ASI→recompile) | OPEN | No change |
+| GAP-SC-2 (Freehand→BOM) | OPEN | No change |
+| GAP-SC-3 (Site grid) | OPEN | No change |
+| GAP-SC-4 (Rule pack versioning) | **OPEN (PARTIALLY ADDRESSED)** | Session C adds pack_id tagging but NOT effectivity dates/versioning. Appendix M.7 confirms. |
+| GAP-SC-5 (Inheritance conflict) | OPEN | No change. Still blocks Session E |
+| GAP-SC-6 (Compile-once-copy-many) | OPEN | No change |
+| GAP-SC-7 (Output consolidation) | OPEN | No change |
+| GAP-SC-8 (R-PROJ-3 collision) | CLOSED | Session 0 (unchanged) |
+
+**Note on GAP-SC-4:** The gap register says "blocks Session C" but Session C completed by scoping to pack_id tagging only, deferring versioning. Consider updating GAP-SC-4 description to "Effectivity dates, version precedence, pack lifecycle (tagging done S67c)" to reflect partial progress.
+
+### N.7 — Uncommitted Changes
+
+```
+M  library/component_library.db   ← local-only, DO NOT COMMIT (per feedback_component_library_local.md)
+ M migration/DV_SH_rules.sql      ← timestamp-only diff (09:52 → 11:31), cosmetic regeneration
+```
+
+The DV_SH_rules.sql change is a timestamp regeneration only — no substantive content change. Can be committed or discarded at discretion.
+
+### N.8 — Session D Coder Prompt Readiness
+
+**Ready to write.** The prompt needs:
+1. Scope: BomDropper + OrderLineWalker — qty=0 skip + reference class instantiation
+2. locator_ref syntax definition (inline, no separate spec needed)
+3. Migration: reference_class flag on C_OrderLine
+4. Gate: 100-storey tower = 3 C_OrderLines (from blueprint §14.3)
+5. Witnesses: W-EXCEPTION-1, W-REFCLASS-1
+
+Shall I draft the Session D coder prompt now?
+
+### N.9 — Docs Site Verification
+
+- `mkdocs.yml` repo_url: `https://github.com/red1oon/BIMCompiler` — matches commit ac8c11f fix. **CORRECT.**
+- Site URL in PROGRESS.md: `https://red1oon.github.io/BIMCompiler/` — consistent with repo_url. **CORRECT.**
+- Cannot verify live rendering from CLI, but config is internally consistent.
+
+## Appendix O — S67 ERP Fidelity Audit: IsBOM and iDempiere Paradigm Drift Check (2026-03-24)
+
+**Scope:** Deep audit of whether Java source maintains the iDempiere ERP pattern
+(M_Product-centric, IsBOM detection, BOM explosion, PP_Order_Node manufacturing
+execution, C_OrderLine product reference, leaf-to-geometry resolution, EntityType guards).
+
+**Verdict:** The codebase is **clean**. No paradigm drift found. The iDempiere manufacturing
+pattern is faithfully maintained with one intentional, well-documented mapping
+(m_bom merges M_Product + M_BOM). All seven audit areas pass.
+
+---
+
+### O.1 — IsBOM Implementation
+
+**Finding: CORRECT — structural detection, not column-based.**
+
+iDempiere stores `IsBOM` as a boolean column on M_Product. This project uses **structural
+detection**: a product "IsBOM" if `MBOM.load(childProductId)` returns true (i.e., a matching
+`m_bom` row exists). This is an acceptable mapping — the semantic is identical.
+
+| File | Line | Usage |
+|------|------|-------|
+| `DAGCompiler/.../BomDropper.java` | 159, 218 | `boolean isBom = childBom.load(childProductId)` — recurse if true |
+| `BonsaiBIMDesigner/.../DesignerAPIImpl.java` | 1724, 1840 | Root BOM check + recursive explosion |
+| `BonsaiBIMDesigner/.../WorkOutputDAO.java` | 661 | Javadoc: "Only IsBOM products have children" |
+| `BonsaiBIMDesigner/.../BomDropTest.java` | 97, 172 | W-DROP-3 (sub-assemblies), W-DROP-5 (IsBOM=false error) |
+
+**No SQL `is_bom` column exists.** All references are semantic/conceptual. The detection
+is purely structural — query m_bom, get answer. This avoids denormalization drift
+(a column that could go stale vs. a live query that's always correct).
+
+**Drift risk: NONE.** The pattern is consistent across BomDropper, BOMWalker, DesignerAPIImpl,
+and tests. No code path bypasses the structural check.
+
+---
+
+### O.2 — M_Product vs m_bom Duality
+
+**Finding: ACCEPTABLE MAPPING — partial flattening, well-documented.**
+
+iDempiere has separate M_Product (catalog) and M_BOM (recipe) tables. This project
+merges them: `m_bom` carries both product identity and assembly structure.
+
+**X_M_BOM.java:9-11** explicitly documents the design decision:
+> "iDempiere: M_BOM + M_Product merged. M_Product is flattened into M_BOM.
+> A leaf item is an M_BOM with no M_BOM_Line children."
+
+**However, M_Product still exists** in component_library.db as the leaf product catalog
+(2475 products, dimensions, geometry). The flattening is **partial and intentional**:
+
+| Entity | Table | Database | Role |
+|--------|-------|----------|------|
+| Assembly structure | m_bom + m_bom_line | {PREFIX}_BOM.db | Hierarchy, tack offsets |
+| Leaf product catalog | M_Product | component_library.db → disc_validation.db | Dimensions, geometry_hash |
+| Product-geometry link | M_Product_Image | component_library.db | product_id → geometry_hash |
+
+**Classes touching m_bom (assembly):** BOMWalker, BomDropper, DesignerDAO, CalibrationDAO,
+all BackOffice DAOs (SustainabilityDAO, ScheduleDAO, FacilityMgmtDAO, CostDAO, PortfolioDAO),
+ShapeIdentityProof, CreateBomVerb, ComposePrefabBomVerb, AddLineVerb, CheckBomVerb,
+SelectBomVerb, DeleteBomVerb, SetTackVerb, FillBuffersVerb, SwapRoomVerb.
+
+**Classes touching M_Product (catalog):** MProduct.java (get/getAssembly/getAll),
+BOMWalker (loads from compConn for leaf dimensions), DesignerDAO (browseProducts),
+ProductRegistrar (ensureProductImages).
+
+**Drift risk: NONE.** No class confuses the two. m_bom is treated as assembly structure,
+M_Product as product catalog. The dual-lookup in BOMWalker (lines 193-195) cleanly
+separates them: `MProduct.getAssembly()` for sub-assemblies, `MProduct.get()` for leaves.
+
+---
+
+### O.3 — BOM Explosion
+
+**Finding: CORRECT — faithful iDempiere BOM explosion pattern.**
+
+Two engines exist, both using the same structural IsBOM detection:
+
+**BomDropper.java** (DAGCompiler) — Creates C_Order + C_OrderLine tree:
+- `explode()` (line 129): Root BOM → C_Order + children
+- `explodeAssembly()` (line 193): Sub-assembly recursion
+- Dispatch (lines 120-125): structural lookup → recurse | PHANTOM → skip | else → leaf
+- MAX_DEPTH = 20 guard against infinite loops
+- Each leaf stores `bom_child_id` (FK to m_bom_line), spatial data (dx/dy/dz)
+
+**BOMWalker.java** (DAGCompiler) — Fires BOMVisitor events:
+- Two-connection architecture: `bomConn` (BOM structure) + `compConn` (product catalog)
+- Same structural dispatch: loadBom() → onSubAssembly/recurse | PHANTOM → onPhantom | else → onLeaf
+- Visitor pattern enables multiple independent passes in single tree walk
+- Dangling reference handling (lines 204-210): logs warning, skips
+
+**OrderLineWalker.java** — Alternative walker for C_OrderLine tree (post-BomDrop):
+- Walks C_OrderLine instead of m_bom_line
+- Enables product swaps on order lines without touching m_bom
+- `host_type = "LEAF"` → leaf; otherwise → sub-assembly
+
+**component_type semantics (X_M_BOMLine.java:54-86):**
+- BUY = leaf product, MAKE = sub-assembly, PHANTOM = gap filler (stripped at compile)
+- **NOT used for traversal** — structural lookup governs recursion
+- PHANTOM is the only component_type that matters during walk (skipped)
+
+**Drift risk: NONE.** Both engines are consistent. Test witnesses confirm:
+W-BOM-EB-1 (SH=55 leaves, 3 sub-assemblies), W-BOM-EB-2 (DX=1099 leaves, 5 sub-assemblies).
+
+---
+
+### O.4 — PP_Order_Node Manufacturing Execution
+
+**Finding: CORRECT — direct iDempiere manufacturing execution mapping.**
+
+**X_PP_Order_Node.java:9** states:
+> "iDempiere Manufacturing: PP_Order_Node = one production operation step.
+> BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)."
+
+| iDempiere field | BIM Compiler field | Mapping |
+|-----------------|-------------------|---------|
+| PP_Order_Node_ID | PP_Order_Node_ID | Primary key |
+| PP_Order_ID → C_Order | C_Order_ID | FK to construction order |
+| SeqNo | SeqNo | Execution sequence (verb determinism) |
+| Name (operation) | Name | Verb name (TILE, ARRAY, ROUTE) |
+| S_Resource_ID | S_Resource_ID | Spatial workstation (CO_EmptySpace) |
+| M_Product_ID | M_Product_ID | Material consumed/produced |
+| DocStatus | DocStatus | CHECK(IN ('DR','IP','CO','VO')) |
+| — | last_result | JSON result payload (BIM extension) |
+| — | element_count | Elements produced per verb |
+
+**Three-concern separation enforced (X_PP_Order_Node.java:12-16):**
+- WHAT = C_OrderLine
+- HOW = PP_Order_Node (this class)
+- WHERE = CO_EmptySpaceLine (S_Resource)
+
+**DocStatus state machine:** DR (Draft) → IP (In Progress) → CO (Completed) | VO (Voided).
+Matches iDempiere MOrder.processIt() lifecycle exactly.
+
+**Child parameters:** PP_Order_NodeProduct stores structured verb parameters
+(Name/Value/ValueType per node). Matches iDempiere's PP_Order_Node parameter pattern.
+
+**Test witnesses:** W-PP-1 through W-PP-5 (PP_Order_NodeTest.java) cover PO lifecycle,
+SeqNo ordering, parameter children, DocStatus CHECK constraint, unique parameter names.
+
+**Drift risk: NONE.** The mapping is clean and well-documented.
+
+---
+
+### O.5 — C_Order / C_OrderLine Product Reference
+
+**Finding: CORRECT — structural guards enforce WHAT-only discipline.**
+
+**X_C_OrderLine.java:9-16** establishes the FIRST PRINCIPLE:
+> "c_orderline = WHAT. No placement. No material dims."
+
+**M_Product_ID column explicitly declared** (X_C_OrderLine.java:52):
+```java
+COLUMNNAME_M_Product_ID = "M_Product_ID"
+```
+
+**BomDropper populates it** (BomDropper.java:277):
+```java
+ps.setString(14, familyRef);  // M_Product_ID = family_ref = child_product_id
+```
+
+**OrderLineWalker resolves it** (OrderLineWalker.java:100-101):
+```java
+MProduct product = MProduct.get(compConn, row.familyRef);
+```
+
+**Structural guards (OrderLineInterfaceContractTest.java):**
+- W-LOCK-1: No placement methods (getHostType, setPositionRule, etc. FORBIDDEN)
+- W-LOCK-2: No material methods (getWidthMm, getGeometryHash, etc. FORBIDDEN)
+- W-LOCK-3/4: No placement/material COLUMNNAME constants
+- W-LOCK-5: WHAT setters present (including setMProductId)
+- W-LOCK-6: Total setter count = exactly 8 (WHAT-only)
+
+Any attempt to add placement or material columns to C_OrderLine fails CI immediately.
+
+**Drift risk: NONE.** The reflection-based structural guards are the strongest form of
+enforcement — they catch drift at compile time, not runtime.
+
+---
+
+### O.6 — Leaf Resolution: Product → Component Library Geometry
+
+**Finding: CORRECT — clean product-to-geometry lookup.**
+
+**Canonical path:**
+```
+M_Product_ID → M_Product_Image.geometry_hash → component_geometries (vertex/face BLOBs)
+```
+
+| Step | File | Line | Action |
+|------|------|------|--------|
+| 1. Extract productId | PlacementCollectorVisitor.java | 268-340 | `line.getChildProductId()` → Placement record |
+| 2. Resolve geometry | MeshBinder.java | 61 | `library.resolveByProduct(p.productId())` |
+| 3. SQL lookup | ComponentLibrary.java | 513-531 | `SELECT geometry_hash FROM M_Product_Image WHERE M_Product_ID = ?` |
+| 4. Pre-validated registry | ProductGeometry.java | 59-99 | Immutable registry, all entries certified at startup |
+
+**Fallback hierarchy (when product-level fails):**
+1. Instance GUID: `resolveGeometryByRef(elementRef, ifcClass)` — for CP-1 per-instance diversity
+2. Legacy ordinal: `resolveGeometryByInstance(...)` — deprecated (@Deprecated on ComponentLibrary:484)
+
+**M_Product_Image population (IFCtoBOM extraction):**
+ProductRegistrar.ensureProductImages() (line 270-302) — deterministic JOIN:
+```sql
+INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
+SELECT p.product_id, g.geometry_hash FROM M_Product p
+JOIN I_Geometry_Map g ON g.element_ref = p.product_id
+```
+Pure extraction data. No invention.
+
+**Drift risk: NONE.** The canonical path goes through M_Product. Fallbacks exist for
+edge cases (per-instance diversity, legacy) but the primary path is clean product-to-geometry.
+
+---
+
+### O.7 — EntityType Guards on X_M_BOM / X_M_BOMLine
+
+**Finding: CORRECT — three-tier protection (Dictionary/User/Application + GodMode bypass).**
+
+**EntityType constants (X_M_BOM.java:73-76):**
+- `D` (Dictionary) = read-only shipped catalog, created by SQL migrations
+- `U` (User) = verb-created, fully mutable
+- `A` (Application) = system-generated
+
+**Guards on MBOM.java:**
+- `beforeSave()` (lines 97-135): Blocks UPDATE on Dictionary records unless GodMode
+- `delete()` (lines 141-149): Blocks DELETE on Dictionary records unless GodMode
+
+**Guards on MBOMLine.java (mirrored):**
+- `beforeSave()` (lines 20-27): Same pattern, references `bom_child_id` for traceability
+- `delete()` (lines 33-40): Uses `X_M_BOM.isGodMode()` for consistency
+
+**GodMode mechanism (X_M_BOM.java:78-92):**
+- Checks for `GodMode.txt` file at JVM startup (cached static boolean)
+- File is gitignored — never reaches production
+- Allows migration scripts to modify Dictionary records
+
+**Key invariants:**
+1. New records always bypass beforeSave guard (newRecord=true) — verbs can create User records
+2. Only updates to Dictionary records are blocked — preserves template contract
+3. GodMode is per-JVM, not per-record
+4. Guard throws IllegalStateException — fails fast, no partial state
+
+**Verb integration:** CreateBomVerb (line 100) and AddLineVerb (line 106) explicitly set
+`entityType = ENTITYTYPE_User` on creation. No verb creates Dictionary records.
+
+**Drift risk: NONE.** Guards are enforced at the ORM layer (BasePO lifecycle hooks).
+Cannot be bypassed without GodMode.txt on disk.
+
+---
+
+### O.8 — Summary Verdict
+
+| Audit Area | iDempiere Pattern | BIM Compiler Mapping | Drift? |
+|------------|------------------|---------------------|--------|
+| IsBOM detection | Boolean column on M_Product | Structural: MBOM.load() returns true | **No** — semantically identical |
+| M_Product / M_BOM | Separate tables | m_bom merges both; M_Product still exists for leaves | **No** — intentional, documented |
+| BOM explosion | PP_Product_BOM → walk children | BomDropper + BOMWalker structural recursion | **No** — faithful pattern |
+| PP_Order_Node | Manufacturing execution step | Verb execution record, same DocStatus lifecycle | **No** — direct mapping |
+| C_OrderLine → M_Product | FK reference | M_Product_ID column, structural guard (W-LOCK tests) | **No** — locked by CI |
+| Leaf → geometry | M_Product → BOM component | M_Product_ID → M_Product_Image → component_geometries | **No** — clean lookup |
+| EntityType guards | AD EntityType on table | D/U/A + GodMode bypass + ORM hooks | **No** — three-tier protection |
+
+**Conclusion for ProjectOrderBlueprint:** The product model is clean. No drift blocks
+the exception-based ordering (§1) or inheritance (§6) work ahead. Session D (Remove +
+Compress mutations) and Session E (Order inheritance) can proceed on a sound foundation.

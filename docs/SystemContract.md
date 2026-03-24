@@ -5,7 +5,7 @@
 > Like iDempiere's Application Dictionary governs modules, this contract
 > governs the 53 docs in `docs/`.
 >
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [ConstructionAsERP](ConstructionAsERP.md) ·
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [SystemContract](SystemContract.md) ·
 > [TestArchitecture](TestArchitecture.md) · [ProjectOrderBlueprint](ProjectOrderBlueprint.md) ·
 > [DATA_MODEL](DATA_MODEL.md) · [SourceCodeGuide](SourceCodeGuide.md) · [INDEX](INDEX.md)
 
@@ -33,7 +33,7 @@ A site is to plots what a building is to rooms what a room is to elements.
 The compiler, the gates, the DocAction lifecycle, the three-concern separation
 — all work unchanged at every scale. New scales are configuration, not code.
 
-**Spec authority:** [ConstructionAsERP.md §2](ConstructionAsERP.md) (three-concern separation),
+**Spec authority:** §4 below (three-concern matrix),
 [BBC.md §3.3-3.5](BOMBasedCompilation.md) (BOM Drop, Selection Cascade),
 [ProjectOrderBlueprint.md §2](ProjectOrderBlueprint.md) (C_Project site-as-BOM).
 
@@ -60,7 +60,7 @@ Every table in the system serves one of five roles. No table serves two roles.
 | `ad_code_requirement` | Code rules per element × space | [DocValidate.md](DocValidate.md) |
 | `ad_mep_profile` | Budget/Standard/Premium multiplier | [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) |
 | `AD_Val_Rule` | Validation rules | [DocValidate.md](DocValidate.md) |
-| `C_DocType` | Building type classification | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
+| `C_DocType` | Building type classification | [SystemContract.md §2](SystemContract.md) |
 | `M_Product_Category` | Product taxonomy (46 rows) | [BBC.md §1](BOMBasedCompilation.md) |
 
 ### 2.2 Master Data (M) — Product Catalog & BOM Recipes
@@ -76,10 +76,10 @@ Every table in the system serves one of five roles. No table serves two roles.
 | `m_bom_line` | Child placement (dx/dy/dz tack offsets) | [BBC.md §4](BOMBasedCompilation.md) |
 | `m_bom_line_ma` | Per-instance identity (GUID threading) | [LAST_MILE_PROBLEM.md §Gap 5](LAST_MILE_PROBLEM.md) |
 | `m_attribute` | Leaf attributes (ports, clearances) | [DATA_MODEL.md](DATA_MODEL.md) |
-| `M_AttributeSet` | Attribute templates | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
-| `component_definitions` | Component metadata + bounds | [ConstructionAsERP.md §1.1](ConstructionAsERP.md) |
-| `component_geometries` | Vertex/face BLOBs (deduplicated) | [ConstructionAsERP.md §1.1](ConstructionAsERP.md) |
-| `placement_rules` | Host-relative placement | [ConstructionAsERP.md §1.1](ConstructionAsERP.md) |
+| `M_AttributeSet` | Attribute templates | [DATA_MODEL.md](DATA_MODEL.md) |
+| `component_definitions` | Component metadata + bounds | [DATA_MODEL.md §1](DATA_MODEL.md) |
+| `component_geometries` | Vertex/face BLOBs (deduplicated) | [DATA_MODEL.md §1](DATA_MODEL.md) |
+| `placement_rules` | Host-relative placement | [DATA_MODEL.md §1](DATA_MODEL.md) |
 | `surface_styles` | Material RGBA per product | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) |
 
 ### 2.3 Transaction Data (C) — Orders & Compiled Output
@@ -90,13 +90,13 @@ Every table in the system serves one of five roles. No table serves two roles.
 
 | Table | Role | Spec |
 |-------|------|------|
-| `C_Order` | Construction order (one per building) | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
-| `C_OrderLine` | Order line (one per BOM node) | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
+| `C_Order` | Construction order (one per building) | [SystemContract.md §2](SystemContract.md) |
+| `C_OrderLine` | Order line (one per BOM node) | [SystemContract.md §2](SystemContract.md) |
 | `C_Project` | Site development (groups C_Orders) | [ProjectOrderBlueprint.md §2](ProjectOrderBlueprint.md) — **NOT YET IMPLEMENTED** |
 | `C_ProjectLine` | Plot allocation (one per plot/group) | [ProjectOrderBlueprint.md §2](ProjectOrderBlueprint.md) — **NOT YET IMPLEMENTED** |
-| `M_AttributeSetInstance` | Per-instance customer options | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
-| `elements_meta` | Compiled elements (world xyz) | [ConstructionAsERP.md §1.3](ConstructionAsERP.md) |
-| `element_instances` | Geometry instances (transform) | [ConstructionAsERP.md §1.3](ConstructionAsERP.md) |
+| `M_AttributeSetInstance` | Per-instance customer options | [SystemContract.md §2](SystemContract.md) |
+| `elements_meta` | Compiled elements (world xyz) | [DATA_MODEL.md §4](DATA_MODEL.md) |
+| `element_instances` | Geometry instances (transform) | [DATA_MODEL.md §4](DATA_MODEL.md) |
 
 ### 2.4 Production Data (PP) — How Things Were Built
 
@@ -118,8 +118,8 @@ Every table in the system serves one of five roles. No table serves two roles.
 
 | Table | Role | Spec |
 |-------|------|------|
-| `co_empty_space` | Spatial envelope header | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
-| `co_empty_space_line` | Spatial slot (room/plot) | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
+| `co_empty_space` | Spatial envelope header | [SystemContract.md §2](SystemContract.md) |
+| `co_empty_space_line` | Spatial slot (room/plot) | [SystemContract.md §2](SystemContract.md) |
 | `elements_rtree` | R-tree spatial index | [DATA_MODEL.md](DATA_MODEL.md) |
 
 ---
@@ -209,9 +209,9 @@ A `?` means the spec is missing — this is a gap that must be closed.
 
 | Concern | Entity | Status | Spec |
 |---------|--------|--------|------|
-| **WHAT** | C_OrderLine (which elements) | ✓ DONE | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
+| **WHAT** | C_OrderLine (which elements) | ✓ DONE | [SystemContract.md §2](SystemContract.md) |
 | **HOW** | PP_Order_Node (verb execution) | ✓ DONE | [BIM_COBOL.md](BIM_COBOL.md) |
-| **WHERE** | CO_EmptySpaceLine (room slots) | ✓ DONE | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
+| **WHERE** | CO_EmptySpaceLine (room slots) | ✓ DONE | [SystemContract.md §2](SystemContract.md) |
 
 ### 4.3 Scale 3: Room
 
@@ -233,7 +233,7 @@ A `?` means the spec is missing — this is a gap that must be closed.
 
 | Concern | Entity | Status | Spec |
 |---------|--------|--------|------|
-| **WHAT** | M_AttributeSetInstance (dimension override) | PARTIAL | [ConstructionAsERP.md §2](ConstructionAsERP.md) |
+| **WHAT** | M_AttributeSetInstance (dimension override) | PARTIAL | [SystemContract.md §2](SystemContract.md) |
 | **HOW** | Recompile trigger (which verbs re-fire) | **NOT SPECCED** | Gap — needs ASI_MUTATION_SRS |
 | **WHERE** | Which element, which dimension | **NOT SPECCED** | Gap — needs ASI_MUTATION_SRS |
 
@@ -470,21 +470,21 @@ Which spec governs which, and what order to read.
 
 ```
                     SystemContract.md (THIS FILE)
-                    ┌──────────┼──────────┐
-                    │          │          │
-              BBC.md    ConstructionAsERP  TestArchitecture
-              (engine)    (ERP model)      (verification)
-                │          │          │
-         ┌──────┼──────┐   │    ┌─────┼─────┐
-         │      │      │   │    │     │     │
-    BIM_COBOL  DATA   Source  DocAction  EYES  TheRosettaStone
-    (verbs)   MODEL   Code    (lifecycle) (proofs) Strategy
-              (schema) Guide                    (tiers 1-4)
-                              │
-                    ┌─────────┼─────────┐
-                    │         │         │
-              DocValidate  DISC_VAL   G4_SRS
-              (rules)     (disciplines) (tamper)
+              ┌──────────┼──────────┬──────────┐
+              │          │          │          │
+          BBC.md    DATA_MODEL  DocAction  TestArchitecture
+          (engine)  (schema)   (lifecycle) (verification)
+              │          │                    │
+       ┌──────┼──────┐   │          ┌────────┼────────┐
+       │      │      │   │          │        │        │
+  BIM_COBOL Source  BIM_   │        EYES  TheRosetta  G4_SRS
+  (verbs)   Code   Designer │      (proofs) Stone     (tamper)
+            Guide  (UX)    │               (tiers 1-4)
+                           │
+                 ┌─────────┼─────────┐
+                 │         │         │
+           DocValidate  DISC_VAL  CALIBRATION
+           (rules)     (disciplines) (density)
 
               ProjectOrderBlueprint.md
               (§1-§14: the frontier — what's next)
@@ -494,12 +494,13 @@ Which spec governs which, and what order to read.
 ```
 
 **Reading order for a new contributor:**
-1. This file (SystemContract.md) — the map
-2. BBC.md — the compilation model
-3. ConstructionAsERP.md — the ERP mapping
-4. TestArchitecture.md — how verification works
-5. ProjectOrderBlueprint.md — what's planned
-6. SourceCodeGuide.md — where the code is
+1. **[MANIFESTO.md](MANIFESTO.md)** — the ERP world view (read this first, always)
+2. BBC.md — entity mapping table + compilation model
+3. This file (SystemContract.md) — entity registry, three-concern matrix, gap register
+4. DATA_MODEL.md — schema, 4-DB architecture
+5. TestArchitecture.md — how verification works
+6. ProjectOrderBlueprint.md — what's planned
+7. SourceCodeGuide.md — where the code is
 
 ---
 

@@ -47,6 +47,7 @@ nav:
   # ─── "I just found this project" ────────────────────────
   - Start Here:
       - Home: index.md
+      - The ERP World View: MANIFESTO.md
       - Documentation Index: INDEX.md
       - Quick Start: WorkOrderGuide.md
       #- Current State: ../PROGRESS.md  # outside docs_dir — link from landing page instead

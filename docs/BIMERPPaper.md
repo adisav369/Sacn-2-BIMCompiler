@@ -143,7 +143,7 @@ The Back Office module (BIMBackOffice, ~3,000 LOC Java, separate HTTP server on 
 - **Balanced scorecard** — 4 perspectives (Financial, Client, Process, Learning) x 3+ KPIs
 - **Audit trail** — ChangelogDAO logs every PLACE/DELETE/MOVE/RESIZE with old/new values, supports undo. Mirrors iDempiere's AD_ChangeLog
 
-**ERP pattern fidelity:** This is not a BIM tool pretending to be ERP. The data model *is* ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. PP_Order_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see `docs/ConstructionAsERP.md` §1.4).
+**ERP pattern fidelity:** This is not a BIM tool pretending to be ERP. The data model *is* ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. PP_Order_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see `docs/DATA_MODEL.md` §1).
 
 **What's not here yet:** Role-based access control (AD_Role). PDF/CSV export. Report execution queue (AD_Process). Multi-currency cost rates. COBie MVD schema validation. These are roadmap items — the ERP patterns they follow are well-understood from two decades of iDempiere, but the construction-specific implementation is not yet written.
 
@@ -232,7 +232,7 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 | `docs/BIM_Designer.md` | GUI architecture, compile-driven editing, generative path |
 | `docs/ASSEMBLY_BUILDER_SRS.md` | Layer-by-layer TACK, U-value calculation, 17 witnesses |
 | `docs/INFRA_DESIGNER_SRS.md` | Terrain snap, alignment model, cut-and-fill, 38 witnesses |
-| `docs/ConstructionAsERP.md` | iDempiere mapping, C_Order model, ERP pattern fidelity |
+| `docs/SystemContract.md` | iDempiere mapping, C_Order model, ERP pattern fidelity |
 | `docs/DocAction_SRS.md` | Document lifecycle (DR->IP->CO->AP), discipline routing |
 | `docs/DISC_VALIDATION_DB_SRS.md` | Three-database split, alias cascade, IFC version bridging |
 | `docs/CALIBRATION_SRS.md` | Rule prediction vs actual placement, ground truth metrics |
