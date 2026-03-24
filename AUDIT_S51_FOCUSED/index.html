@@ -755,7 +755,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../TheRosettaStoneStrategy.txt" class="md-nav__link">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
         
   
   
@@ -6729,13 +6729,13 @@ single-check validator classes. Currently testable only as monolith.</p>
 <p><strong>One structural risk worth addressing:</strong> DesignerAPIImpl (3,151 lines, 57 methods) is the only component that could become the next mess if Sessions A-E each add methods directly to it. Extract a delegation class in Session B.</p>
 <hr />
 <h3 id="i8-rosetta-dictionary-compositional-verification-model-s67">I.8 — Rosetta Dictionary: Compositional Verification Model (S67)<a class="headerlink" href="#i8-rosetta-dictionary-compositional-verification-model-s67" title="Permanent link">&para;</a></h3>
-<p>The Three Verification Tiers (TheRosettaStoneStrategy.txt) only covered extracted buildings with full reference DBs. A new <strong>Tier 4: COMPOSITIONAL VERIFICATION</strong> was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).</p>
+<p>The Three Verification Tiers (TheRosettaStoneStrategy.md) only covered extracted buildings with full reference DBs. A new <strong>Tier 4: COMPOSITIONAL VERIFICATION</strong> was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).</p>
 <p><strong>Core concept:</strong> When a Rosetta Stone passes exact sameness (G1-G6), its BOM becomes a certified dictionary entry. A composed building is a sentence built from proven words. Verification changes from "output == reference?" to "each fragment consistent with its source + composition satisfies spatial invariants."</p>
 <p><strong>Four verification steps:</strong> (1) Provenance — trace to source stone. (2) Fragment fidelity — offsets match source BOM. (3) Spatial invariants — EYES proofs. (4) Containment — elements inside slots.</p>
 <p><strong>Java pattern:</strong> FragmentVerifier strategy interface (Proven, RuleDriven, UserModified, Freehand implementations) dispatched by CompositionVerifierVisitor on OrderLineWalker.</p>
 <p><strong>ASI/Viewport path:</strong> Dimension changes via M_AttributeSetInstance → recompile → EYES property-based tests verify spatial invariants without Bonsai.</p>
 <p><strong>New gate:</strong> G7-COMPOSITION. <strong>New witnesses:</strong> W-COMP-PROV-1, W-COMP-FRAG-1, W-COMP-SPAT-1, W-COMP-CONT-1.</p>
-<p><strong>Written to:</strong> TheRosettaStoneStrategy.txt (§Tier 4), TestArchitecture.md (updated §generative buildings).</p>
+<p><strong>Written to:</strong> TheRosettaStoneStrategy.md (§Tier 4), TestArchitecture.md (updated §generative buildings).</p>
 <hr />
 <h3 id="i9-c_project-2-ctfl-audit-s67">I.9 — C_Project §2 CTFL Audit (S67)<a class="headerlink" href="#i9-c_project-2-ctfl-audit-s67" title="Permanent link">&para;</a></h3>
 <p>ISTQB test design techniques applied to ProjectOrderBlueprint.md §2. Full test plan written to blueprint §2.1.</p>
