@@ -128,7 +128,7 @@ The HTML web UI (port 9878) provides 10 tabs: spatial views, geometry inspection
 
 ```bash
 # Prerequisites: Java 17+, Maven 3.8+, SQLite3
-git clone https://github.com/red1oon/bim-compiler.git
+git clone https://github.com/red1oon/BIMCompiler.git
 cd bim-compiler
 
 mvn compile -q                              # Compile all modules
