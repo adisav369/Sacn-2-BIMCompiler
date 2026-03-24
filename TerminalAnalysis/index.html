@@ -2591,10 +2591,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#docbasetypedocsubtype-real-semantic-work" class="md-nav__link">
+  <a href="#m_product_category-hierarchy-shape-by-top-level-category" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DocBaseType/DocSubType — Real Semantic Work
+        M_Product_Category — Hierarchy Shape by Top-Level Category
       
     </span>
   </a>
@@ -2602,10 +2602,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type" class="md-nav__link">
+  <a href="#m_product_category-cascade-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type
+        M_Product_Category — Cascade Levels
       
     </span>
   </a>
@@ -3933,10 +3933,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#docbasetypedocsubtype-real-semantic-work" class="md-nav__link">
+  <a href="#m_product_category-hierarchy-shape-by-top-level-category" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DocBaseType/DocSubType — Real Semantic Work
+        M_Product_Category — Hierarchy Shape by Top-Level Category
       
     </span>
   </a>
@@ -3944,10 +3944,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type" class="md-nav__link">
+  <a href="#m_product_category-cascade-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
-        M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type
+        M_Product_Category — Cascade Levels
       
     </span>
   </a>
@@ -4549,8 +4549,8 @@ sections below. Code changes spec in <code>ACTION_ROADMAP.md</code> §Pre-Code S
 <td>8 (ARC, STR, FP, ACMV, CW, ELEC, SP, LPG) — REB removed (Bonsai addon)</td>
 </tr>
 <tr>
-<td>DocSubType</td>
-<td>TE</td>
+<td>M_Product_Category</td>
+<td>CO (Commercial)</td>
 </tr>
 <tr>
 <td>C_DocType_ID</td>
@@ -4877,7 +4877,7 @@ drift — CLUSTER's average 3.7m positional error across 47,607 instances.</p>
 where the underlying pattern is truly regular. Non-uniform groups stay CLUSTER.</p>
 <h2 id="predicted-vs-actual-bom-hierarchy">Predicted vs Actual BOM Hierarchy<a class="headerlink" href="#predicted-vs-actual-bom-hierarchy" title="Permanent link">&para;</a></h2>
 <p><strong>Predicted</strong> (pre-implementation, 5-level with assembly groupings):
-<div class="highlight"><pre><span></span><code>Level 0: BUILDING_TE_STD (BUILDING, doc_sub_type=TE)
+<div class="highlight"><pre><span></span><code>Level 0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
 ├── Level 1: TERMINAL_TE_GF (FLOOR) — Ground, ~4166 elements
 ├── ...
 └── Each FLOOR contains:
@@ -5188,7 +5188,7 @@ TACK lines as dx/dy/dz. BUILDING origin holds the world LBD anchor.</p>
 </tr>
 <tr>
 <td><strong>TE-4</strong></td>
-<td>doc_base_type from YAML, DocBaseType=CO dispatch</td>
+<td>M_Product_Category=CO from YAML, commercial dispatch</td>
 <td><strong>DONE</strong></td>
 </tr>
 <tr>
@@ -5218,7 +5218,7 @@ Each step is reusable for any new building — only the YAML changes.</p>
    └── Output: component_library.db tables populated
 
 Step 2: CLASSIFY — YAML declares building identity + discipline mapping
-   ├── classify_te.yaml: prefix, building_type, doc_base_type, doc_sub_type
+   ├── classify_te.yaml: prefix, building_type, M_Product_Category (doc_base_type/doc_sub_type deprecated — §7)
    ├── disciplines: map ifc_class → discipline code (ARC, STR, FP, ...)
    ├── storey_bands: Z-centroid ranges → storey names
    └── Output: YAML file (only human invention in the chain)
@@ -5240,7 +5240,7 @@ Step 4: BUILD BOM — Java DisciplineBomBuilder creates BOM hierarchy
 Step 5: PREPARE COMPILE DB — Shell prepares per-building temp DB
    ├── cp {PREFIX}_BOM.db → _XX_compile.db
    ├── Apply schema_snapshot_bom.sql (adds tables: C_DocType, c_order, etc.)
-   ├── Inject C_DocType row (DocBaseType, OutputDbPath, ExpectedElements)
+   ├── Inject C_DocType row (OutputDbPath, ExpectedElements)
    ├── Load DSL content from YAML-referenced .bim file
    └── Output: library/_XX_compile.db (temp, auto-cleaned)
 
@@ -5611,12 +5611,17 @@ manufacturing model.</p>
 to fitting, beam to column) with port semantics and verification status. Natural
 extension of ROUTE-as-BOM-tree. Candidate for G8 gate (connection audit).</p>
 </blockquote>
-<h3 id="docbasetypedocsubtype-real-semantic-work">DocBaseType/DocSubType — Real Semantic Work<a class="headerlink" href="#docbasetypedocsubtype-real-semantic-work" title="Permanent link">&para;</a></h3>
-<p>DocBaseType determines the <strong>hierarchy shape</strong> (not just a label):</p>
+<h3 id="m_product_category-hierarchy-shape-by-top-level-category">M_Product_Category — Hierarchy Shape by Top-Level Category<a class="headerlink" href="#m_product_category-hierarchy-shape-by-top-level-category" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><em>Aligns to MANIFESTO.md §The Category Cascade. DocBaseType/DocSubType are
+deprecated artifacts on C_DocType and m_bom — classification lives on
+M_Product_Category at every cascade level (see DATA_MODEL.md §7).</em></p>
+</blockquote>
+<p>The top-level M_Product_Category determines the <strong>hierarchy shape</strong>:</p>
 <table>
 <thead>
 <tr>
-<th>DocBaseType</th>
+<th>M_Product_Category</th>
 <th>Hierarchy</th>
 <th>L2 Axis</th>
 <th>Compilation Path</th>
@@ -5641,22 +5646,21 @@ extension of ROUTE-as-BOM-tree. Candidate for G8 gate (connection audit).</p>
 rooms to find furniture sets. The CO path expects <code>disciplines</code> and never looks
 for rooms. Forcing Terminal through the RE path would require fake "rooms" for
 discipline zones — that's technical debt avoided.</p>
-<p>DocSubType (SH/DX/TE) carries identity for the Prime Rule three-key match.
-When a second commercial building arrives (mall, factory), it will be CO with
-a different DocSubType. The hierarchy shape stays FLOOR→DISCIPLINE→ASSEMBLY.</p>
-<h3 id="m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type">M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type<a class="headerlink" href="#m_product_category-dual-axis-scoped-by-doc_typedoc_sub_type" title="Permanent link">&para;</a></h3>
-<p>M_Product_Category already has <code>doc_type</code> (DocBaseType) and <code>doc_sub_type</code> columns.
-These columns on the category row itself determine which building types can use
-that category. Room categories have <code>doc_type='RE'</code>, discipline categories will
-have <code>doc_type='CO'</code>, and shared categories (storeys, structural) have <code>doc_type=NULL</code>.</p>
+<p>The building prefix (SH/DX/TE) carries identity for BOM selection. When a second
+commercial building arrives (mall, factory), it will be M_Product_Category=CO with
+a different prefix. The hierarchy shape stays FLOOR→DISCIPLINE→ASSEMBLY.</p>
+<h3 id="m_product_category-cascade-levels">M_Product_Category — Cascade Levels<a class="headerlink" href="#m_product_category-cascade-levels" title="Permanent link">&para;</a></h3>
+<p>M_Product_Category forms a cascade where each level's category defines the swap
+pool at that level. Room categories appear under RE buildings, discipline
+categories under CO buildings, and shared categories (storeys, structural) appear
+under both:</p>
 <table>
 <thead>
 <tr>
 <th>Category Type</th>
 <th>Codes</th>
 <th>BOM Level</th>
-<th>doc_type</th>
-<th>doc_sub_type</th>
+<th>Scope</th>
 </tr>
 </thead>
 <tbody>
@@ -5664,43 +5668,32 @@ have <code>doc_type='CO'</code>, and shared categories (storeys, structural) hav
 <td>Storey</td>
 <td>GF, L1, L2, L3, L4, RF, FN</td>
 <td>Level 1 (FLOOR)</td>
-<td>NULL (shared)</td>
-<td>NULL</td>
+<td>Shared (RE + CO)</td>
 </tr>
 <tr>
 <td>Room</td>
 <td>LI, KT, BD, BT, DN, FR</td>
 <td>Level 2 (RE only)</td>
-<td>RE</td>
-<td>NULL</td>
+<td>RE buildings</td>
 </tr>
 <tr>
 <td>Discipline</td>
 <td>ARC, STR, FP, ACMV, ELEC, CW, SP, LPG</td>
 <td>Level 2 (CO only)</td>
-<td>CO</td>
-<td>NULL</td>
+<td>CO buildings</td>
 </tr>
 <tr>
 <td>Assembly</td>
 <td>(verb-specific groupings)</td>
 <td>Level 3</td>
-<td>NULL (shared)</td>
-<td>NULL</td>
-</tr>
-<tr>
-<td>Template</td>
-<td>ST-SH, ST-DX</td>
-<td>Template root</td>
-<td>RE</td>
-<td>ST</td>
+<td>Shared</td>
 </tr>
 </tbody>
 </table>
 <p>Room and discipline codes operate at <strong>different BOM levels</strong> and never compete.
 Storeys are shared across RE and CO — always at Level 1. The Level 2 axis
-changes from room-type to discipline-type based on DocBaseType. No new tables
-needed; M_Product_Category holds both sets, scoped by the doc_type column.</p>
+changes from room-type to discipline-type based on the top-level M_Product_Category.
+No new tables needed; M_Product_Category holds both sets, scoped by cascade level.</p>
 <h3 id="m_attributesetinstance-per-verb-usage">M_AttributeSet/Instance — Per-Verb Usage<a class="headerlink" href="#m_attributesetinstance-per-verb-usage" title="Permanent link">&para;</a></h3>
 <p>SH/DX: zero elements needed instance attributes. Terminal changes that:</p>
 <table>
@@ -5904,7 +5897,7 @@ iDempiere sales order size. The user sees storeys as order lines, disciplines
 as sub-lines, and verbs as manufacturing instructions. The YAML is the order
 form; the compiler generates the transactional records.</p>
 <h3 id="full-bom-tree-with-erp-mapping">Full BOM Tree With ERP Mapping<a class="headerlink" href="#full-bom-tree-with-erp-mapping" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>L0: BUILDING_TE_STD (BUILDING, doc_base_type=CO, doc_sub_type=TE)
+<div class="highlight"><pre><span></span><code>L0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
     C_Order = CO_TE
     ├─ L1: FLOOR_TE_GF (FLOOR, bom_category=GF)
     │  C_OrderLine #20

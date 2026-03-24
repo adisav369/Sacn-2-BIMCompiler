@@ -4466,7 +4466,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 Creates C_Order + walks m_bom/m_bom_line recursively. IsBOM products (matching m_bom) recurse;
 leaves become C_OrderLine LEAF rows. Returns <code>BomTreeNode</code> for Outliner (expand/collapse).
 DocAction: Save(validate) → Approve(new product config) → Complete(compile+viewport).</p>
-<p><strong>CO mode (Terminal/Institutional):</strong> CompileStage is skipped for <code>DocBaseType=CO</code>. All elements come from BOM extraction — no DSL compilation path needed.</p>
+<p><strong>CO mode (Terminal/Institutional):</strong> CompileStage is skipped for M_Product_Category=CO buildings. All elements come from BOM extraction — no DSL compilation path needed.</p>
 <blockquote>
 <p><strong>Full pipeline spec:</strong> <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a> — per-stage walkthrough, CO mode forensics, data integrity chain.</p>
 </blockquote>
@@ -5128,7 +5128,7 @@ VERIFIED ✓ (or drift detected ✗)
 </tr>
 <tr>
 <td><strong>C_DocType</strong></td>
-<td>iDempiere document type — building type identity (DocBaseType + DocSubType)</td>
+<td>iDempiere document type — "Construction Order" (one type; classification lives on M_Product_Category)</td>
 </tr>
 <tr>
 <td><strong>Instant Drop</strong></td>

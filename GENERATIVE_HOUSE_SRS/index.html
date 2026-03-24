@@ -3758,7 +3758,7 @@
 selected from the library by the same three dimensions that govern all compilation:</p>
 <ol>
 <li><strong>BomCategory</strong> (WHAT) — LIVING, KITCHEN, BEDROOM, BATHROOM</li>
-<li><strong>DocBaseType / DocSubType</strong> (WHICH) — RE/DM borrows from RE/SH, RE/DX</li>
+<li><strong>M_Product_Category</strong> (WHICH) — RE/DM borrows from RE/SH, RE/DX (same top-level category)</li>
 <li><strong>SpaceSize</strong> (HOW MUCH) — AABB on the slot determines which child BOM fits</li>
 </ol>
 <p>The BOM walker, tack convention, verb expansion, ESLine placement, and all 6 gates
@@ -3830,8 +3830,8 @@ Compile explodes the tree. Instant BOM Drop pattern.</p>
 </tr>
 <tr>
 <td><strong>Owner</strong></td>
-<td><code>C_DocType.DocSubType</code> — which variant</td>
-<td>DM building → prefer DM BOMs, fallback to SH/DX BOMs with same DocBaseType</td>
+<td>Building prefix (M_Product identity) — which variant</td>
+<td>DM building → prefer DM BOMs, fallback to SH/DX BOMs with same M_Product_Category</td>
 </tr>
 <tr>
 <td><strong>SpaceSize</strong></td>
@@ -3840,11 +3840,11 @@ Compile explodes the tree. Instant BOM Drop pattern.</p>
 </tr>
 </tbody>
 </table>
-<p>When the DocSubType doesn't match (DM has no dedicated BATHROOM BOM), the cascade
-falls back to the same DocBaseType (RE). SH is RE. DX is RE. Their BOMs are available
-to DM because they share the base type. This is the iDempiere pattern: a Sales Order
-(SOO) uses the same products as a Purchase Order (POO) — different document type,
-same product catalog.</p>
+<p>When the building prefix doesn't match (DM has no dedicated BATHROOM BOM), the cascade
+falls back to the same M_Product_Category (RE). SH is RE. DX is RE. Their BOMs are
+available to DM because they share the top-level category. This is the iDempiere
+pattern: products in the same M_Product_Category are interchangeable — the category
+defines the swap pool.</p>
 <h3 id="23-what-the-authority-data-tables-provide">2.3 What the Authority Data Tables Provide<a class="headerlink" href="#23-what-the-authority-data-tables-provide" title="Permanent link">&para;</a></h3>
 <p>The authority data tables are <strong>validation and suggestion</strong> resources — they don't
 drive compilation. They help the Designer present intelligent defaults:</p>
@@ -3900,7 +3900,7 @@ Building codes ──encode──→ disc_validation.db
                                     ▼
 DemoHouse (DM) ──borrow──→ Same products, same BOMs, same rules
   Via Selection Cascade §3.5:
-    bom_category + DocBaseType + AABB fit
+    bom_category + M_Product_Category + AABB fit
   No new products created.
   No new geometry invented.
   Every element traces to a real IFC or a building code.
@@ -3910,7 +3910,7 @@ DemoHouse (DM) ──borrow──→ Same products, same BOMs, same rules
 selected yet), the Designer can <strong>auto-suggest</strong> using the BOM Chooser (§3.5):</p>
 <div class="highlight"><pre><span></span><code>DesignerAPI.suggestRoomContents(buildingId)
     For each room C_OrderLine with bom_category:
-        1. Query m_bom WHERE bom_category = ? AND DocBaseType = parent&#39;s DocBaseType
+        1. Query m_bom WHERE bom_category = ? AND m_product_category_id = parent&#39;s M_Product_Category
         2. Filter by AABB fit (child ≤ room slot)
         3. Rank by §3.5 cascade
         4. Return best-match BOM as suggestion

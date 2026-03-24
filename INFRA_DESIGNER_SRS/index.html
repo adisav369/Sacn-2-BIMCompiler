@@ -3853,8 +3853,9 @@
 <h2 id="0-rosetta-stone-bom-model-from-parallel-session-s37b">§0 Rosetta Stone BOM Model (from parallel session S37b)<a class="headerlink" href="#0-rosetta-stone-bom-model-from-parallel-session-s37b" title="Permanent link">&para;</a></h2>
 <h3 id="01-infrastructure-yaml-convention">§0.1 Infrastructure YAML Convention<a class="headerlink" href="#01-infrastructure-yaml-convention" title="Permanent link">&para;</a></h3>
 <p>The parallel session established the infra Rosetta Stone pattern. Key decisions:</p>
-<p><strong><code>doc_base_type: IN</code></strong> is the infrastructure discriminator. All infra YAMLs use this.
-The Designer API can check <code>docBaseType == "IN"</code> to select infra mode.</p>
+<p><strong><code>doc_base_type: IN</code></strong> is the infrastructure discriminator in YAML (deprecated — will migrate
+to M_Product_Category=IN, see DATA_MODEL.md §7). All infra YAMLs use this.
+The Designer API checks the top-level M_Product_Category to select infra mode.</p>
 <p><strong><code>segments:</code> is an alias for <code>storeys:</code></strong> in the YAML schema. The pipeline treats
 them identically — same hierarchy, different label. This preserves the
 <code>BUILDING → FLOOR → LEAF</code> abstraction as <code>FACILITY → SEGMENT → LEAF</code>.</p>
@@ -4961,8 +4962,8 @@ Proven on 689-point real survey terrain. 16 PlacementContext witnesses GREEN.</p
 </tr>
 </tbody>
 </table>
-<p><strong>Key fix:</strong> <code>doc_base_type: IN</code> was falling into RE path (StructuralBomBuilder, no verb
-detection). One-line fix routes IN to DisciplineBomBuilder (same as CO), enabling
+<p><strong>Key fix:</strong> M_Product_Category=IN was falling into the residential path (StructuralBomBuilder,
+no verb detection). One-line fix routes IN to DisciplineBomBuilder (same as CO), enabling
 VerbDetector cascade for all infrastructure.</p>
 <h3 id="phase-i-4-wire-terrainsnap-into-designer-snap-loop-done-s38b">Phase I-4: Wire TerrainSnap into Designer snap() Loop — DONE (S38b)<a class="headerlink" href="#phase-i-4-wire-terrainsnap-into-designer-snap-loop-done-s38b" title="Permanent link">&para;</a></h3>
 <p><strong>Scope:</strong> During snap(), compute Z per bbox from terrain context.</p>

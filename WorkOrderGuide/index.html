@@ -4650,12 +4650,12 @@ products and geometry links (skips if already done), runs IFCtoBOM to produce
 <tr>
 <td><code>doc_sub_type</code></td>
 <td>string</td>
-<td>DocType sub-type for C_DocType (e.g., <code>SH</code>, <code>DX</code>)</td>
+<td><strong>Deprecated</strong> — redundant with prefix (see DATA_MODEL.md §7). Currently still read by pipeline.</td>
 </tr>
 <tr>
 <td><code>doc_base_type</code></td>
 <td>string</td>
-<td>DocType base: <code>RE</code> (residential), <code>CO</code> (commercial/institutional), <code>IN</code> (infrastructure). See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> §3.1 G4 for infrastructure usage.</td>
+<td><strong>Deprecated</strong> — redundant with M_Product_Category (RE/CO/IN). See DATA_MODEL.md §7 migration plan.</td>
 </tr>
 <tr>
 <td><code>name</code></td>
@@ -5438,7 +5438,7 @@ is the default, always-available baseline.</p>
 </tr>
 <tr>
 <td>v2+ (infra)</td>
-<td><code>segments:</code> alias for <code>storeys:</code>, <code>doc_base_type: IN</code>, infrastructure discipline map</td>
+<td><code>segments:</code> alias for <code>storeys:</code>, M_Product_Category=IN, infrastructure discipline map</td>
 <td>v2. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> §3</td>
 </tr>
 <tr>
@@ -5465,7 +5465,7 @@ Step 2: SELECT FACILITY TYPE
   User picks: BRIDGE / ROAD / RAILWAY / TUNNEL from facility dropdown
   API: listFacilityTypes() → FacilityType enum
   Effect: loads provenance-scoped validation rules (30 infra rules)
-  YAML: doc_base_type: IN, segments: alias for storeys:
+  YAML: M_Product_Category=IN, segments: alias for storeys:
 
 Step 3: DEFINE ALIGNMENT
   User draws polyline over terrain in viewport

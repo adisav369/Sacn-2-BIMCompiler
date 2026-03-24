@@ -3637,12 +3637,12 @@
 <td>3 proposed: ARC, STR, ROOF (see §Discipline Breakdown)</td>
 </tr>
 <tr>
-<td>Proposed DocSubType</td>
-<td>FK</td>
+<td>M_Product_Category</td>
+<td>RE (Residential)</td>
 </tr>
 <tr>
-<td>Proposed DocBaseType</td>
-<td>RE (Residential)</td>
+<td>Prefix</td>
+<td>FK</td>
 </tr>
 <tr>
 <td>C_DocType_ID</td>
@@ -4574,8 +4574,8 @@ The YAML is the <strong>single point of human intent</strong> — everything els
 <span class="w">  </span><span class="nt">building_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ifc4_FZKHaus</span><span class="w">        </span><span class="c1"># must match {name}_extracted.db</span>
 <span class="w">  </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FK</span><span class="w">                          </span><span class="c1"># → FK_BOM.db</span>
 <span class="w">  </span><span class="nt">building_bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BUILDING_FK_STD</span>
-<span class="w">  </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FK</span>
-<span class="w">  </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                   </span><span class="c1"># Residential</span>
+<span class="w">  </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FK</span><span class="w">                    </span><span class="c1"># deprecated — redundant with prefix (see DATA_MODEL.md §7)</span>
+<span class="w">  </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                   </span><span class="c1"># deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FZK-Haus</span>
 <span class="w">  </span><span class="nt">dsl_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dsl_fk.bim</span><span class="w">               </span><span class="c1"># BIM COBOL script</span>
 

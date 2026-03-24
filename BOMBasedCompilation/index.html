@@ -4123,12 +4123,11 @@ building. See <strong><a href="../MANIFESTO/">MANIFESTO.md</a></strong> for the 
 <li><strong>SpaceSize</strong> (AABB on M_BOM_Line) — HOW MUCH: width × depth × height in mm</li>
 </ol>
 <h3 id="11-disciplines-are-metadata-not-structure">1.1 Disciplines Are Metadata, Not Structure<a class="headerlink" href="#11-disciplines-are-metadata-not-structure" title="Permanent link">&para;</a></h3>
-<p>In iDempiere, <code>C_DocType.DocBaseType</code> (SOO, API, MOP) classifies documents.
-The document engine is generic — it processes all types identically. What
-differs per type is the <strong>validation rules</strong> (tax on Invoice, credit check on
-Order, BOM explosion on Manufacturing Order). The engine never has a
-<code>switch(docBaseType)</code> — it fires AD_Val_Rule / ModelValidator / Column Callout
-based on metadata.</p>
+<p>In iDempiere, the document engine is generic — it processes all document types
+identically. What differs per type is the <strong>validation rules</strong> (tax on Invoice,
+credit check on Order, BOM explosion on Manufacturing Order). The engine fires
+AD_Val_Rule / ModelValidator / Column Callout based on metadata, never via
+hardcoded type checks.</p>
 <p>Disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG) follow the same pattern:</p>
 <table>
 <thead>
@@ -4139,7 +4138,7 @@ based on metadata.</p>
 </thead>
 <tbody>
 <tr>
-<td>C_DocType.DocBaseType</td>
+<td>Document classification via metadata</td>
 <td>m_bom.bom_category (the discipline marker)</td>
 </tr>
 <tr>
@@ -4147,7 +4146,7 @@ based on metadata.</p>
 <td>Same BOM walker (§2.2, §4)</td>
 </tr>
 <tr>
-<td>AD_Val_Rule per DocType</td>
+<td>AD_Val_Rule per document type</td>
 <td>AD_Val_Rule per bom_category (sprinkler spacing, clearances)</td>
 </tr>
 <tr>
@@ -4449,8 +4448,8 @@ See <code>TerminalAnalysis.md</code> §ERP Model Architecture for how discipline
 sit on M_Product_Category with <code>doc_type='CO'</code> and how ROUTE/TILE verbs map to
 M_AttributeSet/Instance.</p>
 <p>Single-discipline buildings (SH, schema_version 1) skip this layer — no
-discipline wrapper needed. DocBaseType (RE/CO) on M_Product_Category determines
-which L2 axis is used: rooms (RE) or disciplines (CO).</p>
+discipline wrapper needed. The top-level M_Product_Category (RE/CO) determines
+which L2 axis is used: rooms (RE) or disciplines (CO). See MANIFESTO.md §Category Cascade.</p>
 <h3 id="216-recipe-vs-placement-the-bom-contract">2.1.6 Recipe vs Placement — The BOM Contract<a class="headerlink" href="#216-recipe-vs-placement-the-bom-contract" title="Permanent link">&para;</a></h3>
 <p><strong><code>{PREFIX}_BOM.db</code> is a recipe.</strong> Each m_bom_line is a <strong>type line</strong> — one row per
 unique product within its parent BOM, with a qty count or verb formula reference.
@@ -5545,13 +5544,13 @@ names in source code. The Python/shell side is not:</p>
 <td>1</td>
 <td><code>scripts/RosettaStoneExtract.py</code></td>
 <td>37–60</td>
-<td><code>BUILDINGS</code> dict: prefixes (<code>SH</code>, <code>DX</code>), doc_sub_type, building_bom_id, storey name→code mappings, roles, seq_no</td>
+<td><code>BUILDINGS</code> dict: prefixes (<code>SH</code>, <code>DX</code>), building prefix, building_bom_id, storey name→code mappings, roles, seq_no</td>
 </tr>
 <tr>
 <td>2</td>
 <td><code>scripts/RosettaStoneToBOM.py</code></td>
 <td>48–55</td>
-<td><code>C_DOCTYPE</code> list: doc_type_id, DocBaseType, DocSubType, output/reference paths, ExpectedElements (55, 1099, 139, 51088)</td>
+<td><code>C_DOCTYPE</code> list: doc_type_id, M_Product_Category, building prefix, output/reference paths, ExpectedElements (55, 1099, 139, 51088)</td>
 </tr>
 <tr>
 <td>3</td>
@@ -5591,8 +5590,8 @@ and structure. The manifest is an index into extraction truth — it names thing
 <span class="nt">buildings</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">Ifc4_SampleHouse</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SH</span>
-<span class="w">    </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SH</span>
-<span class="w">    </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span>
+<span class="w">    </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SH</span><span class="w">                  </span><span class="c1"># deprecated — redundant with prefix + M_Product_Category (see DATA_MODEL.md §7)</span>
+<span class="w">    </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                 </span><span class="c1"># deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)</span>
 <span class="w">    </span><span class="nt">provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EXTRACTED</span>
 <span class="w">    </span><span class="nt">output_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DAGCompiler/lib/output/ifc4_samplehouse.db</span>
 <span class="w">    </span><span class="nt">reference_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db</span>
@@ -5604,8 +5603,8 @@ and structure. The manifest is an index into extraction truth — it names thing
 
 <span class="w">  </span><span class="nt">Ifc2x3_Duplex</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DX</span>
-<span class="w">    </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DX</span>
-<span class="w">    </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span>
+<span class="w">    </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DX</span><span class="w">                  </span><span class="c1"># deprecated — redundant with prefix + M_Product_Category (see DATA_MODEL.md §7)</span>
+<span class="w">    </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                 </span><span class="c1"># deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)</span>
 <span class="w">    </span><span class="nt">provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EXTRACTED</span>
 <span class="w">    </span><span class="nt">output_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DAGCompiler/lib/output/ifc2x3_duplex.db</span>
 <span class="w">    </span><span class="nt">reference_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db</span>
@@ -5681,7 +5680,7 @@ opinion.</p>
 ERP system — one BOM entry, zero code changes:</p>
 <ol>
 <li><strong>Manifest entry</strong> — add one YAML block to <code>construction_manifest.yaml</code> (name, prefix,
-   doc_sub_type, storeys, paths)</li>
+   prefix, storeys, paths)</li>
 <li><strong>Extract IFC</strong> — run extraction pipeline; reference DB appears at the declared path</li>
 <li><strong>Regenerate BOM dictionary</strong> — IFCtoBOM Java pipeline (SH/DX) or <code>RosettaStoneToBOM.py</code> (TE)
    reads classification YAML + extraction, writes M_BOM, M_BOM_Line with derived counts and dimensions</li>
@@ -5715,7 +5714,7 @@ ERP system — one BOM entry, zero code changes:</p>
 <tr>
 <td><code>run_RosettaStones.sh</code></td>
 <td><code>SH_BASE</code> / <code>DX_BASE</code> variables, <code>case</code> dispatch (lines 39–40, 418–435)</td>
-<td>Query <code>SELECT DocSubType, output_path FROM C_DocType WHERE IsActive=1</code> from <code>{PREFIX}_BOM.db</code></td>
+<td>Query <code>SELECT C_DocType_ID, output_path FROM C_DocType WHERE IsActive=1</code> from <code>{PREFIX}_BOM.db</code></td>
 <td>Shell reads <code>{PREFIX}_BOM.db</code> via <code>sqlite3</code>. Loop replaces case statement.</td>
 </tr>
 <tr>

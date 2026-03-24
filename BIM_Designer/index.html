@@ -2497,10 +2497,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#17182-category-hierarchy-docsubtype-filtered" class="md-nav__link">
+  <a href="#17182-category-hierarchy-m_product_category-filtered" class="md-nav__link">
     <span class="md-ellipsis">
       
-        17.18.2 Category Hierarchy (DocSubType-Filtered)
+        17.18.2 Category Hierarchy (M_Product_Category-Filtered)
       
     </span>
   </a>
@@ -5473,10 +5473,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#17182-category-hierarchy-docsubtype-filtered" class="md-nav__link">
+  <a href="#17182-category-hierarchy-m_product_category-filtered" class="md-nav__link">
     <span class="md-ellipsis">
       
-        17.18.2 Category Hierarchy (DocSubType-Filtered)
+        17.18.2 Category Hierarchy (M_Product_Category-Filtered)
       
     </span>
   </a>
@@ -5952,8 +5952,8 @@ to generate a building from scratch. No IFC file, no extraction — pure intent.
 </tr>
 <tr>
 <td>Building type</td>
-<td>Dropdown from C_DocType (DocSubType)</td>
-<td>C_DocType selector</td>
+<td>Dropdown from M_Product_Category (building products)</td>
+<td>M_Product selector</td>
 </tr>
 <tr>
 <td>Jurisdiction</td>
@@ -6367,7 +6367,7 @@ to GUI chooser panels:</p>
 <td>Typology chooser</td>
 </tr>
 <tr>
-<td><strong>Owner</strong> (C_DocType.DocSubType) — WHICH</td>
+<td><strong>Owner</strong> (M_Product identity) — WHICH</td>
 <td>Building variant: SH, DX, TB</td>
 <td>Building type selector</td>
 </tr>
@@ -9108,10 +9108,10 @@ quick-open or iDempiere's Info Window. Type first, browse later.</p>
 shows its parent set context. "Show Parent Set" expands the full set for
 cherry-picking. "Browse Tree" drops into the folder hierarchy for traditional
 category navigation. The tree is always available but never mandatory.</p>
-<h4 id="17182-category-hierarchy-docsubtype-filtered">17.18.2 Category Hierarchy (DocSubType-Filtered)<a class="headerlink" href="#17182-category-hierarchy-docsubtype-filtered" title="Permanent link">&para;</a></h4>
-<p>The category tree correlates with DocSubType — a Malaysian terrace house
-user never sees terminal-specific equipment:</p>
-<div class="highlight"><pre><span></span><code>BOMCategory (filtered by active DocSubType):
+<h4 id="17182-category-hierarchy-m_product_category-filtered">17.18.2 Category Hierarchy (M_Product_Category-Filtered)<a class="headerlink" href="#17182-category-hierarchy-m_product_category-filtered" title="Permanent link">&para;</a></h4>
+<p>The category tree correlates with the building's M_Product_Category — a Malaysian
+terrace house user never sees terminal-specific equipment:</p>
+<div class="highlight"><pre><span></span><code>M_Product_Category (filtered by active building category):
   FURNITURE
     BEDROOM_SET      → 23 items (MY, SH, DX)
     LIVING_SET       → 18 items
@@ -9227,7 +9227,7 @@ child OrderLines.</p>
 <span class="w"> </span><span class="nt">&quot;categories&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[{</span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;BEDROOM_SET&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">23</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;fitsCount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">18</span><span class="p">}]}</span>
 </code></pre></div></p>
 <p>Java does the heavy lifting — SQL <code>LIKE</code> query against <code>component_library.db</code>
-with AABB comparison and DocSubType filter. Python renders the paginated
+with AABB comparison and M_Product_Category filter. Python renders the paginated
 results. As the user scrolls, Python requests the next page. Same pattern as
 iDempiere's Info Window with lazy loading.</p>
 <h3 id="1719-bom-outliner-relational-tree-editor">17.19 BOM Outliner — Relational Tree Editor<a class="headerlink" href="#1719-bom-outliner-relational-tree-editor" title="Permanent link">&para;</a></h3>

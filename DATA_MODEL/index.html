@@ -3695,17 +3695,17 @@ See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code><
 <tr>
 <td>doc_base_type</td>
 <td>RE / CO / IN</td>
-<td>RE=Residential, CO=Commercial, IN=Infrastructure</td>
+<td><strong>Deprecated</strong> — redundant with m_product_category_id (see §7 migration plan)</td>
 </tr>
 <tr>
 <td>doc_sub_type</td>
 <td>SH / DX / BR / RD</td>
-<td>Building or facility variant</td>
+<td><strong>Deprecated</strong> — redundant with building prefix/bom_id (see §7 migration plan)</td>
 </tr>
 <tr>
-<td>bom_category</td>
+<td>m_product_category_id</td>
 <td>RE / CO / IN</td>
-<td>Template category matching doc_base_type</td>
+<td>Top-level M_Product_Category — classification lives here</td>
 </tr>
 <tr>
 <td>origin_x/y/z</td>
@@ -3802,7 +3802,7 @@ Compile DBs are auto-cleaned; only <code>{PREFIX}_BOM.db</code> persists.</p>
 <h2 id="2-prefix_bomdb-schema-reference">2. <code>{PREFIX}_BOM.db</code> — Schema Reference<a class="headerlink" href="#2-prefix_bomdb-schema-reference" title="Permanent link">&para;</a></h2>
 <p>Read-only at compile time. Each per-building dictionary contains domain config, BOM hierarchy, and product catalog.</p>
 <h3 id="c_doctype-6-rows-domain-config">C_DocType (6 rows — domain config)<a class="headerlink" href="#c_doctype-6-rows-domain-config" title="Permanent link">&para;</a></h3>
-<p>Building type classification. Prime Rule three-key match: DocBaseType + DocSubType + AABB.</p>
+<p>"Construction Order" — one document type. Classification lives on M_Product_Category, not here. Legacy columns (DocBaseType, DocSubType) exist but are deprecated (see §7 migration plan).</p>
 <blockquote>
 <p><strong>RESOLVED (session 30, R27):</strong> IFCtoBOM now writes C_DocType into <code>{PREFIX}_BOM.db</code>
 during extraction. Shell injection removed from <code>run_RosettaStones.sh</code>.
@@ -3831,12 +3831,12 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>DocBaseType</td>
 <td>TEXT</td>
-<td>RE (Residential), CO (Commercial), IN (Industrial)</td>
+<td><strong>Deprecated</strong> — RE/CO/IN. Redundant with M_Product_Category (see §7)</td>
 </tr>
 <tr>
 <td>DocSubType</td>
 <td>TEXT</td>
-<td>SH, DX, TB, TE, ST — drives BOM scoping. ST = template path</td>
+<td><strong>Deprecated</strong> — SH/DX/TB/TE/ST. Redundant with building prefix (see §7)</td>
 </tr>
 <tr>
 <td>ProjectName</td>
@@ -3881,7 +3881,7 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 </tbody>
 </table>
 <h3 id="m_bom-bom-headers">m_bom (BOM headers)<a class="headerlink" href="#m_bom-bom-headers" title="Permanent link">&para;</a></h3>
-<p>4 dimensions: DocType + DocSubType + Category + SpaceSize (AABB fit).</p>
+<p>2 selection dimensions: M_Product_Category + SpaceSize (AABB fit). Legacy columns doc_base_type/doc_sub_type exist but are deprecated (see §7).</p>
 <table>
 <thead>
 <tr>
@@ -3914,12 +3914,12 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>doc_base_type</td>
 <td>TEXT</td>
-<td>RE/CO/IN — Prime Rule key</td>
+<td><strong>Deprecated</strong> — RE/CO/IN. Redundant with m_product_category_id (see §7)</td>
 </tr>
 <tr>
 <td>doc_sub_type</td>
 <td>TEXT</td>
-<td>SH/DX/TB/TE — variant scope</td>
+<td><strong>Deprecated</strong> — SH/DX/TB/TE. Redundant with bom_id prefix (see §7)</td>
 </tr>
 <tr>
 <td>origin_x, origin_y, origin_z</td>

@@ -3343,15 +3343,15 @@ DesignerAPIImpl.createNew(request)
 │      │
 │      ├── 3b. INSERT W_BuildingConfig (embedded YAML + identity)
 │      │       → yaml_content  = full classify_{prefix}.yaml text
-│      │       → doc_base_type = from YAML building.doc_base_type (&#39;RE&#39;)
-│      │       → doc_sub_type  = from YAML building.doc_sub_type (&#39;DM&#39;)
+│      │       → doc_base_type = from YAML building.doc_base_type (&#39;RE&#39;)  # deprecated — see DATA_MODEL.md §7
+│      │       → doc_sub_type  = from YAML building.doc_sub_type (&#39;DM&#39;)  # deprecated — see DATA_MODEL.md §7
 │      │       → jurisdiction  = from request.jurisdiction (&#39;MY&#39;)
 │      │       → aabb_*_mm     = from request site dimensions
 │      │       → provenance    = &#39;GENERATIVE&#39;
 │      │
 │      ├── 3c. INSERT C_Order (building header, DocStatus=&#39;DR&#39;)
 │      │       → C_Order_ID    = building_id (master — Parent_Order_ID = NULL)
-│      │       → C_DocType_ID  = doc_sub_type
+│      │       → C_DocType_ID  = building prefix
 │      │       → aabb_*        = from W_BuildingConfig
 │      │
 │      ├── 3d. Walk BOM tree → C_OrderLine + CO_EmptySpaceLine + ASI
@@ -3422,9 +3422,9 @@ DesignerAPIImpl.createNew(request)
 │      │   │
 │      │   └── COUNTS tracked: orderLineCount, esLineCount, asiCount
 │      │
-│      ├── 3e. INSERT PP_Order_Node (default routing from doc_base_type)
+│      ├── 3e. INSERT PP_Order_Node (default routing from M_Product_Category)
 │      │       │
-│      │       │ SELECT routing template by doc_base_type:
+│      │       │ SELECT routing template by M_Product_Category:
 │      │       │
 │      │       │ RE (Residential):
 │      │       │   10: Foundation (STR)
@@ -4024,7 +4024,7 @@ Sub-work-order lifecycle:
 <span class="w">        </span><span class="c1">//   expectedLines = walk m_bom tree from BUILDING_DM_STD, count nodes</span>
 <span class="w">        </span><span class="c1">//   expectedESLines = count ROOM-level BOMs (each gets one ESLine)</span>
 <span class="w">        </span><span class="c1">//   expectedASI = count LEAF products with M_AttributeSet_ID != null</span>
-<span class="w">        </span><span class="c1">//   expectedPPNodes = count from doc_base_type routing template</span>
+<span class="w">        </span><span class="c1">//   expectedPPNodes = count from M_Product_Category routing template</span>
 <span class="w">        </span><span class="c1">//</span>
 <span class="w">        </span><span class="c1">//   assertEquals(expectedLines, actualOrderLineCount)</span>
 <span class="w">        </span><span class="c1">//   assertEquals(expectedESLines, actualESLineCount)</span>
