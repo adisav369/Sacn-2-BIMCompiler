@@ -1,5 +1,9 @@
 # The Rosetta Stone Strategy
 
+## Why This Exists
+
+AI is blind to spatial geometry. It can parse text, generate code, and reason about logic — but it cannot see that a wall must sit on a slab, that a door must be inside a wall, or that two columns must not occupy the same space. No amount of prompt engineering fixes this: spatial correctness is a mathematical problem, not a language problem. The Rosetta Stone strategy exists to solve it deterministically — real buildings become ground truth, and every compiled output is proven against that truth with pure arithmetic. No heuristics. No tolerance tuning. No AI. If the coordinates match, the grammar is certified.
+
 ## What This Is
 
 Three real IFC buildings, decomposed into reference DBs. The compiler
@@ -10,7 +14,7 @@ Not the same dimensions. The same COORDINATES. Position in 3D space.
 A wall at (5.0, 0.0, 0.0) sized 4000x150x2700 must match a reference
 wall at (5.0, 0.0, 0.0) sized 4000x150x2700. Same place. Same size.
 
-The reference DB has every answer. Read it. Match it.
+The reference DB has every answer. Read it. Match it. Not through cheating or copying — which AI often does via hallucination or drifting. The output must go through the compilation process.
 
 ---
 
@@ -136,9 +140,9 @@ is a **proven word**. A composed building is a **sentence** built from proven wo
 ## Compiled Construction vs Revit
 
 Revit is a canvas — click, place, adjust, repeat. Every element is a manual act.
-This project is a compiler — write intent, the compiler produces geometry.
+This project is a compiler — write intent, the compiler produces geometry that has a language of its own. We first defined it as VERBS in [BIM COBOL](BIM_COBOL.md).
 
-| | Revit (authoring) | BIM COBOL (compiling) |
+| | Revit (authoring) | [BIM COBOL](BIM_COBOL.md) (compiling) |
 |---|---|---|
 | **Act** | Place one element at a time | Formula generates thousands |
 | **Compliance** | Checked AFTER (Solibri) | Enforced DURING compilation |

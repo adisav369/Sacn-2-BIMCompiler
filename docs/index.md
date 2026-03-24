@@ -14,7 +14,7 @@ hide:
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Compiled in Blender/Bonsai. Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP).</figcaption>
 </figure>
 
-A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an ERP system explodes a manufacturing BOM into work orders.
+A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders.
 
 Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic. The same 9-stage pipeline compiles a 55-element house and a 48,428-element airport terminal. 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) generate geometry from rules. 2,475 products in the library. 6 mathematical gates prove every output correct — not sampled, proven.
 
@@ -79,6 +79,8 @@ A product catalog (`M_Product`) becomes building elements. A Bill of Materials (
 ---
 
 ## **The Rosetta Stone Strategy**
+
+AI cannot see spatial geometry — it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The Rosetta Stone strategy trains it deterministically: real buildings become the ground truth, and every compiled output is proven against that truth with pure arithmetic.
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">
