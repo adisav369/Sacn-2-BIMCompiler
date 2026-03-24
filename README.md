@@ -129,6 +129,9 @@ mvn exec:java -pl BonsaiBIMDesigner \
     -Dexec.mainClass="com.bim.designer.api.DesignerServer" \
     -Dexec.args="library 9876" -q       # Designer server (TCP, for Blender)
 
+# Documentation site (auto-installs mkdocs on first run)
+./scripts/serve_docs.sh                 # Browse: http://localhost:8000
+
 # Database browser (optional)
 pip install datasette
 datasette library/*.db --port 8001      # Browse: http://localhost:8001
