@@ -16,7 +16,9 @@ hide:
 
 A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an ERP system explodes a manufacturing BOM into work orders.
 
-Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.
+Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic. The same 9-stage pipeline compiles a 55-element house and a 48,428-element airport terminal. 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) generate geometry from rules. 2,475 products in the library. 6 mathematical gates prove every output correct — not sampled, proven.
+
+Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://www.sqlite.org/), and the [Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/) open-source 3D viewport. From Kuala Lumpur, Malaysia — where BIM is mandated for all projects >= RM10M from July 2025.
 
 <div style="clear: right;"></div>
 
@@ -65,7 +67,7 @@ Every output element traces to a library input. Nothing is invented. No AI insid
 
 ---
 
-## How It Works
+## **How It Works**
 
 ```
 IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
@@ -76,38 +78,43 @@ A product catalog (`M_Product`) becomes building elements. A Bill of Materials (
 
 ---
 
-## The Rosetta Stone Strategy
+## **The Rosetta Stone Strategy**
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">48,428 elements. 8 disciplines. Compiled from BOM.</figcaption>
 </figure>
 
-Compile a building from its BOM. If every element lands at the same position as the reference, the grammar is certified. **35 buildings proven.** [:octicons-arrow-right-24: How it works](TheRosettaStoneStrategy.md)
+Real IFC buildings are decomposed into reference databases. The compiler reads a BOM describing the same building and produces output. If every compiled element lands at the **same position** as the reference — same coordinates, same dimensions, same 3D space — the BOM grammar is **certified**.
+
+35 buildings compiled. From a 55-element house to a 48,428-element airport terminal. 19 pass all 6 mathematical gates. Once a stone is certified, any new building composed from its proven grammar inherits the proof — no new reference needed.
+
+[:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
 
 <div style="clear: right;"></div>
 
 ---
 
-## We Got Eyes
+## **We Got Eyes**
 
-The compiler can see. BIMEyes reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall *must* be planar. A column *must* be elongated. Per-element, pairwise, and aggregate — 28 proof classes verify that elements are sane, relate correctly, and form coherent buildings.
+The compiler can see. BIMEyes reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall *must* be planar. A column *must* be elongated. A slab *must* be flat. These are mathematical facts, not heuristics.
 
-97% of 90,310 elements pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic. [:octicons-arrow-right-24: EYES specification](EYES_SRS.md)
+Three verification tiers: **per-element** (each element is geometrically sane), **pairwise** (doors inside walls, furniture inside rooms), and **aggregate** (every room has walls, floor, ceiling, and a door). 28 proof classes across 90,310 elements. 97% pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic.
+
+[:octicons-arrow-right-24: EYES specification](EYES_SRS.md)
 
 ---
 
-## Design in Blender, Compile from BOM
+## **Design in Blender, Compile from BOM**
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 570px; text-align: center;">
   <img src="assets/images/HTMLYAML.png" alt="BIM Designer web UI — BOM tree, DocAction buttons, Attributes panel" width="570">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">BIM Designer web UI. BOM tree, DocAction lifecycle buttons (Approve, Complete, Promote).</figcaption>
 </figure>
 
-The compiler powers a live GUI inside [Blender](https://www.blender.org/) via the
-[Bonsai](https://bonsaibim.org/) addon. Create a building from a single click, edit
-room dimensions with sliders, switch jurisdictions, save/recall design versions, and
-promote a design to a construction-ready work order.
+The compiler powers a live GUI inside [Blender](https://www.blender.org/) via the [Bonsai](https://bonsaibim.org/) addon. Create a building from a single click, edit room dimensions with sliders, switch jurisdictions, save/recall design versions, and promote a design to a construction-ready work order.
+
+The HTML web UI (port 9878) provides 10 tabs: spatial views, geometry inspection, validation, BOM tree, and colour-coded discipline breakdown. DocAction lifecycle buttons (Draft → Approve → Complete → Promote) drive the design through ERP-standard approval stages. Bidirectional sync: browser pushes commands to Bonsai, Bonsai renders the compiled output live.
 
 392 passing tests. What the user sees IS what the compiler produces, deterministically.
 
@@ -117,7 +124,7 @@ promote a design to a construction-ready work order.
 
 ---
 
-## Quick Start
+## **Quick Start**
 
 ```bash
 # Prerequisites: Java 17+, Maven 3.8+, SQLite3
@@ -133,7 +140,7 @@ mvn compile -q                              # Compile all modules
 
 ---
 
-## Documentation Map
+## **Documentation Map**
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 560px; text-align: center;">
   <img src="assets/images/2D_FLOOR_SAMPLEHOUSE.png" alt="Sample House 2D floor plan — Pelan Lantai" width="560">
