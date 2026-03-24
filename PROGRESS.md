@@ -34,7 +34,7 @@
   Session E DONE — Order inheritance. W006 migration (Ref_Order_ID). InheritanceResolver + dropWithInheritance. OrderInheritanceTest 6/6. GAP-SC-5 CLOSED.
   Session F DONE — DiffVerb + Callout (§9). W007 migration (AD_Rule). DiffVerbService + CalloutEngine. DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
 
-**AD Dictionary (S62→S65):** Steps 0–3 DONE. Next: Step 4–6. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
+**AD Dictionary (S62→S65):** Steps 0–4 DONE. Next: Step 5–6. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
 **Docs site:** https://red1oon.github.io/BIMCompiler/ — 50 specs, mkdocs-material.
 
@@ -43,6 +43,7 @@
 
 ## Session Log (recent first)
 
+**S75** — M_Product_Category hierarchy + BUILDING backfill + AD table consolidation. DV018 migration (71 new categories: 4 top-level, 32 floor, 19 room, 11 infra, 5 cross-domain/anomaly → 117 total). DV019 migration (bad_* tables moved from component_library.db → disc_validation.db: 67 rows). BUILDING BOM backfill verified (0 NULL). cleanup_complib_duplicates.sh script for stale table removal. `mvn compile -q` PASS.
 **S74** — Phase 3: remove CO_EmptySpaceLine. Pipeline rewritten to use in-memory RoomSlot from M_BOM_Line dx/dy/dz. 4 PO classes deleted, W008 migration (DROP TABLE), populateCoEmptySpace → computeRoomSlots, SpatialStructureBuilder accepts List\<RoomSlot\>, EmptySpaceChecksum removed from C_Order/pipeline. 6 verbs updated (BuildSpatialStructure, VerifyPlacement, HelloWorld, SummarizeBuilding, CompleteBuilding). BuildingWriter DDL cleaned, OutputTemplateGenerator cleaned, SpatialDigest.computeEmptySpaceChecksum removed. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S73** — CO_EmptySpaceLine → compiler-internal. Phase 1: 15 docs aligned (WHERE = M_BOM_Line dx/dy/dz). Phase 2: 4 PO classes @Deprecated, all consumer javadoc/comments updated, SpatialDigest + VerifyPlacementVerb @Deprecated. Phase 3 deferred (tables still needed by pipeline). AUDIT docs untouched (historical).
 **S72** — Session F: DiffVerb + Callout (§9). W007 migration (AD_Rule callout table). DiffVerbService (records DIFF PP_Order_Node + delta params). CalloutEngine (topo-sort rule evaluation). DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
