@@ -61,7 +61,7 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
     C_Order, C_OrderLine, M_Product, M_BOM — iDempiere patterns.
     A compiled building IS a manufacturing work order.
 
-    [:octicons-arrow-right-24: Data model](DATA_MODEL.md)
+    [:octicons-arrow-right-24: Read the ERP world view](MANIFESTO.md) · [:octicons-arrow-right-24: Data model](DATA_MODEL.md)
 
 </div>
 
@@ -149,6 +149,7 @@ mvn compile -q                              # Compile all modules
 
 | I want to... | Start here |
 |--------------|-----------|
+| Understand the ERP world view | [**MANIFESTO — Read First**](MANIFESTO.md) |
 | Understand the system | [System Contract](SystemContract.md) |
 | Read the master spec | [BOM-Based Compilation](BOMBasedCompilation.md) |
 | Navigate the code | [Source Code Guide](SourceCodeGuide.md) |
