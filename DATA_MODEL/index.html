@@ -1157,6 +1157,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#7-docbasetype-m_product_category-alignment-s70-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. DocBaseType → M_Product_Category Alignment — S70 Findings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. DocBaseType → M_Product_Category Alignment — S70 Findings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-docs-needing-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Docs Needing Correction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-java-files-routing-on-docbasetypedocsubtype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Java Files Routing on DocBaseType/DocSubType
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-m_product_category-hierarchy-current-vs-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 M_Product_Category Hierarchy — Current vs Target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-erpdb-rename-touchpoint-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 ERP.db Rename — Touchpoint Count
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-migration-plan-follow-up-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 Migration Plan (follow-up sessions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3340,6 +3423,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#7-docbasetype-m_product_category-alignment-s70-findings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. DocBaseType → M_Product_Category Alignment — S70 Findings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. DocBaseType → M_Product_Category Alignment — S70 Findings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-docs-needing-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Docs Needing Correction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-java-files-routing-on-docbasetypedocsubtype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Java Files Routing on DocBaseType/DocSubType
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-m_product_category-hierarchy-current-vs-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 M_Product_Category Hierarchy — Current vs Target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-erpdb-rename-touchpoint-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 ERP.db Rename — Touchpoint Count
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-migration-plan-follow-up-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 Migration Plan (follow-up sessions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4476,6 +4642,214 @@ already serves this role for most AD data but has a misleading name and incomple
 <p><strong>Decision:</strong> No action this session. This section documents the investigation.
 Implementation would be a separate bounded task with its own migration plan.</p>
 </blockquote>
+<hr />
+<h2 id="7-docbasetype-m_product_category-alignment-s70-findings">7. DocBaseType → M_Product_Category Alignment — S70 Findings<a class="headerlink" href="#7-docbasetype-m_product_category-alignment-s70-findings" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Status:</strong> Analysis complete (S70). MANIFESTO.md corrected. Code + doc propagation pending.
+<strong>Pre-flight:</strong> <code>// Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment</code></p>
+</blockquote>
+<h3 id="71-the-problem">7.1 The Problem<a class="headerlink" href="#71-the-problem" title="Permanent link">&para;</a></h3>
+<p><code>doc_base_type</code> and <code>doc_sub_type</code> on <code>m_bom</code> are redundant with <code>m_product_category_id</code> and
+<code>bom_id</code>. The BUILDING BOM has <code>doc_base_type=RE, doc_sub_type=SH</code> but NULL <code>m_product_category_id</code>.
+Child BOMs have <code>m_product_category_id</code> set (GF, RF, LIVING) but NULL <code>doc_base_type</code>. Both carry
+classification — on different columns at different levels. The correct model: M_Product_Category
+carries classification at every level. C_DocType = ONE "Construction Order" (not per-building-type).</p>
+<h3 id="72-docs-needing-correction">7.2 Docs Needing Correction<a class="headerlink" href="#72-docs-needing-correction" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Doc</th>
+<th>What to fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>BOMBasedCompilation.md</strong></td>
+<td>L44-55: C_DocType.DocBaseType analogy. L297: "DocBaseType on M_Product_Category". L1149-1186: YAML schema refs</td>
+</tr>
+<tr>
+<td><strong>SystemContract.md</strong></td>
+<td>L63: C_DocType = "Building type classification" → "Construction Order". L434: "per DocBaseType + DocSubType"</td>
+</tr>
+<tr>
+<td><strong>DATA_MODEL.md</strong></td>
+<td>§1.4: doc_base_type/doc_sub_type on m_bom. §2 C_DocType/m_bom schema. This section (§7) is the correction anchor</td>
+</tr>
+<tr>
+<td><strong>TerminalAnalysis.md</strong></td>
+<td>L661-697: entire "DocBaseType — Real Semantic Work" section. M_Product_Category scoped by doc_type column</td>
+</tr>
+<tr>
+<td><strong>SourceCodeGuide.md</strong></td>
+<td>L292: "DocBaseType=CO" skip logic. L589: C_DocType identity definition</td>
+</tr>
+<tr>
+<td><strong>ProjectOrderBlueprint.md</strong></td>
+<td>CLEAN — no changes needed</td>
+</tr>
+<tr>
+<td><strong>DocAction_SRS.md</strong></td>
+<td>CLEAN — no changes needed</td>
+</tr>
+<tr>
+<td><strong>DISC_VALIDATION_DB_SRS.md</strong></td>
+<td>CLEAN — no changes needed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="73-java-files-routing-on-docbasetypedocsubtype">7.3 Java Files Routing on DocBaseType/DocSubType<a class="headerlink" href="#73-java-files-routing-on-docbasetypedocsubtype" title="Permanent link">&para;</a></h3>
+<p><strong>Source files (19) — routing logic that must migrate to M_Product_Category:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>File</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DAGCompiler</td>
+<td><code>BomDropper.java</code></td>
+<td><code>findBuildingBom()</code> WHERE doc_base_type = ? AND doc_sub_type = ?</td>
+</tr>
+<tr>
+<td>DAGCompiler</td>
+<td><code>BuildingRegistry.java</code></td>
+<td><code>loadByDocBaseType()</code>, JOIN doc_base_type = DocBaseType</td>
+</tr>
+<tr>
+<td>DAGCompiler</td>
+<td><code>CompilationPipeline.java</code></td>
+<td>Three-key match, ST dispatch, CO dispatch</td>
+</tr>
+<tr>
+<td>BIM_COBOL</td>
+<td><code>ComposeBuildingVerb.java</code></td>
+<td>COMPOSE BUILDING \&lt;docBaseType&gt;</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>MCDocType.java</code></td>
+<td><code>getByDocBaseType()</code>, switch on docBaseType</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>X_C_DocType.java</code></td>
+<td>Column definitions (DocBaseType, DocSubType)</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>X_M_BOM.java</code></td>
+<td>doc_base_type column accessor</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>BomTemplateContract.java</code></td>
+<td>Template derivation from docSubType → docBaseType</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>BomTemplateComposer.java</code></td>
+<td>Three-key match (AABB + DocBaseType + DocSubType)</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>MBomCategory.java</code></td>
+<td>docType parameter matching DocBaseType</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>MBomCategoryLine.java</code></td>
+<td>docType parameter matching DocBaseType</td>
+</tr>
+<tr>
+<td>ORMSandbox</td>
+<td><code>X_CCampaign.java</code></td>
+<td>DocBaseType reference</td>
+</tr>
+<tr>
+<td>BonsaiBIMDesigner</td>
+<td><code>DesignerDAO.java</code></td>
+<td>JOIN doc_base_type = DocBaseType</td>
+</tr>
+<tr>
+<td>BonsaiBIMDesigner</td>
+<td><code>DesignerAPIImpl.java</code></td>
+<td><code>deriveFacilityType()</code> routing, JOIN</td>
+</tr>
+<tr>
+<td>BonsaiBIMDesigner</td>
+<td><code>StubDataSeeder.java</code></td>
+<td>Schema creation with DocBaseType</td>
+</tr>
+<tr>
+<td>BonsaiBIMDesigner</td>
+<td><code>WorkOutputDAO.java</code></td>
+<td>doc_base_type in schema</td>
+</tr>
+<tr>
+<td>IFCtoBOM</td>
+<td><code>IFCtoBOMPipeline.java</code></td>
+<td>Dispatch on doc_base_type, C_DocType creation</td>
+</tr>
+<tr>
+<td>IFCtoBOM</td>
+<td><code>StructuralBomBuilder.java</code></td>
+<td>INSERT with doc_base_type</td>
+</tr>
+<tr>
+<td>IFCtoBOM</td>
+<td><code>DisciplineBomBuilder.java</code></td>
+<td>INSERT with doc_base_type</td>
+</tr>
+<tr>
+<td>IFCtoBOM</td>
+<td><code>ClassificationYaml.java</code></td>
+<td>Record with docBaseType field</td>
+</tr>
+<tr>
+<td>IFCtoBOM</td>
+<td><code>BomValidator.java</code></td>
+<td>Validates doc_base_type on BUILDING BOM</td>
+</tr>
+<tr>
+<td>BIMBackOffice</td>
+<td><code>PortfolioDAO.java</code></td>
+<td>SELECT DocBaseType</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Test files (12):</strong> PrimeRuleWitnessTest, BuildingRegistryTest, DataIntegrityTest,
+RemoveCompressTest, OrderInheritanceTest, BomDropperOrderIdTest, BomDropCompileTest,
+BomDropConfigureTest, CompileBridgeTest, ASIAuthoringTest, DemoHouseTest, SelectionCascadeTest</p>
+<h3 id="74-m_product_category-hierarchy-current-vs-target">7.4 M_Product_Category Hierarchy — Current vs Target<a class="headerlink" href="#74-m_product_category-hierarchy-current-vs-target" title="Permanent link">&para;</a></h3>
+<p><strong>Current (disc_validation.db, 46 rows):</strong> IFC element classification only (IFC_WALL→STR,
+IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.</p>
+<p><strong>Missing for cascade model (need migration to add):</strong>
+- Top-level: RE (Residential), IN (Infrastructure), CO (Commercial), IP (Industrial Plant)
+- Floor-level: GF, L1, L2, L3, L4, L5, RF, FN, MS
+- Room-level: LI (Living), KT (Kitchen), BD (Bedroom), BT (Bathroom), DN (Dining), FR (Furniture), etc.
+- Infra segments: SUP, DCK, ABT, TRK, ROAD, RAIL</p>
+<p>These values already exist as <code>bom_category</code> strings on <code>m_bom</code> rows in BOM databases — they just
+aren't registered as M_Product_Category rows in disc_validation.db. Migration: INSERT OR IGNORE
+from the existing bom_category vocabulary.</p>
+<h3 id="75-erpdb-rename-touchpoint-count">7.5 ERP.db Rename — Touchpoint Count<a class="headerlink" href="#75-erpdb-rename-touchpoint-count" title="Permanent link">&para;</a></h3>
+<p>Renaming <code>disc_validation.db</code> → <code>ERP.db</code> affects:
+- Java system property references: <code>disc.validation.db</code> (grep needed for exact count)
+- Shell scripts: <code>run_RosettaStones.sh</code>, <code>run_tests.sh</code>, extraction scripts
+- Python scripts: <code>RosettaStoneToBOM.py</code>, <code>RosettaStoneExtract.py</code>
+- Doc references across ~10 specs
+- Estimated total touchpoints: 40–60 (bounded task, separate session)</p>
+<h3 id="76-migration-plan-follow-up-sessions">7.6 Migration Plan (follow-up sessions)<a class="headerlink" href="#76-migration-plan-follow-up-sessions" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Session N+1:</strong> Add missing M_Product_Category rows to disc_validation.db (DV018 migration)</li>
+<li><strong>Session N+2:</strong> Populate <code>m_product_category_id</code> on BUILDING BOMs (currently NULL where doc_base_type is set)</li>
+<li><strong>Session N+3:</strong> Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)</li>
+<li><strong>Session N+4:</strong> Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)</li>
+<li><strong>Session N+5:</strong> Rename disc_validation.db → ERP.db + propagate all touchpoints</li>
+<li><strong>Each session:</strong> Propagate doc corrections to 1–2 specs from §7.2 list</li>
+</ol>
 <hr />
 <p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
 <code>SystemContract.md</code> for the three-concern model (WHAT/HOW/WHERE),

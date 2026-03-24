@@ -621,10 +621,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-ad_org-discipline-m_product_category-classification" class="md-nav__link">
+  <a href="#what-m_product_category-classification-ad_org-discipline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        WHAT: AD_Org (Discipline) + M_Product_Category (Classification)
+        WHAT: M_Product_Category (Classification) + AD_Org (Discipline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-category-cascade-one-pattern-three-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Category Cascade — One Pattern, Three Domains
       
     </span>
   </a>
@@ -670,6 +681,40 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-order-configure-to-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Order — Configure-to-Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-entity-relationship-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Entity-Relationship Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Entity-Relationship Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-erd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The ERD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-mapping-idempiere-bim" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -677,6 +722,33 @@
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#orthogonal-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orthogonal Dimensions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m_attributeset-why-product-count-stays-small" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M_AttributeSet — Why Product Count Stays Small
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2782,10 +2854,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-ad_org-discipline-m_product_category-classification" class="md-nav__link">
+  <a href="#what-m_product_category-classification-ad_org-discipline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        WHAT: AD_Org (Discipline) + M_Product_Category (Classification)
+        WHAT: M_Product_Category (Classification) + AD_Org (Discipline)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-category-cascade-one-pattern-three-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Category Cascade — One Pattern, Three Domains
       
     </span>
   </a>
@@ -2831,6 +2914,40 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#the-order-configure-to-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Order — Configure-to-Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-entity-relationship-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Entity-Relationship Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Entity-Relationship Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-erd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The ERD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#the-mapping-idempiere-bim" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2838,6 +2955,33 @@
       
     </span>
   </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#orthogonal-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orthogonal Dimensions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#m_attributeset-why-product-count-stays-small" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        M_AttributeSet — Why Product Count Stays Small
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2937,77 +3081,98 @@ with production detail in PP_Order. We inherit the same separation:</p>
 does not require changes to HOW (verb stays the same) or WHERE (slot stays
 the same). This is the architectural invariant that makes exception-based
 ordering possible: override one concern, inherit the others.</p>
-<h3 id="what-ad_org-discipline-m_product_category-classification">WHAT: AD_Org (Discipline) + M_Product_Category (Classification)<a class="headerlink" href="#what-ad_org-discipline-m_product_category-classification" title="Permanent link">&para;</a></h3>
-<p>The WHAT concern has two layers — <strong>who is responsible</strong> and <strong>what kind of thing</strong>.</p>
+<h3 id="what-m_product_category-classification-ad_org-discipline">WHAT: M_Product_Category (Classification) + AD_Org (Discipline)<a class="headerlink" href="#what-m_product_category-classification-ad_org-discipline" title="Permanent link">&para;</a></h3>
+<p>The WHAT concern has two orthogonal axes — <strong>what kind of thing</strong> and <strong>who is responsible</strong>.</p>
+<p><strong>M_Product_Category — Product classification (WHAT kind of thing).</strong>
+The same entity iDempiere uses to group products into swap pools. Categories
+form a cascade — each level of the building hierarchy has its own category:</p>
+<div class="highlight"><pre><span></span><code>Level       M_Product_Category    Examples
+─────       ──────────────────    ────────
+Building    RE (Residential)      SH, DX, DM, FK
+  Floor     GF, L1, RF            ground, first, roof
+    Room    LIVING, KITCHEN        swap pool — replace one LIVING layout for another
+      Leaf  IFC_WALL, IFC_DOOR     element classification (→ component library geometry)
+</code></pre></div>
+<p>The category at each level defines the <strong>swap pool</strong> — you can replace one
+LIVING room layout with another LIVING layout, but you can't swap a LIVING
+room for a KITCHEN. This is iDempiere's Configure-to-Order constraint
+applied to spatial BOMs.</p>
 <p><strong>AD_Org — Discipline (WHO is responsible).</strong> In iDempiere, <code>AD_Org</code> partitions
 data by business unit. Here, engineering disciplines partition the BOM validation
 space. Each discipline is an organisational concern with its own rules, its own
 AD_Val_Rule set, its own validation pass — but sharing the same product catalog.</p>
 <div class="highlight"><pre><span></span><code>AD_Org (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG, REB, MEP, ROAD, GEO, RAIL, LAND, SIGN
 </code></pre></div>
-<p><strong>M_Product_Category — Element and room classification (WHAT kind of thing).</strong>
-The same entity iDempiere uses to group products into swap pools. In
-<code>disc_validation.db</code>, M_Product_Category maps IFC classes to parent disciplines
-(IFC_WALL→STR, IFC_DOOR→ARC, IFC_FLOWSEGMENT→MEP). In BOM databases, it
-classifies rooms and segments.</p>
-<div class="highlight"><pre><span></span><code>M_Product_Category (element)     → IFC_WALL, IFC_DOOR, IFC_BEAM, IFC_FLOWSEGMENT...
-M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
-M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
-M_Product (leaf)                 → the actual element with geometry
+<p><strong>The distinction matters.</strong> Disciplines cut ACROSS the category tree — they
+don't appear AS levels within it. Three products in the same room (same
+category path) can have three different AD_Orgs:</p>
+<div class="highlight"><pre><span></span><code>Category cascade:     RE → GF → LIVING → SOFA_001       ← AD_Org = ARC
+Category cascade:     RE → GF → LIVING → SPRINKLER_001  ← AD_Org = FP
+Category cascade:     RE → GF → LIVING → LIGHT_001      ← AD_Org = ELEC
 </code></pre></div>
-<p><strong>The distinction matters.</strong> A Patio Furniture Set belongs to category
-OUTDOOR_FURNITURE (M_Product_Category) — that's what kind of thing it is.
-The trade responsible for installing it is AD_Org = ARC (Architecture) —
-that's who validates it. You can't swap a table for a sprinkler head
-(category constraint), and the sprinkler head is validated by FP, not ARC
-(discipline constraint). Two orthogonal axes.</p>
-<p>A residential building (DocBaseType=RE) uses <strong>room categories</strong>: the Patio
-Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
-<strong>segment categories</strong>: a bridge deck lives in DCK. The category tree is the
-taxonomy — the engine never asks "is this a house?" It asks "what category
-constrains this swap?"</p>
-<p>There is only <strong>one C_DocType = "Construction Order"</strong>. DocBaseType and
-DocSubType are classification metadata — provenance tags that describe the
-building's origin (RE=residential, IN=infrastructure, CO=commercial). They
-are not routing logic. The compilation engine is generic; the categories
-carry the domain knowledge.</p>
+<p>M_Product_Category answers "what kind of thing?" AD_Org answers "who installs it?"</p>
+<h3 id="the-category-cascade-one-pattern-three-domains">The Category Cascade — One Pattern, Three Domains<a class="headerlink" href="#the-category-cascade-one-pattern-three-domains" title="Permanent link">&para;</a></h3>
+<p>The cascade is universal. The same parent→child→grandchild pattern governs
+residential, infrastructure, and commercial buildings. Only the category
+names change:</p>
+<p><strong>Residential:</strong>
+<div class="highlight"><pre><span></span><code>RE (Residential)
+  └─ M_Product: SH (IsBOM=Y)              ← the building IS a product
+       └─ GF (Ground Floor, IsBOM=Y)       ← floor is a product
+            └─ LIVING (Room, IsBOM=Y)       ← room is a product
+                 ├─ SOFA_001 (IsBOM=N)      ← leaf — geometry from component library
+                 └─ TABLE_001 (IsBOM=N)     ← leaf — geometry from component library
+</code></pre></div></p>
+<p><strong>Infrastructure:</strong>
+<div class="highlight"><pre><span></span><code>IN (Infrastructure)
+  └─ M_Product: BR (Bridge, IsBOM=Y)
+       └─ SUP (Support, IsBOM=Y)           ← segment is a product
+            └─ PILE_001 (IsBOM=N)           ← leaf — geometry from component library
+</code></pre></div></p>
+<p><strong>Commercial:</strong>
+<div class="highlight"><pre><span></span><code>CO (Commercial)
+  └─ M_Product: WA (Warehouse A, IsBOM=Y)
+       └─ L1 (Level 1, IsBOM=Y)            ← floor is a product
+            └─ OFFICE (Space, IsBOM=Y)      ← space type — same swap-pool logic
+                 └─ DOOR_001 (IsBOM=N)      ← leaf — geometry from component library
+</code></pre></div></p>
 <h3 id="category-population-current-state">Category Population — Current State<a class="headerlink" href="#category-population-current-state" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>DocBaseType</th>
+<th>M_Product_Category</th>
 <th>Buildings</th>
-<th>Room/Segment Categories</th>
+<th>Sub-Categories</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>RE</strong> (residential)</td>
+<td><strong>RE</strong> (Residential)</td>
 <td>SH, DM, DX, FK, IN</td>
 <td>LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2)</td>
 </tr>
 <tr>
-<td><strong>RE</strong> (residential, floor-only)</td>
+<td><strong>RE</strong> (Residential, floor-only)</td>
 <td>BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI</td>
 <td>Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet</td>
 </tr>
 <tr>
-<td><strong>IN</strong> (infrastructure)</td>
+<td><strong>IN</strong> (Infrastructure)</td>
 <td>BR, RD, RL</td>
 <td>SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW</td>
 </tr>
 <tr>
-<td><strong>CO</strong> (commercial)</td>
+<td><strong>CO</strong> (Commercial)</td>
 <td>WA, WL, WT</td>
 <td>ARC, STR, MEP, L1–L5 — discipline + floor-level</td>
 </tr>
 <tr>
-<td><strong>IP</strong> (industrial plant)</td>
+<td><strong>IP</strong> (Industrial Plant)</td>
 <td>IP</td>
 <td>ARC, STR, MEP, MISC</td>
 </tr>
 <tr>
-<td><strong>(none)</strong></td>
+<td><strong>(unclassified)</strong></td>
 <td>TE</td>
 <td>No categories (48,428-element terminal — needs extraction)</td>
 </tr>
@@ -3046,12 +3211,12 @@ lines (M_BOM_Line) that point to its children.</p>
 <p><strong>This is the entire model.</strong> Products all the way down. BOMs are not a
 separate entity — they are a property of a product. A building is a product.
 A floor is a product. A room is a product. A door is a product.</p>
-<div class="highlight"><pre><span></span><code>BUILDING (M_Product, IsBOM=Y)
-  └─ FLOOR (M_Product, IsBOM=Y)
-       └─ ROOM (M_Product, IsBOM=Y)
+<div class="highlight"><pre><span></span><code>BUILDING (M_Product, IsBOM=Y, M_Product_Category=RE)
+  └─ FLOOR (M_Product, IsBOM=Y, M_Product_Category=GF)
+       └─ ROOM (M_Product, IsBOM=Y, M_Product_Category=LIVING)
             ├─ WALL_PANEL (M_Product, IsBOM=N → geometry from component library)
             ├─ DOOR (M_Product, IsBOM=N → geometry from component library)
-            └─ FURNITURE_SET (M_Product, IsBOM=Y)
+            └─ FURNITURE_SET (M_Product, IsBOM=Y, M_Product_Category=FR)
                  ├─ TABLE (M_Product, IsBOM=N → leaf)
                  └─ CHAIR × 4 (M_Product, IsBOM=N → leaf)
 </code></pre></div>
@@ -3060,10 +3225,55 @@ children). When it encounters a leaf product, it <strong>resolves</strong> (look
 in the component library). This is the same operation an ERP system performs
 when it explodes a manufacturing BOM into work orders.</p>
 <hr />
-<h2 id="the-mapping-idempiere-bim">The Mapping: iDempiere → BIM<a class="headerlink" href="#the-mapping-idempiere-bim" title="Permanent link">&para;</a></h2>
+<h2 id="the-order-configure-to-order">The Order — Configure-to-Order<a class="headerlink" href="#the-order-configure-to-order" title="Permanent link">&para;</a></h2>
+<p>In iDempiere, there is <strong>one C_DocType per document purpose</strong>: SOO (Sales Order),
+POO (Purchase Order), MOP (Manufacturing Order). Product classification lives
+on M_Product → M_Product_Category — never on the document type.</p>
+<p><strong>This project has exactly one document purpose: "Construction Order."</strong> That is
+the C_DocType. Classification lives where it belongs — on the product's
+M_Product_Category, not on the order.</p>
+<p>The BOM cascade gives you the FULL product tree (SH → floors → rooms → furniture →
+thousands of leaves). But the C_Order does NOT repeat that tree. This is
+iDempiere's Configure-to-Order pattern: the order carries only the EXCEPTIONS.</p>
+<div class="highlight"><pre><span></span><code>M_Product SH (BOM template):     1099 elements (full cascade)
+C_Order &quot;Build me SH&quot;:           0 lines (no exceptions — use template as-is)
+C_Order &quot;SH but no sofa&quot;:        1 line  (qty=0 at locator_ref RE.GF.LI.SOFA_001)
+C_Order &quot;SH Solar Premium&quot;:      6 lines (inherits from SH Solar, adds overrides)
+C_Order &quot;200 houses, 6 variants&quot;: 200 × ~3 lines = 600 lines (not 200 × 1099)
+</code></pre></div>
+<p>The BOM template is the PRODUCT (M_Product + M_BOM + M_BOM_Line cascade).
+The Order is just the delta — Remove (qty=0), Compress (reference class × N),
+Replace (swap product at locator_ref), Add (new line). Inheritance chains
+(Ref_Order_ID) let you stack deltas: SH_BASE → SH_SOLAR → SH_SOLAR_PREMIUM.</p>
+<p>The category at each level constrains what the thin order can override.
+You can Replace a LIVING room layout with another LIVING layout, but you
+can't swap it for a KITCHEN. M_Product_Category is the swap-pool guard.</p>
+<hr />
+<h2 id="the-entity-relationship-model">The Entity-Relationship Model<a class="headerlink" href="#the-entity-relationship-model" title="Permanent link">&para;</a></h2>
 <p>Every table in this project maps to a proven iDempiere entity. No invented
-abstractions. No BIM-specific data models. If iDempiere already solved the
-problem, we use iDempiere's solution.</p>
+abstractions. No BIM-specific data models.</p>
+<h3 id="the-erd">The ERD<a class="headerlink" href="#the-erd" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>M_Product_Category (RE, IN, CO)          ← WHAT kind of thing (cascade level)
+  └─ M_Product (SH, DX, BR)             ← the thing itself (IsBOM=Y or N)
+       ├─ M_BOM + M_BOM_Line            ← children (cascade down, dx/dy/dz tack offsets)
+       ├─ M_AttributeSet                ← WHICH attributes vary (BIM_Pipe, BIM_Component)
+       │    └─ M_AttributeSetInstance   ← per-instance values (length=3200mm)
+       └─ AD_Org                        ← WHO installs it (ARC, FP, ELEC) — tag, not level
+
+C_DocType (&quot;Construction Order&quot;)         ← ONE document type, always
+  └─ C_Order (&quot;Build me SH&quot;)            ← references M_Product
+       ├─ C_OrderLine                   ← exceptions only (thin order)
+       │    ├─ locator_ref              ← WHERE in the tree
+       │    └─ M_Product_Category       ← swap pool constraint
+       ├─ Ref_Order_ID                  ← inheritance chain
+       └─ C_Campaign                    ← design theme (orthogonal)
+
+AD_Val_Rule                              ← jurisdiction rules (MY/UBBL, US/IBC)
+AD_ChangeLog                             ← full provenance (undo/redo stack)
+PP_Order_Node                            ← HOW it was placed (verb audit)
+CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
+</code></pre></div>
+<h3 id="the-mapping-idempiere-bim">The Mapping: iDempiere → BIM<a class="headerlink" href="#the-mapping-idempiere-bim" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -3079,14 +3289,14 @@ problem, we use iDempiere's solution.</p>
 <td>The universal entity. Everything is a product</td>
 </tr>
 <tr>
+<td><strong>M_Product_Category</strong></td>
+<td>RE, IN, CO, GF, LIVING, IFC_WALL...</td>
+<td>Classifies products at every cascade level. WHAT kind of thing</td>
+</tr>
+<tr>
 <td><strong>AD_Org</strong></td>
 <td>ARC, STR, FP, ELEC, ACMV...</td>
 <td>Discipline = organisational unit. WHO is responsible</td>
-</tr>
-<tr>
-<td><strong>M_Product_Category</strong></td>
-<td>IFC_WALL, IFC_DOOR, LIVING, DCK...</td>
-<td>Classifies products by element type or room. WHAT kind of thing</td>
 </tr>
 <tr>
 <td><strong>M_BOM + M_BOM_Line</strong></td>
@@ -3096,17 +3306,17 @@ problem, we use iDempiere's solution.</p>
 <tr>
 <td><strong>C_Order</strong></td>
 <td>Construction project</td>
-<td>One order = one building. Carries design state</td>
+<td>One order = one building. Carries exceptions only</td>
 </tr>
 <tr>
 <td><strong>C_OrderLine</strong></td>
-<td>Element instance</td>
-<td>WHAT to build. References M_Product</td>
+<td>Exception line</td>
+<td>Deviation from BOM template (swap, remove, compress, add)</td>
 </tr>
 <tr>
 <td><strong>C_DocType</strong></td>
-<td>Building type classification</td>
-<td>Routes compilation. Metadata, not logic</td>
+<td>"Construction Order"</td>
+<td>ONE document type. Classification lives on M_Product_Category</td>
 </tr>
 <tr>
 <td><strong>PP_Order_Node</strong></td>
@@ -3138,12 +3348,107 @@ problem, we use iDempiere's solution.</p>
 <td>Output selection</td>
 <td>Which elements to render, which to hide</td>
 </tr>
+<tr>
+<td><strong>M_AttributeSet</strong></td>
+<td>Instance variation</td>
+<td>Per-element customization (pipe length, colour, finish)</td>
+</tr>
+<tr>
+<td><strong>C_Project</strong></td>
+<td>Site development</td>
+<td>200 houses under one project. Groups C_Orders</td>
+</tr>
 </tbody>
 </table>
 <p><strong>The extension:</strong> Manufacturing MRP has product + quantity + sequence.
 We add three columns to M_BOM_Line: <code>dx</code>, <code>dy</code>, <code>dz</code> — parent-relative
 tack offsets in millimetres. That is the entire difference between a flat
 BOM and a spatial BOM. Three integers turn procurement into construction.</p>
+<h3 id="orthogonal-dimensions">Orthogonal Dimensions<a class="headerlink" href="#orthogonal-dimensions" title="Permanent link">&para;</a></h3>
+<p>Seven dimensions cut ACROSS the product category cascade. None of them
+appear AS levels within the tree:</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>iDempiere Entity</th>
+<th>What It Controls</th>
+<th>Orthogonal To</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Classification</strong></td>
+<td>M_Product_Category</td>
+<td>What kind of thing (swap pool)</td>
+<td>— (this IS the cascade)</td>
+</tr>
+<tr>
+<td><strong>Discipline</strong></td>
+<td>AD_Org</td>
+<td>Who installs it</td>
+<td>Category</td>
+</tr>
+<tr>
+<td><strong>Design theme</strong></td>
+<td>C_Campaign</td>
+<td>Bali, Scandinavian, Industrial</td>
+<td>Category, Discipline</td>
+</tr>
+<tr>
+<td><strong>Jurisdiction</strong></td>
+<td>AD_Val_Rule</td>
+<td>MY/UBBL, US/IBC rules</td>
+<td>Category, Discipline, Theme</td>
+</tr>
+<tr>
+<td><strong>Costing</strong></td>
+<td>M_PriceList</td>
+<td>Unit cost by region/contract</td>
+<td>All above</td>
+</tr>
+<tr>
+<td><strong>Instance variation</strong></td>
+<td>M_AttributeSetInstance</td>
+<td>Pipe length, colour, finish</td>
+<td>All above</td>
+</tr>
+<tr>
+<td><strong>Site grouping</strong></td>
+<td>C_Project</td>
+<td>200 houses under one project</td>
+<td>Everything</td>
+</tr>
+</tbody>
+</table>
+<h3 id="m_attributeset-why-product-count-stays-small">M_AttributeSet — Why Product Count Stays Small<a class="headerlink" href="#m_attributeset-why-product-count-stays-small" title="Permanent link">&para;</a></h3>
+<p>Without AttributeSets, TE (Terminal) with 48,428 elements would need 48,428
+separate M_Products. That's wrong. In iDempiere, a shirt comes in S/M/L/XL —
+that's ONE M_Product with an M_AttributeSet (size) and 4 M_AttributeSetInstances.
+Not 4 products.</p>
+<p>Same pattern for construction. An FP (Fire Protection) route has:
+- START (pipe segment)
+- MID (pipe segment — different length)
+- JOINT (elbow, tee, reducer — fixed geometry)
+- DEVICE (sprinkler head, valve — fixed geometry)
+- END (cap, terminal)</p>
+<p>These are ~5 abstract M_Products, not thousands. The VARIABLE part (pipe length)
+lives on M_AttributeSetInstance. The FIXED part (elbow geometry) has no instance
+attributes — it's the same product everywhere.</p>
+<div class="highlight"><pre><span></span><code>M_Product: PIPE_CW_50MM (IsBOM=N, M_AttributeSet = BIM_Pipe)
+  └─ Instance 1: {length_mm: 3200}    ← segment in corridor
+  └─ Instance 2: {length_mm: 4800}    ← segment in main run
+  └─ Instance 3: {length_mm: 1200}    ← branch to sprinkler
+
+M_Product: ELBOW_90_50MM (IsBOM=N, M_AttributeSet = BIM_Component)
+  └─ No instances — fixed geometry, same everywhere
+
+M_Product: SPRINKLER_UPRIGHT_K80 (IsBOM=N, M_AttributeSet = BIM_Component)
+  └─ No instances — placement varies, product doesn&#39;t
+</code></pre></div>
+<p>The ROUTE verb assembles these into a BOM tree with per-segment instance
+attributes. TE's 9,345 FP/CW/SP/LPG pipe elements → ~20 abstract products
+× many instances. Without this, the product table explodes.</p>
 <hr />
 <h2 id="the-application-dictionary-heritage">The Application Dictionary Heritage<a class="headerlink" href="#the-application-dictionary-heritage" title="Permanent link">&para;</a></h2>
 <p>Compiere introduced the Application Dictionary (AD) in 2000 — metadata that
