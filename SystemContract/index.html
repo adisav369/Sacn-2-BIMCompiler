@@ -831,10 +831,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#25-spatial-data-co-where-things-go" class="md-nav__link">
+  <a href="#25-spatial-data-where-things-go" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.5 Spatial Data (CO) — Where Things Go
+        2.5 Spatial Data — Where Things Go
       
     </span>
   </a>
@@ -3159,10 +3159,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#25-spatial-data-co-where-things-go" class="md-nav__link">
+  <a href="#25-spatial-data-where-things-go" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.5 Spatial Data (CO) — Where Things Go
+        2.5 Spatial Data — Where Things Go
       
     </span>
   </a>
@@ -3561,7 +3561,7 @@ C_Project               C_Order                   C_OrderLine
 
 WHAT: C_ProjectLine     WHAT: C_OrderLine         WHAT: M_BOM_Line
 HOW:  PlacementStrategy HOW:  PP_Order_Node       HOW:  Verb (TILE/ROUTE/FRAME)
-WHERE: Plot (ABL)       WHERE: CO_EmptySpaceLine  WHERE: tack offset (dx/dy/dz)
+WHERE: Plot (ABL)       WHERE: M_BOM_Line dx/dy/dz WHERE: tack offset (dx/dy/dz)
 </code></pre></div>
 <p>A site is to plots what a building is to rooms what a room is to elements.
 The compiler, the gates, the DocAction lifecycle, the three-concern separation
@@ -3787,10 +3787,10 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 </tr>
 </tbody>
 </table>
-<h3 id="25-spatial-data-co-where-things-go">2.5 Spatial Data (CO) — Where Things Go<a class="headerlink" href="#25-spatial-data-co-where-things-go" title="Permanent link">&para;</a></h3>
+<h3 id="25-spatial-data-where-things-go">2.5 Spatial Data — Where Things Go<a class="headerlink" href="#25-spatial-data-where-things-go" title="Permanent link">&para;</a></h3>
 <p><strong>Database:</strong> compile DB, output.db
-<strong>Lifecycle:</strong> Created during BOM Drop. Updated during design.
-<strong>iDempiere equivalent:</strong> M_Locator (warehouse location), CO_EmptySpace (capacity).</p>
+<strong>Lifecycle:</strong> Spatial relationships live in M_BOM_Line dx/dy/dz (the BOM itself).
+<strong>iDempiere equivalent:</strong> M_BOM_Line tack offsets encode WHERE; no separate locator needed.</p>
 <table>
 <thead>
 <tr>
@@ -3801,14 +3801,9 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 </thead>
 <tbody>
 <tr>
-<td><code>co_empty_space</code></td>
-<td>Spatial envelope header</td>
-<td><a href="./">SystemContract.md §2</a></td>
-</tr>
-<tr>
-<td><code>co_empty_space_line</code></td>
-<td>Spatial slot (room/plot)</td>
-<td><a href="./">SystemContract.md §2</a></td>
+<td><code>m_bom_line</code> (dx/dy/dz)</td>
+<td>Spatial relationships within BOM</td>
+<td><a href="../MANIFESTO/">MANIFESTO.md §Three Concerns</a></td>
 </tr>
 <tr>
 <td><code>elements_rtree</code></td>
@@ -3817,6 +3812,11 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 </tr>
 </tbody>
 </table>
+<blockquote>
+<p><strong>Note:</strong> <code>co_empty_space</code> / <code>co_empty_space_line</code> are compiler-internal tables
+(implementation detail for filler queries). They are NOT architectural entities.
+Empty space = BOM line with <code>bom_type = 'FILLER'</code>, queryable via SQL.</p>
+</blockquote>
 <hr />
 <h2 id="3-transaction-catalogue">3. Transaction Catalogue<a class="headerlink" href="#3-transaction-catalogue" title="Permanent link">&para;</a></h2>
 <p>Every mutation to the system is a <strong>DocAction</strong> — an auditable, reversible
@@ -4042,9 +4042,9 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 </tr>
 <tr>
 <td><strong>WHERE</strong></td>
-<td>CO_EmptySpaceLine (room slots)</td>
+<td>M_BOM_Line dx/dy/dz (spatial relationships)</td>
 <td>✓ DONE</td>
-<td><a href="./">SystemContract.md §2</a></td>
+<td><a href="../MANIFESTO/">MANIFESTO.md §Three Concerns</a></td>
 </tr>
 </tbody>
 </table>
@@ -4389,7 +4389,7 @@ VALIDATION:
 <h3 id="64-compilation-flow-at-site-scale">6.4 Compilation Flow at Site Scale<a class="headerlink" href="#64-compilation-flow-at-site-scale" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>1. C_Project created (site_aabb from survey boundary)
 2. Site grid generated: streets × lots × terraces from terrain topology
-     Each plot = CO_EmptySpaceLine at site scale (ABL address, frontage, depth)
+     Each plot = M_BOM_Line at site scale (ABL address, frontage, depth via dx/dy/dz)
      Each plot.z = elevationAt(plot_centre) from PDFTerrain survey
 3. C_ProjectLine created: qty=180 SH_STD, qty=15 DX_STD, etc.
 4. Put-away strategy runs:

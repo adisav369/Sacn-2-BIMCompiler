@@ -1345,10 +1345,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#23-co_emptyspaceline-visual-slots" class="md-nav__link">
+  <a href="#23-spatial-relationships-visual-slots" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.3 CO_EmptySpaceLine → Visual Slots
+        2.3 Spatial Relationships → Visual Slots
       
     </span>
   </a>
@@ -4321,10 +4321,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#23-co_emptyspaceline-visual-slots" class="md-nav__link">
+  <a href="#23-spatial-relationships-visual-slots" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.3 CO_EmptySpaceLine → Visual Slots
+        2.3 Spatial Relationships → Visual Slots
       
     </span>
   </a>
@@ -5816,7 +5816,7 @@
 <p>The compiler already knows how to build. The GUI is a parameter chooser that
 triggers compilation and shows the result. Every concept the designer needs
 already exists in the codebase — tack convention, BOM selection cascade,
-CO_EmptySpace slots, BIM COBOL verbs, EntityType governance.</p>
+M_BOM_Line spatial relationships (dx/dy/dz), BIM COBOL verbs, EntityType governance.</p>
 </blockquote>
 <hr />
 <h2 id="phase-g-preamble-proven-artifacts-the-designer-builds-on">Phase G Preamble — Proven Artifacts the Designer Builds On<a class="headerlink" href="#phase-g-preamble-proven-artifacts-the-designer-builds-on" title="Permanent link">&para;</a></h2>
@@ -6294,17 +6294,21 @@ violates a code rule, the compiler flags it.</p>
 </table>
 <p>The GUI creates and modifies SY_<em> BOMs only. EntityType='D' guards protect
 dictionary records at the PO layer. </em>(Historical: EB_/WT_ prefixes removed 2026-03-10, replaced by BUILDING_<em>_STD naming.)</em></p>
-<h3 id="23-co_emptyspaceline-visual-slots">2.3 CO_EmptySpaceLine → Visual Slots<a class="headerlink" href="#23-co_emptyspaceline-visual-slots" title="Permanent link">&para;</a></h3>
-<p>CO_EmptySpaceLine records are the spatial containers that verbs target — the
-iDempiere <code>S_Resource</code> (production workstation) equivalent:</p>
+<h3 id="23-spatial-relationships-visual-slots">2.3 Spatial Relationships → Visual Slots<a class="headerlink" href="#23-spatial-relationships-visual-slots" title="Permanent link">&para;</a></h3>
+<p>Spatial relationships live in <strong>M_BOM_Line dx/dy/dz</strong> — the BOM itself carries
+WHERE information (MANIFESTO.md §Three Concerns). Visual slots in the GUI are
+derived from BOM spatial data:</p>
 <ul>
-<li>Created at structural tiers: unit, slab, floor, room</li>
-<li>Hold: origin coordinates, orientation (radians), remaining space (mm)</li>
-<li>Each line = a named locator (storey, room_name, wall face)</li>
-<li>The <code>v_co_available_space</code> view answers "can this item fit here?"</li>
+<li>Each M_BOM_Line's dx/dy/dz defines the tack offset (where child sits in parent)</li>
+<li>Structural tiers (unit, slab, floor, room) are BOM levels with spatial offsets</li>
+<li>Empty filler space = BOM line with <code>bom_type = 'FILLER'</code>, queryable via SQL</li>
+<li>The GUI presents these as visual room/wall slots for drag-and-drop placement</li>
 </ul>
-<p>The GUI presents these as visual room/wall slots. The user drags a BOM into
-a slot; the system checks fit via the selection cascade.</p>
+<blockquote>
+<p><strong>Implementation note:</strong> <code>co_empty_space_line</code> is a compiler-internal table
+that caches spatial slot data during compilation. It is NOT an architectural
+entity — the source of truth is M_BOM_Line dx/dy/dz.</p>
+</blockquote>
 <h3 id="24-selection-cascade-auto-fit">2.4 Selection Cascade → Auto-Fit<a class="headerlink" href="#24-selection-cascade-auto-fit" title="Permanent link">&para;</a></h3>
 <p>When the user places a room or furniture set, the BOM selection cascade
 (<a href="../BOMBasedCompilation/">BOMBasedCompilation.md §3</a>) finds the best match:</p>
@@ -6409,9 +6413,9 @@ prevents the GUI from corrupting spatial data:</p>
 <td>GUI edits verb params via PP_Order_NodeProduct</td>
 </tr>
 <tr>
-<td><strong>CO_EmptySpaceLine</strong></td>
-<td>WHERE (origin, orientation, remaining space)</td>
-<td>Read-only — verbs write, GUI reads</td>
+<td><strong>M_BOM_Line dx/dy/dz</strong></td>
+<td>WHERE (spatial relationships within BOM)</td>
+<td>Read-only — compiler writes, GUI reads</td>
 </tr>
 </tbody>
 </table>
@@ -6630,7 +6634,7 @@ each building makes the next building easier.</p>
 <td>DONE</td>
 </tr>
 <tr>
-<td>CO_EmptySpace spatial slots</td>
+<td>M_BOM_Line spatial relationships (dx/dy/dz)</td>
 <td>DONE</td>
 </tr>
 <tr>
@@ -7395,7 +7399,7 @@ caching. Rides on Federation's existing Full Load — adds the fast path.</p>
 </tr>
 <tr>
 <td><strong>ERP integration</strong></td>
-<td>C_Order/C_OrderLine/CO_EmptySpace</td>
+<td>C_Order/C_OrderLine/M_BOM_Line dx/dy/dz</td>
 <td>Costing, scheduling, procurement ready from day 1</td>
 </tr>
 </tbody>

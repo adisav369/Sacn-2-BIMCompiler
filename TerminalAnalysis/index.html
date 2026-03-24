@@ -5747,7 +5747,7 @@ The pattern (grid formula) lives on PP_Order_NodeProduct, not M_AttributeSet:</p
 <div class="highlight"><pre><span></span><code>C_OrderLine (WHAT):   M_Product = ROOF_DECK_PANEL_SET, qty = 4,410
 PP_Order_Node (HOW):  Verb = TILE SURFACE
   PP_Order_NodeProduct: origin, grid_cols=15, grid_rows=294, step_x=495, step_y=150
-CO_EmptySpaceLine (WHERE): AABB = 7,425 × 44,100 mm (the filled envelope)
+M_BOM_Line dx/dy/dz (WHERE): AABB = 7,425 × 44,100 mm (the filled envelope)
 </code></pre></div>
 <p>Changing the grid (16×294 instead of 15×294) changes only PP_Order_NodeProduct.
 The same PLATE_500x150x106 product appears in different TILE patterns across
@@ -5882,8 +5882,8 @@ C_OrderLine (tab — one per storey-discipline BOM):
 </tr>
 <tr>
 <td><strong>WHERE</strong> it goes</td>
-<td>CO_EmptySpaceLine</td>
-<td>Origin, AABB, orientation</td>
+<td>M_BOM_Line dx/dy/dz</td>
+<td>Spatial relationships (tack offsets)</td>
 </tr>
 <tr>
 <td><strong>HOW</strong> to build</td>

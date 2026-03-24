@@ -4095,7 +4095,7 @@ building. See <strong><a href="../MANIFESTO/">MANIFESTO.md</a></strong> for the 
 </tr>
 <tr>
 <td><strong>CO_EmptySpace</strong> (warehouse slot)</td>
-<td>Room/floor slot awaiting BOM content</td>
+<td>Compiler-internal spatial cache — WHERE = M_BOM_Line dx/dy/dz</td>
 </tr>
 <tr>
 <td><strong>PP_Order_Node</strong> (operation)</td>
@@ -4673,7 +4673,7 @@ order and explodes the BOM tree — walking every level, accumulating tack
 offsets (dx/dy/dz), resolving leaves to M_Product geometry.</p>
 <p>This is the iDempiere <strong>Instant BOM Drop</strong> pattern: drop without modification,
 auto-resolve cascading quantities from the parent.</p>
-<p>One C_OrderLine. One CO_EmptySpaceLine at origin (0,0,0). The entire BOM
+<p>One C_OrderLine. One spatial slot at origin (0,0,0). The entire BOM
 hierarchy is accepted as-is. SH (55), DX (1099), TE (48,428) all compile
 this way — the Rosetta Stones prove the BOM data restacks correctly.</p>
 <p><strong>What Instant Drop proves:</strong>

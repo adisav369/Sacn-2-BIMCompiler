@@ -3066,20 +3066,20 @@ with production detail in PP_Order. We inherit the same separation:</p>
 <tr>
 <td><strong>HOW</strong> to validate</td>
 <td>AD_Val_Rule</td>
-<td>BOM compilation per OrderLine against jurisdiction rules</td>
+<td>Compiler compiles freely; rules gate by exception (discipline/jurisdiction)</td>
 <td>ad_val_rule</td>
 </tr>
 <tr>
 <td><strong>WHERE</strong> it goes</td>
-<td>M_Locator / Warehouse</td>
-<td>Room slot, tack offset</td>
-<td>co_empty_space_line</td>
+<td>M_BOM_Line (dx/dy/dz)</td>
+<td>Spatial relationships within the BOM itself</td>
+<td>m_bom_line</td>
 </tr>
 </tbody>
 </table>
 <p>These three concerns are <strong>never merged</strong>. A change to WHAT (swap a product)
-does not require changes to HOW (verb stays the same) or WHERE (slot stays
-the same). This is the architectural invariant that makes exception-based
+does not require changes to HOW (rules stay the same) or WHERE (spatial offsets
+stay the same). This is the architectural invariant that makes exception-based
 ordering possible: override one concern, inherit the others.</p>
 <h3 id="what-m_product_category-classification-ad_org-discipline">WHAT: M_Product_Category (Classification) + AD_Org (Discipline)<a class="headerlink" href="#what-m_product_category-classification-ad_org-discipline" title="Permanent link">&para;</a></h3>
 <p>The WHAT concern has two orthogonal axes — <strong>what kind of thing</strong> and <strong>who is responsible</strong>.</p>
@@ -3270,7 +3270,6 @@ C_DocType (&quot;Construction Order&quot;)         ← ONE document type, always
 
 AD_Val_Rule                              ← jurisdiction rules (MY/UBBL, US/IBC)
 AD_ChangeLog                             ← full provenance (undo/redo stack)
-CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
 </code></pre></div>
 <h3 id="the-mapping-idempiere-bim">The Mapping: iDempiere → BIM<a class="headerlink" href="#the-mapping-idempiere-bim" title="Permanent link">&para;</a></h3>
 <table>
@@ -3316,11 +3315,6 @@ CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
 <td><strong>C_DocType</strong></td>
 <td>"Construction Order"</td>
 <td>ONE document type. Classification lives on M_Product_Category</td>
-</tr>
-<tr>
-<td><strong>CO_EmptySpace</strong></td>
-<td>Room/floor slot</td>
-<td>WHERE things go. Warehouse slot analogy</td>
 </tr>
 <tr>
 <td><strong>DocAction lifecycle</strong></td>

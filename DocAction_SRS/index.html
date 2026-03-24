@@ -4481,8 +4481,8 @@ YAML.FP absent          →  No FP in this building. Nothing fires for FP.
   │   │   ├── Walk BOM tree → INSERT C_OrderLine per node
   │   │   │   (family_ref, host_type, dx/dy/dz, aabb_*_mm)
   │   │   │
-  │   │   ├── INSERT CO_EmptySpaceLine per slot
-  │   │   │   (tack_from_x/y/z, capacity_*_mm)
+  │   │   ├── Spatial slots derived from M_BOM_Line dx/dy/dz
+  │   │   │   (compiler-internal: co_empty_space_line caches slot data)
   │   │   │
   │   │   ├── For LEAF nodes: fetch LOD from component_library.db
   │   │   │   → M_Product (dimensions) + component_definitions (attachment)
@@ -4515,8 +4515,8 @@ YAML.FP absent          →  No FP in this building. Nothing fires for FP.
   │       │   ├── INSERT C_OrderLine
   │       │   │   (family_ref=product_id, dx/dy/dz=computed tack)
   │       │   │
-  │       │   ├── INSERT CO_EmptySpaceLine
-  │       │   │   (tack_from = computed position)
+  │       │   ├── Spatial slot from M_BOM_Line dx/dy/dz
+  │       │   │   (compiler-internal: co_empty_space_line caches computed position)
   │       │   │
   │       │   └── INSERT M_AttributeSetInstance
   │       │       (width, depth, height from M_Product)
@@ -4691,7 +4691,7 @@ world coordinates. This is a simple angle sum (2D), not quaternion composition.<
 <td>processIt</td>
 <td>DR→IP</td>
 <td>work_output.db</td>
-<td>C_OrderLine, CO_EmptySpaceLine, M_AttributeSetInstance, W_Validation_Result</td>
+<td>C_OrderLine, spatial slots (M_BOM_Line dx/dy/dz), M_AttributeSetInstance, W_Validation_Result</td>
 <td>Design decisions + all validation tiers</td>
 </tr>
 <tr>
@@ -4787,15 +4787,15 @@ owns each element). Both are editable during IP and frozen at CO.</p>
 <td>YES — reparent</td>
 </tr>
 <tr>
-<td><code>CO_EmptySpaceLine</code></td>
-<td>tack_from_x/y/z_mm</td>
-<td>Slot position</td>
+<td><code>M_BOM_Line</code></td>
+<td>dx/dy/dz</td>
+<td>Spatial offset (WHERE)</td>
 <td>YES — follows OrderLine</td>
 </tr>
 <tr>
-<td><code>CO_EmptySpaceLine</code></td>
-<td>capacity_*_mm</td>
-<td>Slot AABB</td>
+<td><code>M_BOM_Line</code></td>
+<td>aabb_*_mm</td>
+<td>Slot AABB capacity</td>
 <td>YES — resize</td>
 </tr>
 <tr>
@@ -5010,7 +5010,7 @@ Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
 </tr>
 <tr>
 <td><strong>Writes</strong></td>
-<td><code>C_OrderLine.Parent_OrderLine_ID</code>, <code>C_OrderLine.dz</code> (recomputed). <code>CO_EmptySpaceLine.tack_from_z_mm</code>.</td>
+<td><code>C_OrderLine.Parent_OrderLine_ID</code>, <code>C_OrderLine.dz</code> (recomputed). Spatial slot cache updated.</td>
 </tr>
 <tr>
 <td><strong>Validation</strong></td>
@@ -5030,9 +5030,8 @@ SQL:
     dz = (new Z offset relative to L1 slab)
   WHERE C_OrderLine_ID = ?;
 
-  UPDATE CO_EmptySpaceLine SET
-    tack_from_z_mm = (new world Z position)
-  WHERE C_OrderLine_ID = ?;
+  -- Spatial slot cache (co_empty_space_line) updated from M_BOM_Line dx/dy/dz
+  -- UPDATE co_empty_space_line SET tack_from_z_mm = (new world Z) WHERE C_OrderLine_ID = ?;
 
   DELETE FROM W_Validation_Result
   WHERE C_OrderLine_ID = ?;
@@ -5748,9 +5747,9 @@ rename before each CompleteIt to version their builds (e.g. <code>output/demo_v2
 <td>ASI overrides per C_OrderLine</td>
 </tr>
 <tr>
-<td>CO_EmptySpaceLine</td>
+<td>co_empty_space_line</td>
 <td>Compile DB</td>
-<td>Spatial slots</td>
+<td>Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz)</td>
 </tr>
 <tr>
 <td>W_Validation_Result</td>

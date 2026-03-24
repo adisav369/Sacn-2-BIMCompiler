@@ -5004,10 +5004,10 @@ Terrace 0 (Z ≈ 28-38m)  ═══ Street 1 ═══  [S][S][S][S][S][S][S][S]
 - <code>ad_plot_type</code> table: STANDARD/CORNER/PREMIUM/INFRA/GREEN classification
 - <code>ad_site_placement_rule</code> table: put-away rules (plot_type → building_variant)
 - <code>SitePlacementStrategy</code> class: walks plots, applies rules, assigns C_Orders
-- CO_EmptySpaceLine at site scale: plot slots with ABL addressing</p>
-<p><strong>Recursive pattern:</strong> Site-scale CO_EmptySpaceLine (plots) → Building-scale
-CO_EmptySpaceLine (rooms) → same table, different scale. The spatial slot
-concept works at both levels without new infrastructure.</p>
+- M_BOM_Line dx/dy/dz at site scale: plot spatial relationships with ABL addressing</p>
+<p><strong>Recursive pattern:</strong> Site-scale M_BOM_Line (plot offsets) → Building-scale
+M_BOM_Line (room offsets) → same tack convention, different scale. The spatial
+relationship lives in the BOM itself at both levels without new infrastructure.</p>
 <p>See <a href="../SystemContract/">SystemContract.md §6</a> for the full allocation model.</p>
 <hr />
 <h2 id="3-abstract-category-tree-domain-by-taxonomy-not-by-code">3. Abstract Category Tree — Domain by Taxonomy, Not by Code<a class="headerlink" href="#3-abstract-category-tree-domain-by-taxonomy-not-by-code" title="Permanent link">&para;</a></h2>
@@ -5084,7 +5084,7 @@ patterns — contributed by everyone who compiles a building.</p>
 <blockquote>
 <p><strong>Status:</strong> Future — design specification only.</p>
 </blockquote>
-<p>The order already carries WHAT (C_OrderLine), WHERE (CO_EmptySpaceLine),
+<p>The order already carries WHAT (C_OrderLine), WHERE (M_BOM_Line dx/dy/dz),
 and HOW (PP_Order_Node). The remaining dimensions are columns, not systems.</p>
 <h3 id="51-4d-schedule-topological-sort-of-bom-tree">5.1 4D Schedule — Topological Sort of BOM Tree<a class="headerlink" href="#51-4d-schedule-topological-sort-of-bom-tree" title="Permanent link">&para;</a></h3>
 <p>The BOM tree encodes construction dependency: you can't build Floor 2
@@ -6388,7 +6388,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.</p>
 - DocAction state machine (DR→IP→AP→CO→VO) with MOrder transitions
 - AD_ChangeLog (ChangelogDAO) — full audit trail
 - PP_Order_Node — verb execution audit with parameters
-- CO_EmptySpaceLine — spatial slot identity (before/next anchors, capacity)
+- M_BOM_Line dx/dy/dz — spatial relationships (WHERE concern in BOM itself)
 - M_AttributeSetInstance — per-instance customization (partial)
 - Three-concern separation enforced by OrderLineInterfaceContractTest (W-LOCK-1..6)</p>
 <h3 id="143-implementation-sessions">14.3 Implementation Sessions<a class="headerlink" href="#143-implementation-sessions" title="Permanent link">&para;</a></h3>
@@ -6464,7 +6464,7 @@ Only the last order survives.</p>
 <h3 id="144-failure-criteria-stop-and-reassess-if">14.4 Failure Criteria (stop-and-reassess if)<a class="headerlink" href="#144-failure-criteria-stop-and-reassess-if" title="Permanent link">&para;</a></h3>
 <ul>
 <li><strong>Session A:</strong> FPR C_OrderLines have no m_bom_line parent to walk (bom_child_id is NULL). If so, rule-driven lines need a different walker path — not BOM walk but direct placement from ad_space_type_mep_bom spatial data.</li>
-<li><strong>Session B:</strong> ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs CO_EmptySpaceLine geometry context.</li>
+<li><strong>Session B:</strong> ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs M_BOM_Line spatial context (dx/dy/dz + AABB).</li>
 <li><strong>Session C:</strong> ELEC/ACMV products don't exist in component_library.db (no geometry). S67 onboarded 2 ELEC products; remaining products may block Session C.</li>
 <li><strong>Session D:</strong> locator_ref addressing conflicts with existing m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT). If so, need separate exception_locator column.</li>
 <li><strong>Session E:</strong> Inheritance chain conflict — two sibling ancestors both modify the same locator_ref. "Last descendant wins" is undefined for sibling branches. If so, need explicit precedence ordering on Ref_Order_ID.</li>

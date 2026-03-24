@@ -3138,7 +3138,7 @@ is a <strong>proven word</strong>. A composed building is a <strong>sentence</st
 <li><strong>PROVENANCE</strong> — trace each C_OrderLine to its source stone via family_ref → M_Product → source BOM</li>
 <li><strong>FRAGMENT FIDELITY</strong> — tack offsets, product dimensions, and verb patterns match the source stone's proven BOM</li>
 <li><strong>SPATIAL INVARIANTS</strong> — EYES proofs: roof covers structure, FP below ceiling, ELEC inside rooms, no escapees</li>
-<li><strong>CONTAINMENT</strong> — every element inside its spatial slot (CO_EmptySpaceLine AABB), recursive</li>
+<li><strong>CONTAINMENT</strong> — every element inside its spatial slot (M_BOM_Line AABB via dx/dy/dz), recursive</li>
 </ol>
 <h3 id="fragment-types-and-verifiers">Fragment types and verifiers<a class="headerlink" href="#fragment-types-and-verifiers" title="Permanent link">&para;</a></h3>
 <table>
@@ -3167,7 +3167,7 @@ is a <strong>proven word</strong>. A composed building is a <strong>sentence</st
 </tr>
 <tr>
 <td><strong>Freehand</strong> (viewport drawing)</td>
-<td>output.db + CO_EmptySpaceLine</td>
+<td>output.db + M_BOM_Line dx/dy/dz</td>
 <td>Containment, adjacency, no clashes</td>
 </tr>
 </tbody>

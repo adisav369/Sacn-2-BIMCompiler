@@ -5284,7 +5284,7 @@ VERIFIED ✓ (or drift detected ✗)
 <h3 id="idempiere-erp-layer-mapping">iDempiere ERP Layer Mapping<a class="headerlink" href="#idempiere-erp-layer-mapping" title="Permanent link">&para;</a></h3>
 <ul>
 <li><code>M_Product</code> (BOM.db), <code>m_bom</code>/<code>m_bom_line</code>/<code>m_attribute</code>/<code>M_Product_Category</code> (BOM.db)</li>
-<li><code>c_order</code>/<code>c_orderline</code>/<code>co_empty_space</code>/<code>co_empty_space_line</code> (output.db)</li>
+<li><code>c_order</code>/<code>c_orderline</code> (output.db), <code>co_empty_space</code>/<code>co_empty_space_line</code> (output.db, compiler-internal)</li>
 <li><code>C_BPartner</code>/<code>C_Campaign</code>/<code>AD_User</code>/<code>C_DocType</code> (BOM.db lookup/config)</li>
 </ul>
 <hr />
@@ -5329,7 +5329,7 @@ VERIFIED ✓ (or drift detected ✗)
 <ul>
 <li>WorldCoord: ONLY via <code>LocalCoord.toWorld(StoreyCoord)</code> or <code>StoreyCoord.asWorld()</code>. D8 ArchUnit enforces.</li>
 <li>elements_rtree: id, minX, maxX, minY, maxY, minZ, maxZ (NOT interleaved)</li>
-<li>Output DB R*Tree = metres, CO_EmptySpace = mm (multiply by 1000.0)</li>
+<li>Output DB R*Tree = metres, co_empty_space (compiler-internal) = mm (multiply by 1000.0)</li>
 <li>Library geometry (non-GEO_ hash) uses canonical coords, NOT world coords</li>
 </ul>
 <h3 id="ifc-type">IFC Type<a class="headerlink" href="#ifc-type" title="Permanent link">&para;</a></h3>

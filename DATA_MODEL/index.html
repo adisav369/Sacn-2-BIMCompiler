@@ -3724,8 +3724,9 @@ See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code><
 </tr>
 </tbody>
 </table>
-<p>World position lives in CO_EmptySpace.origin (output.db), populated at compile
-time from I_Element_Extraction. <code>{PREFIX}_BOM.db</code> is a pure dictionary — no world coords.</p>
+<p>World position is derived from M_BOM_Line dx/dy/dz tack offsets (the BOM itself
+carries WHERE). <code>{PREFIX}_BOM.db</code> is a pure dictionary — no world coords.
+<code>co_empty_space</code> (output.db) is a compiler-internal cache, not architectural.</p>
 <p><strong>Children:</strong> Each child BOM is linked via a line carrying the tack offset:
 <code>dx = position where child's LBD sits within parent</code> (always &gt;= 0, BOMBasedCompilation.md §4).
 Child BOMs have origin=(0,0,0) — only BUILDING carries world origin.</p>

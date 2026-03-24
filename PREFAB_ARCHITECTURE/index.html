@@ -4383,8 +4383,8 @@ See <code>docs/BIM_COBOL.md</code> §15.6 for full schema. See <code>docs/DocAct
 - <strong>M_Attribute</strong> (<code>m_attribute</code>) = product-level attributes on leaf items (ports, UBBL clearances).</p>
 <p>The BIM selects M_BOMs within its owner scope. Each BIMLine references an M_BOM.
 The compiler walks M_BOM → M_BOM_Line recursively, resolving placement at each level.
-Verb lines drive placement execution: each verb targets a CO_EmptySpaceLine (spatial slot)
-and produces elements via VerbRegistry dispatch.</p>
+Verb lines drive placement execution: each verb targets a spatial slot (derived from
+M_BOM_Line dx/dy/dz) and produces elements via VerbRegistry dispatch.</p>
 <p><strong>The BOM Drop produces editable order lines.</strong> The user adjusts the schedule before
 compiling. The compiler reads the final schedule — it does not care what edits were made.</p>
 <blockquote>
@@ -4392,8 +4392,8 @@ compiling. The compiler reads the final schedule — it does not care what edits
 (WHAT: element_ref, ifc_class, discipline) with placement instructions (HOW: position_rule,
 host_type, host_ref). The PP_Order_Node model separates these: order topics stay in
 c_orderline; placement moves to <code>PP_Order_Node</code> + <code>PP_Order_NodeProduct</code>.
-CO_EmptySpaceLine is promoted to spatial workstation (≈ <code>S_Resource</code>), targeted by verbs
-via <code>co_emptyspace_line_id</code> FK. BomCategory is unaffected — still drives template
+WHERE concern lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
+co_empty_space_line is a compiler-internal cache, not architectural. BomCategory is unaffected — still drives template
 composition via Sequence priority. See <code>BBC.md</code> §1 for migration phases.
 Parallels iDempiere S_Resource (warehouse slot) — see <code>DocAction_SRS.md</code> §1.</p>
 </blockquote>
@@ -6044,7 +6044,7 @@ House D  living room = 4900mm → variance = −300mm  ✗  GIC violation — BO
 </code></pre></div>
 <h3 id="84-phantomlayout-transient-empty-storage">8.4 PhantomLayout — Transient Empty Storage<a class="headerlink" href="#84-phantomlayout-transient-empty-storage" title="Permanent link">&para;</a></h3>
 <p>The PhantomLayout is the transient working state during BOM resolution — the spatial
-equivalent of CO_EmptySpaceLine. It tracks the current fill state of a locator and
+equivalent of the spatial slot (M_BOM_Line dx/dy/dz). It tracks the current fill state of a locator and
 the next available anchor point for the following element.</p>
 <blockquote>
 <p><strong>Phase 4c simplification (2026-02-25):</strong> The ceremony (DocStatus DR/CO/VO, next_anchor
@@ -6063,7 +6063,7 @@ PhantomLayout remains the full resolution context (nextAnchor, placed list) whil
 </blockquote>
 <div class="highlight"><pre><span></span><code><span class="cm">/**</span>
 <span class="cm"> * Transient — NOT persisted. Exists only during DSL edit / compile resolution.</span>
-<span class="cm"> * Equivalent to CO_EmptySpaceLine: current fill state + next placement coordinate.</span>
+<span class="cm"> * Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz). Current fill state + next placement coordinate.</span>
 <span class="cm"> * On DSL save → resolves to permanent m_bom_line rows.</span>
 <span class="cm"> *</span>
 <span class="cm"> * locatorRef: the M_Locator (SpaceSize AABB grid cell in mm) this phantom tracks.</span>
