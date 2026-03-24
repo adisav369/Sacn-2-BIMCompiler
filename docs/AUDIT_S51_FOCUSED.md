@@ -2136,3 +2136,107 @@ children (subtree collapsed to single node).
 
 Session D delivers #1 and #2. Indexed exceptions (`locator_ref[N]` syntax) are
 Session E scope (requires Order Inheritance for stacked overlays).
+
+---
+
+## Appendix S — Session E: Order Inheritance (S68e)
+
+**Date:** 2026-03-24
+**Scope:** Order inheritance chain resolution — exception overlays stacked like CSS layers.
+**Spec:** ProjectOrderBlueprint.md §6 (inheritance), Appendix R (GAP-SC-5 conflict resolution)
+**Witness:** W-INHERIT-CHAIN-1/2, W-INHERIT-1, W-INHERIT-DEPTH-1, W-INHERIT-CONFLICT-1, W-INHERIT-COMPAT-1
+
+### S.1 Deliverables
+
+| # | Deliverable | Status |
+|---|-------------|--------|
+| 1 | Migration W006_order_inheritance.sql | DONE — `Ref_Order_ID TEXT` FK on C_Order (NULL = base order, non-null = exception order) |
+| 2 | InheritanceResolver.java | DONE — chain walking (root-first), exception collection, cycle detection |
+| 3 | BomDropper.dropWithInheritance() | DONE — convenience method resolving chain before explosion |
+| 4 | X_C_Order.java — Ref_Order_ID column | DONE — column constant + getter/setter for parent FK |
+| 5 | OrderInheritanceTest.java (6 witnesses) | DONE — all 6 PASS |
+| 6 | DV017 migration to all 34 non-SH BOM databases | DONE — bom_category → m_product_category_id rename |
+
+### S.2 Architecture
+
+**Inheritance model:** `C_Order.Ref_Order_ID` is a scalar FK — one parent per order.
+This structurally prevents diamond inheritance (DAG). The chain is always linear:
+root → child → grandchild → ... → leaf.
+
+**InheritanceResolver** walks the chain root-first, collecting exception lines into
+a `Map<String, ExceptionLine>` keyed by `locator_ref`. Deeper orders override
+shallower ones at the same locator_ref (depth-wins rule, analogous to
+`M_PriceList_Version` where latest ValidFrom wins).
+
+**Resolution flow:**
+```
+DX_BASE (depth 0)
+  └─ DX_SOLAR (depth 1, Ref_Order_ID = DX_BASE)
+       └─ DX_SOLAR_PREMIUM (depth 2, Ref_Order_ID = DX_SOLAR)
+
+Resolved exceptions for DX_SOLAR_PREMIUM:
+  Rm_Kitchen.Light_1  → LIGHT_PREMIUM    (depth 2 overrides depth 0)
+  Rm_Roof.Panel_1     → SOLAR_PANEL_400W (depth 1, uncontested)
+  Rm_Bathroom.Tile_1  → TILE_MARBLE      (depth 2, uncontested)
+```
+
+**BomDropper.dropWithInheritance()** is a convenience method that:
+1. Calls `InheritanceResolver.resolve(conn, orderId)` to collect the exception map
+2. Delegates to `BomDropper.drop(conn, entry, orderId, exceptions)`
+3. Existing callers using the 2-arg `drop()` are unchanged (backward compatible)
+
+**Cycle detection:** The resolver tracks visited order IDs during chain walking.
+If a cycle is detected (order A → B → A), `IllegalStateException` is thrown
+with both order IDs in the message.
+
+### S.3 — GAP-SC-5 Resolution
+
+GAP-SC-5 ("Resolution for sibling branches modifying same locator_ref") is
+**CLOSED**. The sibling conflict is structurally impossible because
+`C_Order.Ref_Order_ID` is a scalar FK — diamond inheritance cannot be expressed
+in the data model. Full specification in Appendix R and ProjectOrderBlueprint.md §6.1–§6.4.
+
+If the user wants both solar + premium overlays, they create a combined order
+`DX_SOLAR_PREMIUM` with explicit exceptions. Three lines, fully auditable.
+
+### S.4 — Gate Results
+
+| Gate | Result |
+|------|--------|
+| `mvn compile -q` | CLEAN |
+| OrderInheritanceTest (6 witnesses) | 6/6 PASS |
+| RemoveCompressTest (Session D, existing) | 5/5 PASS |
+| BomDropperOrderIdTest (existing) | 1/1 PASS |
+
+### S.5 — Witness Results
+
+**W-INHERIT-CHAIN-1:** 2-deep chain (DX_BASE → DX_SOLAR). Resolver returns
+DX_SOLAR's exception (solar panel on roof). Base order's exceptions also collected.
+
+**W-INHERIT-CHAIN-2:** 3-deep chain (DX_BASE → DX_SOLAR → DX_SOLAR_PREMIUM).
+Resolver returns all 3 exceptions from all depths. Depth-wins rule verified.
+
+**W-INHERIT-1:** Base order with no parent (Ref_Order_ID = NULL). Resolver returns
+only the base order's own exceptions. Backward compatible with Session D.
+
+**W-INHERIT-DEPTH-1:** Same locator_ref modified at depth 0 and depth 2.
+Depth-2 value wins. Depth-0 value discarded.
+
+**W-INHERIT-CONFLICT-1:** Cycle detection — order A references B, order B
+references A. `IllegalStateException` thrown with both IDs in message.
+
+**W-INHERIT-COMPAT-1:** Existing `drop()` 2-arg path (no inheritance) still works.
+Backward compatibility confirmed — no regression on Session D functionality.
+
+### S.6 — Blueprint Progress
+
+Session E completes the three-session arc (D → R → E) for exception-based ordering:
+
+| Session | Delivered | Blueprint Section |
+|---------|-----------|-------------------|
+| **D** (S68b) | Remove + Compress mutations, locator_ref addressing | §1.1 (four mutations), §1.2 (reference class) |
+| **R** (S68) | GAP-SC-5 specification (conflict resolution) | §6.1–§6.4 (inheritance rules) |
+| **E** (S68e) | InheritanceResolver, chain walking, cycle detection | §6 (order inheritance) |
+
+**Remaining:** Indexed exceptions (`locator_ref[N]` syntax for per-instance
+overrides within a reference class) and C_Project multi-order grouping (§2).

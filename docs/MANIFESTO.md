@@ -5,6 +5,90 @@
 
 ---
 
+## The Three Concerns
+
+iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
+with production detail in PP_Order. We inherit the same separation:
+
+| Concern | iDempiere | BIM Compiler | Table |
+|---------|-----------|-------------|-------|
+| **WHAT** to build | C_OrderLine | Which products, classified by M_Product_Category | c_orderline |
+| **HOW** to place | PP_Order_Node | Which verb, what parameters | pp_order_node |
+| **WHERE** it goes | M_Locator / Warehouse | Room slot, tack offset | co_empty_space_line |
+
+These three concerns are **never merged**. A change to WHAT (swap a product)
+does not require changes to HOW (verb stays the same) or WHERE (slot stays
+the same). This is the architectural invariant that makes exception-based
+ordering possible: override one concern, inherit the others.
+
+### WHAT: AD_Org (Discipline) + M_Product_Category (Classification)
+
+The WHAT concern has two layers — **who is responsible** and **what kind of thing**.
+
+**AD_Org — Discipline (WHO is responsible).** In iDempiere, `AD_Org` partitions
+data by business unit. Here, engineering disciplines partition the BOM validation
+space. Each discipline is an organisational concern with its own rules, its own
+AD_Val_Rule set, its own validation pass — but sharing the same product catalog.
+
+```
+AD_Org (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG, REB, MEP, ROAD, GEO, RAIL, LAND, SIGN
+```
+
+**M_Product_Category — Element and room classification (WHAT kind of thing).**
+The same entity iDempiere uses to group products into swap pools. In
+`disc_validation.db`, M_Product_Category maps IFC classes to parent disciplines
+(IFC_WALL→STR, IFC_DOOR→ARC, IFC_FLOWSEGMENT→MEP). In BOM databases, it
+classifies rooms and segments.
+
+```
+M_Product_Category (element)     → IFC_WALL, IFC_DOOR, IFC_BEAM, IFC_FLOWSEGMENT...
+M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
+M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
+M_Product (leaf)                 → the actual element with geometry
+```
+
+**The distinction matters.** A Patio Furniture Set belongs to category
+OUTDOOR_FURNITURE (M_Product_Category) — that's what kind of thing it is.
+The trade responsible for installing it is AD_Org = ARC (Architecture) —
+that's who validates it. You can't swap a table for a sprinkler head
+(category constraint), and the sprinkler head is validated by FP, not ARC
+(discipline constraint). Two orthogonal axes.
+
+A residential building (DocBaseType=RE) uses **room categories**: the Patio
+Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
+**segment categories**: a bridge deck lives in DCK. The category tree is the
+taxonomy — the engine never asks "is this a house?" It asks "what category
+constrains this swap?"
+
+There is only **one C_DocType = "Construction Order"**. DocBaseType and
+DocSubType are classification metadata — provenance tags that describe the
+building's origin (RE=residential, IN=infrastructure, CO=commercial). They
+are not routing logic. The compilation engine is generic; the categories
+carry the domain knowledge.
+
+### Category Population — Current State
+
+| DocBaseType | Buildings | Room/Segment Categories |
+|-------------|-----------|------------------------|
+| **RE** (residential) | SH, DM, DX, FK, IN | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
+| **RE** (residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
+| **IN** (infrastructure) | BR, RD, RL | SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW |
+| **CO** (commercial) | WA, WL, WT | ARC, STR, MEP, L1–L5 — discipline + floor-level |
+| **IP** (industrial plant) | IP | ARC, STR, MEP, MISC |
+| **(none)** | TE | No categories (48,428-element terminal — needs extraction) |
+
+**Gaps:** 22 residential buildings have only floor-level categories (GF, L1, L2)
+but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
+extracted before room-level classification was implemented. Re-extraction with
+the current pipeline would populate room categories automatically.
+
+**Vertical BOM levels:** All buildings currently use `bom_level=SET`. The full
+hierarchy (BUILDING → FLOOR → ROOM → SET → ITEM) is specified in BBC.md §1
+but not yet populated — the BOM tree expresses hierarchy through parent-child
+M_BOM_Line relationships, not through bom_level values.
+
+---
+
 ## The Insight
 
 In 2006, we built ADempiere's manufacturing BOM module. In 2010, we rebuilt it
@@ -66,7 +150,8 @@ problem, we use iDempiere's solution.
 | iDempiere Manufacturing | BIM Compiler | What It Does |
 |------------------------|-------------|-------------|
 | **M_Product** | Building element or assembly | The universal entity. Everything is a product |
-| **M_Product_Category** | ARC, STR, FP, MEP, ELEC... | Classifies products. Same category = same swap pool |
+| **AD_Org** | ARC, STR, FP, ELEC, ACMV... | Discipline = organisational unit. WHO is responsible |
+| **M_Product_Category** | IFC_WALL, IFC_DOOR, LIVING, DCK... | Classifies products by element type or room. WHAT kind of thing |
 | **M_BOM + M_BOM_Line** | Assembly recipe + children | BOM explosion. Each line has dx/dy/dz tack offset |
 | **C_Order** | Construction project | One order = one building. Carries design state |
 | **C_OrderLine** | Element instance | WHAT to build. References M_Product |
@@ -82,73 +167,6 @@ problem, we use iDempiere's solution.
 We add three columns to M_BOM_Line: `dx`, `dy`, `dz` — parent-relative
 tack offsets in millimetres. That is the entire difference between a flat
 BOM and a spatial BOM. Three integers turn procurement into construction.
-
----
-
-## The Three Concerns
-
-iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
-with production detail in PP_Order. We inherit the same separation:
-
-| Concern | iDempiere | BIM Compiler | Table |
-|---------|-----------|-------------|-------|
-| **WHAT** to build | C_OrderLine | Which products, classified by M_Product_Category | c_orderline |
-| **HOW** to place | PP_Order_Node | Which verb, what parameters | pp_order_node |
-| **WHERE** it goes | M_Locator / Warehouse | Room slot, tack offset | co_empty_space_line |
-
-These three concerns are **never merged**. A change to WHAT (swap a product)
-does not require changes to HOW (verb stays the same) or WHERE (slot stays
-the same). This is the architectural invariant that makes exception-based
-ordering possible: override one concern, inherit the others.
-
-### WHAT: The M_Product_Category Hierarchy
-
-The WHAT concern is classified by **M_Product_Category** — the same entity
-iDempiere uses to group products into swap pools. A Patio Furniture Set belongs
-to category OUTDOOR_FURNITURE. A replacement table must come from the same
-category — you can't swap a table for a sprinkler head.
-
-In BIM compilation, M_Product_Category operates at three levels:
-
-```
-M_Product_Category (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG
-M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
-M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
-M_Product (leaf)                 → the actual element with geometry
-```
-
-A residential building (DocBaseType=RE) uses **room categories**: the Patio
-Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
-**segment categories**: a bridge deck lives in DCK. The category tree is the
-taxonomy — the engine never asks "is this a house?" It asks "what category
-constrains this swap?"
-
-There is only **one C_DocType = "Construction Order"**. DocBaseType and
-DocSubType are classification metadata — provenance tags that describe the
-building's origin (RE=residential, IN=infrastructure, CO=commercial). They
-are not routing logic. The compilation engine is generic; the categories
-carry the domain knowledge.
-
-### Category Population — Current State
-
-| DocBaseType | Buildings | Room/Segment Categories |
-|-------------|-----------|------------------------|
-| **RE** (residential) | SH, DM, DX, FK, IN | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
-| **RE** (residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
-| **IN** (infrastructure) | BR, RD, RL | SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW |
-| **CO** (commercial) | WA, WL, WT | ARC, STR, MEP, L1–L5 — discipline + floor-level |
-| **IP** (industrial plant) | IP | ARC, STR, MEP, MISC |
-| **(none)** | TE | No categories (48,428-element terminal — needs extraction) |
-
-**Gaps:** 22 residential buildings have only floor-level categories (GF, L1, L2)
-but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
-extracted before room-level classification was implemented. Re-extraction with
-the current pipeline would populate room categories automatically.
-
-**Vertical BOM levels:** All buildings currently use `bom_level=SET`. The full
-hierarchy (BUILDING → FLOOR → ROOM → SET → ITEM) is specified in BBC.md §1
-but not yet populated — the BOM tree expresses hierarchy through parent-child
-M_BOM_Line relationships, not through bom_level values.
 
 ---
 
@@ -202,11 +220,42 @@ Each discipline is an organisational concern with its own rules, its own
 AD_Val_Rule set, its own validation pass — but sharing the same product catalog.
 → [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
 
-**AD_ChangeLog — Full provenance.**
-iDempiere logs every field change: who, when, old value, new value. Our
-`ChangelogDAO` does the same for every PLACE/DELETE/MOVE/RESIZE. Undo via
-replay. Wikipedia edit history for BOMs. Auditors love this.
-→ [ProjectOrderBlueprint.md §10](ProjectOrderBlueprint.md)
+**AD_ChangeLog — Full provenance and UNDO/REDO.**
+
+iDempiere's `AD_ChangeLog` records every field change on every record: who
+changed it, when, old value, new value, which transaction. This is Configure-to-Order's
+audit trail — the record that proves a BOM recipe was built correctly.
+
+Our `ChangelogDAO` applies the identical pattern to spatial operations. Every
+PLACE, DELETE, MOVE, and RESIZE is logged with full before/after state. The
+schema (`bim_changelog` table, migration V011) stores:
+
+| Column | Content |
+|--------|---------|
+| building_id | Which building |
+| entity_type + entity_id | What changed (M_BOM, M_BOM_Line, C_OrderLine) |
+| action | SAVE / PLACE / DELETE / MOVE / RESIZE / PROMOTE / UNDO |
+| field_name | Which field |
+| old_value / new_value | Before and after |
+| user_id | Who did it |
+| timestamp | When |
+
+This gives us a complete **UNDO/REDO stack**. Replay the log forward to
+reconstruct any past state. Replay in reverse to undo. Like Wikipedia's edit
+history: every BOM state that ever existed can be reconstructed from the
+changelog, and every change is attributed to a user.
+
+**Multi-user conflict detection** follows the iDempiere pattern: `AD_Session`
+identifies the editing session, `user_id` identifies the author. Two users
+editing the same BOM line produce two changelog entries — the system detects
+the conflict at save time by comparing timestamps.
+
+**Current status:** ChangelogDAO is fully implemented and tested (TIER1_SRS.md §3).
+The `bim_changelog` table lives in work_output.db. Wire protocol supports
+`changelog` (query history) and `undoChanges` (revert N steps). Not yet
+integrated into BOM databases — the audit trail currently covers design
+edits in the viewport session.
+→ [TIER1_SRS.md §3](TIER1_SRS.md) · [ProjectOrderBlueprint.md §10](ProjectOrderBlueprint.md)
 
 **EntityType (D/U/A) — Dictionary vs User vs Application.**
 iDempiere protects shipped dictionary records from user modification. Our

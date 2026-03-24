@@ -405,6 +405,85 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 
 ---
 
+## 6. AD Data Placement — Towards a Shared ERP.db
+
+> **Status:** Investigation only (S69). No schema changes proposed.
+
+### 6.1 Current State — Where AD Tables Live
+
+| Table | disc_validation.db | component_library.db | {PREFIX}_BOM.db | Purpose |
+|-------|:--:|:--:|:--:|---------|
+| **AD_Org** | 16 rows | — | — | Discipline definitions (ARC, STR, FP...) |
+| **M_Product_Category** | IFC→discipline map | IFC→discipline map | 0 rows (DM only) | Product classification |
+| **AD_SysConfig** | 8 rows (schema versions) | — | 2 rows (integrity hash, expected elements) | Different schema, different purpose |
+| **ad_val_rule + param** | 63 + N rows | — | — | Validation rules |
+| **C_DocType** | — | — | 1 row per building | Building type classification |
+| **M_Product** | 2,477 rows | 2,475 rows (master) | 2–93 rows (transitional copy) | Product catalog |
+| **M_Attribute*** | — | — | per-building | Instance customization |
+| **m_bom + m_bom_line** | — | — | per-building | Spatial BOM (the core per-building data) |
+
+### 6.2 Duplication Analysis
+
+**M_Product** is the most duplicated table:
+- **component_library.db** is the master catalog (created by `ProductRegistrar.ensureProductCatalog()`)
+- **disc_validation.db** has a near-identical copy (2,477 vs 2,475) used for validation queries
+- **{PREFIX}_BOM.db** has small transitional copies for BOMWalker compatibility (target: remove)
+
+**M_Product_Category** exists in both disc_validation.db and component_library.db with
+identical IFC class mappings. Only one authoritative copy is needed.
+
+**AD_SysConfig** is NOT truly duplicated — different schemas serve different purposes:
+- disc_validation.db: `Name/Value` pairs tracking schema migration versions (DV001–DV015)
+- BOM databases: `config_key/config_value` pairs tracking per-building integrity hashes
+
+**C_DocType** lives only in BOM databases (1 row each, e.g., RE_SH, RE_DX). In iDempiere,
+C_DocType is shared system configuration — it defines all document types centrally. Currently
+written by `IFCtoBOMPipeline` per-building; at compile time, `schema_snapshot_bom.sql` enriches
+the compile DB with additional C_DocType rows.
+
+### 6.3 The ERP.db Concept
+
+In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
+They live once, centrally — not per-product or per-order. The current `disc_validation.db`
+already serves this role for most AD data but has a misleading name and incomplete coverage.
+
+**Proposed consolidation** (rename disc_validation.db → ERP.db or create as superset):
+
+| Layer | Database | Contains |
+|-------|----------|----------|
+| **ERP shared** | `ERP.db` (was disc_validation.db) | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata |
+| **Product catalog** | `component_library.db` | M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry |
+| **Per-building BOM** | `{PREFIX}_BOM.db` | m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy) |
+| **Transactional** | `output.db` | c_order, c_orderline, elements_meta, PP_Order_Node, co_empty_space* |
+
+**What changes:**
+- C_DocType master definitions move to ERP.db (all 6+ rows). BOM databases get a copy at compile time (already happens via schema_snapshot_bom.sql).
+- M_Product_Category: single authoritative copy in ERP.db. Remove from component_library.db (or make it a compile-time copy).
+- M_Product in disc_validation.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.
+
+**What stays the same:**
+- BOM databases keep their per-building ad_sysconfig (different schema, per-building data)
+- BOM databases keep transitional M_Product copies until BOMWalker migration completes
+- The 4-DB split principle remains — ERP.db is a rename/consolidation, not a new database
+
+### 6.4 Benefits
+
+1. **Single source of truth** for AD tables — no more wondering which DB has the authoritative M_Product_Category
+2. **iDempiere alignment** — AD tables centralised, just like iDempiere's dictionary
+3. **Clearer naming** — "ERP.db" immediately tells a new developer this is shared configuration
+4. **Simpler pipeline** — C_DocType written once to ERP.db, not re-created per building
+
+### 6.5 Risks and Open Questions
+
+- **Migration complexity:** Renaming disc_validation.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.
+- **Backward compatibility:** Existing BOM databases expect schema_snapshot_bom.sql enrichment at compile time. This mechanism continues regardless.
+- **M_Product consolidation:** Removing the disc_validation.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.
+
+> **Decision:** No action this session. This section documents the investigation.
+> Implementation would be a separate bounded task with its own migration plan.
+
+---
+
 *Authoritative reference. See `BOMBasedCompilation.md` for tack convention and pipeline stages,
 `SystemContract.md` for the three-concern model (WHAT/HOW/WHERE),
 `TheRosettaStoneStrategy.md` for verification strategy.*
