@@ -617,8 +617,6 @@
       
         
       
-        
-      
     
     
     
@@ -727,14 +725,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../ConstructionAsERP/" class="md-nav__link">
+      <a href="../DATA_MODEL/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Construction as ERP
+    Data Model
   
 
     
@@ -763,34 +761,6 @@
     
   
     Rosetta Stone Strategy
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../DATA_MODEL/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Data Model
   
 
     
@@ -5808,10 +5778,10 @@
 
 <h1 id="bim-designer-gui-architecture-from-existing-infrastructure">BIM Designer — GUI Architecture from Existing Infrastructure<a class="headerlink" href="#bim-designer-gui-architecture-from-existing-infrastructure" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><strong>Version:</strong> 1.1 (2026-03-17)
-<strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a>, <a href="../ConstructionAsERP/">ConstructionAsERP.md</a>, <a href="../BIM_COBOL/">BIM_COBOL.md</a></p>
+<strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a>, <a href="ConstructionAsERP.md">ConstructionAsERP.md</a>, <a href="../BIM_COBOL/">BIM_COBOL.md</a></p>
 <blockquote>
 <p>The compiler already knows how to build. The GUI is a parameter chooser that
 triggers compilation and shows the result. Every concept the designer needs
@@ -5895,7 +5865,7 @@ repeating patterns into formulas with quantities; the compiler expands them
 to output instances. This factorization (TE-6 TILE SURFACE compression: 34K
 ARC plates → ~20 formulas) is a prerequisite for the designer — you edit
 pattern rules, not 48K individual placements. See
-<a href="../ConstructionAsERP/">ConstructionAsERP.md</a> §11 for the BOM dimension model.</p>
+<a href="ConstructionAsERP.md">ConstructionAsERP.md</a> §11 for the BOM dimension model.</p>
 <h3 id="federation-menu-item-0-compile-item-1-preview-item-2-create-new">Federation Menu — Item 0: Compile / Item 1: Preview / Item 2: Create New<a class="headerlink" href="#federation-menu-item-0-compile-item-1-preview-item-2-create-new" title="Permanent link">&para;</a></h3>
 <p>The Bonsai addon's Federation menu has three entry points:</p>
 <table>
@@ -6350,7 +6320,7 @@ boundary between shipped catalog and user work:</p>
 The GUI presents Dictionary BOMs as templates to clone from, User BOMs as
 editable designs. <code>GodMode.txt</code> override exists for developers.</p>
 <h3 id="26-three-bom-dimensions-chooser-panels">2.6 Three BOM Dimensions → Chooser Panels<a class="headerlink" href="#26-three-bom-dimensions-chooser-panels" title="Permanent link">&para;</a></h3>
-<p>The 3 BOM dimensions (<a href="../ConstructionAsERP/">ConstructionAsERP.md</a> Appendix A) map directly
+<p>The 3 BOM dimensions (<a href="ConstructionAsERP.md">ConstructionAsERP.md</a> Appendix A) map directly
 to GUI chooser panels:</p>
 <table>
 <thead>
@@ -6387,7 +6357,7 @@ to GUI chooser panels:</p>
 options from the catalog automatically.</p>
 <hr />
 <h2 id="3-three-concern-lock-gui-safety">3. Three-Concern Lock → GUI Safety<a class="headerlink" href="#3-three-concern-lock-gui-safety" title="Permanent link">&para;</a></h2>
-<p>The three-concern lock (<a href="../ConstructionAsERP/">ConstructionAsERP.md §11.9</a>)
+<p>The three-concern lock (<a href="ConstructionAsERP.md">ConstructionAsERP.md §11.9</a>)
 prevents the GUI from corrupting spatial data:</p>
 <table>
 <thead>
@@ -7695,7 +7665,7 @@ Real projects would use the full component_library.db catalog.</p>
 <hr />
 <p><em>Related docs:
 <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a> (compilation method, tack convention) |
-<a href="../ConstructionAsERP/">ConstructionAsERP.md</a> (4-DB architecture, three-concern lock) |
+<a href="ConstructionAsERP.md">ConstructionAsERP.md</a> (4-DB architecture, three-concern lock) |
 <a href="../BIM_COBOL/">BIM_COBOL.md</a> (verb language spec) |
 <a href="../DocValidate/">DocValidate.md</a> (validation engine, building codes, jurisdiction) |
 <a href="../SourceCodeGuide/">SourceCodeGuide.md</a> (pipeline, DAO pattern, EntityType) |
@@ -10024,7 +9994,7 @@ Implementation target: G-8 or parallel track.</p>
 <p><em>References:
 <a href="../DocValidate/">DocValidate.md</a> (validation rules, AD_Val_Rule schema) |
 <a href="../BlenderBridge/">BlenderBridge.md</a> (incremental viewport, delta applicator) |
-<a href="../ConstructionAsERP/">ConstructionAsERP.md</a> (C_Order, iDempiere patterns) |
+<a href="ConstructionAsERP.md">ConstructionAsERP.md</a> (C_Order, iDempiere patterns) |
 <a href="../SourceCodeGuide/">SourceCodeGuide.md</a> (pipeline, DAO pattern, EntityType) |
 <a href="../InfrastructureAnalysis/">InfrastructureAnalysis.md</a> (bridge/road/rail domain mapping) |
 <a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a> (market analysis, paradigm shift) |

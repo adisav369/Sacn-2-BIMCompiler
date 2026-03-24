@@ -1179,8 +1179,6 @@
       
         
       
-        
-      
     
     
     
@@ -1289,14 +1287,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../ConstructionAsERP/" class="md-nav__link">
+      <a href="../DATA_MODEL/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Construction as ERP
+    Data Model
   
 
     
@@ -1325,34 +1323,6 @@
     
   
     Rosetta Stone Strategy
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../DATA_MODEL/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Data Model
   
 
     
@@ -4279,7 +4249,7 @@
 <h1 id="work-order-guide">Work Order Guide<a class="headerlink" href="#work-order-guide" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><em>Renamed from YAMLGuide.md — the pipeline follows ERP Manufacturing BOM / Work Order patterns, not YAML-specific workflow.</em>
-<strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <h2 id="quick-start-for-users">Quick Start — For Users<a class="headerlink" href="#quick-start-for-users" title="Permanent link">&para;</a></h2>
 <p>Everything is already built. 34 buildings are onboarded, BOMs are generated, the
@@ -5065,7 +5035,7 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 <p>The BOM DB references products by ID. The library is the source of truth for product
 definitions, geometry, and orientation. Products are reused across buildings.</p>
 <p>BOM data model: <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a>.
-ERP context (C_Order, BOM decisions): <a href="../ConstructionAsERP/"><code>ConstructionAsERP.md</code></a> §11.
+ERP context (C_Order, BOM decisions): <a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a> §11.
 Schema reference: <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a>.</p>
 <h3 id="step-6-compilation-and-delta-verification">Step 6 — Compilation and delta verification<a class="headerlink" href="#step-6-compilation-and-delta-verification" title="Permanent link">&para;</a></h3>
 <p>The same <code>run_RosettaStones.sh</code> invocation continues after BOM creation:</p>
@@ -5187,7 +5157,7 @@ Existing migration: <code>migration/DV006_infra_bridge_rules.sql</code> (13 rule
 </tbody>
 </table>
 <p>QA architecture: <a href="../TestArchitecture/"><code>TestArchitecture.md</code></a>.
-ERP model context: <a href="../ConstructionAsERP/"><code>ConstructionAsERP.md</code></a>.</p>
+ERP model context: <a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a>.</p>
 <h2 id="what-not-to-do">What NOT to Do<a class="headerlink" href="#what-not-to-do" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Do NOT write manual SQL migrations for M_Product_ID — <code>ExtractionPopulator</code> does this</li>
@@ -5569,7 +5539,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 <tbody>
 <tr>
 <td>ERP model (C_Order, BOM, decisions)</td>
-<td><a href="../ConstructionAsERP/"><code>ConstructionAsERP.md</code></a></td>
+<td><a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a></td>
 </tr>
 <tr>
 <td>Spatial MRP (construction as ERP II)</td>
@@ -5581,7 +5551,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 </tr>
 <tr>
 <td>BIM as BOM concept</td>
-<td><a href="../ConstructionAsERP/"><code>ConstructionAsERP.md</code></a> Appendix A</td>
+<td><a href="ConstructionAsERP.md"><code>ConstructionAsERP.md</code></a> Appendix A</td>
 </tr>
 <tr>
 <td>Conceptual blueprint</td>

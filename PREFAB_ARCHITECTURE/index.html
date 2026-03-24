@@ -617,8 +617,6 @@
       
         
       
-        
-      
     
     
     
@@ -727,14 +725,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../ConstructionAsERP/" class="md-nav__link">
+      <a href="../DATA_MODEL/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Construction as ERP
+    Data Model
   
 
     
@@ -763,34 +761,6 @@
     
   
     Rosetta Stone Strategy
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../DATA_MODEL/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Data Model
   
 
     
@@ -4324,11 +4294,11 @@
 
 <h1 id="prefab-assembly-architecture">Prefab Assembly Architecture<a class="headerlink" href="#prefab-assembly-architecture" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><em>Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)</em>
 <em>Extends: <code>ConstructionAsERP.md</code> (C_Order model), <code>SourceCodeGuide.md</code> (pipeline stages)</em>
-<em>Dimension model: <a href="../ConstructionAsERP/">ConstructionAsERP.md</a> Appendix A — Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)</em></p>
+<em>Dimension model: <a href="ConstructionAsERP.md">ConstructionAsERP.md</a> Appendix A — Category (M_BomCategory) + Owner (C_DocType.DocSubType) + SpaceSize (AABB)</em></p>
 <blockquote>
 <p><strong>Update (2026-03-06):</strong> Phase G-1 completed. Class renames applied throughout this document:
 - <code>FixturePlacer</code> → deleted (placement logic absorbed into <code>BOMTierResolver</code>)
@@ -4513,7 +4483,7 @@ Without FLOOR_SH_GF_STD, SH rooms are resolved directly from flat absolute coord
 - <code>width_mm, depth_mm</code> = room dims from ad_room_boundary (populated by Phase BOM-2b)</p>
 <h3 id="idempiere-naming-convention">iDempiere Naming Convention<a class="headerlink" href="#idempiere-naming-convention" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><strong>Full dimension model:</strong> see <a href="../ConstructionAsERP/">ConstructionAsERP.md</a> Appendix A §1–§2.
+<p><strong>Full dimension model:</strong> see <a href="ConstructionAsERP.md">ConstructionAsERP.md</a> Appendix A §1–§2.
 M_Product is flattened into M_BOM. <code>m_bom_line</code> = M_BOM_Line.
 Three orthogonal dimensions: <code>BOMCategory</code> (M_BomCategory — WHAT), <code>C_BPartner</code> (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).</p>
 </blockquote>
