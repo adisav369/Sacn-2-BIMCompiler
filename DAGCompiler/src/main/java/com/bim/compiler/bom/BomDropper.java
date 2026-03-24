@@ -59,6 +59,29 @@ public class BomDropper {
     }
 
     /**
+     * Explode a building's BOM tree with inherited exceptions resolved from the
+     * Ref_Order_ID chain. If the order has a parent, the inheritance chain is
+     * walked and all ancestor exceptions are collected before explosion.
+     *
+     * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session E — Witness: W-INHERIT-1
+     *
+     * @param compileDb   connection to the compile DB
+     * @param entry       building entry from C_DocType registry
+     * @param orderId     explicit C_Order_ID (may have Ref_Order_ID set)
+     * @return number of leaf elements (sum of qty across all LEAF C_OrderLines)
+     */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session E — Witness: W-INHERIT-1
+    public static int dropWithInheritance(Connection compileDb, BuildingEntry entry, String orderId)
+            throws SQLException {
+        Map<String, ExceptionLine> inherited = InheritanceResolver.resolveExceptions(compileDb, orderId);
+        if (!inherited.isEmpty()) {
+            System.out.printf("[BomDropper] Inheritance chain resolved: %d exception(s) for order %s%n",
+                    inherited.size(), orderId);
+        }
+        return drop(compileDb, entry, orderId, inherited);
+    }
+
+    /**
      * Explode a building's BOM tree with exception-based mutations.
      *
      * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1

@@ -1,3 +1,6 @@
+# Session prompts (local working files)
+prompts/
+
 # Build output
 target/
 

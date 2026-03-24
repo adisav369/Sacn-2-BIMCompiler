@@ -85,6 +85,73 @@ BOM and a spatial BOM. Three integers turn procurement into construction.
 
 ---
 
+## The Three Concerns
+
+iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
+with production detail in PP_Order. We inherit the same separation:
+
+| Concern | iDempiere | BIM Compiler | Table |
+|---------|-----------|-------------|-------|
+| **WHAT** to build | C_OrderLine | Which products, classified by M_Product_Category | c_orderline |
+| **HOW** to place | PP_Order_Node | Which verb, what parameters | pp_order_node |
+| **WHERE** it goes | M_Locator / Warehouse | Room slot, tack offset | co_empty_space_line |
+
+These three concerns are **never merged**. A change to WHAT (swap a product)
+does not require changes to HOW (verb stays the same) or WHERE (slot stays
+the same). This is the architectural invariant that makes exception-based
+ordering possible: override one concern, inherit the others.
+
+### WHAT: The M_Product_Category Hierarchy
+
+The WHAT concern is classified by **M_Product_Category** — the same entity
+iDempiere uses to group products into swap pools. A Patio Furniture Set belongs
+to category OUTDOOR_FURNITURE. A replacement table must come from the same
+category — you can't swap a table for a sprinkler head.
+
+In BIM compilation, M_Product_Category operates at three levels:
+
+```
+M_Product_Category (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG
+M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
+M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
+M_Product (leaf)                 → the actual element with geometry
+```
+
+A residential building (DocBaseType=RE) uses **room categories**: the Patio
+Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
+**segment categories**: a bridge deck lives in DCK. The category tree is the
+taxonomy — the engine never asks "is this a house?" It asks "what category
+constrains this swap?"
+
+There is only **one C_DocType = "Construction Order"**. DocBaseType and
+DocSubType are classification metadata — provenance tags that describe the
+building's origin (RE=residential, IN=infrastructure, CO=commercial). They
+are not routing logic. The compilation engine is generic; the categories
+carry the domain knowledge.
+
+### Category Population — Current State
+
+| DocBaseType | Buildings | Room/Segment Categories |
+|-------------|-----------|------------------------|
+| **RE** (residential) | SH, DM, DX, FK, IN | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
+| **RE** (residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
+| **IN** (infrastructure) | BR, RD, RL | SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW |
+| **CO** (commercial) | WA, WL, WT | ARC, STR, MEP, L1–L5 — discipline + floor-level |
+| **IP** (industrial plant) | IP | ARC, STR, MEP, MISC |
+| **(none)** | TE | No categories (48,428-element terminal — needs extraction) |
+
+**Gaps:** 22 residential buildings have only floor-level categories (GF, L1, L2)
+but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
+extracted before room-level classification was implemented. Re-extraction with
+the current pipeline would populate room categories automatically.
+
+**Vertical BOM levels:** All buildings currently use `bom_level=SET`. The full
+hierarchy (BUILDING → FLOOR → ROOM → SET → ITEM) is specified in BBC.md §1
+but not yet populated — the BOM tree expresses hierarchy through parent-child
+M_BOM_Line relationships, not through bom_level values.
+
+---
+
 ## The Application Dictionary Heritage
 
 Compiere introduced the Application Dictionary (AD) in 2000 — metadata that
@@ -160,24 +227,6 @@ or set quantities at order time. Our exception-based ordering (qty=0 removes
 a subtree, reference class compresses N copies) is the identical pattern
 applied to buildings. 200 houses, 6 lines of exceptions each.
 → [ProjectOrderBlueprint.md §1](ProjectOrderBlueprint.md)
-
----
-
-## The Three Concerns
-
-iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
-with production detail in PP_Order. We inherit the same separation:
-
-| Concern | iDempiere | BIM Compiler | Table |
-|---------|-----------|-------------|-------|
-| **WHAT** to build | C_OrderLine | Which products, how many | c_orderline |
-| **HOW** to place | PP_Order_Node | Which verb, what parameters | pp_order_node |
-| **WHERE** it goes | M_Locator / Warehouse | Room slot, tack offset | co_empty_space_line |
-
-These three concerns are **never merged**. A change to WHAT (swap a product)
-does not require changes to HOW (verb stays the same) or WHERE (slot stays
-the same). This is the architectural invariant that makes exception-based
-ordering possible: override one concern, inherit the others.
 
 ---
 

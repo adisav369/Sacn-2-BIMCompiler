@@ -31,7 +31,7 @@
   Session B DONE — OrderLineMutation interface + 3 suggestions. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
   Session C DONE — Rule pack framing (pack_id on 4 AD tables). [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
   Session D DONE — Remove + Compress mutations. W005 migration. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
-  Session E NEXT — Order inheritance (Ref_Order_ID, stacked overlays). GAP-SC-5 spec in progress.
+  Session E DONE — Order inheritance. W006 migration (Ref_Order_ID). InheritanceResolver + dropWithInheritance. OrderInheritanceTest 6/6. GAP-SC-5 CLOSED.
 
 **AD Dictionary (S62→S65):** Steps 0–3 DONE. Next: Step 4–6. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
@@ -42,6 +42,7 @@
 
 ## Session Log (recent first)
 
+**S68e** — Session E: Order inheritance. DV017 applied all DBs. W006 migration (Ref_Order_ID). InheritanceResolver (chain walk + exception collect). BomDropper.dropWithInheritance. OrderInheritanceTest 6/6. MANIFESTO.md reorder + category triage.
 **S68b** — Session D: Remove + Compress mutations. W005 migration (locator_ref + is_reference_class). BomDropper exception-order support. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
 **S68** — M_BomCategory → M_Product_Category rename. DV017 migration. 14 docs + 28 Java files + schema_snapshot. [AUDIT Appendix P](docs/AUDIT_S51_FOCUSED.md).
 **S67w** — Watchdog: ConstructionAsERP purge (80+ refs, 44 docs). MANIFESTO.md. IsBOM audit (no drift). [AUDIT Appendix N+O](docs/AUDIT_S51_FOCUSED.md).

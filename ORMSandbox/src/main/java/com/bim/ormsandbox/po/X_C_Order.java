@@ -27,6 +27,7 @@ import java.sql.Connection;
  *   AabbDepthMm            REAL                  -- building envelope depth in mm
  *   AabbHeightMm           REAL                  -- building envelope height in mm
  *   EmptySpaceChecksum     TEXT                  -- SHA256 prefix of level-0 CO_EmptySpaceLine
+ *   Ref_Order_ID           TEXT                  -- FK to parent C_Order (NULL = base order)
  * </pre>
  */
 public class X_C_Order extends BasePO {
@@ -51,6 +52,7 @@ public class X_C_Order extends BasePO {
     public static final String COLUMNNAME_AabbHeightMm             = "AabbHeightMm";
     public static final String COLUMNNAME_EmptySpaceChecksum       = "EmptySpaceChecksum";
     public static final String COLUMNNAME_C_DocType_ID             = "C_DocType_ID";
+    public static final String COLUMNNAME_Ref_Order_ID             = "Ref_Order_ID";
 
     public X_C_Order(Connection conn) { super(conn); }
 
@@ -76,6 +78,7 @@ public class X_C_Order extends BasePO {
     public double  getAabbHeightMm()          { return get_ValueAsDouble(COLUMNNAME_AabbHeightMm); }
     public String  getEmptySpaceChecksum()    { return get_ValueAsString(COLUMNNAME_EmptySpaceChecksum); }
     public String  getDocTypeId()             { return get_ValueAsString(COLUMNNAME_C_DocType_ID); }
+    public String  getRefOrderId()            { return get_ValueAsString(COLUMNNAME_Ref_Order_ID); }
 
     public void setCOrderId(String v)              { set_Value(COLUMNNAME_C_Order_ID, v); }
     public void setName(String v)                  { set_Value(COLUMNNAME_Name, v); }
@@ -96,4 +99,5 @@ public class X_C_Order extends BasePO {
     public void setAabbHeightMm(double v)          { set_Value(COLUMNNAME_AabbHeightMm, v); }
     public void setEmptySpaceChecksum(String v)    { set_Value(COLUMNNAME_EmptySpaceChecksum, v); }
     public void setDocTypeId(String v)             { set_Value(COLUMNNAME_C_DocType_ID, v); }
+    public void setRefOrderId(String v)            { set_Value(COLUMNNAME_Ref_Order_ID, v); }
 }
