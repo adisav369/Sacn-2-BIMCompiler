@@ -517,4 +517,4 @@ Each gap must be closed with an SRS before code is written.
 | **GAP-SC-5** | Order inheritance conflict | Resolution for sibling branches modifying same locator_ref | LOW (blocks Session E) |
 | **GAP-SC-6** | Compile-once-copy-many | Performance optimization for reference class (qty=180) | MED (blocks C_Project at scale) |
 | **GAP-SC-7** | Output consolidation | Per-building vs consolidated output.db for C_Project | MED (blocks C_Project) |
-| **GAP-SC-8** | R-PROJ-3 C_Order_ID collision | BomDropper uses docTypeId as PK — blocks multi-order | **BLOCKING** (Blueprint §2.1.4) |
+| **GAP-SC-8** | R-PROJ-3 C_Order_ID collision | BomDropper parameterized with explicit orderId (Session 0). Default path unchanged. W-PROJ-ID-1 proves coexistence. | **CLOSED** (Session 0, 2026-03-24) |

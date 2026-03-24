@@ -1406,7 +1406,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 ### 14.3 Implementation Sessions
 
 **Session 0: Fix R-PROJ-3 — C_Order_ID collision (prerequisite for §2)**
-*Status: NOT STARTED. Blocking bug found by S67 CTFL audit.*
+*Status: DONE (2026-03-24). BomDropper.drop() parameterized with explicit orderId. W-PROJ-ID-1 witness passes. GAP-SC-8 CLOSED.*
 
 BomDropper.java:48 uses `entry.docTypeId()` as C_Order PK (`orderId = entry.docTypeId()`).
 Line 85-86 DELETEs any existing order with that ID before INSERT. When multiple orders

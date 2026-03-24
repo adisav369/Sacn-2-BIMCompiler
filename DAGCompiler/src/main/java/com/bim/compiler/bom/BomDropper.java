@@ -30,12 +30,27 @@ public class BomDropper {
 
     /**
      * Explode a building's BOM tree into C_Order + C_OrderLine in the compile DB.
+     * Uses entry.docTypeId() as the C_Order_ID (backward-compatible default).
      *
      * @param compileDb  connection to the compile DB (has m_bom, m_bom_line, C_Order, C_OrderLine)
      * @param entry      building entry from C_DocType registry
      * @return number of leaf elements (sum of qty across all LEAF C_OrderLines)
      */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session 0 — Witness: W-PROJ-ID-1
     public static int drop(Connection compileDb, BuildingEntry entry) throws SQLException {
+        return drop(compileDb, entry, entry.docTypeId());
+    }
+
+    /**
+     * Explode a building's BOM tree into C_Order + C_OrderLine in the compile DB.
+     *
+     * @param compileDb  connection to the compile DB (has m_bom, m_bom_line, C_Order, C_OrderLine)
+     * @param entry      building entry from C_DocType registry
+     * @param orderId    explicit C_Order_ID (allows multiple orders of the same DocType)
+     * @return number of leaf elements (sum of qty across all LEAF C_OrderLines)
+     */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session 0 — Witness: W-PROJ-ID-1
+    public static int drop(Connection compileDb, BuildingEntry entry, String orderId) throws SQLException {
         // Find the BUILDING BOM for this entry's DocSubType + DocBaseType
         String buildingBomId = findBuildingBom(compileDb, entry);
         if (buildingBomId == null) {
@@ -45,7 +60,6 @@ public class BomDropper {
         }
 
         // Create C_Order
-        String orderId = entry.docTypeId();  // RE_SH, CO_TE, etc.
         createOrder(compileDb, orderId, entry);
 
         // Explode BOM tree → C_OrderLine

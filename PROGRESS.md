@@ -45,6 +45,8 @@
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
+**[DONE] Session 0** (2026-03-24): R-PROJ-3 C_Order_ID collision fix. BomDropper.drop() parameterized with explicit orderId; default path backward-compatible. W-PROJ-ID-1 witness: two RE_SH orders coexist. GAP-SC-8 CLOSED. SH 7/7, full gate GREEN.
+
 **S67 — ELEC onboarding + watchdog + Session A + specs consolidation.**
   2 ELEC products onboarded from TE extraction (E_Light, E_Data Point). ELEC SET sub-BOMs in DM_BOM.db.
   **Watchdog cleanup:** Removed CompileProof.java, DisciplineBreakdownProof.java, DemoHouseCompileTest.java, CompilationPipeline post-compile hook. DemoHouse compiles via standard Rosetta Stone pipeline. Seal v31.
