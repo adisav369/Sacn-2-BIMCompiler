@@ -1121,7 +1121,7 @@ Appendix G identified Layer 2 as weak (D+ grade). S67's response — delete the 
 
 ### I.8 — Rosetta Dictionary: Compositional Verification Model (S67)
 
-The Three Verification Tiers (TheRosettaStoneStrategy.txt) only covered extracted buildings with full reference DBs. A new **Tier 4: COMPOSITIONAL VERIFICATION** was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).
+The Three Verification Tiers (TheRosettaStoneStrategy.md) only covered extracted buildings with full reference DBs. A new **Tier 4: COMPOSITIONAL VERIFICATION** was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).
 
 **Core concept:** When a Rosetta Stone passes exact sameness (G1-G6), its BOM becomes a certified dictionary entry. A composed building is a sentence built from proven words. Verification changes from "output == reference?" to "each fragment consistent with its source + composition satisfies spatial invariants."
 
@@ -1133,7 +1133,7 @@ The Three Verification Tiers (TheRosettaStoneStrategy.txt) only covered extracte
 
 **New gate:** G7-COMPOSITION. **New witnesses:** W-COMP-PROV-1, W-COMP-FRAG-1, W-COMP-SPAT-1, W-COMP-CONT-1.
 
-**Written to:** TheRosettaStoneStrategy.txt (§Tier 4), TestArchitecture.md (updated §generative buildings).
+**Written to:** TheRosettaStoneStrategy.md (§Tier 4), TestArchitecture.md (updated §generative buildings).
 
 ---
 

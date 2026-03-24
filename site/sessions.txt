@@ -1,0 +1,11 @@
+Note that the RosettaStone test morphs to a different format for Non RosettaStone. It is a combination of pebbles from those stones. A SH structure has its replica minus the parts that are swapped or added ie. the Pitched Roof and the FP disc elements. Thus it has to compare with such fragments. This maybe tricky unless we setup a Rosetta Dictionary.
+
+Similar to the original RosettaStone story it was not giving the full Hieroglyphics encyclopedia. It was just a short composition but good enough to infer. 
+
+So can we do that while extracting IFCtoBOM? I think we can. Provide individual grammar rules (DONE- validation), but also as fine as words and sentences. ie it can be gleamed from the SH_BOM models. Thus the test for DEMO HOUSE switches path to the SH_BOM and and the _BOM that the Pitched Roof comes from. It is an indirect source of truth once the first full RosettaStones passed the exact sameness test.
+
+Study the intricacies in that, prepare a model to do that. The Demo House merely needs to confirm the Roof is still where it should be. The FP is aligned to same ceiling spacing or spatial positioning from it. Once that is done, all other extrapolations has got major issues covered. We can afford to go for edge cases in a say highly fragmented composition will the chair to fill up a balcony ends up in the balcony? Trace thru the blindspots as we got the code to do so. Have a witness test at critical junctures. 
+
+That is my basic idea. You must have much more LLM training in such software puzzles.
+
+To add to the above, the BIM Designer can also free hand draw on the Viewport, dragging to change dimensions which affects the AttribueSet Instances, and when compiled into output .db again the EYES test infer if the wall is not leaving any gap with an adjoining wall, or the door has left the building. Such geometry maths can go for such spatial values to formulate its shape thru the EYES module also. This is more for non visual manual testing in Bonsai but backend code testing much faster without constant launching of Bonsai.

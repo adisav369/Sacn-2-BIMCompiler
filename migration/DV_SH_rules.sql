@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SH: Sample House (Ifc4_SampleHouse)
 -- Source: DAGCompiler/lib/output/ifc4_samplehouse.db
--- Generated: 2026-03-22 08:11
+-- Generated: 2026-03-24 07:33
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -14,26 +14,11 @@
 -- IfcPlate              Unknown       6    829.0     955.0     3027.0    25.0      1633.0  
 -- IfcWall               Ground Floor  5    5588.0    2397.0    2665.0    95.0      14145.0 
 -- IfcWindow             Ground Floor  4    1860.0    353.0     1210.0    1860.0    1860.0  
+-- IfcCovering           Ground Floor  3    6071.0    3690.0    57.0      4453.0    9308.0  
 -- IfcDoor               Ground Floor  3    739.0     653.0     2133.0    178.0     1860.0  
 
 -- §2: Material distribution
 
--- ifc_class             material_name                                  cnt
--- --------------------  ---------------------------------------------  ---
--- IfcMember             Aluminium                                      20 
--- IfcFurnishingElement  Wood - Birch                                   8  
--- IfcPlate              Glass                                          6  
--- IfcWindow             Window Frame                                   4  
--- IfcDoor               Door - Handle                                  3  
--- IfcFurnishingElement  Metal - Chrome                                 3  
--- IfcWall               Brick, Common                                  3  
--- IfcWall               Basic Wall:Wall-Partn_12P-70MStd-12P           2  
--- IfcFurnishingElement  Laminate, Ivory, Matte                         1  
--- IfcFurnishingElement  Textile - White                                1  
--- IfcFurnishingElement  Wood - Mahogany                                1  
--- IfcRoof               Concrete, Sand/Cement Screed                   1  
--- IfcSlab               Floor:Floor-Grnd-Susp_65Scr-80Ins-100Blk-75PC  1  
--- IfcSlab               Floor:Simple floor                             1  
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -48,9 +33,10 @@
 -- IfcPlate              STR         6  
 -- IfcWall               STR         5  
 -- IfcWindow             ARC         4  
+-- IfcCovering           ARC         3  
 -- IfcDoor               ARC         3  
 -- IfcSlab               STR         2  
--- IfcRoof               ARC         1  
+-- IfcRoof               STR         1  
 
 -- §5: Candidate validation rules for disc_validation.db
 -- Review and adjust before applying. Rule IDs are placeholders.
@@ -119,6 +105,19 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '353.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1210.0');
+
+-- Rule: IfcCovering_Ground_Floor (3 instances, avg 6071.0x3690.0x57.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Ground_Floor', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Ground Floor: 3 instances, avg W=6071.0 D=3690.0 H=57.0mm',
+--     'Ifc4_SampleHouse');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6071.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3690.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '57.0');
 
 -- Rule: IfcDoor_Ground_Floor (3 instances, avg 739.0x653.0x2133.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,

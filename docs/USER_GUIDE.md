@@ -700,7 +700,7 @@ sqlite3 DAGCompiler/lib/output/ifc4_samplehouse.db \
 |----------|---------|
 | `SourceCodeGuide.md` | Developer onboarding, pipeline internals, data provenance |
 | `ARCHITECTURE.md` | Governing architecture document (v3.0) |
-| `TheRosettaStoneStrategy.txt` | Validation methodology and scoring |
+| `TheRosettaStoneStrategy.md` | Validation methodology and scoring |
 | `PREFAB_ARCHITECTURE.md` | Assembly hierarchy and MANIFEST contracts |
 | `RELATIONAL_PLACEMENT_SPEC.md` | Relational placement migration spec |
 | `HARDCODE_AUDIT.md` | Hardcoded values audit (33 findings) |

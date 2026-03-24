@@ -627,7 +627,7 @@ VERIFIED ✓ (or drift detected ✗)
 | See the project roadmap | [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md) |
 | Learn YAML pipeline config | [`WorkOrderGuide.md`](WorkOrderGuide.md) |
 | Browse the interactive architecture diagram | [`bim_architecture_viz.html`](bim_architecture_viz.html) |
-| Read the Rosetta Stone strategy | [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt) |
+| Read the Rosetta Stone strategy | [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md) |
 | Understand calibration | [`CALIBRATION_SRS.md`](CALIBRATION_SRS.md) |
 | Learn the Blender bridge protocol | [`BlenderBridge.md`](BlenderBridge.md) |
 | Read infrastructure designer SRS | [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md) |

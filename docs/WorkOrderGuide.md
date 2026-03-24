@@ -800,7 +800,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 | BOM compilation, tack §4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
 | BIM as BOM concept | [`ConstructionAsERP.md`](ConstructionAsERP.md) Appendix A |
 | Conceptual blueprint | [`CONCEPTUAL BLUEPRINT.txt`](CONCEPTUAL%20BLUEPRINT.txt) |
-| Rosetta Stone strategy | [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt) |
+| Rosetta Stone strategy | [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md) |
 | BIM Designer vision | [`BIM_Designer.md`](BIM_Designer.md) |
 
 ### Data Model & Schema

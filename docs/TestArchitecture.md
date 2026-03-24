@@ -1047,7 +1047,7 @@ No world coordinate is stored for the kitchen. The compiler derives it: `(-29.64
 **What remains for generative/composed buildings:**
 Composed buildings (DemoHouse, BIM Designer creations, C_Project developments) assemble fragments from multiple proven BOMs. Each fragment's offsets were verified by its source Rosetta Stone. The verification question changes from "does output == reference?" to "is each fragment consistent with its proven source, and does the composition satisfy spatial invariants?"
 
-**Rosetta Dictionary (S67):** See [TheRosettaStoneStrategy.txt §Tier 4](TheRosettaStoneStrategy.txt) for the full compositional verification model. Key concepts:
+**Rosetta Dictionary (S67):** See [TheRosettaStoneStrategy.md §Tier 4](TheRosettaStoneStrategy.md) for the full compositional verification model. Key concepts:
 - **Provenance:** every C_OrderLine fragment traces to a certified source stone
 - **Fragment fidelity:** tack offsets match the source stone's proven BOM
 - **Spatial invariants:** EYES proofs (reference-free) verify the composition geometry
@@ -1058,7 +1058,7 @@ Composed buildings (DemoHouse, BIM Designer creations, C_Project developments) a
 
 **EYES role:** Reference-free geometric validation (spatial sanity — doors in walls, perimeter closure, roof coverage). Cannot prove correctness against intent, but can catch geometric violations independent of any reference. Must be extended to run on composed buildings (currently only runs on extracted buildings with Rosetta Stone data). See [EYES_SRS.md §10](EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
-**ASI/Viewport mutation path:** When a user drags to resize in the viewport, ASI dimensions change → recompile → EYES invariants verify the result. Property-based test: for any valid ASI mutation, spatial invariants must hold. No Bonsai needed — pure backend verification. See [TheRosettaStoneStrategy.txt §ASI/Viewport Mutation Path](TheRosettaStoneStrategy.txt).
+**ASI/Viewport mutation path:** When a user drags to resize in the viewport, ASI dimensions change → recompile → EYES invariants verify the result. Property-based test: for any valid ASI mutation, spatial invariants must hold. No Bonsai needed — pure backend verification. See [TheRosettaStoneStrategy.md §ASI/Viewport Mutation Path](TheRosettaStoneStrategy.md).
 
 See also: [LAST_MILE_PROBLEM.md §Relational Round-Trip](LAST_MILE_PROBLEM.md#relational-round-trip-verification-s60-post-audit).
 

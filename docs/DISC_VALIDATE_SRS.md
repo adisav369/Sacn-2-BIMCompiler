@@ -765,6 +765,6 @@ Implementation is BLOCKED until these claims are written as `@Test` methods.
 ---
 
 *References: ConstructionAsERP.md §11.38 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
-TheRosettaStoneStrategy.txt (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
+TheRosettaStoneStrategy.md (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
 DocAction_SRS.md §1 (processIt lifecycle), DocValidate.md §13 (three-tier cascade),
 BIM_COBOL.md §4.6 (joining verbs)*

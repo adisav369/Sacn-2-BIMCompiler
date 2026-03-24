@@ -1,0 +1,4481 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../ASSEMBLY_BUILDER_SRS/">
+      
+      
+        <link rel="next" href="../VIEW_CONTRACTS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>G4 Work Output - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#g-4-srs-work_outputdb-validation-engine" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              G4 Work Output
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-sequence-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Sequence Diagrams
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Sequence Diagrams">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-createnew-spawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 CreateNew + Spawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-save-sub-work-order-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Save (Sub-Work-Order Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-recall-activate-previous-sub-work-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Recall (Activate Previous Sub-Work-Order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-promote-to-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Promote to BOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-postconditions-acceptance-criteria-per-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Postconditions — Acceptance Criteria per Action
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-state-machine-design-mode-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. State Machine — Design Mode Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-wire-protocol-complete-action-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Wire Protocol — Complete Action Table
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Wire Protocol — Complete Action Table">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-wire-protocol-additions-for-g-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Wire Protocol Additions for G-4
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-test-specifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Test Specifications
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Test Specifications">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-unit-tests-workoutputdao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Unit Tests — WorkOutputDAO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-unit-tests-constructionmodelspawner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Unit Tests — ConstructionModelSpawner
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-integration-tests-saverecall-round-trip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Integration Tests — Save/Recall Round-Trip
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-tack-convention-tests-work_outputdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Tack Convention Tests — work_output.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-wire-protocol-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Wire Protocol Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-non-disturbance-analysis-m16m17-against-rosetta-stones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Non-Disturbance Analysis — M16/M17 Against Rosetta Stones
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Non-Disturbance Analysis — M16/M17 Against Rosetta Stones">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-m16-opening-face-anchor-consistency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 M16: Opening Face-Anchor Consistency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-m17-opening-host-association" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 M17: Opening Host Association
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-updated-v004-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Updated V004 Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-yaml-v3-mep-processit-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. YAML v3 MEP ProcessIt() Review
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. YAML v3 MEP ProcessIt() Review">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-review-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Review Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-recommended-ad_val_rule_param-addition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Recommended AD_Val_Rule_Param Addition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-yaml-v3-ad_val_rule-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 YAML v3 → AD_Val_Rule Traceability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Implementation Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-sequence-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Sequence Diagrams
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Sequence Diagrams">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-createnew-spawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 CreateNew + Spawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-save-sub-work-order-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Save (Sub-Work-Order Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-recall-activate-previous-sub-work-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Recall (Activate Previous Sub-Work-Order)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-promote-to-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Promote to BOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-postconditions-acceptance-criteria-per-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Postconditions — Acceptance Criteria per Action
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-state-machine-design-mode-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. State Machine — Design Mode Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-wire-protocol-complete-action-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Wire Protocol — Complete Action Table
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Wire Protocol — Complete Action Table">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-wire-protocol-additions-for-g-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Wire Protocol Additions for G-4
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-test-specifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Test Specifications
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Test Specifications">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-unit-tests-workoutputdao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Unit Tests — WorkOutputDAO
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-unit-tests-constructionmodelspawner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Unit Tests — ConstructionModelSpawner
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-integration-tests-saverecall-round-trip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Integration Tests — Save/Recall Round-Trip
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-tack-convention-tests-work_outputdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Tack Convention Tests — work_output.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-wire-protocol-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Wire Protocol Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-non-disturbance-analysis-m16m17-against-rosetta-stones" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Non-Disturbance Analysis — M16/M17 Against Rosetta Stones
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Non-Disturbance Analysis — M16/M17 Against Rosetta Stones">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-m16-opening-face-anchor-consistency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 M16: Opening Face-Anchor Consistency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-m17-opening-host-association" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 M17: Opening Host Association
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-updated-v004-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Updated V004 Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-yaml-v3-mep-processit-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. YAML v3 MEP ProcessIt() Review
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. YAML v3 MEP ProcessIt() Review">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-review-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Review Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-recommended-ad_val_rule_param-addition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Recommended AD_Val_Rule_Param Addition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-yaml-v3-ad_val_rule-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 YAML v3 → AD_Val_Rule Traceability
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Implementation Order
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="g-4-srs-work_outputdb-validation-engine">G-4 SRS — work_output.db + Validation Engine<a class="headerlink" href="#g-4-srs-work_outputdb-validation-engine" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+</blockquote>
+<p><strong>Version:</strong> 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
+<strong>Depends on:</strong> <a href="../BIM_Designer/">BIM_Designer.md</a> §17.10, <a href="../DocValidate/">DocValidate.md</a> §15, <a href="../ConstructionAsERP/">ConstructionAsERP.md</a> §2-3
+<strong>Pre-requisite:</strong> TACK-FIX (see <a href="../TACK_FIX_SPEC/">TACK_FIX_SPEC.md</a>)</p>
+<hr />
+<h2 id="1-scope">1. Scope<a class="headerlink" href="#1-scope" title="Permanent link">&para;</a></h2>
+<p>G-4 delivers:
+1. <strong>work_output.db</strong> — self-contained design workspace (DDL: <code>migration/W001_work_output_schema.sql</code>)
+2. <strong>ConstructionModelSpawner</strong> — populates work_output.db from BOM templates
+3. <strong>WorkOutputDAO</strong> — Save/Recall/listVariants persistence
+4. <strong>Wire protocol</strong> — already dispatched (save/recall/listVariants/promote in DesignerServer)
+5. <strong>Test specs</strong> — unit + integration for all new code</p>
+<p><strong>Out of scope (G-5+):</strong> BOM Chooser, ambient compliance, assembly builder.</p>
+<hr />
+<h2 id="2-sequence-diagrams">2. Sequence Diagrams<a class="headerlink" href="#2-sequence-diagrams" title="Permanent link">&para;</a></h2>
+<h3 id="21-createnew-spawn">2.1 CreateNew + Spawn<a class="headerlink" href="#21-createnew-spawn" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>User clicks &quot;Create New&quot; in Bonsai panel
+│
+▼
+operator.py: BIM_OT_designer_create_new.execute()
+│
+├── TCP → {&quot;action&quot;:&quot;createNew&quot;, &quot;buildingName&quot;:&quot;MyHouse&quot;, &quot;buildingType&quot;:&quot;DM&quot;,
+│          &quot;jurisdiction&quot;:&quot;MY&quot;, &quot;siteWidthMm&quot;:12000, &quot;siteDepthMm&quot;:8000,
+│          &quot;numBedrooms&quot;:2, &quot;numBathrooms&quot;:1, &quot;storeys&quot;:1}
+│
+▼
+DesignerServer.dispatch(&quot;createNew&quot;)
+│
+▼
+DesignerAPIImpl.createNew(request)
+│
+├── 1. Load DM BOM templates from {PREFIX}_BOM.db
+│      → DesignerDAO.loadBomTree(&quot;BUILDING_DM_STD&quot;)
+│
+├── 2. RoomLayoutGenerator.generate(request)
+│      → Deterministic site → storey → room partitioning
+│      → Returns List&lt;DesignBBox&gt; (draft bboxes)
+│
+├── 3. ConstructionModelSpawner.spawn(workConn, bomConn, compConn, ...)  ← NEW
+│      │
+│      ├── 3a. CREATE work_output.db (apply W001 migration)
+│      │       → Execute W001_work_output_schema.sql DDL
+│      │       → Verify 12 tables created via pragma table_list
+│      │
+│      ├── 3b. INSERT W_BuildingConfig (embedded YAML + identity)
+│      │       → yaml_content  = full classify_{prefix}.yaml text
+│      │       → doc_base_type = from YAML building.doc_base_type (&#39;RE&#39;)
+│      │       → doc_sub_type  = from YAML building.doc_sub_type (&#39;DM&#39;)
+│      │       → jurisdiction  = from request.jurisdiction (&#39;MY&#39;)
+│      │       → aabb_*_mm     = from request site dimensions
+│      │       → provenance    = &#39;GENERATIVE&#39;
+│      │
+│      ├── 3c. INSERT C_Order (building header, DocStatus=&#39;DR&#39;)
+│      │       → C_Order_ID    = building_id (master — Parent_Order_ID = NULL)
+│      │       → C_DocType_ID  = doc_sub_type
+│      │       → aabb_*        = from W_BuildingConfig
+│      │
+│      ├── 3d. Walk BOM tree → C_OrderLine + CO_EmptySpaceLine + ASI
+│      │   │
+│      │   │   INPUT:  m_bom tree rooted at buildingBomId (e.g. &quot;BUILDING_DM_STD&quot;)
+│      │   │           Read from bomConn ({PREFIX}_BOM.db)
+│      │   │
+│      │   │   WALK ORDER: BOMWalker pre-order DFS (same walker as compilation)
+│      │   │     BUILDING → FLOOR STR → DISCIPLINE SET → ROOM SET → LEAF
+│      │   │
+│      │   │   For each m_bom node encountered:
+│      │   │
+│      │   │   ┌─────────────────────────────────────────────────────────────┐
+│      │   │   │ STEP 3d-i: INSERT C_OrderLine                             │
+│      │   │   │                                                           │
+│      │   │   │ family_ref   = m_bom.bom_id                               │
+│      │   │   │ host_type    = derive from BOM level:                     │
+│      │   │   │                depth 0 → BUILDING                         │
+│      │   │   │                depth 1 → FLOOR                            │
+│      │   │   │                depth 2 → DISCIPLINE or ROOM (bom_category)│
+│      │   │   │                depth 3+ → LEAF                            │
+│      │   │   │ bom_category = m_bom.bom_category                         │
+│      │   │   │ dx/dy/dz     = m_bom_line.dx, .dy, .dz (LBD, BBC.md §4)  │
+│      │   │   │ aabb_*_mm    = m_bom.aabb_width/depth/height              │
+│      │   │   │ Qty          = m_bom_line.qty (factored count)            │
+│      │   │   │ Line         = (parent_line_seq * 10 + child_seq)         │
+│      │   │   │ Parent_OrderLine_ID = parent node&#39;s C_OrderLine_ID        │
+│      │   │   │                                                           │
+│      │   │   │ The walker tracks a Map&lt;String bomId, Integer orderLineId&gt;│
+│      │   │   │ to resolve parent references during DFS.                  │
+│      │   │   └─────────────────────────────────────────────────────────────┘
+│      │   │
+│      │   │   ┌─────────────────────────────────────────────────────────────┐
+│      │   │   │ STEP 3d-ii: INSERT CO_EmptySpaceLine (one per OrderLine)  │
+│      │   │   │                                                           │
+│      │   │   │ co_emptyspace_id  = building-level CO_EmptySpace FK       │
+│      │   │   │ C_OrderLine_ID    = the just-inserted OrderLine           │
+│      │   │   │ bom_line_seq      = m_bom_line.seq                        │
+│      │   │   │ bom_id            = m_bom.bom_id                          │
+│      │   │   │ bom_line_role     = m_bom_line.role                       │
+│      │   │   │ bom_level         = DFS depth                             │
+│      │   │   │ tack_from_x/y/z   = dx/dy/dz * 1000 (m → mm)            │
+│      │   │   │ capacity_*_mm     = m_bom.aabb_width/depth/height         │
+│      │   │   │ storey            = from YAML storeys map (depth 1 nodes) │
+│      │   │   │ room_name         = from YAML floor_rooms.spaces[].name   │
+│      │   │   │                                                           │
+│      │   │   │ Also: INSERT CO_EmptySpace header (one per C_Order):      │
+│      │   │   │   origin_x/y/z_mm = building world origin (BOM origin)    │
+│      │   │   │   aabb_*          = building AABB                         │
+│      │   │   └─────────────────────────────────────────────────────────────┘
+│      │   │
+│      │   │   ┌─────────────────────────────────────────────────────────────┐
+│      │   │   │ STEP 3d-iii: INSERT M_AttributeSetInstance (defaults)     │
+│      │   │   │                                                           │
+│      │   │   │ For LEAF nodes only (host_type = LEAF):                   │
+│      │   │   │   Look up M_Product via compConn (component_library.db)   │
+│      │   │   │   If product has M_AttributeSet_ID:                       │
+│      │   │   │     → INSERT M_AttributeSetInstance (description = default)│
+│      │   │   │     → INSERT M_AttributeInstance rows for each default:   │
+│      │   │   │       width_mm, depth_mm, height_mm (from M_Product AABB) │
+│      │   │   │       material = &#39;DEFAULT&#39;, finish = &#39;STANDARD&#39;           │
+│      │   │   │     → UPDATE C_OrderLine.M_AttributeSetInstance_ID        │
+│      │   │   │                                                           │
+│      │   │   │ For non-LEAF nodes (BUILDING, FLOOR, ROOM, DISCIPLINE):   │
+│      │   │   │   No ASI — these are structural containers, not products. │
+│      │   │   │   User may add ASI later (e.g., room finish package).     │
+│      │   │   └─────────────────────────────────────────────────────────────┘
+│      │   │
+│      │   └── COUNTS tracked: orderLineCount, esLineCount, asiCount
+│      │
+│      ├── 3e. INSERT PP_Order_Node (default routing from doc_base_type)
+│      │       │
+│      │       │ SELECT routing template by doc_base_type:
+│      │       │
+│      │       │ RE (Residential):
+│      │       │   10: Foundation (STR)
+│      │       │   20: Frame (STR, depends_on=10)
+│      │       │   30: Envelope (ARC, depends_on=20)
+│      │       │   40: Fire Protection (FP, depends_on=30)
+│      │       │   50: Plumbing (CW/SP, depends_on=30)
+│      │       │   60: HVAC (ACMV, depends_on=30)
+│      │       │   70: Electrical (ELEC, depends_on=30)
+│      │       │   80: Gas (LPG, depends_on=50)
+│      │       │   90: Finishes (ARC, depends_on=40,50,60,70)
+│      │       │
+│      │       │ CO (Commercial):
+│      │       │   10: Substructure (STR)
+│      │       │   20: Superstructure (STR, depends_on=10)
+│      │       │   30: Envelope (ARC, depends_on=20)
+│      │       │   40: MEP Risers (CW/SP/FP/ELEC, depends_on=20)
+│      │       │   50: MEP Horizontal (CW/SP/FP/ACMV/ELEC, depends_on=40)
+│      │       │   60: Finishes (ARC, depends_on=50)
+│      │       │
+│      │       └── ppNodeCount tracked
+│      │
+│      ├── 3f. Run PlacementValidator (READONLY mode)
+│      │       │
+│      │       │ Open valConn → validation.db (read-only)
+│      │       │ For each C_OrderLine:
+│      │       │   Tier 1: validateLine(workConn, valConn, line, jurisdiction)
+│      │       │   → INSERT W_Validation_Result (tier=1, result=PASS/WARN/BLOCK)
+│      │       │   → UPDATE C_OrderLine.validation_status
+│      │       │
+│      │       │ READONLY mode: never returns BLOCK — only PASS/WARN.
+│      │       │ Spawn must succeed even if rules flag issues.
+│      │       │ User sees WARN status in BIM Designer ambient strip.
+│      │       │
+│      │       └── validationSummary = &quot;12 PASS, 3 WARN, 0 BLOCK&quot;
+│      │
+│      └── 3g. INSERT W_Variant (initial pointer, label=&quot;v0&quot;)
+│              → C_Order_ID = master C_Order (initial state = master IS v0)
+│              → is_active = 1
+│              → orderline_count, esline_count, asi_count, ppnode_count
+│              → compliance_status from validation summary
+│
+├── 4. Return CreateNewResponse { bboxes, outputDbPath, orderLineCount }
+│
+▼
+Python: client receives JSON → design_bbox.py renders bboxes
+</code></pre></div>
+<h3 id="22-save-sub-work-order-pattern">2.2 Save (Sub-Work-Order Pattern)<a class="headerlink" href="#22-save-sub-work-order-pattern" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>User clicks &quot;Save&quot; in Design Mode
+│
+▼
+operator.py: BIM_OT_designer_save.execute()
+│
+├── Collect current bboxes from scene
+├── TCP → {&quot;action&quot;:&quot;save&quot;, &quot;buildingId&quot;:&quot;MyHouse&quot;,
+│          &quot;bboxes&quot;:[...], &quot;variantLabel&quot;:&quot;wide-rooms&quot;}
+│
+▼
+DesignerServer.dispatch(&quot;save&quot;)
+│
+▼
+DesignerAPIImpl.save(buildingId, bboxes, variantLabel)
+│
+├── 1. Open work_output.db connection
+│
+├── 2. Complete current sub-work-order (if one is active IP)
+│      → SET DocStatus = &#39;CO&#39; on active sub-C_Order
+│      → SET W_Variant.is_active = 0 for previous active variant
+│
+├── 3. Create new sub-C_Order (the saved version)
+│      → INSERT C_Order (Parent_Order_ID = master, DocStatus = &#39;CO&#39;)
+│      → INSERT C_OrderLine rows from bboxes (copy current state)
+│        For each bbox:
+│          → INSERT new C_OrderLine (family_ref, dx/dy/dz, ASI FK)
+│      → INSERT M_AttributeSetInstance + M_AttributeInstance for overrides
+│      → INSERT CO_EmptySpaceLine (mirror tack values from OrderLines)
+│
+├── 4. INSERT W_Variant pointer
+│      → C_Order_ID = new sub-order ID (NOT master)
+│      → is_active = 1 (this is the current variant)
+│      → orderline_count = COUNT(*) from new sub-order
+│      → compliance_status = latest validation run status
+│      → NO snapshot_json — sub-order&#39;s tables ARE the data
+│
+├── 5. Return SaveResponse { variantId, subOrderId, outputDbPath }
+│
+▼
+Python: client shows &quot;Saved as &#39;wide-rooms&#39;&quot;
+</code></pre></div>
+<p><strong>Key difference from snapshot model:</strong> The sub-C_Order's C_OrderLine rows
+ARE the version data. No JSON blob duplication. Each variant is a proper
+iDempiere document with its own lifecycle — queryable, reportable, auditable.</p>
+<h3 id="23-recall-activate-previous-sub-work-order">2.3 Recall (Activate Previous Sub-Work-Order)<a class="headerlink" href="#23-recall-activate-previous-sub-work-order" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>User picks variant from list
+│
+▼
+operator.py: BIM_OT_designer_recall.execute()
+│
+├── TCP → {&quot;action&quot;:&quot;recall&quot;, &quot;buildingId&quot;:&quot;MyHouse&quot;, &quot;variantId&quot;:&quot;3&quot;}
+│
+▼
+DesignerAPIImpl.recall(buildingId, variantId)
+│
+├── 1. Look up W_Variant → get sub-C_Order_ID
+│
+├── 2. Spawn new sub-work-order (DR) by copying from recalled version
+│      → INSERT C_Order (Parent_Order_ID = master, DocStatus = &#39;DR&#39;)
+│      → COPY C_OrderLine rows from recalled sub-order to new sub-order
+│      → COPY M_AttributeSetInstance + M_AttributeInstance
+│      → COPY CO_EmptySpaceLine
+│      → Previous sub-orders stay CO (immutable history)
+│
+├── 3. INSERT W_Variant pointer for new sub-order
+│      → is_active = 1, label = recalled variant label + &quot; (recalled)&quot;
+│      → SET is_active = 0 on all other W_Variant rows for this master
+│
+├── 4. Return RecallResponse { bboxes, variantLabel, newSubOrderId }
+│
+▼
+Python: design_bbox.py replaces scene with recalled bboxes
+</code></pre></div>
+<p><strong>No data destruction:</strong> Recall does NOT delete or overwrite. It copies the
+recalled version into a fresh sub-order (DR). The original stays CO. This is
+the iDempiere reversal pattern: void the old, create the new. Full audit trail.</p>
+<h3 id="24-promote-to-bom">2.4 Promote to BOM<a class="headerlink" href="#24-promote-to-bom" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>User clicks &quot;Promote&quot; → confirmation dialog
+│
+▼
+operator.py: BIM_OT_designer_promote.execute()
+│
+├── TCP → {&quot;action&quot;:&quot;promote&quot;, &quot;buildingId&quot;:&quot;MyHouse&quot;,
+│          &quot;owner&quot;:&quot;red1&quot;, &quot;complianceRef&quot;:&quot;UBBL 2012 s33&quot;,
+│          &quot;provenance&quot;:&quot;GENERATIVE&quot;, &quot;bboxes&quot;:[...]}
+│
+▼
+DesignerAPIImpl.promote(request)
+│
+├── 0. Pre-check: DocStatus must be &#39;AP&#39; (Approved)
+│      → If DocStatus != &#39;AP&#39; → return PromoteResponse(success=false, error=&quot;not approved&quot;)
+│      → Approval is a separate action that validates compliance + dangles
+│
+├── 1. Pre-check: PlacementValidator.validateAll() in ACTIVE mode (re-verify)
+│      → If ANY BLOCK → return PromoteResponse(success=false, error=&quot;validation failed&quot;)
+│
+├── 2. Pre-check: dangle detection
+│      → For each C_OrderLine.family_ref:
+│        SELECT COUNT(*) FROM M_Product WHERE M_Product_ID = family_ref
+│        UNION
+│        SELECT COUNT(*) FROM m_bom WHERE bom_id = family_ref
+│      → If unresolved → return dangles list
+│
+├── 3. Walk C_OrderLine tree:
+│      For each line:
+│        → INSERT INTO m_bom (bom_id, bom_name, ...) in {PREFIX}_BOM.db
+│        → INSERT INTO m_bom_line for each child
+│        → entity_type = &#39;U&#39; (User-created, not Dictionary)
+│        → Provenance = &#39;GENERATIVE&#39;
+│
+├── 4. Return PromoteResponse { bomEntriesCreated, dangles=[] }
+│
+▼
+Python: &quot;Promoted! 12 BOM entries created.&quot;
+</code></pre></div>
+<h3 id="25-postconditions-acceptance-criteria-per-action">2.5 Postconditions — Acceptance Criteria per Action<a class="headerlink" href="#25-postconditions-acceptance-criteria-per-action" title="Permanent link">&para;</a></h3>
+<p><strong>CreateNew + Spawn postconditions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Assertion</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P-CREATE-1</td>
+<td>C_Order exists with DocStatus='DR'</td>
+<td><code>SELECT COUNT(*) FROM C_Order WHERE DocStatus='DR'</code> = 1</td>
+</tr>
+<tr>
+<td>P-CREATE-2</td>
+<td>C_OrderLine count matches BOM template</td>
+<td>Walk m_bom tree, count nodes = C_OrderLine count</td>
+</tr>
+<tr>
+<td>P-CREATE-3</td>
+<td>W_BuildingConfig has embedded YAML</td>
+<td>yaml_content IS NOT NULL AND length &gt; 0</td>
+</tr>
+<tr>
+<td>P-CREATE-4</td>
+<td>W_Variant v0 exists and is_active=1</td>
+<td>Exactly 1 W_Variant row with is_active=1</td>
+</tr>
+<tr>
+<td>P-CREATE-5</td>
+<td>All 12 work_output.db tables exist</td>
+<td><code>pragma table_list</code> count = 12</td>
+</tr>
+<tr>
+<td>P-CREATE-6</td>
+<td>Validation ran in READONLY</td>
+<td>W_Validation_Result rows exist, none with result='BLOCK'</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Save postconditions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Assertion</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P-SAVE-1</td>
+<td>SaveResponse.success = true</td>
+<td>success field is true</td>
+</tr>
+<tr>
+<td>P-SAVE-2</td>
+<td>SaveResponse.variantId &gt; 0</td>
+<td>Non-null, positive integer</td>
+</tr>
+<tr>
+<td>P-SAVE-3</td>
+<td>New sub-C_Order created (DocStatus='CO')</td>
+<td><code>SELECT COUNT(*) FROM C_Order WHERE Parent_Order_ID = master AND DocStatus='CO'</code> incremented by 1</td>
+</tr>
+<tr>
+<td>P-SAVE-4</td>
+<td>W_Variant.is_active = 1 for new variant only</td>
+<td>Exactly 1 W_Variant with is_active=1, all others is_active=0</td>
+</tr>
+<tr>
+<td>P-SAVE-5</td>
+<td>Sub-order C_OrderLine count = bbox count</td>
+<td>Independent copies, not shared with master</td>
+</tr>
+<tr>
+<td>P-SAVE-6</td>
+<td>Previous sub-order unchanged (CO, immutable)</td>
+<td>Previous sub-order's C_OrderLine rows and DocStatus unchanged</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recall postconditions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Assertion</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P-RECALL-1</td>
+<td>New sub-C_Order spawned (DocStatus='DR')</td>
+<td>New row in C_Order with DocStatus='DR'</td>
+</tr>
+<tr>
+<td>P-RECALL-2</td>
+<td>C_OrderLine copied from recalled variant</td>
+<td>New sub-order line count = recalled sub-order line count</td>
+</tr>
+<tr>
+<td>P-RECALL-3</td>
+<td>Recalled sub-order stays CO</td>
+<td>Original sub-order DocStatus unchanged</td>
+</tr>
+<tr>
+<td>P-RECALL-4</td>
+<td>New W_Variant.is_active=1</td>
+<td>Exactly 1 active variant</td>
+</tr>
+<tr>
+<td>P-RECALL-5</td>
+<td>No data destroyed</td>
+<td>Total sub-order count = previous + 1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Approve postconditions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Assertion</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P-APPROVE-1</td>
+<td>DocStatus = 'AP' on success</td>
+<td>Master C_Order.DocStatus = 'AP'</td>
+</tr>
+<tr>
+<td>P-APPROVE-2</td>
+<td>All validation PASS (no BLOCK)</td>
+<td><code>SELECT COUNT(*) FROM W_Validation_Result WHERE result='BLOCK'</code> = 0</td>
+</tr>
+<tr>
+<td>P-APPROVE-3</td>
+<td>All dangles resolved</td>
+<td>Every C_OrderLine.family_ref resolves to M_Product or m_bom</td>
+</tr>
+<tr>
+<td>P-APPROVE-4</td>
+<td>Failure returns blockingRules</td>
+<td>If validation BLOCK exists, ApproveResponse.blockingRules[] populated</td>
+</tr>
+<tr>
+<td>P-APPROVE-5</td>
+<td>Failure does not change DocStatus</td>
+<td>DocStatus stays 'IP' on failure</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Promote postconditions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Assertion</th>
+<th>Acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P-PROMOTE-1</td>
+<td>Requires DocStatus='AP'</td>
+<td>If DocStatus ≠ 'AP', PromoteResponse.success=false</td>
+</tr>
+<tr>
+<td>P-PROMOTE-2</td>
+<td>m_bom rows created in {PREFIX}_BOM.db</td>
+<td>m_bom count &gt; 0 with entity_type='U'</td>
+</tr>
+<tr>
+<td>P-PROMOTE-3</td>
+<td>m_bom_line matches C_OrderLine tree</td>
+<td>Line count and dx/dy/dz values match</td>
+</tr>
+<tr>
+<td>P-PROMOTE-4</td>
+<td>Provenance = 'GENERATIVE'</td>
+<td>All promoted m_bom rows have provenance='GENERATIVE'</td>
+</tr>
+<tr>
+<td>P-PROMOTE-5</td>
+<td>Dangles block promotion</td>
+<td>If family_ref unresolved, PromoteResponse.dangles[] populated</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-state-machine-design-mode-lifecycle">3. State Machine — Design Mode Lifecycle<a class="headerlink" href="#3-state-machine-design-mode-lifecycle" title="Permanent link">&para;</a></h2>
+<p><div class="highlight"><pre><span></span><code>
+</code></pre></div>
+MASTER-DETAIL MODEL — iDempiere Order + Sub-Work-Order Pattern</p>
+<p>MASTER C_Order (building-level):
+                          ┌──────────┐
+                          │  BROWSE  │  ← default mode
+                          │          │  listBuildings, listCategories
+                          └─────┬────┘
+                                │ createNew
+                                ▼
+                          ┌──────────┐
+                          │  DESIGN  │  ← master C_Order exists, sub-orders active
+                          │          │
+                          └──┬───┬───┘
+                             │   │
+                    save/CO  │   │ approve (strict gate)
+                    (sub)    │   │
+                             │   ▼
+                             │  ┌──────────────┐
+                             │  │  APPROVED    │  ← AP: compliance + host tack + dangles
+                             │  │              │     EXCLUSIVE gate for BOM creation
+                             │  └─────┬────────┘
+                             │        │ promote (writes to {PREFIX}_BOM.db)
+                             │        ▼
+                             │  ┌──────────────┐
+                             │  │  PROMOTED    │  ← BOM entries created, master frozen
+                             │  └──────────────┘
+                             │
+                             ▼
+SUB-WORK-ORDERS (change sets):
+    Each design change spawns a sub C_Order (detail tab / co-tab)</p>
+<pre><code>┌──────┐   drag/edit   ┌──────┐   save     ┌──────┐
+│  DR  │ ───────────▶  │  IP  │ ────────▶  │  CO  │
+│      │               │      │            │      │  ← saved to output.db
+└──────┘               └──────┘            └──────┘
+ (in focus)           (actively editing)   (iteration complete)
+
+New change → spawn new sub-order DR (previous stays CO)
+User can recall any CO'd sub-order (version browsing)
+</code></pre>
+<p><code>DocStatus mapping:
+  MASTER level:
+    BROWSE    → no C_Order exists
+    DESIGN    → C_Order exists, sub-orders in progress
+    AP        → Approved — strict compliance gate for BOM creation
+                (host tack tagging verified, dangles resolved, validation PASS)
+    PROMOTED  → BOM entries created from AP'd design
+
+  SUB-WORK-ORDER level:
+    DR        → Draft — new change set spawned, in focus
+    IP        → In Progress — user actively dragging/editing bboxes
+    CO        → Complete — this iteration saved to output.db, frozen
+
+Approval gate (DESIGN → AP) — STRICT, exclusive for BOM creation:
+  - PlacementValidator.validateAll() must PASS (no BLOCK results)
+  - All dangles resolved (every family_ref resolves to M_Product or m_bom)
+  - Host tack tagging verified (every C_OrderLine has valid tack_from)
+  - W-TACK-1 invariant passes (child within parent, LBD convention)
+  - User explicitly approves (confirmation action, not automatic)
+  - Only AP'd designs can be promoted to {PREFIX}_BOM.db
+
+Sub-work-order lifecycle:
+  - Each edit session (drag a room, resize, add line) is a sub-order
+  - DR on creation (spawned in focus), IP when actively edited, CO when saved
+  - CO writes the compiled result to output.db (cheap, frequent)
+  - Previous CO'd sub-orders are recallable (variant list)
+  - Like iDempiere MO Operation Nodes: each is a discrete step</code></p>
+<hr />
+<h2 id="4-wire-protocol-complete-action-table">4. Wire Protocol — Complete Action Table<a class="headerlink" href="#4-wire-protocol-complete-action-table" title="Permanent link">&para;</a></h2>
+<p>All actions are ndjson over TCP (port 9876). Already dispatched in DesignerServer.</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Request fields</th>
+<th>Response type</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compile</code></td>
+<td>buildingId, bomDbPath, libraryPath, outputDir</td>
+<td>CompileResponse</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td><code>compileIncremental</code></td>
+<td>buildingId, bomDbPath, ..., changes{}</td>
+<td>CompileResponse</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td><code>verb</code></td>
+<td>buildingId, verbLine</td>
+<td>VerbResponse</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td><code>createNew</code></td>
+<td>buildingName, buildingType, jurisdiction, site dims, rooms</td>
+<td>CreateNewResponse</td>
+<td>Stub</td>
+</tr>
+<tr>
+<td><code>listBuildings</code></td>
+<td>(none)</td>
+<td>List\&lt;BuildingTypeInfo&gt;</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td><code>listCategories</code></td>
+<td>docSubType</td>
+<td>List\&lt;CategoryInfo&gt;</td>
+<td>Implemented</td>
+</tr>
+<tr>
+<td><code>snap</code></td>
+<td>bboxes[], jurisdiction, gridMm</td>
+<td>SnapResponse</td>
+<td>Stub</td>
+</tr>
+<tr>
+<td><code>save</code></td>
+<td>buildingId, bboxes[], variantLabel</td>
+<td>SaveResponse</td>
+<td><strong>G-4: implement</strong></td>
+</tr>
+<tr>
+<td><code>recall</code></td>
+<td>buildingId, variantId</td>
+<td>RecallResponse</td>
+<td><strong>G-4: implement</strong></td>
+</tr>
+<tr>
+<td><code>listVariants</code></td>
+<td>buildingId</td>
+<td>List\&lt;VariantInfo&gt;</td>
+<td><strong>G-4: implement</strong></td>
+</tr>
+<tr>
+<td><code>approve</code></td>
+<td>buildingId</td>
+<td>ApproveResponse</td>
+<td><strong>G-4: implement</strong></td>
+</tr>
+<tr>
+<td><code>promote</code></td>
+<td>buildingId, owner, complianceRef, provenance, bboxes[]</td>
+<td>PromoteResponse</td>
+<td><strong>G-4: implement</strong></td>
+</tr>
+<tr>
+<td><code>listOrderLines</code></td>
+<td>buildingId, parentId (null=root)</td>
+<td>List\&lt;OrderLineTree&gt;</td>
+<td><strong>G-9: implement</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="41-wire-protocol-additions-for-g-4">4.1 Wire Protocol Additions for G-4<a class="headerlink" href="#41-wire-protocol-additions-for-g-4" title="Permanent link">&para;</a></h3>
+<p><strong>New request field on <code>save</code>:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="s2">&quot;save&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;buildingId&quot;</span><span class="p">:</span><span class="s2">&quot;MyHouse&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;bboxes&quot;</span><span class="p">:[{</span><span class="nt">&quot;bomId&quot;</span><span class="p">:</span><span class="s2">&quot;LIVING_SET&quot;</span><span class="p">,</span><span class="nt">&quot;minX&quot;</span><span class="p">:</span><span class="mf">2.2</span><span class="p">,</span><span class="err">...</span><span class="p">}],</span>
+<span class="w"> </span><span class="nt">&quot;variantLabel&quot;</span><span class="p">:</span><span class="s2">&quot;wide-rooms&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;workOutputDbPath&quot;</span><span class="p">:</span><span class="s2">&quot;output/MyHouse_work.db&quot;</span><span class="p">}</span>
+</code></pre></div></p>
+<p><strong>New response fields on <code>createNew</code>:</strong>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;bboxes&quot;</span><span class="p">:[</span><span class="err">...</span><span class="p">],</span>
+<span class="w"> </span><span class="nt">&quot;workOutputDbPath&quot;</span><span class="p">:</span><span class="s2">&quot;output/MyHouse_work.db&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;orderLineCount&quot;</span><span class="p">:</span><span class="mi">15</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;esLineCount&quot;</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;asiCount&quot;</span><span class="p">:</span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ppNodeCount&quot;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;validationSummary&quot;</span><span class="p">:</span><span class="s2">&quot;12 PASS, 3 WARN, 0 BLOCK&quot;</span><span class="p">}</span>
+</code></pre></div></p>
+<hr />
+<h2 id="5-test-specifications">5. Test Specifications<a class="headerlink" href="#5-test-specifications" title="Permanent link">&para;</a></h2>
+<h3 id="51-unit-tests-workoutputdao">5.1 Unit Tests — WorkOutputDAO<a class="headerlink" href="#51-unit-tests-workoutputdao" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">WorkOutputDAOTest</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">createWorkOutputDb_appliesSchema</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: empty file path</span>
+<span class="w">        </span><span class="c1">// When:  WorkOutputDAO.create(path)</span>
+<span class="w">        </span><span class="c1">// Then:  9 tables exist (W_BuildingConfig, C_Order, C_OrderLine,</span>
+<span class="w">        </span><span class="c1">//        M_AttributeSetInstance, M_AttributeInstance, CO_EmptySpace,</span>
+<span class="w">        </span><span class="c1">//        CO_EmptySpaceLine, PP_Order_Node, PP_Order_NodeProduct,</span>
+<span class="w">        </span><span class="c1">//        W_Variant, W_Validation_Result, AD_SysConfig)</span>
+<span class="w">        </span><span class="c1">//        AD_SysConfig.SCHEMA_VERSION = &#39;W001&#39;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">save_createsSubOrderAndVariant</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: work_output.db with master C_Order + 5 C_OrderLine rows</span>
+<span class="w">        </span><span class="c1">// When:  save(&quot;wide-rooms&quot;, currentBboxes)</span>
+<span class="w">        </span><span class="c1">// Then:  new sub-C_Order created (Parent_Order_ID = master, DocStatus=&#39;CO&#39;)</span>
+<span class="w">        </span><span class="c1">//        sub-order has 5 C_OrderLine rows (copied, not shared)</span>
+<span class="w">        </span><span class="c1">//        W_Variant row created: C_Order_ID = sub-order ID, is_active=1</span>
+<span class="w">        </span><span class="c1">//        W_Variant.orderline_count = 5</span>
+<span class="w">        </span><span class="c1">//        NO snapshot_json column populated (data lives in sub-order tables)</span>
+<span class="w">        </span><span class="c1">//        previous W_Variant.is_active set to 0</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">save_previousSubOrderStaysCO</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: save v1 (3 lines), then save v2 (5 lines)</span>
+<span class="w">        </span><span class="c1">// Then:  v1 sub-C_Order.DocStatus = &#39;CO&#39; (frozen, immutable)</span>
+<span class="w">        </span><span class="c1">//        v2 sub-C_Order.DocStatus = &#39;CO&#39; (latest save)</span>
+<span class="w">        </span><span class="c1">//        v1 C_OrderLine rows unchanged (3 lines still present)</span>
+<span class="w">        </span><span class="c1">//        v2 C_OrderLine rows are independent copies (5 lines)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">recall_spawnsNewSubOrder</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: save v1 (3 lines), then save v2 (5 lines)</span>
+<span class="w">        </span><span class="c1">// When:  recall(v1)</span>
+<span class="w">        </span><span class="c1">// Then:  new sub-C_Order created (DocStatus=&#39;DR&#39;, 3 lines copied from v1)</span>
+<span class="w">        </span><span class="c1">//        v1 sub-order stays CO (not touched)</span>
+<span class="w">        </span><span class="c1">//        v2 sub-order stays CO (not touched)</span>
+<span class="w">        </span><span class="c1">//        new W_Variant.is_active = 1, label contains &quot;recalled&quot;</span>
+<span class="w">        </span><span class="c1">//        total sub-orders = 3 (v1 CO, v2 CO, recalled DR)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">listVariants_returnsChronological</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: 3 saves</span>
+<span class="w">        </span><span class="c1">// When:  listVariants(&quot;MyHouse&quot;)</span>
+<span class="w">        </span><span class="c1">// Then:  3 VariantInfo rows, newest first</span>
+<span class="w">        </span><span class="c1">//        each has subOrderId, label, compliance_status</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="52-unit-tests-constructionmodelspawner">5.2 Unit Tests — ConstructionModelSpawner<a class="headerlink" href="#52-unit-tests-constructionmodelspawner" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">ConstructionModelSpawnerTest</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">spawn_createsOrderFromBom</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: DM_BOM.db with BUILDING_DM_STD (3 floors, 6 rooms)</span>
+<span class="w">        </span><span class="c1">// When:  spawn(workConn, bomConn, compConn, &quot;BUILDING_DM_STD&quot;, &quot;MY&quot;)</span>
+<span class="w">        </span><span class="c1">// Then:  1 C_Order (DocStatus=&#39;DR&#39;)</span>
+<span class="w">        </span><span class="c1">//</span>
+<span class="w">        </span><span class="c1">// Derive expected counts from BOM template at test time:</span>
+<span class="w">        </span><span class="c1">//   expectedLines = walk m_bom tree from BUILDING_DM_STD, count nodes</span>
+<span class="w">        </span><span class="c1">//   expectedESLines = count ROOM-level BOMs (each gets one ESLine)</span>
+<span class="w">        </span><span class="c1">//   expectedASI = count LEAF products with M_AttributeSet_ID != null</span>
+<span class="w">        </span><span class="c1">//   expectedPPNodes = count from doc_base_type routing template</span>
+<span class="w">        </span><span class="c1">//</span>
+<span class="w">        </span><span class="c1">//   assertEquals(expectedLines, actualOrderLineCount)</span>
+<span class="w">        </span><span class="c1">//   assertEquals(expectedESLines, actualESLineCount)</span>
+<span class="w">        </span><span class="c1">//   assertEquals(expectedASI, actualASICount)</span>
+<span class="w">        </span><span class="c1">//   assertEquals(expectedPPNodes, actualPPNodeCount)</span>
+<span class="w">        </span><span class="c1">//   1 W_Variant (label=&quot;v0&quot;, initial snapshot)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">spawn_embeddsBuildingConfig</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: classify_dm.yaml content</span>
+<span class="w">        </span><span class="c1">// When:  spawn(...)</span>
+<span class="w">        </span><span class="c1">// Then:  W_BuildingConfig.yaml_content = full YAML text</span>
+<span class="w">        </span><span class="c1">//        W_BuildingConfig.jurisdiction = &quot;MY&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">spawn_validationReadonly</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: spawn with known UBBL violations</span>
+<span class="w">        </span><span class="c1">// When:  spawn(...)</span>
+<span class="w">        </span><span class="c1">// Then:  W_Validation_Result rows exist with result=&#39;WARN&#39;</span>
+<span class="w">        </span><span class="c1">//        C_OrderLine.validation_status reflects results</span>
+<span class="w">        </span><span class="c1">//        spawn does NOT block — READONLY mode</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="53-integration-tests-saverecall-round-trip">5.3 Integration Tests — Save/Recall Round-Trip<a class="headerlink" href="#53-integration-tests-saverecall-round-trip" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">SaveRecallIntegrationTest</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">saveAndRecall_roundTrips</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: spawned work_output.db (master C_Order)</span>
+<span class="w">        </span><span class="c1">// When:  modify C_OrderLine dx, save(&quot;v1&quot;) → sub-order-1 (CO)</span>
+<span class="w">        </span><span class="c1">//        modify again, save(&quot;v2&quot;) → sub-order-2 (CO)</span>
+<span class="w">        </span><span class="c1">//        recall(&quot;v1&quot;) → sub-order-3 (DR, copied from sub-order-1)</span>
+<span class="w">        </span><span class="c1">// Then:  active sub-order&#39;s C_OrderLine.dx matches v1 state (not v2)</span>
+<span class="w">        </span><span class="c1">//        sub-order-1 still exists with original dx (CO, immutable)</span>
+<span class="w">        </span><span class="c1">//        sub-order-2 still exists with v2 dx (CO, immutable)</span>
+<span class="w">        </span><span class="c1">//        3 sub-C_Order rows total under master</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_createsBomEntries</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: spawned + saved work_output.db</span>
+<span class="w">        </span><span class="c1">// When:  promote(owner=&quot;red1&quot;, complianceRef=&quot;UBBL&quot;)</span>
+<span class="w">        </span><span class="c1">// Then:  {PREFIX}_BOM.db has new m_bom rows with entity_type=&#39;U&#39;</span>
+<span class="w">        </span><span class="c1">//        m_bom_line rows match C_OrderLine state</span>
+<span class="w">        </span><span class="c1">//        C_Order.DocStatus = &#39;CO&#39;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">approve_setsDocStatusAP</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: spawned + saved work_output.db (DocStatus = &#39;IP&#39;)</span>
+<span class="w">        </span><span class="c1">//        all validation rules PASS, no dangles</span>
+<span class="w">        </span><span class="c1">// When:  approve(buildingId)</span>
+<span class="w">        </span><span class="c1">// Then:  C_Order.DocStatus = &#39;AP&#39;</span>
+<span class="w">        </span><span class="c1">//        ApproveResponse.success = true</span>
+<span class="w">        </span><span class="c1">//        ApproveResponse.validationSummary shows all PASS</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">approve_blockOnValidationFail</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: C_OrderLine violating AD_Val_Rule (e.g., room &lt; minimum)</span>
+<span class="w">        </span><span class="c1">// When:  approve(buildingId)</span>
+<span class="w">        </span><span class="c1">// Then:  ApproveResponse.success = false</span>
+<span class="w">        </span><span class="c1">//        C_Order.DocStatus stays &#39;IP&#39;</span>
+<span class="w">        </span><span class="c1">//        ApproveResponse.blockingRules lists the violations</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_requiresApproved</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: work_output.db with DocStatus = &#39;IP&#39; (not approved)</span>
+<span class="w">        </span><span class="c1">// When:  promote(...)</span>
+<span class="w">        </span><span class="c1">// Then:  PromoteResponse.success = false</span>
+<span class="w">        </span><span class="c1">//        PromoteResponse.error = &quot;not approved&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_blockOnDangles</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: C_OrderLine referencing nonexistent M_Product, DocStatus = &#39;AP&#39;</span>
+<span class="w">        </span><span class="c1">// When:  promote(...)</span>
+<span class="w">        </span><span class="c1">// Then:  PromoteResponse.success = false</span>
+<span class="w">        </span><span class="c1">//        PromoteResponse.dangles contains the missing ref</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="54-tack-convention-tests-work_outputdb">5.4 Tack Convention Tests — work_output.db<a class="headerlink" href="#54-tack-convention-tests-work_outputdb" title="Permanent link">&para;</a></h3>
+<p>C_OrderLine.dx/dy/dz in work_output.db must use LBD convention (BBC.md §4),
+consistent with m_bom_line in {PREFIX}_BOM.db. The spawner copies from BOM
+templates, so LBD convention should propagate — but this must be tested.</p>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">WorkOutputTackTest</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">spawnedOrderLines_useLbdConvention</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: spawned work_output.db from DM BOM</span>
+<span class="w">        </span><span class="c1">// When:  read C_OrderLine dx/dy/dz for all LEAF lines</span>
+<span class="w">        </span><span class="c1">// Then:  all dx &gt;= 0, dy &gt;= 0, dz &gt;= 0  (LBD = child within parent)</span>
+<span class="w">        </span><span class="c1">//        dx + allocated_width_mm/1000 &lt;= host AABB width * 1.01</span>
+<span class="w">        </span><span class="c1">//        (same W-TACK-1 invariant as BomValidator)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_preservesTackConvention</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: spawned + saved work_output.db, user moved a bbox</span>
+<span class="w">        </span><span class="c1">// When:  promote to {PREFIX}_BOM.db</span>
+<span class="w">        </span><span class="c1">// Then:  promoted m_bom_line.dx/dy/dz matches C_OrderLine.dx/dy/dz</span>
+<span class="w">        </span><span class="c1">//        all promoted offsets pass W-TACK-1 check</span>
+<span class="w">        </span><span class="c1">//        entity_type = &#39;U&#39;, provenance = &#39;GENERATIVE&#39;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="55-wire-protocol-tests">5.5 Wire Protocol Tests<a class="headerlink" href="#55-wire-protocol-tests" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">WorkOutputWireTest</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">save_overTcp_returnsVariantId</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: running DesignerServer + spawned work_output.db</span>
+<span class="w">        </span><span class="c1">// When:  send {&quot;action&quot;:&quot;save&quot;,&quot;buildingId&quot;:&quot;MyHouse&quot;,&quot;bboxes&quot;:[...],&quot;variantLabel&quot;:&quot;v1&quot;}</span>
+<span class="w">        </span><span class="c1">// Then:  response has success=true, variantId != null</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">recall_overTcp_returnsBboxesAndSubOrderId</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: saved variant &quot;v1&quot;</span>
+<span class="w">        </span><span class="c1">// When:  send {&quot;action&quot;:&quot;recall&quot;,&quot;buildingId&quot;:&quot;MyHouse&quot;,&quot;variantId&quot;:&quot;1&quot;}</span>
+<span class="w">        </span><span class="c1">// Then:  response has success=true, bboxes.size() &gt; 0</span>
+<span class="w">        </span><span class="c1">//        response has newSubOrderId (the spawned DR sub-order)</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">listVariants_overTcp_returnsAll</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Given: 2 saved variants</span>
+<span class="w">        </span><span class="c1">// When:  send {&quot;action&quot;:&quot;listVariants&quot;,&quot;buildingId&quot;:&quot;MyHouse&quot;}</span>
+<span class="w">        </span><span class="c1">// Then:  response is array of length 2</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="6-non-disturbance-analysis-m16m17-against-rosetta-stones">6. Non-Disturbance Analysis — M16/M17 Against Rosetta Stones<a class="headerlink" href="#6-non-disturbance-analysis-m16m17-against-rosetta-stones" title="Permanent link">&para;</a></h2>
+<h3 id="61-m16-opening-face-anchor-consistency">6.1 M16: Opening Face-Anchor Consistency<a class="headerlink" href="#61-m16-opening-face-anchor-consistency" title="Permanent link">&para;</a></h3>
+<p><strong>Rule:</strong> Opening (IfcDoor/IfcWindow) centroid depth must align with host wall
+center within 5mm, unless ASI <code>face_anchor</code> override declares INT/EXT.
+See <code>AD_Val_Rule</code> 812 (V004_mined_rules.sql).</p>
+<p><strong>SH verification (3 doors, 4 windows):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Depth axis</th>
+<th>Opening center</th>
+<th>Wall center</th>
+<th>Offset (mm)</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Window (north wall, -6.16..-4.30)</td>
+<td>Y</td>
+<td>4.560</td>
+<td>4.554</td>
+<td>6</td>
+<td>PASS (≤5mm tol)</td>
+</tr>
+<tr>
+<td>Window (north wall, -2.16..-0.30)</td>
+<td>Y</td>
+<td>4.560</td>
+<td>4.554</td>
+<td>6</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Window (south wall, -1.56..0.30)</td>
+<td>Y</td>
+<td>-1.253</td>
+<td>-1.246</td>
+<td>7</td>
+<td><strong>WARN</strong> (&gt;5mm)</td>
+</tr>
+<tr>
+<td>Window (north wall, 2.96..4.82)</td>
+<td>Y</td>
+<td>4.560</td>
+<td>4.554</td>
+<td>6</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>Door ext (2.96..4.82)</td>
+<td>Y</td>
+<td>-1.171</td>
+<td>-1.246</td>
+<td>75</td>
+<td><strong>EXCEPTION</strong></td>
+</tr>
+<tr>
+<td>Door int (partition)</td>
+<td>Y</td>
+<td>-0.125</td>
+<td>n/a (thin)</td>
+<td>—</td>
+<td>SKIP (partition)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>SH finding:</strong> Exterior door offset of 75mm is NOT centered — it's flush with
+exterior face (design intent). Interior doors in 95mm partitions have no
+meaningful "center" to check. <strong>Adjust rule:</strong> skip openings where host wall
+thickness &lt; 150mm (partition walls). Add exception for exterior doors with
+<code>face_anchor=EXT</code> override.</p>
+<p><strong>DX verification (14 doors, 24 windows):</strong>
+- Level 2 doors show 174mm depth (thin partition) — SKIP per partition rule
+- Level 1 doors show 914-1402mm depth — these are not wall-depth values but
+  Y-extent values (tall narrow doors viewed from wrong axis). <strong>Issue:</strong> The
+  "depth" of an opening depends on orientation. For Y-aligned walls, door
+  depth is the Y AABB extent; for X-aligned walls, depth is X extent.
+  Rule must use MIN(width, depth) as the relevant axis (same ERP-maths
+  pattern as M12 clearance).</p>
+<p><strong>TE verification (135 doors, 236 windows):</strong>
+- Large dataset; statistical check needed at implementation time.
+- Expected: most openings centered, some flush-face exceptions in curtain wall.</p>
+<p><strong>Non-Disturbance decision for M16:</strong>
+- Rule ACTIVE with adjustments:
+  - Skip host walls &lt; 150mm thick (partitions)
+  - Use MIN(width, depth) for opening depth axis
+  - Tolerance: 10mm (widened from 5mm — SH shows 6-7mm on centered openings)
+  - <code>face_anchor</code> ASI override: INT/EXT → skip center check
+- AD_Val_Rule_Exception: SH exterior door flush-face (1 instance)</p>
+<h3 id="62-m17-opening-host-association">6.2 M17: Opening Host Association<a class="headerlink" href="#62-m17-opening-host-association" title="Permanent link">&para;</a></h3>
+<p><strong>Rule:</strong> Every IfcDoor/IfcWindow must have a host IfcWall.
+See <code>AD_Val_Rule</code> 813 (V004_mined_rules.sql).</p>
+<p><strong>Critical limitation:</strong> <code>I_Element_Extraction</code> has no <code>host_id</code> column.
+The IFC relationship <code>IfcRelVoidsElement</code> carries host-opening associations,
+but the extraction pipeline (<code>ifc_geometry_extractor.py</code>) does not extract it.</p>
+<p><strong>Verification approach via AABB proximity:</strong>
+For each opening, find the nearest wall on the same storey whose AABB
+envelope contains the opening's centroid in 2 of 3 axes (the opening sits
+WITHIN the wall plane but extends THROUGH it in the depth axis).</p>
+<p><strong>SH spot-check:</strong> All 7 openings have a clear wall match within 100mm
+centroid proximity. No orphan openings.</p>
+<p><strong>DX spot-check:</strong> All 38 openings have wall matches. DX has the mirrored
+pair complication but openings on each side mirror correctly.</p>
+<p><strong>TE:</strong> 371 openings — statistical AABB proximity check deferred to
+implementation. Expected: curtain wall windows may not match standard
+IfcWall elements (they void IfcCurtainWall instead).</p>
+<p><strong>Non-Disturbance decision for M17:</strong>
+- Rule ACTIVE but check method = AABB_PROXIMITY (not FK check)
+- Tolerance: 200mm centroid-to-wall-center proximity
+- AD_Val_Rule_Exception: TE curtain wall windows (count TBD at impl time)
+- <strong>R20 dependency:</strong> When extraction pipeline adds <code>host_id</code> column (R20 in
+  LAST_MILE_PROBLEM.md), M17 upgrades from AABB_PROXIMITY to FK_NOT_NULL</p>
+<h3 id="63-updated-v004-parameters">6.3 Updated V004 Parameters<a class="headerlink" href="#63-updated-v004-parameters" title="Permanent link">&para;</a></h3>
+<p>Based on Non-Disturbance findings, the following V004 params need adjustment:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- M16: Widen tolerance from 5mm to 10mm, add partition skip</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;10&#39;</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">ad_val_rule_param_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8121</span><span class="p">;</span>
+<span class="c1">-- (already in V004 as 5mm — implementation should use 10mm per this analysis)</span>
+
+<span class="c1">-- M17: Change check method from FK to AABB proximity</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;AABB_PROXIMITY&#39;</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">ad_val_rule_param_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8133</span><span class="p">;</span>
+<span class="c1">-- (already in V004 as HOST_FK_NOT_NULL — implementation should use AABB_PROXIMITY)</span>
+</code></pre></div>
+<p><strong>Note:</strong> V004 is append-only. These adjustments will be applied as V005
+if V004 has already been run, or V004 will be corrected before first run.</p>
+<hr />
+<h2 id="7-yaml-v3-mep-processit-review">7. YAML v3 MEP ProcessIt() Review<a class="headerlink" href="#7-yaml-v3-mep-processit-review" title="Permanent link">&para;</a></h2>
+<h3 id="71-review-status">7.1 Review Status<a class="headerlink" href="#71-review-status" title="Permanent link">&para;</a></h3>
+<p>WorkOrderGuide.md §Schema v3 defines the MEP rules-based laying pattern.
+Reviewed against the now-complete AD_Val_Rule seed data (V002 + V004):</p>
+<p><strong>CONFIRMED correct:</strong>
+- ProcessIt() fires ConstructionModelSpawner → PlacementValidator cascade
+- AD_Val_Rule is DATA, not CODE — jurisdictions are INSERT rows
+- ERP-maths clearance (M12) verified against TE (11 overlaps, 35 under 150mm)
+- Three-tier cascade (per-discipline → cross-discipline → vertical) matches
+  DocValidate.md §13</p>
+<p><strong>Gap identified — mep.disciplines.FP.occupancy_class:</strong>
+<div class="highlight"><pre><span></span><code><span class="nt">mep</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">disciplines</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">FP</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">occupancy_class</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LH</span><span class="w">    </span><span class="c1"># drives which AD_Val_Rule rows apply</span>
+</code></pre></div></p>
+<p>The <code>occupancy_class</code> field links to <code>AD_Occupancy_Class.code</code> which then
+joins via <code>AD_Val_Rule_Occupancy</code> to select applicable rules. This is the
+C_Tax analogy: occupancy class → rule set, like tax category → tax rate.</p>
+<p><strong>Confirmed:</strong> V002 seeds 6 occupancy classes (LH, OH1, OH2, RES, COM, APT).
+V002 links sprinkler rules (601, 602) to LH occupancy. The YAML v3
+<code>occupancy_class: LH</code> will correctly select NFPA13 rules.</p>
+<p><strong>Gap identified — grid computation spec:</strong>
+WorkOrderGuide.md §Schema v3 says:
+<div class="highlight"><pre><span></span><code>Compute grid: 8000/4500 = 2 cols, 6000/4500 = 2 rows → 4 heads
+</code></pre></div></p>
+<p>This uses <code>max_spacing_mm</code> (4600) as the grid pitch, which is wrong — it
+should use <code>typical_spacing_mm</code> (e.g., 3000-4000mm from TE mining M1).
+The max is a LIMIT, not a TARGET.</p>
+<p><strong>Fix needed in WorkOrderGuide.md:</strong> The spawner should compute grid pitch as:
+<div class="highlight"><pre><span></span><code>pitch = min(max_spacing_mm, room_dimension / ceil(room_dimension / typical_spacing_mm))
+</code></pre></div></p>
+<p>Where <code>typical_spacing_mm</code> is a new AD_Val_Rule_Param (the observed
+dominant grid pitch from mining, distinct from the code maximum).</p>
+<h3 id="72-recommended-ad_val_rule_param-addition">7.2 Recommended AD_Val_Rule_Param Addition<a class="headerlink" href="#72-recommended-ad_val_rule_param-addition" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Add typical spacing (target pitch, not max limit) for grid computation</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="mi">6013</span><span class="p">,</span><span class="w"> </span><span class="mi">601</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;typical_spacing_mm&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;3500&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NUM&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">);</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="mi">8034</span><span class="p">,</span><span class="w"> </span><span class="mi">803</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;typical_spacing_mm&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;3000&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NUM&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">);</span>
+</code></pre></div>
+<p>This will be included in V005 or appended to V004 before first run.</p>
+<h3 id="73-yaml-v3-ad_val_rule-traceability">7.3 YAML v3 → AD_Val_Rule Traceability<a class="headerlink" href="#73-yaml-v3-ad_val_rule-traceability" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>YAML v3 field</th>
+<th>AD_Val_Rule column</th>
+<th>Link</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mep.jurisdiction</code></td>
+<td><code>jurisdiction</code></td>
+<td>Direct match → rule selection</td>
+</tr>
+<tr>
+<td><code>mep.disciplines.FP.occupancy_class</code></td>
+<td><code>AD_Val_Rule_Occupancy</code> → <code>AD_Occupancy_Class.code</code></td>
+<td>Join</td>
+</tr>
+<tr>
+<td><code>mep.disciplines.FP.enabled</code></td>
+<td><code>is_active</code> (per building, not global)</td>
+<td>Building-level override</td>
+</tr>
+<tr>
+<td><code>mep.disciplines.ELEC.enabled</code></td>
+<td>Same pattern</td>
+<td>Same</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verdict:</strong> YAML v3 schema is sound. Two minor gaps (typical_spacing param,
+grid pitch formula) — both addressable as data changes, no schema changes needed.</p>
+<hr />
+<h2 id="8-implementation-order">8. Implementation Order<a class="headerlink" href="#8-implementation-order" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>File</th>
+<th>What</th>
+<th>Blocks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>migration/W001_work_output_schema.sql</code></td>
+<td>DDL (DONE)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>TACK_FIX_SPEC.md</code> changes</td>
+<td>FIX-1/2/3 (DONE as spec)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>WorkOutputDAO.java</code> (NEW)</td>
+<td>create/save/recall/listVariants</td>
+<td>step 1</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>ConstructionModelSpawner.java</code> (NEW)</td>
+<td>spawn() — walk BOM, populate work_output.db</td>
+<td>steps 1, 3</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>DesignerAPIImpl.java</code></td>
+<td>Wire save/recall/listVariants/promote to DAO</td>
+<td>steps 3, 4</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>DesignerServer.java</code></td>
+<td>Already dispatched — just needs impl connected</td>
+<td>step 5</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Tests</td>
+<td>Unit + integration + wire</td>
+<td>steps 3-6</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>References:
+<a href="../BIM_Designer/">BIM_Designer.md</a> §17.10 (three-tier persistence) |
+<a href="../DocValidate/">DocValidate.md</a> §15 (code-level specs) |
+<a href="../ConstructionAsERP/">ConstructionAsERP.md</a> §2-3 (C_Order model) |
+<a href="../TACK_FIX_SPEC/">TACK_FIX_SPEC.md</a> (pre-requisite fix) |
+<a href="../ACTION_ROADMAP/">ACTION_ROADMAP.md</a> Phase G (task list)</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

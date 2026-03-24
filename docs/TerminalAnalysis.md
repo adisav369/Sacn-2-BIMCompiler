@@ -22,7 +22,7 @@ All TE BOM offsets, tack convention, BUFFER, and compilation modes must conform 
 `BOMBasedCompilation.md` §3-§4 (the governing spec). See §Tack I/O and §Recurrence
 sections below. Code changes spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 
-*Extracted from `docs/TheRosettaStoneStrategy.txt` §TERMINAL RECOMPOSITION (2026-02-28).*
+*Extracted from `docs/TheRosettaStoneStrategy.md` §TERMINAL RECOMPOSITION (2026-02-28).*
 *Updated 2026-03-19 with CTFL review status and per-instance CLUSTER dimensions.*
 
 ## Building Identity

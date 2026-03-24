@@ -1,0 +1,4454 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../G4_SRS/">
+      
+      
+        <link rel="next" href="../BlenderBridge/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>View Contracts - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#view-contracts-the-compilers-data-access-layer" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              View Contracts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-idempiere-table-type-mapping-authoritative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. iDempiere Table-Type Mapping — Authoritative
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. iDempiere Table-Type Mapping — Authoritative">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-docstatus-assignment-final" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 DocStatus Assignment — Final
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-c_order-construction-order-future-docstatus-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 C_Order (Construction Order) — Future DocStatus Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-rename-scope-recorded-execution-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Rename Scope — Recorded, Execution Deferred
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-this-document-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why This Document Exists
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Why This Document Exists">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-three-layer-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The Three-Layer Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-coordinate-frame-confidence-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Coordinate Frame Confidence Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-bom-type-cascade-the-compilers-core-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. BOM Type Cascade — The Compiler's Core Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. BOM Type Cascade — The Compiler&#39;s Core Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-governing-principle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Governing Principle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-two-operating-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Two Operating Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-recursive-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Recursive Application
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-user-as-final-arbiter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 User as Final Arbiter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-schema-migrations-run-in-order-before-creating-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Schema Migrations (Run in Order Before Creating Views)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Schema Migrations (Run in Order Before Creating Views)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-phase-1-correct-doc_status-assignments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Phase 1 — Correct doc_status Assignments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-phase-1b-add-provenance-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Phase 1b — Add Provenance Columns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-phase-1c-add-bom_type-to-m_bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Phase 1c — Add bom_type to m_bom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-phase-1d-add-bom-spatial-qualification-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Phase 1d — Add BOM Spatial Qualification Columns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-phase-2-seed-co-for-verified-element-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Phase 2 — Seed CO for Verified Element Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-phase-1e-extend-coordinate_frame-check-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Phase 1e — Extend coordinate_frame CHECK Constraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-migration-execution-record-2026-02-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 Migration Execution Record (2026-02-23)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-six-core-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Six Core Views
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Six Core Views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-v_qualified_bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 v_qualified_bom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-v_verified_room_boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 v_verified_room_boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-v_compilable_element_rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 v_compilable_element_rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-v_proven_geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 v_proven_geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-v_active_bom_assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 v_active_bom_assembly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-v_component_leaf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 v_component_leaf
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-compiler-caller-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Compiler Caller Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-java-access-layer-phase-4-next-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Java Access Layer (Phase 4 — Next Session)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-view-execution-results-2026-02-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. View Execution Results — 2026-02-23
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-view-maintenance-rules-immutable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. View Maintenance Rules — Immutable
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-implementation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Implementation Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-required-indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Required Indexes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-idempiere-table-type-mapping-authoritative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. iDempiere Table-Type Mapping — Authoritative
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. iDempiere Table-Type Mapping — Authoritative">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-docstatus-assignment-final" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 DocStatus Assignment — Final
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-c_order-construction-order-future-docstatus-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 C_Order (Construction Order) — Future DocStatus Lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-rename-scope-recorded-execution-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Rename Scope — Recorded, Execution Deferred
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-this-document-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why This Document Exists
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Why This Document Exists">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-three-layer-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The Three-Layer Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-coordinate-frame-confidence-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Coordinate Frame Confidence Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-bom-type-cascade-the-compilers-core-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. BOM Type Cascade — The Compiler's Core Strategy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. BOM Type Cascade — The Compiler&#39;s Core Strategy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-governing-principle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Governing Principle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-two-operating-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Two Operating Modes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-recursive-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Recursive Application
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-user-as-final-arbiter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 User as Final Arbiter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-schema-migrations-run-in-order-before-creating-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Schema Migrations (Run in Order Before Creating Views)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Schema Migrations (Run in Order Before Creating Views)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-phase-1-correct-doc_status-assignments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Phase 1 — Correct doc_status Assignments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-phase-1b-add-provenance-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Phase 1b — Add Provenance Columns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-phase-1c-add-bom_type-to-m_bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Phase 1c — Add bom_type to m_bom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-phase-1d-add-bom-spatial-qualification-columns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Phase 1d — Add BOM Spatial Qualification Columns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-phase-2-seed-co-for-verified-element-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Phase 2 — Seed CO for Verified Element Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-phase-1e-extend-coordinate_frame-check-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Phase 1e — Extend coordinate_frame CHECK Constraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#47-migration-execution-record-2026-02-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.7 Migration Execution Record (2026-02-23)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-six-core-views" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Six Core Views
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Six Core Views">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-v_qualified_bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 v_qualified_bom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-v_verified_room_boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 v_verified_room_boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-v_compilable_element_rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 v_compilable_element_rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-v_proven_geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 v_proven_geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-v_active_bom_assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 v_active_bom_assembly
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#56-v_component_leaf" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.6 v_component_leaf
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-compiler-caller-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Compiler Caller Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-java-access-layer-phase-4-next-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Java Access Layer (Phase 4 — Next Session)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-view-execution-results-2026-02-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. View Execution Results — 2026-02-23
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-view-maintenance-rules-immutable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. View Maintenance Rules — Immutable
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-implementation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Implementation Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-required-indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Required Indexes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="view-contracts-the-compilers-data-access-layer">View Contracts — The Compiler's Data Access Layer<a class="headerlink" href="#view-contracts-the-compilers-data-access-layer" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+</blockquote>
+<p><strong>Version:</strong> 2.1
+<strong>Date:</strong> 2026-02-23
+<strong>Status:</strong> GOVERNING — defines the data contract between base AD tables and the compiler
+<strong>Authors:</strong> red1 (architect) + Claude Watchdog (reviewer)
+<strong>Supplements:</strong> PREFAB_ARCHITECTURE.md, METADATA_DRIVEN_ARCHITECTURE.md
+<strong>iDempiere analogues:</strong> C_Order/C_OrderLine lifecycle, M_Product catalog, MRP BOM explosion</p>
+<p><strong>Changes from v1.9:</strong>
+- §5.1 v_qualified_bom: view SQL updated to live Phase 4 version — JOIN via <code>bc.product_ref</code>
+  (not <code>bc.role</code>). The old SQL had <code>JOIN ad_product_dim pd ON pd.product_id = bc.role</code> which
+  was the zero-row state; the doc carried stale SQL while the DB was already migrated.
+- §8: v_qualified_bom updated to 10 rows LIVE (Phase 4 product_ref FK migration).
+- §10: Phase 4 product_ref FK step marked DONE. Remaining Phase 4 items listed explicitly.</p>
+<p><strong>Changes from v1.8:</strong>
+- §5.4 v_proven_geometry: corrected to live SQL — removed broken <code>JOIN I_Geometry_Map ON
+  gm.element_ref = cd.name</code> (namespace mismatch: Revit family:type vs library component name).
+  Now filters directly on <code>cd.vertex_count &gt; 8</code> and <code>cd.geometry_hash IS NOT NULL</code>.
+  <code>ifc_class</code> sourced via correlated subquery on <code>gm.geometry_hash = cd.geometry_hash</code>.
+- §5.6 v_component_leaf: same correction — <code>I_Geometry_Map</code> join dropped; <code>cd.vertex_count</code>
+  and <code>cd.geometry_hash</code> used directly. Live view retains <code>ifc_class</code> column and <code>pd.height &gt; 0</code>.
+- §8: View Execution Results updated — v_proven_geometry 0→22,013; v_component_leaf 0→28.
+- Root cause recorded: original join assumed <code>gm.element_ref</code> and <code>cd.name</code> share a namespace
+  — they do not. <code>I_Geometry_Map.element_ref</code> = Revit family:type (building elements);
+  <code>component_definitions.name</code> = library component names.</p>
+<p><strong>Changes from v1.7:</strong>
+- §4.3, §4.4: TARGET STATE disclaimer added — BEDROOM_STD/DINING_SET vocabulary does not
+  exist in DB; FLOOR_<em>/BUILDING_</em> are the actual highest-tier bom_ids. §4.3/§4.4 describe the
+  intended data model, not current DB state.
+- §5.1: Phase 4 join resolution flagged as watchdog call — product_ref FK vs bbox path
+  is an architectural decision, not a Code-alone decision.
+- §10: Phase 4 row updated with explicit "WATCHDOG CALL FIRST" gate.</p>
+<p><strong>Changes from v1.6:</strong>
+- §5.1, §5.2, §5.4, §5.6: execution notes added — zero-row causes confirmed from DB
+- §8: new section — View Execution Results from this session
+- §10 Implementation Sequence: Phase 3g (TB-LKTN seed), 3h (extracted_from seed), Phase 4 gap noted
+- §4.7: migration execution record added</p>
+<p><strong>Changes from v1.5:</strong>
+- §2.3 added: coordinate_frame confidence hierarchy — DERIVED_MM and CONSTRAINT_SOLVED
+  are legitimate compilation inputs; GRID_DERIVED_MM is never served by any view
+- v_verified_room_boundary WHERE IN clause extended to include DERIVED_MM and CONSTRAINT_SOLVED
+- §4.6 added: CHECK constraint extension for ad_room_boundary.coordinate_frame
+- Rule 7 updated to reflect extended valid coordinate_frame set</p>
+<p><strong>Changes from v1.4:</strong>
+- §4.1 migration block replaced with intent guidelines — Code guards against current schema state
+- §4.2 migration block replaced with intent guidelines — DEFAULT/CHECK consistency enforced by Code
+- §4.2 I_Geometry_Map ALTER TABLE removed — column provenance already exists (DEFAULT 'LIBRARY')
+- Version bumped to 1.5</p>
+<p><strong>Changes from v1.3:</strong>
+- §2 Table-type mapping confirmed against actual DB schema
+- ad_room_boundary: doc_status removed — M_ table, quality gate is coordinate_frame
+- C_OrderLine (Construction Order Details): doc_status kept — confirmed C_OrderLine by BUILDING_DSL provenance
+- C_Order (Construction Order): DocStatus lifecycle documented, execution deferred
+- Rename mapping (ad_ → C_/M_) recorded as authoritative, execution deferred to
+  REFACTOR session — 35 migration files + 10 Java files for C_OrderLine alone
+- v_verified_room_boundary: doc_status filter replaced by coordinate_frame gate</p>
+<hr />
+<blockquote>
+<p><em>"The base tables are the workshop. The views are the showroom.
+The compiler only walks through the showroom."</em></p>
+</blockquote>
+<hr />
+<h2 id="1-idempiere-table-type-mapping-authoritative">1. iDempiere Table-Type Mapping — Authoritative<a class="headerlink" href="#1-idempiere-table-type-mapping-authoritative" title="Permanent link">&para;</a></h2>
+<p>This mapping is confirmed against the actual DB schema. It governs all naming decisions,
+DocStatus assignments, and view filter choices. Renames are deferred; the mapping is not.</p>
+<div class="highlight"><pre><span></span><code>iDempiere          BIM table (current name)     Future name          Type confirmed by
+─────────────────────────────────────────────────────────────────────────────────────────
+C_Order            c_order         C_Building_Order     dsl_content +
+                                                                      spatial_digest +
+                                                                      output_db_path
+                                                                      = full order header
+
+C_OrderLine        c_orderline              C_Element_Rule       provenance DEFAULT
+                                                                      &#39;BUILDING_DSL&#39; —
+                                                                      the table named
+                                                                      itself
+
+Qty × UOM          ad_room_boundary             M_Room_Boundary      extracted_from +
+(spatial quantity)                                                    coordinate_frame =
+                                                                      measurement record,
+                                                                      not a document
+
+M_Product          m_bom / component_          (no rename needed)   catalog tables,
+                   definitions                                        is_active only
+</code></pre></div>
+<h3 id="11-docstatus-assignment-final">1.1 DocStatus Assignment — Final<a class="headerlink" href="#11-docstatus-assignment-final" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Type</th>
+<th>DocStatus</th>
+<th>Gate used in views</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>c_order</code></td>
+<td>C_Order header</td>
+<td>Deferred (future session)</td>
+<td>is_active for now</td>
+</tr>
+<tr>
+<td><code>c_orderline</code></td>
+<td>C_OrderLine</td>
+<td><strong>YES — kept</strong></td>
+<td><code>doc_status = 'CO'</code></td>
+</tr>
+<tr>
+<td><code>ad_room_boundary</code></td>
+<td>M_ spatial qty</td>
+<td><strong>NO — removed</strong></td>
+<td><code>coordinate_frame NOT IN ('GRID_DERIVED_MM')</code></td>
+</tr>
+<tr>
+<td><code>m_bom</code></td>
+<td>M_BOM</td>
+<td>NO</td>
+<td><code>is_active = 1</code></td>
+</tr>
+<tr>
+<td><code>m_bom_line</code></td>
+<td>M_BOMLine</td>
+<td>NO</td>
+<td><code>is_active = 1</code></td>
+</tr>
+<tr>
+<td><code>component_definitions</code></td>
+<td>M_Product leaf</td>
+<td>NO</td>
+<td><code>extracted_from NOT LIKE '%PENDING%'</code></td>
+</tr>
+<tr>
+<td><code>ad_product_dim</code></td>
+<td>M_Product attr</td>
+<td>NO</td>
+<td><code>extracted_from NOT LIKE '%PENDING%'</code></td>
+</tr>
+<tr>
+<td><code>I_Geometry_Map</code></td>
+<td>M_Product geom</td>
+<td>NO</td>
+<td><code>provenance NOT LIKE '%PENDING%'</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="12-c_order-construction-order-future-docstatus-lifecycle">1.2 C_Order (Construction Order) — Future DocStatus Lifecycle<a class="headerlink" href="#12-c_order-construction-order-future-docstatus-lifecycle" title="Permanent link">&para;</a></h3>
+<p>When DocStatus is added (future session), the lifecycle is:</p>
+<div class="highlight"><pre><span></span><code>DR  — DSL being authored, not yet submitted for compilation
+IP  — Compilation in progress (IFC being generated)
+CO  — IFC issued, SpatialDigest confirmed and recorded
+VO  — Superseded by a newer building order for the same project
+</code></pre></div>
+<p>This mirrors C_Order exactly. No action this session.</p>
+<h3 id="13-rename-scope-recorded-execution-deferred">1.3 Rename Scope — Recorded, Execution Deferred<a class="headerlink" href="#13-rename-scope-recorded-execution-deferred" title="Permanent link">&para;</a></h3>
+<p>Confirmed by DB analysis. No FK dependents on any of the three tables — renames carry
+zero cascade risk. Execution deferred because C_OrderLine touches 35 migration files
+and 10 Java source files — a dedicated REFACTOR session, not mixed into this data layer
+session.</p>
+<table>
+<thead>
+<tr>
+<th>Current name</th>
+<th>Target name</th>
+<th>Java files</th>
+<th>SQL files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>c_order</code></td>
+<td><code>C_Building_Order</code></td>
+<td>5 files, 10 refs</td>
+<td>6 files, 16 refs</td>
+</tr>
+<tr>
+<td><code>c_orderline</code></td>
+<td><code>C_Element_Rule</code></td>
+<td>10 files, 46 refs</td>
+<td>35 files, 131 refs</td>
+</tr>
+<tr>
+<td><code>ad_room_boundary</code></td>
+<td><code>M_Room_Boundary</code></td>
+<td>11 files, 34 refs</td>
+<td>11 files, 49 refs</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="2-why-this-document-exists">2. Why This Document Exists<a class="headerlink" href="#2-why-this-document-exists" title="Permanent link">&para;</a></h2>
+<h3 id="21-the-problem">2.1 The Problem<a class="headerlink" href="#21-the-problem" title="Permanent link">&para;</a></h3>
+<p>The compiler has been deciding validity at runtime:
+- Java resolver methods checking for null and throwing MetadataMissingException
+- Silent fallbacks that mask missing data (dims=null → 0.5×0.5×1.0m BBox)
+- No clear signal distinguishing "data missing" from "data not ready"</p>
+<p><strong>The view contract layer solves this permanently.</strong> A compiler query returning zero rows
+means the data is not construction-ready — not an error to handle, simply a clean signal
+to skip. No exception. No fallback. No silent failure.</p>
+<h3 id="22-the-three-layer-stack">2.2 The Three-Layer Stack<a class="headerlink" href="#22-the-three-layer-stack" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────┐
+│  COMPILER (Java)                                    │
+│  Reads ONLY from views — never base tables          │
+├─────────────────────────────────────────────────────┤
+│  VIEW CONTRACTS (SQL Views)       ← THIS DOCUMENT   │
+│  Stateless — all state in caller                    │
+│  Filter: doc_status=CO, provenance≠PENDING,         │
+│          coordinate_frame≠GRID_DERIVED, dims&gt;0      │
+├─────────────────────────────────────────────────────┤
+│  BASE TABLES (ad_* SQLite)                          │
+│  Workshop — partial data, migrations in progress    │
+│  Write path: migrations and extractions only        │
+└─────────────────────────────────────────────────────┘
+</code></pre></div>
+<h3 id="23-coordinate-frame-confidence-hierarchy">2.3 Coordinate Frame Confidence Hierarchy<a class="headerlink" href="#23-coordinate-frame-confidence-hierarchy" title="Permanent link">&para;</a></h3>
+<p>The <code>coordinate_frame</code> column in <code>ad_room_boundary</code> is the <strong>sole quality gate</strong> for spatial
+data. It ranks coordinate provenance from highest fidelity to excluded. The view
+<code>v_verified_room_boundary</code> serves rows where <code>coordinate_frame</code> is one of the five valid values;
+<code>GRID_DERIVED_MM</code> is never served.</p>
+<div class="highlight"><pre><span></span><code>coordinate_frame         Source                                     Served by view?
+────────────────────────────────────────────────────────────────────────────────────
+IFC_GLOBAL_MM            Extracted from real IFC (highest)          YES
+LOCAL_MM                 Verified local coordinate system           YES
+DRAWING_MM               From construction drawings                 YES
+CONSTRAINT_SOLVED        Computed by SpaceSolver from UBBL +        YES
+                         adjacency rules
+DERIVED_MM               Scaled/transformed from Rosetta Stone      YES
+                         reference (Template Topology Path)
+────────────────────────────────────────────────────────────────────────────────────
+GRID_DERIVED_MM          Hand-approximated grid (excluded)          NO
+</code></pre></div>
+<p><strong>Notes:</strong>
+- <code>DERIVED_MM</code> and <code>CONSTRAINT_SOLVED</code> are legitimate compilation inputs. They arrive from
+  the Template Topology Path or SpaceSolver respectively, not from hand entry.
+  See <code>space_solver_research.md</code> for the Template Topology algorithm.
+- <code>GRID_DERIVED_MM</code> is <strong>never served by any view</strong>. It signals that a room boundary was
+  approximated by hand from a sketch or grid — suitable for exploration, never for compilation.
+- Any new <code>coordinate_frame</code> value defaults to excluded. Only the five listed values above
+  are valid. See §4.6 for the CHECK constraint extension migration.</p>
+<hr />
+<h2 id="3-bom-type-cascade-the-compilers-core-strategy">3. BOM Type Cascade — The Compiler's Core Strategy<a class="headerlink" href="#3-bom-type-cascade-the-compilers-core-strategy" title="Permanent link">&para;</a></h2>
+<h3 id="31-governing-principle">3.1 Governing Principle<a class="headerlink" href="#31-governing-principle" title="Permanent link">&para;</a></h3>
+<p>A BOM is a Product. DINING_SET is a product. BEDROOM_STD is a product. The same cascade
+logic applies at every nesting level — only the space envelope and bom_type bind parameter
+change between levels. This is the GardenWorld Patio Furniture Set model applied to
+buildings.</p>
+<p><strong>Tier order:</strong>
+<div class="highlight"><pre><span></span><code>BUILDING  → complete building  (BUILDING_SH_STD, BUILDING_DX_STD, BUILDING_TBLKTN_STD)
+FLOOR → one floor plate         (FLOOR_SH_GF_STD, FLOOR_DX_L1_STD, FLOOR_DX_L2_STD)
+ROOM  → room-level assemblies   (BEDROOM_STD, LIVING_STD, KITCHEN_STD — target vocab)
+SET   → furniture/fixture sets  (DINING_SET, SOFA_SET, BED_SET)
+ITEM  → leaf products           (Piano, Side_Table, Chair_Dining)
+</code></pre></div></p>
+<p><strong>Critical rule: never drop a tier while the current tier still has fitting BOMs.</strong>
+Only when no ROOM-type BOM fits the remaining space does the compiler cascade to SET.
+This prevents individual chairs filling a house before room assemblies are placed.</p>
+<p>Within a tier: <code>ORDER BY fit_priority ASC, width_mm DESC</code> — essential items first,
+largest fitting item first. Closest fit reflects real contractor behaviour.</p>
+<h3 id="32-two-operating-modes">3.2 Two Operating Modes<a class="headerlink" href="#32-two-operating-modes" title="Permanent link">&para;</a></h3>
+<p><strong>Mode A — Rosetta Stone (SH, DX, TB-LKTN)</strong>
+Room boundaries are extracted and stored in <code>ad_room_boundary</code>. The compiler reads
+<code>MIN(width_mm, depth_mm)</code> from <code>v_verified_room_boundary</code> as <code>available_space_mm</code>.</p>
+<p><strong>Mode B — Generative (DSL-only, no reference IFC)</strong>
+The DSL Orderline carries <code>qty</code>. The compiler derives space per unit:
+<div class="highlight"><pre><span></span><code>space_per_unit_mm² = floor_area_mm² / qty
+available_space_mm = SQRT(space_per_unit_mm²)
+</code></pre></div>
+Qty on the Orderline is the division key — directly analogous to how MRP uses
+Orderline quantity to drive BOM explosion quantity.</p>
+<h3 id="33-recursive-application">3.3 Recursive Application<a class="headerlink" href="#33-recursive-application" title="Permanent link">&para;</a></h3>
+<p>The cascade applies at every nesting level. Each placed BOM's interior becomes the
+envelope for the next cascade invocation:</p>
+<div class="highlight"><pre><span></span><code>Floor (120m²)
+  → ROOM: BEDROOM_STD placed, remaining floor recalculated → recurse
+  → ROOM: LIVING_STD placed,  remaining floor recalculated → recurse
+  → ROOM: nothing fits remainder → cascade to SET at floor level
+
+    BEDROOM_STD interior (3100×3100mm)
+      → SET: BED_SET placed,   remaining recalculated
+      → SET: WARDROBE placed,  remaining recalculated
+      → SET: nothing fits      → cascade to ITEM
+        → ITEM: Side_Table placed → stop
+
+    LIVING_STD interior (5000×5000mm)
+      → SET: DINING_SET placed, remaining recalculated
+      → SET: SOFA_SET placed,   remaining recalculated
+      → SET: COFFEE_TABLE placed (min_space_mm=0)
+      → SET: nothing fits       → stop
+</code></pre></div>
+<p>One view. One cascade. One stateless mechanism. Applied recursively at every level.</p>
+<h3 id="34-user-as-final-arbiter">3.4 User as Final Arbiter<a class="headerlink" href="#34-user-as-final-arbiter" title="Permanent link">&para;</a></h3>
+<p>The compiler produces a first-pass set of Placement Orderlines. The Bonsai GUI editor
+lets the user inspect every line, remove items, swap sets, or add a piano manually.
+The compiler's job is a <strong>sane, non-embarrassing starting state</strong>. The user makes it right.</p>
+<hr />
+<h2 id="4-schema-migrations-run-in-order-before-creating-views">4. Schema Migrations (Run in Order Before Creating Views)<a class="headerlink" href="#4-schema-migrations-run-in-order-before-creating-views" title="Permanent link">&para;</a></h2>
+<h3 id="41-phase-1-correct-doc_status-assignments">4.1 Phase 1 — Correct doc_status Assignments<a class="headerlink" href="#41-phase-1-correct-doc_status-assignments" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">-- INTENT: c_orderline must have doc_status = DR/CO/VO</span>
+<span class="c1">-- INTENT: ad_room_boundary, m_bom_line, component_definitions must NOT have doc_status</span>
+<span class="c1">-- Guard all ADD COLUMN and DROP COLUMN against current schema state before executing.</span>
+<span class="c1">-- Verify after: exactly one table (c_orderline) carries doc_status.</span>
+</code></pre></div>
+<h3 id="42-phase-1b-add-provenance-columns">4.2 Phase 1b — Add Provenance Columns<a class="headerlink" href="#42-phase-1b-add-provenance-columns" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">-- INTENT: component_definitions and ad_product_dim need an extracted_from column</span>
+<span class="c1">-- that gates out unproven data. DEFAULT and CHECK must be consistent —</span>
+<span class="c1">-- the DEFAULT value must pass the CHECK. Code to confirm existing defaults</span>
+<span class="c1">-- on both tables and align accordingly.</span>
+<span class="c1">--</span>
+<span class="c1">-- INTENT: I_Geometry_Map already has provenance TEXT DEFAULT &#39;LIBRARY&#39; (confirmed).</span>
+<span class="c1">-- No migration needed. Views use gm.provenance as-is.</span>
+<span class="c1">-- Guard all ADD COLUMN operations against current schema state.</span>
+</code></pre></div>
+<h3 id="43-phase-1c-add-bom_type-to-m_bom">4.3 Phase 1c — Add bom_type to m_bom<a class="headerlink" href="#43-phase-1c-add-bom_type-to-m_bom" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>TARGET STATE — not current DB vocabulary.</strong>
+The bom_ids listed below (BEDROOM_STD, LIVING_STD, DINING_SET etc.) are the
+intended assembly vocabulary for the generative BOM cascade. They do not yet exist
+in <code>m_bom</code>. The actual highest-tier assemblies in the DB are <code>FLOOR_*/BUILDING_*</code>
+(confirmed in §4.7 migration record). These sections describe the data model target —
+the SQL below is correct as a future seed, not a rerunnable migration against current data.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">bom_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;SET&#39;</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">bom_type</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;BUILDING&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;FLOOR&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ROOM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;SET&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ITEM&#39;</span><span class="p">));</span>
+
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">bom_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;ROOM&#39;</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;BEDROOM_STD&#39;</span><span class="p">,</span><span class="s1">&#39;LIVING_STD&#39;</span><span class="p">,</span><span class="s1">&#39;KITCHEN_STD&#39;</span><span class="p">,</span>
+<span class="w">                     </span><span class="s1">&#39;BATHROOM_STD&#39;</span><span class="p">,</span><span class="s1">&#39;CORE_STD&#39;</span><span class="p">);</span>
+
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">bom_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;SET&#39;</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;DINING_SET&#39;</span><span class="p">,</span><span class="s1">&#39;SOFA_SET&#39;</span><span class="p">,</span><span class="s1">&#39;BED_SET&#39;</span><span class="p">,</span><span class="s1">&#39;BED_SET_MASTER&#39;</span><span class="p">,</span>
+<span class="w">                     </span><span class="s1">&#39;WARDROBE_PAIR&#39;</span><span class="p">,</span><span class="s1">&#39;WARDROBE_SET&#39;</span><span class="p">,</span><span class="s1">&#39;TOILET_BLOCK_FIXTURES&#39;</span><span class="p">,</span>
+<span class="w">                     </span><span class="s1">&#39;KITCHEN_COUNTER_SET&#39;</span><span class="p">,</span><span class="s1">&#39;LIVING_SET&#39;</span><span class="p">);</span>
+
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">bom_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;ITEM&#39;</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;Piano&#39;</span><span class="p">,</span><span class="s1">&#39;Side_Table&#39;</span><span class="p">,</span><span class="s1">&#39;Chair_Dining&#39;</span><span class="p">,</span><span class="s1">&#39;Bed_King&#39;</span><span class="p">,</span>
+<span class="w">                     </span><span class="s1">&#39;Bed_Queen&#39;</span><span class="p">,</span><span class="s1">&#39;Sofa_3Seat&#39;</span><span class="p">,</span><span class="s1">&#39;Coffee_Table&#39;</span><span class="p">,</span><span class="s1">&#39;Armchair&#39;</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="44-phase-1d-add-bom-spatial-qualification-columns">4.4 Phase 1d — Add BOM Spatial Qualification Columns<a class="headerlink" href="#44-phase-1d-add-bom-spatial-qualification-columns" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><strong>TARGET STATE — not current DB vocabulary.</strong>
+The role names in the seed UPDATEs below (DINING_SET, BED_KING, WARDROBE_PAIR etc.)
+are the intended spatial qualification vocabulary. They do not exist in <code>m_bom_line.role</code>
+in the current DB — confirmed in §4.7 migration record (only COFFEE_TABLE matched).
+<code>m_bom_line.role</code> is a semantic placement label namespace, not the same as <code>m_bom.bom_id</code>.
+The ADD COLUMN migrations have been executed; the seed UPDATEs are target data pending
+the BOM vocabulary build-out in Phase 4.</p>
+</blockquote>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom_line</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">fit_priority</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">20</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">fit_priority</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">));</span>
+<span class="c1">-- 10 = essential, 20 = standard, 30 = optional</span>
+
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom_line</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">min_space_mm</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">min_space_mm</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="c1">-- Caller checks: min_space_mm &lt;= available_space_mm</span>
+
+<span class="c1">-- Seed values [RESEARCHED from PREFAB_ARCHITECTURE.md]</span>
+<span class="c1">-- NOTE: roles below are TARGET vocabulary — not yet in m_bom_line.role</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">2400</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;DINING_SET&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">3000</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;SOFA_SET&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">0</span><span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;COFFEE_TABLE&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">1800</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;BED_KING&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">1400</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;BED_QUEEN&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">2400</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;WARDROBE_PAIR&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">1200</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;WARDROBE_SINGLE&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">0</span><span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;BEDSIDE_TABLE&#39;</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="45-phase-2-seed-co-for-verified-element-rules">4.5 Phase 2 — Seed CO for Verified Element Rules<a class="headerlink" href="#45-phase-2-seed-co-for-verified-element-rules" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">-- c_orderline is the only C_ table with doc_status this session</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">c_orderline</span>
+<span class="k">SET</span><span class="w"> </span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">family_ref</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">provenance</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;BUILDING_DSL&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;EXTRACTED&#39;</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="46-phase-1e-extend-coordinate_frame-check-constraint">4.6 Phase 1e — Extend coordinate_frame CHECK Constraint<a class="headerlink" href="#46-phase-1e-extend-coordinate_frame-check-constraint" title="Permanent link">&para;</a></h3>
+<p>SQLite does not support ALTER TABLE … MODIFY COLUMN. To extend the CHECK constraint on
+<code>ad_room_boundary.coordinate_frame</code>, recreate the table in a migration:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- INTENT: Add DERIVED_MM and CONSTRAINT_SOLVED as valid coordinate_frame values.</span>
+<span class="c1">-- These are legitimate compiler inputs produced by the Template Topology Path</span>
+<span class="c1">-- (space_solver_research.md) and SpaceSolver respectively.</span>
+<span class="c1">-- GRID_DERIVED_MM remains valid as a storage value but is excluded by the view filter.</span>
+<span class="c1">--</span>
+<span class="c1">-- In SQLite, CHECK constraints cannot be altered in-place.</span>
+<span class="c1">-- Recreate the table preserving all data:</span>
+
+<span class="k">BEGIN</span><span class="w"> </span><span class="k">TRANSACTION</span><span class="p">;</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_room_boundary_new</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">               </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">building_type</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">room_type</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">storey</span><span class="w">           </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">min_x_mm</span><span class="w">         </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">max_x_mm</span><span class="w">         </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">min_y_mm</span><span class="w">         </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">max_y_mm</span><span class="w">         </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">extracted_from</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;PENDING&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">coordinate_frame</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;GRID_DERIVED_MM&#39;</span>
+<span class="w">        </span><span class="k">CHECK</span><span class="p">(</span><span class="n">coordinate_frame</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span>
+<span class="w">            </span><span class="s1">&#39;IFC_GLOBAL_MM&#39;</span><span class="p">,</span>
+<span class="w">            </span><span class="s1">&#39;LOCAL_MM&#39;</span><span class="p">,</span>
+<span class="w">            </span><span class="s1">&#39;DRAWING_MM&#39;</span><span class="p">,</span>
+<span class="w">            </span><span class="s1">&#39;CONSTRAINT_SOLVED&#39;</span><span class="p">,</span>
+<span class="w">            </span><span class="s1">&#39;DERIVED_MM&#39;</span><span class="p">,</span>
+<span class="w">            </span><span class="s1">&#39;GRID_DERIVED_MM&#39;</span>
+<span class="w">        </span><span class="p">))</span>
+<span class="w">    </span><span class="c1">-- add any other columns from the live table here</span>
+<span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_room_boundary_new</span><span class="w"> </span><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="p">;</span>
+<span class="k">DROP</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="p">;</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_room_boundary_new</span><span class="w"> </span><span class="k">RENAME</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="p">;</span>
+
+<span class="k">COMMIT</span><span class="p">;</span>
+
+<span class="c1">-- Verify digests unchanged after migration:</span>
+<span class="c1">-- SH=1f325a98, DX=d3c779b9, TB=dd4345f4, Terminal=301b42b1</span>
+</code></pre></div>
+<p><strong>SpatialDigest check after every phase:</strong>
+<div class="highlight"><pre><span></span><code>SH=1f325a98, DX=d3c779b9, TB=dd4345f4, Terminal=301b42b1
+</code></pre></div></p>
+<h3 id="47-migration-execution-record-2026-02-23">4.7 Migration Execution Record (2026-02-23)<a class="headerlink" href="#47-migration-execution-record-2026-02-23" title="Permanent link">&para;</a></h3>
+<p>All Phase 1→2 migrations applied and verified:</p>
+<div class="highlight"><pre><span></span><code>Phase 1:  doc_status on exactly one table confirmed — c_orderline only ✓
+Phase 1b: extracted_from added to component_definitions and ad_product_dim ✓
+          I_Geometry_Map.provenance already existed — no migration applied ✓
+Phase 1c: bom_type added to m_bom
+          Seeded: 9 ROOM-tier (FLOOR_*/BUILDING_*), 26 SET-tier (all others)
+          NOTE: document seed list (BEDROOM_STD, LIVING_STD etc.) does not match
+          actual bom_ids — those names do not exist in m_bom. FLOOR_*/BUILDING_*
+          are the actual highest-tier assemblies present.
+Phase 1d: fit_priority and min_space_mm added to m_bom_line
+          Seed result: only COFFEE_TABLE matched role=&#39;COFFEE_TABLE&#39;
+          Other roles in seed script (DINING_SET, BED_KING, WARDROBE_PAIR etc.)
+          do not exist in m_bom_line.role — those names are in m_bom.bom_id,
+          not in m_bom_line.role. Role namespace confirmed as semantic labels.
+Phase 2:  1263 c_orderline rows seeded CO
+          Ifc2x3_Duplex: 1115 | Ifc4_SampleHouse: 62 | TB_LKTN: 86
+Phases 3a-3f: all six views created in DB ✓
+SpatialDigests throughout: SH=1f325a98, DX=d3c779b9, TB=dd4345f4, Terminal=301b42b1
+mvn test: 119 tests, 2 failures (pre-existing G8 calibration — intentional RED) ✓
+</code></pre></div>
+<hr />
+<h2 id="5-six-core-views">5. Six Core Views<a class="headerlink" href="#5-six-core-views" title="Permanent link">&para;</a></h2>
+<h3 id="51-v_qualified_bom">5.1 v_qualified_bom<a class="headerlink" href="#51-v_qualified_bom" title="Permanent link">&para;</a></h3>
+<p>Central view. Returns BOM products that are active, typed, and carry proven dimensions.
+Caller supplies <code>bom_type</code> and <code>available_space_mm</code> as bind parameters per cascade step.
+Never called without both — a query without <code>bom_type</code> returns a mixed-tier result, which
+is a caller bug.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_qualified_bom</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">bom_child_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="k">role</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">sequence</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">fit_priority</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">min_space_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">child_name_pattern</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">width</span><span class="w">            </span><span class="k">AS</span><span class="w"> </span><span class="n">width_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">depth</span><span class="w">            </span><span class="k">AS</span><span class="w"> </span><span class="n">depth_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">height</span><span class="w">           </span><span class="k">AS</span><span class="w"> </span><span class="n">height_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">extracted_from</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="n">b</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="n">bc</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">is_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_product_dim</span><span class="w"> </span><span class="n">pd</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">product_ref</span><span class="w">       </span><span class="c1">-- FK join (Phase 4 decision: Option A)</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">width</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">depth</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">height</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">is_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+
+<span class="c1">-- Caller always adds:</span>
+<span class="c1">--   WHERE bom_type = ?              -- one tier per query</span>
+<span class="c1">--   AND min_space_mm &lt;= ?           -- current available_space_mm</span>
+<span class="c1">--   ORDER BY fit_priority ASC, width_mm DESC</span>
+</code></pre></div>
+<p><strong>Phase 4 join decision (Watchdog approved — Option A):</strong>
+<code>bc.product_ref</code> is an explicit FK on <code>m_bom_line</code> pointing to <code>ad_product_dim.product_id</code>.
+This replaces the broken <code>bc.role</code> join (role = semantic placement label, not catalog key).
+Rows with <code>product_ref IS NULL</code> return no row from this view — that is the correct gate.
+"Wrong dimensions are worse than zero rows." NULL product_ref = data not ready, not an error.</p>
+<p><strong>Seeded (10 rows confirmed LIVE, 2026-02-23):</strong>
+Tall_Cabinet×4, Vanity_Cabinet×3, Base_Cabinet, Upper_Cabinet, Counter_Top.</p>
+<p><strong>Remaining NULL product_ref (separate session — add ad_product_dim entries):</strong>
+TOILET (Toilet%), SINK (Sink_Island%), BASIN (Lavatory_%), BATHING (Bath_%), WC, DESK, MONITOR,
+CHAIR (desk), GUEST_SEAT, SPRINKLER_HEAD, DROP_PIPE, TEE, VESSEL — each needs a product_dim row.</p>
+<blockquote>
+<p><strong>Execution note (2026-02-23): LIVE — 10 rows</strong> (Phase 4 product_ref FK migration).
+Dimensions confirmed authoritative from ad_product_dim:
+Tall_Cabinet 0.6×0.6×2.0m, Vanity_Cabinet 0.8×0.5×0.85m, Base_Cabinet 0.6×0.6×0.9m,
+Upper_Cabinet 0.6×0.35×0.9m, Counter_Top 0.6×0.6×0.05m.</p>
+</blockquote>
+<h3 id="52-v_verified_room_boundary">5.2 v_verified_room_boundary<a class="headerlink" href="#52-v_verified_room_boundary" title="Permanent link">&para;</a></h3>
+<p>Spatial quantity records with proven coordinate provenance. GRID_DERIVED_MM is the
+sentinel for "not yet extracted from real IFC" — excluded by the coordinate_frame filter.
+No DocStatus needed — this is an M_ table, quality gate is provenance not lifecycle.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_verified_room_boundary</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">id</span><span class="w">                           </span><span class="k">AS</span><span class="w"> </span><span class="n">room_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">building_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">room_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">min_x_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">max_x_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">min_y_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">max_y_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">storey</span><span class="w">                       </span><span class="k">AS</span><span class="w"> </span><span class="n">storey_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">extracted_from</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">coordinate_frame</span><span class="p">,</span>
+<span class="w">    </span><span class="p">(</span><span class="n">rb</span><span class="p">.</span><span class="n">max_x_mm</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">min_x_mm</span><span class="p">)</span><span class="w">    </span><span class="k">AS</span><span class="w"> </span><span class="n">width_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="p">(</span><span class="n">rb</span><span class="p">.</span><span class="n">max_y_mm</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">min_y_mm</span><span class="p">)</span><span class="w">    </span><span class="k">AS</span><span class="w"> </span><span class="n">depth_mm</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="w"> </span><span class="n">rb</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">coordinate_frame</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span>
+<span class="w">        </span><span class="s1">&#39;IFC_GLOBAL_MM&#39;</span><span class="p">,</span><span class="w">       </span><span class="c1">-- extracted from real IFC (highest confidence)</span>
+<span class="w">        </span><span class="s1">&#39;LOCAL_MM&#39;</span><span class="p">,</span><span class="w">            </span><span class="c1">-- verified local coordinate system</span>
+<span class="w">        </span><span class="s1">&#39;DRAWING_MM&#39;</span><span class="p">,</span><span class="w">          </span><span class="c1">-- from construction drawings</span>
+<span class="w">        </span><span class="s1">&#39;CONSTRAINT_SOLVED&#39;</span><span class="p">,</span><span class="w">   </span><span class="c1">-- computed by SpaceSolver from UBBL + adjacency rules</span>
+<span class="w">        </span><span class="s1">&#39;DERIVED_MM&#39;</span><span class="w">           </span><span class="c1">-- scaled/transformed from Rosetta Stone reference</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;PENDING&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">,</span><span class="s1">&#39;TODO&#39;</span><span class="p">,</span><span class="s1">&#39;UNKNOWN&#39;</span><span class="p">,</span><span class="s1">&#39;GRID_DERIVED&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p><code>width_mm</code> and <code>depth_mm</code> are derived here. Caller computes:
+<code>available_space_mm = MIN(width_mm, depth_mm)</code> and passes to <code>v_qualified_bom</code>.
+No arithmetic in compiler Java.</p>
+<p><strong>What this eliminates:</strong>
+- GRID_DERIVED coordinates reaching compilation (the living-room-9m-east class)
+- Hand-crafted coordinates without a declared frame (unknown frame = invisible)</p>
+<blockquote>
+<p><strong>Execution note (2026-02-23): 0 rows.</strong> All 51 <code>ad_room_boundary</code> rows carry
+<code>extracted_from = 'GRID_DERIVED'</code> — correctly excluded by the view gate.
+SH/DX exclusion is correct (wrong coordinates, calibration deferred).
+TB-LKTN exclusion is a provenance label issue: coordinates are correct by design
+authority but were loaded with <code>GRID_DERIVED</code>. Watchdog-approved remediation:
+<div class="highlight"><pre><span></span><code><span class="k">UPDATE</span><span class="w"> </span><span class="n">ad_room_boundary</span>
+<span class="k">SET</span><span class="w"> </span><span class="n">extracted_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;TB_LKTN_DSL&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">building_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">;</span>
+</code></pre></div>
+Execute in next session (Phase 3g). After this UPDATE, TB-LKTN rooms will be
+visible to the view. Verify SpatialDigests stable after execution.</p>
+</blockquote>
+<h3 id="53-v_compilable_element_rule">5.3 v_compilable_element_rule<a class="headerlink" href="#53-v_compilable_element_rule" title="Permanent link">&para;</a></h3>
+<p>Placement Orderlines (C_OrderLine) where every referenced product exists and is verified.
+This view is the compiler's read path for confirmed placement instances.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_compilable_element_rule</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">element_ref</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">family_ref</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">building_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">storey</span><span class="w">                       </span><span class="k">AS</span><span class="w"> </span><span class="n">storey_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_rule</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_value</span><span class="w">               </span><span class="k">AS</span><span class="w"> </span><span class="n">position_value_1</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_2</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_3</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">orientation</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">width</span><span class="w">                        </span><span class="k">AS</span><span class="w"> </span><span class="n">width_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">depth</span><span class="w">                        </span><span class="k">AS</span><span class="w"> </span><span class="n">depth_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">height</span><span class="w">                       </span><span class="k">AS</span><span class="w"> </span><span class="n">height_mm</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">c_orderline</span><span class="w"> </span><span class="n">er</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_product_dim</span><span class="w"> </span><span class="n">pd</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">family_ref</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">width</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_3</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">family_ref</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="54-v_proven_geometry">5.4 v_proven_geometry<a class="headerlink" href="#54-v_proven_geometry" title="Permanent link">&para;</a></h3>
+<p>Components with geometry extracted from a real reference. BBox placeholders (exactly 8
+vertices) are excluded. <code>vertex_count</code> is sourced directly from <code>component_definitions</code>
+(no join to <code>component_geometries</code> needed). <code>ifc_class</code> retrieved via correlated subquery
+on <code>geometry_hash</code> — the only bridge between component library and geometry map namespaces.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_proven_geometry</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+<span class="w">    </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="k">MIN</span><span class="p">(</span><span class="n">gm</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">)</span>
+<span class="w">     </span><span class="k">FROM</span><span class="w"> </span><span class="n">I_Geometry_Map</span><span class="w"> </span><span class="n">gm</span>
+<span class="w">     </span><span class="k">WHERE</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">geometry_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">geometry_hash</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">ifc_class</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">geometry_hash</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">vertex_count</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w">               </span><span class="k">AS</span><span class="w"> </span><span class="n">geometry_source</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">component_definitions</span><span class="w"> </span><span class="n">cd</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">vertex_count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">geometry_hash</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>Design note — why not <code>JOIN I_Geometry_Map ON gm.element_ref = cd.name</code>:</strong>
+<code>I_Geometry_Map.element_ref</code> is keyed on Revit family:type strings (e.g.,
+<code>"Doors_IntSgl:810x2110mm"</code>). <code>component_definitions.name</code> is keyed on library
+component names (e.g., <code>"Base_Cabinet"</code>, <code>"jkrME18_spr_sprinkler head_pendent"</code>).
+These namespaces never intersect. The geometry_hash bridge is the correct path.
+<code>MIN()</code> deduplicates where multiple <code>I_Geometry_Map</code> rows share a hash (~2.8× avg).</p>
+<p><strong>What this eliminates:</strong>
+- BBox placeholders in IFC output (vertex_count &gt; 8)
+- The LodGeometryXRayTest X1-X4 detection class (prevention replaces detection)</p>
+<blockquote>
+<p><strong>Execution note (2026-02-23): LIVE — 22,013 rows</strong> after Phase 3h seed.
+Root cause of earlier zero-row result: <code>I_Geometry_Map JOIN ON element_ref = cd.name</code>
+was a namespace mismatch — zero hits. Corrected view + <code>extracted_from</code> seed together
+unblocked the view. Verified: <code>SELECT COUNT(*) FROM v_proven_geometry</code> → 22,013.</p>
+</blockquote>
+<h3 id="55-v_active_bom_assembly">5.5 v_active_bom_assembly<a class="headerlink" href="#55-v_active_bom_assembly" title="Permanent link">&para;</a></h3>
+<p>Complete BOM assemblies where every child is active. Compiler uses this to confirm a
+BOM is fully populated before attempting expansion.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_active_bom_assembly</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_type</span><span class="p">,</span>
+<span class="w">    </span><span class="k">COUNT</span><span class="p">(</span><span class="n">bc</span><span class="p">.</span><span class="n">bom_child_id</span><span class="p">)</span><span class="w">                              </span><span class="k">AS</span><span class="w"> </span><span class="n">child_count</span><span class="p">,</span>
+<span class="w">    </span><span class="k">SUM</span><span class="p">(</span><span class="k">CASE</span><span class="w"> </span><span class="k">WHEN</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">is_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">ELSE</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">END</span><span class="p">)</span><span class="w">  </span><span class="k">AS</span><span class="w"> </span><span class="n">active_children</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="n">b</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="n">bc</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">is_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_name</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_type</span>
+<span class="k">HAVING</span><span class="w"> </span><span class="n">child_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">active_children</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="56-v_component_leaf">5.6 v_component_leaf<a class="headerlink" href="#56-v_component_leaf" title="Permanent link">&para;</a></h3>
+<p>Individual items at the bottom of any expansion — not a BOM parent, directly placeable.
+Used when the cascade reaches bom_type = 'ITEM'. Geometry existence confirmed via
+<code>cd.vertex_count &gt; 8</code> and <code>cd.geometry_hash IS NOT NULL</code> — no join to <code>component_geometries</code>
+needed. <code>ifc_class</code> via same correlated subquery as v_proven_geometry.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_component_leaf</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+<span class="w">    </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="k">MIN</span><span class="p">(</span><span class="n">gm</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">)</span>
+<span class="w">     </span><span class="k">FROM</span><span class="w"> </span><span class="n">I_Geometry_Map</span><span class="w"> </span><span class="n">gm</span>
+<span class="w">     </span><span class="k">WHERE</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">geometry_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">geometry_hash</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">ifc_class</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">width</span><span class="w">                        </span><span class="k">AS</span><span class="w"> </span><span class="n">width_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">depth</span><span class="w">                        </span><span class="k">AS</span><span class="w"> </span><span class="n">depth_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">height</span><span class="w">                       </span><span class="k">AS</span><span class="w"> </span><span class="n">height_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">geometry_hash</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w">               </span><span class="k">AS</span><span class="w"> </span><span class="n">geometry_source</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">component_definitions</span><span class="w"> </span><span class="n">cd</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_product_dim</span><span class="w"> </span><span class="n">pd</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">width</span><span class="w">  </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">depth</span><span class="w">  </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">height</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">vertex_count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">geometry_hash</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">is_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>Design note:</strong> same namespace correction as §5.4 — <code>I_Geometry_Map JOIN ON
+element_ref = cd.name</code> was wrong (zero hits). Dimensions come from <code>ad_product_dim</code>
+via <code>pd.product_id = cd.name</code> which is the correct shared namespace (28 hits confirmed).</p>
+<blockquote>
+<p><strong>Execution note (2026-02-23): LIVE — 28 rows</strong> after Phase 3h seed + view SQL correction.
+Blockers resolved: (1) view SQL corrected to drop broken <code>gm.element_ref = cd.name</code> join;
+(2) <code>UPDATE ad_product_dim SET extracted_from = provenance</code> seeded all 52 rows.
+Verified: <code>SELECT COUNT(*) FROM v_component_leaf</code> → 28.</p>
+</blockquote>
+<hr />
+<h2 id="6-compiler-caller-contract">6. Compiler Caller Contract<a class="headerlink" href="#6-compiler-caller-contract" title="Permanent link">&para;</a></h2>
+<p>Views are stateless. All cascade state lives in the caller.</p>
+<div class="highlight"><pre><span></span><code>Input:  space_envelope (width_mm, depth_mm)
+        available_space_mm = MIN(width_mm, depth_mm)
+
+FOR tier IN (&#39;ROOM&#39;, &#39;SET&#39;, &#39;ITEM&#39;):
+    rows = query(v_qualified_bom,
+                 bom_type = tier,
+                 min_space_mm &lt;= available_space_mm,
+                 ORDER BY fit_priority ASC, width_mm DESC)
+
+    placed_any = false
+    FOR each row IN rows:
+        IF row.min_space_mm &lt;= remaining_space_mm:
+            place(row)                        → emit C_Element_Rule Orderline
+            remaining_space_mm -= row.width_mm
+            placed_any = true
+            recurse(row.bom_id,               → same cascade, row interior as envelope
+                    row.width_mm, row.depth_mm)
+        IF remaining_space_mm &lt;= 0: BREAK
+
+    IF placed_any: STOP  -- do not drop tier while current tier placed anything
+
+Output: List of Placement Orderlines — editable by user in Bonsai GUI
+</code></pre></div>
+<hr />
+<h2 id="7-java-access-layer-phase-4-next-session">7. Java Access Layer (Phase 4 — Next Session)<a class="headerlink" href="#7-java-access-layer-phase-4-next-session" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * ViewAccessLayer — the compiler&#39;s only data access path.</span>
+<span class="cm"> * Stateless. All cascade state managed by BomTierResolver.</span>
+<span class="cm"> * No MetadataMissingException. No null fallbacks. Empty = not ready.</span>
+<span class="cm"> */</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ViewAccessLayer</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">QUALIFIED_BOM</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_qualified_bom &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;WHERE bom_type = ? AND min_space_mm &lt;= ? &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;ORDER BY fit_priority ASC, width_mm DESC&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ROOM_BOUNDARY</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_verified_room_boundary &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;WHERE building_type = ? AND room_type = ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ELEMENT_RULE</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_compilable_element_rule &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;WHERE element_ref = ? AND building_type = ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">PROVEN_GEOMETRY</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_proven_geometry WHERE name LIKE ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">QualifiedBom</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">getQualifiedBoms</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">bomType</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">availableSpaceMm</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">query</span><span class="p">(</span><span class="n">QUALIFIED_BOM</span><span class="p">,</span><span class="w"> </span><span class="n">bomType</span><span class="p">,</span><span class="w"> </span><span class="n">availableSpaceMm</span><span class="p">,</span><span class="w"> </span><span class="n">QualifiedBom</span><span class="p">::</span><span class="n">from</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Optional</span><span class="o">&lt;</span><span class="n">VerifiedRoomBoundary</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">getRoomBoundary</span><span class="p">(</span>
+<span class="w">            </span><span class="n">String</span><span class="w"> </span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">roomType</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">queryOne</span><span class="p">(</span><span class="n">ROOM_BOUNDARY</span><span class="p">,</span><span class="w"> </span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">roomType</span><span class="p">,</span>
+<span class="w">            </span><span class="n">VerifiedRoomBoundary</span><span class="p">::</span><span class="n">from</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>What this removes from Java:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Current Java</th>
+<th>Replaced by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MetadataMissingException</code> in hot paths</td>
+<td>Empty list from view</td>
+</tr>
+<tr>
+<td><code>dims == null</code> → BBox fallback</td>
+<td>Child absent from v_qualified_bom</td>
+</tr>
+<tr>
+<td>Manual tier-switching conditionals</td>
+<td>Caller loop over ('ROOM','SET','ITEM')</td>
+</tr>
+<tr>
+<td><code>if (geometry == null) throw...</code></td>
+<td>Empty Optional from v_proven_geometry</td>
+</tr>
+<tr>
+<td>BOM expansion mixed with spatial logic</td>
+<td>View gates, caller places</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-view-execution-results-2026-02-23">8. View Execution Results — 2026-02-23<a class="headerlink" href="#8-view-execution-results-2026-02-23" title="Permanent link">&para;</a></h2>
+<p>All six views created in <code>library/component_library.db</code>. Compiler not yet redirected —
+views are data contracts only. SpatialDigests stable throughout.</p>
+<div class="highlight"><pre><span></span><code>View                         Rows   Status (as of Phase 4 close — 2026-02-23)
+─────────────────────────────────────────────────────────────────────────────
+v_qualified_bom                10   LIVE — Phase 4 product_ref FK join. 10 seeded rows.
+                                    NULL product_ref children correctly absent (honest gate).
+v_verified_room_boundary        7   LIVE — TB-LKTN 7 rooms (Phase 3g seed).
+                                    SH/DX excluded: calibration debt, G8 RED expected.
+v_compilable_element_rule      95   LIVE — DX:61, SH:14, TB:20
+v_proven_geometry           22013   LIVE — Phase 3h seed + view SQL correction.
+v_active_bom_assembly          29   LIVE — ROOM:9, SET:20
+v_component_leaf               28   LIVE — Phase 3h seed + view SQL correction.
+─────────────────────────────────────────────────────────────────────────────
+</code></pre></div>
+<p>All six views LIVE. Phase 4 product_ref FK migration applied. Tests: 119/117/2 RED (G8 calibration — intentional).</p>
+<p><strong>Phase 3h root cause note:</strong> both v_proven_geometry and v_component_leaf returned zero rows
+because the original view SQL joined <code>I_Geometry_Map ON gm.element_ref = cd.name</code> —
+a namespace mismatch. <code>I_Geometry_Map.element_ref</code> uses Revit family:type strings;
+<code>component_definitions.name</code> uses library component names. Zero intersection.
+Fix: filter on <code>cd.vertex_count &gt; 8</code> and <code>cd.geometry_hash IS NOT NULL</code> directly;
+<code>ifc_class</code> retrieved via correlated subquery on <code>gm.geometry_hash = cd.geometry_hash</code>.
+See §5.4 and §5.6 for corrected view SQL.</p>
+<hr />
+<h2 id="9-view-maintenance-rules-immutable">9. View Maintenance Rules — Immutable<a class="headerlink" href="#9-view-maintenance-rules-immutable" title="Permanent link">&para;</a></h2>
+<p><strong>Rule 1 — Views are read-only to the compiler.</strong> No INSERT, UPDATE, DELETE via views.</p>
+<p><strong>Rule 2 — A view filter change is an architecture change.</strong> Any WHERE clause modification requires watchdog review. Loosening a filter allows incomplete data into compilation.</p>
+<p><strong>Rule 3 — New tables need views before compiler use.</strong> No compiler code references a base table directly.</p>
+<p><strong>Rule 4 — SpatialDigest stability proves view correctness.</strong> After every view creation, all four building digests must match the baseline.</p>
+<p><strong>Rule 5 — Never add OR doc_status = 'DR' to any view.</strong> Zero rows = data not ready. That is correct behaviour, not a bug.</p>
+<p><strong>Rule 6 — Never mix tiers in one query.</strong> A result set containing ROOM and SET rows is a caller bug. The view is correct — the caller forgot the bom_type bind parameter.</p>
+<p><strong>Rule 7 — ad_room_boundary has no DocStatus.</strong> It is an M_ spatial quantity. Its gate is
+<code>coordinate_frame IN ('IFC_GLOBAL_MM', 'LOCAL_MM', 'DRAWING_MM', 'CONSTRAINT_SOLVED', 'DERIVED_MM')</code>.
+<code>GRID_DERIVED_MM</code> rows exist in the base table but are never served by any view.
+Any proposal to add DocStatus to ad_room_boundary is rejected. See §2.3 for the full hierarchy.</p>
+<hr />
+<h2 id="10-implementation-sequence">10. Implementation Sequence<a class="headerlink" href="#10-implementation-sequence" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Action</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Correct doc_status: keep on C_OrderLine (Construction Order Details), DROP from ad_room_boundary + m_bom_line + component_definitions</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>1b</td>
+<td>Add extracted_from to component_definitions, ad_product_dim</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>1c</td>
+<td>Add bom_type to m_bom; seed ROOM/SET from actual bom_ids</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>1d</td>
+<td>Add fit_priority, min_space_mm to m_bom_line; seed known roles</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>1e</td>
+<td>Extend coordinate_frame CHECK to add DERIVED_MM, CONSTRAINT_SOLVED</td>
+<td>Pending</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Seed CO for verified C_OrderLine rows (1263 rows)</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>3a–3f</td>
+<td>CREATE all six views</td>
+<td><strong>DONE</strong> ✓ — see §8 for row counts</td>
+</tr>
+<tr>
+<td>3g</td>
+<td><code>UPDATE ad_room_boundary SET extracted_from='TB_LKTN_DSL' WHERE building_type='TB_LKTN'</code> → v_verified_room_boundary 0→7</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>3h</td>
+<td><code>UPDATE component_definitions SET extracted_from='LIBRARY'</code> + <code>UPDATE ad_product_dim SET extracted_from=provenance</code> + view SQL corrections (§5.4/§5.6) → v_proven_geometry 0→22,013; v_component_leaf 0→28</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>4a</td>
+<td>Watchdog call + product_ref FK on m_bom_line → v_qualified_bom 0→10 rows LIVE</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>4b</td>
+<td><code>ViewAccessLayer.java</code> — single access class, queries views only. Exact signature: §7.</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>4c</td>
+<td><code>QualifiedBomCascade.java</code> (was BomTierResolver) — cascade state machine (ROOM→SET→ITEM). Caller contract: §6.</td>
+<td><strong>DONE</strong> ✓</td>
+</tr>
+<tr>
+<td>4d</td>
+<td>ArchUnit gate — compiler never queries base tables directly. Fail on any <code>ad_*</code> in SQL strings outside ViewAccessLayer.</td>
+<td><strong>NEXT SESSION</strong></td>
+</tr>
+<tr>
+<td>4e</td>
+<td>C_Order <code>.doc_status</code> — add column, lifecycle DR/IP/CO/VO (§1.2). No existing Java changes.</td>
+<td><strong>NEXT SESSION</strong></td>
+</tr>
+<tr>
+<td>R</td>
+<td>Rename: C_OrderLine → C_Element_Rule, ad_room_boundary → M_Room_Boundary, C_Order → C_Building_Order</td>
+<td><strong>REFACTOR SESSION</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Phases 1-4c complete. All 6 views LIVE. ViewAccessLayer + QualifiedBomCascade implemented. Next: Phase 4d (ArchUnit gate), 4e (C_Order doc_status).</strong></p>
+<hr />
+<h2 id="11-required-indexes">11. Required Indexes<a class="headerlink" href="#11-required-indexes" title="Permanent link">&para;</a></h2>
+<p>Create before views — view performance depends entirely on base table indexes.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_bom_bom_type</span><span class="w">           </span><span class="k">ON</span><span class="w"> </span><span class="n">m_bom</span><span class="p">(</span><span class="n">bom_type</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_bom_child_bom_id</span><span class="w">       </span><span class="k">ON</span><span class="w"> </span><span class="n">m_bom_line</span><span class="p">(</span><span class="n">bom_id</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_bom_child_role</span><span class="w">         </span><span class="k">ON</span><span class="w"> </span><span class="n">m_bom_line</span><span class="p">(</span><span class="k">role</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_geometry_map_ref</span><span class="w">       </span><span class="k">ON</span><span class="w"> </span><span class="n">I_Geometry_Map</span><span class="p">(</span><span class="n">element_ref</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_product_dim_id</span><span class="w">         </span><span class="k">ON</span><span class="w"> </span><span class="n">ad_product_dim</span><span class="p">(</span><span class="n">product_id</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_element_rule_ref</span><span class="w">       </span><span class="k">ON</span><span class="w"> </span><span class="n">c_orderline</span><span class="p">(</span><span class="n">element_ref</span><span class="p">,</span><span class="w"> </span><span class="n">building_type</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">idx_room_boundary_type</span><span class="w">     </span><span class="k">ON</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="p">(</span><span class="n">building_type</span><span class="p">,</span><span class="w"> </span><span class="n">room_type</span><span class="p">);</span>
+</code></pre></div>
+<hr />
+<p><em>BIM Intent Compiler | View Contracts — Compiler Data Access Layer | v1.9 | February 2026</em></p>
+<p><em>"The base tables are the workshop. The views are the showroom. The compiler only walks through the showroom."</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

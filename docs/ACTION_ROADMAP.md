@@ -28,7 +28,7 @@
 | **See what's planned** | [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md) (Sessions 0, A-E) |
 | **See what's proven** | [PROGRESS.md](../PROGRESS.md) (gate table, session log) |
 | **Check test architecture** | [TestArchitecture.md](TestArchitecture.md) (gates, witnesses, anti-drift) |
-| **Verify a building** | [TheRosettaStoneStrategy.txt](TheRosettaStoneStrategy.txt) (Tiers 1-4) |
+| **Verify a building** | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) (Tiers 1-4) |
 | **Navigate the code** | [SourceCodeGuide.md](SourceCodeGuide.md) (entry points, DAOs) |
 | **Onboard a new IFC** | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) (8-step recipe) |
 | **Check what's broken** | §Known Debt below + [SystemContract.md §10](SystemContract.md) (gap register) |

@@ -8,7 +8,7 @@ by the IFCtoBOM Java pipeline: `./scripts/run_RosettaStones.sh classify_sh.yaml`
 No hand-editing. No patching. Code produces data.
 
 **Source authority:**
-- `TheRosettaStoneStrategy.txt` §Stage 2: IFCtoBOM pipeline writes m_bom + m_bom_line per building
+- `TheRosettaStoneStrategy.md` §Stage 2: IFCtoBOM pipeline writes m_bom + m_bom_line per building
 - `ConstructionAsERP.md` §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
@@ -406,6 +406,6 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 ---
 
 *Authoritative reference. See `ConstructionAsERP.md` for design rationale,
-`TheRosettaStoneStrategy.txt` for verification strategy,
+`TheRosettaStoneStrategy.md` for verification strategy,
 `BOMBasedCompilation.md` for tack convention and pipeline stages.*
 *Previous version: `docs/DATA_MODEL (Copy).md`*

@@ -56,7 +56,7 @@ nav:
       - System Contract: SystemContract.md
       - BOM Compilation (Master Spec): BOMBasedCompilation.md
       - Construction as ERP: ConstructionAsERP.md
-      - Rosetta Stone Strategy: TheRosettaStoneStrategy.txt
+      - Rosetta Stone Strategy: TheRosettaStoneStrategy.md
       - Data Model: DATA_MODEL.md
       - Source Code Guide: SourceCodeGuide.md
 

@@ -90,7 +90,7 @@ land at the **same position** as the reference?
 Once a stone passes exact sameness, its BOM grammar is **certified**. Any new building
 composed from certified grammar inherits the proof.
 
-[:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.txt)
+[:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
 
 ---
 

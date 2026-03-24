@@ -80,7 +80,7 @@ Every table in the system serves one of five roles. No table serves two roles.
 | `component_definitions` | Component metadata + bounds | [ConstructionAsERP.md §1.1](ConstructionAsERP.md) |
 | `component_geometries` | Vertex/face BLOBs (deduplicated) | [ConstructionAsERP.md §1.1](ConstructionAsERP.md) |
 | `placement_rules` | Host-relative placement | [ConstructionAsERP.md §1.1](ConstructionAsERP.md) |
-| `surface_styles` | Material RGBA per product | [TheRosettaStoneStrategy.txt](TheRosettaStoneStrategy.txt) |
+| `surface_styles` | Material RGBA per product | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) |
 
 ### 2.3 Transaction Data (C) — Orders & Compiled Output
 
@@ -449,7 +449,7 @@ Every gate, every witness, every proof — what it verifies, when it runs.
 | G4-TAMPER | Building | Seal intact, no unauthorized changes | [G4_SRS.md](G4_SRS.md) |
 | G5-PROVENANCE | Building | All elements trace to BOM source | [TestArchitecture.md](TestArchitecture.md) |
 | G6-ISOLATION | Building | No cross-building contamination | [TestArchitecture.md](TestArchitecture.md) |
-| G7-COMPOSITION | Building (composed) | Fragment provenance + fidelity + spatial invariants | [TheRosettaStoneStrategy.txt §Tier 4](TheRosettaStoneStrategy.txt) |
+| G7-COMPOSITION | Building (composed) | Fragment provenance + fidelity + spatial invariants | [TheRosettaStoneStrategy.md §Tier 4](TheRosettaStoneStrategy.md) |
 | G7-PROJECT | Site | Aggregate count, spatial containment | [Blueprint §2.1](ProjectOrderBlueprint.md) |
 | G8-SITE | Site | All buildings within site_aabb, setbacks | [Blueprint §2.1](ProjectOrderBlueprint.md) |
 
@@ -457,10 +457,10 @@ Every gate, every witness, every proof — what it verifies, when it runs.
 
 | Tier | What | Reference Needed? | Spec |
 |------|------|-------------------|------|
-| Tier 1: Vocabulary | Right parts | Yes (reference DB) | [TheRosettaStoneStrategy.txt](TheRosettaStoneStrategy.txt) |
-| Tier 2: Placement | Right places | Yes (reference DB) | [TheRosettaStoneStrategy.txt](TheRosettaStoneStrategy.txt) |
+| Tier 1: Vocabulary | Right parts | Yes (reference DB) | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) |
+| Tier 2: Placement | Right places | Yes (reference DB) | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) |
 | Tier 3: Integrity | Building works | No (reference-free) | [EYES_SRS.md](EYES_SRS.md) |
-| Tier 4: Composition | Valid sentences from proven words | Indirect (source stones) | [TheRosettaStoneStrategy.txt §Tier 4](TheRosettaStoneStrategy.txt) |
+| Tier 4: Composition | Valid sentences from proven words | Indirect (source stones) | [TheRosettaStoneStrategy.md §Tier 4](TheRosettaStoneStrategy.md) |
 
 ---
 

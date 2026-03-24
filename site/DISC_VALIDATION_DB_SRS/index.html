@@ -1,0 +1,5424 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../DISC_VALIDATE_SRS/">
+      
+      
+        <link rel="next" href="../GENERATIVE_HOUSE_SRS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Validation DB - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#discvalidationdb-srs-discipline-validation-database" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Validation DB
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-problem-three-databases-confused-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Problem — Three Databases, Confused Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-solution-discvalidationdb-third-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Solution — DiscValidation.db (Third Database)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Solution — DiscValidation.db (Third Database)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-three-databases-three-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Three Databases, Three Concerns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-reference-pointers-no-lod-copies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Reference Pointers — No LOD Copies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tables-what-moves-what-stays-whats-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tables — What Moves, What Stays, What's New
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tables — What Moves, What Stays, What&#39;s New">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-tables-moving-from-component_librarydb-to-disc_validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Tables Moving FROM component_library.db TO disc_validation.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-tables-staying-in-component_librarydb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Tables STAYING in component_library.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-tables-staying-in-validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Tables STAYING in validation.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-new-tables-in-disc_validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 NEW Tables in disc_validation.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-schema-disc_validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Schema — disc_validation.db
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Schema — disc_validation.db">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-table-summary-22-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Table Summary (22 tables)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-reference-pointer-pattern-no-fk-across-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Reference Pointer Pattern — No FK Across Databases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Reference Pointer Pattern — No FK Across Databases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-ifc-version-agnostic-resolution-ad_element_mep_alias-dv003" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 IFC Version-Agnostic Resolution — ad_element_mep_alias (DV003)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-ifc-class-extraction-authority-ad_ifc_class_map-dv005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 IFC Class Extraction Authority — ad_ifc_class_map (DV005)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-migration-plan-phased-non-destructive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Migration Plan — Phased, Non-Destructive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Migration Plan — Phased, Non-Destructive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-create-disc_validationdb-dv001dv002dv003dv005-done-session-33-34" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Create disc_validation.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-23-complete-sessions-36b41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2–3: COMPLETE (sessions 36b–41)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-connection-map-who-opens-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Connection Map — Who Opens What
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Connection Map — Who Opens What">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-4-dbs-phase-3-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current (4 DBs, Phase 3 complete)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-parameter-naming-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection parameter naming convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-file-location" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. File Location
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Traceability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-open-question-application-dictionary-database-s62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Open Question — Application Dictionary Database (S62)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Open Question — Application Dictionary Database (S62)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-problem-m_product-is-master-data-not-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Problem — M_Product Is Master Data, Not Geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-decision-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Decision Criteria
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-ad_org-disciplines-as-organizational-units" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 AD_Org — Disciplines as Organizational Units
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#105-investigation-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.5 Investigation Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-investigation-report-105-tasks-16-s64-2026-03-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Investigation Report — §10.5 Tasks 1–6 (S64, 2026-03-23)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Investigation Report — §10.5 Tasks 1–6 (S64, 2026-03-23)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-task-1-java-files-reading-m_product-by-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Task 1 — Java Files Reading M_Product by Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-task-2-java-files-reading-component_definitions-component_geometries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Task 2 — Java Files Reading component_definitions / component_geometries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-task-3-m_product-component_definitions-join-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 Task 3 — M_Product → component_definitions Join Path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#114-task-4-bom-database-m_product-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 Task 4 — BOM Database M_Product Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#115-task-5-discipline-string-usage-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.5 Task 5 — Discipline String Usage Audit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#116-task-6-proposed-split-and-ad_org-migration-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6 Task 6 — Proposed Split and AD_Org Migration Plan
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11.6 Task 6 — Proposed Split and AD_Org Migration Plan">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1161-decision-option-a-three-clean-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.1 Decision: Option A — Three Clean Databases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1162-ad_org-table-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.2 AD_Org Table Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1163-what-ad_org-replaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.3 What AD_Org Replaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1163a-design-note-inference-vs-data-derivediscipline-retirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.3a Design Note — Inference vs Data (deriveDiscipline retirement)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1164-java-code-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.4 Java Code Impact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1165-migration-sequence-6-steps-each-independently-committable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.5 Migration Sequence (6 steps, each independently committable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1166-risks-and-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.6 Risks and Mitigations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1167-appendix-f-corrections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.7 Appendix F Corrections
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#117-summary-decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.7 Summary — Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-problem-three-databases-confused-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Problem — Three Databases, Confused Boundaries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-solution-discvalidationdb-third-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Solution — DiscValidation.db (Third Database)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Solution — DiscValidation.db (Third Database)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-three-databases-three-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Three Databases, Three Concerns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-reference-pointers-no-lod-copies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Reference Pointers — No LOD Copies
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-tables-what-moves-what-stays-whats-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Tables — What Moves, What Stays, What's New
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Tables — What Moves, What Stays, What&#39;s New">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-tables-moving-from-component_librarydb-to-disc_validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Tables Moving FROM component_library.db TO disc_validation.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-tables-staying-in-component_librarydb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Tables STAYING in component_library.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-tables-staying-in-validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Tables STAYING in validation.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-new-tables-in-disc_validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 NEW Tables in disc_validation.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-schema-disc_validationdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Schema — disc_validation.db
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Schema — disc_validation.db">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-table-summary-22-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Table Summary (22 tables)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-reference-pointer-pattern-no-fk-across-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Reference Pointer Pattern — No FK Across Databases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Reference Pointer Pattern — No FK Across Databases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-ifc-version-agnostic-resolution-ad_element_mep_alias-dv003" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 IFC Version-Agnostic Resolution — ad_element_mep_alias (DV003)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-ifc-class-extraction-authority-ad_ifc_class_map-dv005" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 IFC Class Extraction Authority — ad_ifc_class_map (DV005)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-migration-plan-phased-non-destructive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Migration Plan — Phased, Non-Destructive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Migration Plan — Phased, Non-Destructive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-create-disc_validationdb-dv001dv002dv003dv005-done-session-33-34" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: Create disc_validation.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-23-complete-sessions-36b41" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2–3: COMPLETE (sessions 36b–41)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-connection-map-who-opens-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Connection Map — Who Opens What
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Connection Map — Who Opens What">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-4-dbs-phase-3-complete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current (4 DBs, Phase 3 complete)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#connection-parameter-naming-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connection parameter naming convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-file-location" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. File Location
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-traceability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Traceability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-open-question-application-dictionary-database-s62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Open Question — Application Dictionary Database (S62)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Open Question — Application Dictionary Database (S62)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-problem-m_product-is-master-data-not-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Problem — M_Product Is Master Data, Not Geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Options
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-decision-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Decision Criteria
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-ad_org-disciplines-as-organizational-units" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 AD_Org — Disciplines as Organizational Units
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#105-investigation-tasks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.5 Investigation Tasks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-investigation-report-105-tasks-16-s64-2026-03-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Investigation Report — §10.5 Tasks 1–6 (S64, 2026-03-23)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Investigation Report — §10.5 Tasks 1–6 (S64, 2026-03-23)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-task-1-java-files-reading-m_product-by-database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 Task 1 — Java Files Reading M_Product by Database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-task-2-java-files-reading-component_definitions-component_geometries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 Task 2 — Java Files Reading component_definitions / component_geometries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-task-3-m_product-component_definitions-join-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 Task 3 — M_Product → component_definitions Join Path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#114-task-4-bom-database-m_product-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 Task 4 — BOM Database M_Product Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#115-task-5-discipline-string-usage-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.5 Task 5 — Discipline String Usage Audit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#116-task-6-proposed-split-and-ad_org-migration-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6 Task 6 — Proposed Split and AD_Org Migration Plan
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11.6 Task 6 — Proposed Split and AD_Org Migration Plan">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1161-decision-option-a-three-clean-databases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.1 Decision: Option A — Three Clean Databases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1162-ad_org-table-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.2 AD_Org Table Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1163-what-ad_org-replaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.3 What AD_Org Replaces
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1163a-design-note-inference-vs-data-derivediscipline-retirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.3a Design Note — Inference vs Data (deriveDiscipline retirement)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1164-java-code-impact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.4 Java Code Impact
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1165-migration-sequence-6-steps-each-independently-committable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.5 Migration Sequence (6 steps, each independently committable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1166-risks-and-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.6 Risks and Mitigations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1167-appendix-f-corrections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.6.7 Appendix F Corrections
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#117-summary-decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.7 Summary — Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="discvalidationdb-srs-discipline-validation-database">DiscValidation.db SRS — Discipline Validation Database<a class="headerlink" href="#discvalidationdb-srs-discipline-validation-database" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+</blockquote>
+<p><strong>Version:</strong> 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
+<strong>Depends on:</strong> <a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9-10, <a href="../DocAction_SRS/">DocAction_SRS.md</a> §1.3, <a href="../CALIBRATION_SRS/">CALIBRATION_SRS.md</a></p>
+<hr />
+<h2 id="1-problem-three-databases-confused-boundaries">1. Problem — Three Databases, Confused Boundaries<a class="headerlink" href="#1-problem-three-databases-confused-boundaries" title="Permanent link">&para;</a></h2>
+<p>Current state mixes three concerns into two databases:</p>
+<div class="highlight"><pre><span></span><code>component_library.db (23,888 component_definitions + 23,901 geometries)
+├── LOD concern:       M_Product, component_definitions, component_geometries  ← CORRECT
+├── Discipline concern: ad_space_type_mep_bom, ad_element_mep, ad_fp_coverage  ← WRONG DB
+├── Space concern:     ad_space_type, ad_wall_face, placement_rules            ← WRONG DB
+└── Assembly concern:  ad_assembly_connector, ad_assembly_manifest             ← WRONG DB
+
+validation.db (AD_Val_Rule + params)
+├── Rules concern:     AD_Val_Rule, AD_Val_Rule_Param, AD_Clash_Rule           ← CORRECT
+└── Results concern:   AD_Validation_Result                                     ← CORRECT
+</code></pre></div>
+<p><strong>Problem:</strong> <code>component_library.db</code> is 23,901 geometry rows — it's a product
+catalog. Discipline metadata (what MEP goes where, how many, what spacing,
+what connects to what) is NOT product geometry. Mixing them means:</p>
+<ol>
+<li>Querying "how many sprinklers in a bedroom?" loads 23K geometry rows into the connection</li>
+<li>Updating discipline rules risks touching the LOD catalog</li>
+<li>No clean separation between "what the product looks like" (LOD) and
+   "where the product goes" (discipline placement)</li>
+</ol>
+<hr />
+<h2 id="2-solution-discvalidationdb-third-database">2. Solution — DiscValidation.db (Third Database)<a class="headerlink" href="#2-solution-discvalidationdb-third-database" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>component_library.db — WHAT things look like (LOD catalog)
+├── M_Product (608 products: dimensions, ifc_class)
+├── component_definitions (23,888 LOD attachments)
+├── component_geometries (23,901 mesh data)
+└── surface_styles, material_layers
+
+DiscValidation.db — WHERE things go + HOW they connect (discipline metadata)  ← NEW
+├── Discipline schedule:  ad_space_type_mep_bom (186 rows)
+├── MEP element types:    ad_element_mep (12 rows)
+├── FP coverage rules:    ad_fp_coverage (4 hazard classes)
+├── Space types:          ad_space_type (41 types)
+├── Assembly connectors:  ad_assembly_connector (10 rows)
+├── Placement rules:      placement_rules (4,801 rows)
+├── Wall faces:           ad_wall_face (204 rows)
+├── Space adjacency:      ad_space_adjacency
+├── FP triggers:          ad_fp_trigger
+├── Code requirements:    ad_code_requirement
+├── IFC alias cascade:    ad_element_mep_alias (84 rows, DV003)
+├── IFC class map:        ad_ifc_class_map (46 rows, DV005) — authority table for extract.py
+├── Calibration results:  W_Calibration_Result (from CalibrationTest)
+└── Schema config:        AD_SysConfig
+
+validation.db — RULES + VERDICTS (compliance engine)
+├── AD_Val_Rule + AD_Val_Rule_Param (thresholds)
+├── AD_Clash_Rule (cross-discipline pairs)
+├── AD_Occupancy_Class (occupancy classification)
+└── AD_Validation_Result (pass/warn/block verdicts)
+</code></pre></div>
+<h3 id="21-three-databases-three-concerns">2.1 Three Databases, Three Concerns<a class="headerlink" href="#21-three-databases-three-concerns" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Database</th>
+<th>Concern</th>
+<th>Opened By</th>
+<th>Read/Write</th>
+<th>Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>component_library.db</code></td>
+<td>Product LOD (geometry, dimensions)</td>
+<td>Compile pipeline, Designer LOD fetch</td>
+<td>Read-only at runtime</td>
+<td>~5 MB (23K geometries)</td>
+</tr>
+<tr>
+<td><code>disc_validation.db</code></td>
+<td>Discipline metadata (schedules, types, connectors)</td>
+<td>DocEvent engine, CalibrationTest</td>
+<td>Read at runtime, write at seed/migrate</td>
+<td>~50 KB (5K rows)</td>
+</tr>
+<tr>
+<td><code>validation.db</code></td>
+<td>Compliance rules + verdicts</td>
+<td>PlacementValidator, InferenceEngine</td>
+<td>Read rules, write results</td>
+<td>~20 KB</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-reference-pointers-no-lod-copies">2.2 Reference Pointers — No LOD Copies<a class="headerlink" href="#22-reference-pointers-no-lod-copies" title="Permanent link">&para;</a></h3>
+<p>DiscValidation.db references component_library.db products by <strong>name</strong>, not
+by FK or by copying LOD data:</p>
+<div class="highlight"><pre><span></span><code>disc_validation.db                          component_library.db
+┌─────────────────────────┐                ┌──────────────────────┐
+│ ad_element_mep          │                │ M_Product            │
+│   element_type: SPRINKLER──── name ────▶│   name: SPRINKLER    │
+│   ifc_class: IfcFire... │                │   width, depth, height│
+│   discipline: FP        │                │   ifc_class          │
+│   ports: [{&quot;IN&quot;:0.015}] │                └──────────┬───────────┘
+└─────────────────────────┘                           │
+                                                      ▼
+┌─────────────────────────┐                ┌──────────────────────┐
+│ ad_space_type_mep_bom   │                │ component_definitions│
+│   mep_product_id: SPRINKLER── name ────▶│   name LIKE &#39;%sprink%│
+│   qty_normal: 0         │                │   geometry_hash      │
+│   per_area_normal: 0.07 │                │   attachment_face    │
+│   placement_rule: GRID  │                └──────────┬───────────┘
+└─────────────────────────┘                           │
+                                                      ▼
+                                           ┌──────────────────────┐
+                                           │ component_geometries │
+                                           │   vertices, faces    │
+                                           └──────────────────────┘
+</code></pre></div>
+<p><strong>The join is at runtime, in Java</strong>, not via SQL FK. When DocEvent places a
+SPRINKLER, it:
+1. Reads discipline metadata from <code>disc_validation.db</code> (how many, where)
+2. Reads product dimensions + LOD from <code>component_library.db</code> (what it looks like)
+3. The link is <code>ad_element_mep.element_type</code> = <code>ad_space_type_mep_bom.mep_product_id</code>
+   → at LOD fetch time, resolves to <code>M_Product</code> via alias cascade (§5.1)</p>
+<p><strong>No geometry in disc_validation.db. No discipline metadata in component_library.db.</strong></p>
+<hr />
+<h2 id="3-tables-what-moves-what-stays-whats-new">3. Tables — What Moves, What Stays, What's New<a class="headerlink" href="#3-tables-what-moves-what-stays-whats-new" title="Permanent link">&para;</a></h2>
+<h3 id="31-tables-moving-from-component_librarydb-to-disc_validationdb">3.1 Tables Moving FROM component_library.db TO disc_validation.db<a class="headerlink" href="#31-tables-moving-from-component_librarydb-to-disc_validationdb" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Rows</th>
+<th>Why It Moves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_space_type_mep_bom</code></td>
+<td>186</td>
+<td>Discipline schedule — not product geometry</td>
+</tr>
+<tr>
+<td><code>ad_element_mep</code></td>
+<td>12</td>
+<td>MEP element type definitions — not LODs</td>
+</tr>
+<tr>
+<td><code>ad_fp_coverage</code></td>
+<td>4</td>
+<td>FP hazard class thresholds — rule data</td>
+</tr>
+<tr>
+<td><code>ad_space_type</code></td>
+<td>41</td>
+<td>Space type taxonomy — not product data</td>
+</tr>
+<tr>
+<td><code>ad_space_adjacency</code></td>
+<td>~20</td>
+<td>Space relationship rules</td>
+</tr>
+<tr>
+<td><code>ad_assembly_connector</code></td>
+<td>10</td>
+<td>Connection topology — not geometry</td>
+</tr>
+<tr>
+<td><code>ad_assembly_manifest</code></td>
+<td>~5</td>
+<td>Assembly composition</td>
+</tr>
+<tr>
+<td><code>ad_wall_face</code></td>
+<td>204</td>
+<td>Room boundary faces — spatial, not LOD</td>
+</tr>
+<tr>
+<td><code>placement_rules</code></td>
+<td>4,801</td>
+<td>Placement strategy rules</td>
+</tr>
+<tr>
+<td><code>ad_fp_trigger</code></td>
+<td>~10</td>
+<td>FP trigger conditions</td>
+</tr>
+<tr>
+<td><code>ad_code_requirement</code></td>
+<td>~20</td>
+<td>Building code refs</td>
+</tr>
+<tr>
+<td><code>ad_room_slot</code></td>
+<td>~50</td>
+<td>Room slot definitions</td>
+</tr>
+<tr>
+<td><code>ad_space_dim</code></td>
+<td>~30</td>
+<td>Space dimension rules</td>
+</tr>
+<tr>
+<td><code>ad_space_exterior_rule</code></td>
+<td>~10</td>
+<td>Exterior exposure rules</td>
+</tr>
+<tr>
+<td><code>ad_space_type_opening</code></td>
+<td>~20</td>
+<td>Opening requirements per space</td>
+</tr>
+<tr>
+<td><code>ad_space_type_furniture</code></td>
+<td>~20</td>
+<td>Furniture schedule per space</td>
+</tr>
+<tr>
+<td><code>ad_space_type_mep</code></td>
+<td>~20</td>
+<td>MEP services per space</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-tables-staying-in-component_librarydb">3.2 Tables STAYING in component_library.db<a class="headerlink" href="#32-tables-staying-in-component_librarydb" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Rows</th>
+<th>Why It Stays</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M_Product</code></td>
+<td>608</td>
+<td>Product catalog — dimensions, ifc_class</td>
+</tr>
+<tr>
+<td><code>component_definitions</code></td>
+<td>23,888</td>
+<td>LOD mesh attachments</td>
+</tr>
+<tr>
+<td><code>component_geometries</code></td>
+<td>23,901</td>
+<td>Actual mesh data (vertices, faces, normals)</td>
+</tr>
+<tr>
+<td><code>surface_styles</code></td>
+<td>~50</td>
+<td>Material appearance</td>
+</tr>
+<tr>
+<td><code>material_layers</code></td>
+<td>~20</td>
+<td>Wall/slab layer composition</td>
+</tr>
+<tr>
+<td><code>I_Geometry_Map</code></td>
+<td>~200</td>
+<td>Extraction geometry mapping</td>
+</tr>
+<tr>
+<td><code>M_Product_Image</code></td>
+<td>~10</td>
+<td>Product thumbnails</td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-tables-staying-in-validationdb">3.3 Tables STAYING in validation.db<a class="headerlink" href="#33-tables-staying-in-validationdb" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Rows</th>
+<th>Why It Stays</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AD_Val_Rule</code></td>
+<td>~30</td>
+<td>Compliance rule definitions</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule_Param</code></td>
+<td>~100</td>
+<td>Rule threshold parameters</td>
+</tr>
+<tr>
+<td><code>AD_Clash_Rule</code></td>
+<td>~10</td>
+<td>Cross-discipline clash pairs</td>
+</tr>
+<tr>
+<td><code>AD_Occupancy_Class</code></td>
+<td>6</td>
+<td>Occupancy classifications</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule_Occupancy</code></td>
+<td>~15</td>
+<td>Rule-occupancy links</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule_Exception</code></td>
+<td>~5</td>
+<td>Documented exceptions</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule_Mining_Source</code></td>
+<td>~15</td>
+<td>Mining provenance</td>
+</tr>
+<tr>
+<td><code>AD_Validation_Result</code></td>
+<td>writes</td>
+<td>Runtime validation results</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-new-tables-in-disc_validationdb">3.4 NEW Tables in disc_validation.db<a class="headerlink" href="#34-new-tables-in-disc_validationdb" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_element_mep_alias</code></td>
+<td>IFC version-agnostic product resolution (84 rows)</td>
+<td>DV003: IFC4 spec + DX/TE mined</td>
+</tr>
+<tr>
+<td><code>ad_ifc_class_map</code></td>
+<td>IFC class extraction authority (46 rows): discipline, category, attachment per IFC type. Read by <code>extract.py</code> at startup — adding a new IFC type = one INSERT, zero code changes.</td>
+<td>DV005: building + IFC4X3 infra census</td>
+</tr>
+<tr>
+<td><code>W_Calibration_Result</code></td>
+<td>Calibration test results (DocEvent vs Terminal)</td>
+<td>CalibrationTest.java</td>
+</tr>
+<tr>
+<td><code>AD_SysConfig</code></td>
+<td>Schema version tracking</td>
+<td>Standard</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-schema-disc_validationdb">4. Schema — disc_validation.db<a class="headerlink" href="#4-schema-disc_validationdb" title="Permanent link">&para;</a></h2>
+<p><strong>Authoritative schema:</strong> <code>migration/DV001_disc_validation_schema.sql</code> (DDL),
+<code>migration/DV003_element_mep_alias.sql</code> (alias cascade).
+Schemas match the actual column layout in component_library.db source tables.</p>
+<h3 id="41-table-summary-22-tables">4.1 Table Summary (22 tables)<a class="headerlink" href="#41-table-summary-22-tables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>PK</th>
+<th>Rows</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_space_type</code></td>
+<td>space_type_id</td>
+<td>41</td>
+<td>Space type taxonomy (BEDROOM, OFFICE, etc.)</td>
+</tr>
+<tr>
+<td><code>ad_element_mep</code></td>
+<td>element_type</td>
+<td>12</td>
+<td>Canonical MEP types (OUTLET, SPRINKLER, etc.)</td>
+</tr>
+<tr>
+<td><code>ad_space_type_mep_bom</code></td>
+<td>(space_type_id, mep_product_id)</td>
+<td>186</td>
+<td>Discipline schedule: what MEP goes in each room</td>
+</tr>
+<tr>
+<td><code>ad_fp_coverage</code></td>
+<td>hazard_class</td>
+<td>4</td>
+<td>NFPA 13 sprinkler coverage thresholds</td>
+</tr>
+<tr>
+<td><code>ad_assembly_connector</code></td>
+<td>connector_id</td>
+<td>10</td>
+<td>Assembly connection topology</td>
+</tr>
+<tr>
+<td><code>ad_assembly_manifest</code></td>
+<td>manifest_id</td>
+<td>37</td>
+<td>Assembly interface definitions</td>
+</tr>
+<tr>
+<td><code>ad_wall_face</code></td>
+<td>id</td>
+<td>204</td>
+<td>Room boundary faces per building</td>
+</tr>
+<tr>
+<td><code>placement_rules</code></td>
+<td>id</td>
+<td>4801</td>
+<td>Host/offset placement rules</td>
+</tr>
+<tr>
+<td><code>ad_space_adjacency</code></td>
+<td>(space_type_a, space_type_b)</td>
+<td>22</td>
+<td>Room adjacency relationships</td>
+</tr>
+<tr>
+<td><code>ad_fp_trigger</code></td>
+<td>trigger_id</td>
+<td>12</td>
+<td>FP system trigger conditions</td>
+</tr>
+<tr>
+<td><code>ad_code_requirement</code></td>
+<td>(code_id, clause, element_type, space_type)</td>
+<td>23</td>
+<td>Building code requirements</td>
+</tr>
+<tr>
+<td><code>ad_room_slot</code></td>
+<td>slot_id</td>
+<td>38</td>
+<td>Room assembly slot definitions</td>
+</tr>
+<tr>
+<td><code>ad_space_dim</code></td>
+<td>space_type</td>
+<td>37</td>
+<td>Space dimension constraints</td>
+</tr>
+<tr>
+<td><code>ad_space_exterior_rule</code></td>
+<td>space_type_id</td>
+<td>24</td>
+<td>Exterior exposure rules</td>
+</tr>
+<tr>
+<td><code>ad_space_type_opening</code></td>
+<td>(space_type_id, opening_role, family_id)</td>
+<td>103</td>
+<td>Opening requirements per space</td>
+</tr>
+<tr>
+<td><code>ad_space_type_furniture</code></td>
+<td>space_type_id</td>
+<td>37</td>
+<td>Furniture schedule per space</td>
+</tr>
+<tr>
+<td><code>ad_space_type_mep</code></td>
+<td>space_type_id</td>
+<td>22</td>
+<td>MEP service requirements per space</td>
+</tr>
+<tr>
+<td><code>ad_element_mep_alias</code></td>
+<td>alias_id</td>
+<td>84</td>
+<td>IFC version-agnostic product resolution (§5.1)</td>
+</tr>
+<tr>
+<td><code>ad_ifc_class_map</code></td>
+<td>ifc_class</td>
+<td>46</td>
+<td>IFC class extraction authority — discipline, category, attachment, domain per type. <code>extract.py</code> reads at startup. See §5.2.</td>
+</tr>
+<tr>
+<td><code>ad_val_rule</code></td>
+<td>ad_val_rule_id</td>
+<td>415</td>
+<td>Mined dimension rules: typical W/D/H per (ifc_class, storey) from 20 buildings. DV010 migration.</td>
+</tr>
+<tr>
+<td><code>ad_val_rule_param</code></td>
+<td>ad_val_rule_param_id</td>
+<td>1245</td>
+<td>Rule parameters (typical_width_mm, typical_depth_mm, typical_height_mm).</td>
+</tr>
+<tr>
+<td><code>W_Calibration_Result</code></td>
+<td>id</td>
+<td>0</td>
+<td>CalibrationTest output (runtime writes)</td>
+</tr>
+<tr>
+<td><code>AD_SysConfig</code></td>
+<td>Name</td>
+<td>3</td>
+<td>Schema/seed/alias version tracking</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-reference-pointer-pattern-no-fk-across-databases">5. Reference Pointer Pattern — No FK Across Databases<a class="headerlink" href="#5-reference-pointer-pattern-no-fk-across-databases" title="Permanent link">&para;</a></h2>
+<p>SQLite does not support cross-database foreign keys. The reference is by
+<strong>name convention</strong> — same pattern as iDempiere's <code>AD_Reference</code> lookups:</p>
+<table>
+<thead>
+<tr>
+<th>disc_validation.db column</th>
+<th>Resolves to</th>
+<th>Resolution method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_element_mep.element_type</code></td>
+<td><code>M_Product</code> by alias cascade</td>
+<td>Java: try ifc_class → predefined_type → type_class → element_name LIKE</td>
+</tr>
+<tr>
+<td><code>ad_space_type_mep_bom.mep_product_id</code></td>
+<td><code>ad_element_mep.element_type</code></td>
+<td>SQL within disc_validation.db (same DB)</td>
+</tr>
+<tr>
+<td><code>ad_assembly_connector.assembly_id</code></td>
+<td><code>M_Product.name</code></td>
+<td>Java: <code>SELECT * FROM M_Product WHERE name = ?</code></td>
+</tr>
+<tr>
+<td><code>placement_rules.element_name</code></td>
+<td><code>M_Product.name</code> or <code>m_bom.bom_id</code></td>
+<td>Java: lookup by name</td>
+</tr>
+</tbody>
+</table>
+<h3 id="51-ifc-version-agnostic-resolution-ad_element_mep_alias-dv003">5.1 IFC Version-Agnostic Resolution — <code>ad_element_mep_alias</code> (DV003)<a class="headerlink" href="#51-ifc-version-agnostic-resolution-ad_element_mep_alias-dv003" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> IFC2x3 lumps all MEP into generic classes (IfcFlowTerminal,
+IfcFlowController). IFC4 splits them into specific subtypes (IfcOutlet,
+IfcSwitchingDevice). Real-world IFC files use vendor-specific naming.
+Matching by <code>ifc_class</code> alone fails for 8/12 canonical types.</p>
+<p><strong>Solution:</strong> 4-tier resolution cascade using <code>ad_element_mep_alias</code>:</p>
+<div class="highlight"><pre><span></span><code>Priority 1: ifc_class        — IfcOutlet → OUTLET (IFC4 direct match)
+Priority 2: predefined_type  — POWEROUTLET → OUTLET (IFC4 enum)
+Priority 3: type_class       — IfcOutletType → OUTLET (IFC2x3 via IfcRelDefinesByType)
+Priority 4: element_name     — %Receptacle% → OUTLET (name pattern, last resort)
+</code></pre></div>
+<p><strong>Java resolver pseudocode:</strong>
+<div class="highlight"><pre><span></span><code><span class="n">String</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">ifcClass</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">predefinedType</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">typeClass</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">elementName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Try each priority in order — first match wins</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">Alias</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">aliases</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// sorted by priority ASC</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;ifc_class&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="na">matchField</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">matchValue</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">ifcClass</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">canonicalType</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;predefined_type&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="na">matchField</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">matchValue</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">predefinedType</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">canonicalType</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;type_class&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="na">matchField</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">matchValue</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">typeClass</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">canonicalType</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;element_name&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">a</span><span class="p">.</span><span class="na">matchField</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">likeMatch</span><span class="p">(</span><span class="n">elementName</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">matchValue</span><span class="p">))</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">a</span><span class="p">.</span><span class="na">canonicalType</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span><span class="w"> </span><span class="c1">// unresolvable</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p><strong>Coverage (seeded from DX + TE reference models):</strong>
+- IFC4 class: 14 aliases (all 12 canonical types)
+- PredefinedType: 24 aliases (IFC4 standard enums)
+- IFC2x3 type class: 12 aliases (via IfcRelDefinesByType)
+- Element name: 34 aliases (mined from DX=12, TE=22 patterns)
+- DX resolution: 101/119 distinct MEP names (85%)
+- Unmatched: kitchen appliances (Range, Microwave, Refrigerator), plumbing valves</p>
+<p><strong>The Java DAO joins across databases.</strong> Each method receives the connections
+it needs:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// DocEvent placement: reads disc_validation.db + component_library.db</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">placeElements</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">discConn</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">compConn</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
+
+<span class="c1">// Calibration: reads disc_validation.db + validation.db + TE reference DB</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">calibrate</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">discConn</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">,</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">teConn</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span>
+
+<span class="c1">// LOD fetch: reads component_library.db only</span>
+<span class="n">Geometry</span><span class="w"> </span><span class="nf">fetchLOD</span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">compConn</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">productName</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="52-ifc-class-extraction-authority-ad_ifc_class_map-dv005">5.2 IFC Class Extraction Authority — <code>ad_ifc_class_map</code> (DV005)<a class="headerlink" href="#52-ifc-class-extraction-authority-ad_ifc_class_map-dv005" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> <code>extract.py</code> hardcoded 4 Python dicts (REFERENCE_CLASSES, DISCIPLINE_MAP,
+CATEGORY_MAP, ATTACHMENT_MAP). Adding a new IFC element type required editing Python code.
+Infrastructure IFC4X3 brought 11 new types (IfcTrackElement, IfcCourse, etc.) and more
+will appear as new IFC domains are encountered.</p>
+<p><strong>Solution:</strong> Authority table <code>ad_ifc_class_map</code> in disc_validation.db. <code>extract.py</code>
+reads this table at startup and populates all 4 maps from it. Falls back to hardcoded
+defaults if DB is unavailable.</p>
+<div class="highlight"><pre><span></span><code>ad_ifc_class_map (46 rows)
+┌──────────────────────┬────────────┬─────────────────┬─────────────────┬──────────┬───────────┐
+│ ifc_class (PK)       │ discipline │ category        │ attachment_face │ ifc_schema│ domain    │
+├──────────────────────┼────────────┼─────────────────┼─────────────────┼──────────┼───────────┤
+│ IfcTrackElement      │ RAIL       │ TRACK_ELEMENT   │ BOTTOM          │ IFC4X3   │ RAIL      │
+│ IfcCourse            │ ROAD       │ PAVEMENT_LAYER  │ BOTTOM          │ IFC4X3   │ ROAD      │
+│ IfcBeam              │ STR        │ BEAM            │ ENDS            │ IFC4     │ BUILDING  │
+│ IfcLightFixture      │ ELEC       │ LIGHT           │ TOP             │ IFC4     │ BUILDING  │
+│ ...                  │ ...        │ ...             │ ...             │ ...      │ ...       │
+└──────────────────────┴────────────┴─────────────────┴─────────────────┴──────────┴───────────┘
+</code></pre></div>
+<p><strong>Adding a new IFC type:</strong>
+<div class="highlight"><pre><span></span><code><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_ifc_class_map</span>
+<span class="w">    </span><span class="p">(</span><span class="n">ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">category</span><span class="p">,</span><span class="w"> </span><span class="n">attachment_face</span><span class="p">,</span><span class="w"> </span><span class="n">ifc_schema</span><span class="p">,</span><span class="w"> </span><span class="k">domain</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">)</span>
+<span class="k">VALUES</span>
+<span class="w">    </span><span class="p">(</span><span class="s1">&#39;IfcCableCarrierSegment&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ELEC&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;CABLE_TRAY&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;BOTTOM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IFC4&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;BUILDING&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Cable tray&#39;</span><span class="p">);</span>
+</code></pre></div></p>
+<p>Zero code changes. Same data-not-code pattern as AD_Val_Rule.</p>
+<p><strong>Columns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ifc_class</code></td>
+<td>TEXT PK</td>
+<td>IFC entity type name</td>
+</tr>
+<tr>
+<td><code>discipline</code></td>
+<td>TEXT</td>
+<td>Extraction discipline: ARC, STR, MEP, FP, ELEC, ACMV, ROAD, RAIL, GEO, LAND, SIGN</td>
+</tr>
+<tr>
+<td><code>category</code></td>
+<td>TEXT</td>
+<td>Component library category: BEAM, SPRINKLER, TRACK_ELEMENT, etc.</td>
+</tr>
+<tr>
+<td><code>attachment_face</code></td>
+<td>TEXT</td>
+<td>Placement attachment: TOP, BOTTOM, SIDE, ENDS, CENTER</td>
+</tr>
+<tr>
+<td><code>ifc_schema</code></td>
+<td>TEXT</td>
+<td>Schema version: IFC2X3, IFC4, IFC4X3</td>
+</tr>
+<tr>
+<td><code>domain</code></td>
+<td>TEXT</td>
+<td>Domain: BUILDING, ROAD, BRIDGE, RAIL, LANDSCAPE, MEP</td>
+</tr>
+<tr>
+<td><code>is_active</code></td>
+<td>INTEGER</td>
+<td>Toggle without deleting (1=active, 0=disabled)</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>TEXT</td>
+<td>Human-readable description</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration:</strong> <code>DV005_ifc_class_map.sql</code>. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> §3.3.</p>
+<hr />
+<h2 id="6-migration-plan-phased-non-destructive">6. Migration Plan — Phased, Non-Destructive<a class="headerlink" href="#6-migration-plan-phased-non-destructive" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-create-disc_validationdb-dv001dv002dv003dv005-done-session-33-34">Phase 1: Create disc_validation.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)<a class="headerlink" href="#phase-1-create-disc_validationdb-dv001dv002dv003dv005-done-session-33-34" title="Permanent link">&para;</a></h3>
+<ol>
+<li><code>DV001_disc_validation_schema.sql</code> — 19 tables matching component_library.db schemas</li>
+<li><code>DV002_seed_from_component.sql</code> — ATTACH + INSERT OR IGNORE (17 tables, 5613 rows)</li>
+<li><code>DV003_element_mep_alias.sql</code> — IFC version-agnostic alias cascade (84 rows)</li>
+<li><code>DV005_ifc_class_map.sql</code> — IFC class extraction authority (46 rows, building + infra)</li>
+<li><code>DiscValidationDBTest.java</code> — 12/12 witnesses pass (SCHEMA, SEED, REF, ALIAS, ND)</li>
+</ol>
+<h3 id="phase-23-complete-sessions-36b41">Phase 2–3: COMPLETE (sessions 36b–41)<a class="headerlink" href="#phase-23-complete-sessions-36b41" title="Permanent link">&para;</a></h3>
+<p>All discipline metadata migrated. Java code (CalibrationDAO, MEPAD, MEPBOMResolver,
+ManifestResolver) reads from disc_validation.db. component_library.db reduced from
+81→21 tables. See <a href="../database/DATABASE_SCHEMA.md"><code>database/DATABASE_SCHEMA.md</code></a>
+for the current table inventory.</p>
+<hr />
+<h2 id="7-connection-map-who-opens-what">7. Connection Map — Who Opens What<a class="headerlink" href="#7-connection-map-who-opens-what" title="Permanent link">&para;</a></h2>
+<h3 id="current-4-dbs-phase-3-complete">Current (4 DBs, Phase 3 complete)<a class="headerlink" href="#current-4-dbs-phase-3-complete" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>CompilationPipeline     → component_library.db (LOD only — 21 tables)
+PlacementValidator      → validation.db (rules)
+CalibrationDAO          → disc_validation.db + validation.db + TE_BOM.db
+MEPAD/MEPBOMResolver    → disc_validation.db (discipline metadata)
+ManifestResolver        → disc_validation.db (discipline metadata)
+DocEvent (future)       → disc_validation.db (schedules) + component_library.db (LOD fetch)
+Handler cascade H1-H6  → disc_validation.db (connectors, schedules) + validation.db (rules)
+</code></pre></div>
+<h3 id="connection-parameter-naming-convention">Connection parameter naming convention<a class="headerlink" href="#connection-parameter-naming-convention" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="n">Connection</span><span class="w"> </span><span class="n">compConn</span><span class="p">;</span><span class="w">   </span><span class="c1">// component_library.db — LOD catalog</span>
+<span class="n">Connection</span><span class="w"> </span><span class="n">discConn</span><span class="p">;</span><span class="w">   </span><span class="c1">// disc_validation.db   — discipline metadata</span>
+<span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">;</span><span class="w">    </span><span class="c1">// validation.db         — compliance rules</span>
+<span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">;</span><span class="w">    </span><span class="c1">// {prefix}_BOM.db       — building BOM</span>
+<span class="n">Connection</span><span class="w"> </span><span class="n">workConn</span><span class="p">;</span><span class="w">   </span><span class="c1">// work_output.db        — design workspace</span>
+<span class="n">Connection</span><span class="w"> </span><span class="n">teConn</span><span class="p">;</span><span class="w">     </span><span class="c1">// TE reference DB       — Terminal oracle (tests only)</span>
+</code></pre></div>
+<hr />
+<h2 id="8-file-location">8. File Location<a class="headerlink" href="#8-file-location" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>library/
+├── component_library.db     ← LOD catalog (M_Product, geometries)
+├── disc_validation.db       ← NEW: discipline metadata (schedules, types, connectors)
+├── validation.db            ← compliance rules (AD_Val_Rule)
+├── work_*.db                ← per-building design workspaces
+├── SH_BOM.db                ← Sample House BOM
+├── DX_BOM.db                ← Duplex BOM
+└── TE_BOM.db                ← Terminal BOM
+
+migration/
+├── DV001_disc_validation_schema.sql    ← schema DDL (19 tables)
+├── DV002_seed_from_component.sql       ← seed via ATTACH (17 tables)
+├── DV003_element_mep_alias.sql         ← IFC alias cascade (84 rows)
+├── V001..V006                          ← validation.db migrations
+</code></pre></div>
+<hr />
+<h2 id="9-traceability">9. Traceability<a class="headerlink" href="#9-traceability" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Witness</th>
+<th>What it Proves</th>
+<th>Test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W-DV-DB-SCHEMA</td>
+<td>DV001+DV003 creates all 20 required tables</td>
+<td>DiscValidationDBTest</td>
+</tr>
+<tr>
+<td>W-DV-DB-SEED</td>
+<td>Seed data matches component_library.db source counts</td>
+<td>DiscValidationDBTest</td>
+</tr>
+<tr>
+<td>W-DV-DB-REF</td>
+<td>Reference pointers resolve across databases</td>
+<td>DiscValidationDBTest</td>
+</tr>
+<tr>
+<td>W-DV-DB-ALIAS</td>
+<td>Alias cascade resolves IFC2x3↔IFC4 (84 rows, 4 tiers)</td>
+<td>DiscValidationDBTest</td>
+</tr>
+<tr>
+<td>W-DV-DB-ND</td>
+<td>Migration does not disturb component_library.db</td>
+<td>DiscValidationDBTest</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<hr />
+<h2 id="10-open-question-application-dictionary-database-s62">10. Open Question — Application Dictionary Database (S62)<a class="headerlink" href="#10-open-question-application-dictionary-database-s62" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Status:</strong> INVESTIGATE. Raised during S62 FP trial when M_Product_Category was
+added to component_library.db. Another session found M_Product rows dropped to 19
+after schema alignment — suggesting the DB boundaries need clarification.</p>
+</blockquote>
+<h3 id="101-problem-m_product-is-master-data-not-geometry">10.1 Problem — M_Product Is Master Data, Not Geometry<a class="headerlink" href="#101-problem-m_product-is-master-data-not-geometry" title="Permanent link">&para;</a></h3>
+<p><code>component_library.db</code> currently holds two unrelated concerns:</p>
+<ol>
+<li><strong>Geometry catalog</strong> — component_definitions (23,888), component_geometries (23,901),
+   surface_styles, material_layers. This is LOD data: what things look like.</li>
+<li><strong>Master data</strong> — M_Product (product dimensions, IFC class), M_Product_Category
+   (discipline hierarchy), 66 AD tables (ad_space_type, ad_wall_face, etc. — see §11.6.7).
+   This is ERP configuration: what things are and where they belong.</li>
+</ol>
+<p>In iDempiere, M_Product and all AD tables live in the central application database.
+Geometry is an attachment, not co-located. Mixing them means:</p>
+<ul>
+<li>Schema changes to AD tables (e.g., adding M_Product_Category) risk disturbing
+  23K geometry rows</li>
+<li>Querying "what products exist in FP category?" opens a 221MB geometry connection</li>
+<li>Migration scripts that target master data must be careful not to touch geometry</li>
+<li>DiscValidationDBTest.componentLibraryUndisturbed check fails when AD tables change</li>
+</ul>
+<h3 id="102-options">10.2 Options<a class="headerlink" href="#102-options" title="Permanent link">&para;</a></h3>
+<p><strong>Option A: Split component_library.db</strong> — Move M_Product, M_Product_Category, and
+all 34 AD tables to disc_validation.db (renamed to <code>ad_dictionary.db</code>). Keep
+component_library.db as pure geometry (component_definitions + component_geometries +
+surface_styles + material_layers). The runtime join by name (§2.2) already supports this.</p>
+<p><strong>Option B: Expand disc_validation.db</strong> — Same as A but keep the disc_validation.db name.
+Add M_Product + M_Product_Category there. component_library.db becomes geometry-only.</p>
+<p><strong>Option C: Keep current split, fix the guard</strong> — Leave M_Product in component_library.db
+but update DiscValidationDBTest to expect schema evolution (M_Product_Category column,
+product count changes). Accept the mixed concern.</p>
+<h3 id="103-decision-criteria">10.3 Decision Criteria<a class="headerlink" href="#103-decision-criteria" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Which option minimizes code changes? (How many Java files open component_library.db
+  to read M_Product vs component_definitions?)</li>
+<li>Which option aligns with iDempiere AD pattern? (M_Product belongs with AD tables)</li>
+<li>Which option avoids breaking the 5-table LOD chain (§9.1)?</li>
+<li>Does the BOM DB need M_Product? (m_bom_line.child_product_id resolves to M_Product)</li>
+</ul>
+<h3 id="104-ad_org-disciplines-as-organizational-units">10.4 AD_Org — Disciplines as Organizational Units<a class="headerlink" href="#104-ad_org-disciplines-as-organizational-units" title="Permanent link">&para;</a></h3>
+<p>iDempiere uses AD_Org to partition data by organizational unit. In construction,
+disciplines ARE organizational units — each is a trade with its own contractor,
+products, rules, and scope of work.</p>
+<div class="highlight"><pre><span></span><code>AD_Client = &#39;BIM_PROJECT&#39; (tenant — the whole project)
+└── AD_Org = &#39;*&#39;    (shared data: building grid, space types, structural frame)
+└── AD_Org = &#39;ARC&#39;  (architectural: doors, windows, furniture, finishes)
+└── AD_Org = &#39;STR&#39;  (structural: beams, columns, slabs, foundations)
+└── AD_Org = &#39;FP&#39;   (fire protection: sprinklers, alarms, risers)
+└── AD_Org = &#39;ELEC&#39; (electrical: lights, outlets, switches, cable trays)
+└── AD_Org = &#39;ACMV&#39; (HVAC: ducts, diffusers, AHUs)
+└── AD_Org = &#39;CW&#39;   (cold water: pipes, fittings, valves)
+└── AD_Org = &#39;SP&#39;   (sanitary/plumbing: fixtures, waste pipes)
+└── AD_Org = &#39;LPG&#39;  (gas: gas pipes, meters)
+</code></pre></div>
+<p><strong>Two orthogonal axes:</strong>
+- <code>M_Product_Category</code> = taxonomy (WHAT type: sprinkler head, pipe segment, alarm)
+- <code>AD_Org</code> = ownership (WHO manages: FP trade, ELEC trade)</p>
+<p><strong>What AD_Org replaces:</strong>
+- <code>m_bom.bom_category</code> string → <code>AD_Org_ID</code> FK
+- <code>C_OrderLine.Discipline</code> string → <code>AD_Org_ID</code> FK
+- <code>component_types.discipline</code> string → <code>AD_Org_ID</code> FK
+- Scattered <code>resolveDiscipline(ifcClass)</code> logic → single FK lookup</p>
+<p><strong>iDempiere data partitioning:</strong> Every row with <code>AD_Org_ID = 'FP'</code> is visible
+only to the FP trade. Shared infrastructure (<code>AD_Org = '*'</code>) is visible to all.
+This enables per-discipline BOM views, validation scoping, and trade-specific
+product catalogs — all from a single FK.</p>
+<h3 id="105-investigation-tasks">10.5 Investigation Tasks<a class="headerlink" href="#105-investigation-tasks" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Count Java files that read M_Product from component_library.db vs disc_validation.db</li>
+<li>Count Java files that read component_definitions from component_library.db</li>
+<li>Map the M_Product→component_definitions join path (is it by name? by FK?)</li>
+<li>Check if BOM databases carry their own M_Product (TE_BOM.db has M_Product with
+   different schema — 28 columns vs 9 in component_library.db)</li>
+<li>Audit all <code>bom_category</code> / <code>discipline</code> string usage — candidates for AD_Org FK</li>
+<li>Propose the split and migration plan (including AD_Org table placement)</li>
+</ol>
+<hr />
+<h2 id="11-investigation-report-105-tasks-16-s64-2026-03-23">11. Investigation Report — §10.5 Tasks 1–6 (S64, 2026-03-23)<a class="headerlink" href="#11-investigation-report-105-tasks-16-s64-2026-03-23" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Status:</strong> COMPLETE (investigation). No code changes. Findings ready for implementation review.
+<strong>Method:</strong> Grep + read of all Java source, SQL migrations, schema snapshots.
+<strong>Cross-referenced against:</strong> AUDIT_S51_FOCUSED.md Appendix F, ConstructionAsERP.md, BBC.md §2.</p>
+</blockquote>
+<hr />
+<h3 id="111-task-1-java-files-reading-m_product-by-database">11.1 Task 1 — Java Files Reading M_Product by Database<a class="headerlink" href="#111-task-1-java-files-reading-m_product-by-database" title="Permanent link">&para;</a></h3>
+<p><strong>85 Java files</strong> reference M_Product. Breakdown by connection:</p>
+<table>
+<thead>
+<tr>
+<th>Connection</th>
+<th>Database</th>
+<th>Files</th>
+<th>Key Readers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>compConn</code></td>
+<td>component_library.db</td>
+<td>~20</td>
+<td>BOMWalker, OrderLineWalker, ProductRegistrar, 4 BackOffice DAOs, ProductGeometry, MetadataValidator</td>
+</tr>
+<tr>
+<td><code>bomConn</code></td>
+<td>{PREFIX}_BOM.db</td>
+<td>~8</td>
+<td>PlacementCollectorVisitor (fallback dims), BomValidator (counts), BomDropper (FK ref only)</td>
+</tr>
+<tr>
+<td><code>conn</code> (PO layer)</td>
+<td>any DB with M_Product</td>
+<td>~12</td>
+<td>MProduct.java, X_MProduct.java, X_M_BOM.java, X_M_BOMLine.java</td>
+</tr>
+<tr>
+<td>Test files</td>
+<td>mixed</td>
+<td>~45</td>
+<td>DataIntegrityTest, MetadataIntegrityTest, DiscValidationDBTest, Tier1Test, etc.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key finding:</strong> Zero files read M_Product from disc_validation.db. The discipline DB has no
+M_Product table. All master product reads go through component_library.db (compConn).</p>
+<p><strong>Column read patterns by purpose:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Purpose</th>
+<th>Columns</th>
+<th>Connection</th>
+<th>Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity</td>
+<td>product_id, product_type, ifc_class, is_active</td>
+<td>compConn</td>
+<td>BOMWalker, OrderLineWalker, ProductRegistrar</td>
+</tr>
+<tr>
+<td>Dimensions</td>
+<td>width, depth, height (METRES, not mm)</td>
+<td>compConn/bomConn</td>
+<td>PlacementCollectorVisitor, MetadataValidator</td>
+</tr>
+<tr>
+<td>5D Cost</td>
+<td>unit_cost_rm, currency_code, cost_source, cost_uom</td>
+<td>compConn</td>
+<td>CostDAO</td>
+</tr>
+<tr>
+<td>4D Schedule</td>
+<td>construction_phase, construction_sequence, labor_resource, crew_size, productivity_rate</td>
+<td>compConn</td>
+<td>ScheduleDAO</td>
+</tr>
+<tr>
+<td>6D Sustainability</td>
+<td>carbon_kg_per_unit, recyclability, eol_strategy</td>
+<td>compConn</td>
+<td>SustainabilityDAO</td>
+</tr>
+<tr>
+<td>7D Facility Mgmt</td>
+<td>maintenance_schedule, warranty_period, replacement_cost</td>
+<td>compConn</td>
+<td>FacilityMgmtDAO</td>
+</tr>
+<tr>
+<td>Geometry link</td>
+<td>M_Product_ID (from M_Product_Image)</td>
+<td>compConn</td>
+<td>ProductGeometry, ComponentLibrary</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dead code alert:</strong> ProductRegistrar.ensureProducts() still copies M_Product from
+component_library.db to BOM DB, but BOMWalker was refactored (R7, S36) to read only
+from compConn. The BOM DB copy is no longer read by production code.</p>
+<hr />
+<h3 id="112-task-2-java-files-reading-component_definitions-component_geometries">11.2 Task 2 — Java Files Reading component_definitions / component_geometries<a class="headerlink" href="#112-task-2-java-files-reading-component_definitions-component_geometries" title="Permanent link">&para;</a></h3>
+<p><strong>18 files</strong> reference component_definitions or component_geometries. All read from
+component_library.db exclusively.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What It Reads</th>
+<th>Also Reads M_Product?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ComponentLibrary.java</td>
+<td>component_definitions: geometry_hash, local bounds, attachment_face, vertex/face counts</td>
+<td>No</td>
+</tr>
+<tr>
+<td>DoorWindowLibraryMapper.java</td>
+<td>component_definitions: name, geometry_hash, local bounds, forward_axis via JOIN component_types</td>
+<td>No</td>
+</tr>
+<tr>
+<td>StairLibraryMapper.java</td>
+<td>component_definitions: geometry_hash, local bounds via JOIN component_types</td>
+<td>No</td>
+</tr>
+<tr>
+<td>StandardsResolver.java</td>
+<td>component_definitions: hardcoded geometry_hash lookups (FP components)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>ExtractionPopulator.java</td>
+<td>component_geometries: geometry_hash, vertices, faces (write path)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>ProductGeometry.java</td>
+<td>M_Product_Image JOIN component_geometries ON geometry_hash</td>
+<td>Yes — via M_Product_Image.M_Product_ID</td>
+</tr>
+<tr>
+<td>MetadataValidator.java</td>
+<td>I_Geometry_Map + component_geometries (referential integrity check)</td>
+<td>Yes — checks M_Product dimensions</td>
+</tr>
+<tr>
+<td>MeshBinder.java</td>
+<td>component_geometries indirectly via ComponentLibrary.resolveByProduct()</td>
+<td>No</td>
+</tr>
+<tr>
+<td>MEPWriter.java</td>
+<td>component_geometries indirectly via DoorWindowLibraryMapper</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key finding:</strong> M_Product and component_definitions are accessed by <strong>different code paths</strong>.
+Only ProductGeometry.java and MetadataValidator.java touch both — and they join through
+M_Product_Image, not directly. This confirms the tables can live in separate databases
+with zero SQL JOIN impact.</p>
+<hr />
+<h3 id="113-task-3-m_product-component_definitions-join-path">11.3 Task 3 — M_Product → component_definitions Join Path<a class="headerlink" href="#113-task-3-m_product-component_definitions-join-path" title="Permanent link">&para;</a></h3>
+<p><strong>The join is INDIRECT through M_Product_Image:</strong></p>
+<div class="highlight"><pre><span></span><code>M_Product.product_id
+    → M_Product_Image.M_Product_ID  (name match)
+    → M_Product_Image.geometry_hash
+    → component_geometries.geometry_hash  (PK)
+</code></pre></div>
+<p>component_definitions is a <strong>parallel path</strong>, not part of the M_Product chain:</p>
+<div class="highlight"><pre><span></span><code>component_types.id
+    → component_definitions.type_id  (FK)
+    → component_definitions.geometry_hash
+    → component_geometries.geometry_hash  (PK)
+</code></pre></div>
+<p><strong>No direct SQL JOIN between M_Product and component_definitions exists anywhere in
+the codebase.</strong> X_MProduct.java defines a <code>component_id</code> column (logical FK →
+component_definitions) but it is <strong>vestigial</strong> — never populated or queried.</p>
+<p><strong>Production resolution code (ProductGeometry.java:69-79):</strong>
+<div class="highlight"><pre><span></span><code><span class="n">SELECT</span><span class="w"> </span><span class="n">mpi</span><span class="p">.</span><span class="na">M_Product_ID</span><span class="p">,</span><span class="w"> </span><span class="n">mpi</span><span class="p">.</span><span class="na">geometry_hash</span><span class="p">,</span><span class="w"> </span><span class="n">mpi</span><span class="p">.</span><span class="na">up_axis</span><span class="p">,</span><span class="w"> </span><span class="n">mpi</span><span class="p">.</span><span class="na">forward_axis</span><span class="p">,</span>
+<span class="w">       </span><span class="n">mpi</span><span class="p">.</span><span class="na">attachment_face</span><span class="p">,</span><span class="w"> </span><span class="n">cg</span><span class="p">.</span><span class="na">vertex_count</span><span class="p">,</span><span class="w"> </span><span class="n">cg</span><span class="p">.</span><span class="na">face_count</span>
+<span class="n">FROM</span><span class="w"> </span><span class="n">M_Product_Image</span><span class="w"> </span><span class="n">mpi</span>
+<span class="n">JOIN</span><span class="w"> </span><span class="n">component_geometries</span><span class="w"> </span><span class="n">cg</span><span class="w"> </span><span class="n">ON</span><span class="w"> </span><span class="n">mpi</span><span class="p">.</span><span class="na">geometry_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cg</span><span class="p">.</span><span class="na">geometry_hash</span>
+</code></pre></div></p>
+<p><strong>Implication for split:</strong> M_Product can move to a different database without breaking
+any JOIN. The runtime link (M_Product_Image → component_geometries) stays in
+component_library.db alongside the geometry. M_Product_Image.M_Product_ID is a text
+key resolved in Java, not a SQL FK.</p>
+<hr />
+<h3 id="114-task-4-bom-database-m_product-schema">11.4 Task 4 — BOM Database M_Product Schema<a class="headerlink" href="#114-task-4-bom-database-m_product-schema" title="Permanent link">&para;</a></h3>
+<p><strong>YES: BOM databases carry their own M_Product tables.</strong> Schema differs from component_library.db.</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>BOM M_Product</th>
+<th>Component Library M_Product</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Columns</td>
+<td>29</td>
+<td>27</td>
+</tr>
+<tr>
+<td>Rows</td>
+<td>7–348 (varies by building)</td>
+<td>~2,472 (master catalog)</td>
+</tr>
+<tr>
+<td>Has clearance rules</td>
+<td>YES (clear_front/back/left/right/above/below)</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Has fitting rules</td>
+<td>YES (fits_in, requires_host, host_min_width/height)</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Has qty rules</td>
+<td>YES (qty_per_area, qty_per_room, qty_per_person, max_spacing)</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Has ERP columns</td>
+<td>NO</td>
+<td>YES (unit_cost, labor_<em>, carbon_</em>, maintenance_*)</td>
+</tr>
+<tr>
+<td>Has conn_points</td>
+<td>YES</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Populated by</td>
+<td>schema_snapshot_bom.sql (DDL only)</td>
+<td>ProductRegistrar (IFCtoBOM pipeline)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Schema mismatch is significant.</strong> BOM M_Product has placement/fitting rules (LEGO
+connection semantics). Component Library M_Product has ERP/lifecycle columns (4D–7D).
+These are two different concerns wearing the same table name.</p>
+<p><strong>BOM M_Product is effectively unused by production code.</strong> After R7 refactor (S36),
+BOMWalker reads M_Product from compConn (component_library.db), not bomConn. The BOM
+copy exists for backward compatibility of deprecated single-arg constructors.</p>
+<p><strong>m_bom_line → M_Product resolution (structural, not FK):</strong>
+1. <code>m_bom_line.child_product_id</code> → try as <code>m_bom.bom_id</code> → sub-assembly (recurse)
+2. Else → <code>MProduct.get(compConn, childProductId)</code> → leaf product from component_library.db
+3. Else → dangling reference (warn + skip)</p>
+<hr />
+<h3 id="115-task-5-discipline-string-usage-audit">11.5 Task 5 — Discipline String Usage Audit<a class="headerlink" href="#115-task-5-discipline-string-usage-audit" title="Permanent link">&para;</a></h3>
+<p><strong>All discipline identifiers are currently TEXT/String.</strong> No AD_Org FK exists anywhere.</p>
+<p><strong>9 discipline codes</strong> (from enhanced_federation_GI.db, defined in Discipline.java enum):
+ARC (35338 elements), FP (6884), REB (2660), ACMV (1621), CW (1431), STR (1429),
+ELEC (1172), SP (979), LPG (209).</p>
+<p><strong>Discipline columns across the schema:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Table.Column</th>
+<th>DB</th>
+<th>Type</th>
+<th>Current Value</th>
+<th>AD_Org candidate?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C_OrderLine.Discipline</td>
+<td>compile DB</td>
+<td>TEXT DEFAULT 'ARC'</td>
+<td>String literal</td>
+<td>YES — primary</td>
+</tr>
+<tr>
+<td>component_types.discipline</td>
+<td>component_library.db</td>
+<td>TEXT NOT NULL</td>
+<td>'ELEC', 'ACMV', 'FP'</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>m_bom.bom_category</td>
+<td>BOM DB</td>
+<td>TEXT</td>
+<td>'RF', 'STR', 'FP', 'MEP'</td>
+<td>YES (proxy for discipline)</td>
+</tr>
+<tr>
+<td>AD_Val_Rule.discipline</td>
+<td>validation.db</td>
+<td>TEXT nullable</td>
+<td>'FPR', 'ELC', 'PLB'</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>AD_Clash_Rule.discipline_a/b</td>
+<td>validation.db</td>
+<td>TEXT NOT NULL</td>
+<td>'ELC' vs 'PLB'</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>ad_ifc_class_map.discipline</td>
+<td>disc_validation.db</td>
+<td>TEXT</td>
+<td>'ARC','STR','FP','ELEC','ACMV' etc.</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>ad_element_mep.discipline</td>
+<td>disc_validation.db</td>
+<td>TEXT</td>
+<td>'FP','ELEC','ACMV','CW','SP'</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>bad_discipline_priority.higher/lower</td>
+<td>component_library.db</td>
+<td>TEXT NOT NULL</td>
+<td>Priority pairs</td>
+<td>YES</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Java code patterns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Files</th>
+<th>Current Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getDiscipline()</code> / <code>setDiscipline(String)</code></td>
+<td>X_C_OrderLine.java</td>
+<td>String getter/setter</td>
+</tr>
+<tr>
+<td><code>Discipline.fromString(s)</code></td>
+<td>Discipline.java</td>
+<td>Enum conversion</td>
+</tr>
+<tr>
+<td><code>disciplineStack.push(bomCategory)</code></td>
+<td>PlacementCollectorVisitor.java</td>
+<td>Deque\&lt;String&gt;</td>
+</tr>
+<tr>
+<td><code>rs.getString("discipline")</code></td>
+<td>FederatedDBReader, MEPAD, OrderLineWalker</td>
+<td>Raw string from DB</td>
+</tr>
+<tr>
+<td><code>rs.getString("bom_category")</code></td>
+<td>SustainabilityDAO, FacilityMgmtDAO</td>
+<td>Proxy discipline</td>
+</tr>
+<tr>
+<td>TypeDisciplineMapping (static)</td>
+<td>TypeDisciplineMapping.java</td>
+<td>EnumMap (in-memory, not DB)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>W003_orderline_discipline.sql backfill logic:</strong>
+<div class="highlight"><pre><span></span><code><span class="k">UPDATE</span><span class="w"> </span><span class="n">C_OrderLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">Discipline</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">CASE</span>
+<span class="w">    </span><span class="k">WHEN</span><span class="w"> </span><span class="n">bom_category</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;RF&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;STR&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;SL&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="s1">&#39;STR&#39;</span>
+<span class="w">    </span><span class="k">WHEN</span><span class="w"> </span><span class="n">bom_category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;FP&#39;</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="s1">&#39;FPR&#39;</span>
+<span class="w">    </span><span class="k">WHEN</span><span class="w"> </span><span class="n">bom_category</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;MEP&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ELEC&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;PLB&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ACMV&#39;</span><span class="p">)</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="n">bom_category</span>
+<span class="w">    </span><span class="k">ELSE</span><span class="w"> </span><span class="s1">&#39;ARC&#39;</span>
+<span class="k">END</span><span class="p">;</span>
+</code></pre></div></p>
+<p><strong>Inconsistency:</strong> validation.db uses 'FPR'/'ELC'/'PLB' (3-char codes) while
+everywhere else uses 'FP'/'ELEC'/'SP' (variable-length). AD_Org would unify this.</p>
+<hr />
+<h3 id="116-task-6-proposed-split-and-ad_org-migration-plan">11.6 Task 6 — Proposed Split and AD_Org Migration Plan<a class="headerlink" href="#116-task-6-proposed-split-and-ad_org-migration-plan" title="Permanent link">&para;</a></h3>
+<h4 id="1161-decision-option-a-three-clean-databases">11.6.1 Decision: Option A — Three Clean Databases<a class="headerlink" href="#1161-decision-option-a-three-clean-databases" title="Permanent link">&para;</a></h4>
+<p>Based on investigation findings, <strong>Option A</strong> is confirmed as the right answer:</p>
+<div class="highlight"><pre><span></span><code>component_library.db  — WHAT things look like (geometry-only, 7 tables)
+├── component_types           (taxonomy of geometry families)
+├── component_definitions     (LOD mesh metadata: bounds, attachment)
+├── component_geometries      (vertices, faces, normals — bulk data)
+├── surface_styles            (material appearance)
+├── material_layers           (wall/slab layer composition)
+├── I_Geometry_Map            (extraction geometry mapping)
+└── M_Product_Image           (product → geometry_hash link)
+
+disc_validation.db  — WHERE things go + WHO owns them (AD Dictionary, ~30 tables)
+├── AD_Org                    (NEW: discipline org units — 10 rows)
+├── AD_Org_Type               (NEW: org type enum — DISCIPLINE, SHARED)
+├── M_Product                 (MOVED: product master data — 2,472 rows)
+├── M_Product_Category        (MOVED: product taxonomy — 46 rows)
+├── ad_space_type             (existing: 41 space types)
+├── ad_element_mep            (existing: 12 MEP types)
+├── ad_space_type_mep_bom     (existing: 186 schedule rows)
+├── ad_ifc_class_map          (existing: 46 IFC class authority)
+├── ad_element_mep_alias      (existing: 84 alias rows)
+├── placement_rules           (existing: 4,801 rules)
+├── ad_wall_face              (existing: 204 faces)
+├── component_types           (SHARED: discipline column → AD_Org_ID)
+├── ... (remaining 15+ AD tables already in disc_validation.db)
+├── bad_discipline_priority   (MOVED from component_library.db)
+└── AD_SysConfig              (existing: version tracking)
+
+validation.db  — RULES + VERDICTS (compliance engine, unchanged)
+├── AD_Val_Rule + params      (existing)
+├── AD_Clash_Rule             (existing)
+└── AD_Validation_Result      (existing)
+</code></pre></div>
+<h4 id="1162-ad_org-table-design">11.6.2 AD_Org Table Design<a class="headerlink" href="#1162-ad_org-table-design" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Org</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">AD_Org_ID</span><span class="w">     </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">AD_Client_ID</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">     </span><span class="c1">-- BIM_PROJECT tenant</span>
+<span class="w">    </span><span class="n">Value</span><span class="w">         </span><span class="nb">TEXT</span><span class="w">    </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">UNIQUE</span><span class="p">,</span><span class="w">          </span><span class="c1">-- &#39;ARC&#39;, &#39;STR&#39;, &#39;FP&#39;, etc.</span>
+<span class="w">    </span><span class="n">Name</span><span class="w">          </span><span class="nb">TEXT</span><span class="w">    </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">                 </span><span class="c1">-- &#39;Architecture&#39;, &#39;Structural&#39;, etc.</span>
+<span class="w">    </span><span class="n">Description</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">IsSummary</span><span class="w">     </span><span class="nb">TEXT</span><span class="w">    </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;N&#39;</span><span class="p">,</span><span class="w">     </span><span class="c1">-- &#39;Y&#39; for roll-up orgs</span>
+<span class="w">    </span><span class="n">IsActive</span><span class="w">      </span><span class="nb">TEXT</span><span class="w">    </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="n">AD_Org_Type</span><span class="w">   </span><span class="nb">TEXT</span><span class="w">    </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w">  </span><span class="c1">-- DISCIPLINE | SHARED</span>
+<span class="w">    </span><span class="n">element_count</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="w">                </span><span class="c1">-- TE census count (informational)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Seed data (from Discipline.java enum + &#39;*&#39; shared org)</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Org</span><span class="w"> </span><span class="p">(</span><span class="n">AD_Org_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">AD_Org_Type</span><span class="p">,</span><span class="w"> </span><span class="n">element_count</span><span class="p">)</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;*&#39;</span><span class="p">,</span><span class="w">    </span><span class="s1">&#39;Shared&#39;</span><span class="p">,</span><span class="w">              </span><span class="s1">&#39;SHARED&#39;</span><span class="p">,</span><span class="w">     </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;ARC&#39;</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;Architecture&#39;</span><span class="p">,</span><span class="w">        </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">35338</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;STR&#39;</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;Structural&#39;</span><span class="p">,</span><span class="w">          </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1429</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;FP&#39;</span><span class="p">,</span><span class="w">   </span><span class="s1">&#39;Fire Protection&#39;</span><span class="p">,</span><span class="w">     </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">6884</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;ELEC&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Electrical&#39;</span><span class="p">,</span><span class="w">          </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1172</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">5</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;ACMV&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;HVAC&#39;</span><span class="p">,</span><span class="w">               </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1621</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">6</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;CW&#39;</span><span class="p">,</span><span class="w">   </span><span class="s1">&#39;Cold Water&#39;</span><span class="p">,</span><span class="w">          </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1431</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">7</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;SP&#39;</span><span class="p">,</span><span class="w">   </span><span class="s1">&#39;Sanitary/Plumbing&#39;</span><span class="p">,</span><span class="w">   </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">979</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;LPG&#39;</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;Gas Piping&#39;</span><span class="p">,</span><span class="w">          </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">209</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="mi">9</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;REB&#39;</span><span class="p">,</span><span class="w">  </span><span class="s1">&#39;Reinforcement&#39;</span><span class="p">,</span><span class="w">       </span><span class="s1">&#39;DISCIPLINE&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2660</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>Placement:</strong> AD_Org lives in disc_validation.db (the AD Dictionary). All databases
+reference it by <code>AD_Org_ID</code> (integer FK) or <code>Value</code> (text lookup for human-readable
+contexts). Same pattern as iDempiere: AD_Org is a central lookup table.</p>
+<h4 id="1163-what-ad_org-replaces">11.6.3 What AD_Org Replaces<a class="headerlink" href="#1163-what-ad_org-replaces" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Current</th>
+<th>Table.Column</th>
+<th>New</th>
+<th>Migration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>m_bom.bom_category</code> = 'FP'</td>
+<td>BOM DB</td>
+<td><code>m_bom.AD_Org_ID</code> = 3</td>
+<td>ALTER + UPDATE CASE</td>
+</tr>
+<tr>
+<td><code>C_OrderLine.Discipline</code> = 'FP'</td>
+<td>compile DB</td>
+<td><code>C_OrderLine.AD_Org_ID</code> = 3</td>
+<td>ALTER + UPDATE CASE</td>
+</tr>
+<tr>
+<td><code>component_types.discipline</code> = 'FP'</td>
+<td>component_library.db</td>
+<td><code>component_types.AD_Org_ID</code> = 3</td>
+<td>ALTER + UPDATE CASE</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule.discipline</code> = 'FPR'</td>
+<td>validation.db</td>
+<td><code>AD_Val_Rule.AD_Org_ID</code> = 3</td>
+<td>ALTER + UPDATE (unify codes)</td>
+</tr>
+<tr>
+<td><code>AD_Clash_Rule.discipline_a</code> = 'ELC'</td>
+<td>validation.db</td>
+<td><code>AD_Clash_Rule.AD_Org_A_ID</code> = 4</td>
+<td>ALTER + UPDATE</td>
+</tr>
+<tr>
+<td><code>ad_ifc_class_map.discipline</code> = 'FP'</td>
+<td>disc_validation.db</td>
+<td><code>ad_ifc_class_map.AD_Org_ID</code> = 3</td>
+<td>ALTER + UPDATE</td>
+</tr>
+<tr>
+<td><code>ad_element_mep.discipline</code> = 'FP'</td>
+<td>disc_validation.db</td>
+<td><code>ad_element_mep.AD_Org_ID</code> = 3</td>
+<td>ALTER + UPDATE</td>
+</tr>
+<tr>
+<td><code>bad_discipline_priority.higher_discipline</code></td>
+<td>component_library.db</td>
+<td><code>bad_discipline_priority.higher_AD_Org_ID</code></td>
+<td>MOVE table + ALTER</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bonus: unifies the code inconsistency.</strong> 'FPR' (validation.db) and 'FP' (everywhere
+else) both become <code>AD_Org_ID = 3</code>. 'ELC' and 'ELEC' both become <code>AD_Org_ID = 4</code>.</p>
+<h4 id="1163a-design-note-inference-vs-data-derivediscipline-retirement">11.6.3a Design Note — Inference vs Data (deriveDiscipline retirement)<a class="headerlink" href="#1163a-design-note-inference-vs-data-derivediscipline-retirement" title="Permanent link">&para;</a></h4>
+<p>The S60 wiring (BomDropper → C_OrderLine.Discipline → NodeContext → PlacementCollectorVisitor)
+is <strong>directionally correct</strong> — it moves discipline from inference to data. AD_Org completes
+this trajectory. Three patterns currently coexist:</p>
+<ol>
+<li><strong>Data-driven (correct):</strong> C_OrderLine.Discipline populated from m_bom.bom_category at
+   BomDrop time. Discipline flows through the order context, not guessed.</li>
+<li><strong>Inference-driven (legacy):</strong> <code>ProductCategory.deriveDiscipline(ifcClass)</code> and
+   <code>TypeDisciplineMapping</code> infer discipline from IFC class. This bypasses the org hierarchy
+   — every element gets discipline guessed from its class, not inherited from its context.</li>
+<li><strong>Stack-driven (transitional):</strong> PlacementCollectorVisitor.disciplineStack pushes
+   bom_category at SET level. Runtime hack for what should be AD_Org inheritance.</li>
+</ol>
+<p><strong>When AD_Org is implemented:</strong>
+- Pattern 1 becomes: <code>C_OrderLine.AD_Org_ID</code> = FK to AD_Org (single source of truth)
+- Pattern 2 (<code>deriveDiscipline()</code>) becomes a <strong>fallback for extraction only</strong> — when
+  ingesting a new IFC file with no order context, infer AD_Org_ID from ifc_class via
+  <code>ad_ifc_class_map.AD_Org_ID</code>. Once the element enters the order pipeline, AD_Org_ID
+  is data, not inference. deriveDiscipline() should NOT be called in the compile path.
+- Pattern 3 (disciplineStack) disappears — AD_Org_ID is on C_OrderLine, inherited down
+  the BOM tree via the walker, not pushed/popped manually.</p>
+<p><strong>The 77-file M_BomCategory cleanup (S60-S2 Task 5) is the same refactor.</strong> bom_category
+is a string proxy for AD_Org. Once AD_Org_ID exists on m_bom, bom_category becomes a
+derived display field (or drops entirely). The 40+ files touching discipline strings
+converge to a single FK lookup pattern.</p>
+<p><strong>M_Product_Category already models this.</strong> The 4 discipline-level categories (ARC, STR,
+FP, MEP) in M_Product_Category ARE the AD_Org tree expressed as product taxonomy. AD_Org
+makes the relationship explicit: <code>M_Product_Category.AD_Org_ID</code> links each product
+category to its owning discipline. This enables per-discipline product catalog views,
+validation scoping, and BOM filtering — all from standard iDempiere patterns.</p>
+<h4 id="1164-java-code-impact">11.6.4 Java Code Impact<a class="headerlink" href="#1164-java-code-impact" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Change</th>
+<th>Files</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>X_C_OrderLine: getDiscipline() → getAD_Org_ID()</td>
+<td>1</td>
+<td>LOW — PO column rename</td>
+</tr>
+<tr>
+<td>OrderLineWalker: pass AD_Org_ID instead of String</td>
+<td>1</td>
+<td>LOW — type change</td>
+</tr>
+<tr>
+<td>PlacementCollectorVisitor: disciplineStack → Deque\&lt;Integer&gt;</td>
+<td>1</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>BOMWalker.NodeContext: discipline field String → int</td>
+<td>1</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>BomDropper: set AD_Org_ID from bom.AD_Org_ID</td>
+<td>1</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>Discipline.java enum: add AD_Org_ID field</td>
+<td>1</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>SustainabilityDAO/FacilityMgmtDAO: GROUP BY AD_Org_ID</td>
+<td>2</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>BackOffice DAOs: compConn M_Product → discConn M_Product</td>
+<td>4</td>
+<td>MED — connection param change</td>
+</tr>
+<tr>
+<td>ProductRegistrar: write M_Product to disc_validation.db</td>
+<td>1</td>
+<td>MED — target DB change</td>
+</tr>
+<tr>
+<td>MProduct.get(): accept discConn instead of compConn</td>
+<td>1</td>
+<td>LOW — param type same</td>
+</tr>
+<tr>
+<td>ComponentLibrary: no change (reads component_definitions only)</td>
+<td>0</td>
+<td>NONE</td>
+</tr>
+<tr>
+<td>MeshBinder: no change (resolves via M_Product_Image → geometry)</td>
+<td>0</td>
+<td>NONE</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total: ~14 production files changed, ~10 test files changed, ~25 geometry files unchanged.</strong>
+No geometry code touched. File counts are estimates — implementation session should
+grep for exact numbers before starting (audit concern #1, #2).</p>
+<h4 id="1165-migration-sequence-6-steps-each-independently-committable">11.6.5 Migration Sequence (6 steps, each independently committable)<a class="headerlink" href="#1165-migration-sequence-6-steps-each-independently-committable" title="Permanent link">&para;</a></h4>
+<p><strong>Step 0: Drop dead tables</strong> (prerequisite, R18 debt)
+- DROP: ad_bom, ad_bom_child, ad_bom_child_param, ad_product_dim from component_library.db
+- Net: −4 tables, zero code impact (unused per Known Debt audit)</p>
+<p><strong>Step 1: Create AD_Org in disc_validation.db</strong>
+- DDL: AD_Org table + seed 10 rows (0='*', 1–9=disciplines)
+- Migration: <code>DV013_ad_org.sql</code> (DV011/DV012 already taken — audit concern #4)
+- Gate: DiscValidationDBTest adds W-DV-DB-ORG witness</p>
+<p><strong>Step 2: Add AD_Org_ID columns alongside existing TEXT columns</strong>
+- ALTER TABLE ad_ifc_class_map ADD COLUMN AD_Org_ID INTEGER
+- ALTER TABLE ad_element_mep ADD COLUMN AD_Org_ID INTEGER
+- UPDATE ... SET AD_Org_ID = (SELECT AD_Org_ID FROM AD_Org WHERE Value = discipline)
+- Same for component_types, placement_rules
+- Migration: <code>DV014_ad_org_columns.sql</code>
+- Gate: dual-column reads pass, no code changes yet</p>
+<p><strong>Step 3: Move M_Product + M_Product_Category to disc_validation.db</strong> ⚠️ HIGH RISK — <strong>DONE (S65)</strong>
+- Migration: <code>DV015_move_m_product.sql</code> — ATTACH + INSERT OR IGNORE. 2,475 M_Product + 46 M_Product_Category rows.
+- Java: 13 files changed. All compConn/compLibConn M_Product reads → disc_validation.db.
+  ProductRegistrar dual-writes (compConn for geometry join + discConn for master catalog).
+  BOMWalker, OrderLineWalker, PlacementLoader, BuildingWriter, 3 BIM_COBOL verbs,
+  BackOfficeServer, DesignerAPIImpl — all read M_Product from disc_validation.db.
+- M_Product_Image stays in component_library.db (geometry link intact).
+- component_library.db M_Product NOT deleted (Step 6).
+- Gate: SH 7/7, FK 7/7 PASS. DiscValidationDBTest 27/27 GREEN (+3 product witnesses).</p>
+<p><strong>Step 4: Move remaining AD tables from component_library.db</strong>
+- bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param → disc_validation.db
+- Remove 15 duplicate tables from component_library.db (already in disc_validation.db)
+- Net: component_library.db drops from ~66 tables to ~7
+- Gate: DiscValidationDBTest updated. Rosetta Stones GREEN.</p>
+<p><strong>Step 5: Switch Java code from TEXT discipline to AD_Org_ID</strong>
+- Update PO classes, walkers, DAOs to use integer FK
+- Remove Discipline string columns (or keep as computed/derived)
+- Gate: full test suite GREEN. Discipline.java enum gains AD_Org_ID field.</p>
+<p><strong>Step 6: Clean up</strong>
+- Drop vestigial TEXT discipline columns (or leave for human readability)
+- Drop M_Product from BOM databases (production code no longer reads it)
+- Update schema snapshots
+- Gate: all Rosetta Stones GREEN. Schema docs updated.</p>
+<h4 id="1166-risks-and-mitigations">11.6.6 Risks and Mitigations<a class="headerlink" href="#1166-risks-and-mitigations" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>component_library.db is SACRED (no git operations)</td>
+<td>Steps 3-4 only ATTACH+read from it. No schema changes to component_library.db until Step 4 (table drops).</td>
+</tr>
+<tr>
+<td>BOM DB M_Product removal breaks backward compat</td>
+<td>Step 6 only — verify zero reads from bomConn M_Product first (Task 4 confirms this).</td>
+</tr>
+<tr>
+<td>15 duplicate tables: which copy is authoritative?</td>
+<td>disc_validation.db copy is authoritative (Phase 2-3 migration already completed). component_library.db copies are stale remnants.</td>
+</tr>
+<tr>
+<td>AD_Org_ID = 0 ('*') conflicts with SQLite auto-increment</td>
+<td>Use explicit INSERT, not AUTOINCREMENT. iDempiere convention: 0 = system org.</td>
+</tr>
+<tr>
+<td>BackOffice DAOs need connection parameter change</td>
+<td>All 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt) already receive compLibConn — just rename to discConn. Same JDBC pattern.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="1167-appendix-f-corrections">11.6.7 Appendix F Corrections<a class="headerlink" href="#1167-appendix-f-corrections" title="Permanent link">&para;</a></h4>
+<p>AUDIT_S51_FOCUSED.md Appendix F states "34 AD tables" in component_library.db.
+<strong>Actual count: 66 <code>ad_*</code> tables</strong> (confirmed by Appendix F itself, which corrected
+this in the audit). §10.1 should be updated from "34 AD tables" to "66 AD tables"
+when implementation begins.</p>
+<hr />
+<h3 id="117-summary-decision-matrix">11.7 Summary — Decision Matrix<a class="headerlink" href="#117-summary-decision-matrix" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Option A (Split)</th>
+<th>Option B (Expand DV)</th>
+<th>Option C (Fix guard)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code changes</td>
+<td>~14 prod + ~10 test files</td>
+<td>~14 + ~10 (same)</td>
+<td>~2 files</td>
+</tr>
+<tr>
+<td>iDempiere alignment</td>
+<td><strong>FULL</strong> — M_Product with AD tables</td>
+<td>FULL (same as A)</td>
+<td>PARTIAL — mixed DB</td>
+</tr>
+<tr>
+<td>Geometry isolation</td>
+<td><strong>CLEAN</strong> — 7 tables, pure LOD</td>
+<td>CLEAN (same)</td>
+<td>MIXED — 66+ tables</td>
+</tr>
+<tr>
+<td>LOD chain breakage</td>
+<td><strong>NONE</strong> — M_Product_Image stays in geometry DB</td>
+<td>NONE</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>Future maintainability</td>
+<td><strong>HIGH</strong> — clear concern boundaries</td>
+<td>HIGH</td>
+<td>LOW — grows worse</td>
+</tr>
+<tr>
+<td>Discipline unification</td>
+<td><strong>YES</strong> — AD_Org eliminates 'FPR'/'FP' inconsistency</td>
+<td>YES</td>
+<td>NO</td>
+</tr>
+<tr>
+<td>Risk</td>
+<td>MED overall, <strong>HIGH for Step 3</strong> (M_Product move)</td>
+<td>MED/HIGH (same)</td>
+<td>LOW</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation: Option A.</strong> It's the same work as Option B but with a clearer name
+(disc_validation.db is already the AD Dictionary in practice). The 6-step migration
+is independently committable, each step gated by existing Rosetta Stone tests.</p>
+<hr />
+<p><em>References:
+<a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9 (5-table LOD chain) |
+<a href="../DocAction_SRS/">DocAction_SRS.md</a> §1.3 (processIt DocEvent) |
+<a href="../CALIBRATION_SRS/">CALIBRATION_SRS.md</a> (DocEvent vs Terminal) |
+<a href="../G4_SRS/">G4_SRS.md</a> §2 (work_output.db pattern) |
+<a href="../AUDIT_S51_FOCUSED/">AUDIT_S51_FOCUSED.md</a> Appendix F (database reality check)</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

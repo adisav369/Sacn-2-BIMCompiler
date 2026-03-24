@@ -7,7 +7,7 @@
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
 **Status:** ACTIVE — **63 verbs implemented, 196 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
-**Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.txt (Terminal formula coverage — shared concern)
+**Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
 **Supplements:** METADATA_DRIVEN_ARCHITECTURE.md, ConstructionAsERP.md, PREFAB_ARCHITECTURE.md, ADHistory.md (PP_Order_Node lineage)
 
 ---
@@ -593,7 +593,7 @@ Only 2,123 elements (furniture, proxies, misc) need flat coordinate storage.
 
 > **Terminal BOM reduction:** 58× smaller recipe (51K rows → ~2.9K). Verb invocations stored as
 > `PP_Order_Node` rows (PP_Order_Node model, §15.6). Full Terminal measurement data and
-> phase roadmap (TE-1..TE-8) in [`TheRosettaStoneStrategy.txt`](TheRosettaStoneStrategy.txt)
+> phase roadmap (TE-1..TE-8) in [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md)
 > §Terminal Recomposition.
 
 ### 4.3b STRUCTURAL Verbs
