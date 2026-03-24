@@ -609,6 +609,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-three-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Three Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-ad_org-discipline-m_product_category-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WHAT: AD_Org (Discipline) + M_Product_Category (Classification)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-population-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category Population — Current State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-insight" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -638,45 +677,6 @@
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-three-concerns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Three Concerns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="The Three Concerns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-m_product_category-hierarchy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WHAT: The M_Product_Category Hierarchy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#category-population-current-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Category Population — Current State
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2770,6 +2770,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#the-three-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Three Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-ad_org-discipline-m_product_category-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WHAT: AD_Org (Discipline) + M_Product_Category (Classification)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#category-population-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Category Population — Current State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-insight" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2799,45 +2838,6 @@
       
     </span>
   </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-three-concerns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Three Concerns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="The Three Concerns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-the-m_product_category-hierarchy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        WHAT: The M_Product_Category Hierarchy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#category-population-current-state" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Category Population — Current State
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2900,124 +2900,6 @@
 through which every design decision in this project makes sense.</p>
 </blockquote>
 <hr />
-<h2 id="the-insight">The Insight<a class="headerlink" href="#the-insight" title="Permanent link">&para;</a></h2>
-<p>In 2006, we built ADempiere's manufacturing BOM module. In 2010, we rebuilt it
-for iDempiere. After two decades of watching M_Product, M_BOM, and C_Order
-handle everything from circuit boards to patio furniture sets, the realisation
-was unavoidable:</p>
-<p><strong>A building is just a very large manufactured product with spatial coordinates.</strong></p>
-<p>Every wall panel is an M_Product. Every floor plan is an M_BOM (assembly recipe).
-Every construction project is a C_Order. The only thing manufacturing MRP lacks
-is the <em>where</em> — the (x, y, z) coordinates that turn a flat bill of materials
-into a three-dimensional building.</p>
-<p>Manufacturing solved procurement, scheduling, cost control, and quality decades
-ago. Construction never had a Bill of Materials. This project provides one.
-Everything else follows.</p>
-<hr />
-<h2 id="the-pattern-a-product-is-a-bom">The Pattern: A Product IS a BOM<a class="headerlink" href="#the-pattern-a-product-is-a-bom" title="Permanent link">&para;</a></h2>
-<p>In iDempiere/Libero Manufacturing, there is one universal entity: <strong>M_Product</strong>.</p>
-<p>A Patio Furniture Set is an M_Product. Set <code>IsBOM=Y</code> and it has children:
-4 chairs, 1 table, 1 optional shade — each an M_Product in its own right.
-The chairs are leaf products (<code>IsBOM=N</code>): they have no children, they reference
-inventory directly. The set is a BOM product: it has a recipe (M_BOM) with
-lines (M_BOM_Line) that point to its children.</p>
-<p><strong>This is the entire model.</strong> Products all the way down. BOMs are not a
-separate entity — they are a property of a product. A building is a product.
-A floor is a product. A room is a product. A door is a product.</p>
-<div class="highlight"><pre><span></span><code>BUILDING (M_Product, IsBOM=Y)
-  └─ FLOOR (M_Product, IsBOM=Y)
-       └─ ROOM (M_Product, IsBOM=Y)
-            ├─ WALL_PANEL (M_Product, IsBOM=N → geometry from component library)
-            ├─ DOOR (M_Product, IsBOM=N → geometry from component library)
-            └─ FURNITURE_SET (M_Product, IsBOM=Y)
-                 ├─ TABLE (M_Product, IsBOM=N → leaf)
-                 └─ CHAIR × 4 (M_Product, IsBOM=N → leaf)
-</code></pre></div>
-<p>When the compiler encounters a BOM product, it <strong>explodes</strong> (recurses into
-children). When it encounters a leaf product, it <strong>resolves</strong> (looks up geometry
-in the component library). This is the same operation an ERP system performs
-when it explodes a manufacturing BOM into work orders.</p>
-<hr />
-<h2 id="the-mapping-idempiere-bim">The Mapping: iDempiere → BIM<a class="headerlink" href="#the-mapping-idempiere-bim" title="Permanent link">&para;</a></h2>
-<p>Every table in this project maps to a proven iDempiere entity. No invented
-abstractions. No BIM-specific data models. If iDempiere already solved the
-problem, we use iDempiere's solution.</p>
-<table>
-<thead>
-<tr>
-<th>iDempiere Manufacturing</th>
-<th>BIM Compiler</th>
-<th>What It Does</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>M_Product</strong></td>
-<td>Building element or assembly</td>
-<td>The universal entity. Everything is a product</td>
-</tr>
-<tr>
-<td><strong>M_Product_Category</strong></td>
-<td>ARC, STR, FP, MEP, ELEC...</td>
-<td>Classifies products. Same category = same swap pool</td>
-</tr>
-<tr>
-<td><strong>M_BOM + M_BOM_Line</strong></td>
-<td>Assembly recipe + children</td>
-<td>BOM explosion. Each line has dx/dy/dz tack offset</td>
-</tr>
-<tr>
-<td><strong>C_Order</strong></td>
-<td>Construction project</td>
-<td>One order = one building. Carries design state</td>
-</tr>
-<tr>
-<td><strong>C_OrderLine</strong></td>
-<td>Element instance</td>
-<td>WHAT to build. References M_Product</td>
-</tr>
-<tr>
-<td><strong>C_DocType</strong></td>
-<td>Building type classification</td>
-<td>Routes compilation. Metadata, not logic</td>
-</tr>
-<tr>
-<td><strong>PP_Order_Node</strong></td>
-<td>Verb execution record</td>
-<td>HOW it was placed. Full audit trail</td>
-</tr>
-<tr>
-<td><strong>CO_EmptySpace</strong></td>
-<td>Room/floor slot</td>
-<td>WHERE things go. Warehouse slot analogy</td>
-</tr>
-<tr>
-<td><strong>DocAction lifecycle</strong></td>
-<td>DR → IP → CO → AP</td>
-<td>Draft → In Progress → Complete → Approved</td>
-</tr>
-<tr>
-<td><strong>AD_Val_Rule</strong></td>
-<td>Validation by jurisdiction</td>
-<td>Same rule engine, construction codes instead of tax codes</td>
-</tr>
-<tr>
-<td><strong>C_Campaign</strong></td>
-<td>Design theme</td>
-<td>Bali, Scandinavian, Industrial — marketing drives variant</td>
-</tr>
-<tr>
-<td><strong>AD_PrintFormat</strong></td>
-<td>Output selection</td>
-<td>Which elements to render, which to hide</td>
-</tr>
-</tbody>
-</table>
-<p><strong>The extension:</strong> Manufacturing MRP has product + quantity + sequence.
-We add three columns to M_BOM_Line: <code>dx</code>, <code>dy</code>, <code>dz</code> — parent-relative
-tack offsets in millimetres. That is the entire difference between a flat
-BOM and a spatial BOM. Three integers turn procurement into construction.</p>
-<hr />
 <h2 id="the-three-concerns">The Three Concerns<a class="headerlink" href="#the-three-concerns" title="Permanent link">&para;</a></h2>
 <p>iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
 with production detail in PP_Order. We inherit the same separation:</p>
@@ -3055,17 +2937,30 @@ with production detail in PP_Order. We inherit the same separation:</p>
 does not require changes to HOW (verb stays the same) or WHERE (slot stays
 the same). This is the architectural invariant that makes exception-based
 ordering possible: override one concern, inherit the others.</p>
-<h3 id="what-the-m_product_category-hierarchy">WHAT: The M_Product_Category Hierarchy<a class="headerlink" href="#what-the-m_product_category-hierarchy" title="Permanent link">&para;</a></h3>
-<p>The WHAT concern is classified by <strong>M_Product_Category</strong> — the same entity
-iDempiere uses to group products into swap pools. A Patio Furniture Set belongs
-to category OUTDOOR_FURNITURE. A replacement table must come from the same
-category — you can't swap a table for a sprinkler head.</p>
-<p>In BIM compilation, M_Product_Category operates at three levels:</p>
-<div class="highlight"><pre><span></span><code>M_Product_Category (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG
+<h3 id="what-ad_org-discipline-m_product_category-classification">WHAT: AD_Org (Discipline) + M_Product_Category (Classification)<a class="headerlink" href="#what-ad_org-discipline-m_product_category-classification" title="Permanent link">&para;</a></h3>
+<p>The WHAT concern has two layers — <strong>who is responsible</strong> and <strong>what kind of thing</strong>.</p>
+<p><strong>AD_Org — Discipline (WHO is responsible).</strong> In iDempiere, <code>AD_Org</code> partitions
+data by business unit. Here, engineering disciplines partition the BOM validation
+space. Each discipline is an organisational concern with its own rules, its own
+AD_Val_Rule set, its own validation pass — but sharing the same product catalog.</p>
+<div class="highlight"><pre><span></span><code>AD_Org (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG, REB, MEP, ROAD, GEO, RAIL, LAND, SIGN
+</code></pre></div>
+<p><strong>M_Product_Category — Element and room classification (WHAT kind of thing).</strong>
+The same entity iDempiere uses to group products into swap pools. In
+<code>disc_validation.db</code>, M_Product_Category maps IFC classes to parent disciplines
+(IFC_WALL→STR, IFC_DOOR→ARC, IFC_FLOWSEGMENT→MEP). In BOM databases, it
+classifies rooms and segments.</p>
+<div class="highlight"><pre><span></span><code>M_Product_Category (element)     → IFC_WALL, IFC_DOOR, IFC_BEAM, IFC_FLOWSEGMENT...
 M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
 M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
 M_Product (leaf)                 → the actual element with geometry
 </code></pre></div>
+<p><strong>The distinction matters.</strong> A Patio Furniture Set belongs to category
+OUTDOOR_FURNITURE (M_Product_Category) — that's what kind of thing it is.
+The trade responsible for installing it is AD_Org = ARC (Architecture) —
+that's who validates it. You can't swap a table for a sprinkler head
+(category constraint), and the sprinkler head is validated by FP, not ARC
+(discipline constraint). Two orthogonal axes.</p>
 <p>A residential building (DocBaseType=RE) uses <strong>room categories</strong>: the Patio
 Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
 <strong>segment categories</strong>: a bridge deck lives in DCK. The category tree is the
@@ -3127,6 +3022,129 @@ hierarchy (BUILDING → FLOOR → ROOM → SET → ITEM) is specified in BBC.md 
 but not yet populated — the BOM tree expresses hierarchy through parent-child
 M_BOM_Line relationships, not through bom_level values.</p>
 <hr />
+<h2 id="the-insight">The Insight<a class="headerlink" href="#the-insight" title="Permanent link">&para;</a></h2>
+<p>In 2006, we built ADempiere's manufacturing BOM module. In 2010, we rebuilt it
+for iDempiere. After two decades of watching M_Product, M_BOM, and C_Order
+handle everything from circuit boards to patio furniture sets, the realisation
+was unavoidable:</p>
+<p><strong>A building is just a very large manufactured product with spatial coordinates.</strong></p>
+<p>Every wall panel is an M_Product. Every floor plan is an M_BOM (assembly recipe).
+Every construction project is a C_Order. The only thing manufacturing MRP lacks
+is the <em>where</em> — the (x, y, z) coordinates that turn a flat bill of materials
+into a three-dimensional building.</p>
+<p>Manufacturing solved procurement, scheduling, cost control, and quality decades
+ago. Construction never had a Bill of Materials. This project provides one.
+Everything else follows.</p>
+<hr />
+<h2 id="the-pattern-a-product-is-a-bom">The Pattern: A Product IS a BOM<a class="headerlink" href="#the-pattern-a-product-is-a-bom" title="Permanent link">&para;</a></h2>
+<p>In iDempiere/Libero Manufacturing, there is one universal entity: <strong>M_Product</strong>.</p>
+<p>A Patio Furniture Set is an M_Product. Set <code>IsBOM=Y</code> and it has children:
+4 chairs, 1 table, 1 optional shade — each an M_Product in its own right.
+The chairs are leaf products (<code>IsBOM=N</code>): they have no children, they reference
+inventory directly. The set is a BOM product: it has a recipe (M_BOM) with
+lines (M_BOM_Line) that point to its children.</p>
+<p><strong>This is the entire model.</strong> Products all the way down. BOMs are not a
+separate entity — they are a property of a product. A building is a product.
+A floor is a product. A room is a product. A door is a product.</p>
+<div class="highlight"><pre><span></span><code>BUILDING (M_Product, IsBOM=Y)
+  └─ FLOOR (M_Product, IsBOM=Y)
+       └─ ROOM (M_Product, IsBOM=Y)
+            ├─ WALL_PANEL (M_Product, IsBOM=N → geometry from component library)
+            ├─ DOOR (M_Product, IsBOM=N → geometry from component library)
+            └─ FURNITURE_SET (M_Product, IsBOM=Y)
+                 ├─ TABLE (M_Product, IsBOM=N → leaf)
+                 └─ CHAIR × 4 (M_Product, IsBOM=N → leaf)
+</code></pre></div>
+<p>When the compiler encounters a BOM product, it <strong>explodes</strong> (recurses into
+children). When it encounters a leaf product, it <strong>resolves</strong> (looks up geometry
+in the component library). This is the same operation an ERP system performs
+when it explodes a manufacturing BOM into work orders.</p>
+<hr />
+<h2 id="the-mapping-idempiere-bim">The Mapping: iDempiere → BIM<a class="headerlink" href="#the-mapping-idempiere-bim" title="Permanent link">&para;</a></h2>
+<p>Every table in this project maps to a proven iDempiere entity. No invented
+abstractions. No BIM-specific data models. If iDempiere already solved the
+problem, we use iDempiere's solution.</p>
+<table>
+<thead>
+<tr>
+<th>iDempiere Manufacturing</th>
+<th>BIM Compiler</th>
+<th>What It Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>M_Product</strong></td>
+<td>Building element or assembly</td>
+<td>The universal entity. Everything is a product</td>
+</tr>
+<tr>
+<td><strong>AD_Org</strong></td>
+<td>ARC, STR, FP, ELEC, ACMV...</td>
+<td>Discipline = organisational unit. WHO is responsible</td>
+</tr>
+<tr>
+<td><strong>M_Product_Category</strong></td>
+<td>IFC_WALL, IFC_DOOR, LIVING, DCK...</td>
+<td>Classifies products by element type or room. WHAT kind of thing</td>
+</tr>
+<tr>
+<td><strong>M_BOM + M_BOM_Line</strong></td>
+<td>Assembly recipe + children</td>
+<td>BOM explosion. Each line has dx/dy/dz tack offset</td>
+</tr>
+<tr>
+<td><strong>C_Order</strong></td>
+<td>Construction project</td>
+<td>One order = one building. Carries design state</td>
+</tr>
+<tr>
+<td><strong>C_OrderLine</strong></td>
+<td>Element instance</td>
+<td>WHAT to build. References M_Product</td>
+</tr>
+<tr>
+<td><strong>C_DocType</strong></td>
+<td>Building type classification</td>
+<td>Routes compilation. Metadata, not logic</td>
+</tr>
+<tr>
+<td><strong>PP_Order_Node</strong></td>
+<td>Verb execution record</td>
+<td>HOW it was placed. Full audit trail</td>
+</tr>
+<tr>
+<td><strong>CO_EmptySpace</strong></td>
+<td>Room/floor slot</td>
+<td>WHERE things go. Warehouse slot analogy</td>
+</tr>
+<tr>
+<td><strong>DocAction lifecycle</strong></td>
+<td>DR → IP → CO → AP</td>
+<td>Draft → In Progress → Complete → Approved</td>
+</tr>
+<tr>
+<td><strong>AD_Val_Rule</strong></td>
+<td>Validation by jurisdiction</td>
+<td>Same rule engine, construction codes instead of tax codes</td>
+</tr>
+<tr>
+<td><strong>C_Campaign</strong></td>
+<td>Design theme</td>
+<td>Bali, Scandinavian, Industrial — marketing drives variant</td>
+</tr>
+<tr>
+<td><strong>AD_PrintFormat</strong></td>
+<td>Output selection</td>
+<td>Which elements to render, which to hide</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The extension:</strong> Manufacturing MRP has product + quantity + sequence.
+We add three columns to M_BOM_Line: <code>dx</code>, <code>dy</code>, <code>dz</code> — parent-relative
+tack offsets in millimetres. That is the entire difference between a flat
+BOM and a spatial BOM. Three integers turn procurement into construction.</p>
+<hr />
 <h2 id="the-application-dictionary-heritage">The Application Dictionary Heritage<a class="headerlink" href="#the-application-dictionary-heritage" title="Permanent link">&para;</a></h2>
 <p>Compiere introduced the Application Dictionary (AD) in 2000 — metadata that
 defines the system itself. ADempiere inherited it. iDempiere perfected it.
@@ -3171,11 +3189,65 @@ disciplines (ARC, STR, FP, ELEC, ACMV) partition the BOM validation space.
 Each discipline is an organisational concern with its own rules, its own
 AD_Val_Rule set, its own validation pass — but sharing the same product catalog.
 → <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a></p>
-<p><strong>AD_ChangeLog — Full provenance.</strong>
-iDempiere logs every field change: who, when, old value, new value. Our
-<code>ChangelogDAO</code> does the same for every PLACE/DELETE/MOVE/RESIZE. Undo via
-replay. Wikipedia edit history for BOMs. Auditors love this.
-→ <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §10</a></p>
+<p><strong>AD_ChangeLog — Full provenance and UNDO/REDO.</strong></p>
+<p>iDempiere's <code>AD_ChangeLog</code> records every field change on every record: who
+changed it, when, old value, new value, which transaction. This is Configure-to-Order's
+audit trail — the record that proves a BOM recipe was built correctly.</p>
+<p>Our <code>ChangelogDAO</code> applies the identical pattern to spatial operations. Every
+PLACE, DELETE, MOVE, and RESIZE is logged with full before/after state. The
+schema (<code>bim_changelog</code> table, migration V011) stores:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>building_id</td>
+<td>Which building</td>
+</tr>
+<tr>
+<td>entity_type + entity_id</td>
+<td>What changed (M_BOM, M_BOM_Line, C_OrderLine)</td>
+</tr>
+<tr>
+<td>action</td>
+<td>SAVE / PLACE / DELETE / MOVE / RESIZE / PROMOTE / UNDO</td>
+</tr>
+<tr>
+<td>field_name</td>
+<td>Which field</td>
+</tr>
+<tr>
+<td>old_value / new_value</td>
+<td>Before and after</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>Who did it</td>
+</tr>
+<tr>
+<td>timestamp</td>
+<td>When</td>
+</tr>
+</tbody>
+</table>
+<p>This gives us a complete <strong>UNDO/REDO stack</strong>. Replay the log forward to
+reconstruct any past state. Replay in reverse to undo. Like Wikipedia's edit
+history: every BOM state that ever existed can be reconstructed from the
+changelog, and every change is attributed to a user.</p>
+<p><strong>Multi-user conflict detection</strong> follows the iDempiere pattern: <code>AD_Session</code>
+identifies the editing session, <code>user_id</code> identifies the author. Two users
+editing the same BOM line produce two changelog entries — the system detects
+the conflict at save time by comparing timestamps.</p>
+<p><strong>Current status:</strong> ChangelogDAO is fully implemented and tested (TIER1_SRS.md §3).
+The <code>bim_changelog</code> table lives in work_output.db. Wire protocol supports
+<code>changelog</code> (query history) and <code>undoChanges</code> (revert N steps). Not yet
+integrated into BOM databases — the audit trail currently covers design
+edits in the viewport session.
+→ <a href="../TIER1_SRS/">TIER1_SRS.md §3</a> · <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §10</a></p>
 <p><strong>EntityType (D/U/A) — Dictionary vs User vs Application.</strong>
 iDempiere protects shipped dictionary records from user modification. Our
 <code>X_M_BOM</code> enforces the same: Dictionary records (shipped BOM templates) are

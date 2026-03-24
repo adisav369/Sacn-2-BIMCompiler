@@ -3711,6 +3711,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#appendix-s-session-e-order-inheritance-s68e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix S — Session E: Order Inheritance (S68e)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix S — Session E: Order Inheritance (S68e)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s1-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.1 Deliverables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s2-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.2 Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s3-gap-sc-5-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.3 — GAP-SC-5 Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s4-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.4 — Gate Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s5-witness-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.5 — Witness Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s6-blueprint-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.6 — Blueprint Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6207,6 +6290,89 @@
     <span class="md-ellipsis">
       
         Q.6 — Blueprint Aspirational Target
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-s-session-e-order-inheritance-s68e" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix S — Session E: Order Inheritance (S68e)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix S — Session E: Order Inheritance (S68e)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#s1-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.1 Deliverables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s2-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.2 Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s3-gap-sc-5-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.3 — GAP-SC-5 Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s4-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.4 — Gate Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s5-witness-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.5 — Witness Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#s6-blueprint-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S.6 — Blueprint Progress
       
     </span>
   </a>
@@ -10100,6 +10266,156 @@ children (subtree collapsed to single node).</p>
 - C_OrderLine #3: Exception on FLOOR[47] (indexed exception — Session E scope)</p>
 <p>Session D delivers #1 and #2. Indexed exceptions (<code>locator_ref[N]</code> syntax) are
 Session E scope (requires Order Inheritance for stacked overlays).</p>
+<hr />
+<h2 id="appendix-s-session-e-order-inheritance-s68e">Appendix S — Session E: Order Inheritance (S68e)<a class="headerlink" href="#appendix-s-session-e-order-inheritance-s68e" title="Permanent link">&para;</a></h2>
+<p><strong>Date:</strong> 2026-03-24
+<strong>Scope:</strong> Order inheritance chain resolution — exception overlays stacked like CSS layers.
+<strong>Spec:</strong> ProjectOrderBlueprint.md §6 (inheritance), Appendix R (GAP-SC-5 conflict resolution)
+<strong>Witness:</strong> W-INHERIT-CHAIN-1/2, W-INHERIT-1, W-INHERIT-DEPTH-1, W-INHERIT-CONFLICT-1, W-INHERIT-COMPAT-1</p>
+<h3 id="s1-deliverables">S.1 Deliverables<a class="headerlink" href="#s1-deliverables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Deliverable</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Migration W006_order_inheritance.sql</td>
+<td>DONE — <code>Ref_Order_ID TEXT</code> FK on C_Order (NULL = base order, non-null = exception order)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>InheritanceResolver.java</td>
+<td>DONE — chain walking (root-first), exception collection, cycle detection</td>
+</tr>
+<tr>
+<td>3</td>
+<td>BomDropper.dropWithInheritance()</td>
+<td>DONE — convenience method resolving chain before explosion</td>
+</tr>
+<tr>
+<td>4</td>
+<td>X_C_Order.java — Ref_Order_ID column</td>
+<td>DONE — column constant + getter/setter for parent FK</td>
+</tr>
+<tr>
+<td>5</td>
+<td>OrderInheritanceTest.java (6 witnesses)</td>
+<td>DONE — all 6 PASS</td>
+</tr>
+<tr>
+<td>6</td>
+<td>DV017 migration to all 34 non-SH BOM databases</td>
+<td>DONE — bom_category → m_product_category_id rename</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s2-architecture">S.2 Architecture<a class="headerlink" href="#s2-architecture" title="Permanent link">&para;</a></h3>
+<p><strong>Inheritance model:</strong> <code>C_Order.Ref_Order_ID</code> is a scalar FK — one parent per order.
+This structurally prevents diamond inheritance (DAG). The chain is always linear:
+root → child → grandchild → ... → leaf.</p>
+<p><strong>InheritanceResolver</strong> walks the chain root-first, collecting exception lines into
+a <code>Map&lt;String, ExceptionLine&gt;</code> keyed by <code>locator_ref</code>. Deeper orders override
+shallower ones at the same locator_ref (depth-wins rule, analogous to
+<code>M_PriceList_Version</code> where latest ValidFrom wins).</p>
+<p><strong>Resolution flow:</strong>
+<div class="highlight"><pre><span></span><code>DX_BASE (depth 0)
+  └─ DX_SOLAR (depth 1, Ref_Order_ID = DX_BASE)
+       └─ DX_SOLAR_PREMIUM (depth 2, Ref_Order_ID = DX_SOLAR)
+
+Resolved exceptions for DX_SOLAR_PREMIUM:
+  Rm_Kitchen.Light_1  → LIGHT_PREMIUM    (depth 2 overrides depth 0)
+  Rm_Roof.Panel_1     → SOLAR_PANEL_400W (depth 1, uncontested)
+  Rm_Bathroom.Tile_1  → TILE_MARBLE      (depth 2, uncontested)
+</code></pre></div></p>
+<p><strong>BomDropper.dropWithInheritance()</strong> is a convenience method that:
+1. Calls <code>InheritanceResolver.resolve(conn, orderId)</code> to collect the exception map
+2. Delegates to <code>BomDropper.drop(conn, entry, orderId, exceptions)</code>
+3. Existing callers using the 2-arg <code>drop()</code> are unchanged (backward compatible)</p>
+<p><strong>Cycle detection:</strong> The resolver tracks visited order IDs during chain walking.
+If a cycle is detected (order A → B → A), <code>IllegalStateException</code> is thrown
+with both order IDs in the message.</p>
+<h3 id="s3-gap-sc-5-resolution">S.3 — GAP-SC-5 Resolution<a class="headerlink" href="#s3-gap-sc-5-resolution" title="Permanent link">&para;</a></h3>
+<p>GAP-SC-5 ("Resolution for sibling branches modifying same locator_ref") is
+<strong>CLOSED</strong>. The sibling conflict is structurally impossible because
+<code>C_Order.Ref_Order_ID</code> is a scalar FK — diamond inheritance cannot be expressed
+in the data model. Full specification in Appendix R and ProjectOrderBlueprint.md §6.1–§6.4.</p>
+<p>If the user wants both solar + premium overlays, they create a combined order
+<code>DX_SOLAR_PREMIUM</code> with explicit exceptions. Three lines, fully auditable.</p>
+<h3 id="s4-gate-results">S.4 — Gate Results<a class="headerlink" href="#s4-gate-results" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mvn compile -q</code></td>
+<td>CLEAN</td>
+</tr>
+<tr>
+<td>OrderInheritanceTest (6 witnesses)</td>
+<td>6/6 PASS</td>
+</tr>
+<tr>
+<td>RemoveCompressTest (Session D, existing)</td>
+<td>5/5 PASS</td>
+</tr>
+<tr>
+<td>BomDropperOrderIdTest (existing)</td>
+<td>1/1 PASS</td>
+</tr>
+</tbody>
+</table>
+<h3 id="s5-witness-results">S.5 — Witness Results<a class="headerlink" href="#s5-witness-results" title="Permanent link">&para;</a></h3>
+<p><strong>W-INHERIT-CHAIN-1:</strong> 2-deep chain (DX_BASE → DX_SOLAR). Resolver returns
+DX_SOLAR's exception (solar panel on roof). Base order's exceptions also collected.</p>
+<p><strong>W-INHERIT-CHAIN-2:</strong> 3-deep chain (DX_BASE → DX_SOLAR → DX_SOLAR_PREMIUM).
+Resolver returns all 3 exceptions from all depths. Depth-wins rule verified.</p>
+<p><strong>W-INHERIT-1:</strong> Base order with no parent (Ref_Order_ID = NULL). Resolver returns
+only the base order's own exceptions. Backward compatible with Session D.</p>
+<p><strong>W-INHERIT-DEPTH-1:</strong> Same locator_ref modified at depth 0 and depth 2.
+Depth-2 value wins. Depth-0 value discarded.</p>
+<p><strong>W-INHERIT-CONFLICT-1:</strong> Cycle detection — order A references B, order B
+references A. <code>IllegalStateException</code> thrown with both IDs in message.</p>
+<p><strong>W-INHERIT-COMPAT-1:</strong> Existing <code>drop()</code> 2-arg path (no inheritance) still works.
+Backward compatibility confirmed — no regression on Session D functionality.</p>
+<h3 id="s6-blueprint-progress">S.6 — Blueprint Progress<a class="headerlink" href="#s6-blueprint-progress" title="Permanent link">&para;</a></h3>
+<p>Session E completes the three-session arc (D → R → E) for exception-based ordering:</p>
+<table>
+<thead>
+<tr>
+<th>Session</th>
+<th>Delivered</th>
+<th>Blueprint Section</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>D</strong> (S68b)</td>
+<td>Remove + Compress mutations, locator_ref addressing</td>
+<td>§1.1 (four mutations), §1.2 (reference class)</td>
+</tr>
+<tr>
+<td><strong>R</strong> (S68)</td>
+<td>GAP-SC-5 specification (conflict resolution)</td>
+<td>§6.1–§6.4 (inheritance rules)</td>
+</tr>
+<tr>
+<td><strong>E</strong> (S68e)</td>
+<td>InheritanceResolver, chain walking, cycle detection</td>
+<td>§6 (order inheritance)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remaining:</strong> Indexed exceptions (<code>locator_ref[N]</code> syntax for per-instance
+overrides within a reference class) and C_Project multi-order grouping (§2).</p>
 
 
 

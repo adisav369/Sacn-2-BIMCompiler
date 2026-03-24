@@ -1085,6 +1085,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-ad-data-placement-towards-a-shared-erpdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. AD Data Placement — Towards a Shared ERP.db
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. AD Data Placement — Towards a Shared ERP.db">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-current-state-where-ad-tables-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Current State — Where AD Tables Live
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-duplication-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Duplication Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-the-erpdb-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 The ERP.db Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-risks-and-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Risks and Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3196,6 +3268,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#6-ad-data-placement-towards-a-shared-erpdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. AD Data Placement — Towards a Shared ERP.db
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. AD Data Placement — Towards a Shared ERP.db">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-current-state-where-ad-tables-live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Current State — Where AD Tables Live
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-duplication-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Duplication Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-the-erpdb-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 The ERP.db Concept
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#64-benefits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.4 Benefits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#65-risks-and-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.5 Risks and Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4182,6 +4326,156 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="6-ad-data-placement-towards-a-shared-erpdb">6. AD Data Placement — Towards a Shared ERP.db<a class="headerlink" href="#6-ad-data-placement-towards-a-shared-erpdb" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Status:</strong> Investigation only (S69). No schema changes proposed.</p>
+</blockquote>
+<h3 id="61-current-state-where-ad-tables-live">6.1 Current State — Where AD Tables Live<a class="headerlink" href="#61-current-state-where-ad-tables-live" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th style="text-align: center;">disc_validation.db</th>
+<th style="text-align: center;">component_library.db</th>
+<th style="text-align: center;">{PREFIX}_BOM.db</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AD_Org</strong></td>
+<td style="text-align: center;">16 rows</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td>Discipline definitions (ARC, STR, FP...)</td>
+</tr>
+<tr>
+<td><strong>M_Product_Category</strong></td>
+<td style="text-align: center;">IFC→discipline map</td>
+<td style="text-align: center;">IFC→discipline map</td>
+<td style="text-align: center;">0 rows (DM only)</td>
+<td>Product classification</td>
+</tr>
+<tr>
+<td><strong>AD_SysConfig</strong></td>
+<td style="text-align: center;">8 rows (schema versions)</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">2 rows (integrity hash, expected elements)</td>
+<td>Different schema, different purpose</td>
+</tr>
+<tr>
+<td><strong>ad_val_rule + param</strong></td>
+<td style="text-align: center;">63 + N rows</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td>Validation rules</td>
+</tr>
+<tr>
+<td><strong>C_DocType</strong></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">1 row per building</td>
+<td>Building type classification</td>
+</tr>
+<tr>
+<td><strong>M_Product</strong></td>
+<td style="text-align: center;">2,477 rows</td>
+<td style="text-align: center;">2,475 rows (master)</td>
+<td style="text-align: center;">2–93 rows (transitional copy)</td>
+<td>Product catalog</td>
+</tr>
+<tr>
+<td><strong>M_Attribute</strong>*</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">per-building</td>
+<td>Instance customization</td>
+</tr>
+<tr>
+<td><strong>m_bom + m_bom_line</strong></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">per-building</td>
+<td>Spatial BOM (the core per-building data)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-duplication-analysis">6.2 Duplication Analysis<a class="headerlink" href="#62-duplication-analysis" title="Permanent link">&para;</a></h3>
+<p><strong>M_Product</strong> is the most duplicated table:
+- <strong>component_library.db</strong> is the master catalog (created by <code>ProductRegistrar.ensureProductCatalog()</code>)
+- <strong>disc_validation.db</strong> has a near-identical copy (2,477 vs 2,475) used for validation queries
+- <strong>{PREFIX}_BOM.db</strong> has small transitional copies for BOMWalker compatibility (target: remove)</p>
+<p><strong>M_Product_Category</strong> exists in both disc_validation.db and component_library.db with
+identical IFC class mappings. Only one authoritative copy is needed.</p>
+<p><strong>AD_SysConfig</strong> is NOT truly duplicated — different schemas serve different purposes:
+- disc_validation.db: <code>Name/Value</code> pairs tracking schema migration versions (DV001–DV015)
+- BOM databases: <code>config_key/config_value</code> pairs tracking per-building integrity hashes</p>
+<p><strong>C_DocType</strong> lives only in BOM databases (1 row each, e.g., RE_SH, RE_DX). In iDempiere,
+C_DocType is shared system configuration — it defines all document types centrally. Currently
+written by <code>IFCtoBOMPipeline</code> per-building; at compile time, <code>schema_snapshot_bom.sql</code> enriches
+the compile DB with additional C_DocType rows.</p>
+<h3 id="63-the-erpdb-concept">6.3 The ERP.db Concept<a class="headerlink" href="#63-the-erpdb-concept" title="Permanent link">&para;</a></h3>
+<p>In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
+They live once, centrally — not per-product or per-order. The current <code>disc_validation.db</code>
+already serves this role for most AD data but has a misleading name and incomplete coverage.</p>
+<p><strong>Proposed consolidation</strong> (rename disc_validation.db → ERP.db or create as superset):</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Database</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ERP shared</strong></td>
+<td><code>ERP.db</code> (was disc_validation.db)</td>
+<td>AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata</td>
+</tr>
+<tr>
+<td><strong>Product catalog</strong></td>
+<td><code>component_library.db</code></td>
+<td>M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry</td>
+</tr>
+<tr>
+<td><strong>Per-building BOM</strong></td>
+<td><code>{PREFIX}_BOM.db</code></td>
+<td>m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy)</td>
+</tr>
+<tr>
+<td><strong>Transactional</strong></td>
+<td><code>output.db</code></td>
+<td>c_order, c_orderline, elements_meta, PP_Order_Node, co_empty_space*</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What changes:</strong>
+- C_DocType master definitions move to ERP.db (all 6+ rows). BOM databases get a copy at compile time (already happens via schema_snapshot_bom.sql).
+- M_Product_Category: single authoritative copy in ERP.db. Remove from component_library.db (or make it a compile-time copy).
+- M_Product in disc_validation.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.</p>
+<p><strong>What stays the same:</strong>
+- BOM databases keep their per-building ad_sysconfig (different schema, per-building data)
+- BOM databases keep transitional M_Product copies until BOMWalker migration completes
+- The 4-DB split principle remains — ERP.db is a rename/consolidation, not a new database</p>
+<h3 id="64-benefits">6.4 Benefits<a class="headerlink" href="#64-benefits" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Single source of truth</strong> for AD tables — no more wondering which DB has the authoritative M_Product_Category</li>
+<li><strong>iDempiere alignment</strong> — AD tables centralised, just like iDempiere's dictionary</li>
+<li><strong>Clearer naming</strong> — "ERP.db" immediately tells a new developer this is shared configuration</li>
+<li><strong>Simpler pipeline</strong> — C_DocType written once to ERP.db, not re-created per building</li>
+</ol>
+<h3 id="65-risks-and-open-questions">6.5 Risks and Open Questions<a class="headerlink" href="#65-risks-and-open-questions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Migration complexity:</strong> Renaming disc_validation.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.</li>
+<li><strong>Backward compatibility:</strong> Existing BOM databases expect schema_snapshot_bom.sql enrichment at compile time. This mechanism continues regardless.</li>
+<li><strong>M_Product consolidation:</strong> Removing the disc_validation.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.</li>
+</ul>
+<blockquote>
+<p><strong>Decision:</strong> No action this session. This section documents the investigation.
+Implementation would be a separate bounded task with its own migration plan.</p>
+</blockquote>
 <hr />
 <p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
 <code>SystemContract.md</code> for the three-concern model (WHAT/HOW/WHERE),
