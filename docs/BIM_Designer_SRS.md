@@ -3242,7 +3242,7 @@ Bonsai UI — the HTML is an alternative surface, not a replacement.
 | 3 | **Bonsai → HTML state flow** — selection/edit in Bonsai updates HTML | W-WO-3 | Server SSE DONE. Need: Bonsai selection listener |
 | 4 | **BOM Outliner sync** — tree view in both surfaces, swap triggers recompile | W-WO-4 | BOM tree renders after bomDrop. Need: swap UI in tree |
 | 5 | **Save/Recall round-trip** — variant persistence from either surface | W-WO-5 | Backend DONE. Need: HTML save/recall buttons wired |
-| 6 | **ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | S60 | Spec: [S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md). 10 code changes, 5 schema gaps (U2-U6) |
+| 6 | **ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | S60 | Spec: [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md). 10 code changes, 5 schema gaps (U2-U6) |
 
 **Not in scope (deferred):**
 - Embedding search (§25)
@@ -3314,7 +3314,7 @@ The BOM Drop explodes the structural BOM only — FP elements come from
 
 #### 30.6.6 Migration Plan
 
-See [S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md) for the full 10-item code change list.
+See [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) for the full 10-item code change list.
 
 | Migration | DDL | Blocks | S60 Item |
 |-----------|-----|--------|----------|

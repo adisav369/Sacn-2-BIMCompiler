@@ -1004,7 +1004,7 @@ git commit -m "[SEAL] Re-seal after <change description>"
 
 ## Addendum: Industry Precedent
 
-See [INDUSTRY_PRECEDENT.md](INDUSTRY_PRECEDENT.md) — SQLite, NASA/JPL, Chromium, Bitcoin Core, Linux Kernel. Core principle: **the oracle must be external.**
+See [INDUSTRY_PRECEDENT.md](archive/INDUSTRY_PRECEDENT.md) — SQLite, NASA/JPL, Chromium, Bitcoin Core, Linux Kernel. Core principle: **the oracle must be external.**
 
 ---
 

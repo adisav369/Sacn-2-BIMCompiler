@@ -896,7 +896,7 @@ All 30 operators in `operator.py` → `client.py` → DesignerServer. Core 10:
 | 9 | Compile | `compile()` | `BIM_OT_designer_compile` |
 | 10 | Sync | `poll_commands()` | `_poll_commands_timer()` (2s) |
 
-Full verification table: [S60_UI_ALIGNMENT_SPEC.md](S60_UI_ALIGNMENT_SPEC.md) §4.
+Full verification table: [S60_UI_ALIGNMENT_SPEC.md](archive/S60_UI_ALIGNMENT_SPEC.md) §4.
 
 ### Federation Module Gap (S60 finding)
 
@@ -911,7 +911,7 @@ The IfcOpenShell federation module (`/home/red1/IfcOpenShell/.../federation/`) i
 - BCF export → Tab 8 Validate
 - Asset import → Tab 6D/7D
 
-Full gap analysis: [S60_UI_ALIGNMENT_SPEC.md](S60_UI_ALIGNMENT_SPEC.md) §3.
+Full gap analysis: [S60_UI_ALIGNMENT_SPEC.md](archive/S60_UI_ALIGNMENT_SPEC.md) §3.
 
 ### Why Not Blender?
 
@@ -931,7 +931,7 @@ The Work Order path compiles end-to-end (W-WO-1). S60 ERP alignment in progress.
 
 | Priority | Task | Status | Effort |
 |----------|------|--------|--------|
-| **1** | **S60 ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | IN PROGRESS | [S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md) |
+| **1** | **S60 ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | IN PROGRESS | [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) |
 | **2** | **Wire 4D-7D tabs to real DAO data** — ScheduleDAO/CostDAO/etc. already exist | NOT DONE | 1 session |
 | **3** | **Migrate federation operators to Java** — clash detection, BOQ, schedule | NOT DONE | Multi-session |
 | **4** | **DemoHouse UAT** — §30.4 end-to-end from either surface | NOT DONE | 1 session |
@@ -970,8 +970,8 @@ The Work Order path compiles end-to-end (W-WO-1). S60 ERP alignment in progress.
 [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) (infrastructure) |
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements) |
 [CORE_SRS.md](CORE_SRS.md) (scale research, report engine, compliance) |
-[S60_ERP_ALIGNMENT.md](S60_ERP_ALIGNMENT.md) (ERP model alignment) |
-[S60_UI_ALIGNMENT_SPEC.md](S60_UI_ALIGNMENT_SPEC.md) (UI + federation gap analysis) |
+[S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) (ERP model alignment) |
+[S60_UI_ALIGNMENT_SPEC.md](archive/S60_UI_ALIGNMENT_SPEC.md) (UI + federation gap analysis) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
 
 ---
