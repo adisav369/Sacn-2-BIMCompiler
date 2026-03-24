@@ -3188,7 +3188,7 @@
 
 <h1 id="data-model-per-building-bom-dictionary-from-rosetta-stones">Data Model — Per-Building BOM Dictionary from Rosetta Stones<a class="headerlink" href="#data-model-per-building-bom-dictionary-from-rosetta-stones" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="ConstructionAsERP.md">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
 </blockquote>
 <p><strong>This specification governs the creation of <code>{PREFIX}_BOM.db</code> dictionaries.</strong>
 Each building has its own BOM dictionary (<code>SH_BOM.db</code>, <code>DX_BOM.db</code>), reproduced from fresh
@@ -3196,7 +3196,7 @@ by the IFCtoBOM Java pipeline: <code>./scripts/run_RosettaStones.sh classify_sh.
 No hand-editing. No patching. Code produces data.</p>
 <p><strong>Source authority:</strong>
 - <code>TheRosettaStoneStrategy.md</code> §Stage 2: IFCtoBOM pipeline writes m_bom + m_bom_line per building
-- <code>ConstructionAsERP.md</code> §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
+- <code>BOMBasedCompilation.md</code> §4 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - <code>BOMBasedCompilation.md</code> §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)</p>
 <p><strong>Updated:</strong> 2026-03-19
 <strong>Principle:</strong> 4-DB split.
@@ -4153,10 +4153,9 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 </tbody>
 </table>
 <hr />
-<p><em>Authoritative reference. See <code>ConstructionAsERP.md</code> for design rationale,
-<code>TheRosettaStoneStrategy.md</code> for verification strategy,
-<code>BOMBasedCompilation.md</code> for tack convention and pipeline stages.</em>
-<em>Previous version: <code>docs/DATA_MODEL (Copy).md</code></em></p>
+<p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
+<code>SystemContract.md</code> for the three-concern model (WHAT/HOW/WHERE),
+<code>TheRosettaStoneStrategy.md</code> for verification strategy.</em></p>
 
 
 
