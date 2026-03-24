@@ -72,41 +72,20 @@ IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → o
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
 ```
 
-The BOM hierarchy maps directly to the building hierarchy:
-
-| Manufacturing | Construction | Table |
-|--------------|-------------|-------|
-| Product catalog | Building element (wall, door, pipe) | `M_Product` |
-| Bill of Materials | Assembly recipe (floor, room, building) | `M_BOM` + `M_BOM_Line` |
-| Work order | Construction project for a specific building | `C_Order` + `C_OrderLine` |
-| Production operation | Verb execution (TILE, ROUTE, FRAME) | `PP_Order_Node` |
-| Warehouse location | Spatial slot (room, plot) | `CO_EmptySpaceLine` |
+A product catalog (`M_Product`) becomes building elements. A Bill of Materials (`M_BOM`) becomes assembly recipes. A work order (`C_Order`) becomes a construction project. The same ERP tables that run a factory floor now compile a building.
 
 ---
 
 ## The Rosetta Stone Strategy
 
-Three real buildings, decomposed into reference databases. The compiler reads a BOM
-describing the same building and produces output. The test: does every compiled element
-land at the **same position** as the reference?
-
-| Stone | Elements | Gates | What it proves |
-|-------|----------|-------|---------------|
-| Sample House (SH) | 55 | ALL GREEN | Simple residential, 1 storey |
-| FZK Haus (FK) | 82 | ALL GREEN | European residential |
-| Duplex (DX) | 1,099 | ALL GREEN | 2-storey, 3 disciplines |
-| Terminal (TE) | 48,428 | ALL GREEN | Airport, 8 disciplines, 505 products |
-
-
 <figure style="float: right; margin: 0 0 12px 24px; max-width: 320px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex compiled in Blender — 48,428 elements" width="320">
-  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">The Terminal (TE) — 48,428 elements, 505 products, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">The Terminal — 48,428 elements, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
 </figure>
 
-Once a stone passes exact sameness, its BOM grammar is **certified**. Any new building
-composed from certified grammar inherits the proof.
+Real buildings become reference databases. The compiler reads a BOM describing the same building and produces output. If every element lands at the **same position** as the reference, the BOM grammar is **certified** — and any new building composed from certified grammar inherits the proof.
 
-[:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
+**35 buildings compiled.** From a 55-element house to a 48,428-element airport terminal. 19 pass all 6 gates. [:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
 
 <br clear="right"/>
 
@@ -114,19 +93,9 @@ composed from certified grammar inherits the proof.
 
 ## We Got Eyes
 
-The compiler can see. BIMEyes reduces every element's shape to three dimensionless
-ratios — planarity, elongation, squareness. A wall *must* be planar. A column *must*
-be elongated. These are mathematical facts, not heuristics.
+The compiler can see. BIMEyes reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall *must* be planar. A column *must* be elongated. Per-element, pairwise, and aggregate — 28 proof classes verify that elements are sane, relate correctly, and form coherent buildings.
 
-| Tier | What it proves | Example |
-|------|---------------|---------|
-| **Per-element** | Each element is geometrically sane | Positive extent, finite coordinates |
-| **Pairwise** | Elements relate correctly | Doors inside walls, furniture inside rooms |
-| **Aggregate** | The building makes sense | Rooms have walls + floor + ceiling + door |
-
-28 proof classes. 97% of 90,310 elements pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic.
-
-[:octicons-arrow-right-24: EYES specification](EYES_SRS.md)
+97% of 90,310 elements pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic. [:octicons-arrow-right-24: EYES specification](EYES_SRS.md)
 
 ---
 
@@ -173,12 +142,10 @@ mvn compile -q                              # Compile all modules
 | I want to... | Start here |
 |--------------|-----------|
 | Understand the system | [System Contract](SystemContract.md) — the governing document |
-| See what's planned | [Action Roadmap](ACTION_ROADMAP.md) — navigation hub for all specs |
 | Read the master spec | [BOM-Based Compilation](BOMBasedCompilation.md) — tack, walker, gospel |
 | Navigate the code | [Source Code Guide](SourceCodeGuide.md) — entry points, DAOs, patterns |
 | Onboard a new IFC | [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) — 8-step recipe |
-| Understand ERP mapping | [Construction as ERP](ConstructionAsERP.md) — C_Order, three-concern |
-| See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) — exception ordering, C_Project, rule packs |
+| See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) — exception ordering, C_Project |
 
 ---
 
