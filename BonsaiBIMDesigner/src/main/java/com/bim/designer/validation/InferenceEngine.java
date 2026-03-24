@@ -99,7 +99,7 @@ public class InferenceEngine {
         if (rules == null || rules.isEmpty()) return List.of();
 
         BIMLogger.fine(TAG, "Evaluating {} rules for category={}", rules.size(),
-                request != null ? request.bomCategory() : "null");
+                request != null ? request.productCategory() : "null");
 
         // Index rules by ID for quick lookup
         Map<Integer, CachedRuleExt> ruleById = new LinkedHashMap<>();

@@ -1019,13 +1019,13 @@ Violation found:
 
 ```
 Input:
-  PlacementRequest { bomCategory, areaSqM, minDimMm, heightMm, widthMm,
+  PlacementRequest { productCategory, areaSqM, minDimMm, heightMm, widthMm,
                      ifcClass, discipline, storeyId, centerX, centerY, centerZ,
                      productWidth, productDepth, productHeight }
 
 Engine:
   PlacementValidatorImpl.validate(request)
-    → rulesByCategory.get(request.bomCategory)  // O(1) lookup
+    → rulesByCategory.get(request.productCategory)  // O(1) lookup
     → for each CachedRule:
         if check_method present → dispatch to named evaluator
         else → threshold comparison (existing logic)

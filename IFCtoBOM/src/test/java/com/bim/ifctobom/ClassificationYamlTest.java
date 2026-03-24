@@ -39,7 +39,7 @@ class ClassificationYamlTest {
         var gf = b.storeys().get("Ground Floor");
         assertNotNull(gf);
         assertEquals("GF", gf.code());
-        assertEquals("GF", gf.bomCategory());
+        assertEquals("GF", gf.productCategory());
         assertEquals("GROUND_FLOOR", gf.role());
         assertEquals(1010, gf.seq());
 
@@ -58,7 +58,7 @@ class ClassificationYamlTest {
         var gf = b.floorRooms().get("Ground Floor");
         assertNotNull(gf);
         assertEquals("FLOOR_SH_GF_STD", gf.bomId());
-        assertEquals("GF", gf.bomCategory());
+        assertEquals("GF", gf.productCategory());
         assertEquals(4, gf.spaces().size());
 
         var living = gf.spaces().get(0);

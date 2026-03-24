@@ -114,7 +114,7 @@ public class StructuralBomBuilder {
                     floorAabbW, floorAabbD, floorAabbH,
                     0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
             // Set m_product_category_id separately
-            updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
+            updateBomCategory(bomConn, floorBomId, storeyInfo.productCategory());
 
             // ── Insert element lines (skip scope-assigned elements) ──────────
             // FACTORIZE-v2: verb-compressed LEAF writes via VerbFactorizer.
@@ -210,11 +210,11 @@ public class StructuralBomBuilder {
         }
     }
 
-    private static void updateBomCategory(Connection conn, String bomId, String bomCategory)
+    private static void updateBomCategory(Connection conn, String bomId, String productCategory)
             throws SQLException {
         String sql = "UPDATE m_bom SET m_product_category_id = ? WHERE bom_id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomCategory);
+            stmt.setString(1, productCategory);
             stmt.setString(2, bomId);
             stmt.executeUpdate();
         }

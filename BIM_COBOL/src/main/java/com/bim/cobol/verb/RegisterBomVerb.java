@@ -88,7 +88,7 @@ public class RegisterBomVerb implements Verb<RegisterBomVerb.RegisterPayload> {
         }
 
         // Update m_product_category_id
-        bom.setBomCategory(categoryId);
+        bom.setProductCategory(categoryId);
         bom.save();
 
         return VerbResult.ok(keyword(),

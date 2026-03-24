@@ -290,7 +290,7 @@ public class CompositionBomBuilder {
     // ── SQL helpers ──────────────────────────────────────────────────────────
 
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
-                                        String bomType, String groupBy, String bomCategory,
+                                        String bomType, String groupBy, String productCategory,
                                         double aabbW, double aabbD, double aabbH)
             throws SQLException {
         String sql = """
@@ -305,7 +305,7 @@ public class CompositionBomBuilder {
             stmt.setString(2, bomName);
             stmt.setString(3, bomType);
             stmt.setString(4, groupBy);
-            stmt.setString(5, bomCategory);
+            stmt.setString(5, productCategory);
             stmt.setDouble(6, aabbW);
             stmt.setDouble(7, aabbD);
             stmt.setDouble(8, aabbH);

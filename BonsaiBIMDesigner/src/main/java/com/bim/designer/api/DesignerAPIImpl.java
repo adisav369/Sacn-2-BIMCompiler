@@ -632,7 +632,7 @@ public class DesignerAPIImpl implements DesignerAPI {
         try {
             return dao.listSegments(buildingBomId).stream()
                     .map(r -> new SegmentInfo(
-                            r.bomId(), r.name(), r.bomCategory(),
+                            r.bomId(), r.name(), r.productCategory(),
                             r.elementCount(), r.disciplines()))
                     .toList();
         } catch (Exception e) {
@@ -1579,7 +1579,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             var rows = woDao.listOrderLines(buildingId);
 
             var lines = rows.stream().map(r -> new OrderLineInfo(
-                    r.orderLineId(), r.familyRef(), r.hostType(), r.bomCategory(),
+                    r.orderLineId(), r.familyRef(), r.hostType(), r.productCategory(),
                     r.dx(), r.dy(), r.dz(),
                     r.widthMm(), r.depthMm(), r.heightMm(),
                     r.qty(), r.validationStatus(), r.parentOrderLineId()
@@ -1615,7 +1615,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             }
 
             var info = new OrderLineInfo(
-                    row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
+                    row.orderLineId(), row.familyRef(), row.hostType(), row.productCategory(),
                     row.dx(), row.dy(), row.dz(),
                     row.widthMm(), row.depthMm(), row.heightMm(),
                     row.qty(), row.validationStatus(), row.parentOrderLineId());
@@ -1650,7 +1650,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             }
 
             var info = new OrderLineInfo(
-                    row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
+                    row.orderLineId(), row.familyRef(), row.hostType(), row.productCategory(),
                     row.dx(), row.dy(), row.dz(),
                     row.widthMm(), row.depthMm(), row.heightMm(),
                     row.qty(), row.validationStatus(), row.parentOrderLineId());
@@ -1707,7 +1707,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                 .map(c -> buildTreeNode(c, childrenMap))
                 .toList();
         return new BomTreeNode(
-                row.orderLineId(), row.familyRef(), row.hostType(), row.bomCategory(),
+                row.orderLineId(), row.familyRef(), row.hostType(), row.productCategory(),
                 row.widthMm(), row.depthMm(), row.heightMm(),
                 row.qty(), row.validationStatus(), children);
     }
@@ -1739,7 +1739,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             //    per node. IsBOM products (matching m_bom) recurse; others are LEAF.
             int[] leafCount = {0};
             BomTreeNode tree = explodeBomTree(woDao, orderId, buildingProductId,
-                    0, "BUILDING", rootBom.getBomCategory(), 0, leafCount);
+                    0, "BUILDING", rootBom.getProductCategory(), 0, leafCount);
 
             BIMLogger.info(TAG, "BOM_DROP → order={} root_line={} leaves={}",
                     orderId, tree != null ? tree.orderLineId() : 0, leafCount[0]);
@@ -1802,14 +1802,14 @@ public class DesignerAPIImpl implements DesignerAPI {
      * @param bomId            current BOM to explode
      * @param parentLineId     parent C_OrderLine_ID (0 = root)
      * @param hostType         BUILDING | FLOOR | ROOM | LEAF
-     * @param bomCategory      M_Product_Category for this node
+     * @param productCategory      M_Product_Category for this node
      * @param depth            recursion depth (0 = root)
      * @param leafCount        mutable counter for leaf elements
      * @return BomTreeNode for the Outliner
      */
     private BomTreeNode explodeBomTree(WorkOutputDAO woDao, String orderId,
                                         String bomId, int parentLineId,
-                                        String hostType, String bomCategory,
+                                        String hostType, String productCategory,
                                         int depth, int[] leafCount) throws Exception {
         if (depth > 20) {
             BIMLogger.warn(TAG, "BOM_DROP max depth exceeded at {}", bomId);
@@ -1822,7 +1822,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
         // Insert C_OrderLine for this BOM node
         int lineId = woDao.insertBomDropLine(orderId, parentLineId,
-                bomId, hostType, bomCategory,
+                bomId, hostType, productCategory,
                 0, 0, 0,  // root/assembly offsets — tack is relative
                 bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
                 1);
@@ -1844,7 +1844,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                 String childHostType = deriveHostType(depth + 1);
                 BomTreeNode child = explodeBomTree(woDao, orderId,
                         childProductId, lineId,
-                        childHostType, childBom.getBomCategory(),
+                        childHostType, childBom.getProductCategory(),
                         depth + 1, leafCount);
                 if (child != null) children.add(child);
 
@@ -1863,7 +1863,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                 // Leaf product — insert C_OrderLine as LEAF
                 int qty = line.getQty();
                 int leafLineId = woDao.insertBomDropLine(orderId, lineId,
-                        childProductId, "LEAF", bomCategory,
+                        childProductId, "LEAF", productCategory,
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(),
@@ -1871,14 +1871,14 @@ public class DesignerAPIImpl implements DesignerAPI {
                 leafCount[0] += qty;
 
                 children.add(new BomTreeNode(
-                        leafLineId, childProductId, "LEAF", bomCategory,
+                        leafLineId, childProductId, "LEAF", productCategory,
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(),
                         qty, "UNCHECKED", List.of()));
             }
         }
 
-        return new BomTreeNode(lineId, bomId, hostType, bomCategory,
+        return new BomTreeNode(lineId, bomId, hostType, productCategory,
                 bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
                 1, "UNCHECKED", children);
     }

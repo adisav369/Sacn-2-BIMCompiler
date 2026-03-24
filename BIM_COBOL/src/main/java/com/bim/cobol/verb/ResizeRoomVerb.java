@@ -89,7 +89,7 @@ public class ResizeRoomVerb implements Verb<ResizeRoomVerb.ResizePayload> {
             newBom.setBomId(newBomId);
             newBom.setBomName(newBomId);
             newBom.setBomType(source.getBomType());
-            newBom.setBomCategory(source.getBomCategory());
+            newBom.setProductCategory(source.getProductCategory());
             newBom.setGroupBy(source.getGroupBy());
             newBom.setIsActive(true);
             newBom.setBomLevel(source.getBomLevel());

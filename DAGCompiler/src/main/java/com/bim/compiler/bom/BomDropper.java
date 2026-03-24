@@ -127,7 +127,7 @@ public class BomDropper {
      * @return the C_OrderLine_ID of the inserted node (auto-generated)
      */
     private static int explode(Connection conn, String orderId, String bomId,
-                                int parentLineId, String hostType, String bomCategory,
+                                int parentLineId, String hostType, String productCategory,
                                 int depth, int[] leafCount, int[] lineSeq)
             throws SQLException {
         if (depth > MAX_DEPTH) {
@@ -139,12 +139,12 @@ public class BomDropper {
         MBOM bom = new MBOM(conn);
         if (!bom.load(bomId)) return 0;
 
-        if (bomCategory == null) bomCategory = bom.getBomCategory();
+        if (productCategory == null) productCategory = bom.getProductCategory();
 
         // Insert C_OrderLine for this assembly node (bom_child_id=NULL for root)
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId == 0 ? null : parentLineId,
-                lineSeq[0], bomId, hostType, bomCategory, 0,  // bom_child_id=NULL for assemblies at root
+                lineSeq[0], bomId, hostType, productCategory, 0,  // bom_child_id=NULL for assemblies at root
                 0, 0, 0,
                 bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(), 1);
 
@@ -162,7 +162,7 @@ public class BomDropper {
                 // Sub-assembly — recurse
                 String childHostType = deriveHostType(depth + 1);
                 explodeAssembly(conn, orderId, childProductId,
-                        lineId, childHostType, childBom.getBomCategory(),
+                        lineId, childHostType, childBom.getProductCategory(),
                         depth + 1, leafCount, lineSeq, line.getBomChildId());
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
@@ -175,7 +175,7 @@ public class BomDropper {
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
-                        childProductId, "LEAF", bomCategory, line.getBomChildId(),
+                        childProductId, "LEAF", productCategory, line.getBomChildId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(), qty);
@@ -191,7 +191,7 @@ public class BomDropper {
      * on the assembly's C_OrderLine.
      */
     private static int explodeAssembly(Connection conn, String orderId, String bomId,
-                                        int parentLineId, String hostType, String bomCategory,
+                                        int parentLineId, String hostType, String productCategory,
                                         int depth, int[] leafCount, int[] lineSeq,
                                         int makeBomChildId) throws SQLException {
         if (depth > MAX_DEPTH) return 0;
@@ -199,12 +199,12 @@ public class BomDropper {
         MBOM bom = new MBOM(conn);
         if (!bom.load(bomId)) return 0;
 
-        if (bomCategory == null) bomCategory = bom.getBomCategory();
+        if (productCategory == null) productCategory = bom.getProductCategory();
 
         // Insert assembly C_OrderLine with the MAKE line's bom_child_id
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId, lineSeq[0],
-                bomId, hostType, bomCategory, makeBomChildId,
+                bomId, hostType, productCategory, makeBomChildId,
                 0, 0, 0,  // assembly-level offsets are 0 (tack is on the MAKE line)
                 bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(), 1);
 
@@ -220,7 +220,7 @@ public class BomDropper {
             if (isBom) {
                 String childHostType = deriveHostType(depth + 1);
                 explodeAssembly(conn, orderId, childProductId, lineId,
-                        childHostType, childBom.getBomCategory(),
+                        childHostType, childBom.getProductCategory(),
                         depth + 1, leafCount, lineSeq, line.getBomChildId());
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
@@ -232,7 +232,7 @@ public class BomDropper {
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
-                        childProductId, "LEAF", bomCategory, line.getBomChildId(),
+                        childProductId, "LEAF", productCategory, line.getBomChildId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(), qty);
@@ -248,11 +248,11 @@ public class BomDropper {
      */
     private static int insertLine(Connection conn, String orderId, Integer parentLineId,
                                    int lineSeq, String familyRef, String hostType,
-                                   String bomCategory, int bomChildId,
+                                   String productCategory, int bomChildId,
                                    double dx, double dy, double dz,
                                    double widthMm, double depthMm, double heightMm,
                                    int qty) throws SQLException {
-        String discipline = deriveDiscipline(bomCategory);
+        String discipline = deriveDiscipline(productCategory);
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                    + " m_product_category_id, bom_child_id, dx, dy, dz, "
@@ -265,7 +265,7 @@ public class BomDropper {
             ps.setInt(3, lineSeq);
             ps.setString(4, familyRef);
             ps.setString(5, hostType);
-            ps.setString(6, bomCategory);
+            ps.setString(6, productCategory);
             if (bomChildId > 0) ps.setInt(7, bomChildId);
             else ps.setNull(7, Types.INTEGER);
             ps.setDouble(8, dx);
@@ -297,12 +297,12 @@ public class BomDropper {
      * Derive Discipline from m_product_category_id — same logic as W003 backfill.
      * RF/STR/SL → STR, FP → FPR, MEP/ELEC/PLB/ACMV → pass-through, else ARC.
      */
-    static String deriveDiscipline(String bomCategory) {
-        if (bomCategory == null) return "ARC";
-        return switch (bomCategory) {
+    static String deriveDiscipline(String productCategory) {
+        if (productCategory == null) return "ARC";
+        return switch (productCategory) {
             case "RF", "STR", "SL" -> "STR";
             case "FP" -> "FPR";
-            case "MEP", "ELEC", "PLB", "ACMV" -> bomCategory;
+            case "MEP", "ELEC", "PLB", "ACMV" -> productCategory;
             default -> "ARC";
         };
     }

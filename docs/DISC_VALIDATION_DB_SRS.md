@@ -655,7 +655,7 @@ ELEC (1172), SP (979), LPG (209).
 |---------|-------|-------------|
 | `getDiscipline()` / `setDiscipline(String)` | X_C_OrderLine.java | String getter/setter |
 | `Discipline.fromString(s)` | Discipline.java | Enum conversion |
-| `disciplineStack.push(bomCategory)` | PlacementCollectorVisitor.java | Deque\<String\> |
+| `disciplineStack.push(productCategory)` | PlacementCollectorVisitor.java | Deque\<String\> |
 | `rs.getString("discipline")` | FederatedDBReader, MEPAD, OrderLineWalker | Raw string from DB |
 | `rs.getString("bom_category")` | SustainabilityDAO, FacilityMgmtDAO | Proxy discipline |
 | TypeDisciplineMapping (static) | TypeDisciplineMapping.java | EnumMap (in-memory, not DB) |

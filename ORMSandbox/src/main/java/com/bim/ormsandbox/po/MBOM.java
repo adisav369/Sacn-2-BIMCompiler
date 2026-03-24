@@ -49,9 +49,9 @@ public class MBOM extends X_M_BOM {
     }
 
     /** All active BOMs of a given functional category (LI, BD, KT, FR, ST, ...). */
-    public static List<MBOM> getByCategory(Connection conn, String bomCategory) throws SQLException {
+    public static List<MBOM> getByCategory(Connection conn, String productCategory) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_category + " = ?", bomCategory)
+            .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();
@@ -240,7 +240,7 @@ public class MBOM extends X_M_BOM {
      * <p>Selection cascade: AABB fit (primary) → largest volume → lowest seq_no (tiebreaker).
      * Variant-specific BOMs (doc_sub_type match) are included alongside generics.
      */
-    public static MBOM findNextFitSpace(Connection conn, String bomCategory,
+    public static MBOM findNextFitSpace(Connection conn, String productCategory,
                                          String docSubType,
                                          int maxWidthMm, int maxDepthMm, int maxHeightMm)
             throws SQLException {
@@ -250,7 +250,7 @@ public class MBOM extends X_M_BOM {
             : COLUMNNAME_doc_sub_type + " IS NULL";
 
         ModelQuery<MBOM> query = new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_category + " = ?", bomCategory)
+            .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1);
 
         if (docSubType != null) {
@@ -317,12 +317,12 @@ public class MBOM extends X_M_BOM {
      * the parent AABB. In BOM.db the box is packed; in output.db PHANTOMs are
      * stripped and only real content (BUY) remains at tack positions.
      */
-    public static MBOM findBestFitAnyOwner(Connection conn, String bomCategory,
+    public static MBOM findBestFitAnyOwner(Connection conn, String productCategory,
                                             int maxWidthMm, int maxDepthMm, int maxHeightMm)
             throws SQLException {
 
         List<MBOM> candidates = new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_category + " = ?", bomCategory)
+            .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
             .list();

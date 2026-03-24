@@ -535,7 +535,7 @@ class DemoHouseTest {
         }
     }
 
-    private Double getUbblParam(String bomCategory, String paramName) throws Exception {
+    private Double getUbblParam(String productCategory, String paramName) throws Exception {
         try (PreparedStatement ps = valConn.prepareStatement(
                 "SELECT p.value FROM AD_Val_Rule_Param p "
                 + "JOIN AD_Val_Rule r ON r.ad_val_rule_id = p.ad_val_rule_id "
@@ -546,7 +546,7 @@ class DemoHouseTest {
                 + "                AND p2.name = 'm_product_category_id' "
                 + "                AND p2.value = ?)")) {
             ps.setString(1, paramName);
-            ps.setString(2, bomCategory);
+            ps.setString(2, productCategory);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getDouble(1) : null;
             }

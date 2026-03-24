@@ -86,7 +86,7 @@ public class CreateRoomVerb implements Verb<CreateRoomVerb.CreateRoomPayload> {
         bom.setBomId(bomId);
         bom.setBomName(bomId);
         bom.setBomType("SET");
-        bom.setBomCategory(category);
+        bom.setProductCategory(category);
         bom.setGroupBy("ROOM");
         bom.setIsActive(true);
         bom.setBomLevel("SET");

@@ -113,7 +113,7 @@ public class CreateFloorVerb implements Verb<CreateFloorVerb.CreateFloorPayload>
         bom.setBomId(bomId);
         bom.setBomName("Floor " + floorName);
         bom.setBomType("FLOOR");
-        bom.setBomCategory("GF");  // default floor category
+        bom.setProductCategory("GF");  // default floor category
         bom.setGroupBy("BUILDING");
         bom.setIsActive(true);
         bom.setBomLevel("FLOOR");

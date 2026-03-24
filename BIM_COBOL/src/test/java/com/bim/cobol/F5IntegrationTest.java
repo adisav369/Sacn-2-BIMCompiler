@@ -203,7 +203,7 @@ class F5IntegrationTest {
         MBOM bom = MBOM.get(conn, "SY_F5_BOOKSHELF");
         assertNotNull(bom, "SY_F5_BOOKSHELF should exist");
         assertEquals("SET", bom.getBomType());
-        assertEquals("FR", bom.getBomCategory());
+        assertEquals("FR", bom.getProductCategory());
 
         List<MBOMLine> children = MBOMLine.getByBom(conn, "SY_F5_BOOKSHELF");
         assertEquals(2, children.size(), "bookshelf should have 2 lines (frame + top)");
@@ -318,7 +318,7 @@ class F5IntegrationTest {
         MBOM variant = MBOM.get(conn, "SY_F5_BT_VARIANT");
         assertNotNull(variant, "variant BOM should exist after CLONE");
         assertEquals("SET", variant.getBomType());
-        assertEquals("BT", variant.getBomCategory());
+        assertEquals("BT", variant.getProductCategory());
     }
 
     @Test

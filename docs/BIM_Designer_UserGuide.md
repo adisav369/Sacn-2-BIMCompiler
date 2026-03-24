@@ -447,7 +447,7 @@ User sets jurisdiction to MY (Malaysia)
   → Loads 10 UBBL rules from validation.db
 
 User creates BEDROOM 2800×3500mm
-  → PlacementRequest(bomCategory="BEDROOM", widthMm=2800, depthMm=3500, ...)
+  → PlacementRequest(productCategory="BEDROOM", widthMm=2800, depthMm=3500, ...)
   → Validator checks:
       min_dim_mm: MIN(2800, 3500) = 2800 < 3000 → BLOCK
   → Returns: "BLOCK: BEDROOM min dimension 2800mm < 3000mm [UBBL 2012 s33(1)]"

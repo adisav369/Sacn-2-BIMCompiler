@@ -270,7 +270,7 @@ public class AllModelsReportGenerator {
             setCellStr(row, 0, r.bomId(), d);
             setCellStr(row, 1, r.bomName(), d);
             setCellStr(row, 2, r.bomType(), d);
-            setCellStr(row, 3, r.bomCategory(), d);
+            setCellStr(row, 3, r.productCategory(), d);
             setCellStr(row, 4, r.docSubType(), d);
             setCellStr(row, 5, r.entityType(), d);
             setCellNum(row, 6, r.childCount(), is);

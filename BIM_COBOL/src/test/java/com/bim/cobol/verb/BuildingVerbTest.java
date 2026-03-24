@@ -192,7 +192,7 @@ class BuildingVerbTest {
 
         // Verify in DB
         MBOM bom = MBOM.get(conn, "SY_REGISTER_TEST");
-        assertEquals("BT", bom.getBomCategory(), "category should be updated to BT");
+        assertEquals("BT", bom.getProductCategory(), "category should be updated to BT");
     }
 
     /**
@@ -309,7 +309,7 @@ class BuildingVerbTest {
         MBOM unit = MBOM.get(conn, p.bldgBomId());
         assertNotNull(unit, "building BOM should exist");
         assertEquals("BUILDING", unit.getBomType());
-        assertEquals("RE", unit.getBomCategory());  // derived from RESIDENTIAL input
+        assertEquals("RE", unit.getProductCategory());  // derived from RESIDENTIAL input
 
         // Verify it has children
         List<MBOMLine> children = MBOMLine.getByBom(conn, p.bldgBomId());

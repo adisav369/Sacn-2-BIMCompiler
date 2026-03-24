@@ -213,7 +213,7 @@ public class DesignerDAO {
     }
 
     public record SegmentRow(
-            String bomId, String name, String bomCategory,
+            String bomId, String name, String productCategory,
             int elementCount, List<String> disciplines
     ) {}
 
@@ -419,7 +419,7 @@ public class DesignerDAO {
     public record CategoryRow(String categoryName, String bomType, int bomCount) {}
 
     public record BomHeaderRow(
-            String bomId, String bomName, String bomType, String bomCategory,
+            String bomId, String bomName, String bomType, String productCategory,
             int aabbWidthMm, int aabbDepthMm, int aabbHeightMm,
             String entityType
     ) {}
@@ -498,7 +498,7 @@ public class DesignerDAO {
     }
 
     public record SetMatchRow(
-            String bomId, String bomName, String bomCategory,
+            String bomId, String bomName, String productCategory,
             int aabbWidthMm, int aabbDepthMm, int aabbHeightMm,
             int childCount
     ) {}

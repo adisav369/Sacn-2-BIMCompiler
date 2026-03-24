@@ -114,7 +114,7 @@ class BomDropTest {
                 root.familyRef(), root.children().size());
         for (BomTreeNode floor : root.children()) {
             System.out.printf("  ├─ %s (category=%s, children=%d)%n",
-                    floor.familyRef(), floor.bomCategory(), floor.children().size());
+                    floor.familyRef(), floor.productCategory(), floor.children().size());
         }
     }
 
@@ -159,7 +159,7 @@ class BomDropTest {
             }
 
             System.out.printf("  ├─ %s (category=%s, %d leaves)%n",
-                    room.familyRef(), room.bomCategory(), room.children().size());
+                    room.familyRef(), room.productCategory(), room.children().size());
         }
         assertTrue(roomsWithLeaves >= 3,
                 "At least 3 rooms must have LEAF children (LIVING, DINING, BED)");
@@ -184,7 +184,7 @@ class BomDropTest {
     @Test
     @Order(6)
     @DisplayName("W-DROP-6: Each tree node carries m_product_category_id (M_Product_Category) for swap")
-    void w_drop_6_bom_category_on_nodes() {
+    void w_drop_6_product_category_on_nodes() {
         assertNotNull(dropResult, "W-DROP-1 must run first");
 
         // Walk tree and check that assembly nodes have m_product_category_id
@@ -195,7 +195,7 @@ class BomDropTest {
     }
 
     private int countCategorizedNodes(BomTreeNode node) {
-        int count = (node.bomCategory() != null && !node.bomCategory().isEmpty()) ? 1 : 0;
+        int count = (node.productCategory() != null && !node.productCategory().isEmpty()) ? 1 : 0;
         for (BomTreeNode child : node.children()) {
             count += countCategorizedNodes(child);
         }

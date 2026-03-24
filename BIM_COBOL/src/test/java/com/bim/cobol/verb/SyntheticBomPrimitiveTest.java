@@ -73,7 +73,7 @@ class SyntheticBomPrimitiveTest {
         MBOM bom = MBOM.get(conn, "SY_TEST_KIT");
         assertNotNull(bom, "SY_TEST_KIT should exist in DB");
         assertEquals("SET", bom.getBomType());
-        assertEquals("KT", bom.getBomCategory());
+        assertEquals("KT", bom.getProductCategory());
         assertEquals("SY", bom.getDocSubType());
         assertEquals("ROOM", bom.getGroupBy());
         assertTrue(bom.isActive());

@@ -45,7 +45,7 @@ public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
 
         // Parse named params
         String bomType = null;
-        String bomCategory = null;
+        String productCategory = null;
         String docSubType = null;
 
         for (int i = 1; i < args.length - 1; i++) {
@@ -53,14 +53,14 @@ public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
             String val = args[i + 1];
             switch (key) {
                 case "TYPE"         -> { bomType = val.toUpperCase(); i++; }
-                case "CATEGORY"     -> { bomCategory = val.toUpperCase(); i++; }
+                case "CATEGORY"     -> { productCategory = val.toUpperCase(); i++; }
                 case "DOC_SUB_TYPE" -> { docSubType = val.toUpperCase(); i++; }
             }
         }
 
         if (bomType == null)
             return VerbResult.fail(keyword(), "TYPE is required", null);
-        if (bomCategory == null)
+        if (productCategory == null)
             return VerbResult.fail(keyword(), "CATEGORY is required", null);
 
         // Validate SY_ namespace
@@ -92,7 +92,7 @@ public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
         bom.setBomId(bomId);
         bom.setBomName(bomId);
         bom.setBomType(bomType);
-        bom.setBomCategory(bomCategory);
+        bom.setProductCategory(productCategory);
         bom.setGroupBy(groupBy);
         bom.setIsActive(true);
         bom.setBomLevel(bomType);
@@ -103,16 +103,16 @@ public class CreateBomVerb implements Verb<CreateBomVerb.CreateBomPayload> {
         bom.save();
 
         CreateBomPayload payload = new CreateBomPayload(
-            bomId, bomType, bomCategory, docSubType);
+            bomId, bomType, productCategory, docSubType);
 
         return VerbResult.ok(keyword(),
             String.format("CREATE BOM %s: type=%s, category=%s%s",
-                bomId, bomType, bomCategory,
+                bomId, bomType, productCategory,
                 docSubType != null ? ", doc_sub_type=" + docSubType : ""),
             payload);
     }
 
     public record CreateBomPayload(
-        String bomId, String bomType, String bomCategory, String docSubType
+        String bomId, String bomType, String productCategory, String docSubType
     ) {}
 }

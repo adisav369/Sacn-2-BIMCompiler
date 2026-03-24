@@ -169,7 +169,7 @@ class OrderConfiguratorTest {
         var roof = woDao.getOrderLine(roofLineId);
         assertNotNull(roof, "Roof line must exist");
         assertEquals("ROOF_ASSEMBLY", roof.familyRef());
-        assertEquals("RF", roof.bomCategory());
+        assertEquals("RF", roof.productCategory());
         assertEquals(1730, roof.heightMm(), 0.01);
     }
 
@@ -232,7 +232,7 @@ class OrderConfiguratorTest {
         var fpLine = woDao.getOrderLine(fpLineId);
         assertNotNull(fpLine);
         assertEquals("FP_SPRINKLER_HEAD", fpLine.familyRef());
-        assertEquals("FP", fpLine.bomCategory());
+        assertEquals("FP", fpLine.productCategory());
         assertEquals("LEAF", fpLine.hostType());
         assertEquals(4, fpLine.qty());
     }
@@ -393,7 +393,7 @@ class OrderConfiguratorTest {
         assertTrue(canEditCategory, "BUG-2 FIXED: m_product_category_id must be editable");
 
         var roof = woDao.getOrderLine(roofLineId);
-        assertEquals("RF_PITCHED", roof.bomCategory(), "Category must be updated");
+        assertEquals("RF_PITCHED", roof.productCategory(), "Category must be updated");
 
         boolean canEditProduct = woDao.updateOrderLine(roofLineId, "family_ref", "ROOF_PITCHED_ASM");
         assertTrue(canEditProduct, "family_ref must be editable for product swap");

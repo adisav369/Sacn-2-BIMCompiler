@@ -24,7 +24,7 @@ public class ClassificationYaml {
 
     // ── Records ──────────────────────────────────────────────────────────────
 
-    public record StoreyConfig(String code, String bomCategory, String role, int seq) {}
+    public record StoreyConfig(String code, String productCategory, String role, int seq) {}
 
     public record SpaceConfig(String name, String templateBom, String role, int seq,
                               int aabbW, int aabbD, int aabbH,
@@ -36,7 +36,7 @@ public class ClassificationYaml {
         }
     }
 
-    public record FloorRoomConfig(String bomId, String bomCategory, List<SpaceConfig> spaces) {}
+    public record FloorRoomConfig(String bomId, String productCategory, List<SpaceConfig> spaces) {}
 
     public record StaticChildConfig(String childProductId, String role, int seq, double dz) {}
 

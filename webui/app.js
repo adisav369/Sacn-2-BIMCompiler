@@ -216,7 +216,7 @@ const BIM = (() => {
                 '<td>' + (i+1) + '</td>' +
                 '<td>' + esc(l.familyRef || l.productId || '') + '</td>' +
                 '<td>' + esc(l.hostType || '') + '</td>' +
-                '<td>' + esc(l.bomCategory || l.category || '') + '</td>' +
+                '<td>' + esc(l.productCategory || l.category || '') + '</td>' +
                 '<td class="num editable" ondblclick="BIM.editCell(this,' + lineId + ',\'widthMm\')">' +
                     fmt(l.widthMm || 0) + '</td>' +
                 '<td class="num editable" ondblclick="BIM.editCell(this,' + lineId + ',\'depthMm\')">' +

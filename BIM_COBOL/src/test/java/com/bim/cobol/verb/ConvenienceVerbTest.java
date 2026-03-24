@@ -75,7 +75,7 @@ class ConvenienceVerbTest {
         MBOM bom = MBOM.get(conn, "SY_BT_2000x1000");
         assertNotNull(bom, "SY_BT_2000x1000 should exist");
         assertEquals("SET", bom.getBomType());
-        assertEquals("BT", bom.getBomCategory());
+        assertEquals("BT", bom.getProductCategory());
 
         // Verify children were cloned from template
         CreateRoomVerb.CreateRoomPayload p =
@@ -103,7 +103,7 @@ class ConvenienceVerbTest {
         MBOM bom = MBOM.get(conn, "SY_BD_4000x3000");
         assertNotNull(bom, "SY_BD_4000x3000 should exist");
         assertEquals("SET", bom.getBomType());
-        assertEquals("BD", bom.getBomCategory());
+        assertEquals("BD", bom.getProductCategory());
 
         CreateRoomVerb.CreateRoomPayload p =
             (CreateRoomVerb.CreateRoomPayload) result.payload();
@@ -237,7 +237,7 @@ class ConvenienceVerbTest {
         MBOM newBom = MBOM.get(conn, "SY_BT_3000x2000");
         assertNotNull(newBom, "cloned BOM should exist");
         assertEquals("SET", newBom.getBomType());
-        assertEquals("BT", newBom.getBomCategory());
+        assertEquals("BT", newBom.getProductCategory());
 
         // Original should still have its children
         List<MBOMLine> origChildren = MBOMLine.getByBom(conn, "SY_BT_2000x1000");

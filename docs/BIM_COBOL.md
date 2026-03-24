@@ -2137,7 +2137,7 @@ CREATE BOM SY_UNIT_01 TYPE UNIT CATEGORY RE DOC_SUB_TYPE SY
 ```
 
 **Writes to {PREFIX}_BOM.db:** 1 `m_bom` row.
-**Payload:** `CreateBomPayload(bomId, bomType, bomCategory, docSubType)`
+**Payload:** `CreateBomPayload(bomId, bomType, productCategory, docSubType)`
 
 #### ADD LINE
 

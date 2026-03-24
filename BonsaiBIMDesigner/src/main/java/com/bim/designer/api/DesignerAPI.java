@@ -523,7 +523,7 @@ public interface DesignerAPI extends AssemblyAPI {
     record SegmentInfo(
             String bomId,
             String name,
-            String bomCategory,     // CW, PKG, TRK, PIR, DCK, SUP, ABT, APR, MS
+            String productCategory,     // CW, PKG, TRK, PIR, DCK, SUP, ABT, APR, MS
             int elementCount,       // number of LEAF elements in this segment
             List<String> disciplines // SET-level disciplines (STR, GEO, PAV, MARK, etc.)
     ) {}
@@ -625,7 +625,7 @@ public interface DesignerAPI extends AssemblyAPI {
 
     /** ORDER View row — flat tabular representation of a C_OrderLine. */
     record OrderLineInfo(int orderLineId, String familyRef, String hostType,
-                         String bomCategory, double dx, double dy, double dz,
+                         String productCategory, double dx, double dy, double dz,
                          double widthMm, double depthMm, double heightMm,
                          int qty, String validationStatus, int parentOrderLineId) {}
 
@@ -639,7 +639,7 @@ public interface DesignerAPI extends AssemblyAPI {
 
     /** BOM Outliner tree node — hierarchical BUILDING→FLOOR→ROOM→ITEM. */
     record BomTreeNode(int orderLineId, String familyRef, String hostType,
-                       String bomCategory, double widthMm, double depthMm,
+                       String productCategory, double widthMm, double depthMm,
                        double heightMm, int qty, String validationStatus,
                        java.util.List<BomTreeNode> children) {}
 

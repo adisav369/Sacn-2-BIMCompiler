@@ -192,7 +192,7 @@ class BIM_PT_bim_designer(Panel):
         for line in lines:
             row = order_box.row(align=True)
             row.label(text=str(line.get("orderLineId", "")))
-            row.label(text=line.get("bomCategory", line.get("hostType", "")))
+            row.label(text=line.get("productCategory", line.get("hostType", "")))
             row.label(text=line.get("familyRef", ""))
 
             w = line.get("widthMm", 0)

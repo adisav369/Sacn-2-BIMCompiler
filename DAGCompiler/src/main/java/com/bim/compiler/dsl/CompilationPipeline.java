@@ -563,7 +563,7 @@ public class CompilationPipeline {
                     List<MBOM> floorBoms = MBOM.getByType(bomConn, "FLOOR");
                     resolvedFloorBomId = floorBoms.stream()
                         .filter(b -> docSubType.equals(b.getDocSubType())
-                                  && b.getBomCategory() != null)
+                                  && b.getProductCategory() != null)
                         .map(MBOM::getBomId)
                         .findFirst().orElse(floorBomId);
                     if (!resolvedFloorBomId.equals(floorBomId)) {
@@ -636,14 +636,14 @@ public class CompilationPipeline {
         }
 
         /** Map BOM category code to ad_room_boundary room_type. */
-        private static String categoryToRoomType(String bomCategory) {
-            return switch (bomCategory) {
+        private static String categoryToRoomType(String productCategory) {
+            return switch (productCategory) {
                 case "LI" -> "LIVING";
                 case "BD" -> "BEDROOM";
                 case "KT" -> "KITCHEN";
                 case "BT" -> "BATHROOM";
                 case "DN" -> "DINING";
-                default   -> bomCategory;  // pass-through for non-standard codes
+                default   -> productCategory;  // pass-through for non-standard codes
             };
         }
 

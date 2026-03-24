@@ -141,7 +141,7 @@ class ExtractedBOMWalkTest {
             for (String bomId : List.of(BUILDING_SH, BUILDING_DX)) {
                 MBOM bom = MBOM.get(conn, bomId);
                 assertNotNull(bom, bomId + " must exist and be active");
-                assertEquals("RE", bom.getBomCategory(),
+                assertEquals("RE", bom.getProductCategory(),
                     bomId + " m_product_category_id must be RE (Residential)");
             }
         }

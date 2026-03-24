@@ -62,7 +62,7 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
                 }
                 rows.add(new CatalogRow(
                     bom.getBomId(), bom.getBomName(),
-                    bom.getBomType(), bom.getBomCategory(),
+                    bom.getBomType(), bom.getProductCategory(),
                     bom.getDocSubType() != null ? bom.getDocSubType() : "",
                     bom.getEntityType() != null ? bom.getEntityType() : "D",
                     children.size(), buyCount, makeCount, phantomCount
@@ -125,7 +125,7 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
                 setCellStr(row, 0, r.bomId(), ds);
                 setCellStr(row, 1, r.bomName(), ds);
                 setCellStr(row, 2, r.bomType(), ds);
-                setCellStr(row, 3, r.bomCategory(), ds);
+                setCellStr(row, 3, r.productCategory(), ds);
                 setCellStr(row, 4, r.docSubType(), ds);
                 setCellStr(row, 5, r.entityType(), ds);
                 setCellNum(row, 6, r.childCount(), is);
@@ -157,7 +157,7 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
     }
 
     public record CatalogRow(
-        String bomId, String bomName, String bomType, String bomCategory,
+        String bomId, String bomName, String bomType, String productCategory,
         String docSubType, String entityType,
         int childCount, int buyCount, int makeCount, int phantomCount
     ) {}

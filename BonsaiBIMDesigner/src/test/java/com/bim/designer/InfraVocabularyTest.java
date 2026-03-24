@@ -124,7 +124,7 @@ class InfraVocabularyTest {
 
             Set<String> categories = new HashSet<>();
             for (SegmentInfo s : segments) {
-                if (s.bomCategory() != null) categories.add(s.bomCategory());
+                if (s.productCategory() != null) categories.add(s.productCategory());
             }
 
             // Bridge vocabulary: ABT (abutment), PIR (pier), DCK (deck),
@@ -153,7 +153,7 @@ class InfraVocabularyTest {
 
             Set<String> categories = new HashSet<>();
             for (SegmentInfo s : segments) {
-                if (s.bomCategory() != null) categories.add(s.bomCategory());
+                if (s.productCategory() != null) categories.add(s.productCategory());
             }
 
             assertTrue(categories.contains("CW"), "Road must have CW (carriageway) segments");
@@ -161,7 +161,7 @@ class InfraVocabularyTest {
 
             // Road should have at least 4 carriageway segments + 1 parking
             long cwCount = segments.stream()
-                    .filter(s -> "CW".equals(s.bomCategory())).count();
+                    .filter(s -> "CW".equals(s.productCategory())).count();
             assertTrue(cwCount >= 3,
                     "Road should have ≥3 carriageway segments, got " + cwCount);
 
@@ -185,7 +185,7 @@ class InfraVocabularyTest {
 
             Set<String> categories = new HashSet<>();
             for (SegmentInfo s : segments) {
-                if (s.bomCategory() != null) categories.add(s.bomCategory());
+                if (s.productCategory() != null) categories.add(s.productCategory());
             }
 
             assertTrue(categories.contains("TRK"), "Rail must have TRK (track) segment");
@@ -210,7 +210,7 @@ class InfraVocabularyTest {
 
             // Each carriageway segment should list disciplines
             SegmentInfo cw1 = segments.stream()
-                    .filter(s -> "CW".equals(s.bomCategory()))
+                    .filter(s -> "CW".equals(s.productCategory()))
                     .findFirst().orElse(null);
             assertNotNull(cw1, "Should have a CW segment");
 

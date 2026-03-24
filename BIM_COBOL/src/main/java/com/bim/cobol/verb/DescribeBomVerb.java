@@ -48,14 +48,14 @@ public class DescribeBomVerb implements Verb<DescribeBomVerb.DescribeBomPayload>
 
         List<TreeLine> tree = new ArrayList<>();
         tree.add(new TreeLine(0, bomId, "ROOT",
-            root.getBomType(), root.getBomCategory(),
+            root.getBomType(), root.getProductCategory(),
             root.getBomName(), root.getDocSubType()));
 
         int[] counts = new int[3]; // BUY, MAKE, PHANTOM
         int maxDepth = walkDescribe(conn, bomId, 1, tree, counts);
 
         DescribeBomPayload payload = new DescribeBomPayload(
-            bomId, root.getBomName(), root.getBomType(), root.getBomCategory(),
+            bomId, root.getBomName(), root.getBomType(), root.getProductCategory(),
             counts[0], counts[1], counts[2], maxDepth, tree);
 
         return VerbResult.ok(keyword(),
@@ -119,7 +119,7 @@ public class DescribeBomVerb implements Verb<DescribeBomVerb.DescribeBomPayload>
     ) {}
 
     public record DescribeBomPayload(
-        String bomId, String bomName, String bomType, String bomCategory,
+        String bomId, String bomName, String bomType, String productCategory,
         int buyCount, int makeCount, int phantomCount,
         int maxDepth, List<TreeLine> tree
     ) {}

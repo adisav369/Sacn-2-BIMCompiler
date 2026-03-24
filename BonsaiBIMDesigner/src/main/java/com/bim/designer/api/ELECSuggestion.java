@@ -34,14 +34,14 @@ public class ELECSuggestion implements OrderLineMutation {
         BIMLogger.info(TAG, "PROPOSE ELEC on order {} — {} rooms, packs={}", orderId, rooms.size(), packIds);
 
         for (RoomContext room : rooms) {
-            String spaceType = OrderMutationService.deriveSpaceType(room.bomCategory());
+            String spaceType = OrderMutationService.deriveSpaceType(room.productCategory());
             if (spaceType == null) continue;
 
             List<MEPRequirement> reqs = mepQuery.queryForDiscipline(spaceType, "ELEC", packIds);
             for (MEPRequirement req : reqs) {
                 int qty = computeQty(req, room.areaSqM());
                 proposals.add(new ProposedOrderLine(
-                        room.orderLineId(), room.bomCategory(),
+                        room.orderLineId(), room.productCategory(),
                         req.mepProductId(), "ELEC", qty,
                         req.placementRule(), req.buildingCode(), req.codeClause()));
             }

@@ -11,7 +11,7 @@ import java.sql.Connection;
  * <p>M_Product is flattened into M_BOM. A leaf item is an M_BOM with no M_BOM_Line children.
  * Four orthogonal dimensions: {@code doc_base_type} (DocType: RE/CO/IN),
  * {@code doc_sub_type} (DocSubType: SH/DX/TB — WHICH variant),
- * {@code bom_category} (functional role: LI/BD/KT — WHAT assembly),
+ * {@code m_product_category_id} (functional role: LI/BD/KT — WHAT assembly),
  * SpaceSize on M_BOM_Line (HOW MUCH).
  *
  * <p>Table: {@code m_bom}
@@ -51,7 +51,7 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_is_active          = "is_active";
     public static final String COLUMNNAME_bom_level          = "bom_level";
     public static final String COLUMNNAME_bom_type           = "bom_type";
-    public static final String COLUMNNAME_bom_category       = "m_product_category_id";
+    public static final String COLUMNNAME_m_product_category_id       = "m_product_category_id";
     public static final String COLUMNNAME_doc_base_type        = "doc_base_type";
     public static final String COLUMNNAME_doc_sub_type         = "doc_sub_type";
     public static final String COLUMNNAME_seq_no              = "seq_no";
@@ -104,7 +104,7 @@ public class X_M_BOM extends BasePO {
     public boolean isActive()           { return get_ValueAsBoolean(COLUMNNAME_is_active); }
     public String  getBomLevel()        { return get_ValueAsString(COLUMNNAME_bom_level); }
     public String  getBomType()         { return get_ValueAsString(COLUMNNAME_bom_type); }
-    public String  getBomCategory()     { return get_ValueAsString(COLUMNNAME_bom_category); }
+    public String  getProductCategory()     { return get_ValueAsString(COLUMNNAME_m_product_category_id); }
     public String  getDocBaseType()     { return get_ValueAsString(COLUMNNAME_doc_base_type); }
     public String  getDocSubType()      { return get_ValueAsString(COLUMNNAME_doc_sub_type); }
     public int     getSeqNo()           { return get_ValueAsInt(COLUMNNAME_seq_no); }
@@ -120,7 +120,7 @@ public class X_M_BOM extends BasePO {
     public void setIsActive(boolean v)      { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
     public void setBomLevel(String v)       { set_Value(COLUMNNAME_bom_level, v); }
     public void setBomType(String v)        { set_Value(COLUMNNAME_bom_type, v); }
-    public void setBomCategory(String v)    { set_Value(COLUMNNAME_bom_category, v); }
+    public void setProductCategory(String v)    { set_Value(COLUMNNAME_m_product_category_id, v); }
     public void setDocBaseType(String v)   { set_Value(COLUMNNAME_doc_base_type, v); }
     public void setDocSubType(String v)     { set_Value(COLUMNNAME_doc_sub_type, v); }
     public void setSeqNo(int v)             { set_Value(COLUMNNAME_seq_no, v); }

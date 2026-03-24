@@ -873,8 +873,8 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 
 ---
 
-**Sealed:** 2026-03-24 (v31: S67 watchdog cleanup — removed CompileProof/DemoHouseCompileTest. DM compiles via standard Rosetta Stone pipeline)
-**Super-hash:** `3afbfe37af8f5960d942d696633309419f9dc5281099e74b1f6daabd54837bc7`
+**Sealed:** 2026-03-24 (v32: S68b bomCategory → productCategory identifier rename across 47 Java files)
+**Super-hash:** `edb53f7cf0cfe2ad2589abcffc24f00e9e8b3ada0fa1e241553e91ff41bb1d42`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

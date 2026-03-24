@@ -108,7 +108,7 @@ public class AddFloorVerb implements Verb<AddFloorVerb.AddFloorPayload> {
             slab.setBomId(slabBomId);
             slab.setBomName("Slab " + floorName);
             slab.setBomType("ITEM");
-            slab.setBomCategory("SL");
+            slab.setProductCategory("SL");
             slab.setGroupBy("BUILDING");
             slab.setIsActive(true);
             slab.setBomLevel("ITEM");

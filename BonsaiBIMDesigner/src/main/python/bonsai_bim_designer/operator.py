@@ -1520,7 +1520,7 @@ class BIM_OT_designer_bom_drop_popup(Operator):
             w = node.get("widthMm", 0)
             d = node.get("depthMm", 0)
             h = node.get("heightMm", 0)
-            cat = node.get("bomCategory", "")
+            cat = node.get("productCategory", "")
             dims = f"  {w:.0f}x{d:.0f}x{h:.0f}" if w > 0 else ""
             cat_tag = f"  [{cat}]" if cat else ""
 
@@ -1660,7 +1660,7 @@ def _do_preview_bboxes(building_id: str) -> None:
             return
 
         # Convert order lines to bbox format for design_bbox.enable()
-        # Each line has: familyRef, hostType, bomCategory, widthMm, depthMm, heightMm,
+        # Each line has: familyRef, hostType, productCategory, widthMm, depthMm, heightMm,
         # dx, dy, dz (offsets from parent)
         bboxes = []
         for line in lines:
@@ -1678,7 +1678,7 @@ def _do_preview_bboxes(building_id: str) -> None:
                 "bomId": str(line.get("orderLineId", "")),
                 "name": line.get("familyRef", line.get("productId", "?")),
                 "bomType": line.get("hostType", "ITEM"),
-                "category": line.get("bomCategory", "ARC"),
+                "category": line.get("productCategory", "ARC"),
                 "minX": dx, "minY": dy, "minZ": dz,
                 "maxX": dx + w, "maxY": dy + d, "maxZ": dz + h,
             })

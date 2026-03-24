@@ -35,14 +35,14 @@ public class ACMVSuggestion implements OrderLineMutation {
         BIMLogger.info(TAG, "PROPOSE ACMV on order {} — {} rooms, packs={}", orderId, rooms.size(), packIds);
 
         for (RoomContext room : rooms) {
-            String spaceType = OrderMutationService.deriveSpaceType(room.bomCategory());
+            String spaceType = OrderMutationService.deriveSpaceType(room.productCategory());
             if (spaceType == null) continue;
 
             List<MEPRequirement> reqs = mepQuery.queryForDiscipline(spaceType, "ACMV", packIds);
             for (MEPRequirement req : reqs) {
                 int qty = ELECSuggestion.computeQty(req, room.areaSqM());
                 proposals.add(new ProposedOrderLine(
-                        room.orderLineId(), room.bomCategory(),
+                        room.orderLineId(), room.productCategory(),
                         req.mepProductId(), "ACMV", qty,
                         req.placementRule(), req.buildingCode(), req.codeClause()));
             }

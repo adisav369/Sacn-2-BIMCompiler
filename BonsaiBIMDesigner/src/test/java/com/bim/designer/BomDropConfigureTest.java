@@ -105,13 +105,13 @@ class BomDropConfigureTest {
 
         BomTreeNode roof = findNode(dropResult.tree(), "SH_ROOF_STR");
         assertNotNull(roof, "SH_ROOF_STR must be in the tree");
-        assertEquals("RF", roof.bomCategory(), "Roof category must be RF");
+        assertEquals("RF", roof.productCategory(), "Roof category must be RF");
 
         roofOrderLineId = roof.orderLineId();
         assertTrue(roofOrderLineId > 0, "Roof OrderLine ID must be positive");
 
         System.out.printf("  Roof node: orderLineId=%d, category=%s, children=%d%n",
-                roofOrderLineId, roof.bomCategory(), roof.children().size());
+                roofOrderLineId, roof.productCategory(), roof.children().size());
     }
 
     // ── W-TC4-3: Swap roof product to FK pitched roof ───────────────────

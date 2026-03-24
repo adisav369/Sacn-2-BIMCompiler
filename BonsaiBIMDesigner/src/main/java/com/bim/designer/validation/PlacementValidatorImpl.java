@@ -124,7 +124,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
         // Return first BLOCK immediately; collect worst WARN otherwise
         ValidationVerdict worst = ValidationVerdict.pass();
 
-        ValidationVerdict v = checkCategory(request, request.bomCategory());
+        ValidationVerdict v = checkCategory(request, request.productCategory());
         if (v.isBlocked()) return v;
         if (v.isWarning()) worst = v;
 
@@ -564,7 +564,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
             List<InferenceEngine.CachedRuleExt> extRules = new ArrayList<>();
 
             // Category-specific rules
-            List<CachedRule> catRules = rulesByCategory.get(req.bomCategory());
+            List<CachedRule> catRules = rulesByCategory.get(req.productCategory());
             if (catRules != null) {
                 for (CachedRule r : catRules) {
                     extRules.add(toExt(r));

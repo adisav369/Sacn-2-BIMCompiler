@@ -13,7 +13,7 @@ package com.bim.designer.validation;
  */
 public record PlacementRequest(
         /** BOM category: BEDROOM, KITCHEN, BATHROOM, CORRIDOR, etc. */
-        String bomCategory,
+        String productCategory,
         /** IFC class (for clash rules): IfcFireSuppressionTerminal, IfcWall, etc. */
         String ifcClass,
         /** Discipline: ARC, STR, FPR, ELEC, SP, ACMV, etc. */

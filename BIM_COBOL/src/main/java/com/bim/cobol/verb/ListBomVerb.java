@@ -54,7 +54,7 @@ public class ListBomVerb implements Verb<ListBomVerb.ListBomPayload> {
         for (MBOM bom : boms) {
             entries.add(new BomEntry(
                 bom.getBomId(), bom.getBomName(),
-                bom.getBomType(), bom.getBomCategory(),
+                bom.getBomType(), bom.getProductCategory(),
                 bom.getDocSubType(), bom.getSeqNo()));
         }
 
@@ -71,7 +71,7 @@ public class ListBomVerb implements Verb<ListBomVerb.ListBomPayload> {
 
     public record BomEntry(
         String bomId, String bomName,
-        String bomType, String bomCategory,
+        String bomType, String productCategory,
         String docSubType, int seqNo
     ) {}
 

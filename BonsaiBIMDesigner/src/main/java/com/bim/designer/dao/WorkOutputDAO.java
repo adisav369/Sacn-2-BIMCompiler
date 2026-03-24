@@ -445,7 +445,7 @@ public class WorkOutputDAO {
      * // Implementing BIM_Designer.md §17.11 — Witness: W-OV-LIST-1
      */
     public record OrderLineRow(int orderLineId, String familyRef, String hostType,
-                                String bomCategory, double dx, double dy, double dz,
+                                String productCategory, double dx, double dy, double dz,
                                 double widthMm, double depthMm, double heightMm,
                                 int qty, String validationStatus, int parentOrderLineId) {}
 
@@ -665,7 +665,7 @@ public class WorkOutputDAO {
      * @param parentLineId      Parent_OrderLine_ID (0 = root)
      * @param familyRef         M_Product_ID — the product (or bom_id for assemblies)
      * @param hostType          BUILDING | FLOOR | ROOM | LEAF
-     * @param bomCategory       M_Product_Category — for BOM chooser swap browsing
+     * @param productCategory       M_Product_Category — for BOM chooser swap browsing
      * @param dx                tack X offset in parent LBD (metres)
      * @param dy                tack Y offset in parent LBD (metres)
      * @param dz                tack Z offset in parent LBD (metres)
@@ -676,7 +676,7 @@ public class WorkOutputDAO {
      * @return the C_OrderLine_ID (auto-increment)
      */
     public int insertBomDropLine(String orderId, int parentLineId,
-                                  String familyRef, String hostType, String bomCategory,
+                                  String familyRef, String hostType, String productCategory,
                                   double dx, double dy, double dz,
                                   double widthMm, double depthMm, double heightMm,
                                   int qty) throws SQLException {
@@ -708,7 +708,7 @@ public class WorkOutputDAO {
             ps.setInt(3, nextLine);
             ps.setString(4, familyRef);
             ps.setString(5, hostType);
-            ps.setString(6, bomCategory);
+            ps.setString(6, productCategory);
             ps.setString(7, familyRef);  // M_Product_ID = family_ref (iDempiere alignment)
             ps.setDouble(8, dx);
             ps.setDouble(9, dy);

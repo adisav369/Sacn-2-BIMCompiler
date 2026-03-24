@@ -117,8 +117,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     }
 
                     // Track discipline from SET-level BOMs (m_product_category_id = ARC, STR, FP, ...)
-                    if ("SET".equals(childBom.getBomType()) && childBom.getBomCategory() != null) {
-                        disciplineStack.push(childBom.getBomCategory());
+                    if ("SET".equals(childBom.getBomType()) && childBom.getProductCategory() != null) {
+                        disciplineStack.push(childBom.getProductCategory());
                     }
                 }
             } catch (SQLException e) {
@@ -195,7 +195,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     if (!storeyStack.isEmpty()) storeyStack.pop();
                 }
                 if (childBom != null && "SET".equals(childBom.getBomType())
-                        && childBom.getBomCategory() != null) {
+                        && childBom.getProductCategory() != null) {
                     if (!disciplineStack.isEmpty()) disciplineStack.pop();
                 }
             } catch (SQLException ex) {
@@ -609,7 +609,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             };
         }
         // Fall back to m_product_category_id
-        String cat = floorBom.getBomCategory();
+        String cat = floorBom.getProductCategory();
         if (cat != null) {
             return switch (cat) {
                 case "FN" -> "Foundation";

@@ -669,7 +669,7 @@ certificate (BIM_Designer.md §4.3).
 
 public String validateBomLine(MBOMLine line, Connection valConn) {
     // 1. Determine applicable rules
-    String category = line.getParentBom().getBomCategory();  // BEDROOM, KITCHEN, etc.
+    String category = line.getParentBom().getProductCategory();  // BEDROOM, KITCHEN, etc.
     String jurisdiction = line.getParentBom().getJurisdiction();  // MY, US, SG
 
     List<ValRule> rules = ValRuleDAO.findByCategory(valConn, category, jurisdiction);

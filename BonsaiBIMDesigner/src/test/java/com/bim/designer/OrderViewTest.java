@@ -127,7 +127,7 @@ class OrderViewTest {
 
         // Pick the Living Room (should be ROOM with LIVING category)
         var livingRoom = rows.stream()
-                .filter(r -> "LIVING".equals(r.bomCategory()))
+                .filter(r -> "LIVING".equals(r.productCategory()))
                 .findFirst().orElse(rows.get(2));
 
         int id = livingRoom.orderLineId();

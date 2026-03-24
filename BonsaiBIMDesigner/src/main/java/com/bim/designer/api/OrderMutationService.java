@@ -148,14 +148,14 @@ public class OrderMutationService {
         BIMLogger.info(TAG, "PROPOSE_INLINE {} on order {} — {} rooms", discipline, orderId, rooms.size());
 
         for (RoomContext room : rooms) {
-            String spaceType = deriveSpaceType(room.bomCategory());
+            String spaceType = deriveSpaceType(room.productCategory());
             if (spaceType == null) continue;
 
             List<MEPRequirement> reqs = mepQuery.queryForDiscipline(spaceType, discipline);
             for (MEPRequirement req : reqs) {
                 int qty = ELECSuggestion.computeQty(req, room.areaSqM());
                 proposals.add(new ProposedOrderLine(
-                        room.orderLineId(), room.bomCategory(),
+                        room.orderLineId(), room.productCategory(),
                         req.mepProductId(), discipline, qty,
                         req.placementRule(), req.buildingCode(), req.codeClause()));
             }
@@ -170,9 +170,9 @@ public class OrderMutationService {
      * BOM categories map directly to space types in most cases.
      * Returns null for categories that have no MEP mapping.
      */
-    static String deriveSpaceType(String bomCategory) {
-        if (bomCategory == null) return null;
-        return switch (bomCategory.toUpperCase()) {
+    static String deriveSpaceType(String productCategory) {
+        if (productCategory == null) return null;
+        return switch (productCategory.toUpperCase()) {
             case "BEDROOM", "BED" -> "BEDROOM";
             case "MASTER_BEDROOM", "MASTER_BED", "MASTER" -> "MASTER_BEDROOM";
             case "BATHROOM", "BATH" -> "BATHROOM";
@@ -187,7 +187,7 @@ public class OrderMutationService {
             case "CLASSROOM" -> "CLASSROOM";
             case "ASSEMBLY_HALL" -> "ASSEMBLY_HALL";
             default -> {
-                BIMLogger.info(TAG, "No MEP space_type mapping for m_product_category_id={}", bomCategory);
+                BIMLogger.info(TAG, "No MEP space_type mapping for m_product_category_id={}", productCategory);
                 yield null;
             }
         };

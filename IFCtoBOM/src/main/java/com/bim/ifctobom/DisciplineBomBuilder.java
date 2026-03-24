@@ -118,7 +118,7 @@ public class DisciplineBomBuilder {
                     "FLOOR", "STOREY",
                     null, null,
                     floorW, floorD, floorH,
-                    storeyInfo.bomCategory(),
+                    storeyInfo.productCategory(),
                     0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
 
             // ── Group elements by discipline ──────────────────────────────
@@ -198,7 +198,7 @@ public class DisciplineBomBuilder {
                                         String bomType, String groupBy,
                                         String docSubType, String docBaseType,
                                         double aabbW, double aabbD, double aabbH,
-                                        String bomCategory,
+                                        String productCategory,
                                         double originX, double originY, double originZ)
             throws SQLException {
         String sql = """
@@ -218,7 +218,7 @@ public class DisciplineBomBuilder {
             stmt.setString(4, groupBy);
             stmt.setString(5, docSubType);
             stmt.setString(6, docBaseType);
-            stmt.setString(7, bomCategory);
+            stmt.setString(7, productCategory);
             stmt.setDouble(8, aabbW);
             stmt.setDouble(9, aabbD);
             stmt.setDouble(10, aabbH);

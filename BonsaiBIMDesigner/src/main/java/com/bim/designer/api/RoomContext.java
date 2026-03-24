@@ -9,7 +9,7 @@ import java.util.List;
  *
  * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session B — Witness: W-DM-FP-VAL-1
  */
-public record RoomContext(int orderLineId, String bomCategory, double areaSqM) {
+public record RoomContext(int orderLineId, String productCategory, double areaSqM) {
 
     /**
      * Find all ROOM-level C_OrderLines in the given order.

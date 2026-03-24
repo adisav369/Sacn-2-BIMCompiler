@@ -79,7 +79,7 @@ public class CloneBomVerb implements Verb<CloneBomVerb.CloneBomPayload> {
         target.setIsActive(true);
         target.setBomLevel(source.getBomLevel());
         target.setBomType(source.getBomType());
-        target.setBomCategory(source.getBomCategory());
+        target.setProductCategory(source.getProductCategory());
         target.setDocSubType(source.getDocSubType());
         target.setSeqNo(source.getSeqNo());
         target.setOriginX(source.getOriginX());

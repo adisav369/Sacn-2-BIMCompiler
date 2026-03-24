@@ -49,7 +49,7 @@ public class FloorRoomBomBuilder {
             // Create FLOOR room BOM header
             insertBomHeader(bomConn, floorBomId,
                     config.prefix() + " " + storeyName + " Rooms",
-                    "FLOOR", "ROOM", fr.bomCategory());
+                    "FLOOR", "ROOM", fr.productCategory());
 
             // Floor world LBD for computing SET-in-FLOOR offsets
             double[] floorLbd = floorLbdWorld.get(storeyName);
@@ -102,7 +102,7 @@ public class FloorRoomBomBuilder {
 
     // Implementing BBC.md §4.2 — Witness: W-AABB-QUAL-1
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
-                                        String bomType, String groupBy, String bomCategory)
+                                        String bomType, String groupBy, String productCategory)
             throws SQLException {
         // FLOOR ROOM BOMs contain YAML-sourced room dimensions → INNER qualifier.
         // The room's AABB is the architect's intended clear volume (finish-to-finish).
@@ -118,7 +118,7 @@ public class FloorRoomBomBuilder {
             stmt.setString(2, bomName);
             stmt.setString(3, bomType);
             stmt.setString(4, groupBy);
-            stmt.setString(5, bomCategory);
+            stmt.setString(5, productCategory);
             stmt.executeUpdate();
         }
     }

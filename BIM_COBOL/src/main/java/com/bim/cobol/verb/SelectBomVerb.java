@@ -86,7 +86,7 @@ public class SelectBomVerb implements Verb<SelectBomVerb.SelectBomPayload> {
         }
 
         SelectBomPayload payload = new SelectBomPayload(
-            bomId, bom.getBomName(), bom.getBomType(), bom.getBomCategory(),
+            bomId, bom.getBomName(), bom.getBomType(), bom.getProductCategory(),
             children.size(), rows.size(), filterField, filterValue, rows);
 
         String filterDesc = filterField != null
@@ -96,7 +96,7 @@ public class SelectBomVerb implements Verb<SelectBomVerb.SelectBomPayload> {
         return VerbResult.ok(keyword(),
             String.format("%s: %d/%d children%s, type=%s, category=%s",
                 bomId, rows.size(), children.size(), filterDesc,
-                bom.getBomType(), bom.getBomCategory()),
+                bom.getBomType(), bom.getProductCategory()),
             payload);
     }
 
@@ -124,7 +124,7 @@ public class SelectBomVerb implements Verb<SelectBomVerb.SelectBomPayload> {
     ) {}
 
     public record SelectBomPayload(
-        String bomId, String bomName, String bomType, String bomCategory,
+        String bomId, String bomName, String bomType, String productCategory,
         int totalChildren, int matchedChildren,
         String filterField, String filterValue,
         List<ChildRow> rows
