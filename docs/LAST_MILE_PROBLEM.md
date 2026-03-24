@@ -100,7 +100,7 @@ describes, I MUST add a new Gap to this file BEFORE proceeding.
 | 7 | Separate from input | **PASS** | T18 guards. R11-R15 all DONE |
 | 8 | Visual fidelity | **PASS** | C8+C9+P06 triangulate. Log-based triage working. EYES ~14 per-element proofs (§10 honest count) |
 | 9 | Orientation | **PASS** | W-ROT for doors/windows. R21 DONE + re-extracted (S60-S3). M16/M17 ready for DocValidate wiring |
-| 10 | Meta-testing | **PASS** | Seal v28 (73 files) + T18-T20 tamper + C8/C9 cross-validation |
+| 10 | Meta-testing | **PASS** | Seal v31 (73 files) + T18-T20 tamper + C8/C9 cross-validation |
 | 11 | Factorization | **PASS** | R28 material guard + R29 CP-1 + R31 GUID geometry |
 
 **Remaining debt (all pre-existing, updated S60-S3):**
@@ -534,9 +534,9 @@ Target: remove BOM-side M_Product when all consumers use disc_validation.db.
 
 | # | Violation | Rows | Severity | Spec says |
 |---|-----------|------|----------|-----------|
-| V1 | `I_Element_Extraction` still has 49,582 rows | 49,582 | MEDIUM | R13 removed reader code, but data remains. Benign until a future consumer reads it accidentally. |
+| ~~V1~~ | ~~`I_Element_Extraction` still has 49,582 rows~~ | ~~49,582~~ | ~~MEDIUM~~ | **DONE** — R17/V006 migration DROP'd I_Element_Extraction (commit `854741f`) |
 | V2 | 60+ `ad_*` config tables (ad_space_type, ad_wall_type, ad_floor_type, ad_building_storey, etc.) | ~34 populated | HIGH | ConstructionAsERP.md §1.1 says component_library.db = "LOD geometry store + product catalog". Config tables are Application Dictionary — they should be in {PREFIX}_BOM.db or a dedicated config.db. |
-| V3 | Legacy BOM tables: `ad_bom` (35 rows), `ad_bom_child` (138 rows), `ad_bom_child_param` | ~173 | LOW | Pre-migration artifacts. Never read by current code (BOMWalker uses m_bom/m_bom_line). Dead data. |
+| ~~V3~~ | ~~Legacy BOM tables: `ad_bom`, `ad_bom_child`, `ad_bom_child_param`~~ | ~~~173~~ | ~~LOW~~ | **DONE** — R18/V006 migration DROP'd all three tables (commit `854741f`) |
 
 **V2 is the most significant.** The compiler reads ad_space_type, ad_wall_type,
 ad_floor_type, ad_unit_type_room, ad_building_storey from component_library.db via

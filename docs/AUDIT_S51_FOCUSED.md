@@ -950,3 +950,207 @@ Untracked `migration/S67_001_onboard_elec_products.sql` cites non-existent `DISC
 - Note Layer 2 spec-vs-implementation gap explicitly
 
 **Counts:** 4 HIGH stale markers, 3 HIGH contradictions, 5 missing items, 3 structural gaps.
+
+---
+
+## Appendix I — S67 Watchdog Audit: Specs Triage + Blueprint Direction + Structural Risk (2026-03-24)
+
+> **Scope:** (1) Verify specs triage commit landed and cleaned stale references. (2) Review blueprint §14 implementation plan — ordering, failure criteria, Session A accuracy. (3) Assess structural risks for Sessions A-E. (4) Gate check.
+> **Method:** Document cross-reference, git log/diff, code inspection via subagent. No pipeline run.
+> **Last reviewed commit:** `3f0ac7a` (S67 specs triage).
+
+---
+
+### I.1 — Gate Check
+
+| Check | Result |
+|-------|--------|
+| `mvn compile -q` | CLEAN (no output) |
+| Seal v31 | INTACT — 73 files, hash matches |
+| Dirty tree | `library/component_library.db` (modified, local-only — expected). 2 untracked docs (`ProjectOrderBlueprint_TH_English.txt`, `Red1WritingStyle.txt`) — user files, no action needed |
+| Branch | master, 24 commits ahead of origin (not pushed) |
+
+---
+
+### I.2 — Specs Triage Verification
+
+**Commit `3f0ac7a` landed.** 7 files touched, 10 insertions / 7 deletions. Verified changes:
+
+| Doc | Fix | Status |
+|-----|-----|--------|
+| DemoHouseAnalysis.md | DemoHouseCompileTest → standard pipeline note | ✓ CLEAN |
+| BIM_Designer_SRS.md | 2 refs updated (step 6 + S63 findings) | ✓ CLEAN |
+| EYES_SRS.md | W-GEN-COMPILE-5 → standard gate tests | ✓ CLEAN |
+| GENERATIVE_HOUSE_SRS.md §10.4 | Superseded note → blueprint §14 | ✓ CLEAN |
+| TestArchitecture.md | DemoHouse removed from pending re-seal | ✓ CLEAN |
+| ACTION_ROADMAP.md | R18 TODO → DONE (V006 migration) | ✓ CLEAN |
+| PROGRESS.md | S67 session log updated | ✓ CLEAN |
+
+**Remaining stale references (not fixed by triage):**
+
+| File | Line | Issue | Severity |
+|------|------|-------|----------|
+| AUDIT_S51_FOCUSED.md:521 | S61 audit table | Lists `DemoHouseCompileTest.java` as active test | LOW (historical record) |
+| AUDIT_S51_FOCUSED.md:842-874 | Appendix G (this doc) | Discusses W-GEN-COMPILE-5 as active, recommends "sharpen" action on deleted test | **MED** |
+
+**Decision:** Appendix G is a historical watchdog finding from S66, written before S67 deleted the test. The finding itself (Layer 2 is weak) remains valid — the response was to delete the weak test and compile DM via standard Rosetta Stone pipeline instead. No fix needed; the record is accurate for its date. The *action item* (G.2 Rank 1: "Sharpen W-GEN-COMPILE-5") is **SUPERSEDED** by the S67 decision to use the standard pipeline.
+
+**Layer 2 gap status post-S67:** DemoHouse now runs through `RE_DM` in RosettaStoneGateTest GATE_SCOPE (BuildingRegistryTest.java:65). It gets G1-G6 + C8/C9 gates like every other building. The Layer 2 "special test" problem identified in Appendix G is **resolved by elimination** — there is no special path anymore.
+
+---
+
+### I.3 — Blueprint §14 Direction Review
+
+#### Ordering Assessment
+
+| Session | Dependency | Order Correct? |
+|---------|-----------|---------------|
+| **A** (Add mutation) | None — wires existing AD data to C_OrderLine creation | ✓ |
+| **B** (Suggestion engine) | Needs Session A's `addDiscipline()` API to exist | ✓ |
+| **C** (Rule packs) | Needs Session B's OrderLineMutation interface | ✓ |
+| **D** (Remove + Compress) | Independent of B/C — could run in parallel | ⚠️ See below |
+| **E** (Order inheritance) | Needs D's locator_ref addressing | ✓ |
+
+**Session D could be reordered before B/C.** Remove (qty=0 skip) and Compress (reference class) are BomDropper/OrderLineWalker mechanics, independent of the rule engine. If Session B's suggestion engine proves harder than expected, D could be pulled forward as a lower-risk win. The current ordering (D after C) is defensible but not mandatory.
+
+#### Failure Criteria Assessment
+
+| Session | Failure Criterion | Sharp Enough? |
+|---------|-------------------|--------------|
+| **A** | "FPR C_OrderLines have no m_bom_line parent to walk (bom_child_id is NULL)" | ✓ **But code inspection shows this is NOT a real risk.** BomDropper.insertLine() accepts bomChildId=0 for assemblies (line 130-135). OrderLineWalker.walkOrder() checks `if (row.bomChildId > 0)` before loading MBOMLine (line 90-97) and handles null gracefully. The failure criterion is well-defined but unlikely to trigger. |
+| **B** | "ad_space_type_mep_bom qty data too coarse for real placement" | ✓ Good — this IS a real risk. Room AABB geometry is not in the rule rows. |
+| **C** | "ELEC/ACMV products don't exist in component_library.db" | ✓ Partially addressed — S67 onboarded 2 ELEC. Remaining products may still block. |
+| **D** | "locator_ref addressing conflicts with existing semantics" | ✓ Good — NORTH_WALL/CENTRE/FLOAT are spatial, not tree-address. Real conflict possible. |
+
+**Missing failure criterion for Session E:** No criterion for what happens when inheritance chains conflict (two ancestors both modify the same locator_ref). The blueprint says "last descendant wins" but doesn't define what "last" means for sibling branches.
+
+#### Session A "Partial" Status
+
+**Accurate.** Commit `ac4150a` delivered:
+- BomDropper.deriveDiscipline() — maps bom_category to discipline
+- PlacementCollectorVisitor 3-layer discipline priority (C_OrderLine → disciplineStack → deriveDiscipline)
+- W-DM-TC5-1 witness (STR=25, ARC=18, MEP=10)
+- W003_orderline_discipline.sql migration
+
+**Missing for Session A completion:**
+- `addDiscipline(orderId, discipline, jurisdictionContext)` API method on DesignerAPIImpl
+- Rule-driven C_OrderLine creation from ad_space_type_mep_bom
+- C_OrderLine.status = 'PROPOSED' (new column or state)
+
+The "partial" label is correct.
+
+---
+
+### I.4 — Structural Risk Assessment
+
+Code inspection of 7 critical files via subagent. Key findings:
+
+#### RISK 1: DesignerAPIImpl is a God Object — HIGH
+
+**3,151 lines. 57 public methods.** Handles building metadata, design operations, ASI overrides, BOM operations, layout, approval flow, assembly templates, verb execution, supply chain, project management. Sessions A-E will each add methods here.
+
+**Projection:** 70+ public methods, 4000+ lines by Session E.
+
+**This is the "CompileProof mess" pattern waiting to happen.** Not because the class is wrong today, but because unchecked growth creates the same problem: unnecessary infrastructure that complicates a simple process. When a class handles 10+ concerns, every change risks unintended coupling.
+
+**Recommendation:** When Session B adds the OrderLineMutation interface, implement it as a separate class (e.g., `OrderMutationService`) that DesignerAPIImpl delegates to. Don't add 5-10 more methods directly to the God Object.
+
+#### RISK 2: WorkOutputDAO.swapProduct() hardcoded columns — MEDIUM
+
+swapProduct() updates only `family_ref`, `M_Product_ID`, `updated`. If Sessions B-D add new C_OrderLine columns (status, validation_status), swapProduct() won't know about them. Not a blocker now, but will cause subtle bugs later.
+
+#### RISK 3: Layer 2 generative testing gap — ACKNOWLEDGED, NOT BLOCKING
+
+Appendix G identified Layer 2 as weak (D+ grade). S67's response — delete the special test, compile DM via standard pipeline — is the right call. DM now gets the same gates as every other building. However, the *conceptual gap* remains: for generative buildings, there is no extracted reference DB to diff against. The standard pipeline proves "output matches reference" but there's no reference for a building that was generated, not extracted.
+
+**This is acceptable for now.** The BOM IS the oracle for generative buildings. The compiler is deterministic (same BOM → same output, proven by G4-TAMPER). The gap is: "does the BOM correctly describe what the architect intended?" — which is a design-time concern, not a compilation concern.
+
+#### NO-RISK confirmations:
+
+| Component | Status |
+|-----------|--------|
+| BomDropper.drop() | Handles bomChildId=0/NULL — rule-driven lines will work |
+| OrderLineWalker.walkOrder() | Graceful null handling for lines without BOM parent |
+| PlacementCollectorVisitor discipline | S66 wiring confirmed complete and correct |
+| CompilationPipeline hooks | Removed cleanly, no residual listener patterns |
+| OrderLineMutation interface | Does not exist yet — safe to define in Session B |
+
+---
+
+### I.5 — Project Direction Assessment
+
+**Is the project heading toward the stated priorities?**
+
+| Priority | Status | Evidence |
+|----------|--------|----------|
+| Pipeline handles OrderLine changes | ✓ On track | BomDropper/OrderLineWalker already handle C_OrderLine. Session A completes the Add mutation. |
+| Discipline validation is rule-driven | ✓ On track | 325+ AD rule rows, 8 AD tables, InferenceEngine exists. §13 pattern defined. |
+| Abstract framework > specific disciplines | ✓ On track | S67 proved it: ELEC onboarded via migration SQL + 2 products, zero compiler changes. FP same pattern. |
+| Anti-drift: no special paths | ✓ **Improved this session** | CompileProof/DemoHouseCompileTest deleted. DM compiles via standard pipeline. No special infrastructure. |
+
+**Structural risks that could derail Sessions A-E:**
+
+1. **DesignerAPIImpl bloat** (HIGH) — the only real architectural risk. Mitigate by extracting a delegation class in Session B.
+2. **No failure criterion for inheritance conflicts in Session E** (LOW) — add one before starting.
+3. **Appendix H stale markers in LAST_MILE_PROBLEM.md** (MED) — 4 HIGH items identified in Appendix H still unfixed. These are doc debt, not code debt, but they erode trust in the spec as source of truth.
+
+**No "CompileProof mess" patterns detected in active code.** The pipeline is clean: 9 stages, deterministic, no hooks. The risk is in the API layer (DesignerAPIImpl), not the compilation layer.
+
+---
+
+### I.6 — Housekeeping Items
+
+| Item | Action | Owner |
+|------|--------|-------|
+| `memory/project_s62_fp_trial.md` | Obsolete — S62 FP trial superseded by S66 Task 4A + S67 ELEC. Delete and remove from MEMORY.md | Next session |
+| Appendix H fixes | 4 HIGH stale markers in LAST_MILE_PROBLEM.md (R17, R18, R25, R26 + 48428/48336 contradiction) still open | Next doc session |
+| Appendix G.2 Rank 1 action | "Sharpen W-GEN-COMPILE-5" is SUPERSEDED — DM now uses standard pipeline | Noted here, no action needed |
+| 24 unpushed commits | `master` is 24 ahead of origin. Consider pushing when ready. | User decision |
+
+---
+
+### I.7 — Verdict
+
+**The project is well-aligned with stated priorities.** The S67 cleanup (CompileProof deletion, DemoHouseCompileTest removal, seal v31) was the right call — it eliminated unnecessary infrastructure and proved the core principle: one uniform pipeline for all buildings.
+
+**Blueprint §14 is sound.** Session ordering is correct (with D optionally movable). Failure criteria are sharp for B/C/D, already-mitigated for A, and missing one edge case for E. Session A "partial" status is accurate.
+
+**One structural risk worth addressing:** DesignerAPIImpl (3,151 lines, 57 methods) is the only component that could become the next mess if Sessions A-E each add methods directly to it. Extract a delegation class in Session B.
+
+---
+
+### I.8 — Rosetta Dictionary: Compositional Verification Model (S67)
+
+The Three Verification Tiers (TheRosettaStoneStrategy.txt) only covered extracted buildings with full reference DBs. A new **Tier 4: COMPOSITIONAL VERIFICATION** was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).
+
+**Core concept:** When a Rosetta Stone passes exact sameness (G1-G6), its BOM becomes a certified dictionary entry. A composed building is a sentence built from proven words. Verification changes from "output == reference?" to "each fragment consistent with its source + composition satisfies spatial invariants."
+
+**Four verification steps:** (1) Provenance — trace to source stone. (2) Fragment fidelity — offsets match source BOM. (3) Spatial invariants — EYES proofs. (4) Containment — elements inside slots.
+
+**Java pattern:** FragmentVerifier strategy interface (Proven, RuleDriven, UserModified, Freehand implementations) dispatched by CompositionVerifierVisitor on OrderLineWalker.
+
+**ASI/Viewport path:** Dimension changes via M_AttributeSetInstance → recompile → EYES property-based tests verify spatial invariants without Bonsai.
+
+**New gate:** G7-COMPOSITION. **New witnesses:** W-COMP-PROV-1, W-COMP-FRAG-1, W-COMP-SPAT-1, W-COMP-CONT-1.
+
+**Written to:** TheRosettaStoneStrategy.txt (§Tier 4), TestArchitecture.md (updated §generative buildings).
+
+---
+
+### I.9 — C_Project §2 CTFL Audit (S67)
+
+ISTQB test design techniques applied to ProjectOrderBlueprint.md §2. Full test plan written to blueprint §2.1.
+
+**Key findings:**
+
+1. **R-PROJ-3 — BLOCKING BUG.** BomDropper.java:48 uses `entry.docTypeId()` as C_Order PK. 180 identical houses all get `RE_SH` — the DELETE at line 85 wipes each previous order. Only the last survives. Must parameterize orderId before any multi-order work.
+
+2. **9 equivalence partitions identified** (5 valid, 4 invalid). **9 boundary values.** **9 test cases** covering the full §2 example.
+
+3. **Test framework designed (test-first):** 4 test classes, 14 witness claims, 2 new gates (G7-PROJECT, G8-SITE). Failure criteria for performance, INFRA spatial model, output consolidation.
+
+4. **Dependencies clarified:** R-PROJ-3 fix + schema migration are blocking. §1 Compress, §6 Inheritance are NOT blocking — C_Project expands at project level before BomDropper, avoiding dependency on unimplemented features.
+
+5. **Performance risk:** 180 identical compiles may hit O(180n) wall. If > 60s, need compile-once-copy-many pattern (reference class lazy compilation).
+
+**Written to:** ProjectOrderBlueprint.md §2.1.

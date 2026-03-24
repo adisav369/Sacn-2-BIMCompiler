@@ -72,15 +72,16 @@ See [BIM_Designer_SRS.md](docs/BIM_Designer_SRS.md) for UX requirements and [BIM
 
 | Metric | Value |
 |--------|-------|
-| **Test suites** | 258 Designer + 5 DimRange + 19 BackOffice — all green |
-| **Buildings onboarded** | 34 (residential, clinics, castles, airport terminal, infrastructure) |
-| **BIM COBOL verbs** | 63 verbs, 196 witnesses, 5 tiers (L0–L4) |
-| **Compilation pipeline** | 9 stages, 6 mathematical gates (G1–G6) |
-| **Products** | 2,459 in catalog, 44K geometries, 25 IFC classes |
+| **Test suites** | 392 Designer + 5 BackOffice + AddDisciplineTest — all GREEN |
+| **Buildings compiled** | 35 (34 extracted + 1 generative). 19 ALL GREEN |
+| **BIM COBOL verbs** | 64 verbs, 205+ witnesses, 5 tiers (L0–L4) |
+| **Compilation pipeline** | 9 stages, 6 mathematical gates (G1–G6) + composition gate (G7) |
+| **Products** | 2,475 in catalog, 44K geometries, 25 IFC classes |
 | **Mined validation rules** | 415 dimension rules from 20 buildings — IFC quality gate |
 | **Largest building** | Terminal (48,428 elements, 505 products, 8 disciplines) |
-| **Databases** | 4-DB architecture: component_library (21 tables), disc_validation (22), per-building BOM (6), output |
-| **Java source** | 740 files across 10 Maven modules |
+| **Databases** | 4-DB architecture: component_library, disc_validation, per-building BOM, output |
+| **Java source** | 740+ files across 10 Maven modules |
+| **Specifications** | 53 docs, 4 tiers, governed by [SystemContract.md](docs/SystemContract.md) |
 
 ## Project Overview
 
@@ -170,13 +171,14 @@ Start here, in order:
 
 | # | Document | What |
 |---|----------|------|
-| 1 | [WorkOrderGuide.md](docs/WorkOrderGuide.md) | **Start here** — pipeline walkthrough, invention boundary, troubleshooting |
-| 2 | [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | Master spec — tack convention, BOM walker, compilation gospel |
-| 3 | [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
+| 1 | [SystemContract.md](docs/SystemContract.md) | **Governing document** — entity registry, transaction catalogue, three-concern matrix, gap register |
+| 2 | [ACTION_ROADMAP.md](docs/ACTION_ROADMAP.md) | **Quick reference** — "go to the roadmap" navigation hub for all specs |
+| 3 | [BOMBasedCompilation.md](docs/BOMBasedCompilation.md) | Master spec — tack convention, BOM walker, compilation gospel |
 | 4 | [ConstructionAsERP.md](docs/ConstructionAsERP.md) | iDempiere mapping, C_Order model, 4-DB architecture |
-| 5 | [IFC_ONBOARDING_RUNBOOK.md](docs/IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline |
-| 6 | [DATABASE_SCHEMA.md](database/DATABASE_SCHEMA.md) | Full table inventory with purpose and Java access |
-| 7 | [docs/INDEX.md](docs/INDEX.md) | Complete documentation index (39 active docs by tier) |
+| 5 | [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md) | Future features — exception ordering, C_Project, rule packs, implementation plan §14 |
+| 6 | [SourceCodeGuide.md](docs/SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, module map |
+| 7 | [IFC_ONBOARDING_RUNBOOK.md](docs/IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline |
+| 8 | [docs/INDEX.md](docs/INDEX.md) | Complete documentation index (53 docs by tier) |
 
 Interactive database ERD: [`database/bim_architecture_viz.html`](database/bim_architecture_viz.html) — open in any browser.
 

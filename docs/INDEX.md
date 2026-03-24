@@ -4,6 +4,13 @@ Single-page entry point. All active docs by tier.
 
 ---
 
+## T0 Governing — System Contract
+
+| Doc | What |
+|-----|------|
+| [SystemContract.md](SystemContract.md) | GOVERNING DOC: entity registry, transaction catalogue, three-concern matrix, allocation model, gap register |
+| [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) | FRONTIER: §1-§14 future features, §2.1 CTFL test plan, §2.2 site layout, §14 implementation sessions |
+
 ## T1 Foundation — Master References
 
 | Doc | What |
@@ -13,7 +20,7 @@ Single-page entry point. All active docs by tier.
 | [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 63 verbs, TILE/CLUSTER/ROUTE/FRAME |
 | [ConstructionAsERP.md](ConstructionAsERP.md) | iDempiere mapping, C_Order model, BOM dimension model (Appendix A) |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix |
-| [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Phases 0-H, gates G-1..G-12 |
+| [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
 
 ## T2 SRS — Requirement Specifications

@@ -89,10 +89,247 @@ Tier 3: INTEGRITY — "Does the building work?"
       column-through-slab). TARGET: zero clashes.
   No reference needed — checks compiled output only.
 
-Run order after every fix:
+Run order after every fix (extracted buildings):
   1. Tier 2 (positional) — did elements move closer to reference?
   2. Tier 3 (clashes) — did clash count decrease?
   3. Tier 1 (signature) — informational only, not the target.
+
+
+THE ROSETTA DICTIONARY — Compositional Verification (S67)
+----------------------------------------------------------
+The three tiers above verify EXTRACTED buildings: buildings with a full
+reference DB to compare against (exact sameness). But composed buildings
+— DemoHouse, BIM Designer creations, C_Project developments — have NO
+extracted reference. They are assembled from fragments of proven stones.
+
+The insight: the Rosetta Stone was not the full hieroglyphic encyclopedia.
+It was a short composition — but enough to infer the grammar.
+
+  THE DICTIONARY MODEL
+
+  When a Rosetta Stone passes exact sameness (G1-G6 ALL GREEN), its BOM
+  becomes a dictionary entry. Every product, every tack offset, every
+  verb pattern in that BOM is a PROVEN WORD. A composed building is a
+  SENTENCE built from proven words.
+
+  Dictionary entries (proven by exact sameness):
+    SH_BOM  → 55 elements, tack offsets verified, positions exact
+    FK_BOM  → 82 elements, same
+    DX_BOM  → 1099 elements, same
+    TE_BOM  → 48428 elements, same
+    ... (34 stones = 34 dictionary entries)
+
+  Composed building = combination of dictionary fragments:
+    DemoHouse = SH structure
+                - original roof (removed)
+                + pitched roof from FK (swapped via WorkOutputDAO.swapProduct)
+                + FP elements from ad_space_type_mep_bom rules
+                + ELEC elements from ad_space_type_mep_bom rules
+
+  THE VERIFICATION QUESTION CHANGES:
+
+  For extracted buildings:  "Does compiled output == reference?"
+                           (Exact sameness — Tier 2 positional match)
+
+  For composed buildings:  "Is each fragment consistent with its
+                           proven source, and does the composition
+                           satisfy spatial invariants?"
+
+  These are different questions. The second one does not need a full
+  reference DB. It needs:
+    (a) Provenance — which stone proved this fragment?
+    (b) Fragment fidelity — does the fragment still match its source?
+    (c) Spatial invariants — does the assembly make geometric sense?
+
+
+  TIER 4: COMPOSITIONAL VERIFICATION — "Are proven words in valid sentences?"
+
+  For each C_OrderLine in the composed building:
+
+    Step 1: PROVENANCE — trace to source stone
+      C_OrderLine.family_ref → M_Product → source BOM
+      The family_ref already encodes which product this is.
+      The product exists in component_library.db and was proven
+      correct by at least one Rosetta Stone's exact sameness test.
+
+    Step 2: FRAGMENT FIDELITY — verify against source stone's BOM
+      For structural fragments (from SH_BOM):
+        - The tack offset (dx/dy/dz) in the composed BOM matches SH_BOM
+        - The product dimensions match SH's proven M_Product
+        - The verb pattern (TILE/CLUSTER/FRAME/ROUTE) matches SH's pattern
+
+      For swapped fragments (e.g., pitched roof from FK):
+        - The replacement product exists and was proven in FK_BOM
+        - The attachment point (locator_ref) is valid for the parent
+        - The compiled position is consistent with the tack offset
+
+      For rule-driven fragments (FP/ELEC from AD rules):
+        - The product exists in component_library.db
+        - The placement satisfies the spatial rule (ad_space_type_mep_bom)
+        - Spacing conforms to the rule's qty/area parameters
+
+    Step 3: SPATIAL INVARIANTS — check composition geometry
+      These are reference-free checks (like Tier 3) but specific to
+      composition:
+        - Roof covers structure (AABB containment: roof.z_max >= wall.z_max)
+        - FP elements are below ceiling (sprinkler.z ≈ ceiling.z - offset)
+        - ELEC elements are inside rooms (element AABB ∈ room AABB)
+        - No structural gaps (wall-to-wall adjacency, slab coverage)
+        - No escapees (all elements inside building envelope)
+
+    Step 4: EDGE CASES — fragmented compositions
+      The balcony chair problem: when a BOM drops furniture into a
+      balcony, does it end up in the balcony?
+        - CO_EmptySpaceLine gives spatial slot identity
+        - Element must be within its slot's AABB (containment check)
+        - Slot must be within its parent's AABB (recursive containment)
+
+      Highly fragmented compositions (many sources mixed):
+        - Each fragment traces to its source stone (provenance)
+        - Fragments from different sources don't overlap (clash check)
+        - Combined envelope is plausible (< site AABB, no negative extents)
+
+
+  HOW IFCtoBOM ALREADY PROVIDES THE DICTIONARY
+
+  The extraction pipeline (IFC → IFCtoBOM → BOM.db) decomposes each
+  building into grammar:
+    - WORDS: individual M_Product entries with dimensions
+    - PHRASES: m_bom_line parent-child relationships with tack offsets
+    - SENTENCES: m_bom assembly recipes (BUILDING → FLOOR → ROOM → parts)
+    - GRAMMAR RULES: verb patterns (TILE dx=500, CLUSTER spacing=3000)
+
+  Each Rosetta Stone that passes exact sameness CERTIFIES its grammar.
+  The composed building's test is: "every word and phrase used was
+  certified by at least one passing stone, and the sentence is
+  syntactically valid (spatial invariants)."
+
+  This is extractable during IFCtoBOM — the dictionary IS the BOM
+  database. No separate "dictionary" table needed. The proof chain:
+
+    Stone passes G1-G6  →  its BOM entries are CERTIFIED
+    Composed building uses certified entries  →  PROVENANCE check
+    Compiled output satisfies spatial invariants  →  INTEGRITY check
+    Both pass  →  composition is VERIFIED
+
+  The test does NOT need to re-verify what the stone already proved.
+  It only needs to verify that the composition is faithful to its sources
+  and geometrically valid.
+
+
+  THE ASI/VIEWPORT MUTATION PATH
+
+  When a user drags a wall in the Bonsai viewport:
+    1. Drag changes M_AttributeSetInstance dimensions (backend, no Bonsai needed)
+    2. Recompile via CompilationPipeline.run()
+    3. EYES spatial invariants check the result:
+       - Wall still meets adjacent walls (no gaps)
+       - Doors still inside walls (containment)
+       - Room AABB still encloses furniture (containment)
+       - Building envelope still valid (perimeter closure)
+
+  This is a PROPERTY-BASED TEST: for any valid ASI mutation, spatial
+  invariants must hold. Java parameterised tests with ASI variations
+  cover this without launching Bonsai.
+
+  The EYES module already has the proof classes:
+    - WallCoverageProof — wall-to-wall adjacency
+    - RoomHasDoorProof — door containment
+    - PerimeterClosureProof — building envelope
+    - SameClassOverlapProof — clash detection
+
+  The gap: EYES currently runs only on extracted buildings (with
+  Rosetta Stone data). Running EYES on composed buildings (DemoHouse)
+  would close this — the proofs are reference-free by design.
+
+
+  JAVA ORGANISATION FOR COMPOSITIONAL COMPLEXITY
+
+  The existing codebase already has the right patterns. The addition
+  is a verification visitor that walks C_OrderLine and dispatches
+  by fragment type:
+
+  Interface:
+    FragmentVerifier.verify(NodeContext ctx, Connection sourceDb)
+      → ProofResult (PASS / FAIL with evidence)
+
+  Strategy implementations:
+    ProvenFragmentVerifier   — fragment from Rosetta Stone
+      checks: tack offset match, product dimension match, verb pattern match
+      source: the stone's BOM.db (already on disk)
+
+    RuleDrivenFragmentVerifier — fragment from AD rules (FP/ELEC/ACMV)
+      checks: product exists, placement satisfies spatial rule, spacing correct
+      source: disc_validation.db AD tables
+
+    UserModifiedFragmentVerifier — fragment with ASI override
+      checks: EYES spatial invariants hold post-mutation
+      source: output.db compiled result
+
+    FreehandFragmentVerifier — fragment from viewport drawing
+      checks: containment in parent space, adjacency, no clashes
+      source: output.db + CO_EmptySpaceLine
+
+  Walker integration:
+    OrderLineWalker already fires visitor events per C_OrderLine.
+    A CompositionVerifierVisitor walks the order and for each leaf:
+      1. Determines fragment type (proven / rule-driven / user-modified / freehand)
+      2. Dispatches to the appropriate FragmentVerifier strategy
+      3. Collects ProofResults
+      4. Fails fast on CRITICAL violations, accumulates warnings
+
+  Witness claims:
+    W-COMP-PROV-1 — all fragments trace to a certified source
+    W-COMP-FRAG-1 — all fragments match their source's proven offsets
+    W-COMP-SPAT-1 — all spatial invariants hold for the composition
+    W-COMP-CONT-1 — all elements contained within their spatial slots
+
+  Gate integration:
+    G7-COMPOSITION gate in RosettaStoneGateTest:
+      Runs ONLY for composed buildings (DM, C_Project children)
+      Requires: G1-G6 GREEN on all source stones first
+      Checks: W-COMP-* witnesses all PASS
+
+
+  RUN ORDER FOR COMPOSED BUILDINGS:
+
+    1. Verify source stones pass G1-G6 (prerequisite)
+    2. Compile the composed building (standard pipeline)
+    3. Tier 4 Step 1: provenance (all fragments traced)
+    4. Tier 4 Step 2: fragment fidelity (offsets match source)
+    5. Tier 4 Step 3: spatial invariants (EYES proofs)
+    6. Tier 4 Step 4: edge cases (containment checks)
+
+  If Step 1 or 2 fails: the BOM is wrong (data issue, not compilation).
+  If Step 3 or 4 fails: the composition has a geometric problem.
+  Steps 1-2 are fast (SQL joins). Steps 3-4 are comprehensive (EYES).
+
+
+  WHAT THE ROSETTA STONE ANALOGY ACTUALLY MEANS HERE
+
+  The original Rosetta Stone was a short composition in three scripts.
+  It did not contain all of hieroglyphics. It contained enough grammar
+  to infer the rest. Champollion didn't need a second stone — he needed
+  to trust the first one and extrapolate.
+
+  Our Rosetta Stones work the same way:
+    - SH (55 elements) = a simple sentence (1-storey residential)
+    - DX (1099 elements) = a complex sentence (2-storey, 3 disciplines)
+    - TE (48428 elements) = an encyclopedia article (4-storey, 8 disciplines)
+
+  Once these pass exact sameness, their grammar is certified. Any new
+  building composed from this grammar does not need its own stone —
+  it needs to confirm it is using certified words in valid sentences.
+
+  The DemoHouse merely needs to confirm:
+    - The roof is still where it should be (fragment fidelity)
+    - The FP is aligned to the same ceiling spacing (spatial invariant)
+    - No element has escaped the building (containment)
+
+  Once that is done, ALL other extrapolations have their major issues
+  covered. Edge cases (balcony furniture, highly fragmented compositions)
+  are bounded by the containment check — if every element is inside its
+  slot, and every slot is inside its parent, the building is valid.
 
 
 RULES

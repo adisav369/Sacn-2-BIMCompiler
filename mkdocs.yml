@@ -1,0 +1,126 @@
+site_name: BIM Intent Compiler
+site_description: Construction is manufacturing. A building IS its Bill of Materials.
+site_author: Redhuan D. Oon
+repo_url: https://github.com/red1oon/bim-compiler
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue grey
+      accent: orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue grey
+      accent: orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - toc.follow
+    - content.tabs.link
+
+docs_dir: docs
+
+markdown_extensions:
+  - tables
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - toc:
+      permalink: true
+
+nav:
+  # ─── "I just found this project" ────────────────────────
+  - Start Here:
+      - Home: index.md
+      - Documentation Index: INDEX.md
+      - Quick Start: WorkOrderGuide.md
+      - Current State: ../PROGRESS.md
+
+  # ─── "I want to understand the system" ──────────────────
+  - Architecture:
+      - System Contract: SystemContract.md
+      - BOM Compilation (Master Spec): BOMBasedCompilation.md
+      - Construction as ERP: ConstructionAsERP.md
+      - Rosetta Stone Strategy: TheRosettaStoneStrategy.txt
+      - Data Model: DATA_MODEL.md
+      - Source Code Guide: SourceCodeGuide.md
+
+  # ─── DOMAIN: Compilation engine ─────────────────────────
+  - Compiler:
+      - BIM COBOL (64 Verbs): BIM_COBOL.md
+      - Test Architecture (6 Gates): TestArchitecture.md
+      - EYES (Geometric Proofs): EYES_SRS.md
+      - Last Mile Gaps: LAST_MILE_PROBLEM.md
+      - Tack Fix Spec: TACK_FIX_SPEC.md
+      - Calibration: CALIBRATION_SRS.md
+
+  # ─── DOMAIN: BIM Designer ──────────────────────────────
+  - Designer:
+      - SRS (50 Requirements): BIM_Designer_SRS.md
+      - Operations: BIM_Designer.md
+      - DocAction Lifecycle: DocAction_SRS.md
+      - Document Validation: DocValidate.md
+      - Assembly Builder: ASSEMBLY_BUILDER_SRS.md
+      - G4 Work Output: G4_SRS.md
+      - View Contracts: VIEW_CONTRACTS.md
+      - Blender Bridge: BlenderBridge.md
+
+  # ─── DOMAIN: Disciplines & Validation ───────────────────
+  - Disciplines:
+      - Validation SRS: DISC_VALIDATE_SRS.md
+      - Validation DB: DISC_VALIDATION_DB_SRS.md
+      - Generative House: GENERATIVE_HOUSE_SRS.md
+      - Prefab Architecture: PREFAB_ARCHITECTURE.md
+
+  # ─── DOMAIN: Enterprise (ERP + nD) ─────────────────────
+  - Enterprise:
+      - Core SRS (4D-7D): CORE_SRS.md
+      - Tier 1 (6D Carbon, 7D FM): TIER1_SRS.md
+      - Back Office SRS: BACK_OFFICE_SRS.md
+      - Infrastructure Designer: INFRA_DESIGNER_SRS.md
+
+  # ─── DOMAIN: The Frontier ──────────────────────────────
+  - Roadmap:
+      - Action Roadmap: ACTION_ROADMAP.md
+      - Project Order Blueprint: ProjectOrderBlueprint.md
+      - Audit Report: AUDIT_S51_FOCUSED.md
+      - Strategic Positioning: StrategicIndustryPositioning.md
+      - BIM-ERP Paper: BIMERPPaper.md
+
+  # ─── Proven buildings ──────────────────────────────────
+  - Buildings:
+      - Sample House (SH, 55 elements): SampleHouseAnalysis.md
+      - FZK Haus (FK, 82): FZKHausAnalysis.md
+      - Duplex (DX, 1099): DuplexAnalysis.md
+      - AC Institute (IN, 699): ACInstituteAnalysis.md
+      - Terminal (TE, 48428): TerminalAnalysis.md
+      - Infrastructure: InfrastructureAnalysis.md
+      - DemoHouse (DM, 64): DemoHouseAnalysis.md
+      - TE Mining Results: TE_MINING_RESULTS.md
+
+  # ─── "How do I..." ─────────────────────────────────────
+  - Guides:
+      - Getting Started: WorkOrderGuide.md
+      - User Guide: USER_GUIDE.md
+      - BIM Designer Guide: BIM_Designer_UserGuide.md
+      - Back Office Guide: BackOfficeUserGuide.md
+      - IFC Onboarding (8 Steps): IFC_ONBOARDING_RUNBOOK.md
+      - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
+      - Deployment: DEPLOYMENT.md
+      - Installer Spec: INSTALLER_SPEC.md
+      - BIM Logger: BIMLogger.md

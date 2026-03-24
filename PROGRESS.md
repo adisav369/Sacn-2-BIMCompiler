@@ -39,15 +39,17 @@
   Bonsai bridge: pollCommands timer (2s interval) picks up loadOutput → db_loader populates viewport.
   §30.2 sync table: all 6 directions DONE. §30.5 priority #1 DONE, #2 DONE.
 
-**[IN PROGRESS] S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/S60_ERP_ALIGNMENT.md)
+**[IN PROGRESS] S60 — ERP Model Alignment:** [S60_ERP_ALIGNMENT.md](docs/archive/S60_ERP_ALIGNMENT.md)
   Core wiring DONE: BomDropper + OrderLineWalker in Rosetta Stone pipeline. SH/FK/DM GREEN.
   DX G2/G3 drift is pre-existing (component_library.db evolving, not S60).
   S60-S2: R21 host_element_ref DONE, U6 DAO DONE, --diff TSV DONE. #6 assessed (77 files, dedicated session).
   S60-UI: 10 tabs aligned §30.3, Show in Bonsai proven (257 wireframe cubes from Web UI BOM Drop).
 
-**S67 — ELEC product onboarding + watchdog cleanup.**
+**S67 — ELEC onboarding + watchdog + Session A + specs consolidation.**
   2 ELEC products onboarded from TE extraction (E_Light, E_Data Point). ELEC SET sub-BOMs in DM_BOM.db.
   **Watchdog cleanup:** Removed CompileProof.java, DisciplineBreakdownProof.java, DemoHouseCompileTest.java, CompilationPipeline post-compile hook. DemoHouse compiles via standard Rosetta Stone pipeline. Seal v31.
+  **[DONE] Session A** (`fac5e8f`): addDiscipline() rule-driven OrderLine mutation. OrderMutationService extracted (prevents God Object). ELEC on SH: 15 proposed lines. FP on SH: 4 proposed lines. AddDisciplineTest 4/4. W004 proposal_status migration.
+  **Specs consolidation:** SystemContract.md (governing document). Blueprint §2.1 (C_Project CTFL), §2.2 (site layout as warehouse put-away). Rosetta Dictionary (Tier 4 compositional verification). ACTION_ROADMAP slimmed to navigation hub. R-PROJ-3 blocking bug identified (C_Order_ID collision).
 
 **S66 — Task 4A + CP-1 investigation.**
   **[DONE] Task 4A** (Discipline wiring): BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer priority. W-DM-TC5-1 witness (STR=25, ARC=18, MEP=10). 404/404 GREEN. [ACTION_ROADMAP.md §Task 4](docs/ACTION_ROADMAP.md#task-4-rule-driven-discipline-framework-fp-as-first-case).
@@ -61,7 +63,7 @@
 
 ## Session Log (recent first)
 
-**S67** — ELEC onboarding + watchdog cleanup + blueprint consolidation. (1) 2 ELEC products onboarded from TE extraction (S67_001 migration). ELEC SET sub-BOMs per room in DemoHouse. 63→64 elements, 4 disciplines (STR+ARC+MEP+ELEC). W-DM-TC5-3 GREEN. (2) Watchdog cleanup: removed CompileProof.java, DisciplineBreakdownProof.java, DemoHouseCompileTest.java, CompilationPipeline post-compile hook — DemoHouse compiles via standard Rosetta Stone pipeline, no special infrastructure needed. Seal v31. (3) Consolidated implementation plan into ProjectOrderBlueprint.md §14 (triage of §1-§13, 5-session plan, failure criteria). ACTION_ROADMAP Task 4 slimmed to pointer. BBC.md §3.5 forward reference added. LAST_MILE_PROBLEM.md Layer 2 corrected.
+**S67** — ELEC onboarding + Session A + watchdog + specs consolidation. (1) 2 ELEC products onboarded (S67_001). 4 disciplines (STR+ARC+MEP+ELEC). W-DM-TC5-3 GREEN. (2) Watchdog: removed CompileProof/DemoHouseCompileTest/post-compile hook. Seal v31. (3) Blueprint §14 consolidated (5-session plan). (4) **Session A** (`fac5e8f`): OrderMutationService + addDiscipline() API + AddDisciplineTest 4/4 + W004 migration. (5) **SystemContract.md**: governing document (entity registry, transaction catalogue, three-concern matrix, allocation model). (6) Rosetta Dictionary: Tier 4 compositional verification in TheRosettaStoneStrategy.txt. (7) Blueprint §2.1 CTFL test plan + §2.2 site layout as warehouse put-away. R-PROJ-3 blocking bug (C_Order_ID collision). (8) ACTION_ROADMAP slimmed to navigation hub. LAST_MILE stale markers fixed. AUDIT Appendix I (9 sections).
 **S66** — Task 4A + CP-1 investigation. (1) Task 4A: BomDropper.deriveDiscipline() + PlacementCollectorVisitor 3-layer discipline priority. W-DM-TC5-1 (STR=25, ARC=18, MEP=10). 404/404 GREEN. (2) CP-1: confirmed identity goal already met via MA infrastructure — W-TOT 48428/48428 identity-matched, 92 FRAME mismatches = Gap 6. G3-DIGEST 1mm float precision tracked under Gap 6. (3) Test count sync 55→58, 95→98 (component_library.db evolution). SH/FK/DM gates GREEN. ACTION_ROADMAP + LAST_MILE_PROBLEM updated with cross-references.
 **S65** — DV015 M_Product migration (Step 3). Copied 2,475 M_Product + 46 M_Product_Category from component_library.db to disc_validation.db. 13 Java files: all M_Product reads switched to disc_validation.db. ProductRegistrar dual-write (geometry join + master catalog). SH/FK 7/7. DiscValidationDBTest 27/27 (+3). [AUDIT_S51_FOCUSED.md §Step 3](docs/AUDIT_S51_FOCUSED.md#step-3-implementation-audit-s65-2026-03-24).
 **S64** — AD Dictionary investigation §11. Steps 0–2: AD_Org (DV013), dual columns (DV014), CL001 dead table script. DiscValidationDBTest 24/24. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#11-investigation-report--application-dictionary-database-placement-s64).
