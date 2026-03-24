@@ -1,16 +1,37 @@
+<div align="center">
+
 # BIM Intent Compiler
 
 **Construction is manufacturing. A building IS its Bill of Materials.**
 
-<img align="right" src="docs/assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded in Blender/Bonsai viewport" width="280">
+[![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
+[![Java 17+](https://img.shields.io/badge/Java-17+-orange.svg)](https://openjdk.org/)
+[![SQLite](https://img.shields.io/badge/Database-SQLite-003B57.svg)](https://www.sqlite.org/)
+[![Tests](https://img.shields.io/badge/Tests-392_GREEN-brightgreen.svg)](#project-stats)
+[![Docs](https://img.shields.io/badge/Docs-50_specs-8CA1AF.svg)](https://red1oon.github.io/BIMCompiler/)
+[![Alpha v1.0](https://img.shields.io/badge/Release-Alpha_v1.0-blueviolet.svg)](#project-stats)
 
-A metadata-driven, deterministic compiler that reads BOM data and produces 3D building coordinates — the same thing an ERP system does when it explodes a manufacturing BOM into work orders. Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.
+</div>
+
+---
+
+<img align="right" src="docs/assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded in Blender/Bonsai viewport" width="260">
+
+A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an ERP system explodes a manufacturing BOM into work orders.
+
+Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic.
+
+&nbsp;
 
 | | |
-|---|---|
+|:---|:---|
 | **35 buildings** compiled (48,428 elements largest) | **64 verbs**, 2,475 products |
 | **6 mathematical gates** prove every output | **392 tests**, all GREEN |
 | **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** live GUI |
+
+<br clear="right"/>
+
+---
 
 ## Quick Start
 
@@ -66,7 +87,7 @@ Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for
 ## Project Stats
 
 | | |
-|---|---|
+|:---|:---|
 | **Java** | 1,140 files, 261K lines across 12 Maven modules |
 | **Tests** | 129 test classes, 392+ assertions, all GREEN |
 | **SQL** | 106 migration scripts (append-only) |
@@ -74,8 +95,14 @@ Led [ADempiere](https://www.adempierebr.com/User:Red1) (2006), paved the way for
 | **Specifications** | 50 docs, governed by SystemContract.md |
 | **Buildings** | 35 compiled (34 extracted + 1 generative) |
 
+---
+
+<div align="center">
+
 **Alpha v1.0** — March 2026
 
-**License:** Code: GPL v2. Documentation: CC BY-SA 4.0.
+Code: GPL v2 · Documentation: CC BY-SA 4.0
 
 Copyright (c) 2026 Redhuan D. Oon. All rights reserved.
+
+</div>
