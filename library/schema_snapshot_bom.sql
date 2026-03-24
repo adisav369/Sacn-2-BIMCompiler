@@ -1125,7 +1125,7 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     bom_type          TEXT NOT NULL DEFAULT 'SET'
         CHECK(bom_type IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM')),
     m_product_category_id TEXT DEFAULT NULL,
-    doc_sub_type      TEXT DEFAULT NULL,
+    doc_sub_type      TEXT DEFAULT NULL, -- DEPRECATED: routing uses m_product_category_id (§7)
     seq_no            INTEGER DEFAULT 10,
     origin_x          REAL DEFAULT 0.0,
     origin_y          REAL DEFAULT 0.0,
@@ -1134,7 +1134,8 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     aabb_width_mm     INTEGER DEFAULT 0,
     aabb_depth_mm     INTEGER DEFAULT 0,
     aabb_height_mm    INTEGER DEFAULT 0
-, doc_base_type TEXT DEFAULT NULL);
+, doc_base_type TEXT DEFAULT NULL -- DEPRECATED: same value as m_product_category_id on BUILDING BOMs (§7)
+);
 CREATE TABLE IF NOT EXISTS "C_DocType" (
     C_DocType_ID   TEXT PRIMARY KEY,
     Name           TEXT NOT NULL,

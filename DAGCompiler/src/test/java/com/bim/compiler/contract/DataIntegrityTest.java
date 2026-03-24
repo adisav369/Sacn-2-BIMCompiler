@@ -283,7 +283,7 @@ public class DataIntegrityTest {
                  "       d.ProjectName, d.ReferenceDbPath " +
                  "FROM m_bom b " +
                  "JOIN C_DocType d ON b.doc_sub_type = d.DocSubType " +
-                 "  AND b.doc_base_type = d.DocBaseType " +
+                 "  AND b.m_product_category_id = d.DocBaseType " +
                  "WHERE b.bom_type = 'BUILDING' " +
                  "  AND d.Provenance = 'EXTRACTED' " +
                  "  AND d.ExpectedElements > 0 " +

@@ -14,7 +14,7 @@ import java.util.*;
  *
  * <p>Hierarchy: BUILDING → FLOOR → DISCIPLINE → LEAF
  * <ul>
- *   <li>BUILDING BOM — whole-building AABB, doc_base_type=CO</li>
+ *   <li>BUILDING BOM — whole-building AABB, m_product_category_id=CO</li>
  *   <li>FLOOR BOMs — one per storey (7 for TE)</li>
  *   <li>DISCIPLINE SET BOMs — one per discipline per floor (e.g., TE_GF_ARC)</li>
  *   <li>LEAF lines — factored recipe lines with verb_ref + qty</li>

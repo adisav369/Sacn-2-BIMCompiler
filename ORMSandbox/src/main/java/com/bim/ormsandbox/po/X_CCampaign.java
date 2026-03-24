@@ -8,7 +8,7 @@ import java.sql.Connection;
  *
  * <p>Design theme classification. Determines the material palette and
  * aesthetic language applied to a building compilation. Orthogonal to
- * DocBaseType (RE/CO/IN) and C_BPartner (scope owner).
+ * M_Product_Category (RE/CO/IN) and C_BPartner (scope owner).
  *
  * <p>Table: {@code C_Campaign}
  * <pre>

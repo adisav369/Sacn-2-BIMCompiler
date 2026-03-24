@@ -244,7 +244,7 @@ public class IFCtoBOMPipeline {
                 products = pRs.next() ? pRs.getInt(1) : 0;
             }
 
-            // 6-8. Build BOMs — dispatch based on doc_base_type
+            // 6-8. Build BOMs — dispatch based on m_product_category_id (was doc_base_type)
             BIMLogger.stage(4, "BuildBOMs", config.docBaseType() + " path");
             //   RE → Scope + Composition + Structural + FloorRoom
             //   CO → DisciplineBomBuilder (BUILDING → FLOOR → DISCIPLINE → LEAF)

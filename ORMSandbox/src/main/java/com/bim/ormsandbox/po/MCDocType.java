@@ -12,7 +12,7 @@ import java.util.List;
  * <p>6 entries: RE_SH (Sample House), RE_DX (Duplex), RE_TB (Terrace Block),
  * CO_TE (Airport Terminal), ST_SH (Standard SH), ST_DX (Standard DX).
  *
- * <p>DocBaseType drives compilation path (Prime Rule):
+ * <p>DocBaseType (= M_Product_Category on BUILDING BOMs) drives compilation path (Prime Rule):
  * <ul>
  *   <li>RE → direct BUILDING BOM match → EN-BLOC (singularity)</li>
  *   <li>ST → no BUILDING BOM → template path (M_BomCategory AABB match)</li>

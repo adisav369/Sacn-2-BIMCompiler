@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * <p>Walks the template tree (e.g. RE→{SL,GF,RF}, GF→{LI,BD,DN,KT,BT}) and for each
  * leaf category, counts how many BOMs of that category exist within a given
- * doc_sub_type scope (variant-specific + generic NULL BOMs).
+ * variant scope (m_product_category_id-specific + generic NULL BOMs).
  *
  * <p>Info-rich: returns structured {@link TemplateReport} with per-category
  * {@link CategoryCheck} records. Callers can iterate, filter, format for

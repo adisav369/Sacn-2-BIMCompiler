@@ -11,7 +11,7 @@ import java.util.Map;
  *
  * <h3>When does this run?</h3>
  * <p>Activated by the Prime Rule when DocSubType='ST':
- * no BUILDING BOM matches the three-key (AABB + DocBaseType + DocSubType),
+ * no BUILDING BOM matches the three-key (AABB + M_Product_Category + DocSubType),
  * so the template path takes over. The composer selects best-fit BOMs from
  * the <b>entire catalog</b> (no doc_sub_type filter) using AABB matching
  * at every level of the M_BomCategoryLine template tree.

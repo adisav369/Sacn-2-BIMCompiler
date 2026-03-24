@@ -99,7 +99,7 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
         bldgBom.setBomId(bldgBomId);
         bldgBom.setBomName(docBaseType + " Building " + widthMm + "x" + depthMm + "x" + heightMm);
         bldgBom.setBomType("BUILDING");
-        bldgBom.setProductCategory(prefix);   // RE, CO, IN — derived from docBaseType
+        bldgBom.setProductCategory(prefix);   // RE, CO, IN — m_product_category_id (derived from docBaseType)
         bldgBom.setGroupBy("BUILDING");
         bldgBom.setIsActive(true);
         bldgBom.setBomLevel("BUILDING");

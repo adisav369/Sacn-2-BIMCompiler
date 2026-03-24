@@ -47,7 +47,7 @@ public class MBomCategoryLine extends X_MBomCategoryLine {
      * within each slot, not the template structure itself.
      *
      * @param conn    BOM.db connection
-     * @param docType document type: RE, CO, IN (short code matching C_DocType.DocBaseType)
+     * @param docType document type: RE, CO, IN (short code matching M_Product_Category / C_DocType.DocBaseType)
      * @return map keyed by parent category ID, values are ordered child lines.
      *         Empty map if no template exists for this doc_type.
      */

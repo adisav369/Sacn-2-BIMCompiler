@@ -7,11 +7,12 @@ import java.sql.Connection;
  * Generated-structure layer for {@code C_DocType} (iDempiere: C_DocType).
  *
  * <p>Document type classification for construction orders. Borrowed from
- * iDempiere's C_DocType model: DocBaseType (3-char category) + DocSubType
- * (variant within category).
+ * iDempiere's C_DocType model: DocBaseType (3-char category = M_Product_Category)
+ * + DocSubType (variant within category).
  *
  * <p>Replaces the dual c_order.building_type + c_order.c_bpartner with a
- * single FK. DocBaseType drives template selection (RE → Residential template).
+ * single FK. DocBaseType (= m_product_category_id on BUILDING BOMs) drives
+ * template selection (RE → Residential template).
  * DocSubType drives BOM scoping (SH BOMs for SH buildings).
  *
  * <p>Table: {@code C_DocType}

@@ -58,7 +58,7 @@ public class MBomCategory extends X_M_BomCategory {
      * not which template structure is used.
      *
      * @param conn    BOM.db connection
-     * @param docType document type: RE, CO, IN (short code matching C_DocType.DocBaseType)
+     * @param docType document type: RE, CO, IN (short code matching M_Product_Category / C_DocType.DocBaseType)
      * @return the template root category, or null if not found
      */
     public static MBomCategory getTemplateByDocType(Connection conn, String docType) throws SQLException {

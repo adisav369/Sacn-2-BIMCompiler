@@ -95,7 +95,7 @@ public class BomDropper {
     // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
     public static int drop(Connection compileDb, BuildingEntry entry, String orderId,
                            Map<String, ExceptionLine> exceptions) throws SQLException {
-        // Find the BUILDING BOM for this entry's DocSubType + DocBaseType
+        // Find the BUILDING BOM for this entry via m_product_category_id + doc_sub_type
         String buildingBomId = findBuildingBom(compileDb, entry);
         if (buildingBomId == null) {
             System.err.printf("[BomDropper] No BUILDING BOM for %s (%s/%s) — skipping%n",
@@ -133,11 +133,12 @@ public class BomDropper {
     }
 
     /**
-     * Find the BUILDING BOM matching this entry's DocBaseType + DocSubType.
+     * Find the BUILDING BOM matching this entry's M_Product_Category + DocSubType.
+     * // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
      */
     private static String findBuildingBom(Connection conn, BuildingEntry entry) throws SQLException {
         String sql = "SELECT bom_id FROM m_bom "
-                   + "WHERE bom_type = 'BUILDING' AND doc_base_type = ? AND doc_sub_type = ? "
+                   + "WHERE bom_type = 'BUILDING' AND m_product_category_id = ? AND doc_sub_type = ? "
                    + "AND is_active = 1 ORDER BY seq_no LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, entry.docBaseType());

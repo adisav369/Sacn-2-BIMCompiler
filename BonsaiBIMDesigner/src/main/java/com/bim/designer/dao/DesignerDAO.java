@@ -59,7 +59,7 @@ public class DesignerDAO {
                        COALESCE(b.aabb_height_mm, 0) AS aabb_height_mm
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType
-                  AND b.doc_base_type = d.DocBaseType
+                  AND b.m_product_category_id = d.DocBaseType
                   AND b.bom_type = 'BUILDING' AND b.is_active = 1
                 WHERE d.IsActive = 1
                 ORDER BY d.SeqNo
@@ -95,7 +95,7 @@ public class DesignerDAO {
                        COALESCE(b.aabb_height_mm, 0) AS aabb_height_mm
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType
-                  AND b.doc_base_type = d.DocBaseType
+                  AND b.m_product_category_id = d.DocBaseType
                   AND b.bom_type = 'BUILDING' AND b.is_active = 1
                 WHERE d.ProjectName = ?
                 """;

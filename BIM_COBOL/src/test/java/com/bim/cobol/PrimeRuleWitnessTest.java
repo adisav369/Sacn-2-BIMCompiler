@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * <p>The Prime Rule states:
  * <pre>
- *   C_Order.(AABB + DocBaseType + DocSubType) == m_bom.(AABB + DocBaseType + DocSubType)
+ *   C_Order.(AABB + M_Product_Category + DocSubType) == m_bom.(AABB + m_product_category_id + doc_sub_type)
  *   → match + count=1 → SINGULARITY → EN-BLOC
  * </pre>
  *
@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *
  * <p>Witnesses:
  * <ul>
- *   <li>W-PRIME-1: Every BUILDING BOM has doc_base_type + doc_sub_type</li>
+ *   <li>W-PRIME-1: Every BUILDING BOM has m_product_category_id + doc_sub_type</li>
  *   <li>W-PRIME-2: Every BUILDING BOM has non-zero AABB</li>
  *   <li>W-PRIME-3: Singularity — exactly 1 BUILDING BOM per doc_sub_type</li>
  *   <li>W-PRIME-4: C_DocType entries cover all BUILDING doc_sub_types</li>
@@ -53,29 +53,29 @@ class PrimeRuleWitnessTest {
         if (conn != null) conn.close();
     }
 
-    // ── W-PRIME-1: Every BUILDING BOM has doc_base_type + doc_sub_type ───
+    // ── W-PRIME-1: Every BUILDING BOM has m_product_category_id + doc_sub_type ───
 
     @Test
     @Order(1)
-    @DisplayName("W-PRIME-1: BUILDING BOMs have doc_base_type + doc_sub_type")
+    @DisplayName("W-PRIME-1: BUILDING BOMs have m_product_category_id + doc_sub_type")
     void w_prime_1_buildingBomsHaveDocKeys() throws SQLException {
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                     "SELECT bom_id, doc_base_type, doc_sub_type "
+                     "SELECT bom_id, m_product_category_id, doc_sub_type "
                      + "FROM m_bom WHERE bom_type = 'BUILDING'")) {
 
             int count = 0;
             while (rs.next()) {
                 String bomId = rs.getString("bom_id");
-                String docBaseType = rs.getString("doc_base_type");
+                String productCategory = rs.getString("m_product_category_id");
                 String docSubType = rs.getString("doc_sub_type");
 
-                assertNotNull(docBaseType,
-                        bomId + " must have doc_base_type");
+                assertNotNull(productCategory,
+                        bomId + " must have m_product_category_id");
                 assertNotNull(docSubType,
                         bomId + " must have doc_sub_type");
-                assertFalse(docBaseType.isEmpty(),
-                        bomId + " doc_base_type must not be empty");
+                assertFalse(productCategory.isEmpty(),
+                        bomId + " m_product_category_id must not be empty");
                 assertFalse(docSubType.isEmpty(),
                         bomId + " doc_sub_type must not be empty");
                 count++;
@@ -235,11 +235,11 @@ class PrimeRuleWitnessTest {
                 }
             }
 
-            // Step 3: Three-key match — DocBaseType + DocSubType + AABB
+            // Step 3: Three-key match — M_Product_Category + DocSubType + AABB
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT b.bom_id FROM m_bom b "
                     + "JOIN C_DocType d ON d.DocSubType = b.doc_sub_type "
-                    + "  AND d.DocBaseType = b.doc_base_type "
+                    + "  AND d.DocBaseType = b.m_product_category_id "
                     + "WHERE b.bom_type = 'BUILDING' "
                     + "  AND b.doc_sub_type = ? "
                     + "  AND b.aabb_width_mm > 0")) {

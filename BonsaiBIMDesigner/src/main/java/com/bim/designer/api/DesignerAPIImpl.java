@@ -210,7 +210,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                        COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType
-                  AND b.doc_base_type = d.DocBaseType
+                  AND b.m_product_category_id = d.DocBaseType
                   AND b.bom_type = 'BUILDING' AND b.is_active = 1
                 WHERE d.ProjectName = ?
                 """;
@@ -597,7 +597,7 @@ public class DesignerAPIImpl implements DesignerAPI {
     }
 
     /**
-     * Map DocBaseType + DocSubType to FacilityType string for the API.
+     * Map M_Product_Category (was DocBaseType) + DocSubType to FacilityType string for the API.
      * IN = infrastructure — derive specific type from DocSubType (BR/RD/RL).
      * All others = null (BUILDING default).
      *

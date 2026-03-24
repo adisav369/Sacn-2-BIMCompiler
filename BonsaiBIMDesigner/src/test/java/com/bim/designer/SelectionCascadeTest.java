@@ -35,7 +35,7 @@ class SelectionCascadeTest {
         {"BATHROOM", 2000, 1500, 2800},
     };
 
-    // Real BOM databases from extracted Rosetta Stones (DocBaseType=RE)
+    // Real BOM databases from extracted Rosetta Stones (M_Product_Category=RE)
     private static final String[] BOM_DBS = {
         "library/SH_BOM.db",
         "library/FK_BOM.db",

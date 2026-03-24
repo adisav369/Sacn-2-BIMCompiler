@@ -109,7 +109,7 @@ public class CompilationPipeline {
     /**
      * Template composition stage — activated when DocSubType='ST'.
      *
-     * <p>When the three-key match (AABB + DocBaseType + DocSubType) finds no
+     * <p>When the three-key match (AABB + M_Product_Category + DocSubType) finds no
      * BUILDING BOM, the template path takes over. It queries M_BomCategory
      * WHERE doc_type='RE' AND doc_sub_type='ST' to find Standard Template
      * entries (ST-SH, ST-DX), AABB-matches to pick the right one, then
@@ -142,7 +142,7 @@ public class CompilationPipeline {
             // ── AABB resolution for ST entries ──────────────────────────
             //
             // ST entries have AABB=0 from BuildingRegistry because the LEFT JOIN
-            // to m_bom matches on doc_base_type + doc_sub_type, and no BUILDING
+            // to m_bom matches on m_product_category_id + doc_sub_type, and no BUILDING
             // BOM has doc_sub_type='ST'. So we resolve the AABB from M_BomCategory:
             //
             //   M_BomCategory WHERE doc_type='RE' AND doc_sub_type='ST'
@@ -201,7 +201,7 @@ public class CompilationPipeline {
 
     /**
      * Map C_DocType_ID prefix to M_BomCategory.doc_type (short code).
-     * Passes DocBaseType through (RE/CO/IN). ST is a DocSubType, resolved by BomTemplateComposer via AABB match.
+     * Passes M_Product_Category through (RE/CO/IN). ST is a DocSubType, resolved by BomTemplateComposer via AABB match.
      */
     static String toDocType(String docTypeId) {
         if (docTypeId == null) return "RE";

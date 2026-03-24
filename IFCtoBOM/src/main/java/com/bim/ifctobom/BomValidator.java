@@ -130,13 +130,13 @@ public class BomValidator {
             report("BOM lines", lineInfo, lines > 0 ? "PASS" : "FAIL");
             if (lines == 0) fails++;
 
-            // DocBaseType / DocSubType from BUILDING BOM
+            // M_Product_Category / DocSubType from BUILDING BOM (§7 alignment)
             rs = stmt.executeQuery(
-                    "SELECT doc_base_type, doc_sub_type FROM m_bom WHERE bom_type = 'BUILDING'");
+                    "SELECT m_product_category_id, doc_sub_type FROM m_bom WHERE bom_type = 'BUILDING'");
             if (rs.next()) {
                 String dbt = rs.getString(1);
                 String dst = rs.getString(2);
-                report("DocType (DBT/DST)",
+                report("DocType (CAT/DST)",
                         (dbt != null ? dbt : "-") + "_" + (dst != null ? dst : "-"),
                         (dbt != null && dst != null) ? "PASS" : "FAIL");
                 if (dbt == null || dst == null) fails++;

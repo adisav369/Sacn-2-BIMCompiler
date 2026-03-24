@@ -10,11 +10,11 @@ import java.util.List;
 /**
  * Model layer for {@code m_bom} (iDempiere: MBOM extends X_M_BOM).
  *
- * <p>Three orthogonal dimensions:
+ * <p>Classification dimensions:
  * <ul>
- *   <li>{@code m_product_category_id} — M_Product_Category FK (WHAT: LI, BD, KT, FR, ST, ...)</li>
- *   <li>{@code doc_base_type} — C_DocType.DocBaseType (RE=Residential, CO=Commercial, IN=Industrial)</li>
- *   <li>{@code doc_sub_type} — C_DocType.DocSubType (WHICH variant: SH, DX, TB, TE; NULL = generic)</li>
+ *   <li>{@code m_product_category_id} — M_Product_Category FK (RE/CO/IN at building level, LI/BD/KT at room level)</li>
+ *   <li>{@code doc_sub_type} — variant identifier (SH, DX, TB, TE; NULL = generic) — deprecated, retained for compat</li>
+ *   <li>{@code doc_base_type} — deprecated (same value as m_product_category_id on BUILDING BOMs)</li>
  *   <li>SpaceSize — on M_BOM_Line children (HOW MUCH: AABB in mm)</li>
  * </ul>
  *

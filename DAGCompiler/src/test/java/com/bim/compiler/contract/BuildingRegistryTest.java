@@ -39,7 +39,7 @@ public class BuildingRegistryTest {
 
     @TestFactory
     Collection<DynamicTest> compilationPipeline() {
-        // doc.base.type property filters which DocBaseType to compile:
+        // doc.base.type property filters which M_Product_Category (= DocBaseType) to compile:
         //   RE → direct BUILDING BOM match (singularity)
         //   ST → template path (M_BomCategory tree walk)
         //   null → all active (default)

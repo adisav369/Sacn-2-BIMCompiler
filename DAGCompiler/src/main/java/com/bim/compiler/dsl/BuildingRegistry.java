@@ -127,8 +127,9 @@ public class BuildingRegistry {
     private static List<BuildingEntry> load(String whereClause, String... params) {
         List<BuildingEntry> entries = new ArrayList<>();
         // AABB from BUILDING BOM (m_bom), not C_DocType (dead columns since NULLed).
-        // LEFT JOIN: DocBaseType+DocSubType → m_bom.doc_base_type+doc_sub_type (Prime Rule three-key).
+        // LEFT JOIN: m_product_category_id+doc_sub_type → DocBaseType+DocSubType (§7 alignment).
         // ST_SH/ST_DX (DocSubType='ST') resolve AABB from M_BomCategory, not from BUILDING BOM.
+        // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
         String sql = "SELECT d.C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType, "
                    + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
                    + "d.ExpectedElements, d.Provenance, d.Description, "
@@ -138,7 +139,7 @@ public class BuildingRegistry {
                    + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm "
                    + "FROM C_DocType d "
                    + "LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType "
-                   + "  AND b.doc_base_type = d.DocBaseType "
+                   + "  AND b.m_product_category_id = d.DocBaseType "
                    + "  AND b.bom_type = 'BUILDING' AND b.is_active = 1 "
                    + qualifyWhereClause(whereClause);
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
