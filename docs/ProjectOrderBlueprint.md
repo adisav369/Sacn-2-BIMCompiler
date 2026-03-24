@@ -602,6 +602,130 @@ each combination from scratch.
 The compiler walks the Ref_Order chain to root, collects all exception
 lines, applies in sequence. Standard iDempiere FK, no schema changes.
 
+### 6.1 Chain Walking
+
+The compiler resolves inheritance by walking `C_Order.Ref_Order_ID` from
+the current order to root, collecting exception C_OrderLines at each level.
+
+```
+resolveInheritanceChain(orderId):
+  chain = []
+  current = orderId
+  while current != NULL:
+    chain.prepend(current)           // root-first ordering
+    current = C_Order[current].Ref_Order_ID
+  return chain                       // [root, ..., leaf]
+```
+
+The chain is walked **root-first**. Each order's exception lines are
+applied in sequence. When two orders in the chain modify the same
+`locator_ref`, the deeper (closer to leaf) order wins — this is the
+"last descendant wins" rule.
+
+**Depth** is defined as distance from root. Root has depth 0. A child
+of root has depth 1. Deeper = higher priority.
+
+### 6.2 Override Rule — Last Descendant Wins
+
+At each `locator_ref` in the exploded BOM tree, at most one exception
+applies. If multiple orders in the chain target the same `locator_ref`,
+the override from the deepest order in the chain takes effect.
+
+```
+Example: DX_BASE → DX_SOLAR → DX_SOLAR_PREMIUM (3-deep chain)
+
+DX_BASE (depth 0):
+  locator_ref = 'Rm_Kitchen.Light_1'   → product = LIGHT_STD
+
+DX_SOLAR (depth 1, parent = DX_BASE):
+  locator_ref = 'Rm_Roof.Panel_1'      → product = SOLAR_PANEL_400W
+  locator_ref = 'Rm_Garage.Switchboard' → product = SOLAR_SWITCHBOARD
+
+DX_SOLAR_PREMIUM (depth 2, parent = DX_SOLAR):
+  locator_ref = 'Rm_Kitchen.Light_1'   → product = LIGHT_PREMIUM   ← overrides DX_BASE
+  locator_ref = 'Rm_Bathroom.Tile_1'   → product = TILE_MARBLE
+  locator_ref = 'Rm_Garage.Switchboard' → product = SOLAR_SWITCHBOARD_SMART  ← overrides DX_SOLAR
+
+Resolved exception set (depth wins):
+  'Rm_Kitchen.Light_1'    → LIGHT_PREMIUM           (depth 2 beats depth 0)
+  'Rm_Roof.Panel_1'       → SOLAR_PANEL_400W        (depth 1, no conflict)
+  'Rm_Garage.Switchboard' → SOLAR_SWITCHBOARD_SMART  (depth 2 beats depth 1)
+  'Rm_Bathroom.Tile_1'    → TILE_MARBLE             (depth 2, no conflict)
+```
+
+**Algorithm:** Build a `Map<locator_ref, ExceptionLine>`. Walk chain
+root-to-leaf. Each order's exceptions overwrite earlier entries. After
+the walk, the map contains the resolved set. O(N) where N = total
+exception lines across the chain.
+
+### 6.3 Sibling Conflict Resolution
+
+**The gap (GAP-SC-5):** The chain is linear (parent → child → grandchild).
+But two orders at the **same depth** could both modify the same `locator_ref`
+if the user creates two sibling variants from the same parent:
+
+```
+DX_BASE (depth 0)
+  ├─ DX_SOLAR   (depth 1, parent = DX_BASE)
+  │    locator_ref = 'Rm_Garage.Switchboard' → SOLAR_SWITCHBOARD
+  │
+  └─ DX_PREMIUM (depth 1, parent = DX_BASE)
+       locator_ref = 'Rm_Garage.Switchboard' → PREMIUM_SWITCHBOARD
+```
+
+If a third order DX_SOLAR_PREMIUM tries to inherit from **both**
+DX_SOLAR and DX_PREMIUM, the chain is no longer linear — it's a DAG.
+
+**Resolution: Single-parent inheritance only (error-on-conflict).**
+
+`C_Order.Ref_Order_ID` is a single FK — one parent per order. This is
+the iDempiere pattern: C_Order references at most one parent order.
+Diamond inheritance (inheriting from two siblings) is structurally
+impossible because the FK is scalar, not a list.
+
+The conflict scenario above cannot arise in the data model. The user
+must choose one lineage:
+
+```
+DX_SOLAR_PREMIUM (parent = DX_SOLAR)
+  → inherits solar + adds premium finishes     ← valid: linear chain
+
+DX_PREMIUM_SOLAR (parent = DX_PREMIUM)
+  → inherits premium + adds solar panels       ← valid: different linear chain
+
+DX_BOTH (parent = DX_SOLAR AND DX_PREMIUM)
+  → IMPOSSIBLE: Ref_Order_ID is scalar FK      ← structurally prevented
+```
+
+**iDempiere precedent:** PP_Order_BOM uses `SeqNo` for ordering within
+a single parent. M_PriceList_Version uses `ValidFrom` — latest wins.
+Both assume a linear resolution path, not a DAG. We follow the same
+assumption.
+
+**If sibling combination is needed:** The user authors a new order that
+manually includes both sets of exceptions. This is explicit, auditable,
+and avoids hidden precedence rules. Three lines (solar + premium + smart
+switchboard) instead of an implicit merge of two branches.
+
+**Validation rule:** At compile time, detect cycles in the Ref_Order_ID
+chain (A → B → A). Error immediately — cycles indicate data corruption,
+not a design intent. Implementation: track visited order IDs during
+chain walk; if a repeat is found, throw `IllegalStateException` with
+the cycle path.
+
+### 6.4 Ordering Within a Single Chain Level
+
+When a single order carries multiple exception lines, they are applied
+in `C_OrderLine.Line` order (iDempiere's standard line numbering,
+analogous to `PP_Order_BOM.SeqNo`). If two lines in the same order
+target the same `locator_ref`, the higher `Line` number wins —
+consistent with "last writer wins" within a document.
+
+**Validation:** At order entry time, warn if two lines in the same
+order target the same `locator_ref`. This is likely a user error
+(duplicate exception), not intentional layering. The warning does not
+block — it informs.
+
 ---
 
 ## 7. FOSS Ecosystem Model — Open Commons for Construction
@@ -1348,8 +1472,8 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 
 | § | Feature | Codebase State | Gap |
 |---|---------|---------------|-----|
-| **§1** Exception-based ordering | BomDropper.drop() fully explodes. swapProduct() works (Replace). | Missing: locator_ref addressing, Remove (qty=0 skip), Compress (reference class) |
-| **§1.1** Four mutations | Replace ✓ (WorkOutputDAO.swapProduct). **Add ✓** (OrderMutationService.addDiscipline, S67). | Remove + Compress not implemented |
+| **§1** Exception-based ordering | BomDropper.drop() with exceptions. locator_ref addressing. swapProduct (Replace). | **Session D DONE:** Remove + Compress implemented. Indexed exceptions (Session E) |
+| **§1.1** Four mutations | Replace ✓. Add ✓. **Remove ✓** (qty=0 skip, S68b). **Compress ✓** (reference class, S68b). | All 4 mutations implemented |
 | **§2** C_Project site-as-BOM | C_Order exists. No C_Project table or parent-order grouping. **R-PROJ-3:** C_Order_ID = docTypeId collision blocks multi-order (§2.1.4). | Schema + model + R-PROJ-3 fix needed. CTFL test plan in §2.1 |
 | **§3** Abstract category tree | M_Product_Category exists (46 rows). BOM Selection Cascade (§3.5) works. | Already emergent — no code change needed, taxonomy is data |
 | **§4** BOM mining via Approve | PromoteTest (G-10) exists. DocAction state machine works (DR→IP→AP→CO). | Promotion path proven. BOM diff (building vs building) not built |
@@ -1458,12 +1582,12 @@ Only the last order survives.
 - **Gate:** RulePackTest 6/6, OrderLineMutationTest 8/8, AddDisciplineTest 4/4, SH 7/7, full gate GREEN
 - **Witness:** W-RULEPACK-1 (MY=13 proposals, US=17 proposals — different codes, different counts)
 
-**Session D: Remove + Compress mutations (§1.1, §1.2)**
+**Session D: Remove + Compress mutations (§1.1, §1.2) — DONE (S68b)**
 
-- Remove: qty=0 on C_OrderLine → BomDropper/OrderLineWalker skips branch
-- Compress: reference class flag → compiler instantiates N at computed offsets
-- locator_ref addressing: target specific node in exploded tree
-- **Gate:** 100-storey tower = 3 C_OrderLines (§1.2 example). Standard pipeline compiles
+- Remove: qty=0 on C_OrderLine → BomDropper/OrderLineWalker skips branch ✓
+- Compress: reference class flag → compiler instantiates N at computed offsets ✓
+- locator_ref addressing: dot-separated M_Product_Category path on C_OrderLine ✓
+- **Gate:** RemoveCompressTest 5/5. BomDropperOrderIdTest 1/1. SH Rosetta Stone unchanged
 - **Witness:** W-EXCEPTION-1 (remove skips subtree), W-REFCLASS-1 (qty=N instantiated)
 
 **Session E: Order inheritance (§6)**

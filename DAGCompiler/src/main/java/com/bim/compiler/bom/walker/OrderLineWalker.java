@@ -21,7 +21,15 @@ import java.util.List;
  * {@code family_ref} changes (new product), {@code bom_child_id} stays
  * (original placement data from m_bom_line).
  *
+ * <p>Session D additions:
+ * <ul>
+ *   <li>qty=0 → skip entire subtree (Remove mutation)</li>
+ *   <li>is_reference_class + qty=N → fire visitor events N times at
+ *       computed dz offsets (Compress mutation, evenly spaced within parent AABB)</li>
+ * </ul>
+ *
  * <p>// Implementing S60_ERP_ALIGNMENT.md §3 — Witness: W-S60-WALK
+ * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
  *
  * @see BOMWalker      original m_bom-based walker
  * @see com.bim.compiler.bom.BomDropper  creates the C_OrderLine tree
@@ -56,6 +64,12 @@ public class OrderLineWalker {
             return;
         }
 
+        // Remove mutation: qty=0 → skip entire tree
+        if (root.qty == 0) {
+            System.out.printf("[OrderLineWalker] Root qty=0 for order %s — skipping%n", orderId);
+            return;
+        }
+
         // Load BUILDING BOM for root context
         MBOM rootBom = loadBom(root.familyRef);
         if (rootBom == null) {
@@ -87,6 +101,14 @@ public class OrderLineWalker {
         List<OrderLineRow> children = findChildren(orderId, parentLineId);
 
         for (OrderLineRow row : children) {
+            // Remove mutation: qty=0 → skip entire subtree
+            // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
+            if (row.qty == 0) {
+                System.out.printf("[OrderLineWalker] REMOVE: skipping subtree at locator_ref=%s%n",
+                        row.locatorRef);
+                continue;
+            }
+
             // Load MBOMLine via bom_child_id (join-back for attributes)
             MBOMLine line = null;
             if (row.bomChildId > 0) {
@@ -112,46 +134,104 @@ public class OrderLineWalker {
 
             } else {
                 // Sub-assembly (BUILDING, FLOOR, ROOM)
-                MBOM childBom = loadBom(row.familyRef);
-                if (childBom == null) {
-                    System.err.printf("[OrderLineWalker] No BOM for assembly %s — skipping%n",
-                            row.familyRef);
-                    continue;
+                // Compress mutation: is_reference_class + qty=N → instantiate N copies
+                // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-REFCLASS-1
+                if (row.isReferenceClass && row.qty > 1) {
+                    instantiateReferenceClass(orderId, row, parentBom, visitors, buildingType,
+                            level);
+                } else {
+                    walkSubAssembly(orderId, row, parentBom, visitors, buildingType, level);
                 }
-
-                MProduct product = MProduct.getAssembly(compConn, row.familyRef);
-                BOMWalker.NodeContext ctx = new BOMWalker.NodeContext(
-                        product, line, childBom, level, buildingType, row.discipline);
-
-                for (BOMVisitor v : visitors) v.onSubAssembly(ctx);
-                walkChildren(orderId, row.lineId, childBom, visitors, buildingType, level + 1);
-                for (BOMVisitor v : visitors) v.onSubAssemblyComplete(ctx);
             }
+        }
+    }
+
+    /**
+     * Walk a single sub-assembly node (normal case).
+     */
+    private void walkSubAssembly(String orderId, OrderLineRow row, MBOM parentBom,
+                                  List<BOMVisitor> visitors, String buildingType, int level)
+            throws SQLException {
+        MBOM childBom = loadBom(row.familyRef);
+        if (childBom == null) {
+            System.err.printf("[OrderLineWalker] No BOM for assembly %s — skipping%n",
+                    row.familyRef);
+            return;
+        }
+
+        MBOMLine line = null;
+        if (row.bomChildId > 0) {
+            line = new MBOMLine(compileDb);
+            if (!line.load(row.bomChildId)) line = null;
+        }
+
+        MProduct product = MProduct.getAssembly(compConn, row.familyRef);
+        BOMWalker.NodeContext ctx = new BOMWalker.NodeContext(
+                product, line, childBom, level, buildingType, row.discipline);
+
+        for (BOMVisitor v : visitors) v.onSubAssembly(ctx);
+        walkChildren(orderId, row.lineId, childBom, visitors, buildingType, level + 1);
+        for (BOMVisitor v : visitors) v.onSubAssemblyComplete(ctx);
+    }
+
+    /**
+     * Compress mutation: instantiate N copies of a reference class at computed offsets.
+     *
+     * <p>Offset computation: evenly spaced within parent AABB along the Z axis.
+     * dz[i] = i * (parentHeight / qty). This is the simplest linear distribution —
+     * floors stacked vertically, units arrayed along a corridor.
+     *
+     * <p>iDempiere parallel: PP_Order.QtyOrdered — N units from one recipe.
+     * Each instance gets the same BOM (child tree), different spatial position.
+     */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-REFCLASS-1
+    private void instantiateReferenceClass(String orderId, OrderLineRow row, MBOM parentBom,
+                                            List<BOMVisitor> visitors, String buildingType,
+                                            int level) throws SQLException {
+        MBOM childBom = loadBom(row.familyRef);
+        if (childBom == null) {
+            System.err.printf("[OrderLineWalker] No BOM for reference class %s — skipping%n",
+                    row.familyRef);
+            return;
+        }
+
+        // Compute offset spacing: evenly distributed along Z within parent AABB
+        double childHeight = childBom.getAabbHeightMm();
+        double dzStep = childHeight > 0 ? childHeight : 0;
+
+        System.out.printf("[OrderLineWalker] COMPRESS: %s × %d (dz_step=%.0fmm, locator_ref=%s)%n",
+                row.familyRef, row.qty, dzStep, row.locatorRef);
+
+        for (int i = 0; i < row.qty; i++) {
+            MProduct product = MProduct.getAssembly(compConn, row.familyRef);
+            BOMWalker.NodeContext ctx = new BOMWalker.NodeContext(
+                    product, null, childBom, level, buildingType, row.discipline);
+
+            for (BOMVisitor v : visitors) v.onSubAssembly(ctx);
+            walkChildren(orderId, row.lineId, childBom, visitors, buildingType, level + 1);
+            for (BOMVisitor v : visitors) v.onSubAssemblyComplete(ctx);
         }
     }
 
     // ── Data access ──────────────────────────────────────────────────────────
 
     private OrderLineRow findRoot(String orderId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, "
+                   + "Qty, locator_ref, is_reference_class "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID IS NULL "
                    + "AND IsActive = 1 ORDER BY Line LIMIT 1";
         try (PreparedStatement ps = compileDb.prepareStatement(sql)) {
             ps.setString(1, orderId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;
-                return new OrderLineRow(
-                        rs.getInt("C_OrderLine_ID"),
-                        rs.getString("family_ref"),
-                        rs.getString("host_type"),
-                        rs.getInt("bom_child_id"),
-                        rs.getString("Discipline"));
+                return readRow(rs);
             }
         }
     }
 
     private List<OrderLineRow> findChildren(String orderId, int parentLineId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, "
+                   + "Qty, locator_ref, is_reference_class "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID = ? "
                    + "AND IsActive = 1 ORDER BY Line";
         List<OrderLineRow> rows = new ArrayList<>();
@@ -160,16 +240,23 @@ public class OrderLineWalker {
             ps.setInt(2, parentLineId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    rows.add(new OrderLineRow(
-                            rs.getInt("C_OrderLine_ID"),
-                            rs.getString("family_ref"),
-                            rs.getString("host_type"),
-                            rs.getInt("bom_child_id"),
-                            rs.getString("Discipline")));
+                    rows.add(readRow(rs));
                 }
             }
         }
         return rows;
+    }
+
+    private static OrderLineRow readRow(ResultSet rs) throws SQLException {
+        return new OrderLineRow(
+                rs.getInt("C_OrderLine_ID"),
+                rs.getString("family_ref"),
+                rs.getString("host_type"),
+                rs.getInt("bom_child_id"),
+                rs.getString("Discipline"),
+                rs.getInt("Qty"),
+                rs.getString("locator_ref"),
+                rs.getInt("is_reference_class") == 1);
     }
 
     private MBOM loadBom(String bomId) throws SQLException {
@@ -178,5 +265,6 @@ public class OrderLineWalker {
     }
 
     private record OrderLineRow(int lineId, String familyRef, String hostType, int bomChildId,
-                                    String discipline) {}
+                                    String discipline, int qty, String locatorRef,
+                                    boolean isReferenceClass) {}
 }

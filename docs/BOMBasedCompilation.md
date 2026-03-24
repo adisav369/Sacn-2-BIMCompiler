@@ -612,6 +612,38 @@ not extracted from IFC.
 - DocValidate compliance checking → proven separately (`DocValidate.md`),
   applied in BIM Designer's ambient compliance (§18.4 in `BIM_Designer.md`)
 
+### 3.7 locator_ref — Exception-Order Addressing (Session D)
+
+Every C_OrderLine carries a `locator_ref`: a dot-separated path from the root
+that uniquely identifies WHERE in the exploded BOM tree this node sits.
+
+```
+Syntax:  segment.segment.segment
+Segment: M_Product_Category code (preferred) or bom_id/product_id (fallback)
+Example: RE.GF.LI.SOFA_001
+         │   │  │  └─ leaf product (no category → product_id used)
+         │   │  └─── room category (LI = Living)
+         │   └────── floor category (GF = Ground Floor)
+         └────────── building category (RE = Residential)
+```
+
+**Stability guarantee:** locator_ref is derived from BOM structure
+(M_Product_Category at each level), not from runtime state or insertion order.
+The same BOM always produces the same locator_refs. This makes them safe for
+exception orders to reference across recompilations.
+
+**Exception-order mutations** (ProjectOrderBlueprint.md §1.1):
+
+| Mutation | C_OrderLine state | Compiler behaviour |
+|----------|-------------------|-------------------|
+| **Remove** | `Qty=0` on a locator_ref | BomDropper skips entire subtree |
+| **Compress** | `is_reference_class=1, Qty=N` | Walker instantiates N copies at computed dz offsets |
+| **Replace** | Different `family_ref` on a locator_ref | BomDropper swaps the product (existing) |
+| **Add** | New C_OrderLine with locator_ref | Direct insertion (addDiscipline, Session A) |
+
+**Migration:** `W005_orderline_locator_ref.sql` — adds `locator_ref TEXT` and
+`is_reference_class INTEGER DEFAULT 0` to C_OrderLine.
+
 ---
 
 ## 4. Tack Convention — The Spatial Handshake

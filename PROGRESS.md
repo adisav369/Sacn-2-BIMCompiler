@@ -30,18 +30,19 @@
   Session A DONE — addDiscipline() + OrderMutationService. [AUDIT Appendix I](docs/AUDIT_S51_FOCUSED.md).
   Session B DONE — OrderLineMutation interface + 3 suggestions. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
   Session C DONE — Rule pack framing (pack_id on 4 AD tables). [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
-  Session D IN PROGRESS — Remove + Compress mutations (qty=0 skip, reference class, locator_ref).
+  Session D DONE — Remove + Compress mutations. W005 migration. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
   Session E NEXT — Order inheritance (Ref_Order_ID, stacked overlays). GAP-SC-5 spec in progress.
 
 **AD Dictionary (S62→S65):** Steps 0–3 DONE. Next: Step 4–6. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
 **Docs site:** https://red1oon.github.io/BIMCompiler/ — 50 specs, mkdocs-material.
 
-**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–P](docs/AUDIT_S51_FOCUSED.md).
+**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–Q](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
 
+**S68b** — Session D: Remove + Compress mutations. W005 migration (locator_ref + is_reference_class). BomDropper exception-order support. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
 **S68** — M_BomCategory → M_Product_Category rename. DV017 migration. 14 docs + 28 Java files + schema_snapshot. [AUDIT Appendix P](docs/AUDIT_S51_FOCUSED.md).
 **S67w** — Watchdog: ConstructionAsERP purge (80+ refs, 44 docs). MANIFESTO.md. IsBOM audit (no drift). [AUDIT Appendix N+O](docs/AUDIT_S51_FOCUSED.md).
 **S67c** — Session C: Rule pack framing. DV016 pack_id migration. MY=13, US=17 proposals. RulePackTest 6/6. [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).

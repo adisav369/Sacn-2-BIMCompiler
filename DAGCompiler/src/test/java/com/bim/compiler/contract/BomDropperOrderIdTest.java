@@ -168,6 +168,8 @@ public class BomDropperOrderIdTest {
                     M_Product_ID TEXT,
                     Discipline TEXT DEFAULT 'ARC',
                     Qty INTEGER NOT NULL DEFAULT 1,
+                    locator_ref TEXT,
+                    is_reference_class INTEGER NOT NULL DEFAULT 0,
                     IsActive INTEGER NOT NULL DEFAULT 1,
                     created TEXT NOT NULL DEFAULT (datetime('now')),
                     updated TEXT NOT NULL DEFAULT (datetime('now'))

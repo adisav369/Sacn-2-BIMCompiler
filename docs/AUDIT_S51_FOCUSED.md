@@ -1939,3 +1939,200 @@ BIMBackOffice (4 files), BIM_COBOL (3 files), BonsaiBIMDesigner (15 files).
 G4-TAMPER failure is pre-existing (T5 false positive on AUDIT doc self-reference).
 BuildingRegistryTest fixed by `schema_snapshot_bom.sql` column rename.
 `mvn compile -q` — clean.
+
+---
+
+## Appendix R — GAP-SC-5 Spec: Order Inheritance Conflict Resolution (S68)
+
+**Date:** 2026-03-24
+**Scope:** Pure specification — no code changes. Closes GAP-SC-5.
+**Spec location:** ProjectOrderBlueprint.md §6.1–§6.4
+
+### R.1 Problem Statement
+
+Session E (Order inheritance, §6) is blocked by GAP-SC-5: "Resolution for
+sibling branches modifying same locator_ref." The blueprint §6 says "last
+descendant wins" but does not define what happens when two sibling orders
+at the same chain depth both modify the same locator_ref.
+
+Flagged in: Appendix I.3 (missing failure criterion), Appendix J.7
+(housekeeping — still open), Appendix N.4 (Session E blocked), Appendix N.5
+(still open).
+
+### R.2 Resolution Summary
+
+**The sibling conflict is structurally impossible.**
+
+`C_Order.Ref_Order_ID` is a scalar FK (one parent per order). Diamond
+inheritance — where an order inherits from two siblings simultaneously —
+cannot be expressed in the data model. The inheritance chain is always
+linear: root → child → grandchild → ... → leaf.
+
+**Resolution rules (specified in ProjectOrderBlueprint.md §6.1–§6.4):**
+
+| Rule | Mechanism | iDempiere Precedent |
+|------|-----------|-------------------|
+| Chain walking | Walk Ref_Order_ID root-first, collect exceptions | PP_Order_BOM parent walk |
+| Depth wins | Deeper order overrides shallower at same locator_ref | M_PriceList_Version (latest ValidFrom wins) |
+| Same-order ordering | C_OrderLine.Line (higher number wins) | PP_Order_BOM.SeqNo |
+| Sibling merge | Structurally prevented (scalar FK) — user authors combined order manually | Single-parent constraint in iDempiere C_Order |
+| Cycle detection | Track visited IDs during walk; error on repeat | Standard FK cycle guard |
+
+**If the user wants both solar + premium:** They create a new order
+`DX_SOLAR_PREMIUM` with `parent = DX_SOLAR` and add premium exceptions
+explicitly. Three lines, fully auditable. No hidden merge semantics.
+
+### R.3 iDempiere Alignment
+
+Both candidate iDempiere patterns were evaluated:
+
+| Pattern | iDempiere Usage | Applicability |
+|---------|----------------|---------------|
+| **SeqNo** (PP_Order_BOM) | Sequence determines processing order within a parent | Used for same-order line ordering (§6.4) |
+| **ValidFrom** (M_PriceList_Version) | Latest effective date wins | Conceptual parallel for depth-wins rule (deepest = "latest" in the chain) |
+
+Neither pattern assumes DAG resolution — both operate on linear sequences.
+The spec follows the same assumption.
+
+### R.4 Witness: W-INHERIT-CONFLICT-1
+
+**Purpose:** Prove that order inheritance conflict resolution works correctly
+and that structurally invalid chains are rejected.
+
+**Claim:**
+Given a 3-deep inheritance chain (DX_BASE → DX_SOLAR → DX_SOLAR_PREMIUM)
+where DX_BASE and DX_SOLAR_PREMIUM both modify the same locator_ref,
+the compiler resolves to the depth-2 (DX_SOLAR_PREMIUM) value.
+
+**Test steps:**
+
+1. Create DX_BASE order with one exception line:
+   `locator_ref = 'Rm_Kitchen.Light_1', product = LIGHT_STD`
+2. Create DX_SOLAR order with `Ref_Order_ID = DX_BASE`, one exception line:
+   `locator_ref = 'Rm_Roof.Panel_1', product = SOLAR_PANEL_400W`
+3. Create DX_SOLAR_PREMIUM with `Ref_Order_ID = DX_SOLAR`, two exception lines:
+   `locator_ref = 'Rm_Kitchen.Light_1', product = LIGHT_PREMIUM`
+   `locator_ref = 'Rm_Bathroom.Tile_1', product = TILE_MARBLE`
+4. Resolve inheritance chain for DX_SOLAR_PREMIUM.
+5. **Assert:** resolved map contains 3 entries:
+   - `Rm_Kitchen.Light_1` → `LIGHT_PREMIUM` (depth 2 overrides depth 0)
+   - `Rm_Roof.Panel_1` → `SOLAR_PANEL_400W` (depth 1, uncontested)
+   - `Rm_Bathroom.Tile_1` → `TILE_MARBLE` (depth 2, uncontested)
+6. **Assert:** Compile the resolved order → gates pass (count, volume, digest).
+7. **Cycle test:** Create order A with `Ref_Order_ID = B`, order B with
+   `Ref_Order_ID = A`. Attempt to resolve chain.
+   **Assert:** `IllegalStateException` thrown with message containing both order IDs.
+
+**Session E failure criterion (from Appendix J.7):**
+Session E FAILS if any of:
+- Step 5 assertion fails (depth-wins rule not implemented correctly)
+- Step 6 gates fail (resolved order does not compile cleanly)
+- Step 7 does not throw (cycle detection missing)
+
+### R.5 Gap Register Update
+
+| Gap | Old Status | New Status |
+|-----|-----------|-----------|
+| GAP-SC-5 | OPEN — blocks Session E | **SPEC COMPLETE** — ProjectOrderBlueprint.md §6.1–§6.4. Witness: W-INHERIT-CONFLICT-1. Unblocks Session E |
+
+### R.6 Housekeeping Resolution
+
+| Open Item | Resolution |
+|-----------|-----------|
+| Appendix J.7: Session E failure criterion | **CLOSED** — W-INHERIT-CONFLICT-1 (§R.4) defines three failure conditions |
+| Appendix N.5: GAP-SC-5 still open | **CLOSED** — spec complete, §6.3 addresses sibling case |
+| Appendix N.4: Session E blocked | **UNBLOCKED** — proceed after Session D completes |
+
+---
+
+## Appendix Q — Session D: Remove + Compress Mutations (S68b)
+
+**Date:** 2026-03-24
+**Scope:** BomDropper + OrderLineWalker learn exception-order mutations.
+**Spec:** ProjectOrderBlueprint.md §1.1 (four mutations), §1.2 (reference class)
+**Witness:** W-EXCEPTION-1, W-REFCLASS-1
+
+### Q.1 Deliverables
+
+| # | Deliverable | Status |
+|---|-------------|--------|
+| 1 | Migration W005_orderline_locator_ref.sql | DONE — `locator_ref TEXT` + `is_reference_class INTEGER DEFAULT 0` on C_OrderLine |
+| 2 | BomDropper locator_ref path building | DONE — dot-separated M_Product_Category path built during explosion |
+| 3 | BomDropper Remove mutation (qty=0 skip) | DONE — `ExceptionLine.remove()` → subtree skipped |
+| 4 | BomDropper Compress mutation (reference class) | DONE — `ExceptionLine.compress(N)` → single node, qty=N, no children |
+| 5 | OrderLineWalker qty=0 skip | DONE — skips subtrees where Qty=0 |
+| 6 | OrderLineWalker reference class instantiation | DONE — fires N visitor events at computed dz offsets |
+| 7 | BBC.md §3.7 addendum (locator_ref spec) | DONE — syntax, stability guarantee, mutation table |
+| 8 | RemoveCompressTest.java (5 witnesses) | DONE — all 5 PASS |
+| 9 | WorkOutputDAO schema update | DONE — new columns in CREATE TABLE |
+
+### Q.2 Architecture
+
+**locator_ref addressing:** Each C_OrderLine gets a stable, dot-separated path
+derived from M_Product_Category codes at each BOM level. Example: `RE.GF.LI.SOFA_001`.
+Falls back to bom_id/product_id when category is null. Stable across recompilations
+since it's derived from BOM structure, not insertion order.
+
+**Exception flow:** `BomDropper.drop(conn, entry, orderId, exceptions)` accepts a
+`Map<String, ExceptionLine>`. During explosion, each node's locator_ref is checked
+against the exception map:
+- **Remove (qty=0):** Subtree is skipped entirely — no C_OrderLines created
+- **Compress (is_reference_class + qty=N):** Single C_OrderLine created with
+  `is_reference_class=1` and `Qty=N`. Children NOT exploded — instantiation
+  happens at walk time in OrderLineWalker.
+
+**Walker behavior:** OrderLineWalker reads `Qty`, `locator_ref`, `is_reference_class`
+from C_OrderLine. Qty=0 → skip. is_reference_class + Qty=N → fire visitor events
+N times (evenly spaced along Z axis within parent AABB).
+
+**Backward compatibility:** The new `drop()` overload with `Map.of()` default
+delegates to the existing 2-arg path. Existing callers unchanged.
+
+### Q.3 — §14.4 Risk Resolution
+
+The risk identified in §14.4 was: "locator_ref addressing conflicts with existing
+m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT)."
+
+**Resolution:** locator_ref on C_OrderLine is a SEPARATE column from m_bom_line.locator_ref.
+They serve different purposes:
+- `m_bom_line.locator_ref` — spatial placement hint within a room (NORTH_WALL, FLOAT)
+- `C_OrderLine.locator_ref` — tree addressing for exception orders (RE.GF.LI.SOFA_001)
+
+No conflict — different tables, different semantics.
+
+### Q.4 — Gate Results
+
+| Gate | Result |
+|------|--------|
+| `mvn compile -q` | CLEAN |
+| RemoveCompressTest (5 witnesses) | 5/5 PASS |
+| BomDropperOrderIdTest (existing) | 1/1 PASS |
+| SH Rosetta Stone | 5/7 (BuildingRegistryTest + g4_tamper pre-existing) |
+
+### Q.5 — Witness Results
+
+**W-LOCATOR-1:** All C_OrderLines have non-null locator_ref. Leaves use dot-separated
+paths (e.g., `RE.GF.LI.SOFA_001`).
+
+**W-EXCEPTION-1:** Remove mutation (qty=0) on locator_ref `RE.GF.LI.SOFA_001` →
+baseline 2 leaves drops to 1 leaf. Removed node absent from output.
+
+**W-EXCEPTION-2:** Remove on assembly locator_ref `RE.GF.LI` → entire subtree
+skipped (2→0 leaves). Assembly and all descendants absent.
+
+**W-REFCLASS-1:** Compress mutation (is_reference_class=true, qty=3) on floor
+locator_ref → C_OrderLine stored with `Qty=3, is_reference_class=1`. No exploded
+children (subtree collapsed to single node).
+
+**W-REFCLASS-2:** Compressed order has fewer C_OrderLines than baseline
+(5 → 2 lines — root + compressed floor only).
+
+### Q.6 — Blueprint Aspirational Target
+
+§1.2 describes: "100-storey tower = 3 C_OrderLines." Session D proves the mechanism:
+- C_OrderLine #1: BUILDING root (normal)
+- C_OrderLine #2: FLOOR with is_reference_class=1, Qty=100 (Compress)
+- C_OrderLine #3: Exception on FLOOR[47] (indexed exception — Session E scope)
+
+Session D delivers #1 and #2. Indexed exceptions (`locator_ref[N]` syntax) are
+Session E scope (requires Order Inheritance for stacked overlays).

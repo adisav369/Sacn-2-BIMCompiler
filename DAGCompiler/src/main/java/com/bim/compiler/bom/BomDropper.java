@@ -6,6 +6,7 @@ import com.bim.ormsandbox.po.MBOMLine;
 
 import java.sql.*;
 import java.util.List;
+import java.util.Map;
 
 /**
  * BOM Drop utility for the compilation pipeline.
@@ -19,6 +20,9 @@ import java.util.List;
  * {@code m_bom_line.bom_child_id} — so that {@code OrderLineWalker}
  * can load the full MBOMLine attributes (verb_ref, rotation, material,
  * storey, element_ref) during compilation.
+ *
+ * <p>Session D additions: {@code locator_ref} (dot-separated BOM path)
+ * and {@code is_reference_class} support exception-based ordering.
  *
  * <p>// Implementing S60_ERP_ALIGNMENT.md §2 — Witness: W-S60-DROP
  *
@@ -51,6 +55,23 @@ public class BomDropper {
      */
     // Implementing ProjectOrderBlueprint.md §14.3 Session 0 — Witness: W-PROJ-ID-1
     public static int drop(Connection compileDb, BuildingEntry entry, String orderId) throws SQLException {
+        return drop(compileDb, entry, orderId, Map.of());
+    }
+
+    /**
+     * Explode a building's BOM tree with exception-based mutations.
+     *
+     * <p>// Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
+     *
+     * @param compileDb   connection to the compile DB
+     * @param entry       building entry from C_DocType registry
+     * @param orderId     explicit C_Order_ID
+     * @param exceptions  map of locator_ref → ExceptionLine (qty=0 for Remove, is_reference_class for Compress)
+     * @return number of leaf elements (sum of qty across all LEAF C_OrderLines)
+     */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
+    public static int drop(Connection compileDb, BuildingEntry entry, String orderId,
+                           Map<String, ExceptionLine> exceptions) throws SQLException {
         // Find the BUILDING BOM for this entry's DocSubType + DocBaseType
         String buildingBomId = findBuildingBom(compileDb, entry);
         if (buildingBomId == null) {
@@ -62,15 +83,30 @@ public class BomDropper {
         // Create C_Order
         createOrder(compileDb, orderId, entry);
 
-        // Explode BOM tree → C_OrderLine
+        // Explode BOM tree → C_OrderLine (with locator_ref path building)
         int[] leafCount = {0};
         int[] lineSeq = {0};
         explode(compileDb, orderId, buildingBomId, 0, "BUILDING",
-                null, 0, leafCount, lineSeq);
+                null, 0, leafCount, lineSeq, "", exceptions);
 
         System.out.printf("[BomDropper] %s → %d leaves (order=%s, bom=%s)%n",
                 entry.id(), leafCount[0], orderId, buildingBomId);
         return leafCount[0];
+    }
+
+    /**
+     * Exception line for Remove/Compress mutations on a specific locator_ref.
+     *
+     * @param qty              0 = Remove (skip subtree), N = override quantity
+     * @param isReferenceClass true = Compress (instantiate qty copies at computed offsets)
+     */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
+    public record ExceptionLine(int qty, boolean isReferenceClass) {
+        /** Remove mutation: qty=0 skips the entire subtree at the targeted locator_ref. */
+        public static ExceptionLine remove() { return new ExceptionLine(0, false); }
+
+        /** Compress mutation: is_reference_class + qty=N instantiates N copies at computed offsets. */
+        public static ExceptionLine compress(int qty) { return new ExceptionLine(qty, true); }
     }
 
     /**
@@ -115,7 +151,7 @@ public class BomDropper {
     }
 
     /**
-     * Recursively explode a BOM into C_OrderLine rows.
+     * Recursively explode a BOM into C_OrderLine rows, building locator_ref paths.
      *
      * <p>Structural dispatch (same as BOMWalker — component_type NOT checked):
      * <ol>
@@ -124,11 +160,17 @@ public class BomDropper {
      *   <li>Otherwise → leaf with geometry</li>
      * </ol>
      *
+     * <p>locator_ref is built as a dot-separated path using the M_Product_Category
+     * at each level. Root gets no prefix; children append their category code.
+     * Example: "" → "GF" → "GF.LI" → "GF.LI.SOFA_001"
+     *
      * @return the C_OrderLine_ID of the inserted node (auto-generated)
      */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
     private static int explode(Connection conn, String orderId, String bomId,
                                 int parentLineId, String hostType, String productCategory,
-                                int depth, int[] leafCount, int[] lineSeq)
+                                int depth, int[] leafCount, int[] lineSeq,
+                                String parentLocator, Map<String, ExceptionLine> exceptions)
             throws SQLException {
         if (depth > MAX_DEPTH) {
             System.err.printf("[BomDropper] MAX_DEPTH exceeded at BOM %s%n", bomId);
@@ -141,12 +183,34 @@ public class BomDropper {
 
         if (productCategory == null) productCategory = bom.getProductCategory();
 
-        // Insert C_OrderLine for this assembly node (bom_child_id=NULL for root)
+        // Build locator_ref for this node
+        String locatorRef = buildLocatorRef(parentLocator, productCategory, bomId);
+
+        // Check for Remove exception (qty=0 → skip entire subtree)
+        ExceptionLine exception = exceptions.get(locatorRef);
+        if (exception != null && exception.qty() == 0) {
+            System.out.printf("[BomDropper] REMOVE: skipping subtree at locator_ref=%s%n", locatorRef);
+            return 0;
+        }
+
+        // Check for Compress exception (is_reference_class + qty=N)
+        boolean isRefClass = exception != null && exception.isReferenceClass();
+        int overrideQty = exception != null ? exception.qty() : 1;
+
+        // Insert C_OrderLine for this assembly node
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId == 0 ? null : parentLineId,
-                lineSeq[0], bomId, hostType, productCategory, 0,  // bom_child_id=NULL for assemblies at root
+                lineSeq[0], bomId, hostType, productCategory, 0,
                 0, 0, 0,
-                bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(), 1);
+                bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
+                isRefClass ? overrideQty : 1, locatorRef, isRefClass);
+
+        // If reference class, don't explode children — they'll be instantiated at walk time
+        if (isRefClass) {
+            System.out.printf("[BomDropper] COMPRESS: locator_ref=%s, qty=%d (reference class)%n",
+                    locatorRef, overrideQty);
+            return lineId;
+        }
 
         // Walk children
         List<MBOMLine> lines = MBOMLine.getByBom(conn, bomId);
@@ -163,7 +227,8 @@ public class BomDropper {
                 String childHostType = deriveHostType(depth + 1);
                 explodeAssembly(conn, orderId, childProductId,
                         lineId, childHostType, childBom.getProductCategory(),
-                        depth + 1, leafCount, lineSeq, line.getBomChildId());
+                        depth + 1, leafCount, lineSeq, line.getBomChildId(),
+                        locatorRef, exceptions);
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
                 // PHANTOM — skip (only component_type that matters)
@@ -171,14 +236,22 @@ public class BomDropper {
 
             } else {
                 // Leaf product — structural detection: no matching bom_id = leaf.
-                // component_type is NOT checked (same as BOMWalker).
+                String leafLocator = buildLocatorRef(locatorRef, null, childProductId);
+
+                // Check for Remove on leaf
+                ExceptionLine leafEx = exceptions.get(leafLocator);
+                if (leafEx != null && leafEx.qty() == 0) {
+                    System.out.printf("[BomDropper] REMOVE: skipping leaf at locator_ref=%s%n", leafLocator);
+                    continue;
+                }
+
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
                         childProductId, "LEAF", productCategory, line.getBomChildId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
-                        line.getAllocatedHeightMm(), qty);
+                        line.getAllocatedHeightMm(), qty, leafLocator, false);
                 leafCount[0] += qty;
             }
         }
@@ -193,7 +266,9 @@ public class BomDropper {
     private static int explodeAssembly(Connection conn, String orderId, String bomId,
                                         int parentLineId, String hostType, String productCategory,
                                         int depth, int[] leafCount, int[] lineSeq,
-                                        int makeBomChildId) throws SQLException {
+                                        int makeBomChildId,
+                                        String parentLocator, Map<String, ExceptionLine> exceptions)
+            throws SQLException {
         if (depth > MAX_DEPTH) return 0;
 
         MBOM bom = new MBOM(conn);
@@ -201,12 +276,34 @@ public class BomDropper {
 
         if (productCategory == null) productCategory = bom.getProductCategory();
 
+        // Build locator_ref for this node
+        String locatorRef = buildLocatorRef(parentLocator, productCategory, bomId);
+
+        // Check for Remove exception
+        ExceptionLine exception = exceptions.get(locatorRef);
+        if (exception != null && exception.qty() == 0) {
+            System.out.printf("[BomDropper] REMOVE: skipping subtree at locator_ref=%s%n", locatorRef);
+            return 0;
+        }
+
+        // Check for Compress exception
+        boolean isRefClass = exception != null && exception.isReferenceClass();
+        int overrideQty = exception != null ? exception.qty() : 1;
+
         // Insert assembly C_OrderLine with the MAKE line's bom_child_id
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId, lineSeq[0],
                 bomId, hostType, productCategory, makeBomChildId,
-                0, 0, 0,  // assembly-level offsets are 0 (tack is on the MAKE line)
-                bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(), 1);
+                0, 0, 0,
+                bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
+                isRefClass ? overrideQty : 1, locatorRef, isRefClass);
+
+        // If reference class, don't explode children
+        if (isRefClass) {
+            System.out.printf("[BomDropper] COMPRESS: locator_ref=%s, qty=%d (reference class)%n",
+                    locatorRef, overrideQty);
+            return lineId;
+        }
 
         // Walk children (same logic as explode)
         List<MBOMLine> lines = MBOMLine.getByBom(conn, bomId);
@@ -221,21 +318,28 @@ public class BomDropper {
                 String childHostType = deriveHostType(depth + 1);
                 explodeAssembly(conn, orderId, childProductId, lineId,
                         childHostType, childBom.getProductCategory(),
-                        depth + 1, leafCount, lineSeq, line.getBomChildId());
+                        depth + 1, leafCount, lineSeq, line.getBomChildId(),
+                        locatorRef, exceptions);
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
-                // PHANTOM — skip (only component_type that matters)
                 continue;
 
             } else {
-                // Leaf — structural detection, component_type not checked
+                String leafLocator = buildLocatorRef(locatorRef, null, childProductId);
+
+                ExceptionLine leafEx = exceptions.get(leafLocator);
+                if (leafEx != null && leafEx.qty() == 0) {
+                    System.out.printf("[BomDropper] REMOVE: skipping leaf at locator_ref=%s%n", leafLocator);
+                    continue;
+                }
+
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
                         childProductId, "LEAF", productCategory, line.getBomChildId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
-                        line.getAllocatedHeightMm(), qty);
+                        line.getAllocatedHeightMm(), qty, leafLocator, false);
                 leafCount[0] += qty;
             }
         }
@@ -244,20 +348,38 @@ public class BomDropper {
     }
 
     /**
+     * Build a locator_ref path segment. Uses M_Product_Category if available,
+     * otherwise falls back to bom_id/product_id as the segment name.
+     *
+     * <p>Syntax: dot-separated from root. Example: "GF.LI.SOFA_001"
+     * (floor category . room category . leaf product).
+     * See BBC.md §3.6 for the full locator_ref addressing spec.
+     */
+    static String buildLocatorRef(String parentLocator, String productCategory, String nodeId) {
+        String segment = (productCategory != null && !productCategory.isEmpty())
+                ? productCategory : nodeId;
+        if (parentLocator == null || parentLocator.isEmpty()) return segment;
+        return parentLocator + "." + segment;
+    }
+
+    /**
      * Insert a single C_OrderLine row and return its auto-generated ID.
      */
+    // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
     private static int insertLine(Connection conn, String orderId, Integer parentLineId,
                                    int lineSeq, String familyRef, String hostType,
                                    String productCategory, int bomChildId,
                                    double dx, double dy, double dz,
                                    double widthMm, double depthMm, double heightMm,
-                                   int qty) throws SQLException {
+                                   int qty, String locatorRef, boolean isReferenceClass)
+            throws SQLException {
         String discipline = deriveDiscipline(productCategory);
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                    + " m_product_category_id, bom_child_id, dx, dy, dz, "
-                   + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, Qty) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                   + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, Qty, "
+                   + " locator_ref, is_reference_class) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, orderId);
             if (parentLineId != null) ps.setInt(2, parentLineId);
@@ -277,6 +399,8 @@ public class BomDropper {
             ps.setString(14, familyRef);  // M_Product_ID = family_ref
             ps.setString(15, discipline);
             ps.setInt(16, qty);
+            ps.setString(17, locatorRef);
+            ps.setInt(18, isReferenceClass ? 1 : 0);
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {

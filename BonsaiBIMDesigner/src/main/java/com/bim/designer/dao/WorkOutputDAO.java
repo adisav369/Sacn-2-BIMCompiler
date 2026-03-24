@@ -1156,6 +1156,8 @@ public class WorkOutputDAO {
                 aabb_height_mm        REAL,
                 M_AttributeSetInstance_ID  INTEGER,
                 Qty                   INTEGER NOT NULL DEFAULT 1,
+                locator_ref           TEXT,
+                is_reference_class    INTEGER NOT NULL DEFAULT 0,
                 IsActive              INTEGER NOT NULL DEFAULT 1,
                 validation_status     TEXT DEFAULT 'UNCHECKED'
                                       CHECK(validation_status IN ('UNCHECKED','PASS','WARN','FAIL')),
@@ -1164,6 +1166,7 @@ public class WorkOutputDAO {
             );
             CREATE INDEX IF NOT EXISTS idx_orderline_order ON C_OrderLine(C_Order_ID);
             CREATE INDEX IF NOT EXISTS idx_orderline_family ON C_OrderLine(family_ref);
+            CREATE INDEX IF NOT EXISTS idx_orderline_locator ON C_OrderLine(locator_ref);
             CREATE TABLE IF NOT EXISTS W_Variant (
                 W_Variant_ID          INTEGER PRIMARY KEY AUTOINCREMENT,
                 C_Order_ID            TEXT NOT NULL REFERENCES C_Order(C_Order_ID),
