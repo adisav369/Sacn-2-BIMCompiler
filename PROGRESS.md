@@ -30,18 +30,20 @@
   Session A DONE — addDiscipline() + OrderMutationService. [AUDIT Appendix I](docs/AUDIT_S51_FOCUSED.md).
   Session B DONE — OrderLineMutation interface + 3 suggestions. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
   Session C DONE — Rule pack framing (pack_id on 4 AD tables). [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
-  Session D NEXT — Remove + Compress mutations (qty=0 skip, reference class).
-  Session E — Order inheritance (Ref_Order_ID, stacked overlays).
+  Session D IN PROGRESS — Remove + Compress mutations (qty=0 skip, reference class, locator_ref).
+  Session E NEXT — Order inheritance (Ref_Order_ID, stacked overlays). GAP-SC-5 spec in progress.
 
 **AD Dictionary (S62→S65):** Steps 0–3 DONE. Next: Step 4–6. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
 **Docs site:** https://red1oon.github.io/BIMCompiler/ — 50 specs, mkdocs-material.
 
-**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–M](docs/AUDIT_S51_FOCUSED.md).
+**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–P](docs/AUDIT_S51_FOCUSED.md).
+**MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
 
 **S68** — M_BomCategory → M_Product_Category rename. DV017 migration. 14 docs + 28 Java files + schema_snapshot. [AUDIT Appendix P](docs/AUDIT_S51_FOCUSED.md).
+**S67w** — Watchdog: ConstructionAsERP purge (80+ refs, 44 docs). MANIFESTO.md. IsBOM audit (no drift). [AUDIT Appendix N+O](docs/AUDIT_S51_FOCUSED.md).
 **S67c** — Session C: Rule pack framing. DV016 pack_id migration. MY=13, US=17 proposals. RulePackTest 6/6. [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
 **S67b** — Session B: OrderLineMutation engine. 3 implementations. OrderLineMutationTest 8/8. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
 **S67** — ELEC onboarding + Session A + watchdog + SystemContract.md + Rosetta Dictionary + mkdocs site. [AUDIT Appendix I](docs/AUDIT_S51_FOCUSED.md).

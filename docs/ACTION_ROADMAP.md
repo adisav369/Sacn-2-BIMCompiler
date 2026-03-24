@@ -107,7 +107,7 @@ R-PROJ-3 (Session 0) must be fixed before C_Project work.
 | R22 | Extract I_Element_Connectivity | MED | TODO — enables future MEP routing |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | BACKLOG |
 | BBC-002 | BomValidator verb fidelity in compliance report | LOW | BACKLOG |
-| R19 | Update SystemContract.md dual architecture | DOC | BACKLOG |
+| R19 | ~~Update SystemContract.md dual architecture~~ | DOC | **MOOT** — ConstructionAsERP.md archived (S67) |
 | VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | KNOWN LIMIT |
 
 ---

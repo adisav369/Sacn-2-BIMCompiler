@@ -514,8 +514,8 @@ Each gap must be closed with an SRS before code is written.
 | **GAP-SC-1** | ASI mutation → recompile | Which verbs re-fire? Which witnesses re-check? Transaction flow spec | HIGH (blocks viewport drag) |
 | **GAP-SC-2** | Freehand drawing → BOM | How viewport geometry becomes a BOM mutation | MED (blocks freehand mode) |
 | **GAP-SC-3** | Site grid generation | Algorithm to subdivide site_aabb into plots using terrain topology | HIGH (blocks C_Project) |
-| **GAP-SC-4** | Rule pack versioning | Effectivity dates, jurisdiction scoping, precedence | MED (blocks Session C) |
-| **GAP-SC-5** | Order inheritance conflict | Resolution for sibling branches modifying same locator_ref | LOW (blocks Session E) |
+| **GAP-SC-4** | Rule pack versioning | Effectivity dates, version precedence, pack lifecycle. **Tagging done** (S67c pack_id on 4 AD tables). Versioning/lifecycle deferred. | MED (partially addressed) |
+| **GAP-SC-5** | Order inheritance conflict | **SPEC COMPLETE** — Single-parent FK prevents sibling DAG; linear chain resolved by depth (deepest wins). See ProjectOrderBlueprint.md §6.3 | LOW (unblocks Session E) |
 | **GAP-SC-6** | Compile-once-copy-many | Performance optimization for reference class (qty=180) | MED (blocks C_Project at scale) |
 | **GAP-SC-7** | Output consolidation | Per-building vs consolidated output.db for C_Project | MED (blocks C_Project) |
 | **GAP-SC-8** | R-PROJ-3 C_Order_ID collision | BomDropper parameterized with explicit orderId (Session 0). Default path unchanged. W-PROJ-ID-1 proves coexistence. | **CLOSED** (Session 0, 2026-03-24) |

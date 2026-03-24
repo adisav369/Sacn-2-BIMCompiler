@@ -85,6 +85,84 @@ BOM and a spatial BOM. Three integers turn procurement into construction.
 
 ---
 
+## The Application Dictionary Heritage
+
+Compiere introduced the Application Dictionary (AD) in 2000 — metadata that
+defines the system itself. ADempiere inherited it. iDempiere perfected it.
+This project leans on it heavily. If you've administered an iDempiere instance,
+every pattern below will feel familiar.
+
+*iDempiere references: [wiki.idempiere.org](https://wiki.idempiere.org) ·
+[Application Dictionary](https://wiki.idempiere.org/en/Application_Dictionary) ·
+[Manufacturing](https://wiki.idempiere.org/en/Manufacturing) ·
+[Validation Rules](https://wiki.idempiere.org/en/Validation_Rules) ·
+[DocAction](https://wiki.idempiere.org/en/Document_Process)*
+
+**AD_Val_Rule — Validation rules as data, not code.**
+In iDempiere, `AD_Val_Rule` restricts field values (e.g., "only active Business
+Partners"). Here, the same table enforces building codes: sprinkler spacing
+>= 3000mm, emergency light within 6m of exit, fire door on every corridor.
+Jurisdiction-scoped — MY/UBBL rules fire for Malaysian buildings, US/IBC for
+American ones. Exactly like tax rules scoped by `C_Country`.
+→ [DocValidate.md](DocValidate.md) · [DocAction_SRS.md §5](DocAction_SRS.md)
+
+**Column Callout — Reactive field logic.**
+In iDempiere, a Callout fires when a user changes a field value (e.g., selecting
+a Business Partner auto-fills the address). Here, `DiffVerb + Callout` means:
+drag a wall in the viewport → cascading consequences fire (room AABB recalculates,
+furniture re-validates, MEP re-routes). Same pattern, spatial domain.
+→ [ProjectOrderBlueprint.md §9](ProjectOrderBlueprint.md)
+
+**ModelValidator — Event-driven hooks.**
+iDempiere's `ModelValidator` fires before/after save, before/after delete. Our
+`processIt()` orchestration follows the identical lifecycle: `prepareIt()` →
+`completeIt()` → `approveIt()`. Each discipline routes through DocEvent — the
+validation engine discovers applicable rules and fires them. No hardcoded logic.
+→ [DocAction_SRS.md §1](DocAction_SRS.md)
+
+**C_Project — Multi-order grouping.**
+Any ERP person recognises `C_Project` instantly: project accounting, milestone
+tracking, cross-order budgets. Here, a housing development IS a C_Project.
+200 houses = 200 C_Orders under one C_Project. Site layout = C_ProjectLine
+per plot. The same entity that manages a manufacturing program manages a
+construction site.
+→ [ProjectOrderBlueprint.md §2](ProjectOrderBlueprint.md)
+
+**AD_Org — Discipline as organisational unit.**
+In iDempiere, `AD_Org` partitions data by business unit. Here, engineering
+disciplines (ARC, STR, FP, ELEC, ACMV) partition the BOM validation space.
+Each discipline is an organisational concern with its own rules, its own
+AD_Val_Rule set, its own validation pass — but sharing the same product catalog.
+→ [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
+
+**AD_ChangeLog — Full provenance.**
+iDempiere logs every field change: who, when, old value, new value. Our
+`ChangelogDAO` does the same for every PLACE/DELETE/MOVE/RESIZE. Undo via
+replay. Wikipedia edit history for BOMs. Auditors love this.
+→ [ProjectOrderBlueprint.md §10](ProjectOrderBlueprint.md)
+
+**EntityType (D/U/A) — Dictionary vs User vs Application.**
+iDempiere protects shipped dictionary records from user modification. Our
+`X_M_BOM` enforces the same: Dictionary records (shipped BOM templates) are
+read-only. User records (verb-created BOMs) are fully mutable. GodMode
+bypass for migrations only. Three-tier protection at the ORM layer.
+→ [BBC.md §1](BOMBasedCompilation.md) · [AUDIT Appendix O.7](AUDIT_S51_FOCUSED.md)
+
+**AD_PrintFormat — Output selection.**
+In iDempiere, `AD_PrintFormat` controls which columns appear on a printed
+document. Here, the same concept controls which elements render in the
+viewport, which disciplines show in the HTML UI, and which BOM levels
+expand in the tree view. Presentation is configuration, not code.
+
+**Configure-to-Order — Exception-based ordering.**
+iDempiere's BOM Configurator lets a sales rep exclude optional components
+or set quantities at order time. Our exception-based ordering (qty=0 removes
+a subtree, reference class compresses N copies) is the identical pattern
+applied to buildings. 200 houses, 6 lines of exceptions each.
+→ [ProjectOrderBlueprint.md §1](ProjectOrderBlueprint.md)
+
+---
+
 ## The Three Concerns
 
 iDempiere separates documents into header (C_Order) and lines (C_OrderLine),

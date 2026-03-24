@@ -578,7 +578,7 @@ binary), but must not be confused with the source DBs being mixed.
 |---|--------|-----------|----------|--------|
 | R17 | DELETE FROM I_Element_Extraction in component_library.db | V1 | MEDIUM | **DONE** — V006 migration (commit `854741f`): DROP TABLE I_Element_Extraction |
 | R18 | DROP TABLE ad_bom, ad_bom_child, ad_bom_child_param in component_library.db | V3 | LOW | **DONE** — V006 migration (commit `854741f`): all three tables dropped |
-| R19 | Update DATA_MODEL.md §1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **TODO** |
+| R19 | Update DATA_MODEL.md §1 to acknowledge dual architecture (DSL ad_* tables in library = legacy generative path, BOM path is clean) | V2 | DOC | **MOOT** — ConstructionAsERP.md archived (S67). DATA_MODEL.md §1 is now the sole schema authority. |
 | R20 | Migrate test extraction fixtures out of component_library.db | §8.3 test dependency | LOW | **DEFER** — tests work as-is |
 | R21 | Extract `host_element_ref` from `IfcRelVoidsElement` into m_bom_line | Schema-Not-Geometry §15.6 | MED | **DONE** (S60-S2 code, S60-S3 re-extract). SH: 7 fills, FK: 16 fills. Pipeline verified 7/7 PASS. |
 | R22 | Extract `I_Element_Connectivity` linking table from `IfcRelConnectsElements` | Schema-Not-Geometry §15.6 | MED | **TODO** — M13/M14/M15 upgrade from positional grouping |
