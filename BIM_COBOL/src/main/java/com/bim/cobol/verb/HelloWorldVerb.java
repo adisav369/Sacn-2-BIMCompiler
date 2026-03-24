@@ -285,7 +285,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         sb.append(String.format("    %s%n", inv.dbPath));
         sb.append(String.format("    BOM=%s  elements=%d  c_orderline=%d%n",
                 inv.label, inv.elements, inv.cOrderLine));
-        sb.append(String.format("    co_empty_space_line=%d (L0:%d L1:%d L2:%d)%n",
+        sb.append(String.format("    spatial_slots=%d (L0:%d L1:%d L2:%d)%n",
                 inv.esL0 + inv.esL1 + inv.esL2, inv.esL0, inv.esL1, inv.esL2));
         sb.append(String.format("    spatial_structure=%d  base_geometries=%d%n",
                 inv.spatialStructure, inv.baseGeometries));

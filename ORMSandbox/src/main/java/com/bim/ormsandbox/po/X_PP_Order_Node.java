@@ -13,7 +13,7 @@ import java.sql.Connection;
  * <ul>
  *   <li><b>WHAT</b> (order topics) = {@code c_orderline}</li>
  *   <li><b>HOW</b>  (production operations) = this class</li>
- *   <li><b>WHERE</b> (spatial workstation) = {@code co_empty_space_line} (S_Resource)</li>
+ *   <li><b>WHERE</b> (spatial workstation) = M_BOM_Line dx/dy/dz (compiler-internal cache: co_empty_space_line)</li>
  * </ul>
  *
  * <p>Lives in output.db (transaction data, not BOM.db dictionary).

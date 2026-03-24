@@ -62,8 +62,8 @@ public class OutputTemplateGenerator {
                 ('c_orderline',     NULL, 'WHAT: Order lines — one per placed element, generated from BOM explosion'),
                 ('PP_Order_Node',   NULL, 'HOW: Production verb invocations — one per BIM COBOL verb execution'),
                 ('PP_Order_NodeProduct', NULL, 'HOW: Structured parameters for each verb invocation'),
-                ('co_empty_space',  NULL, 'WHERE: Construction site AABB + IsAvailable quality gate'),
-                ('co_empty_space_line', NULL, 'WHERE: Room-level locator lines — S_Resource placement slots'),
+                ('co_empty_space',  NULL, 'Compiler-internal: spatial cache (WHERE = M_BOM_Line dx/dy/dz)'),
+                ('co_empty_space_line', NULL, 'Compiler-internal: cached spatial slots — derived from BOM spatial data'),
 
                 -- Core geometry tables
                 ('elements_meta',   NULL, 'Core element catalog — guid, discipline, ifc_class, storey, material'),

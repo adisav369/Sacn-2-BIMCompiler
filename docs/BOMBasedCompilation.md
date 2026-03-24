@@ -20,7 +20,7 @@
 | **C_Order** (work order) | Construction project for a specific building. ONE doc type: "Construction Order" |
 | **C_OrderLine** (order line) | Instance of a product in this project. BOM Drop explodes parent → child lines |
 | **C_DocType** (document type) | "Construction Order" — one only. Classification metadata, NOT a compilation driver |
-| **CO_EmptySpace** (warehouse slot) | Room/floor slot awaiting BOM content |
+| **CO_EmptySpace** (warehouse slot) | Compiler-internal spatial cache — WHERE = M_BOM_Line dx/dy/dz |
 | **PP_Order_Node** (operation) | Verb execution record (audit trail) |
 | **C_Campaign** (marketing) | Design theme (Bali, Scandinavian, Industrial) |
 | **EntityType** (D/U/A) | Dictionary=shipped catalog, User=verb-created, Application=custom |
@@ -479,7 +479,7 @@ offsets (dx/dy/dz), resolving leaves to M_Product geometry.
 This is the iDempiere **Instant BOM Drop** pattern: drop without modification,
 auto-resolve cascading quantities from the parent.
 
-One C_OrderLine. One CO_EmptySpaceLine at origin (0,0,0). The entire BOM
+One C_OrderLine. One spatial slot at origin (0,0,0). The entire BOM
 hierarchy is accepted as-is. SH (55), DX (1099), TE (48,428) all compile
 this way — the Rosetta Stones prove the BOM data restacks correctly.
 

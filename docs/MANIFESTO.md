@@ -13,12 +13,12 @@ with production detail in PP_Order. We inherit the same separation:
 | Concern | iDempiere | BIM Compiler | Table |
 |---------|-----------|-------------|-------|
 | **WHAT** to build | C_OrderLine | Which products, classified by M_Product_Category | c_orderline |
-| **HOW** to place | PP_Order_Node | Which verb, what parameters | pp_order_node |
-| **WHERE** it goes | M_Locator / Warehouse | Room slot, tack offset | co_empty_space_line |
+| **HOW** to validate | AD_Val_Rule | Compiler compiles freely; rules gate by exception (discipline/jurisdiction) | ad_val_rule |
+| **WHERE** it goes | M_BOM_Line (dx/dy/dz) | Spatial relationships within the BOM itself | m_bom_line |
 
 These three concerns are **never merged**. A change to WHAT (swap a product)
-does not require changes to HOW (verb stays the same) or WHERE (slot stays
-the same). This is the architectural invariant that makes exception-based
+does not require changes to HOW (rules stay the same) or WHERE (spatial offsets
+stay the same). This is the architectural invariant that makes exception-based
 ordering possible: override one concern, inherit the others.
 
 ### WHAT: M_Product_Category (Classification) + AD_Org (Discipline)
@@ -101,11 +101,11 @@ CO (Commercial)
 
 | M_Product_Category | Buildings | Sub-Categories |
 |-------------------|-----------|----------------|
-| **RE** (Residential) | SH, DM, DX, FK, IN | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
+| **RE** (Residential) | SH, DM, DX, FK, AC | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
 | **RE** (Residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
-| **IN** (Infrastructure) | BR, RD, RL | SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW |
-| **CO** (Commercial) | WA, WL, WT | ARC, STR, MEP, L1–L5 — discipline + floor-level |
-| **IP** (Industrial Plant) | IP | ARC, STR, MEP, MISC |
+| **IN** (Infrastructure) | BR, RD, RL | SUP, DCK, ABT, TRK, ROAD, RAIL, GEO — segment types |
+| **CO** (Commercial) | WA, WL, WT | LOBBY, OFFICE, PLANT_ROOM, LOADING + floor-level (L1–L5) |
+| **IP** (Industrial Plant) | IP | PROCESS, UTILITY, CONTROL, MISC + floor-level |
 | **(unclassified)** | TE | No categories (48,428-element terminal — needs extraction) |
 
 **Gaps:** 22 residential buildings have only floor-level categories (GF, L1, L2)
@@ -230,8 +230,6 @@ C_DocType ("Construction Order")         ← ONE document type, always
 
 AD_Val_Rule                              ← jurisdiction rules (MY/UBBL, US/IBC)
 AD_ChangeLog                             ← full provenance (undo/redo stack)
-PP_Order_Node                            ← HOW it was placed (verb audit)
-CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
 ```
 
 ### The Mapping: iDempiere → BIM
@@ -245,8 +243,6 @@ CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
 | **C_Order** | Construction project | One order = one building. Carries exceptions only |
 | **C_OrderLine** | Exception line | Deviation from BOM template (swap, remove, compress, add) |
 | **C_DocType** | "Construction Order" | ONE document type. Classification lives on M_Product_Category |
-| **PP_Order_Node** | Verb execution record | HOW it was placed. Full audit trail |
-| **CO_EmptySpace** | Room/floor slot | WHERE things go. Warehouse slot analogy |
 | **DocAction lifecycle** | DR → IP → CO → AP | Draft → In Progress → Complete → Approved |
 | **AD_Val_Rule** | Validation by jurisdiction | Same rule engine, construction codes instead of tax codes |
 | **C_Campaign** | Design theme | Bali, Scandinavian, Industrial — marketing drives variant |

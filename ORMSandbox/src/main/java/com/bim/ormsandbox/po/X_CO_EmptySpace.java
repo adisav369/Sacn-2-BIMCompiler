@@ -6,6 +6,9 @@ import java.sql.Connection;
 /**
  * Generated-structure layer for {@code co_empty_space}.
  *
+ * @deprecated Compiler-internal table. WHERE concern lives in M_BOM_Line dx/dy/dz
+ * (MANIFESTO.md §Three Concerns). Migrate consumers to BOM spatial queries.
+ *
  * <p>Construction site header — one record per C_Order (c_order).
  * The AABB is the total intended construction space. IsAvailable is a quality
  * gate: it only goes to N when the output is proven correct (tests GREEN).
@@ -34,6 +37,7 @@ import java.sql.Connection;
  *   updated             TEXT NOT NULL DEFAULT (datetime('now'))
  * </pre>
  */
+@Deprecated
 public class X_CO_EmptySpace extends BasePO {
 
     public static final String Table_Name                       = "co_empty_space";

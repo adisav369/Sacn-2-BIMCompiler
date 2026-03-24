@@ -8,6 +8,9 @@ import java.util.Optional;
 /**
  * Model (DAO) layer for {@code co_empty_space}.
  *
+ * @deprecated Compiler-internal table. WHERE concern lives in M_BOM_Line dx/dy/dz
+ * (MANIFESTO.md §Three Concerns). Migrate consumers to BOM spatial queries.
+ *
  * <p>Construction site header. One record per C_Order (building).
  * For SH/DX this is trivially one record per compile — the full
  * building AABB accepted with a single top-level BOM.
@@ -19,6 +22,7 @@ import java.util.Optional;
  *   <li>Reprocess: reset to 1</li>
  * </ul>
  */
+@Deprecated
 public class M_CO_EmptySpace extends X_CO_EmptySpace {
 
     public M_CO_EmptySpace(Connection conn) { super(conn); }

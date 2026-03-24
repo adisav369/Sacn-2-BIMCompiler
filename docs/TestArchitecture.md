@@ -509,7 +509,7 @@ are waste.
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
 | §3.2 ESLine tack_from | ESLine.tack_from = m_bom_line.dx/dy/dz | — | W-ESLINE-TACK-1 | **PENDING** |
-| §3.2 extends to work_output | CO_EmptySpaceLine.tack_from = C_OrderLine.dx/dy/dz | — | — | **PENDING** |
+| §3.2 extends to work_output | Spatial slot tack_from = C_OrderLine.dx/dy/dz (compiler-internal: co_empty_space_line) | — | — | **PENDING** |
 
 ### G4_SRS — work_output.db
 
@@ -874,7 +874,7 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 ---
 
 **Sealed:** 2026-03-24 (v32: S68b bomCategory → productCategory identifier rename across 47 Java files)
-**Super-hash:** `edb53f7cf0cfe2ad2589abcffc24f00e9e8b3ada0fa1e241553e91ff41bb1d42`
+**Super-hash:** `a03afe8a6fad2fd64df308df264665da494c24c8b859157331eaea400fc0c681`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
@@ -1051,7 +1051,7 @@ Composed buildings (DemoHouse, BIM Designer creations, C_Project developments) a
 - **Provenance:** every C_OrderLine fragment traces to a certified source stone
 - **Fragment fidelity:** tack offsets match the source stone's proven BOM
 - **Spatial invariants:** EYES proofs (reference-free) verify the composition geometry
-- **Containment:** every element is inside its spatial slot (CO_EmptySpaceLine)
+- **Containment:** every element is inside its spatial slot (M_BOM_Line AABB via dx/dy/dz)
 
 **Gate:** G7-COMPOSITION (runs only for composed buildings, requires source stones G1-G6 GREEN first).
 **Witnesses:** W-COMP-PROV-1 (provenance), W-COMP-FRAG-1 (fidelity), W-COMP-SPAT-1 (spatial), W-COMP-CONT-1 (containment).

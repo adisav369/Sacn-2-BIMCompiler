@@ -100,8 +100,9 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
 | entity_type | D | Dictionary (read-only) |
 
-World position lives in CO_EmptySpace.origin (output.db), populated at compile
-time from I_Element_Extraction. `{PREFIX}_BOM.db` is a pure dictionary — no world coords.
+World position is derived from M_BOM_Line dx/dy/dz tack offsets (the BOM itself
+carries WHERE). `{PREFIX}_BOM.db` is a pure dictionary — no world coords.
+`co_empty_space` (output.db) is a compiler-internal cache, not architectural.
 
 **Children:** Each child BOM is linked via a line carrying the tack offset:
 `dx = position where child's LBD sits within parent` (always >= 0, BOMBasedCompilation.md §4).

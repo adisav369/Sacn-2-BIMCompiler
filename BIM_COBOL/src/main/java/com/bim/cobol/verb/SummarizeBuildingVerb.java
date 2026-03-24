@@ -11,10 +11,10 @@ import java.util.*;
  * SUMMARIZE BUILDING &lt;doc_sub_type&gt; — overview of compiled building in output.db.
  *
  * <p>Queries the output database (elements_meta, elements_rtree, spatial_structure,
- * c_orderline, co_empty_space_line) and returns a structured project overview.
+ * c_orderline, co_empty_space_line [compiler-internal]) and returns a structured project overview.
  *
  * <p>Reports: element count, storey breakdown, IFC class distribution,
- * spatial extents (AABB), CO_EmptySpace level counts.
+ * spatial extents (AABB), spatial slot level counts (compiler-internal: co_empty_space_line).
  *
  * <p>Grammar: {@code SUMMARIZE BUILDING SH} or {@code SUMMARIZE BUILDING DX}
  *
@@ -87,7 +87,7 @@ public class SummarizeBuildingVerb implements Verb<SummarizeBuildingVerb.Summary
         int orderLineCount = safeCount(outputConn,
             "SELECT COUNT(*) FROM c_orderline");
 
-        // 6. CO_EmptySpace level counts (if table exists)
+        // 6. Spatial slot level counts (compiler-internal: co_empty_space_line)
         int esL0 = safeCount(outputConn,
             "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 'L0'");
         int esL1 = safeCount(outputConn,

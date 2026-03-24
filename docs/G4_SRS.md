@@ -66,7 +66,7 @@ DesignerAPIImpl.createNew(request)
 │      │       → C_DocType_ID  = building prefix
 │      │       → aabb_*        = from W_BuildingConfig
 │      │
-│      ├── 3d. Walk BOM tree → C_OrderLine + CO_EmptySpaceLine + ASI
+│      ├── 3d. Walk BOM tree → C_OrderLine + spatial slots + ASI
 │      │   │
 │      │   │   INPUT:  m_bom tree rooted at buildingBomId (e.g. "BUILDING_DM_STD")
 │      │   │           Read from bomConn ({PREFIX}_BOM.db)
@@ -97,9 +97,9 @@ DesignerAPIImpl.createNew(request)
 │      │   │   └─────────────────────────────────────────────────────────────┘
 │      │   │
 │      │   │   ┌─────────────────────────────────────────────────────────────┐
-│      │   │   │ STEP 3d-ii: INSERT CO_EmptySpaceLine (one per OrderLine)  │
-│      │   │   │                                                           │
-│      │   │   │ co_emptyspace_id  = building-level CO_EmptySpace FK       │
+│      │   │   │ STEP 3d-ii: Spatial slot (compiler-internal cache)         │
+│      │   │   │ INSERT co_empty_space_line (one per OrderLine)            │
+│      │   │   │ co_emptyspace_id  = building-level co_empty_space FK      │
 │      │   │   │ C_OrderLine_ID    = the just-inserted OrderLine           │
 │      │   │   │ bom_line_seq      = m_bom_line.seq                        │
 │      │   │   │ bom_id            = m_bom.bom_id                          │
@@ -110,7 +110,7 @@ DesignerAPIImpl.createNew(request)
 │      │   │   │ storey            = from YAML storeys map (depth 1 nodes) │
 │      │   │   │ room_name         = from YAML floor_rooms.spaces[].name   │
 │      │   │   │                                                           │
-│      │   │   │ Also: INSERT CO_EmptySpace header (one per C_Order):      │
+│      │   │   │ Also: INSERT co_empty_space header (one per C_Order):      │
 │      │   │   │   origin_x/y/z_mm = building world origin (BOM origin)    │
 │      │   │   │   aabb_*          = building AABB                         │
 │      │   │   └─────────────────────────────────────────────────────────────┘
@@ -215,7 +215,7 @@ DesignerAPIImpl.save(buildingId, bboxes, variantLabel)
 │        For each bbox:
 │          → INSERT new C_OrderLine (family_ref, dx/dy/dz, ASI FK)
 │      → INSERT M_AttributeSetInstance + M_AttributeInstance for overrides
-│      → INSERT CO_EmptySpaceLine (mirror tack values from OrderLines)
+│      → Spatial slots derived from M_BOM_Line dx/dy/dz (compiler-internal cache)
 │
 ├── 4. INSERT W_Variant pointer
 │      → C_Order_ID = new sub-order ID (NOT master)
@@ -253,7 +253,7 @@ DesignerAPIImpl.recall(buildingId, variantId)
 │      → INSERT C_Order (Parent_Order_ID = master, DocStatus = 'DR')
 │      → COPY C_OrderLine rows from recalled sub-order to new sub-order
 │      → COPY M_AttributeSetInstance + M_AttributeInstance
-│      → COPY CO_EmptySpaceLine
+│      → COPY spatial slot cache (co_empty_space_line)
 │      → Previous sub-orders stay CO (immutable history)
 │
 ├── 3. INSERT W_Variant pointer for new sub-order
@@ -496,8 +496,8 @@ class WorkOutputDAOTest {
         // Given: empty file path
         // When:  WorkOutputDAO.create(path)
         // Then:  9 tables exist (W_BuildingConfig, C_Order, C_OrderLine,
-        //        M_AttributeSetInstance, M_AttributeInstance, CO_EmptySpace,
-        //        CO_EmptySpaceLine, PP_Order_Node, PP_Order_NodeProduct,
+        //        M_AttributeSetInstance, M_AttributeInstance, co_empty_space,
+        //        co_empty_space_line (compiler-internal), PP_Order_Node, PP_Order_NodeProduct,
         //        W_Variant, W_Validation_Result, AD_SysConfig)
         //        AD_SysConfig.SCHEMA_VERSION = 'W001'
     }

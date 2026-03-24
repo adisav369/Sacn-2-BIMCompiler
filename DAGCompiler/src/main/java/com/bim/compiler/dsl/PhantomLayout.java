@@ -14,8 +14,8 @@ import java.util.List;
  * placed the filled extent grows and the {@link #nextAnchor()} pointer advances.
  *
  * <p>This object is <b>not persisted</b>. On completion, the caller writes a
- * {@code CO_EmptySpaceLine} row via {@code M_CO_EmptySpaceLine.create()}.
- * (The old {@code M_WmEmptyStorageLine} path is deprecated — see Phase 3.)
+ * spatial slot row via {@code M_CO_EmptySpaceLine.create()} (compiler-internal cache).
+ * WHERE concern lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
  *
  * <p><b>Locator capacity conventions</b> (capacity_mm computation at createDraft() call time):
  * <ul>

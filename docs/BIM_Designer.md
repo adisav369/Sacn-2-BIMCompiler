@@ -7,7 +7,7 @@
 > The compiler already knows how to build. The GUI is a parameter chooser that
 > triggers compilation and shows the result. Every concept the designer needs
 > already exists in the codebase — tack convention, BOM selection cascade,
-> CO_EmptySpace slots, BIM COBOL verbs, EntityType governance.
+> M_BOM_Line spatial relationships (dx/dy/dz), BIM COBOL verbs, EntityType governance.
 
 ---
 
@@ -307,18 +307,20 @@ violates a code rule, the compiler flags it.
 The GUI creates and modifies SY_* BOMs only. EntityType='D' guards protect
 dictionary records at the PO layer. *(Historical: EB_/WT_ prefixes removed 2026-03-10, replaced by BUILDING_*_STD naming.)*
 
-### 2.3 CO_EmptySpaceLine → Visual Slots
+### 2.3 Spatial Relationships → Visual Slots
 
-CO_EmptySpaceLine records are the spatial containers that verbs target — the
-iDempiere `S_Resource` (production workstation) equivalent:
+Spatial relationships live in **M_BOM_Line dx/dy/dz** — the BOM itself carries
+WHERE information (MANIFESTO.md §Three Concerns). Visual slots in the GUI are
+derived from BOM spatial data:
 
-- Created at structural tiers: unit, slab, floor, room
-- Hold: origin coordinates, orientation (radians), remaining space (mm)
-- Each line = a named locator (storey, room_name, wall face)
-- The `v_co_available_space` view answers "can this item fit here?"
+- Each M_BOM_Line's dx/dy/dz defines the tack offset (where child sits in parent)
+- Structural tiers (unit, slab, floor, room) are BOM levels with spatial offsets
+- Empty filler space = BOM line with `bom_type = 'FILLER'`, queryable via SQL
+- The GUI presents these as visual room/wall slots for drag-and-drop placement
 
-The GUI presents these as visual room/wall slots. The user drags a BOM into
-a slot; the system checks fit via the selection cascade.
+> **Implementation note:** `co_empty_space_line` is a compiler-internal table
+> that caches spatial slot data during compilation. It is NOT an architectural
+> entity — the source of truth is M_BOM_Line dx/dy/dz.
 
 ### 2.4 Selection Cascade → Auto-Fit
 
@@ -375,7 +377,7 @@ prevents the GUI from corrupting spatial data:
 |-------|---------|------------|
 | **C_OrderLine** | WHAT (building type, discipline, element ref) | Read-only — no position setters exist |
 | **PP_Order_Node** | HOW (verb keyword, COBOL source, parameters) | GUI edits verb params via PP_Order_NodeProduct |
-| **CO_EmptySpaceLine** | WHERE (origin, orientation, remaining space) | Read-only — verbs write, GUI reads |
+| **M_BOM_Line dx/dy/dz** | WHERE (spatial relationships within BOM) | Read-only — compiler writes, GUI reads |
 
 The Java PO interface for C_OrderLine has **no position setters** by
 construction. The GUI cannot directly place elements — it must go through
@@ -625,7 +627,7 @@ The GUI is Phase G in the [ACTION_ROADMAP.md](ACTION_ROADMAP.md). Prerequisites:
 | Tack convention + placement algebra | DONE |
 | BIM COBOL verbs (38 verbs, 111 witnesses) | DONE |
 | EntityType governance (D/U/A) | DONE |
-| CO_EmptySpace spatial slots | DONE |
+| M_BOM_Line spatial relationships (dx/dy/dz) | DONE |
 | 3 BOM dimensions + C_Campaign theme | Partial (C_Campaign planned) |
 | Compliance layer (ad_code_constraint) | Planned (Phase H0) |
 | Bonsai addon scaffold | Planned (Phase G) |
@@ -1146,7 +1148,7 @@ The Java compiler is a **deterministic manufacturing engine**. It guarantees:
 | **BOM cascade** | BUILDING→FLOOR→ROOM→LEAF automatic | One slider change ripples correctly through entire tree |
 | **Verb audit trail** | PP_Order_Node records every action | Full undo history, no mystery state |
 | **Multi-scale** | SH (55) to TE (48K) same pipeline | Works for a cottage or an airport |
-| **ERP integration** | C_Order/C_OrderLine/CO_EmptySpace | Costing, scheduling, procurement ready from day 1 |
+| **ERP integration** | C_Order/C_OrderLine/M_BOM_Line dx/dy/dz | Costing, scheduling, procurement ready from day 1 |
 
 ### 12.2 What Blender Brings
 

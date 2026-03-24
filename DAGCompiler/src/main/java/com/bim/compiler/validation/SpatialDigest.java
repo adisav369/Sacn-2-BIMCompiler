@@ -249,6 +249,10 @@ public class SpatialDigest {
      * CO_EmptySpaceLine checksum — deterministic hash of the single level-0
      * acceptance line (owner-matched BOM → building AABB).
      *
+     * @deprecated Compiler-internal. WHERE concern lives in M_BOM_Line dx/dy/dz
+     * (MANIFESTO.md §Three Concerns). This checksum hashes the compiler's
+     * internal spatial cache, not an architectural entity.
+     *
      * <p>Hashes: bom_id | bom_line_role | bom_level | before(x,y,z) | next(x,y,z) | capacity
      * — all rounded to 1mm (integer mm).
      *
@@ -260,6 +264,7 @@ public class SpatialDigest {
      * @param dbPath Path to output SQLite DB with co_empty_space_line table
      * @return 16-char hex prefix of SHA256, or null if no level-0 line exists
      */
+    @Deprecated
     public static String computeEmptySpaceChecksum(String dbPath) {
         List<String> lines = new ArrayList<>();
 

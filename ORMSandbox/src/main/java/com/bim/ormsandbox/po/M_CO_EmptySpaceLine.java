@@ -8,6 +8,9 @@ import java.util.List;
 /**
  * Model (DAO) layer for {@code co_empty_space_line}.
  *
+ * @deprecated Compiler-internal table. WHERE concern lives in M_BOM_Line dx/dy/dz
+ * (MANIFESTO.md §Three Concerns). Migrate consumers to BOM spatial queries.
+ *
  * <p>Alignment record — WHERE the BOM box sits + orientation.
  * Does NOT repeat the BOM (that's intact on C_OrderLine.BOM.BOMLine).
  * Says: "this BOM construct goes HERE, facing THIS way."
@@ -16,6 +19,7 @@ import java.util.List;
  * top-level UNIT BOM into the full AABB. All children translate
  * deterministically from BOM offsets.
  */
+@Deprecated
 public class M_CO_EmptySpaceLine extends X_CO_EmptySpaceLine {
 
     public M_CO_EmptySpaceLine(Connection conn) { super(conn); }

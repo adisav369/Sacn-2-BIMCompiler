@@ -120,7 +120,7 @@ public class CompilationPipeline {
      * M_BomCategoryLine template tree to select best-fit BOMs at every level.
      *
      * <p>The composition report is stored in context so WriteStage can populate
-     * CO_EmptySpaceLines at L2+ (room level from template leaf selections).
+     * Spatial slot cache at L2+ (room level from template leaf selections — compiler-internal).
      *
      * <p>Skipped for all non-ST buildings — those use the direct BUILDING BOM path.
      *
@@ -318,7 +318,7 @@ public class CompilationPipeline {
                     }
                 }
 
-                // CO_EmptySpace: building AABB from R*Tree + UNIT BOM acceptance + per-storey lines
+                // Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz)
                 populateCoEmptySpace(conn, ctx);
 
                 // Gap #8 + #5 + #6: Spatial structure (storeys, spaces, containment)
@@ -336,6 +336,10 @@ public class CompilationPipeline {
 
         /**
          * Populate co_empty_space (header) + co_empty_space_line (acceptance + per-storey).
+         *
+         * @deprecated Compiler-internal spatial cache. WHERE concern lives in M_BOM_Line dx/dy/dz
+         * (MANIFESTO.md §Three Concerns). Future: migrate consumers to BOM spatial queries.
+         *
          * Three-level output:
          *   Level 0: top-level UNIT BOM acceptance into building AABB
          *   Level 1: per-child decomposition (FLOOR_SLAB, LEVEL, ROOF) with storey names
@@ -346,6 +350,7 @@ public class CompilationPipeline {
          *
          * Uses DAO (M_CO_EmptySpace / M_CO_EmptySpaceLine) — no raw JDBC for writes.
          */
+        @SuppressWarnings("deprecation")
         private static void populateCoEmptySpace(Connection conn, CompilationContext ctx) {
             String buildingId = ctx.buildingId();
             BuildingSpec spec = ctx.spec();
@@ -525,6 +530,7 @@ public class CompilationPipeline {
         }
 
         /**
+         * @deprecated Compiler-internal spatial cache. Migrate to BOM spatial queries.
          * Write Level-2 ESLines: room-category children of a floor BOM.
          *
          * <p>Queries m_bom_line for the floor BOM, filters for room-category children
@@ -710,7 +716,7 @@ public class CompilationPipeline {
             ctx.setDigestReport(digestReport);
             System.out.println(digestReport);
 
-            // CO_EmptySpaceLine checksum — single line for owner-matched builds
+            // Compiler-internal spatial checksum (co_empty_space_line — deprecated)
             String esChecksum = SpatialDigest.computeEmptySpaceChecksum(dbPath);
             ctx.setEmptySpaceChecksum(esChecksum);
             if (esChecksum != null) {

@@ -113,7 +113,7 @@ is a **proven word**. A composed building is a **sentence** built from proven wo
 1. **PROVENANCE** — trace each C_OrderLine to its source stone via family_ref → M_Product → source BOM
 2. **FRAGMENT FIDELITY** — tack offsets, product dimensions, and verb patterns match the source stone's proven BOM
 3. **SPATIAL INVARIANTS** — EYES proofs: roof covers structure, FP below ceiling, ELEC inside rooms, no escapees
-4. **CONTAINMENT** — every element inside its spatial slot (CO_EmptySpaceLine AABB), recursive
+4. **CONTAINMENT** — every element inside its spatial slot (M_BOM_Line AABB via dx/dy/dz), recursive
 
 ### Fragment types and verifiers
 
@@ -122,7 +122,7 @@ is a **proven word**. A composed building is a **sentence** built from proven wo
 | **Proven** (from Rosetta Stone) | Stone's BOM.db | Tack offset match, product dimensions, verb pattern |
 | **Rule-driven** (FP/ELEC/ACMV) | disc_validation.db AD tables | Product exists, placement satisfies spatial rule, spacing correct |
 | **User-modified** (ASI override) | output.db | EYES spatial invariants hold post-mutation |
-| **Freehand** (viewport drawing) | output.db + CO_EmptySpaceLine | Containment, adjacency, no clashes |
+| **Freehand** (viewport drawing) | output.db + M_BOM_Line dx/dy/dz | Containment, adjacency, no clashes |
 
 ### Witnesses
 

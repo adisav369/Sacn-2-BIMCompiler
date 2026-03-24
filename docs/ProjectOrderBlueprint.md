@@ -387,11 +387,11 @@ Terrace 0 (Z ≈ 28-38m)  ═══ Street 1 ═══  [S][S][S][S][S][S][S][S]
 - `ad_plot_type` table: STANDARD/CORNER/PREMIUM/INFRA/GREEN classification
 - `ad_site_placement_rule` table: put-away rules (plot_type → building_variant)
 - `SitePlacementStrategy` class: walks plots, applies rules, assigns C_Orders
-- CO_EmptySpaceLine at site scale: plot slots with ABL addressing
+- M_BOM_Line dx/dy/dz at site scale: plot spatial relationships with ABL addressing
 
-**Recursive pattern:** Site-scale CO_EmptySpaceLine (plots) → Building-scale
-CO_EmptySpaceLine (rooms) → same table, different scale. The spatial slot
-concept works at both levels without new infrastructure.
+**Recursive pattern:** Site-scale M_BOM_Line (plot offsets) → Building-scale
+M_BOM_Line (room offsets) → same tack convention, different scale. The spatial
+relationship lives in the BOM itself at both levels without new infrastructure.
 
 See [SystemContract.md §6](SystemContract.md) for the full allocation model.
 
@@ -484,7 +484,7 @@ patterns — contributed by everyone who compiles a building.
 
 > **Status:** Future — design specification only.
 
-The order already carries WHAT (C_OrderLine), WHERE (CO_EmptySpaceLine),
+The order already carries WHAT (C_OrderLine), WHERE (M_BOM_Line dx/dy/dz),
 and HOW (PP_Order_Node). The remaining dimensions are columns, not systems.
 
 ### 5.1 4D Schedule — Topological Sort of BOM Tree
@@ -1481,7 +1481,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 | **§6** Order inheritance | No Ref_Order_ID column on C_Order. | Schema addition. Exception stacking logic needed |
 | **§7** FOSS ecosystem | Architecture supports it. No packaging or contribution flow. | Strategic, not code |
 | **§8** Forward friction | 34 buildings compiled. IFC dialect coverage growing. | Operational, not code |
-| **§9** DiffVerb + Callout | PP_Order_Node exists (verb audit). No DIFF verb_type. No AD_Rule callout. | Future — needs §1 complete first |
+| **§9** DiffVerb + Callout | DiffVerbService records DIFF PP_Order_Node. W007 AD_Rule table (3 seed rules). CalloutEngine fires in topo-sort order. DiffVerbTest 5/5. | **Session F DONE** (S72). Viewport gesture capture pending (Bonsai addon) |
 | **§10** AD_ChangeLog | ChangelogDAO fully implemented. SAVE/PLACE/MOVE/RESIZE/DELETE/PROMOTE/UNDO. | ✓ DONE |
 | **§11** 8th D — ERP as BI | All data in SQLite. Queries work. Federation addon shows breakdown. | ✓ Working today — it's queries, not features |
 | **§12** Callout rule library | AD_Val_Rule (63 rows). ad_fp_trigger (12). ad_code_requirement (23). InferenceEngine exists. | Rules validate. Transition to propose (§13) is the gap |
@@ -1521,7 +1521,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 - DocAction state machine (DR→IP→AP→CO→VO) with MOrder transitions
 - AD_ChangeLog (ChangelogDAO) — full audit trail
 - PP_Order_Node — verb execution audit with parameters
-- CO_EmptySpaceLine — spatial slot identity (before/next anchors, capacity)
+- M_BOM_Line dx/dy/dz — spatial relationships (WHERE concern in BOM itself)
 - M_AttributeSetInstance — per-instance customization (partial)
 - Three-concern separation enforced by OrderLineInterfaceContractTest (W-LOCK-1..6)
 
@@ -1601,7 +1601,7 @@ Only the last order survives.
 ### 14.4 Failure Criteria (stop-and-reassess if)
 
 - **Session A:** FPR C_OrderLines have no m_bom_line parent to walk (bom_child_id is NULL). If so, rule-driven lines need a different walker path — not BOM walk but direct placement from ad_space_type_mep_bom spatial data.
-- **Session B:** ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs CO_EmptySpaceLine geometry context.
+- **Session B:** ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs M_BOM_Line spatial context (dx/dy/dz + AABB).
 - **Session C:** ELEC/ACMV products don't exist in component_library.db (no geometry). S67 onboarded 2 ELEC products; remaining products may block Session C.
 - **Session D:** locator_ref addressing conflicts with existing m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT). If so, need separate exception_locator column.
 - **Session E:** Inheritance chain conflict — two sibling ancestors both modify the same locator_ref. "Last descendant wins" is undefined for sibling branches. If so, need explicit precedence ordering on Ref_Order_ID.

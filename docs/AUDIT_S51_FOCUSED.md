@@ -2240,3 +2240,100 @@ Session E completes the three-session arc (D → R → E) for exception-based or
 
 **Remaining:** Indexed exceptions (`locator_ref[N]` syntax for per-instance
 overrides within a reference class) and C_Project multi-order grouping (§2).
+
+---
+
+## Appendix T — Session F: DiffVerb + Callout Feasibility Assessment (S72)
+
+### T.1 — Prerequisite Check
+
+§14.1 states: "§9 DiffVerb + Callout — Future — needs §1 complete first."
+
+| Prerequisite | Status | Evidence |
+|---|---|---|
+| §1 Exception-based ordering | **DONE** | Sessions A–E complete (S67–S68e) |
+| §1.1 Four mutations (Replace, Add, Remove, Compress) | **DONE** | RemoveCompressTest 5/5, OrderLineMutationTest 8/8 |
+| §6 Order inheritance | **DONE** | OrderInheritanceTest 6/6 (S68e) |
+| PP_Order_Node table | **EXISTS** | W001 migration, M_PP_Order_Node PO class |
+| PP_Order_NodeProduct table | **EXISTS** | Structured params (Name/Value/ValueType) |
+| bim_changelog (AD_ChangeLog) | **EXISTS** | ChangelogDAO — MOVE/RESIZE detection already built |
+
+**Verdict: §1 prerequisite MET. DiffVerb is implementable now.**
+
+### T.2 — What DIFF Verb_Type Should Record
+
+Per §9.2, a DiffVerb is a PP_Order_Node row with `verb_ref = 'DIFF'` and delta
+parameters in PP_Order_NodeProduct child rows:
+
+| PP_Order_NodeProduct.Name | Example Value | Purpose |
+|---|---|---|
+| `locator_ref` | `L1.Living.FP_Mantel` | Which element moved |
+| `delta_dx` | `-300` | X displacement in mm (parent-relative) |
+| `delta_dy` | `0` | Y displacement |
+| `delta_dz` | `0` | Z displacement |
+| `old_x` | `2400` | Previous X position (for audit) |
+| `old_y` | `1500` | Previous Y position |
+| `old_z` | `0` | Previous Z position |
+| `source` | `viewport_drag` | Provenance: user gesture vs API call |
+
+**Design decision:** DiffVerb is NOT a BIM_COBOL verb (those are compilation-time
+BOM expansion verbs: TILE, ROUTE, FRAME, CLUSTER). DiffVerb is a design-time
+mutation — it lives in BonsaiBIMDesigner alongside WorkOutputDAO.
+
+### T.3 — Callout Chain (AD_Rule)
+
+Per §9.3, callouts are declarative rules stored in a new `AD_Rule` table. When a
+DiffVerb fires, the CalloutEngine evaluates matching rules in dependency order
+(topological sort — same pattern as InferenceEngine).
+
+**Proposed AD_Rule schema:**
+
+```sql
+AD_Rule (
+    ad_rule_id        INTEGER PRIMARY KEY,
+    name              TEXT NOT NULL,           -- 'FLUE_TRACKS_MANTEL'
+    event_type        TEXT NOT NULL,           -- 'FIELD_CHANGE'
+    source_table      TEXT NOT NULL,           -- 'C_OrderLine'
+    source_column     TEXT NOT NULL,           -- 'dx', 'dy', 'dz'
+    rule_type         TEXT NOT NULL,           -- POSITIONAL / DIMENSIONAL / CONSTRAINT / REROUTE
+    target_locator    TEXT,                    -- locator_ref of affected element
+    expression        TEXT,                    -- formula: 'target.dx = source.dx'
+    depends_on        INTEGER REFERENCES AD_Rule(ad_rule_id),
+    seq_no            INTEGER DEFAULT 10,
+    is_active         INTEGER DEFAULT 1
+)
+```
+
+**First callout (minimal implementation):** Room AABB recalculation when a child
+element moves. This is the simplest cascading consequence — no formula evaluation
+needed, just re-run RollupAabbVerb logic on the parent room.
+
+| Rule | Type | What it does |
+|---|---|---|
+| ROOM_AABB_RECALC | DIMENSIONAL | When any child element moves within a room, recalculate room AABB envelope from children |
+
+### T.4 — Dependency Check
+
+| Dependency | Available? | Notes |
+|---|---|---|
+| PP_Order_Node + PP_Order_NodeProduct | ✓ | W001 schema, PO classes exist |
+| VerbNodePersister.persistOne() | ✓ | Already supports structured params |
+| ChangelogDAO (MOVE/RESIZE detection) | ✓ | logSave() diffs old/new bboxes |
+| InferenceEngine (topo sort pattern) | ✓ | Kahn's algorithm for rule dependency order |
+| RollupAabbVerb (AABB recalc logic) | ✓ | Computes envelope from children |
+| Bonsai viewport gesture capture | ✗ | Needs Python addon work — NOT blocking server side |
+| AD_Rule table | ✗ | **New migration needed (W007)** |
+
+### T.5 — What Blocks (Viewport Side Only)
+
+The DiffVerb server infrastructure is self-contained. The only missing piece is
+viewport integration: Bonsai addon must capture drag gestures and send them as
+DiffVerb requests. This is Python-side work in the federation addon and does NOT
+block the Java implementation.
+
+### T.6 — Implementation Scope
+
+1. **W007 migration** — `AD_Rule` table + `DIFF` action in bim_changelog CHECK constraint
+2. **DiffVerbService** — records DIFF PP_Order_Node, fires CalloutEngine
+3. **CalloutEngine** — evaluates AD_Rule chain in dependency order
+4. **DiffVerbTest** — witness W-DIFF-1 (record diff + verify callout fires AABB recalc)

@@ -6,6 +6,9 @@ import java.sql.Connection;
 /**
  * Generated-structure layer for {@code co_empty_space_line}.
  *
+ * @deprecated Compiler-internal table. WHERE concern lives in M_BOM_Line dx/dy/dz
+ * (MANIFESTO.md §Three Concerns). Migrate consumers to BOM spatial queries.
+ *
  * <p>Alignment record — WHERE the BOM box sits + orientation.
  * Does NOT repeat the BOM (that's intact on C_OrderLine.BOM.BOMLine).
  * Says: "this BOM construct goes HERE, facing THIS way."
@@ -40,6 +43,7 @@ import java.sql.Connection;
  *   updated             TEXT NOT NULL DEFAULT (datetime('now'))
  * </pre>
  */
+@Deprecated
 public class X_CO_EmptySpaceLine extends BasePO {
 
     public static final String Table_Name                         = "co_empty_space_line";

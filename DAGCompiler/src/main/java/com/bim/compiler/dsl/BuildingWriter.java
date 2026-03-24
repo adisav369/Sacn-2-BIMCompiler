@@ -310,7 +310,7 @@ public class BuildingWriter {
                 )
             """);
 
-            // CO_EmptySpace: construction site AABB + IsAvailable quality gate
+            // CO_EmptySpace: compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz)
             stmt.execute("DROP TABLE IF EXISTS co_empty_space_line");
             stmt.execute("DROP TABLE IF EXISTS co_empty_space");
 

@@ -9,7 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * VERIFY PLACEMENT &lt;output_db_path&gt; — validates CO_EmptySpace line completeness.
+ * VERIFY PLACEMENT &lt;output_db_path&gt; — validates spatial slot completeness.
+ *
+ * @deprecated Reads compiler-internal co_empty_space_line table. WHERE concern
+ * lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
  *
  * <p>Opens the given output.db, queries {@code co_empty_space_line} by {@code bom_level},
  * and checks that the three structural levels are populated:
@@ -26,6 +29,7 @@ import java.util.List;
  * <p>Returns {@link PlacementVerifyPayload} with per-level counts and a list of gap descriptions.
  * Result is PASS if all checks pass; FAIL with gap descriptions otherwise.
  */
+@Deprecated
 public class VerifyPlacementVerb implements Verb<VerifyPlacementVerb.PlacementVerifyPayload> {
 
     @Override

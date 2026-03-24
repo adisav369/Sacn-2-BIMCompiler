@@ -65,8 +65,8 @@ MRP Execution      MRP Run             mvn test (compile)                      V
 
 The BIM selects M_BOMs within its owner scope. Each BIMLine references an M_BOM.
 The compiler walks M_BOM → M_BOM_Line recursively, resolving placement at each level.
-Verb lines drive placement execution: each verb targets a CO_EmptySpaceLine (spatial slot)
-and produces elements via VerbRegistry dispatch.
+Verb lines drive placement execution: each verb targets a spatial slot (derived from
+M_BOM_Line dx/dy/dz) and produces elements via VerbRegistry dispatch.
 
 **The BOM Drop produces editable order lines.** The user adjusts the schedule before
 compiling. The compiler reads the final schedule — it does not care what edits were made.
@@ -75,8 +75,8 @@ compiling. The compiler reads the final schedule — it does not care what edits
 > (WHAT: element_ref, ifc_class, discipline) with placement instructions (HOW: position_rule,
 > host_type, host_ref). The PP_Order_Node model separates these: order topics stay in
 > c_orderline; placement moves to `PP_Order_Node` + `PP_Order_NodeProduct`.
-> CO_EmptySpaceLine is promoted to spatial workstation (≈ `S_Resource`), targeted by verbs
-> via `co_emptyspace_line_id` FK. BomCategory is unaffected — still drives template
+> WHERE concern lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
+> co_empty_space_line is a compiler-internal cache, not architectural. BomCategory is unaffected — still drives template
 > composition via Sequence priority. See `BBC.md` §1 for migration phases.
 > Parallels iDempiere S_Resource (warehouse slot) — see `DocAction_SRS.md` §1.
 
@@ -1322,7 +1322,7 @@ House D  living room = 4900mm → variance = −300mm  ✗  GIC violation — BO
 ### 8.4 PhantomLayout — Transient Empty Storage
 
 The PhantomLayout is the transient working state during BOM resolution — the spatial
-equivalent of CO_EmptySpaceLine. It tracks the current fill state of a locator and
+equivalent of the spatial slot (M_BOM_Line dx/dy/dz). It tracks the current fill state of a locator and
 the next available anchor point for the following element.
 
 > **Phase 4c simplification (2026-02-25):** The ceremony (DocStatus DR/CO/VO, next_anchor
@@ -1343,7 +1343,7 @@ the next available anchor point for the following element.
 ```java
 /**
  * Transient — NOT persisted. Exists only during DSL edit / compile resolution.
- * Equivalent to CO_EmptySpaceLine: current fill state + next placement coordinate.
+ * Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz). Current fill state + next placement coordinate.
  * On DSL save → resolves to permanent m_bom_line rows.
  *
  * locatorRef: the M_Locator (SpaceSize AABB grid cell in mm) this phantom tracks.

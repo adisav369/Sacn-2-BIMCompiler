@@ -16,7 +16,7 @@ import java.util.List;
  *
  * <p>When C_Order.C_BPartner matches the BUILDING BOM's DocSubType and AABB fits,
  * the compiler takes the BOM as-is without recalculating through hierarchy layers.
- * One C_OrderLine, one CO_EmptySpaceLine.
+ * One C_OrderLine, one spatial slot (compiler-internal: co_empty_space_line).
  *
  * <p>WALK THRU is the proper normal path — recalculates by tacking
  * through each BOM layer. Both produce the same result when the data

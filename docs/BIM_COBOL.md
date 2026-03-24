@@ -1444,13 +1444,13 @@ bespoke minority."
 
 ---
 
-## 15. Verbs as Pipeline Applicators — AD_Val_Rules over CO_EmptySpace Lines
+## 15. Verbs as Pipeline Applicators — AD_Val_Rules over Spatial Slots
 
 *Added v0.5 — insight from Rosetta Stone analysis*
 
-BIM COBOL verbs are not just standalone validation tools. They are the mechanism by which **cross-discipline MEP rules get applied during the compilation pipeline**, operating over the CO_EmptySpace line hierarchy.
+BIM COBOL verbs are not just standalone validation tools. They are the mechanism by which **cross-discipline MEP rules get applied during the compilation pipeline**, operating over the spatial slot hierarchy (WHERE = M_BOM_Line dx/dy/dz; compiler-internal cache: co_empty_space_line).
 
-### 15.1 The CO_EmptySpace Hierarchy
+### 15.1 The Spatial Slot Hierarchy (compiler-internal: co_empty_space_line)
 
 The compilation pipeline produces `co_empty_space_line` at three levels, each representing a BOM decomposition tier:
 
@@ -1469,11 +1469,11 @@ placeElectrical()         → hardcoded light fixture placement
 mepBomGapFill()           → MEPWorker reads ad_space_type_mep_bom
 ```
 
-**The replacement:** Each hardcoded method becomes a BIM COBOL verb that reads its rules from `ad_space_type_mep_bom` and applies them over the CO_EmptySpace lines at the appropriate level.
+**The replacement:** Each hardcoded method becomes a BIM COBOL verb that reads its rules from `ad_space_type_mep_bom` and applies them over spatial slots (derived from M_BOM_Line dx/dy/dz) at the appropriate level.
 
 ### 15.2 Verb-to-Pipeline Mapping
 
-| StoreyCompiler Method | Replacement Verb | CO_EmptySpace Level | ad_space_type_mep_bom.placement_rule |
+| StoreyCompiler Method | Replacement Verb | Spatial Slot Level | ad_space_type_mep_bom.placement_rule |
 |---|---|---|---|
 | `placeMEPSprinklers()` | `ROUTE SPRINKLERS` | Level 2 (room) | `CEILING_GRID` |
 | `placeHVAC()` | `ROUTE DUCTS` | Level 1 (storey) + Level 2 (room) | `CEILING_CENTER` |
@@ -1500,13 +1500,13 @@ This means the grammar can be data-driven: when a new `placement_rule` is added 
 
 ### 15.4 Cross-Discipline Application
 
-The power of verbs over CO_EmptySpace lines is **cross-discipline checking**. Currently each MEP system is placed independently. With verbs:
+The power of verbs over spatial slots (M_BOM_Line dx/dy/dz) is **cross-discipline checking**. Currently each MEP system is placed independently. With verbs:
 
 ```bimcobol
 -- Level 1: storey-level routing (main pipe runs)
 ROUTE SPRINKLERS IN storey MAIN_FROM shaft_fp_1 PIPE_SIZE 65mm
 
--- Level 2: room-level placement (per CO_EmptySpace_Line)
+-- Level 2: room-level placement (per spatial slot from M_BOM_Line)
 FOR EACH room IN storey WHERE ad_space_type_mep_bom.SPRINKLER {
     ROUTE SPRINKLERS IN room
         SPACING (FROM ad_fp_coverage WHERE hazard_class)
@@ -1552,7 +1552,7 @@ Stage 2: ParseStage          — DSL → BuildingDefinition
 Stage 3: CompileStage        — BuildingDefinition → BuildingSpec (geometry)
 Stage 4: TemplateStage       — template composition (ST mode only)
 Stage 5: WriteStage          — BuildingSpec → output.db
-Stage 6: VerbStage           — BIM COBOL verbs → MEP elements over CO_EmptySpace lines  ★ NEW
+Stage 6: VerbStage           — BIM COBOL verbs → MEP elements over spatial slots  ★ NEW
 Stage 7: DigestStage         — spatial fingerprinting
 Stage 8: GeometryStage       — mesh integrity verification
 Stage 9: ProveStage          — mathematical placement proofs
@@ -1660,11 +1660,11 @@ Spatial containers stay in `co_empty_space_line` (WHERE).
 **What's already in M_Product (material attributes):**
 - width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash
 
-**CO_EmptySpaceLine stays — promoted to spatial workstation:**
-- ESLine ≈ iDempiere `S_Resource` (workstation with capacity)
-- Verb line targets ESLine via `co_emptyspace_line_id` FK
-- Multiple verbs target the same ESLine (TILE + ARRAY + ROUTE on one slab)
-- ESLine WMS columns (capacity_mm, filled_mm, remaining_mm) track verb consumption
+**Spatial slots (compiler-internal: co_empty_space_line) — WHERE = M_BOM_Line dx/dy/dz:**
+- Spatial slot ≈ iDempiere `S_Resource` (workstation with capacity), but derived from BOM
+- Verb line targets slot via spatial data from M_BOM_Line tack offsets
+- Multiple verbs target the same spatial slot (TILE + ARRAY + ROUTE on one slab)
+- Slot capacity (capacity_mm, filled_mm, remaining_mm) tracks verb consumption
 - Parallels iDempiere S_Resource (warehouse slot) — see `DocAction_SRS.md` §1
 
 **BomCategory unchanged:** Still drives template composition (BomCategoryLine.Sequence
@@ -1717,7 +1717,7 @@ These two changes are the **integration seam**. Everything else — verb dispatc
 Before VerbStage can be wired in:
 
 1. **Stable LocalCoord.toWorld()** — the coordinate chain must be correct. VerbStage will use the same anchor → world translation as WriteStage. If the translation has bugs (the "last mile"), VerbStage inherits them.
-2. **CO_EmptySpaceLine L2 population** (TODO-ST-3) — VerbStage iterates L2 lines. These must exist for all rooms, not just structural tiers.
+2. **Spatial slot L2 population** (TODO-ST-3) — VerbStage iterates L2 slots (from M_BOM_Line dx/dy/dz). These must exist for all rooms, not just structural tiers.
 3. **RelationalResolver deprecated** — VerbStage computes placement from room AABB + ad_placement_rule, not from RelationalResolver. The resolver must be out of the critical path.
 
 ### 16.3 Preparation Work (BIM_COBOL Side — Can Start NOW)
@@ -2102,7 +2102,7 @@ PP_Order                        →    C_Order (the work order — "build this b
 PP_Order_BOM                    →    C_OrderLine (copy of recipe for this specific build)
 PP_Order_Node                   →    PP_Order_Node (operations — verb invocations)
 M_Product                       →    M_Product (the item being made or consumed)
-M_Warehouse / M_Locator        →    CO_EmptySpace (spatial inventory — where things go)
+M_Warehouse / M_Locator        →    M_BOM_Line dx/dy/dz (spatial relationships — WHERE things go)
 ```
 
 **What BIM adds that ERP doesn't have:**
@@ -2987,8 +2987,8 @@ The iDempiere Manufacturing module provides further constructs to draw from:
 | M_Forecast (demand planning) | `PARTITION AABB` (spatial demand) | Designed (§18.5) |
 | QM_Specification (quality check) | `VALIDATE AABB` / CHECK verbs | Designed |
 | PP_Product_Planning (MRP rules) | `ADD TEMPLATE RULE` (grammar rules) | Designed (§18.9) |
-| M_Production_Line (capacity) | CO_EmptySpace (spatial capacity) | **Implemented** |
-| M_Warehouse → M_Locator hierarchy | CO_EmptySpace L0→L1→L2 hierarchy | **Implemented** |
+| M_Production_Line (capacity) | M_BOM_Line spatial capacity (dx/dy/dz + AABB) | **Implemented** |
+| M_Warehouse → M_Locator hierarchy | M_BOM_Line L0→L1→L2 spatial hierarchy | **Implemented** |
 
 Five of these are already implemented. The primitives complete the remaining set. The ERP manufacturing framework is a 20-year-proven architecture — BIM COBOL inherits it directly.
 

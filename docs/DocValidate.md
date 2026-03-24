@@ -1217,8 +1217,8 @@ shows live status from all three tiers.
 ### 14.1 The Objective
 
 When a user starts a new building in BIM Designer, the engine auto-populates
-the iDempiere construction model: C_Order, C_OrderLine, CO_EmptySpaceLine,
-default M_AttributeSetInstance, and PP_Order_Node. The user then ALTERS these
+the iDempiere construction model: C_Order, C_OrderLine, spatial relationships
+(from M_BOM_Line dx/dy/dz), default M_AttributeSetInstance, and PP_Order_Node. The user then ALTERS these
 defaults — they don't build from scratch. This is the iDempiere pattern:
 `MOrder.prepareIt()` creates default lines, the user modifies before completing.
 
@@ -1241,10 +1241,10 @@ Engine spawns (in work_output.db):
    ├── #3: ROOM/DISCIPLINE sets → family_ref per room or discipline
    └── each carries: default M_AttributeSetInstance_ID
 
-3. CO_EmptySpaceLine (one per slot)
-   ├── parent BOM's tack_from (attachment origin)
-   ├── AABB capacity for this slot
-   └── linked to C_OrderLine (WHAT goes in this WHERE)
+3. Spatial relationships (from M_BOM_Line dx/dy/dz)
+   ├── parent BOM's tack offset (attachment origin via dx/dy/dz)
+   ├── AABB capacity derived from BOM spatial data
+   └── compiler-internal: co_empty_space_line caches slot data during compilation
 
 4. M_AttributeSetInstance (default per OrderLine)
    ├── customer-facing defaults (finish=DEFAULT, config=STANDARD)
@@ -1412,8 +1412,8 @@ Output:
 ```java
 /**
  * Spawns the iDempiere construction model when user creates a new building.
- * Populates C_Order, C_OrderLine, CO_EmptySpaceLine, default ASI, and
- * PP_Order_Node into work_output.db.
+ * Populates C_Order, C_OrderLine, spatial slots (from M_BOM_Line dx/dy/dz),
+ * default ASI, and PP_Order_Node into work_output.db.
  *
  * <p>iDempiere analogue: MOrder.prepareIt() + MInOut.createFrom().
  * The engine creates default records; the user alters in BIM Designer.
@@ -1449,7 +1449,7 @@ public class ConstructionModelSpawner {
 2. Walk BOM tree (same BOMWalker used for compilation)
    For each m_bom encountered during walk:
      → Create C_OrderLine (family_ref = bom_id, host_type = bom_type)
-     → Create CO_EmptySpaceLine (tack_from = line.dx/dy/dz, aabb = slot capacity)
+     → Spatial slot from M_BOM_Line dx/dy/dz (compiler-internal: co_empty_space_line caches slot)
      → Create default M_AttributeSetInstance (from M_Product.M_AttributeSet_ID)
 
 3. Create PP_Order_Node (default routing from M_Product_Category template)

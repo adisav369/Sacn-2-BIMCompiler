@@ -26,7 +26,7 @@ C_Project               C_Order                   C_OrderLine
 
 WHAT: C_ProjectLine     WHAT: C_OrderLine         WHAT: M_BOM_Line
 HOW:  PlacementStrategy HOW:  PP_Order_Node       HOW:  Verb (TILE/ROUTE/FRAME)
-WHERE: Plot (ABL)       WHERE: CO_EmptySpaceLine  WHERE: tack offset (dx/dy/dz)
+WHERE: Plot (ABL)       WHERE: M_BOM_Line dx/dy/dz WHERE: tack offset (dx/dy/dz)
 ```
 
 A site is to plots what a building is to rooms what a room is to elements.
@@ -110,17 +110,20 @@ Every table in the system serves one of five roles. No table serves two roles.
 | `PP_Order_NodeProduct` | Verb parameters | [BIM_COBOL.md](BIM_COBOL.md) |
 | `AD_ChangeLog` | Full audit trail (who/what/when) | [ProjectOrderBlueprint.md §10](ProjectOrderBlueprint.md) |
 
-### 2.5 Spatial Data (CO) — Where Things Go
+### 2.5 Spatial Data — Where Things Go
 
 **Database:** compile DB, output.db
-**Lifecycle:** Created during BOM Drop. Updated during design.
-**iDempiere equivalent:** M_Locator (warehouse location), CO_EmptySpace (capacity).
+**Lifecycle:** Spatial relationships live in M_BOM_Line dx/dy/dz (the BOM itself).
+**iDempiere equivalent:** M_BOM_Line tack offsets encode WHERE; no separate locator needed.
 
 | Table | Role | Spec |
 |-------|------|------|
-| `co_empty_space` | Spatial envelope header | [SystemContract.md §2](SystemContract.md) |
-| `co_empty_space_line` | Spatial slot (room/plot) | [SystemContract.md §2](SystemContract.md) |
+| `m_bom_line` (dx/dy/dz) | Spatial relationships within BOM | [MANIFESTO.md §Three Concerns](MANIFESTO.md) |
 | `elements_rtree` | R-tree spatial index | [DATA_MODEL.md](DATA_MODEL.md) |
+
+> **Note:** `co_empty_space` / `co_empty_space_line` are compiler-internal tables
+> (implementation detail for filler queries). They are NOT architectural entities.
+> Empty space = BOM line with `bom_type = 'FILLER'`, queryable via SQL.
 
 ---
 
@@ -211,7 +214,7 @@ A `?` means the spec is missing — this is a gap that must be closed.
 |---------|--------|--------|------|
 | **WHAT** | C_OrderLine (which elements) | ✓ DONE | [SystemContract.md §2](SystemContract.md) |
 | **HOW** | PP_Order_Node (verb execution) | ✓ DONE | [BIM_COBOL.md](BIM_COBOL.md) |
-| **WHERE** | CO_EmptySpaceLine (room slots) | ✓ DONE | [SystemContract.md §2](SystemContract.md) |
+| **WHERE** | M_BOM_Line dx/dy/dz (spatial relationships) | ✓ DONE | [MANIFESTO.md §Three Concerns](MANIFESTO.md) |
 
 ### 4.3 Scale 3: Room
 
@@ -364,7 +367,7 @@ VALIDATION:
 ```
 1. C_Project created (site_aabb from survey boundary)
 2. Site grid generated: streets × lots × terraces from terrain topology
-     Each plot = CO_EmptySpaceLine at site scale (ABL address, frontage, depth)
+     Each plot = M_BOM_Line at site scale (ABL address, frontage, depth via dx/dy/dz)
      Each plot.z = elevationAt(plot_centre) from PDFTerrain survey
 3. C_ProjectLine created: qty=180 SH_STD, qty=15 DX_STD, etc.
 4. Put-away strategy runs:

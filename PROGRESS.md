@@ -20,7 +20,7 @@
 
 **Pipeline:** 9 stages. 64 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
-**Tests:** BIMBackOffice 5/5. BonsaiBIMDesigner 403/409 (41 classes, 6 CalibrationTest pre-existing).
+**Tests:** BIMBackOffice 5/5. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
 ## What's Next
@@ -32,6 +32,7 @@
   Session C DONE — Rule pack framing (pack_id on 4 AD tables). [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
   Session D DONE — Remove + Compress mutations. W005 migration. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
   Session E DONE — Order inheritance. W006 migration (Ref_Order_ID). InheritanceResolver + dropWithInheritance. OrderInheritanceTest 6/6. GAP-SC-5 CLOSED.
+  Session F DONE — DiffVerb + Callout (§9). W007 migration (AD_Rule). DiffVerbService + CalloutEngine. DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
 
 **AD Dictionary (S62→S65):** Steps 0–3 DONE. Next: Step 4–6. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
@@ -42,6 +43,8 @@
 
 ## Session Log (recent first)
 
+**S73** — CO_EmptySpaceLine → compiler-internal. Phase 1: 15 docs aligned (WHERE = M_BOM_Line dx/dy/dz). Phase 2: 4 PO classes @Deprecated, all consumer javadoc/comments updated, SpatialDigest + VerifyPlacementVerb @Deprecated. Phase 3 deferred (tables still needed by pipeline). AUDIT docs untouched (historical).
+**S72** — Session F: DiffVerb + Callout (§9). W007 migration (AD_Rule callout table). DiffVerbService (records DIFF PP_Order_Node + delta params). CalloutEngine (topo-sort rule evaluation). DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
 **S68e** — Session E: Order inheritance. DV017 applied all DBs. W006 migration (Ref_Order_ID). InheritanceResolver (chain walk + exception collect). BomDropper.dropWithInheritance. OrderInheritanceTest 6/6. MANIFESTO.md reorder + category triage.
 **S68b** — Session D: Remove + Compress mutations. W005 migration (locator_ref + is_reference_class). BomDropper exception-order support. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
 **S68** — M_BomCategory → M_Product_Category rename. DV017 migration. 14 docs + 28 Java files + schema_snapshot. [AUDIT Appendix P](docs/AUDIT_S51_FOCUSED.md).

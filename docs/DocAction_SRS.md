@@ -132,8 +132,8 @@ processIt(work_output.db):                           DocStatus: DR → IP
   │   │   ├── Walk BOM tree → INSERT C_OrderLine per node
   │   │   │   (family_ref, host_type, dx/dy/dz, aabb_*_mm)
   │   │   │
-  │   │   ├── INSERT CO_EmptySpaceLine per slot
-  │   │   │   (tack_from_x/y/z, capacity_*_mm)
+  │   │   ├── Spatial slots derived from M_BOM_Line dx/dy/dz
+  │   │   │   (compiler-internal: co_empty_space_line caches slot data)
   │   │   │
   │   │   ├── For LEAF nodes: fetch LOD from component_library.db
   │   │   │   → M_Product (dimensions) + component_definitions (attachment)
@@ -166,8 +166,8 @@ processIt(work_output.db):                           DocStatus: DR → IP
   │       │   ├── INSERT C_OrderLine
   │       │   │   (family_ref=product_id, dx/dy/dz=computed tack)
   │       │   │
-  │       │   ├── INSERT CO_EmptySpaceLine
-  │       │   │   (tack_from = computed position)
+  │       │   ├── Spatial slot from M_BOM_Line dx/dy/dz
+  │       │   │   (compiler-internal: co_empty_space_line caches computed position)
   │       │   │
   │       │   └── INSERT M_AttributeSetInstance
   │       │       (width, depth, height from M_Product)
@@ -297,7 +297,7 @@ approveIt(work_output.db → {prefix}_BOM.db):         DocStatus: CO → AP
 
 | Phase | DocStatus | Database | Tables Written | What |
 |-------|-----------|----------|---------------|------|
-| processIt | DR→IP | work_output.db | C_OrderLine, CO_EmptySpaceLine, M_AttributeSetInstance, W_Validation_Result | Design decisions + all validation tiers |
+| processIt | DR→IP | work_output.db | C_OrderLine, spatial slots (M_BOM_Line dx/dy/dz), M_AttributeSetInstance, W_Validation_Result | Design decisions + all validation tiers |
 | processIt | DR→IP | component_library.db | *(read-only)* | LOD fetch: M_Product → component_definitions → component_geometries |
 | processIt | DR→IP | {prefix}_BOM.db | *(read-only)* | BOM tree source for `{prefix}_BOM` disciplines |
 | processIt | DR→IP | validation.db | *(read-only)* | AD_Val_Rule for `DocEvent` disciplines + shared rules |
@@ -330,8 +330,8 @@ owns each element). Both are editable during IP and frozen at CO.
 | `C_OrderLine` | bom_category | Discipline assignment (FP, ELEC, CW...) | YES — reassign |
 | `C_OrderLine` | family_ref | Product/BOM reference | YES — swap product |
 | `C_OrderLine` | Parent_OrderLine_ID | Tree hierarchy | YES — reparent |
-| `CO_EmptySpaceLine` | tack_from_x/y/z_mm | Slot position | YES — follows OrderLine |
-| `CO_EmptySpaceLine` | capacity_*_mm | Slot AABB | YES — resize |
+| `M_BOM_Line` | dx/dy/dz | Spatial offset (WHERE) | YES — follows OrderLine |
+| `M_BOM_Line` | aabb_*_mm | Slot AABB capacity | YES — resize |
 | `M_AttributeSetInstance` | width/depth/height | Instance sizing | YES — slider |
 | `W_Validation_Result` | result | Tier 1/2/3 pass/warn/block | Recomputed on change |
 | `PP_Order_Node` | verb_ref | Verb execution | Written at CO |
@@ -448,7 +448,7 @@ Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
 | **Verb** | `REPARENT` |
 | **Input** | C_OrderLine_ID, target_parent_id (storey/room/discipline node) |
 | **Precondition** | Target parent exists. Same discipline (use REASSIGN to change discipline). |
-| **Writes** | `C_OrderLine.Parent_OrderLine_ID`, `C_OrderLine.dz` (recomputed). `CO_EmptySpaceLine.tack_from_z_mm`. |
+| **Writes** | `C_OrderLine.Parent_OrderLine_ID`, `C_OrderLine.dz` (recomputed). Spatial slot cache updated. |
 | **Validation** | Tier 1 on BOTH old and new parent (spacing recalc). Tier 3 re-check (vertical continuity may break). |
 | **PP_Order_Node** | verb_ref='REPARENT', description='sprinkler_23: GF→L1' |
 
@@ -461,9 +461,8 @@ SQL:
     dz = (new Z offset relative to L1 slab)
   WHERE C_OrderLine_ID = ?;
 
-  UPDATE CO_EmptySpaceLine SET
-    tack_from_z_mm = (new world Z position)
-  WHERE C_OrderLine_ID = ?;
+  -- Spatial slot cache (co_empty_space_line) updated from M_BOM_Line dx/dy/dz
+  -- UPDATE co_empty_space_line SET tack_from_z_mm = (new world Z) WHERE C_OrderLine_ID = ?;
 
   DELETE FROM W_Validation_Result
   WHERE C_OrderLine_ID = ?;
@@ -767,7 +766,7 @@ rename before each CompleteIt to version their builds (e.g. `output/demo_v2.db`)
 |-----------------------|-------------|-------|
 | C_Order + C_OrderLine | Compile DB | BomDropper already writes here |
 | M_AttributeSetInstance | Compile DB | ASI overrides per C_OrderLine |
-| CO_EmptySpaceLine | Compile DB | Spatial slots |
+| co_empty_space_line | Compile DB | Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz) |
 | W_Validation_Result | Compile DB | Validation results |
 | PP_Order_Node | Compile DB | Verb audit trail |
 | W_Variant | **Removed** | No variants — BOM is read-only, no edit history |

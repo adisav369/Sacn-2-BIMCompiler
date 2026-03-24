@@ -12,7 +12,7 @@ import java.sql.*;
  * <p>Three sequentially dependent operations:
  * <ol>
  *   <li>{@link #normalizeStoreyNames()} — INSERT IfcBuildingStorey for missing storeys</li>
- *   <li>{@link #emitIfcSpaceFromL2()} — INSERT IfcSpace from L2 co_empty_space_line</li>
+ *   <li>{@link #emitIfcSpaceFromL2()} — INSERT IfcSpace from L2 spatial slots (compiler-internal: co_empty_space_line)</li>
  *   <li>{@link #populateSpaceContainment()} — INSERT/UPDATE rel_contained_in_space</li>
  * </ol>
  *

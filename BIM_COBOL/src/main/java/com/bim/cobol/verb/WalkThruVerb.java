@@ -16,7 +16,7 @@ import java.util.List;
  *
  * <p>Walker enters each sub-assembly in the BOM hierarchy, accumulating
  * tack coordinates (BUILDING → FLOOR → SET → BUY). C_OrderLine per slot,
- * CO_EmptySpaceLine per slot.
+ * spatial data from M_BOM_Line dx/dy/dz (compiler-internal: co_empty_space_line).
  *
  * <p>Triggered when the BOM has sub-assemblies — the walker detects them
  * structurally (child_product_id matches a bom_id) and enters each one.

@@ -724,7 +724,7 @@ The pattern (grid formula) lives on PP_Order_NodeProduct, not M_AttributeSet:
 C_OrderLine (WHAT):   M_Product = ROOF_DECK_PANEL_SET, qty = 4,410
 PP_Order_Node (HOW):  Verb = TILE SURFACE
   PP_Order_NodeProduct: origin, grid_cols=15, grid_rows=294, step_x=495, step_y=150
-CO_EmptySpaceLine (WHERE): AABB = 7,425 × 44,100 mm (the filled envelope)
+M_BOM_Line dx/dy/dz (WHERE): AABB = 7,425 × 44,100 mm (the filled envelope)
 ```
 
 Changing the grid (16×294 instead of 15×294) changes only PP_Order_NodeProduct.
@@ -834,7 +834,7 @@ The three-way separation governs the entire architecture:
 | Concern | ERP Table | What It Carries |
 |---------|-----------|----------------|
 | **WHAT** to build | C_OrderLine | Which M_Product/M_BOM, qty |
-| **WHERE** it goes | CO_EmptySpaceLine | Origin, AABB, orientation |
+| **WHERE** it goes | M_BOM_Line dx/dy/dz | Spatial relationships (tack offsets) |
 | **HOW** to build | PP_Order_Node | Verb parameters (grid, path, method) |
 
 The 7-storey × 8-discipline grid produces ~40-50 C_OrderLines — a normal
