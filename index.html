@@ -2767,126 +2767,21 @@ A compiled building IS a manufacturing work order.</p>
 <div class="highlight"><pre><span></span><code>IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
 </code></pre></div>
-<p>The BOM hierarchy maps directly to the building hierarchy:</p>
-<table>
-<thead>
-<tr>
-<th>Manufacturing</th>
-<th>Construction</th>
-<th>Table</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Product catalog</td>
-<td>Building element (wall, door, pipe)</td>
-<td><code>M_Product</code></td>
-</tr>
-<tr>
-<td>Bill of Materials</td>
-<td>Assembly recipe (floor, room, building)</td>
-<td><code>M_BOM</code> + <code>M_BOM_Line</code></td>
-</tr>
-<tr>
-<td>Work order</td>
-<td>Construction project for a specific building</td>
-<td><code>C_Order</code> + <code>C_OrderLine</code></td>
-</tr>
-<tr>
-<td>Production operation</td>
-<td>Verb execution (TILE, ROUTE, FRAME)</td>
-<td><code>PP_Order_Node</code></td>
-</tr>
-<tr>
-<td>Warehouse location</td>
-<td>Spatial slot (room, plot)</td>
-<td><code>CO_EmptySpaceLine</code></td>
-</tr>
-</tbody>
-</table>
+<p>A product catalog (<code>M_Product</code>) becomes building elements. A Bill of Materials (<code>M_BOM</code>) becomes assembly recipes. A work order (<code>C_Order</code>) becomes a construction project. The same ERP tables that run a factory floor now compile a building.</p>
 <hr />
 <h2 id="the-rosetta-stone-strategy">The Rosetta Stone Strategy<a class="headerlink" href="#the-rosetta-stone-strategy" title="Permanent link">&para;</a></h2>
-<p>Three real buildings, decomposed into reference databases. The compiler reads a BOM
-describing the same building and produces output. The test: does every compiled element
-land at the <strong>same position</strong> as the reference?</p>
-<table>
-<thead>
-<tr>
-<th>Stone</th>
-<th>Elements</th>
-<th>Gates</th>
-<th>What it proves</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Sample House (SH)</td>
-<td>55</td>
-<td>ALL GREEN</td>
-<td>Simple residential, 1 storey</td>
-</tr>
-<tr>
-<td>FZK Haus (FK)</td>
-<td>82</td>
-<td>ALL GREEN</td>
-<td>European residential</td>
-</tr>
-<tr>
-<td>Duplex (DX)</td>
-<td>1,099</td>
-<td>ALL GREEN</td>
-<td>2-storey, 3 disciplines</td>
-</tr>
-<tr>
-<td>Terminal (TE)</td>
-<td>48,428</td>
-<td>ALL GREEN</td>
-<td>Airport, 8 disciplines, 505 products</td>
-</tr>
-</tbody>
-</table>
 <figure style="float: right; margin: 0 0 12px 24px; max-width: 320px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex compiled in Blender — 48,428 elements" width="320">
-  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">The Terminal (TE) — 48,428 elements, 505 products, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 6px;">The Terminal — 48,428 elements, 8 disciplines. Compiled from BOM, verified by 6 gates.</figcaption>
 </figure>
 
-<p>Once a stone passes exact sameness, its BOM grammar is <strong>certified</strong>. Any new building
-composed from certified grammar inherits the proof.</p>
-<p><a href="TheRosettaStoneStrategy/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Read the full strategy</a></p>
+<p>Real buildings become reference databases. The compiler reads a BOM describing the same building and produces output. If every element lands at the <strong>same position</strong> as the reference, the BOM grammar is <strong>certified</strong> — and any new building composed from certified grammar inherits the proof.</p>
+<p><strong>35 buildings compiled.</strong> From a 55-element house to a 48,428-element airport terminal. 19 pass all 6 gates. <a href="TheRosettaStoneStrategy/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Read the full strategy</a></p>
 <p><br clear="right"/></p>
 <hr />
 <h2 id="we-got-eyes">We Got Eyes<a class="headerlink" href="#we-got-eyes" title="Permanent link">&para;</a></h2>
-<p>The compiler can see. BIMEyes reduces every element's shape to three dimensionless
-ratios — planarity, elongation, squareness. A wall <em>must</em> be planar. A column <em>must</em>
-be elongated. These are mathematical facts, not heuristics.</p>
-<table>
-<thead>
-<tr>
-<th>Tier</th>
-<th>What it proves</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Per-element</strong></td>
-<td>Each element is geometrically sane</td>
-<td>Positive extent, finite coordinates</td>
-</tr>
-<tr>
-<td><strong>Pairwise</strong></td>
-<td>Elements relate correctly</td>
-<td>Doors inside walls, furniture inside rooms</td>
-</tr>
-<tr>
-<td><strong>Aggregate</strong></td>
-<td>The building makes sense</td>
-<td>Rooms have walls + floor + ceiling + door</td>
-</tr>
-</tbody>
-</table>
-<p>28 proof classes. 97% of 90,310 elements pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic.</p>
-<p><a href="EYES_SRS/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> EYES specification</a></p>
+<p>The compiler can see. BIMEyes reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall <em>must</em> be planar. A column <em>must</em> be elongated. Per-element, pairwise, and aggregate — 28 proof classes verify that elements are sane, relate correctly, and form coherent buildings.</p>
+<p>97% of 90,310 elements pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic. <a href="EYES_SRS/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> EYES specification</a></p>
 <hr />
 <h2 id="design-in-blender-compile-from-bom">Design in Blender, Compile from BOM<a class="headerlink" href="#design-in-blender-compile-from-bom" title="Permanent link">&para;</a></h2>
 <figure style="float: right; margin: 0 0 12px 24px; max-width: 380px; text-align: center;">
@@ -2928,10 +2823,6 @@ mvn<span class="w"> </span>compile<span class="w"> </span>-q<span class="w">    
 <td><a href="SystemContract/">System Contract</a> — the governing document</td>
 </tr>
 <tr>
-<td>See what's planned</td>
-<td><a href="ACTION_ROADMAP/">Action Roadmap</a> — navigation hub for all specs</td>
-</tr>
-<tr>
 <td>Read the master spec</td>
 <td><a href="BOMBasedCompilation/">BOM-Based Compilation</a> — tack, walker, gospel</td>
 </tr>
@@ -2944,12 +2835,8 @@ mvn<span class="w"> </span>compile<span class="w"> </span>-q<span class="w">    
 <td><a href="IFC_ONBOARDING_RUNBOOK/">IFC Onboarding Runbook</a> — 8-step recipe</td>
 </tr>
 <tr>
-<td>Understand ERP mapping</td>
-<td><a href="ConstructionAsERP/">Construction as ERP</a> — C_Order, three-concern</td>
-</tr>
-<tr>
 <td>See the frontier</td>
-<td><a href="ProjectOrderBlueprint/">Project Order Blueprint</a> — exception ordering, C_Project, rule packs</td>
+<td><a href="ProjectOrderBlueprint/">Project Order Blueprint</a> — exception ordering, C_Project</td>
 </tr>
 </tbody>
 </table>
