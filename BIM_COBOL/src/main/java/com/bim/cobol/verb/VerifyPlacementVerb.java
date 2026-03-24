@@ -9,28 +9,29 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * VERIFY PLACEMENT &lt;output_db_path&gt; — validates spatial slot completeness.
+ * VERIFY PLACEMENT &lt;output_db_path&gt; — validates spatial completeness via M_BOM.
  *
- * @deprecated Reads compiler-internal co_empty_space_line table. WHERE concern
- * lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
+ * @deprecated Retained for gate compatibility. Checks BOM hierarchy in BOM.db
+ * instead of the removed co_empty_space_line table.
  *
- * <p>Opens the given output.db, queries {@code co_empty_space_line} by {@code bom_level},
- * and checks that the three structural levels are populated:
+ * <p>Opens the given output.db to verify elements_meta and spatial_structure,
+ * then queries {@code ctx.bomConn()} for BOM completeness:
  * <ul>
- *   <li><b>L0</b> (bom_level=0): UNIT acceptance — must have ≥1 row</li>
- *   <li><b>L1</b> (bom_level=1): Storey decomposition — must have ≥3 rows
- *       (at minimum: ground slab + ground floor + roof)</li>
- *   <li><b>L2</b> (bom_level=2): Room-level assignment — must have ≥1 row</li>
- *   <li>No L2 rows may have a null {@code bom_id}</li>
+ *   <li><b>L0</b>: BUILDING BOM exists (m_bom WHERE bom_type = 'BUILDING', count &ge; 1)</li>
+ *   <li><b>L1</b>: BUILDING BOM has floor children (m_bom_line WHERE bom_id = ?, count &ge; 3)</li>
+ *   <li><b>L2</b>: Floor BOMs have room-category children
+ *       (m_product_category_id IN ('LI','BD','KT','BT','DN'), count &ge; 1)</li>
  * </ul>
  *
- * <p>Read-only — does not write to the database.
+ * <p>Read-only — does not write to any database.
  *
  * <p>Returns {@link PlacementVerifyPayload} with per-level counts and a list of gap descriptions.
  * Result is PASS if all checks pass; FAIL with gap descriptions otherwise.
  */
 @Deprecated
 public class VerifyPlacementVerb implements Verb<VerifyPlacementVerb.PlacementVerifyPayload> {
+
+    private static final String[] ROOM_CATEGORIES = {"LI", "BD", "KT", "BT", "DN"};
 
     @Override
     public String keyword() { return "VERIFY PLACEMENT"; }
@@ -49,42 +50,72 @@ public class VerifyPlacementVerb implements Verb<VerifyPlacementVerb.PlacementVe
                 "output.db not found: " + dbPath,
                 new PlacementVerifyPayload(0, 0, 0, List.of("file not found: " + dbPath)));
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
-            // Check that co_empty_space_line table exists
-            if (!tableExists(conn, "co_empty_space_line")) {
-                List<String> gaps = List.of("table co_empty_space_line not found in " + dbPath);
-                return VerbResult.fail(keyword(), "co_empty_space_line missing",
-                    new PlacementVerifyPayload(0, 0, 0, gaps));
-            }
+        List<String> gaps = new ArrayList<>();
 
-            // Count rows per bom_level
-            int l0 = countByLevel(conn, 0);
-            int l1 = countByLevel(conn, 1);
-            int l2 = countByLevel(conn, 2);
-
-            List<String> gaps = new ArrayList<>();
-
-            if (l0 < 1) gaps.add("L0 (UNIT acceptance): expected ≥1, got " + l0);
-            if (l1 < 3) gaps.add("L1 (storey decomposition): expected ≥3, got " + l1);
-            if (l2 < 1) gaps.add("L2 (room assignment): expected ≥1, got " + l2);
-
-            // Check for null bom_id in L2
-            int nullBomIds = countNullBomIds(conn);
-            if (nullBomIds > 0) {
-                gaps.add("L2 null bom_id: " + nullBomIds + " ESLine(s) have no BOM reference");
-            }
-
-            PlacementVerifyPayload payload = new PlacementVerifyPayload(l0, l1, l2, gaps);
-
-            if (gaps.isEmpty()) {
-                return VerbResult.ok(keyword(),
-                    String.format("PASS — L0=%d, L1=%d, L2=%d, no gaps", l0, l1, l2),
-                    payload);
+        // ── Phase 1: output.db sanity checks ────────────────────────────────
+        try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+            if (!tableExists(outConn, "elements_meta")) {
+                gaps.add("elements_meta table missing in output.db");
             } else {
-                return VerbResult.fail(keyword(),
-                    String.format("FAIL — L0=%d, L1=%d, L2=%d, gaps=%d", l0, l1, l2, gaps.size()),
-                    payload);
+                int elemCount = scalarCount(outConn, "SELECT COUNT(*) FROM elements_meta");
+                if (elemCount == 0) gaps.add("elements_meta is empty");
             }
+
+            if (!tableExists(outConn, "spatial_structure")) {
+                gaps.add("spatial_structure table missing in output.db");
+            } else {
+                int storeys = scalarCount(outConn,
+                    "SELECT COUNT(*) FROM spatial_structure WHERE type = 'IfcBuildingStorey'");
+                if (storeys == 0) gaps.add("no IfcBuildingStorey rows in spatial_structure");
+
+                int spaces = scalarCount(outConn,
+                    "SELECT COUNT(*) FROM spatial_structure WHERE type = 'IfcSpace'");
+                if (spaces == 0) gaps.add("no IfcSpace rows in spatial_structure");
+            }
+        }
+
+        // ── Phase 2: BOM.db hierarchy checks ────────────────────────────────
+        Connection bomConn = ctx.bomConn();
+        if (bomConn == null) {
+            gaps.add("bomConn is null — cannot verify BOM hierarchy");
+            return VerbResult.fail(keyword(), "bomConn required",
+                new PlacementVerifyPayload(0, 0, 0, gaps));
+        }
+
+        // L0: BUILDING BOM exists
+        int l0 = scalarCount(bomConn,
+            "SELECT COUNT(*) FROM m_bom WHERE bom_type = 'BUILDING'");
+
+        // L1: BUILDING BOM children (floor lines)
+        int l1 = 0;
+        List<Integer> buildingBomIds = new ArrayList<>();
+        try (PreparedStatement ps = bomConn.prepareStatement(
+                "SELECT m_bom_id FROM m_bom WHERE bom_type = 'BUILDING'")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) buildingBomIds.add(rs.getInt(1));
+            }
+        }
+        for (int bomId : buildingBomIds) {
+            l1 += countLinesByBom(bomConn, bomId);
+        }
+
+        // L2: room-category children of floor BOMs
+        int l2 = countRoomCategoryChildren(bomConn, buildingBomIds);
+
+        if (l0 < 1) gaps.add("L0 (BUILDING BOM): expected ≥1, got " + l0);
+        if (l1 < 3) gaps.add("L1 (floor children): expected ≥3, got " + l1);
+        if (l2 < 1) gaps.add("L2 (room-category children): expected ≥1, got " + l2);
+
+        PlacementVerifyPayload payload = new PlacementVerifyPayload(l0, l1, l2, gaps);
+
+        if (gaps.isEmpty()) {
+            return VerbResult.ok(keyword(),
+                String.format("PASS — L0=%d, L1=%d, L2=%d, no gaps", l0, l1, l2),
+                payload);
+        } else {
+            return VerbResult.fail(keyword(),
+                String.format("FAIL — L0=%d, L1=%d, L2=%d, gaps=%d", l0, l1, l2, gaps.size()),
+                payload);
         }
     }
 
@@ -97,30 +128,65 @@ public class VerifyPlacementVerb implements Verb<VerifyPlacementVerb.PlacementVe
         }
     }
 
-    private static int countByLevel(Connection conn, int level) throws SQLException {
+    private static int scalarCount(Connection conn, String sql) throws SQLException {
+        try (Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    private static int countLinesByBom(Connection conn, int bomId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = ?")) {
-            ps.setInt(1, level);
+                "SELECT COUNT(*) FROM m_bom_line WHERE m_bom_id = ?")) {
+            ps.setInt(1, bomId);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }
         }
     }
 
-    private static int countNullBomIds(Connection conn) throws SQLException {
-        try (Statement st = conn.createStatement();
-             ResultSet rs = st.executeQuery(
-                 "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 2 AND bom_id IS NULL")) {
-            return rs.next() ? rs.getInt(1) : 0;
+    /**
+     * For each BUILDING BOM, find its child lines (floors), then for each floor's
+     * child BOM, count lines whose m_product_category_id is a room category.
+     */
+    private static int countRoomCategoryChildren(Connection conn, List<Integer> buildingBomIds)
+            throws SQLException {
+        if (buildingBomIds.isEmpty()) return 0;
+
+        int total = 0;
+        // Gather floor-level child BOM IDs from the building lines
+        List<Integer> floorBomIds = new ArrayList<>();
+        for (int buildingBomId : buildingBomIds) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT child_bom_id FROM m_bom_line WHERE m_bom_id = ? AND child_bom_id IS NOT NULL")) {
+                ps.setInt(1, buildingBomId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) floorBomIds.add(rs.getInt(1));
+                }
+            }
         }
+
+        // For each floor BOM, count room-category children
+        String inClause = "'" + String.join("','", ROOM_CATEGORIES) + "'";
+        for (int floorBomId : floorBomIds) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT COUNT(*) FROM m_bom_line WHERE m_bom_id = ? AND m_product_category_id IN ("
+                    + inClause + ")")) {
+                ps.setInt(1, floorBomId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) total += rs.getInt(1);
+                }
+            }
+        }
+        return total;
     }
 
     /**
      * Payload carrying placement verification results.
      *
-     * @param l0Count  number of L0 (UNIT acceptance) ESLines
-     * @param l1Count  number of L1 (storey) ESLines
-     * @param l2Count  number of L2 (room) ESLines
+     * @param l0Count  number of BUILDING BOMs
+     * @param l1Count  number of floor children across all BUILDING BOMs
+     * @param l2Count  number of room-category children across all floor BOMs
      * @param gaps     list of gap descriptions (empty = all checks passed)
      */
     public record PlacementVerifyPayload(

@@ -1,9 +1,10 @@
 package com.bim.compiler.dsl;
 
 import java.sql.*;
+import java.util.List;
 
 /**
- * Spatial structure builder — normalizes storeys, emits IfcSpace from L2 ESLines,
+ * Spatial structure builder — normalizes storeys, emits IfcSpace from room slots,
  * and populates rel_contained_in_space.
  *
  * <p>Extracted from CompilationPipeline (Phase H3) so that both the fallback path
@@ -12,7 +13,7 @@ import java.sql.*;
  * <p>Three sequentially dependent operations:
  * <ol>
  *   <li>{@link #normalizeStoreyNames()} — INSERT IfcBuildingStorey for missing storeys</li>
- *   <li>{@link #emitIfcSpaceFromL2()} — INSERT IfcSpace from L2 spatial slots (compiler-internal: co_empty_space_line)</li>
+ *   <li>{@link #emitIfcSpaceFromRoomSlots()} — INSERT IfcSpace from room slots (M_BOM_Line dx/dy/dz)</li>
  *   <li>{@link #populateSpaceContainment()} — INSERT/UPDATE rel_contained_in_space</li>
  * </ol>
  *
@@ -23,9 +24,19 @@ import java.sql.*;
 public class SpatialStructureBuilder {
 
     private final Connection conn;
+    private final List<RoomSlot> roomSlots;
 
-    public SpatialStructureBuilder(Connection conn) {
+    /**
+     * Room-level spatial slot — derived from M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
+     * Replaces the former co_empty_space_line L2 rows.
+     */
+    public record RoomSlot(String storey, String roomName, String bomLineRole,
+                            double beforeXMm, double beforeYMm, double beforeZMm,
+                            double nextXMm, double nextYMm, double nextZMm) {}
+
+    public SpatialStructureBuilder(Connection conn, List<RoomSlot> roomSlots) {
         this.conn = conn;
+        this.roomSlots = roomSlots != null ? roomSlots : List.of();
     }
 
     /**
@@ -34,7 +45,7 @@ public class SpatialStructureBuilder {
      */
     public Result buildAll() throws SQLException {
         int storeys = normalizeStoreyNames();
-        int spaces = emitIfcSpaceFromL2();
+        int spaces = emitIfcSpaceFromRoomSlots();
         int[] containment = populateSpaceContainment();
         return new Result(storeys, spaces, containment[0], containment[1]);
     }
@@ -83,48 +94,42 @@ public class SpatialStructureBuilder {
     }
 
     /**
-     * Gap #5: Emit IfcSpace rows in spatial_structure from L2 co_empty_space_line entries.
+     * Gap #5: Emit IfcSpace rows in spatial_structure from room slots
+     * (derived from M_BOM_Line dx/dy/dz — MANIFESTO.md §Three Concerns).
      */
-    public int emitIfcSpaceFromL2() throws SQLException {
+    public int emitIfcSpaceFromRoomSlots() throws SQLException {
+        if (roomSlots.isEmpty()) return 0;
+
         int spaceCount = 0;
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("""
-                 SELECT DISTINCT esl.storey, esl.room_name, esl.bom_line_role
-                 FROM co_empty_space_line esl
-                 WHERE esl.bom_level = 2
-                   AND esl.storey IS NOT NULL
-                   AND (esl.room_name IS NOT NULL OR esl.bom_line_role IS NOT NULL)
-                 """)) {
-            while (rs.next()) {
-                String storey = rs.getString("storey");
-                String roomName = rs.getString("room_name");
-                if (roomName == null) roomName = rs.getString("bom_line_role");
-                if (roomName == null) continue;
+        for (RoomSlot slot : roomSlots) {
+            String storey = slot.storey();
+            String roomName = slot.roomName();
+            if (roomName == null) roomName = slot.bomLineRole();
+            if (storey == null || roomName == null) continue;
 
-                String storeyGuid = "STOREY_" + storey.toUpperCase().replace(" ", "_");
-                String spaceGuid = "SPACE_" + storey.toUpperCase().replace(" ", "_")
-                                 + "_" + roomName.toUpperCase().replace(" ", "_");
+            String storeyGuid = "STOREY_" + storey.toUpperCase().replace(" ", "_");
+            String spaceGuid = "SPACE_" + storey.toUpperCase().replace(" ", "_")
+                             + "_" + roomName.toUpperCase().replace(" ", "_");
 
-                // Check storey exists in spatial_structure (skip if not)
-                try (PreparedStatement check = conn.prepareStatement(
-                        "SELECT 1 FROM spatial_structure WHERE guid = ?")) {
-                    check.setString(1, storeyGuid);
-                    try (ResultSet crs = check.executeQuery()) {
-                        if (!crs.next()) continue;
-                    }
+            // Check storey exists in spatial_structure (skip if not)
+            try (PreparedStatement check = conn.prepareStatement(
+                    "SELECT 1 FROM spatial_structure WHERE guid = ?")) {
+                check.setString(1, storeyGuid);
+                try (ResultSet crs = check.executeQuery()) {
+                    if (!crs.next()) continue;
                 }
+            }
 
-                try (PreparedStatement ps = conn.prepareStatement(
-                        "INSERT OR IGNORE INTO spatial_structure VALUES (?, ?, ?, ?, ?, ?)")) {
-                    ps.setString(1, spaceGuid);
-                    ps.setString(2, "IfcSpace");
-                    ps.setString(3, roomName);
-                    ps.setString(4, storeyGuid);
-                    ps.setString(5, null); // object_type
-                    ps.setString(6, roomTypeToPredefined(roomName));
-                    ps.execute();
-                    spaceCount++;
-                }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "INSERT OR IGNORE INTO spatial_structure VALUES (?, ?, ?, ?, ?, ?)")) {
+                ps.setString(1, spaceGuid);
+                ps.setString(2, "IfcSpace");
+                ps.setString(3, roomName);
+                ps.setString(4, storeyGuid);
+                ps.setString(5, null); // object_type
+                ps.setString(6, roomTypeToPredefined(roomName));
+                ps.execute();
+                spaceCount++;
             }
         }
         if (spaceCount > 0) {
@@ -135,6 +140,8 @@ public class SpatialStructureBuilder {
 
     /**
      * Gap #6: Populate rel_contained_in_space using centroid-in-AABB matching.
+     * Pass 1: storey-level (from elements_meta.storey).
+     * Pass 2: room-level (from in-memory room slots via temp table).
      * @return int[2]: [storeyContained, roomContained]
      */
     public int[] populateSpaceContainment() throws SQLException {
@@ -151,6 +158,53 @@ public class SpatialStructureBuilder {
         }
 
         // Pass 2: room-level containment — smallest-AABB-wins
+        int roomContained = 0;
+        if (!roomSlots.isEmpty()) {
+            roomContained = populateRoomContainment();
+        }
+        conn.commit();
+        return new int[]{storeyContained, roomContained};
+    }
+
+    /**
+     * Room-level containment via temp table populated from in-memory room slots.
+     * Same centroid-in-AABB logic as before, but sourced from M_BOM_Line spatial data.
+     */
+    private int populateRoomContainment() throws SQLException {
+        // Create temp table for room slots
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS _tmp_room_slots");
+            stmt.execute("""
+                CREATE TEMP TABLE _tmp_room_slots (
+                    slot_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    storey TEXT, room_name TEXT, bom_line_role TEXT,
+                    before_x_mm REAL, before_y_mm REAL, before_z_mm REAL,
+                    next_x_mm REAL, next_y_mm REAL, next_z_mm REAL
+                )
+                """);
+        }
+
+        // Populate from in-memory list
+        try (PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO _tmp_room_slots (storey, room_name, bom_line_role, "
+                + "before_x_mm, before_y_mm, before_z_mm, next_x_mm, next_y_mm, next_z_mm) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+            for (RoomSlot slot : roomSlots) {
+                ps.setString(1, slot.storey());
+                ps.setString(2, slot.roomName());
+                ps.setString(3, slot.bomLineRole());
+                ps.setDouble(4, slot.beforeXMm());
+                ps.setDouble(5, slot.beforeYMm());
+                ps.setDouble(6, slot.beforeZMm());
+                ps.setDouble(7, slot.nextXMm());
+                ps.setDouble(8, slot.nextYMm());
+                ps.setDouble(9, slot.nextZMm());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+
+        // Room-level containment — smallest-AABB-wins (same logic as before)
         int roomContained;
         try (Statement stmt = conn.createStatement()) {
             roomContained = stmt.executeUpdate("""
@@ -158,29 +212,34 @@ public class SpatialStructureBuilder {
                 SELECT element_guid, space_guid
                 FROM (
                     SELECT em.guid AS element_guid,
-                           'SPACE_' || REPLACE(UPPER(esl.storey),' ','_')
-                             || '_' || REPLACE(UPPER(COALESCE(esl.room_name, esl.bom_line_role)),' ','_') AS space_guid,
+                           'SPACE_' || REPLACE(UPPER(rs.storey),' ','_')
+                             || '_' || REPLACE(UPPER(COALESCE(rs.room_name, rs.bom_line_role)),' ','_') AS space_guid,
                            ROW_NUMBER() OVER (
                                PARTITION BY em.guid
-                               ORDER BY (esl.next_x_mm - esl.before_x_mm) * (esl.next_y_mm - esl.before_y_mm) ASC,
-                                        esl.line_id ASC
+                               ORDER BY (rs.next_x_mm - rs.before_x_mm) * (rs.next_y_mm - rs.before_y_mm) ASC,
+                                        rs.slot_id ASC
                            ) AS rn
                     FROM elements_meta em
                     JOIN elements_rtree er ON em.id = er.id
-                    JOIN co_empty_space_line esl ON esl.bom_level = 2
-                      AND esl.storey IS NOT NULL
-                      AND (esl.room_name IS NOT NULL OR esl.bom_line_role IS NOT NULL)
+                    JOIN _tmp_room_slots rs
+                      ON rs.storey IS NOT NULL
+                      AND (rs.room_name IS NOT NULL OR rs.bom_line_role IS NOT NULL)
                     JOIN spatial_structure ss
-                      ON ss.guid = 'SPACE_' || REPLACE(UPPER(esl.storey),' ','_')
-                                     || '_' || REPLACE(UPPER(COALESCE(esl.room_name, esl.bom_line_role)),' ','_')
-                    WHERE ((er.minX + er.maxX) / 2.0) * 1000.0 BETWEEN esl.before_x_mm AND esl.next_x_mm
-                      AND ((er.minY + er.maxY) / 2.0) * 1000.0 BETWEEN esl.before_y_mm AND esl.next_y_mm
-                      AND ((er.minZ + er.maxZ) / 2.0) * 1000.0 BETWEEN esl.before_z_mm AND esl.next_z_mm
+                      ON ss.guid = 'SPACE_' || REPLACE(UPPER(rs.storey),' ','_')
+                                     || '_' || REPLACE(UPPER(COALESCE(rs.room_name, rs.bom_line_role)),' ','_')
+                    WHERE ((er.minX + er.maxX) / 2.0) * 1000.0 BETWEEN rs.before_x_mm AND rs.next_x_mm
+                      AND ((er.minY + er.maxY) / 2.0) * 1000.0 BETWEEN rs.before_y_mm AND rs.next_y_mm
+                      AND ((er.minZ + er.maxZ) / 2.0) * 1000.0 BETWEEN rs.before_z_mm AND rs.next_z_mm
                 ) WHERE rn = 1
                 """);
         }
-        conn.commit();
-        return new int[]{storeyContained, roomContained};
+
+        // Clean up temp table
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS _tmp_room_slots");
+        }
+
+        return roomContained;
     }
 
     /** Map room name/role to IFC PredefinedType for IfcSpace. */

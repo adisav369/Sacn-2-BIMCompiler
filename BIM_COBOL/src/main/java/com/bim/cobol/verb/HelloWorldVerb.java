@@ -129,12 +129,9 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
             int elements = safeCount(conn, "SELECT COUNT(*) FROM elements_meta");
             int cOrderLine = safeCount(conn, "SELECT COUNT(*) FROM c_orderline");
-            int esL0 = safeCount(conn,
-                    "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 0");
-            int esL1 = safeCount(conn,
-                    "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 1");
-            int esL2 = safeCount(conn,
-                    "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 2");
+            int esL0 = 0; // CO_EmptySpace removed — WHERE = M_BOM_Line dx/dy/dz
+            int esL1 = 0;
+            int esL2 = 0;
             int spatial = safeCount(conn, "SELECT COUNT(*) FROM spatial_structure");
             int geom = safeCount(conn, "SELECT COUNT(*) FROM base_geometries");
 
@@ -285,8 +282,6 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         sb.append(String.format("    %s%n", inv.dbPath));
         sb.append(String.format("    BOM=%s  elements=%d  c_orderline=%d%n",
                 inv.label, inv.elements, inv.cOrderLine));
-        sb.append(String.format("    spatial_slots=%d (L0:%d L1:%d L2:%d)%n",
-                inv.esL0 + inv.esL1 + inv.esL2, inv.esL0, inv.esL1, inv.esL2));
         sb.append(String.format("    spatial_structure=%d  base_geometries=%d%n",
                 inv.spatialStructure, inv.baseGeometries));
         sb.append(String.format("    digest=%s%n%n",

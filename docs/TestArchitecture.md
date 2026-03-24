@@ -873,8 +873,8 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 
 ---
 
-**Sealed:** 2026-03-24 (v32: S68b bomCategory → productCategory identifier rename across 47 Java files)
-**Super-hash:** `a03afe8a6fad2fd64df308df264665da494c24c8b859157331eaea400fc0c681`
+**Sealed:** 2026-03-25 (v33: S74 Phase 3 — remove CO_EmptySpaceLine, pipeline migrated to M_BOM_Line RoomSlot)
+**Super-hash:** `d9c257f315e3bcd5d5fb1d28aa2cedbf81b43904c8a384fdfe15c8b74894e8db`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

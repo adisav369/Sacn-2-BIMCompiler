@@ -11,10 +11,10 @@ import java.util.*;
  * SUMMARIZE BUILDING &lt;doc_sub_type&gt; — overview of compiled building in output.db.
  *
  * <p>Queries the output database (elements_meta, elements_rtree, spatial_structure,
- * c_orderline, co_empty_space_line [compiler-internal]) and returns a structured project overview.
+ * c_orderline) and returns a structured project overview.
  *
  * <p>Reports: element count, storey breakdown, IFC class distribution,
- * spatial extents (AABB), spatial slot level counts (compiler-internal: co_empty_space_line).
+ * spatial extents (AABB).
  *
  * <p>Grammar: {@code SUMMARIZE BUILDING SH} or {@code SUMMARIZE BUILDING DX}
  *
@@ -87,13 +87,10 @@ public class SummarizeBuildingVerb implements Verb<SummarizeBuildingVerb.Summary
         int orderLineCount = safeCount(outputConn,
             "SELECT COUNT(*) FROM c_orderline");
 
-        // 6. Spatial slot level counts (compiler-internal: co_empty_space_line)
-        int esL0 = safeCount(outputConn,
-            "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 'L0'");
-        int esL1 = safeCount(outputConn,
-            "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 'L1'");
-        int esL2 = safeCount(outputConn,
-            "SELECT COUNT(*) FROM co_empty_space_line WHERE bom_level = 'L2'");
+        // 6. Spatial slot level counts (deprecated — CO_EmptySpace removed)
+        int esL0 = 0; // CO_EmptySpace removed — WHERE = M_BOM_Line dx/dy/dz
+        int esL1 = 0;
+        int esL2 = 0;
 
         double width = aabb[1] - aabb[0];
         double depth = aabb[3] - aabb[2];

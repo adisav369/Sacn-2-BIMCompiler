@@ -43,6 +43,7 @@
 
 ## Session Log (recent first)
 
+**S74** — Phase 3: remove CO_EmptySpaceLine. Pipeline rewritten to use in-memory RoomSlot from M_BOM_Line dx/dy/dz. 4 PO classes deleted, W008 migration (DROP TABLE), populateCoEmptySpace → computeRoomSlots, SpatialStructureBuilder accepts List\<RoomSlot\>, EmptySpaceChecksum removed from C_Order/pipeline. 6 verbs updated (BuildSpatialStructure, VerifyPlacement, HelloWorld, SummarizeBuilding, CompleteBuilding). BuildingWriter DDL cleaned, OutputTemplateGenerator cleaned, SpatialDigest.computeEmptySpaceChecksum removed. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S73** — CO_EmptySpaceLine → compiler-internal. Phase 1: 15 docs aligned (WHERE = M_BOM_Line dx/dy/dz). Phase 2: 4 PO classes @Deprecated, all consumer javadoc/comments updated, SpatialDigest + VerifyPlacementVerb @Deprecated. Phase 3 deferred (tables still needed by pipeline). AUDIT docs untouched (historical).
 **S72** — Session F: DiffVerb + Callout (§9). W007 migration (AD_Rule callout table). DiffVerbService (records DIFF PP_Order_Node + delta params). CalloutEngine (topo-sort rule evaluation). DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
 **S68e** — Session E: Order inheritance. DV017 applied all DBs. W006 migration (Ref_Order_ID). InheritanceResolver (chain walk + exception collect). BomDropper.dropWithInheritance. OrderInheritanceTest 6/6. MANIFESTO.md reorder + category triage.

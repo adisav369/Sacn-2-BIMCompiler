@@ -9,10 +9,10 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 /**
- * COMPLETE BUILDING &lt;buildingId&gt; DIGEST &lt;sha&gt; ELEMENTS &lt;n&gt; CHECKSUM &lt;cs&gt;
+ * COMPLETE BUILDING &lt;buildingId&gt; DIGEST &lt;sha&gt; ELEMENTS &lt;n&gt;
  *
  * <p>Wraps CompilationPipeline.updateCOrderComputedResults() raw SQL.
- * UPDATE c_order SET digest/count/checksum, DocStatus IP-&gt;CO.
+ * UPDATE c_order SET digest/count, DocStatus IP-&gt;CO.
  *
  * <p>Requires outputConn (write c_order).
  */
@@ -27,12 +27,11 @@ public class CompleteBuildingVerb implements Verb<CompleteBuildingVerb.CompleteB
 
         if (args.length < 1)
             return VerbResult.fail(keyword(),
-                "usage: COMPLETE BUILDING <buildingId> DIGEST <sha> ELEMENTS <n> CHECKSUM <cs>", null);
+                "usage: COMPLETE BUILDING <buildingId> DIGEST <sha> ELEMENTS <n>", null);
 
         String buildingId = args[0];
         String digest = null;
         int elements = 0;
-        String checksum = null;
 
         for (int i = 1; i < args.length - 1; i++) {
             String key = args[i].toUpperCase();
@@ -40,7 +39,6 @@ public class CompleteBuildingVerb implements Verb<CompleteBuildingVerb.CompleteB
             switch (key) {
                 case "DIGEST"   -> { digest = val; i++; }
                 case "ELEMENTS" -> { elements = Integer.parseInt(val); i++; }
-                case "CHECKSUM" -> { checksum = val; i++; }
             }
         }
 
@@ -54,14 +52,12 @@ public class CompleteBuildingVerb implements Verb<CompleteBuildingVerb.CompleteB
                 UPDATE c_order SET
                     SpatialDigest = ?,
                     ExpectedElements = ?,
-                    EmptySpaceChecksum = ?,
                     DocStatus = 'CO'
                 WHERE C_Order_ID = ?
                 """)) {
             ps.setString(1, digest);
             ps.setInt(2, elements);
-            ps.setString(3, checksum);
-            ps.setString(4, buildingId);
+            ps.setString(3, buildingId);
             updated = ps.executeUpdate();
         }
 

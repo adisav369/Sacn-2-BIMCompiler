@@ -30,7 +30,6 @@ public class CompilationContext {
     private GeometryIntegrityChecker.CheckReport geometryReport;
     private PlacementProver.ProofReport proofReport;
     private boolean proverSkipped;
-    private String emptySpaceChecksum;
     private BomTemplateComposer.CompositionReport compositionReport;
 
     public CompilationContext(BuildingEntry entry) {
@@ -63,8 +62,7 @@ public class CompilationContext {
             digestReport != null ? digestReport.digest() : null,
             proofReport,
             geometryReport,
-            proverSkipped,
-            emptySpaceChecksum
+            proverSkipped
         );
     }
 
@@ -79,7 +77,6 @@ public class CompilationContext {
     public GeometryIntegrityChecker.CheckReport geometryReport() { return geometryReport; }
     public PlacementProver.ProofReport proofReport() { return proofReport; }
     public boolean proverSkipped() { return proverSkipped; }
-    public String emptySpaceChecksum() { return emptySpaceChecksum; }
     public BomTemplateComposer.CompositionReport compositionReport() { return compositionReport; }
 
     // --- Setters (called by stages) ---
@@ -90,6 +87,5 @@ public class CompilationContext {
     public void setGeometryReport(GeometryIntegrityChecker.CheckReport geometryReport) { this.geometryReport = geometryReport; }
     public void setProofReport(PlacementProver.ProofReport proofReport) { this.proofReport = proofReport; }
     public void setProverSkipped(boolean proverSkipped) { this.proverSkipped = proverSkipped; }
-    public void setEmptySpaceChecksum(String emptySpaceChecksum) { this.emptySpaceChecksum = emptySpaceChecksum; }
     public void setCompositionReport(BomTemplateComposer.CompositionReport r) { this.compositionReport = r; }
 }

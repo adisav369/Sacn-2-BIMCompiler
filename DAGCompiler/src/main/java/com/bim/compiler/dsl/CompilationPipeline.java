@@ -11,14 +11,12 @@ import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.BomTemplateComposer;
 import com.bim.ormsandbox.po.MBomCategory;
 import com.bim.ormsandbox.po.MBOM;
-import com.bim.ormsandbox.po.M_CO_EmptySpace;
-import com.bim.ormsandbox.po.M_CO_EmptySpaceLine;
 import com.bim.ormsandbox.po.MBOMLine;
 
 import java.io.File;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.ServiceLoader;
 
 /**
@@ -52,8 +50,7 @@ public class CompilationPipeline {
         String spatialDigest,
         PlacementProver.ProofReport proofs,
         GeometryIntegrityChecker.CheckReport geometryReport,
-        boolean proverSkipped,
-        String emptySpaceChecksum
+        boolean proverSkipped
     ) {}
 
     private static final List<CompilerStage> STAGES = List.of(
@@ -318,42 +315,36 @@ public class CompilationPipeline {
                     }
                 }
 
-                // Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz)
-                populateCoEmptySpace(conn, ctx);
+                // Room slots from M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns)
+                List<SpatialStructureBuilder.RoomSlot> roomSlots = computeRoomSlots(conn, ctx);
 
                 // Gap #8 + #5 + #6: Spatial structure (storeys, spaces, containment)
                 // Delegated to SpatialStructureBuilder (shared with BUILD SPATIAL STRUCTURE verb)
-                SpatialStructureBuilder ssb = new SpatialStructureBuilder(conn);
+                SpatialStructureBuilder ssb = new SpatialStructureBuilder(conn, roomSlots);
                 SpatialStructureBuilder.Result ssResult = ssb.buildAll();
                 if (ssResult.storeysAdded() > 0)
                     System.out.printf("[SPATIAL] Gap #8: added %d missing storeys from elements_meta%n", ssResult.storeysAdded());
                 if (ssResult.spacesEmitted() > 0)
-                    System.out.printf("[SPATIAL] Emitted %d IfcSpace rows from L2 ESLines%n", ssResult.spacesEmitted());
+                    System.out.printf("[SPATIAL] Emitted %d IfcSpace rows from room slots%n", ssResult.spacesEmitted());
                 System.out.printf("[CONTAIN] Spatial containment: %d storey-level, %d room-level%n",
                     ssResult.storeyContained(), ssResult.roomContained());
             }
         }
 
         /**
-         * Populate co_empty_space (header) + co_empty_space_line (acceptance + per-storey).
+         * Compute room-level spatial slots from M_BOM_Line dx/dy/dz
+         * (MANIFESTO.md §Three Concerns — WHERE = M_BOM_Line).
          *
-         * @deprecated Compiler-internal spatial cache. WHERE concern lives in M_BOM_Line dx/dy/dz
-         * (MANIFESTO.md §Three Concerns). Future: migrate consumers to BOM spatial queries.
-         *
-         * Three-level output:
-         *   Level 0: top-level UNIT BOM acceptance into building AABB
-         *   Level 1: per-child decomposition (FLOOR_SLAB, LEVEL, ROOF) with storey names
-         *   Level 2: template leaf selections (LI/BD/KT/BT/DN room BOMs) — ST mode only
-         *
-         * ST mode: UN BOM is resolved via findBestFitAnyOwner (no owner-specific UN exists).
-         * L2 lines are added from the CompositionReport stored in ctx by TemplateStage.
-         *
-         * Uses DAO (M_CO_EmptySpace / M_CO_EmptySpaceLine) — no raw JDBC for writes.
+         * <p>Walks the BUILDING BOM hierarchy to find room-category children,
+         * resolves AABB from ad_room_boundary, and returns in-memory RoomSlots
+         * for SpatialStructureBuilder (IfcSpace emission + containment).
          */
-        @SuppressWarnings("deprecation")
-        private static void populateCoEmptySpace(Connection conn, CompilationContext ctx) {
+        private static List<SpatialStructureBuilder.RoomSlot> computeRoomSlots(
+                Connection conn, CompilationContext ctx) {
+            List<SpatialStructureBuilder.RoomSlot> slots = new ArrayList<>();
             String buildingId = ctx.buildingId();
             BuildingSpec spec = ctx.spec();
+
             try {
                 // 1. Get building AABB from compiled R*Tree (meters → mm)
                 double minX, minY, minZ, maxX, maxY, maxZ;
@@ -361,8 +352,8 @@ public class CompilationPipeline {
                      ResultSet rs = stmt.executeQuery(
                          "SELECT MIN(minX), MIN(minY), MIN(minZ), MAX(maxX), MAX(maxY), MAX(maxZ) FROM elements_rtree")) {
                     if (!rs.next() || rs.getObject(1) == null) {
-                        System.out.println("[CO_EMPTY] No elements in R*Tree — skipping CO_EmptySpace");
-                        return;
+                        System.out.println("[ROOM_SLOTS] No elements in R*Tree — skipping room slots");
+                        return slots;
                     }
                     minX = rs.getDouble(1); minY = rs.getDouble(2); minZ = rs.getDouble(3);
                     maxX = rs.getDouble(4); maxY = rs.getDouble(5); maxZ = rs.getDouble(6);
@@ -373,9 +364,8 @@ public class CompilationPipeline {
                 double originZMm = minZ * 1000.0;
                 double widthMm   = (maxX - minX) * 1000.0;
                 double depthMm   = (maxY - minY) * 1000.0;
-                double heightMm  = (maxZ - minZ) * 1000.0;
 
-                // 2. Look up BUILDING BOM by DocSubType — the top-level finished goods BOM.
+                // 2. Look up BUILDING BOM by DocSubType
                 String bldgBomId = null;
                 String docSubType = ctx.entry().docSubType();
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
@@ -383,7 +373,6 @@ public class CompilationPipeline {
                         MBOM bldgBom = MBOM.getBuildingBom(libConn, docSubType);
                         if (bldgBom != null) bldgBomId = bldgBom.getBomId();
                     }
-                    // ST mode: no owner-specific BUILDING BOM — derive via template GF owner.
                     if (bldgBomId == null && "ST".equals(docSubType)) {
                         BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
                         if (tmplReport != null) {
@@ -393,43 +382,17 @@ public class CompilationPipeline {
                                 .findFirst().orElse(null);
                             if (gfOwner != null) {
                                 MBOM ownerBldg = MBOM.getBuildingBom(libConn, gfOwner);
-                                if (ownerBldg != null) {
-                                    bldgBomId = ownerBldg.getBomId();
-                                    System.out.printf("[CO_EMPTY] ST mode: selected BUILDING BOM %s via GF owner %s%n",
-                                        bldgBomId, gfOwner);
-                                }
+                                if (ownerBldg != null) bldgBomId = ownerBldg.getBomId();
                             }
                         }
                     }
                 }
                 if (bldgBomId == null) {
-                    System.out.printf("[CO_EMPTY] No BUILDING BOM found for %s — skipping%n", buildingId);
-                    return;
+                    System.out.printf("[ROOM_SLOTS] No BUILDING BOM found for %s — skipping%n", buildingId);
+                    return slots;
                 }
 
-                // 3. Create header via DAO — starts at DR/available=1
-                M_CO_EmptySpace header = M_CO_EmptySpace.create(
-                    conn, buildingId,
-                    originXMm, originYMm, originZMm,
-                    widthMm, depthMm, heightMm);
-                header.setProcessing();  // DR → IP (compilation in progress)
-                header.save();
-
-                // 4. Level-0 acceptance: UNIT BOM → full building AABB (single line).
-                //    Owner-matched (doc_sub_type == UNIT BOM's doc_sub_type):
-                //    the BOM IS the complete intact construct.
-                //    EmptySpaceChecksum hashes this single line for verification.
-                M_CO_EmptySpaceLine topLine = M_CO_EmptySpaceLine.createTopLevel(
-                    conn, header.getCoEmptyspaceId(),
-                    bldgBomId,
-                    originXMm, originYMm, originZMm,
-                    widthMm, depthMm, heightMm);
-                topLine.save();
-
-                // 5. Level-1 per-storey decomposition (structural tiers).
-                //    Generic BOM traversal: walk UNIT BOM children, use role to
-                //    identify room-content tiers (storeys) vs structural elements.
-                //    The BOM structure itself determines L1/L2 — no building-type checks.
+                // 3. Walk BUILDING BOM children, compute storey Z positions, collect L2 rooms
                 try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                     List<MBOMLine> children = new ModelQuery<>(bomConn, MBOMLine::new, MBOMLine.Table_Name)
                         .where("bom_id = ? AND is_active = 1", bldgBomId)
@@ -440,9 +403,7 @@ public class CompilationPipeline {
                     for (MBOMLine po : children) {
                         String childBomId = po.getChildProductId();
                         String role = po.getRole();
-                        int seq = po.getSequence();
                         double dzM = po.getDz();
-                        String locatorRef = po.getLocatorRef();
 
                         if (dzM > 0) anchorZ = originZMm + dzM * 1000.0;
 
@@ -464,22 +425,10 @@ public class CompilationPipeline {
                             nextZ = beforeZ;
                         }
 
-                        M_CO_EmptySpaceLine childLine = M_CO_EmptySpaceLine.create(
-                            conn, header.getCoEmptyspaceId(),
-                            childBomId != null ? childBomId : role, seq, role, 1,
-                            originXMm, originYMm, beforeZ,
-                            originXMm + widthMm, originYMm + depthMm, nextZ,
-                            widthMm, locatorRef != null ? locatorRef : "FLOAT");
-                        childLine.setStorey(storey);
-                        childLine.save();
-
-                        System.out.printf("[CO_EMPTY]   L1 seq=%d role=%-18s bom=%s before_z=%.0f next_z=%.0f storey=%s%n",
-                            seq, role, childBomId, beforeZ, nextZ, storey);
-
                         // L2: room-level children for non-ST buildings
                         if (storey != null && childBomId != null
-                                && !"ST".equals(ctx.entry().docSubType())) {
-                            addL2RoomLines(conn, bomConn, header, buildingId,
+                                && !"ST".equals(docSubType)) {
+                            collectRoomSlots(slots, bomConn, buildingId,
                                 childBomId, docSubType, storey,
                                 originXMm, originYMm, beforeZ,
                                 widthMm, depthMm, nextZ - beforeZ);
@@ -487,41 +436,26 @@ public class CompilationPipeline {
                     }
                 }
 
-                // L2 lines from template composition (ST mode only).
-                // When composition is complete (no gaps), mark header CO immediately —
-                // ProveStage is skipped for ST mode (no relational placement rules to prove).
+                // L2 slots from template composition (ST mode only)
                 BomTemplateComposer.CompositionReport report = ctx.compositionReport();
-                if ("ST".equals(ctx.entry().docSubType()) && report != null) {
-                    int seq2 = 0;
+                if ("ST".equals(docSubType) && report != null) {
                     for (BomTemplateComposer.NodeSelection sel : report.selections()) {
                         if (!sel.isLeaf() || sel.selectedBomId() == null) continue;
-                        M_CO_EmptySpaceLine l2 = M_CO_EmptySpaceLine.create(
-                            conn, header.getCoEmptyspaceId(),
-                            sel.selectedBomId(), seq2++, sel.categoryId(), 2,
+                        slots.add(new SpatialStructureBuilder.RoomSlot(
+                            null, null, sel.categoryId(),
                             originXMm, originYMm, originZMm,
-                            originXMm + sel.allocW(), originYMm + sel.allocD(), originZMm + sel.allocH(),
-                            sel.allocW(), "FLOAT");
-                        l2.save();
-                        System.out.printf("[CO_EMPTY]   L2 cat=%-4s bom=%-30s alloc=%dx%dx%d%n",
-                            sel.categoryId(), sel.selectedBomId(),
-                            sel.allocW(), sel.allocD(), sel.allocH());
-                    }
-                    if (report.isComplete()) {
-                        header.setComplete();  // IP → CO (template proof: all leaf nodes selected)
-                        header.save();
-                        System.out.printf("[CO_EMPTY] ST mode: composition complete — marking CO%n");
+                            originXMm + sel.allocW(), originYMm + sel.allocD(), originZMm + sel.allocH()));
                     }
                 }
 
-                conn.commit();
-
-                System.out.printf("[CO_EMPTY] %s: AABB=%.0fx%.0fx%.0fmm, UNIT=%s, status=IP%n",
-                    buildingId, widthMm, depthMm, heightMm, bldgBomId);
+                System.out.printf("[ROOM_SLOTS] %s: %d room slots computed from M_BOM_Line%n",
+                    buildingId, slots.size());
 
             } catch (SQLException e) {
-                System.err.printf("[CO_EMPTY] WARN: Failed to populate CO_EmptySpace for %s: %s%n",
+                System.err.printf("[ROOM_SLOTS] WARN: Failed to compute room slots for %s: %s%n",
                     buildingId, e.getMessage());
             }
+            return slots;
         }
 
         /** Room-content roles have storeys; structural roles don't. */
@@ -530,23 +464,16 @@ public class CompilationPipeline {
         }
 
         /**
-         * @deprecated Compiler-internal spatial cache. Migrate to BOM spatial queries.
-         * Write Level-2 ESLines: room-category children of a floor BOM.
-         *
-         * <p>Queries m_bom_line for the floor BOM, filters for room-category children
-         * (m_product_category_id IN 'LI','BD','KT','BT','DN'), and writes one L2 ESLine per room.
-         * AABB is read from {@code ad_room_boundary} if available; falls back to storey AABB.
-         *
-         * <p>Called for non-ST buildings only (ST uses CompositionReport for L2).
+         * Collect room-level slots: room-category children of a floor BOM.
+         * AABB from ad_room_boundary if available; falls back to storey AABB.
          */
-        private static void addL2RoomLines(
-                Connection conn, Connection bomConn,
-                M_CO_EmptySpace header, String buildingId,
+        private static void collectRoomSlots(
+                List<SpatialStructureBuilder.RoomSlot> slots,
+                Connection bomConn, String buildingId,
                 String floorBomId, String docSubType, String storey,
                 double originXMm, double originYMm, double floorZMm,
                 double widthMm, double depthMm, double heightMm) throws SQLException {
 
-            // Room categories that get L2 ESLines
             String SQL_ROOM_CHILDREN = """
                 SELECT mbl.child_product_id, mbl.role, mbl.sequence, mb2.m_product_category_id
                 FROM m_bom_line mbl
@@ -556,8 +483,6 @@ public class CompilationPipeline {
                 ORDER BY mbl.sequence
                 """;
 
-            // DAO fallback: if floorBomId (e.g. SH_GF_STR flat) has no room-category
-            // children, look up the structured FLOOR BOM by doc_sub_type (e.g. FLOOR_SH_GF_STD).
             String resolvedFloorBomId = floorBomId;
             boolean hasRoomChildren;
             try (PreparedStatement ps = bomConn.prepareStatement(SQL_ROOM_CHILDREN)) {
@@ -572,10 +497,6 @@ public class CompilationPipeline {
                                   && b.getProductCategory() != null)
                         .map(MBOM::getBomId)
                         .findFirst().orElse(floorBomId);
-                    if (!resolvedFloorBomId.equals(floorBomId)) {
-                        System.out.printf("[CO_EMPTY]   L2 fallback: %s → %s (structured FLOOR BOM)%n",
-                            floorBomId, resolvedFloorBomId);
-                    }
                 } catch (SQLException e) {
                     // fall through with original floorBomId
                 }
@@ -591,17 +512,13 @@ public class CompilationPipeline {
             try (PreparedStatement psRoom = bomConn.prepareStatement(SQL_ROOM_CHILDREN)) {
                 psRoom.setString(1, resolvedFloorBomId);
                 try (ResultSet rsRoom = psRoom.executeQuery()) {
-                    int seq2 = 200; // L2 sequence base (above L1 which uses BOM sequence 1-100)
                     while (rsRoom.next()) {
-                        String childBomId = rsRoom.getString("child_product_id");
-                        String role       = rsRoom.getString("role");
-                        String bomCat     = rsRoom.getString("m_product_category_id");
+                        String role   = rsRoom.getString("role");
+                        String bomCat = rsRoom.getString("m_product_category_id");
 
-                        // Look up room AABB from ad_room_boundary
                         String roomType = categoryToRoomType(bomCat);
                         double rMinX = originXMm, rMaxX = originXMm + widthMm;
                         double rMinY = originYMm, rMaxY = originYMm + depthMm;
-                        boolean hasRealAabb = false;
 
                         try (PreparedStatement psAabb = bomConn.prepareStatement(SQL_ROOM_AABB)) {
                             psAabb.setString(1, buildingId);
@@ -615,27 +532,14 @@ public class CompilationPipeline {
                                     rMaxX = rsAabb.getDouble("max_x_mm");
                                     rMinY = rsAabb.getDouble("min_y_mm");
                                     rMaxY = rsAabb.getDouble("max_y_mm");
-                                    hasRealAabb = true;
                                 }
                             }
                         }
 
-                        double roomW = Math.abs(rMaxX - rMinX);
-                        double roomD = Math.abs(rMaxY - rMinY);
-
-                        M_CO_EmptySpaceLine l2 = M_CO_EmptySpaceLine.create(
-                            conn, header.getCoEmptyspaceId(),
-                            childBomId, seq2++, role, 2,
+                        slots.add(new SpatialStructureBuilder.RoomSlot(
+                            storey, role, role,
                             rMinX, rMinY, floorZMm,
-                            rMaxX, rMaxY, floorZMm + heightMm,
-                            roomW, "FLOAT");
-                        l2.setStorey(storey);
-                        l2.setRoomName(role);
-                        l2.save();
-
-                        System.out.printf("[CO_EMPTY]   L2 cat=%-4s role=%-12s bom=%-30s room=%.0fx%.0f%s%n",
-                            bomCat, role, childBomId, roomW, roomD,
-                            hasRealAabb ? "" : " (fallback)");
+                            rMaxX, rMaxY, floorZMm + heightMm));
                     }
                 }
             }
@@ -649,7 +553,7 @@ public class CompilationPipeline {
                 case "KT" -> "KITCHEN";
                 case "BT" -> "BATHROOM";
                 case "DN" -> "DINING";
-                default   -> productCategory;  // pass-through for non-standard codes
+                default   -> productCategory;
             };
         }
 
@@ -716,33 +620,25 @@ public class CompilationPipeline {
             ctx.setDigestReport(digestReport);
             System.out.println(digestReport);
 
-            // Compiler-internal spatial checksum (co_empty_space_line — deprecated)
-            String esChecksum = SpatialDigest.computeEmptySpaceChecksum(dbPath);
-            ctx.setEmptySpaceChecksum(esChecksum);
-            if (esChecksum != null) {
-                System.out.printf("EmptySpaceChecksum: %s%n", esChecksum);
-            }
-
             // Write computed results back to output.db c_order
             updateCOrderComputedResults(dbPath, ctx.buildingId(),
-                digestReport.digest(), ctx.elementCount(), esChecksum);
+                digestReport.digest(), ctx.elementCount());
         }
 
         /**
-         * UPDATE output.db c_order with computed spatial_digest, expected_elements, empty_space_checksum.
+         * UPDATE output.db c_order with computed spatial_digest + expected_elements.
          * Also promotes doc_status from IP → CO (compilation complete, digest known).
          */
         private static void updateCOrderComputedResults(
                 String dbPath, String buildingId,
-                String spatialDigest, int elementCount, String esChecksum) {
+                String spatialDigest, int elementCount) {
 
             // Build COMPLETE BUILDING verb line
             String verbLine = String.format(
-                "COMPLETE BUILDING %s DIGEST %s ELEMENTS %d CHECKSUM %s",
+                "COMPLETE BUILDING %s DIGEST %s ELEMENTS %d",
                 buildingId,
                 spatialDigest != null ? spatialDigest : "null",
-                elementCount,
-                esChecksum != null ? esChecksum : "null");
+                elementCount);
 
             // Dispatch via SPI (BIM_COBOL on classpath)
             VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
@@ -753,9 +649,9 @@ public class CompilationPipeline {
                     VerbExecutor.ExecutionReport report = executor.execute(
                         bomConn, outConn, buildingId, List.of(verbLine));
                     if (report.allPass()) {
-                        System.out.printf("[C_ORDER] Updated output.db c_order: digest=%s, elements=%d, checksum=%s%n",
+                        System.out.printf("[C_ORDER] Updated output.db c_order: digest=%s, elements=%d%n",
                             spatialDigest != null ? spatialDigest.substring(0, 16) + "..." : "null",
-                            elementCount, esChecksum);
+                            elementCount);
                     } else {
                         System.err.printf("[C_ORDER] WARN: COMPLETE BUILDING failed for %s: %s%n",
                             buildingId, report.details());
@@ -826,31 +722,6 @@ public class CompilationPipeline {
             }
             if (proofReport.violated() > 0 && proofReport.criticalViolations() == 0) {
                 System.out.printf("[INFO] %d advisory violations (non-blocking)%n", proofReport.violated());
-            }
-
-            // ── IsAvailable quality gate: IP → CO or IP → RE ──────────────
-            try (Connection outConn = DriverManager.getConnection(
-                    "jdbc:sqlite:" + ctx.entry().outputDbPath())) {
-                outConn.setAutoCommit(false);
-                java.util.Optional<M_CO_EmptySpace> opt =
-                    M_CO_EmptySpace.getForBuilding(outConn, ctx.buildingId());
-                if (opt.isPresent()) {
-                    M_CO_EmptySpace header = opt.get();
-                    if (proofReport.criticalViolations() == 0) {
-                        header.setComplete();    // IP → CO, is_available = 0
-                        System.out.printf("[CO_EMPTY] %s: IP → CO (is_available=0, proven)%n",
-                            ctx.buildingId());
-                    } else {
-                        header.setRejected();    // IP → RE, is_available stays 1
-                        System.out.printf("[CO_EMPTY] %s: IP → RE (%d critical violations)%n",
-                            ctx.buildingId(), proofReport.criticalViolations());
-                    }
-                    header.save();
-                    outConn.commit();
-                }
-            } catch (SQLException e) {
-                System.err.printf("[CO_EMPTY] WARN: quality gate update failed for %s: %s%n",
-                    ctx.buildingId(), e.getMessage());
             }
         }
     }

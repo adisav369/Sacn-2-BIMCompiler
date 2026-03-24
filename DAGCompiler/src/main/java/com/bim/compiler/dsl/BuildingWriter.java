@@ -310,55 +310,6 @@ public class BuildingWriter {
                 )
             """);
 
-            // CO_EmptySpace: compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz)
-            stmt.execute("DROP TABLE IF EXISTS co_empty_space_line");
-            stmt.execute("DROP TABLE IF EXISTS co_empty_space");
-
-            stmt.execute("""
-                CREATE TABLE co_empty_space (
-                    co_emptyspace_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    c_order_id       TEXT NOT NULL,
-                    origin_x_mm      REAL NOT NULL DEFAULT 0,
-                    origin_y_mm      REAL NOT NULL DEFAULT 0,
-                    origin_z_mm      REAL NOT NULL DEFAULT 0,
-                    aabb_width_mm    REAL NOT NULL,
-                    aabb_depth_mm    REAL NOT NULL,
-                    aabb_height_mm   REAL NOT NULL,
-                    is_available     INTEGER NOT NULL DEFAULT 1,
-                    doc_status       TEXT NOT NULL DEFAULT 'DR',
-                    created          TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated          TEXT NOT NULL DEFAULT (datetime('now'))
-                )
-            """);
-
-            stmt.execute("""
-                CREATE TABLE co_empty_space_line (
-                    line_id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    co_emptyspace_id INTEGER NOT NULL REFERENCES co_empty_space(co_emptyspace_id),
-                    bom_line_seq     INTEGER NOT NULL,
-                    bom_id           TEXT NOT NULL,
-                    bom_line_role    TEXT,
-                    bom_level        INTEGER DEFAULT 0,
-                    before_x_mm      REAL,
-                    before_y_mm      REAL,
-                    before_z_mm      REAL,
-                    next_x_mm        REAL,
-                    next_y_mm        REAL,
-                    next_z_mm        REAL,
-                    orientation_rad  REAL DEFAULT 0,
-                    capacity_mm      REAL,
-                    filled_mm        REAL DEFAULT 0,
-                    remaining_mm     REAL,
-                    storey           TEXT,
-                    room_name        TEXT,
-                    locator_ref      TEXT,
-                    c_orderline_id   INTEGER,           -- logical FK → BOM.db c_orderline(id) (NORM-0b)
-                    doc_status       TEXT NOT NULL DEFAULT 'DR',
-                    created          TEXT NOT NULL DEFAULT (datetime('now')),
-                    updated          TEXT NOT NULL DEFAULT (datetime('now'))
-                )
-            """);
-
             // Phase 89: Simple QTO table for NLP search + 5D costing
             stmt.execute("DROP TABLE IF EXISTS simple_qto");
             stmt.execute("""
@@ -401,7 +352,6 @@ public class BuildingWriter {
                     AabbWidthMm            REAL,                -- std from C_DocType, updated post-compile
                     AabbDepthMm            REAL,
                     AabbHeightMm           REAL,
-                    EmptySpaceChecksum     TEXT,                 -- computed post-compile (transactional)
                     CompiledAt             TEXT,                 -- compile timestamp
                     CompilerVersion        TEXT,
                     C_DocType_ID           TEXT                  -- FK → C_DocType in BOM.db (cross-DB)
