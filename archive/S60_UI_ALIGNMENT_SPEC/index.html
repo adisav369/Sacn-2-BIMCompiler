@@ -1,0 +1,3921 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>S60 UI Alignment Spec — Web UI + Bonsai 10-Panel Stack - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#s60-ui-alignment-spec-web-ui-bonsai-10-panel-stack" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              S60 UI Alignment Spec — Web UI + Bonsai 10-Panel Stack
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-tab-alignment-done-s60-this-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Tab Alignment (Done — S60 this session)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-html-fixes-done-s60-this-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. HTML Fixes (Done — S60 this session)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-federation-module-gap-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Federation Module Gap Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Federation Module Gap Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-already-wired-web-ui-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Already Wired (Web UI → Backend)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-in-federation-module-not-yet-in-web-ui-recommendations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 In Federation Module, NOT yet in Web UI (Recommendations)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3.2 In Federation Module, NOT yet in Web UI (Recommendations)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#high-priority-already-implemented-in-federation-need-web-ui-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HIGH PRIORITY — Already implemented in federation, need Web UI surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#medium-priority-useful-but-not-critical-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MEDIUM PRIORITY — Useful but not critical path
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#low-priority-specialized-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOW PRIORITY — Specialized features
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-bonsai-10-item-client-flow-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Bonsai 10-Item Client Flow Verification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Bonsai 10-Item Client Flow Verification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bonsai-operator-verification-30-operators-in-operatorpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bonsai Operator Verification (30 operators in operator.py)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#missing-from-clientpy-available-in-federation-but-not-exposed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Missing from client.py (available in federation but not exposed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-federation-preview-must-remain-intact" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Federation Preview — Must Remain Intact
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-recommended-next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Recommended Next Steps
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Recommended Next Steps">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend-actions-needed-by-html-ui-for-backend-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend actions needed by HTML UI (for backend session)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#immediate-s60-scope-no-backend-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate (S60 scope — no backend changes)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#next-session-s61-requires-backend-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next session (S61 — requires backend migration)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deferred-s62" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deferred (S62+)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-lessons-learned-s60-ui-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Lessons Learned (S60-UI session)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Lessons Learned (S60-UI session)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-java-server-command-queue-whitelisted-fields-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Java Server Command Queue — Whitelisted Fields Only
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-blender-50-no-arbitrary-attributes-on-bpyapp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Blender 5.0 — No Arbitrary Attributes on bpy.app
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-federation-module-import-chain-one-crash-kills-all-panels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Federation Module Import Chain — One Crash Kills All Panels
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#74-snap-blender-version-pinning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.4 Snap Blender Version Pinning
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#75-python-bytecode-cache-pyc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.5 Python Bytecode Cache (.pyc)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#76-two-separate-poll-loops" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.6 Two Separate Poll Loops
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#77-html-is-data-assistant-bonsai-is-viewport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.7 HTML is Data Assistant, Bonsai is Viewport
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#78-tab-3-database-path-input-or-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.8 Tab 3 Database Path — Input or Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="s60-ui-alignment-spec-web-ui-bonsai-10-panel-stack">S60 UI Alignment Spec — Web UI + Bonsai 10-Panel Stack<a class="headerlink" href="#s60-ui-alignment-spec-web-ui-bonsai-10-panel-stack" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="BIM_Designer_SRS.md">BIM_Designer_SRS</a> §30.3 · <a href="../S60_ERP_ALIGNMENT/">S60_ERP_ALIGNMENT</a>
+<strong>Source of truth:</strong> <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code></p>
+</blockquote>
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>Align the Web UI (webui/) with:
+1. The §30.3 10-panel spec mapping
+2. Features already implemented in the IfcOpenShell federation module
+3. The Bonsai client.py 10-item operation flow</p>
+<hr />
+<h2 id="1-tab-alignment-done-s60-this-session">1. Tab Alignment (Done — S60 this session)<a class="headerlink" href="#1-tab-alignment-done-s60-this-session" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Old Name</th>
+<th>New Name (§30.3)</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1D Order</td>
+<td>1D Order</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>2</td>
+<td>2D Import</td>
+<td><strong>2D Spatial</strong></td>
+<td>RENAMED — storey browser + containment tree + import/export</td>
+</tr>
+<tr>
+<td>3</td>
+<td>3D Federation</td>
+<td><strong>3D Geometry</strong></td>
+<td>RENAMED — federation is a sub-function of geometry</td>
+</tr>
+<tr>
+<td>4</td>
+<td>4D Schedule</td>
+<td>4D Schedule</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>5</td>
+<td>5D Cost</td>
+<td>5D Cost</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>6</td>
+<td>6D Sustain</td>
+<td>6D Sustain</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>7</td>
+<td>7D Facility</td>
+<td>7D Facility</td>
+<td>OK</td>
+</tr>
+<tr>
+<td>8</td>
+<td>8 Reports</td>
+<td><strong>8 Validate</strong></td>
+<td>RENAMED — advisories + compliance + reports merged</td>
+</tr>
+<tr>
+<td>9</td>
+<td>9 Query</td>
+<td><strong>9 BOM</strong></td>
+<td>RENAMED — BOM outliner primary, NLP query + product search secondary</td>
+</tr>
+<tr>
+<td>10</td>
+<td>10 Color</td>
+<td><strong>10 Colour</strong></td>
+<td>Spelling fix</td>
+</tr>
+</tbody>
+</table>
+<h2 id="2-html-fixes-done-s60-this-session">2. HTML Fixes (Done — S60 this session)<a class="headerlink" href="#2-html-fixes-done-s60-this-session" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>BOM tree container</strong> — <code>#bomTree</code> and <code>#bomCount</code> added to 1D tab (was missing, renderBomTree() failed silently)</li>
+<li><strong>Split pane layout</strong> — 1D tab: BOM tree (left) + ASI panel (right) + Order Lines below</li>
+<li><strong>Orphan ASI fragment</strong> — removed duplicate ASI card-header that was outside any parent card</li>
+<li><strong>Global search</strong> — header bar search routes to NLP query or product search</li>
+<li><strong>Stub tab placeholders</strong> — 4D/5D/6D/7D show descriptive placeholders with DAO source info</li>
+<li><strong>BOM outliner sync</strong> — Tab 9 mirrors BOM tree from Tab 1 on building select</li>
+<li><strong>Validation tab</strong> — Tab 8 shows advisory summary cards + advisory table + portfolio/BSC</li>
+<li><strong>Footer</strong> — version updated to v1.0-S60, compliance summary added</li>
+</ul>
+<hr />
+<h2 id="3-federation-module-gap-analysis">3. Federation Module Gap Analysis<a class="headerlink" href="#3-federation-module-gap-analysis" title="Permanent link">&para;</a></h2>
+<p>The IfcOpenShell federation module at <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code>
+implements <strong>70+ operators</strong> across 186 Python files. Below are features that the Web UI should expose
+but does not yet call through to the backend.</p>
+<h3 id="31-already-wired-web-ui-backend">3.1 Already Wired (Web UI → Backend)<a class="headerlink" href="#31-already-wired-web-ui-backend" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Web UI Tab</th>
+<th>Backend API</th>
+<th>Client.py Method</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Building scan</td>
+<td>3D</td>
+<td><code>scanLibrary</code></td>
+<td><code>list_buildings()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Compile</td>
+<td>1D/3D</td>
+<td><code>compile</code></td>
+<td><code>compile()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>BOM Drop</td>
+<td>1D</td>
+<td><code>bomDrop</code></td>
+<td><code>bom_drop()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Order Lines</td>
+<td>1D</td>
+<td><code>listOrderLines</code></td>
+<td><code>list_order_lines()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>ASI read/write</td>
+<td>1D</td>
+<td><code>readASI</code>/<code>updateASI</code></td>
+<td>(direct send)</td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Approve</td>
+<td>1D</td>
+<td><code>approve</code></td>
+<td><code>approve()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Save/Recall</td>
+<td>1D</td>
+<td><code>save</code>/<code>recall</code></td>
+<td><code>save()</code>/<code>recall()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Promote</td>
+<td>1D</td>
+<td><code>promote</code></td>
+<td><code>promote()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>NLP Query</td>
+<td>9</td>
+<td><code>executeNlpQuery</code></td>
+<td>(direct send)</td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Product Search</td>
+<td>9</td>
+<td><code>browseItems</code></td>
+<td><code>browse_items()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Color Scheme</td>
+<td>10</td>
+<td><code>applyScheme</code></td>
+<td>(HTTP POST)</td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>SSE Sync</td>
+<td>10</td>
+<td><code>/events</code> SSE</td>
+<td><code>poll_commands()</code></td>
+<td>LIVE</td>
+</tr>
+<tr>
+<td>Bonsai Preview</td>
+<td>3D</td>
+<td><code>applyScheme:loadOutput</code></td>
+<td><code>poll_commands()</code></td>
+<td>LIVE</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-in-federation-module-not-yet-in-web-ui-recommendations">3.2 In Federation Module, NOT yet in Web UI (Recommendations)<a class="headerlink" href="#32-in-federation-module-not-yet-in-web-ui-recommendations" title="Permanent link">&para;</a></h3>
+<h4 id="high-priority-already-implemented-in-federation-need-web-ui-surface">HIGH PRIORITY — Already implemented in federation, need Web UI surface<a class="headerlink" href="#high-priority-already-implemented-in-federation-need-web-ui-surface" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Federation Operator</th>
+<th>Suggested Tab</th>
+<th>Backend API needed</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Clash detection</strong></td>
+<td><code>BIM_OT_clash_by_discipline</code> (28 ops)</td>
+<td>8 Validate</td>
+<td><code>clashByDiscipline</code></td>
+<td>Show clash groups + resolution suggestions in advisory table</td>
+</tr>
+<tr>
+<td><strong>4D schedule generation</strong></td>
+<td><code>BIM_OT_generate_construction_schedule</code></td>
+<td>4D</td>
+<td><code>generateSchedule</code></td>
+<td>Already has export to XML/Excel. Wire loadSchedule → real data</td>
+</tr>
+<tr>
+<td><strong>4D animation</strong></td>
+<td><code>BIM_OT_animate_4d_construction</code></td>
+<td>4D</td>
+<td><code>animate4D</code></td>
+<td>Bonsai-only (viewport animation)</td>
+</tr>
+<tr>
+<td><strong>5D BOQ generation</strong></td>
+<td><code>BIM_OT_export_comprehensive_boq</code></td>
+<td>5D</td>
+<td><code>generateBoq</code></td>
+<td>Already exports BOQ. Wire loadCost → real data</td>
+</tr>
+<tr>
+<td><strong>BCF export</strong></td>
+<td><code>BIM_OT_export_bcf</code></td>
+<td>8 Validate</td>
+<td><code>exportBcf</code></td>
+<td>BCF 2.1 clash report with snapshots</td>
+</tr>
+<tr>
+<td><strong>Schedule export</strong></td>
+<td><code>BIM_OT_export_mpp_schedule</code></td>
+<td>4D</td>
+<td><code>exportSchedule</code></td>
+<td>MPP XML + Excel</td>
+</tr>
+<tr>
+<td><strong>Structural rebar</strong></td>
+<td><code>BIM_OT_generate_rebar_structural</code></td>
+<td>5D</td>
+<td><code>generateRebar</code></td>
+<td>Concrete grades, exposure class</td>
+</tr>
+<tr>
+<td><strong>Asset import</strong></td>
+<td><code>BIM_OT_import_assets_from_federation</code></td>
+<td>6D/7D</td>
+<td><code>importAssets</code></td>
+<td>Digital twin asset list</td>
+</tr>
+</tbody>
+</table>
+<h4 id="medium-priority-useful-but-not-critical-path">MEDIUM PRIORITY — Useful but not critical path<a class="headerlink" href="#medium-priority-useful-but-not-critical-path" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Federation Operator</th>
+<th>Tab</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Visualization mode</strong></td>
+<td>BBox/Semantic/Materials toggle</td>
+<td>3D</td>
+<td>Bonsai viewport only, Web UI could show mode selector</td>
+</tr>
+<tr>
+<td><strong>Discipline legend</strong></td>
+<td>2D discipline overlay</td>
+<td>10</td>
+<td>Already have discipline buttons; legend is Bonsai-side</td>
+</tr>
+<tr>
+<td><strong>Asset condition viz</strong></td>
+<td><code>BIM_OT_visualize_assets_by_condition</code></td>
+<td>7D</td>
+<td>Excellent/Good/Fair/Poor/Failed status</td>
+</tr>
+<tr>
+<td><strong>PM schedule</strong></td>
+<td><code>BIM_OT_generate_pm_schedule</code></td>
+<td>7D</td>
+<td>Maintenance work orders</td>
+</tr>
+<tr>
+<td><strong>IoT sensor dashboard</strong></td>
+<td>Tandem IoT operators</td>
+<td>7D</td>
+<td>Live sensor monitoring</td>
+</tr>
+<tr>
+<td><strong>Color scheme save/load</strong></td>
+<td><code>BIM_OT_save_color_scheme</code></td>
+<td>10</td>
+<td>Persist named schemes</td>
+</tr>
+</tbody>
+</table>
+<h4 id="low-priority-specialized-features">LOW PRIORITY — Specialized features<a class="headerlink" href="#low-priority-specialized-features" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Federation Module</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>River equipment monitoring</td>
+<td><code>/river/</code> — 16 equipment types, GPS</td>
+<td>Domain-specific, not general BIM</td>
+</tr>
+<tr>
+<td>Carbon credits</td>
+<td>Biochar pipeline</td>
+<td>Domain-specific</td>
+</tr>
+<tr>
+<td>PDF terrain extraction</td>
+<td><code>/pdf2blend/</code></td>
+<td>Bonsai-only workflow</td>
+</tr>
+<tr>
+<td>Resolution suggestions</td>
+<td>Clash resolution AI</td>
+<td>Bonsai-only (3D interaction)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-bonsai-10-item-client-flow-verification">4. Bonsai 10-Item Client Flow Verification<a class="headerlink" href="#4-bonsai-10-item-client-flow-verification" title="Permanent link">&para;</a></h2>
+<p>The 10 core operations from <code>client.py</code> and their backend wiring:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Operation</th>
+<th>Client Method</th>
+<th>Action String</th>
+<th>Web UI Calls</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Create New</strong></td>
+<td><code>create_new()</code></td>
+<td><code>createNew</code></td>
+<td>Not in HTML (Bonsai panel A.3 only)</td>
+<td>OK — Bonsai-primary</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Snap/Validate</strong></td>
+<td><code>snap()</code></td>
+<td><code>snap</code></td>
+<td>Not in HTML (Bonsai design mode only)</td>
+<td>OK — Bonsai-primary</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Save</strong></td>
+<td><code>save()</code></td>
+<td><code>save</code></td>
+<td><code>BIM.save()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>List Order Lines</strong></td>
+<td><code>list_order_lines()</code></td>
+<td><code>listOrderLines</code></td>
+<td><code>BIM.loadOrderLines()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>BOM Tree</strong></td>
+<td><code>get_bom_tree()</code></td>
+<td><code>getBomTree</code></td>
+<td><code>BIM.loadBomTree()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>BOM Drop</strong></td>
+<td><code>bom_drop()</code></td>
+<td><code>bomDrop</code></td>
+<td><code>BIM.bomDrop()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Approve</strong></td>
+<td><code>approve()</code></td>
+<td><code>approve</code></td>
+<td><code>BIM.approve()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Promote</strong></td>
+<td><code>promote()</code></td>
+<td><code>promote</code></td>
+<td><code>BIM.promote()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Compile</strong></td>
+<td><code>compile()</code></td>
+<td><code>compile</code></td>
+<td><code>BIM.compile()</code> / <code>BIM.completeOrder()</code></td>
+<td>WIRED</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Poll Commands</strong></td>
+<td><code>poll_commands()</code></td>
+<td>HTTP <code>pollCommands</code></td>
+<td>SSE <code>/events</code> + <code>applyScheme</code></td>
+<td>WIRED</td>
+</tr>
+</tbody>
+</table>
+<p><strong>All 10 items are wired and call the backend correctly.</strong> The action strings in client.py
+match what app.js sends. The protocol is ndjson over TCP (port 9876) for Bonsai, HTTP POST
+(port 9878) for Web UI. Both dispatch to the same DesignerServer.dispatch().</p>
+<h3 id="bonsai-operator-verification-30-operators-in-operatorpy">Bonsai Operator Verification (30 operators in operator.py)<a class="headerlink" href="#bonsai-operator-verification-30-operators-in-operatorpy" title="Permanent link">&para;</a></h3>
+<p>All 30 registered operators verified end-to-end:</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Client Method</th>
+<th>Action</th>
+<th>Verified</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BIM_OT_designer_connect</code></td>
+<td><code>connect()</code></td>
+<td>TCP socket</td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_disconnect</code></td>
+<td><code>disconnect()</code></td>
+<td>TCP close</td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_list_buildings</code></td>
+<td><code>list_buildings()</code></td>
+<td><code>listBuildings</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_compile</code></td>
+<td><code>compile()</code></td>
+<td><code>compile</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_create_new</code></td>
+<td><code>create_new()</code></td>
+<td><code>createNew</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_toggle_mode</code></td>
+<td>— (local)</td>
+<td>GPU overlay</td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_focus_section</code></td>
+<td>— (local)</td>
+<td>GPU focus</td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_peek_metadata</code></td>
+<td><code>get_element_metadata()</code></td>
+<td><code>getElementMetadata</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_snap</code></td>
+<td><code>snap()</code></td>
+<td><code>snap</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_save</code></td>
+<td><code>save()</code></td>
+<td><code>save</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_promote</code></td>
+<td><code>promote()</code></td>
+<td><code>promote</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_browse_items</code></td>
+<td><code>browse_items()</code></td>
+<td><code>browseItems</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_browse_next</code></td>
+<td>— (via browse_items)</td>
+<td><code>browseItems</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_browse_prev</code></td>
+<td>— (via browse_items)</td>
+<td><code>browseItems</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_place_item</code></td>
+<td><code>place_item()</code></td>
+<td><code>placeItem</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_click_to_place</code></td>
+<td><code>click_to_place()</code></td>
+<td><code>clickToPlace</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_find_similar</code></td>
+<td><code>find_similar()</code></td>
+<td><code>findSimilar</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_add_room</code></td>
+<td><code>add_room()</code></td>
+<td><code>addRoom</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_remove_room</code></td>
+<td><code>remove_room()</code></td>
+<td><code>removeRoom</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_add_storey</code></td>
+<td><code>add_storey()</code></td>
+<td><code>addStorey</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_auto_fix</code></td>
+<td><code>snap(fixRule, fixBomId)</code></td>
+<td><code>snap</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_set_jurisdiction</code></td>
+<td><code>set_jurisdiction()</code></td>
+<td><code>setJurisdiction</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_update_room_dims</code></td>
+<td><code>snap()</code></td>
+<td><code>snap</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_execute_verb</code></td>
+<td><code>execute_verb()</code></td>
+<td><code>verb</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_list_order_lines</code></td>
+<td><code>list_order_lines()</code></td>
+<td><code>listOrderLines</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_update_order_line</code></td>
+<td><code>update_order_line()</code></td>
+<td><code>updateOrderLine</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_get_bom_tree</code></td>
+<td><code>get_bom_tree()</code></td>
+<td><code>getBomTree</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_bom_drop</code></td>
+<td><code>bom_drop()</code></td>
+<td><code>bomDrop</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_approve</code></td>
+<td><code>approve()</code></td>
+<td><code>approve</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_bom_drop_popup</code></td>
+<td><code>bom_drop()</code></td>
+<td><code>bomDrop</code></td>
+<td>YES</td>
+</tr>
+<tr>
+<td><code>BIM_OT_designer_list_advisories</code></td>
+<td><code>list_advisories()</code></td>
+<td><code>listAdvisories</code></td>
+<td>YES</td>
+</tr>
+</tbody>
+</table>
+<p>Poll timer: <code>_poll_commands_timer()</code> runs every 2s, calls <code>poll_commands()</code> via HTTP POST
+to port 9878, handles <code>loadOutput</code> (loads output.db via db_loader) and <code>applyScheme</code> commands.</p>
+<h3 id="missing-from-clientpy-available-in-federation-but-not-exposed">Missing from client.py (available in federation but not exposed)<a class="headerlink" href="#missing-from-clientpy-available-in-federation-but-not-exposed" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Federation Operator</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>clash_by_discipline()</code></td>
+<td><code>BIM_OT_clash_by_discipline</code></td>
+<td>HIGH — Tab 8 needs this</td>
+</tr>
+<tr>
+<td><code>generate_schedule()</code></td>
+<td><code>BIM_OT_generate_construction_schedule</code></td>
+<td>HIGH — Tab 4 needs this</td>
+</tr>
+<tr>
+<td><code>generate_boq()</code></td>
+<td><code>BIM_OT_export_comprehensive_boq</code></td>
+<td>HIGH — Tab 5 needs this</td>
+</tr>
+<tr>
+<td><code>import_assets()</code></td>
+<td><code>BIM_OT_import_assets_from_federation</code></td>
+<td>MEDIUM — Tab 6/7</td>
+</tr>
+<tr>
+<td><code>export_bcf()</code></td>
+<td><code>BIM_OT_export_bcf</code></td>
+<td>MEDIUM — Tab 8</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-federation-preview-must-remain-intact">5. Federation Preview — Must Remain Intact<a class="headerlink" href="#5-federation-preview-must-remain-intact" title="Permanent link">&para;</a></h2>
+<p>The federation addon's native <strong>Preview BBoxes</strong> button (<code>bpy.ops.bim.preview_federation_viewport</code>)
+renders wireframe bounding boxes from any SQLite federation database. This is the <strong>production path</strong>
+for Show in Bonsai.</p>
+<p><strong>Production flow:</strong></p>
+<div class="highlight"><pre><span></span><code>BOM Drop → C_Order + C_OrderLine tree (HTML shows BOM tree, no compile)
+    ↓
+Save → persist order to work_output.db (just save, no compile)
+    ↓
+Show in Bonsai → compile → output.db → push loadOutput → federation preview
+  (each click re-compiles, bboxes always reflect current order with correct positions)
+    ↓
+Complete → same as Show in Bonsai + finalise order status to CO
+    ↓
+Full Load → user clicks in Bonsai panel when ready for full mesh geometry
+</code></pre></div>
+<p><strong>Key design rules:</strong>
+- <strong>BOM Drop</strong> → creates order, no compile
+- <strong>Save</strong> → persists order only, no compile
+- <strong>Show in Bonsai</strong> → always compiles to output.db first, then pushes federation
+  preview. Each click re-compiles fresh so bboxes reflect current edits with correct
+  spatial positions (tack offsets, storey elevations, room packing from compiler).
+  No origin-bunching — the compiler produces real coordinates.
+- <strong>Complete</strong> → compile + finalise order (CO status)
+- <strong>Full Load</strong> → user-initiated in Bonsai panel for full mesh geometry.
+  Creates a <code>.blend</code> file. If <code>.blend</code> already exists for this output.db,
+  skip reload (backend should check and return early). The <code>.blend</code> file
+  is the source of truth for whether Full Load was already done.</p>
+<p><strong>Do not break:</strong>
+- <code>webui_sync._load_output_command()</code> — sets <code>federation_database_path</code>, calls preview operator
+- <code>bpy.ops.bim.preview_federation_viewport()</code> — the fast bbox loader from federation module
+- <code>bpy.ops.bim.load_full_federation_viewport_gi()</code> — the fallback full geometry loader
+- The <code>pollCommands</code> → <code>loadOutput</code> flow in <code>webui_sync.py</code></p>
+<p><strong>S60 proof of concept</strong> (257 wireframe cubes) used a temporary cube-creation fallback from
+raw order lines (dx/dy/dz=0, all at origin). The production path compiles first, so the
+output.db has correct positions — no origin-bunching.</p>
+<p><strong>What's new vs what existed:</strong>
+- <strong>Existed:</strong> Federation preview from a local DB file (click button in Bonsai panel)
+- <strong>New (S60):</strong> Browser triggers the preview remotely via HTTP poll. First browser-to-Bonsai
+  BIM preview push. The individual pieces (HTTP poll, wireframe, BIM data) all existed —
+  the integration of a web BIM configurator pushing to Bonsai's federation viewport is new.</p>
+<hr />
+<h2 id="6-recommended-next-steps">6. Recommended Next Steps<a class="headerlink" href="#6-recommended-next-steps" title="Permanent link">&para;</a></h2>
+<h3 id="backend-actions-needed-by-html-ui-for-backend-session">Backend actions needed by HTML UI (for backend session)<a class="headerlink" href="#backend-actions-needed-by-html-ui-for-backend-session" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Purpose</th>
+<th>HTML caller</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scanOutputDbs</code></td>
+<td>List <code>.db</code> files in a given folder (default <code>DAGCompiler/lib/output</code>) with name, path, element count, file size. Tab 3 "Show Output DBs" button calls this.</td>
+<td><code>toggleOutputView()</code></td>
+<td><strong>HIGH</strong> — needed for Tab 3 to browse compiled outputs</td>
+</tr>
+<tr>
+<td><code>getConfig</code></td>
+<td>Return <code>{libraryDir, outputDir, projectRoot}</code> so HTML knows server paths. Currently hardcoded.</td>
+<td><code>init()</code> on page load</td>
+<td>MEDIUM — needed when project folder is on a different path</td>
+</tr>
+<tr>
+<td><code>loadOutput</code> should NOT be auto-queued by <code>afterCompile</code></td>
+<td>Already removed in S60-UI. Confirm backend does not re-add it.</td>
+<td>—</td>
+<td><strong>HIGH</strong> — prevents accidental Bonsai loads during testing</td>
+</tr>
+<tr>
+<td><code>completeIt</code> must return <code>outputDbPath</code></td>
+<td>Show in Bonsai needs this to push <code>loadOutput</code>. Already works.</td>
+<td><code>showInBonsai()</code></td>
+<td>Confirmed working</td>
+</tr>
+</tbody>
+</table>
+<h3 id="immediate-s60-scope-no-backend-changes">Immediate (S60 scope — no backend changes)<a class="headerlink" href="#immediate-s60-scope-no-backend-changes" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Wire 4D tab to real data</strong> — If <code>constructionSchedule</code> action already returns data from
+   ScheduleDAO, hide the placeholder and show the table. Test with DemoHouse.</li>
+<li><strong>Wire 5D tab to real data</strong> — Same for <code>costBreakdown</code> → CostDAO.</li>
+<li><strong>Wire 6D tab to real data</strong> — Same for <code>carbonFootprint</code> → SustainabilityDAO.</li>
+<li><strong>Wire 7D tab to real data</strong> — Same for <code>maintenanceSchedule</code> → FacilityMgmtDAO.</li>
+<li><strong>Wire 8 Validate to advisories</strong> — <code>listAdvisories</code> action already exists in
+   DesignerAPI. The new loadValidation() function calls it.</li>
+</ol>
+<h3 id="next-session-s61-requires-backend-migration">Next session (S61 — requires backend migration)<a class="headerlink" href="#next-session-s61-requires-backend-migration" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Migrate federation operators to DesignerServer</strong> — The 70+ operators in the federation
+   module dispatch via Blender's <code>bpy.ops</code>. To make them available from Web UI, the Java
+   DesignerServer needs action handlers that replicate the logic:</li>
+<li><code>clashByDiscipline</code> → clash detection from spatial index</li>
+<li><code>generateSchedule</code> → 4D schedule from compiled output</li>
+<li><code>generateBoq</code> → BOQ from BOM tree</li>
+<li>
+<p><code>importAssets</code> → digital twin asset import</p>
+</li>
+<li>
+<p><strong>Add client.py methods</strong> — For each new action, add a method to DesignerClient so
+   Bonsai operators can also use the Java backend instead of local Python logic.</p>
+</li>
+<li>
+<p><strong>Clash visualization in Web UI</strong> — Tab 8 Validate should show clash groups with
+   severity badges. BCF export button.</p>
+</li>
+</ol>
+<h3 id="deferred-s62">Deferred (S62+)<a class="headerlink" href="#deferred-s62" title="Permanent link">&para;</a></h3>
+<ul>
+<li>IoT sensor dashboard (7D)</li>
+<li>River equipment monitoring</li>
+<li>PDF terrain extraction</li>
+<li>Ghost drag / chain interaction (WF-12..25)</li>
+<li>Multi-user changelog</li>
+</ul>
+<hr />
+<h2 id="7-lessons-learned-s60-ui-session">7. Lessons Learned (S60-UI session)<a class="headerlink" href="#7-lessons-learned-s60-ui-session" title="Permanent link">&para;</a></h2>
+<p>Hard-won knowledge from this session. Future sessions MUST read this before touching
+the Web UI ↔ Bonsai integration.</p>
+<h3 id="71-java-server-command-queue-whitelisted-fields-only">7.1 Java Server Command Queue — Whitelisted Fields Only<a class="headerlink" href="#71-java-server-command-queue-whitelisted-fields-only" title="Permanent link">&para;</a></h3>
+<p><code>WebUIServer.handleApplyScheme()</code> hardcodes <code>command='applyScheme'</code> and only copies
+whitelisted fields: <code>schemeName</code>, <code>objectName</code>, <code>guid</code>, <code>color</code>, <code>filterDiscipline</code>,
+<code>filterIfcType</code>. <strong>Any other field is silently dropped.</strong></p>
+<p>To pass custom data through the queue, encode it in whitelisted fields:
+- <code>schemeName</code> → command type (e.g. <code>'previewBBoxes'</code>, <code>'loadOutput'</code>)
+- <code>guid</code> → payload (e.g. output.db path, building ID)
+- <code>objectName</code> → display name</p>
+<p><strong>Do not</strong> add a <code>command</code> field inside the payload — the server overwrites it with
+<code>'applyScheme'</code>. Do not add <code>buildingId</code> — it's not whitelisted and gets dropped.</p>
+<h3 id="72-blender-50-no-arbitrary-attributes-on-bpyapp">7.2 Blender 5.0 — No Arbitrary Attributes on bpy.app<a class="headerlink" href="#72-blender-50-no-arbitrary-attributes-on-bpyapp" title="Permanent link">&para;</a></h3>
+<p>Blender 5.0 locked down <code>bpy.app</code>. Setting <code>bpy.app._custom_attr = True</code> throws
+<code>AttributeError</code>. Use module-level variables instead:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># WRONG (crashes on Blender 5.0):</span>
+<span class="n">bpy</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">_sync_active</span> <span class="o">=</span> <span class="kc">True</span>
+
+<span class="c1"># RIGHT:</span>
+<span class="n">_sync_active</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># module level</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_function</span><span class="p">():</span>
+    <span class="k">global</span> <span class="n">_sync_active</span>
+    <span class="n">_sync_active</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div>
+<p>The <code>global</code> declaration must come <strong>before</strong> the variable is read in the function,
+or Python raises <code>SyntaxError: name used prior to global declaration</code>.</p>
+<h3 id="73-federation-module-import-chain-one-crash-kills-all-panels">7.3 Federation Module Import Chain — One Crash Kills All Panels<a class="headerlink" href="#73-federation-module-import-chain-one-crash-kills-all-panels" title="Permanent link">&para;</a></h3>
+<p><code>federation/__init__.py</code> line 42 imports ALL submodules in one line:
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">ui</span><span class="p">,</span> <span class="n">prop</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">discipline_legend</span><span class="p">,</span> <span class="n">cache_monitor</span><span class="p">,</span> <span class="n">color_palette</span><span class="p">,</span> <span class="n">crud_operators</span><span class="p">,</span> <span class="n">webui_sync</span>
+</code></pre></div></p>
+<p>If <strong>any</strong> submodule has a SyntaxError or ImportError, the <strong>entire federation module</strong>
+fails to register. All 10+ federation panels disappear from Bonsai. The <code>mep_engineering</code>
+module also fails because it imports from <code>federation.core.gpu_utils</code>.</p>
+<p><strong>Always verify syntax before committing:</strong>
+<div class="highlight"><pre><span></span><code>python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import py_compile; py_compile.compile(&#39;webui_sync.py&#39;, doraise=True)&quot;</span>
+</code></pre></div></p>
+<h3 id="74-snap-blender-version-pinning">7.4 Snap Blender Version Pinning<a class="headerlink" href="#74-snap-blender-version-pinning" title="Permanent link">&para;</a></h3>
+<p>Snap auto-updates Blender. Version 5.0→5.1 breaks addon paths because:
+- 5.0 uses Python 3.11, config at <code>~/.config/blender/5.0/extensions/.local/lib/python3.11/</code>
+- 5.1 uses Python 3.13, config at <code>~/.config/blender/5.1/extensions/.local/lib/python3.13/</code></p>
+<p>Symlinks across versions don't work (binary-incompatible Python). The <code>bonsai</code> alias
+in <code>~/.bashrc</code> must pin to the specific snap revision:
+<div class="highlight"><pre><span></span><code><span class="nb">alias</span><span class="w"> </span><span class="nv">bonsai</span><span class="o">=</span><span class="s2">&quot;__NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia /snap/blender/6898/blender&quot;</span>
+</code></pre></div></p>
+<p>The alias takes precedence over <code>~/bin/bonsai</code> script. Check <code>~/.bashrc</code> first.</p>
+<h3 id="75-python-bytecode-cache-pyc">7.5 Python Bytecode Cache (.pyc)<a class="headerlink" href="#75-python-bytecode-cache-pyc" title="Permanent link">&para;</a></h3>
+<p>After editing federation Python files, Blender may load stale <code>.pyc</code> from <code>__pycache__/</code>.
+Clear before testing:
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span>~/.config/blender/<span class="w"> </span>-path<span class="w"> </span><span class="s2">&quot;*federation*&quot;</span><span class="w"> </span>-name<span class="w"> </span><span class="s2">&quot;*.pyc&quot;</span><span class="w"> </span>-delete
+</code></pre></div></p>
+<p>Since the installed addon is symlinked to the source repo (<code>~/IfcOpenShell/...</code>),
+edits to source files are immediately visible — but only after clearing <code>.pyc</code> cache
+and restarting Blender.</p>
+<h3 id="76-two-separate-poll-loops">7.6 Two Separate Poll Loops<a class="headerlink" href="#76-two-separate-poll-loops" title="Permanent link">&para;</a></h3>
+<p>Bonsai has TWO independent poll timers that both call <code>pollCommands</code>:</p>
+<ol>
+<li>
+<p><strong>Federation sync</strong> (<code>webui_sync.py</code>) — 0.5s interval, started by "Start Web UI Sync"
+   button in federation panel. Handles <code>applyScheme</code>, <code>loadOutput</code>, <code>previewBBoxes</code>.</p>
+</li>
+<li>
+<p><strong>BIM Designer</strong> (<code>operator.py</code>) — 2s interval, started by "Connect" in A.1 panel.
+   Handles <code>loadOutput</code>, <code>applyScheme</code>, <code>previewBBoxes</code>.</p>
+</li>
+</ol>
+<p>Commands are consumed from the queue on first poll. If federation sync polls first,
+the BIM Designer timer won't see the command, and vice versa. In practice, users
+activate one or the other, not both.</p>
+<h3 id="77-html-is-data-assistant-bonsai-is-viewport">7.7 HTML is Data Assistant, Bonsai is Viewport<a class="headerlink" href="#77-html-is-data-assistant-bonsai-is-viewport" title="Permanent link">&para;</a></h3>
+<p>The HTML UI shows order data, BOM trees, validation status. The Bonsai viewport shows
+3D geometry. They complement each other:</p>
+<ul>
+<li><strong>Incremental editing with highlighted bboxes</strong> → Bonsai (Design Mode, GPU overlay)</li>
+<li><strong>Order line table, ASI attributes, compliance</strong> → HTML (Tab 1, Tab 8)</li>
+<li><strong>Show in Bonsai</strong> → HTML compiles, pushes result to Bonsai for preview</li>
+<li><strong>Full Load</strong> → user-initiated in Bonsai panel only (creates .blend)</li>
+</ul>
+<p>Do not try to duplicate viewport features in HTML or order features in Bonsai.</p>
+<h3 id="78-tab-3-database-path-input-or-output">7.8 Tab 3 Database Path — Input or Output<a class="headerlink" href="#78-tab-3-database-path-input-or-output" title="Permanent link">&para;</a></h3>
+<p>Tab 3 (Geometry) can load <strong>any</strong> SQLite database — BOM input or compiled output.
+Federation Preview and Full Load don't care which type. The "Show Output DBs" toggle
+switches the building list between library (BOM input) and output (compiled) databases.</p>
+<p>When Show in Bonsai compiles from Tab 1, it sets Tab 3's DB path to the output.db.
+Tab 3's Preview/Full Load then work on that same database. One database, multiple views.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

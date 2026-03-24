@@ -1,0 +1,3590 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>The Last Mile Problem: From Replica to Creation - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-last-mile-problem-from-replica-to-creation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              The Last Mile Problem: From Replica to Creation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-session-2-findings-read-this-first-2026-02-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. SESSION 2 FINDINGS — READ THIS FIRST (2026-02-20)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0. SESSION 2 FINDINGS — READ THIS FIRST (2026-02-20)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-1-conn_points-in-ad_product_dim-has-no-consumer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause 1: conn_points in ad_product_dim has no consumer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-2-family_ref-is-null-for-all-tb-lktn-furniture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause 2: family_ref is NULL for all TB-LKTN furniture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-3-shdx-are-25-flat-extracted-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause 3: SH/DX are ~25% flat extracted data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-4-furniturebomresolver-exists-and-works-but-is-bypassed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause 4: FurnitureBOMResolver exists and works — but is bypassed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-5-clear_front-in-ad_product_dim-has-no-consumer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause 5: clear_front in ad_product_dim has no consumer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#01-ordered-fix-plan-execute-in-this-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.1 ORDERED FIX PLAN — Execute in this sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="0.1 ORDERED FIX PLAN — Execute in this sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-metadatavalidator-gate-family_ref-mandatory-for-fixturesfurniture-done-phase-rm-11-bom-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: MetadataValidator gate — family_ref mandatory for fixtures/furniture ✅ DONE (Phase RM-11 + BOM-1)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-sql-migration-populate-family_ref-for-tb-lktn-furniture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: SQL migration — populate family_ref for TB-LKTN furniture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-relationalresolver-read-conn_points-to-derive-orientation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: RelationalResolver — read conn_points to derive orientation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-sql-migration-replace-absolute-furniture-in-shdx-with-bom-anchors-done-phase-bom-1-2026-02-21" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: SQL migration — replace ABSOLUTE furniture in SH/DX with BOM anchors ✅ DONE (Phase BOM-1, 2026-02-21)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-metadatavalidator-gate-2-block-absolute-for-furniture-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: MetadataValidator gate 2 — block ABSOLUTE for furniture class
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-clear_front-enforcement-in-furniturebomresolver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: clear_front enforcement in FurnitureBOMResolver
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#02-what-this-solves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0.2 WHAT THIS SOLVES
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-two-modes-and-their-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Two Modes and Their Gap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. The Two Modes and Their Gap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mode-1-rosetta-stone-replication-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 1: Rosetta Stone Replication (WORKS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mode-2-generative-creation-fails-at-last-mile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mode 2: Generative Creation (FAILS AT LAST MILE)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-replication-works-but-creation-doesnt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why Replication Works But Creation Doesn't
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-recurring-pain-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The Recurring Pain Pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-root-cause-no-po-backbone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. The Root Cause: No PO Backbone
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-idempiere-ad-parallel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The iDempiere AD Parallel
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-what-needs-to-happen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. What Needs to Happen
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. What Needs to Happen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#immediate-diagnostic-first-extract-dont-imagine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Immediate: Diagnostic First (Extract, Don't Imagine)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#then-the-po-backbone-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Then: The PO Backbone Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#then-crd-population-separate-workstream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Then: CRD Population (Separate Workstream)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#then-crdvalidator-in-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Then: CRDValidator in Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-diagnostic-prompt-for-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Diagnostic Prompt for Code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-the-compound-enrichment-vision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. The Compound Enrichment Vision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-key-project-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Key Project Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-session-notes-for-watchdog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Session Notes for Watchdog
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="the-last-mile-problem-from-replica-to-creation">The Last Mile Problem: From Replica to Creation<a class="headerlink" href="#the-last-mile-problem-from-replica-to-creation" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-02-20 (updated 2026-02-20 session 2)
+<strong>Context:</strong> BIM Intent Compiler — Watchdog assessment for new session
+<strong>Status:</strong> ROOT CAUSES IDENTIFIED — ordered fix plan below. Start here.</p>
+<blockquote>
+<p><strong>Staleness note (2026-02-27):</strong> Phase G-1 renamed/deleted several classes referenced
+throughout this document. Read the rename map below; body text is otherwise unchanged.</p>
+<table>
+<thead>
+<tr>
+<th>Old Name (in this doc)</th>
+<th>Current Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FurnitureBOMResolver</code></td>
+<td><code>BOMTierResolver</code></td>
+<td>Unified three-way dispatch (fixture params / GPD / FLOAT)</td>
+</tr>
+<tr>
+<td><code>FixturePlacer</code></td>
+<td><strong>DELETED</strong></td>
+<td>Placement logic absorbed into <code>BOMTierResolver</code></td>
+</tr>
+<tr>
+<td><code>FixtureWorker</code></td>
+<td><strong>DELETED</strong></td>
+<td>Merged into <code>FurnitureWorker</code></td>
+</tr>
+<tr>
+<td><code>FurnitureTypeResolver</code></td>
+<td><strong>DELETED</strong></td>
+<td>No callers remain after G-1 Step 4</td>
+</tr>
+<tr>
+<td><code>FurniturePlacer</code></td>
+<td><strong>DELETED</strong></td>
+<td><code>FurnitureWorker</code> calls <code>BOMTierResolver</code> directly</td>
+</tr>
+<tr>
+<td><code>BomTierResolver</code> (VIEW_CONTRACTS)</td>
+<td><code>QualifiedBomCascade</code></td>
+<td>Freed the name for the unified resolver</td>
+</tr>
+</tbody>
+</table>
+<p>Step status vs doc text: Steps 1, 2, 4 are DONE (see WatchDogOnBIMasERP.md §1.12).
+Steps 3, 5, 6 remain open. Step 6 target file is now <code>BOMTierResolver.java</code>.</p>
+</blockquote>
+<hr />
+<h2 id="0-session-2-findings-read-this-first-2026-02-20">0. SESSION 2 FINDINGS — READ THIS FIRST (2026-02-20)<a class="headerlink" href="#0-session-2-findings-read-this-first-2026-02-20" title="Permanent link">&para;</a></h2>
+<h3 id="root-cause-1-conn_points-in-ad_product_dim-has-no-consumer">Root Cause 1: <code>conn_points</code> in <code>ad_product_dim</code> has no consumer<a class="headerlink" href="#root-cause-1-conn_points-in-ad_product_dim-has-no-consumer" title="Permanent link">&para;</a></h3>
+<p><code>ad_product_dim.conn_points</code> encodes which face of every product connects to its host:
+<div class="highlight"><pre><span></span><code>FIXTURE_TOILET  → [{&quot;face&quot;:&quot;BACK&quot;,&quot;type&quot;:&quot;WASTE&quot;},{&quot;face&quot;:&quot;LEFT&quot;,&quot;type&quot;:&quot;SUPPLY&quot;}]
+FIXTURE_SINK    → [{&quot;face&quot;:&quot;BACK&quot;,&quot;type&quot;:&quot;WASTE&quot;},{&quot;face&quot;:&quot;BACK&quot;,&quot;type&quot;:&quot;SUPPLY&quot;}]
+FIXTURE_SHOWER  → [{&quot;face&quot;:&quot;WALL&quot;,&quot;type&quot;:&quot;SUPPLY&quot;},{&quot;face&quot;:&quot;FLOOR&quot;,&quot;type&quot;:&quot;WASTE&quot;}]
+</code></pre></div>
+BACK face = must be placed against wall = faces INTO room. This is the rotation rule.
+<strong>No Java code reads conn_points.</strong> RelationalResolver ignores it entirely.</p>
+<h3 id="root-cause-2-family_ref-is-null-for-all-tb-lktn-furniture">Root Cause 2: <code>family_ref</code> is NULL for all TB-LKTN furniture<a class="headerlink" href="#root-cause-2-family_ref-is-null-for-all-tb-lktn-furniture" title="Permanent link">&para;</a></h3>
+<p>C_OrderLine's <code>family_ref</code> is the link to <code>ad_product_dim</code>. For TB-LKTN all
+IfcFurnishingElement rows have <code>family_ref = NULL</code>. Without it, conn_points
+cannot be looked up. Orientation falls back to <code>NS</code>/<code>EW</code> wall-axis labels —
+meaningless for fixture facing.</p>
+<p><strong>SH/DX do not have this visual error because</strong> their orientations are verbatim
+extracted angles from the reference IFC. This is cheating — it works by accident
+not by rule. See Root Cause 3.</p>
+<h3 id="root-cause-3-shdx-are-25-flat-extracted-data">Root Cause 3: SH/DX are ~25% flat extracted data<a class="headerlink" href="#root-cause-3-shdx-are-25-flat-extracted-data" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>ABSOLUTE (flat coords)</th>
+<th>Relational (FRACTION/BOUNDARY)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SampleHouse (55)</td>
+<td>15 elements (27%)</td>
+<td>40 elements</td>
+</tr>
+<tr>
+<td>Duplex (1085)</td>
+<td>269 elements (25%)</td>
+<td>816 elements</td>
+</tr>
+</tbody>
+</table>
+<p>ABSOLUTE rows store verbatim extracted centroids (e.g. <code>-5059.012, -67.78</code>).
+When room boundaries shift, these items drift independently — they have no
+declared relationship to each other or their room. This is the overlap/offset
+regression source.</p>
+<h3 id="root-cause-4-furniturebomresolver-exists-and-works-but-is-bypassed">Root Cause 4: FurnitureBOMResolver exists and works — but is bypassed<a class="headerlink" href="#root-cause-4-furniturebomresolver-exists-and-works-but-is-bypassed" title="Permanent link">&para;</a></h3>
+<p><code>FurnitureBOMResolver</code> correctly reads <code>dx</code>, <code>dy</code>, <code>dz</code>, <code>back_to_wall</code>,
+<code>face_table</code>, <code>opposite_wall</code>, <code>rotation_rule</code> from <code>m_attribute</code>.
+BOM assemblies are correctly defined:
+- <code>BED_SET</code> — bed (back_to_wall) + side tables (dx=±0.98) + wardrobe (dx=±1.2)
+- <code>LIVING_SET</code> — sofa (back_to_wall) + coffee table (dy=0.80) + TV (opposite_wall)
+- <code>DINING_SET</code> — table (center) + 6 chairs (dx/dy offsets, face_table=true)</p>
+<p>SH/DX furniture bypasses this via ABSOLUTE flat coords. Items were coincidentally
+near each other in the original IFC, never declared as an assembly. Fix = SQL
+migration replacing ABSOLUTE furniture rows with BOM anchor rules.</p>
+<h3 id="root-cause-5-clear_front-in-ad_product_dim-has-no-consumer">Root Cause 5: <code>clear_front</code> in <code>ad_product_dim</code> has no consumer<a class="headerlink" href="#root-cause-5-clear_front-in-ad_product_dim-has-no-consumer" title="Permanent link">&para;</a></h3>
+<p><div class="highlight"><pre><span></span><code>DOOR_D1        clear_front = 0.900m  ← door swing zone
+FIXTURE_TOILET clear_front = 0.533m
+FURN_BED_*     clear_front = 0.600m
+FURN_WARDROBE  clear_front = 0.600m
+</code></pre></div>
+No placement code enforces these clearances. Furniture overlapping door swing
+is entirely caused by this gap.</p>
+<hr />
+<h2 id="01-ordered-fix-plan-execute-in-this-sequence">0.1 ORDERED FIX PLAN — Execute in this sequence<a class="headerlink" href="#01-ordered-fix-plan-execute-in-this-sequence" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-metadatavalidator-gate-family_ref-mandatory-for-fixturesfurniture-done-phase-rm-11-bom-1">Step 1: MetadataValidator gate — <code>family_ref</code> mandatory for fixtures/furniture ✅ DONE (Phase RM-11 + BOM-1)<a class="headerlink" href="#step-1-metadatavalidator-gate-family_ref-mandatory-for-fixturesfurniture-done-phase-rm-11-bom-1" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>MetadataValidator.java</code>
+<strong>Done:</strong> Gate is live. <code>checkFamilyRefMandatory()</code> blocks null family_ref for all
+fixture/furniture classes. BOM anchor rows (<code>discipline='FURN'</code>) are excluded — their
+<code>family_ref</code> holds a <code>bom_id</code>, not a product_id. 58/58 tests gate-enforced.</p>
+<h3 id="step-2-sql-migration-populate-family_ref-for-tb-lktn-furniture">Step 2: SQL migration — populate <code>family_ref</code> for TB-LKTN furniture<a class="headerlink" href="#step-2-sql-migration-populate-family_ref-for-tb-lktn-furniture" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> new <code>migration/migration_TBLKTN_family_ref.sql</code>
+Map each TB-LKTN IfcFurnishingElement to its <code>ad_product_dim</code> product_id:
+- IfcFurnishingElement_5 (WC) → FIXTURE_TOILET
+- IfcFurnishingElement_4 (shower) → FIXTURE_SHOWER
+- IfcFurnishingElement_6 (bed) → FURN_BED_DOUBLE
+- IfcFurnishingElement_1..3 (other) → verify from PDF, assign correct product
+Verify by running <code>sqlite3</code> query after migration — zero NULL family_ref for TB_LKTN.</p>
+<h3 id="step-3-relationalresolver-read-conn_points-to-derive-orientation">Step 3: RelationalResolver — read conn_points to derive orientation<a class="headerlink" href="#step-3-relationalresolver-read-conn_points-to-derive-orientation" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>RelationalResolver.java</code>
+<strong>Change:</strong> ~25 lines. New private method <code>resolveOrientation(conn, rule, ctx)</code>:
+- Query <code>ad_product_dim.conn_points</code> WHERE <code>product_id = rule.familyRef</code>
+- Parse JSON → find face with BACK/WALL type → that face goes against host wall
+- Host wall = from C_OrderLine <code>.host_ref</code> (WALL_roomname_FACE)
+- Return rotation = <code>FixturePlacer.rotationFacingInto(hostWall)</code>
+- Call from <code>computeOne()</code> when <code>rule.orientation</code> is null or NS/EW for non-wall elements</p>
+<h3 id="step-4-sql-migration-replace-absolute-furniture-in-shdx-with-bom-anchors-done-phase-bom-1-2026-02-21">Step 4: SQL migration — replace ABSOLUTE furniture in SH/DX with BOM anchors ✅ DONE (Phase BOM-1, 2026-02-21)<a class="headerlink" href="#step-4-sql-migration-replace-absolute-furniture-in-shdx-with-bom-anchors-done-phase-bom-1-2026-02-21" title="Permanent link">&para;</a></h3>
+<p><strong>Files:</strong> <code>migration/migration_RM6_bom_anchors.sql</code> + <code>migration/migration_RM6b_bom_product_dims.sql</code>
+<strong>Done:</strong>
+- Individual FURN_<em> leaf rows deactivated: SH=14, DX=56, TB-LKTN=10
+- BOM Drop INSERT: <code>ad_room_slot × ad_room_boundary</code> → anchor rows (SH=5, DX=27, TB-LKTN=12)
+- <code>RelationalResolver</code> detects BOM anchors (<code>family_ref ∈ m_bom.bom_id</code>) → <code>FurnitureBOMResolver</code>
+- 18 furniture <code>ad_product_dim</code> entries added for BOM child name_patterns
+- COMMON space type added for TB-LKTN open-plan room
+</em><em>Result:</em>* SH=63, DX=1197, TB-LKTN=138. All 58 tests pass.</p>
+<p><strong>Remaining ABSOLUTE rows (not furniture — next phase):</strong>
+- SH: 3 IfcWindow (Revit-extracted corner windows, correct world coords)
+- DX: 261 MEP+structural (IfcFlowSegment×151, IfcFlowFitting×70, IfcWindow×22, structural×18)
+- These require <code>family_ref</code> normalisation: Revit strings → <code>ad_product_dim</code> catalog IDs (Phase BOM-2)</p>
+<h3 id="step-5-metadatavalidator-gate-2-block-absolute-for-furniture-class">Step 5: MetadataValidator gate 2 — block ABSOLUTE for furniture class<a class="headerlink" href="#step-5-metadatavalidator-gate-2-block-absolute-for-furniture-class" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>MetadataValidator.java</code>
+<strong>Change:</strong> ~5 lines. Add check: <code>position_rule = ABSOLUTE</code> is forbidden for
+<code>ifc_class IN ('IfcFurnishingElement','IfcFurniture')</code>. Must use FRACTION or
+a BOM anchor pattern. Prevents regression to flat data.</p>
+<h3 id="step-6-clear_front-enforcement-in-furniturebomresolver">Step 6: clear_front enforcement in FurnitureBOMResolver<a class="headerlink" href="#step-6-clear_front-enforcement-in-furniturebomresolver" title="Permanent link">&para;</a></h3>
+<p><strong>File:</strong> <code>FurnitureBOMResolver.java</code>
+<strong>Change:</strong> After placing each child, check: does its bbox overlap any element
+within <code>clear_front</code> distance of a door opening? Read <code>clear_front</code> from
+<code>ad_product_dim</code> for the door product. If overlap, reject placement and log.
+This fixes furniture-in-door-swing permanently.</p>
+<hr />
+<h2 id="02-what-this-solves">0.2 WHAT THIS SOLVES<a class="headerlink" href="#02-what-this-solves" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>TB-LKTN Defect</th>
+<th>Fixed by Step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Latrine/WC misrotation</td>
+<td>Step 2 + 3</td>
+</tr>
+<tr>
+<td>Furniture askew (bed, wardrobe)</td>
+<td>Step 2 + 3</td>
+</tr>
+<tr>
+<td>Furniture overlapping door</td>
+<td>Step 6</td>
+</tr>
+<tr>
+<td>SH/DX furniture offset regression</td>
+<td>Step 4</td>
+</tr>
+<tr>
+<td>Bath strange box (wrong mesh from null family_ref)</td>
+<td>Step 2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>NOT solved by this plan</strong> (separate root causes):
+- Walls too thin → <code>RelationalResolver.loadWalls()</code> ignores <code>ad_wall_type</code> thickness
+- Porch canopy orientation → roof writer <code>writeGableGeometry()</code> direction
+- Outer drain U-shape/corners → component library missing corner pieces</p>
+<hr />
+<h2 id="1-the-two-modes-and-their-gap">1. The Two Modes and Their Gap<a class="headerlink" href="#1-the-two-modes-and-their-gap" title="Permanent link">&para;</a></h2>
+<p>The compiler operates in two modes with dramatically different quality:</p>
+<h3 id="mode-1-rosetta-stone-replication-works">Mode 1: Rosetta Stone Replication (WORKS)<a class="headerlink" href="#mode-1-rosetta-stone-replication-works" title="Permanent link">&para;</a></h3>
+<p>SampleHouse (55 elements) and Duplex (1085 elements) achieve 100% spatial recall against their reference IFC files. Every wall, window, door, fixture, pipe — byte-identical to the original. This works because the reference IFC IS the ground truth. The compiler extracts coordinates, dimensions, and relationships from a proven building and reproduces them through the relational metadata layer.</p>
+<p>The path: Reference IFC → Extraction → ad_* tables → Relational Resolver → Flat Cache → IFC Output. At every step, the original building's coordinates validate the output. Shadow validation confirms 0 mismatches at 0.001mm tolerance.</p>
+<h3 id="mode-2-generative-creation-fails-at-last-mile">Mode 2: Generative Creation (FAILS AT LAST MILE)<a class="headerlink" href="#mode-2-generative-creation-fails-at-last-mile" title="Permanent link">&para;</a></h3>
+<p>CitizenHome / TB-LKTN (69 elements) is the first building with NO reference IFC. It's compiled from a 2D PDF floor plan (RUMAH RAKYAT programme) translated into DSL, with placement rules as C_OrderLines. The outer envelope works — walls form rooms at correct grid positions. But element placement WITHIN rooms fails repeatedly.</p>
+<p><strong>Visible defects in the attached Blender screenshot (top-down view of CitizenHome):</strong></p>
+<ul>
+<li>
+<p><strong>Inner walls too thin</strong> — wall_type thickness from metadata doesn't match visual expectation. Partition walls appear as lines, not 100mm-150mm thick partitions. Likely reading wrong wall_type or thickness not applied to geometry.</p>
+</li>
+<li>
+<p><strong>Furniture askew</strong> — bed, wardrobe, desk not aligned to walls. Rotation rules either missing or resolving incorrectly. Items appear rotated to arbitrary angles rather than snapping to wall faces.</p>
+</li>
+<li>
+<p><strong>Main door too small</strong> — entry door appears undersized compared to room proportions. Likely dimension from ad_product_dim doesn't match Malaysian standard (900mm × 2100mm for main entrance per JKR).</p>
+</li>
+<li>
+<p><strong>Windows highlighted orange but too thin</strong> — windows placed but with near-zero depth. The depth_mm in ad_product_dim likely stores room depth instead of window frame depth (150mm typical). Same defect documented in Duplex's stairwell windows (CurrentState.txt Section 2.3).</p>
+</li>
+<li>
+<p><strong>Toilet bowl never right</strong> — back-to-wall alignment fails repeatedly. The rotation_rule says FACE_AWAY_FROM_DOOR but the resolver doesn't compute which wall is opposite the door and place the toilet's back face against it. This has been reported and partially fixed multiple times but regresses.</p>
+</li>
+<li>
+<p><strong>Kitchen furniture can't replicate</strong> — kitchen counter, sink, cabinet assembly that works in Duplex (via BOM) doesn't transfer. The BOM references are building-specific or the kitchen space_type doesn't activate the correct furniture slots.</p>
+</li>
+<li>
+<p><strong>Roof hidden but incomplete</strong> — doesn't include porch overhang. The roof resolver uses room boundaries but porch is outside the main building envelope, so the roof stops at the wall line.</p>
+</li>
+<li>
+<p><strong>Outer drain badly drawn</strong> — not U-shaped channel, no connecting corners. Drain geometry is a flat rectangle instead of a proper cross-section. No corner pieces at direction changes. Missing from component library or parametric mesh not generating the profile.</p>
+</li>
+<li>
+<p><strong>MEP not attempted yet</strong> — plumbing, electrical still pending for generative buildings.</p>
+</li>
+</ul>
+<hr />
+<h2 id="2-why-replication-works-but-creation-doesnt">2. Why Replication Works But Creation Doesn't<a class="headerlink" href="#2-why-replication-works-but-creation-doesnt" title="Permanent link">&para;</a></h2>
+<p>The fundamental asymmetry:</p>
+<div class="highlight"><pre><span></span><code>REPLICATION (SH, DX):
+  Every coordinate comes from the reference IFC.
+  If the reference says toilet is at (3.2, 1.5, 0.0) with rotation PI,
+  the compiler places it at (3.2, 1.5, 0.0) with rotation PI.
+  The proof is: output == reference. Simple equality check.
+
+CREATION (CitizenHome):
+  Every coordinate must be COMPUTED from rules.
+  Toilet goes in BATHROOM. Which wall? The one opposite the door.
+  How far from corner? Clearance from ad_space_clearance (if it exists).
+  What rotation? FACE_AWAY_FROM_DOOR → resolve door position → compute opposite.
+  What height? Floor-mounted, so Z = floor level from sf_storey.
+
+  Each step is a metadata lookup + spatial computation.
+  If ANY step returns wrong data or missing data, the element is wrong.
+  And there&#39;s no reference to check against — the compiler IS the authority.
+</code></pre></div>
+<p>The compiler currently has no mechanism to PROVE a computed placement is correct when there's no reference to compare against. BoundElement proves mesh-fits-bbox but not bbox-is-in-right-place. PlacementProver audits after the fact but is advisory, not blocking.</p>
+<hr />
+<h2 id="3-the-recurring-pain-pattern">3. The Recurring Pain Pattern<a class="headerlink" href="#3-the-recurring-pain-pattern" title="Permanent link">&para;</a></h2>
+<p>This cycle repeats for every element type in every new room:</p>
+<div class="highlight"><pre><span></span><code>Step 1: User prompts Code to place toilet in bathroom
+Step 2: Code writes resolver logic, toilet appears in Blender
+Step 3: User sees toilet facing wrong way → prompts correction
+Step 4: Code fixes rotation → toilet now correct
+Step 5: User sees basin not adjacent to toilet → prompts correction
+Step 6: Code fixes basin position → basin now correct
+Step 7: User moves to bedroom, finds wardrobe blocking door
+Step 8: Code fixes wardrobe → but now toilet has regressed (rotation=0 again)
+Step 9: Repeat for 20+ element types × N rooms
+
+Total: ~50-100 prompts to get one building&#39;s furniture right.
+Each fix is ad-hoc Java code, not metadata-driven.
+Next building: start over. Nothing learned permanently.
+</code></pre></div>
+<p>The problem is not that Code can't place a toilet correctly. It's that:</p>
+<ol>
+<li><strong>Each placement is invented per-session</strong> — no persistent rule</li>
+<li><strong>Fixing one element breaks another</strong> — no contract enforcement</li>
+<li><strong>Nothing transfers between buildings</strong> — rules live in Java, not metadata</li>
+<li><strong>Human visual inspection is the only QA</strong> — no math proof for computed placements</li>
+<li><strong>Code optimises for "test passes" not "construction correct"</strong> — will hardcode <code>rotation = PI</code> to make one test green instead of solving the general rule</li>
+</ol>
+<hr />
+<h2 id="4-the-root-cause-no-po-backbone">4. The Root Cause: No PO Backbone<a class="headerlink" href="#4-the-root-cause-no-po-backbone" title="Permanent link">&para;</a></h2>
+<p>In iDempiere, every database record passes through PO.save(). PO.beforeSave() fires validation. ModelValidator fires business rules. There is no backdoor. You cannot persist a record without the framework validating it.</p>
+<p>The BIM compiler has no equivalent. Elements are created by various Placer/Resolver classes, each with their own logic, their own defaults, their own shortcuts. There is no single gate that every element passes through that demands: "prove your placement is correct."</p>
+<p><strong>What exists today (verified from codebase audit, 2026-02-20):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What It Does</th>
+<th>Blocks Bad Output?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MetadataValidator</code> (Stage 1)</td>
+<td>Checks BOM chain, geometry hashes, positive dimensions, building_type refs, wall_face refs, room_boundary refs</td>
+<td>Yes — blocks compilation before any element is emitted</td>
+</tr>
+<tr>
+<td><code>BoundElement</code> constructor</td>
+<td>Checks mesh fits bbox, scale [0.3, 3.0]</td>
+<td>Yes — but only checks MESH, not POSITION</td>
+</tr>
+<tr>
+<td><code>PositionRule</code> sealed interface</td>
+<td>DirectCoordinate, WallFraction, RoomFraction — encodes position computation from C_OrderLine</td>
+<td>Partial — types are sealed but don't verify correctness, only structure</td>
+</tr>
+<tr>
+<td><code>SlotRegistry</code></td>
+<td>Reads <code>ad_room_slot</code> — maps room_type → assembly_id → slot_face</td>
+<td>No — loaded but not wired into placement path for generative buildings</td>
+</tr>
+<tr>
+<td><code>ManifestResolver</code></td>
+<td>Reads <code>ad_assembly_manifest</code> — clearance_m per face</td>
+<td>No — loaded but used only as fallback defaults in FixturePlacer</td>
+</tr>
+<tr>
+<td><code>PlacementProver</code></td>
+<td>Audits 23 spatial properties post-compilation (P01–P23)</td>
+<td>Critical provers (P01-P03, P16-P17, P22) gate; rest advisory</td>
+</tr>
+<tr>
+<td><code>SanityChecker</code></td>
+<td>Checks zero-volume, out-of-bounds</td>
+<td>Partially — catches extreme errors</td>
+</tr>
+<tr>
+<td><code>CompilerContractTest</code></td>
+<td>Build-time assertions with coordinates</td>
+<td>Yes — but only for KNOWN elements with WRITTEN tests</td>
+</tr>
+<tr>
+<td>Human visual inspection</td>
+<td>Catches everything above misses</td>
+<td>Yes — but requires 50-100 prompts per building</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Three gaps identified (2026-02-20 analysis):</strong></p>
+<ol>
+<li>
+<p><strong>Wiring gap</strong> — <code>SlotRegistry</code> reads <code>ad_room_slot</code> but its output is not used by the generative placement path. <code>FixturePlacer</code> still uses hardcoded logic. The data is there; the resolver doesn't read it for placement decisions.</p>
+</li>
+<li>
+<p><strong>Face resolution gap</strong> — <code>ad_room_slot.slot_face = BACK</code> is semantic. No Java resolves BACK → concrete wall without knowing which wall is the room's entry (door) face. This requires door placement to precede fixture placement — the dependency is implicit in stage ordering but not enforced.</p>
+</li>
+<li>
+<p><strong>Data gap</strong> — Several slots in <code>ad_room_slot</code> have null <code>assembly_id</code> (EXHAUST, FLOOR_TRAP in BATHROOM; BASIN in TOILET_BLOCK). The slot table knows these elements must exist; the library hasn't populated what fills them.</p>
+</li>
+</ol>
+<p><strong>What's still missing: a ProvenElement gate (the PO.save() equivalent):</strong></p>
+<p>Every element, at construction time, must carry a PlacementProof — a sealed type that states the mathematical equation proving this element is where it should be. <code>PositionRule</code> is the start of this (sealed, three permitted types) but it encodes computation inputs, not proof of correctness. No proof = element cannot be constructed = Java compiler rejects it. This gate does not yet exist.</p>
+<hr />
+<h2 id="5-the-idempiere-ad-parallel">5. The iDempiere AD Parallel<a class="headerlink" href="#5-the-idempiere-ad-parallel" title="Permanent link">&para;</a></h2>
+<p>The deeper insight from this session: placement rules should be DATA, not CODE.</p>
+<p>Just as iDempiere's AD_Val_Rule governs what values are valid in a field, a Construction Rule Dictionary (CRD) should govern what placements are valid in a space. The rules are knowable, codifiable, and source-citable:</p>
+<ul>
+<li>Toilet: back to wall, faces away from door, 200mm side clearance, 600mm front clearance (UBBL)</li>
+<li>Basin: adjacent to toilet, same wall or perpendicular, 100mm gap minimum</li>
+<li>Bed: headboard to wall, 600mm clearance both sides, 900mm clearance foot</li>
+<li>Door: swing into room (except bathroom outward per UBBL), centred in opening</li>
+<li>Window: centred on external wall, sill height 900mm (UBBL), frame depth 150mm</li>
+<li>Kitchen counter: along wall, 600mm depth, 900mm height, with clearance for door swing</li>
+</ul>
+<p>These are NOT building-specific. They apply to EVERY Malaysian residential building. They should be in metadata tables (crd_rule), not in Java resolver code that Code reinvents every session.</p>
+<p>The CRD was discussed and schema designed in this session but NOT created. See the transcript for full schema design including crd_rule, crd_rule_category, crd_rule_param, and crd_discipline_priority tables.</p>
+<hr />
+<h2 id="6-what-needs-to-happen">6. What Needs to Happen<a class="headerlink" href="#6-what-needs-to-happen" title="Permanent link">&para;</a></h2>
+<h3 id="immediate-diagnostic-first-extract-dont-imagine">Immediate: Diagnostic First (Extract, Don't Imagine)<a class="headerlink" href="#immediate-diagnostic-first-extract-dont-imagine" title="Permanent link">&para;</a></h3>
+<p>Before designing the fix, we need to see what Code actually has. A diagnostic prompt was prepared (see Section 7 below) to extract:</p>
+<ul>
+<li>BoundElement's actual fields and constructor</li>
+<li>Every call site that creates BoundElements</li>
+<li>PlacementProver's actual proof methods</li>
+<li>The emit path from resolvers to output</li>
+<li>The pipeline stage order</li>
+</ul>
+<p><strong>Run this diagnostic FIRST in the new session.</strong> The fix must graft onto the existing codebase, not replace it.</p>
+<h3 id="then-the-po-backbone-design">Then: The PO Backbone Design<a class="headerlink" href="#then-the-po-backbone-design" title="Permanent link">&para;</a></h3>
+<p>Based on what the diagnostic reveals, design a ProvenElement record that:</p>
+<ol>
+<li><strong>Wraps BoundElement</strong> — adds mandatory PlacementProof field</li>
+<li><strong>PlacementProof is sealed</strong> — finite set of proof types (WallAligned, FractionAlongWall, RoomCentroid, GridIntersection, BOMChildOffset, ExtractedReference, etc.)</li>
+<li><strong>Each proof type verifies itself</strong> — proof.verify(bounds) fires at construction time</li>
+<li><strong>No element exists without proof</strong> — like PO.save(), there is no shortcut</li>
+<li><strong>Proofs cite metadata</strong> — every proof references which ad_* row it came from</li>
+<li><strong>Proofs compose</strong> — BOM children carry offset proofs relative to parent</li>
+</ol>
+<h3 id="then-crd-population-separate-workstream">Then: CRD Population (Separate Workstream)<a class="headerlink" href="#then-crd-population-separate-workstream" title="Permanent link">&para;</a></h3>
+<p>Populate crd_rule tables with placement rules from UBBL, construction practice, and extracted patterns from Duplex/SampleHouse. This is domain knowledge capture, independent from compiler code. Can be done by construction professionals reading standards.</p>
+<h3 id="then-crdvalidator-in-pipeline">Then: CRDValidator in Pipeline<a class="headerlink" href="#then-crdvalidator-in-pipeline" title="Permanent link">&para;</a></h3>
+<p>Wire CRDValidator as a CompilerStage that reads crd_rule and validates every ProvenElement against applicable rules. Like ModelValidator in iDempiere — fires for every element, checks jurisdiction-specific rules, blocks non-compliant output.</p>
+<hr />
+<h2 id="7-diagnostic-prompt-for-code">7. Diagnostic Prompt for Code<a class="headerlink" href="#7-diagnostic-prompt-for-code" title="Permanent link">&para;</a></h2>
+<p>Give this to Code at the start of the new session:</p>
+<div class="highlight"><pre><span></span><code>Read docs/TEST_ARCHITECTURE.md and docs/CODE_WATCHDOG.md first.
+Then run this diagnostic and paste FULL output — do not summarise:
+
+echo &quot;=== PROVEN ELEMENT DIAGNOSTIC ===&quot;
+echo &quot;&quot;
+echo &quot;--- 1. BoundElement: full class source ---&quot;
+find . -name &quot;BoundElement.java&quot; -type f | head -3
+find . -name &quot;BoundElement.java&quot; -type f -exec cat {} \;
+echo &quot;&quot;
+echo &quot;--- 2. Every &#39;new BoundElement&#39; call site ---&quot;
+grep -rn &quot;new BoundElement\|BoundElement\.builder\|BoundElement\.of\|BoundElement\.create&quot; --include=&quot;*.java&quot; .
+echo &quot;&quot;
+echo &quot;--- 3. PlacementProver: full class source ---&quot;
+find . -name &quot;PlacementProver.java&quot; -type f | head -3
+find . -name &quot;PlacementProver.java&quot; -type f -exec cat {} \;
+echo &quot;&quot;
+echo &quot;--- 4. Where PlacementProver is called ---&quot;
+grep -rn &quot;PlacementProver\|placementProver\|PlacementProof&quot; --include=&quot;*.java&quot; .
+echo &quot;&quot;
+echo &quot;--- 5. MeshBinder: full class source ---&quot;
+find . -name &quot;MeshBinder.java&quot; -type f | head -3
+find . -name &quot;MeshBinder.java&quot; -type f -exec cat {} \;
+echo &quot;&quot;
+echo &quot;--- 6. Element emit path ---&quot;
+grep -rn &quot;addElement\|emitElement\|writeElement\|elements\.add\|boundElements\|placedElements&quot; --include=&quot;*.java&quot; . | grep -v &quot;test\|Test&quot; | head -40
+echo &quot;&quot;
+echo &quot;--- 7. CompilationPipeline stage list ---&quot;
+find . -name &quot;CompilationPipeline.java&quot; -type f -exec cat {} \;
+echo &quot;&quot;
+echo &quot;--- 8. Any sealed interfaces or proof types ---&quot;
+grep -rn &quot;sealed interface\|sealed class\|PlacementProof\|ProvenElement\|WitnessClaim&quot; --include=&quot;*.java&quot; .
+echo &quot;&quot;
+echo &quot;--- 9. SanityChecker checks ---&quot;
+find . -name &quot;SanityChecker.java&quot; -type f -exec cat {} \;
+echo &quot;&quot;
+echo &quot;--- 10. All Placer/Resolver/Writer classes ---&quot;
+grep -rn &quot;class.*Placer\|class.*Resolver\|class.*Writer&quot; --include=&quot;*.java&quot; . | grep -v &quot;test\|Test&quot;
+echo &quot;&quot;
+echo &quot;--- 11. BoundElement record/class signature ---&quot;
+grep -rn &quot;record BoundElement\|class BoundElement&quot; --include=&quot;*.java&quot; .
+echo &quot;&quot;
+echo &quot;--- 12. How rotation/position enter BoundElement ---&quot;
+grep -B5 -A5 &quot;new BoundElement&quot; --include=&quot;*.java&quot; -r . | head -100
+echo &quot;&quot;
+echo &quot;=== END DIAGNOSTIC ===&quot;
+</code></pre></div>
+<p>Paste the full output back to the watchdog session. Do not fix anything yet.</p>
+<hr />
+<h2 id="8-the-compound-enrichment-vision">8. The Compound Enrichment Vision<a class="headerlink" href="#8-the-compound-enrichment-vision" title="Permanent link">&para;</a></h2>
+<p>Once the PO backbone exists and CRD is populated:</p>
+<div class="highlight"><pre><span></span><code>Building 1 (CitizenHome):  HARD — building the proof framework + populating rules
+Building 2 (PR1MA terrace): EASIER — reuses 80% of rules, only layout changes
+Building 3 (Johor shophouse): EASIER — adds SHOP_GROUND room type, reuses everything else
+Building 4+ : CONFIGURATION — write DSL, SQL INSERT to registry, compile
+</code></pre></div>
+<p>The proof framework makes each building provably correct WITHOUT visual inspection. The CRD rules make each placement follow construction standards WITHOUT Code inventing positions. The metadata-driven architecture makes each new building a data exercise WITHOUT new Java code.</p>
+<p>This is the iDempiere moment: when the AD layer is complete, new business processes are configuration, not development. When the CRD is complete, new buildings are configuration, not debugging.</p>
+<hr />
+<h2 id="9-key-project-documents">9. Key Project Documents<a class="headerlink" href="#9-key-project-documents" title="Permanent link">&para;</a></h2>
+<p>These should be in the project knowledge and/or docs/ folder:</p>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Purpose</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>METADATA_DRIVEN_ARCHITECTURE.md</td>
+<td>Five-domain architecture, iDempiere mapping, migration phases</td>
+<td>In project knowledge</td>
+</tr>
+<tr>
+<td>TEST_ARCHITECTURE.md</td>
+<td>Test structure, pom.xml, drift diagnostic, math-first principle</td>
+<td>Created this session — ADD to project</td>
+</tr>
+<tr>
+<td>ai-watchdog-development-process.md</td>
+<td>Seven drift patterns, enforcement stack, watchdog creed</td>
+<td>In project knowledge</td>
+</tr>
+<tr>
+<td>REFACTOR_SEALED_TYPES.md</td>
+<td>Sealed Placement types, RoomContext, builder pattern</td>
+<td>In project knowledge</td>
+</tr>
+<tr>
+<td>REFACTOR_METADATA_INTEGRITY.md</td>
+<td>FK constraints, MetadataValidator, provenance</td>
+<td>In project knowledge</td>
+</tr>
+<tr>
+<td>math-first-visual-resolution.md</td>
+<td>Why geometry is maths, visual QA taxonomy</td>
+<td>In project knowledge</td>
+</tr>
+<tr>
+<td>witness-system-specification.md</td>
+<td>Witness claims, proof architecture</td>
+<td>In project knowledge</td>
+</tr>
+<tr>
+<td>CurrentState.txt</td>
+<td>Stubborn recurring issues, expert review brief</td>
+<td>In project knowledge</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-session-notes-for-watchdog">10. Session Notes for Watchdog<a class="headerlink" href="#10-session-notes-for-watchdog" title="Permanent link">&para;</a></h2>
+<p>This session (2026-02-20) covered:</p>
+<ol>
+<li>
+<p><strong>Methodology insight</strong>: translating untrained BIM domain into iDempiere patterns Code recognises from training data — the "2nd Rosetta Stone" (ERP patterns → BIM patterns)</p>
+</li>
+<li>
+<p><strong>Three-table authority rule</strong>: ad_product_dim (geometry), m_attribute (assembly), C_OrderLine (room). Each layer adds, none overrides.</p>
+</li>
+<li>
+<p><strong>rotation_rule migration</strong>: 16 params normalised, zero old rotation/facing columns, FixturePlacer hardened</p>
+</li>
+<li>
+<p><strong>Pipeline refactor</strong>: CompilerStage interface, 7-stage typed loop, checkRelationalData hardcode killed</p>
+</li>
+<li>
+<p><strong>Five-domain architecture</strong>: sd_<em> (Space), cd_</em> (Component), rd_<em> (Regulatory), sf_</em> (Structure), bt_<em> (Building Transaction), sys_</em> (System) — with Java evolution patterns (DomainStore, typed records, CompilerValidator, DocAction lifecycle)</p>
+</li>
+<li>
+<p><strong>CRD concept</strong>: Construction Rule Dictionary as separate subproject, AD_Val_Rule equivalent for BIM</p>
+</li>
+<li>
+<p><strong>ProvenElement concept</strong>: PO-backbone that forces math proof at element construction time — DESIGNED but NOT IMPLEMENTED</p>
+</li>
+<li>
+<p><strong>Key pending decision</strong>: the PO backbone design depends on seeing what BoundElement actually looks like in the codebase → diagnostic prompt prepared</p>
+</li>
+</ol>
+<p><strong>Drift diagnostic baseline:</strong> OrThrow=8, OrDefault=133, BoundElement null-checks 3/11, 49 legacy test files, 59/61 tables lack provenance.</p>
+<p><strong>Tests:</strong> 44/44 green. SH=55, DX=1085, TB-LKTN=69, Terminal=51088.</p>
+<hr />
+<p><em>"The viewer is a confirmation tool, not a discovery tool. You open it to see what you've already proven, not to find what might be wrong."</em></p>
+<p><em>We're not there yet for generative buildings. This document describes how to get there.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

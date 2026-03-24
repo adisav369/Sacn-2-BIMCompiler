@@ -1,0 +1,6807 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>BIM DSL DICTIONARY - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bim-dsl-dictionary" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              BIM DSL DICTIONARY
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#document-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Document Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-building" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. BUILDING
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. BUILDING">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. GRID
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. GRID">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#computation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Computation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-envelope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. ENVELOPE
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. ENVELOPE">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#foundation-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FOUNDATION Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roof-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROOF Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#drainage-attributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DRAINAGE Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. SCHEDULE
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. SCHEDULE">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#usage-in-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usage in SPACE
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-storey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. STOREY
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. STOREY">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-space-universal-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. SPACE (Universal Container)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. SPACE (Universal Container)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#alternative-syntax-type-as-keyword" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Alternative Syntax (type as keyword)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-spacetype-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. SpaceType Dictionary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. SpaceType Dictionary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#spacetype-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SpaceType Definitions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SpaceType Definitions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bedroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BEDROOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bathroom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BATHROOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toilet-wc-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TOILET (WC Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kitchen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        KITCHEN
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#living" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LIVING
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dining" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DINING
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open_plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OPEN_PLAN
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#corridor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CORRIDOR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#porch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PORCH
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#garage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GARAGE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-laundry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UTILITY / LAUNDRY
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        STORAGE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stair" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        STAIR
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-constraints-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Constraints Dictionary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Constraints Dictionary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constraint-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Constraint Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#direction-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Direction Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stack-names-predefined" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stack Names (Predefined)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-openings-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Openings Dictionary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Openings Dictionary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#door" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOOR
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#window" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WINDOW
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-fixtures-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Fixtures Dictionary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Fixtures Dictionary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fixture-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixture Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixture-placement-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixture Placement Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-zone-sub-area-within-open_plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. ZONE (Sub-area within OPEN_PLAN)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. ZONE (Sub-area within OPEN_PLAN)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#position-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Position Values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compiler-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compiler Behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-wall-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Wall Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Wall Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wall-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wall Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-mep-dictionary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. MEP Dictionary
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="13. MEP Dictionary">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mep-elements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MEP Elements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mep-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MEP Routing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-validation-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Validation Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="14. Validation Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#building-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building-Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storey-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storey-Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#space-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Space-Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#geometry-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Geometry-Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-localization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Localization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="15. Localization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#malaysian-terms-auto-mapped" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Malaysian Terms (Auto-mapped)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Complete Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-profile-regionaldomain-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. PROFILE (Regional/Domain Variants)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="17. PROFILE (Regional/Domain Variants)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predefined-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Predefined Profiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Predefined Profiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#malaysian-residential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Malaysian Residential
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-residential-irc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US Residential (IRC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uk-residential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UK Residential
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commercial-ibc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commercial (IBC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#profile-inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Profile Inheritance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Profiles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#18-specialization-type-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        18. SPECIALIZATION (Type Hierarchy)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="18. SPECIALIZATION (Type Hierarchy)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specialization-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specialization Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Specialization Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bedroom-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bedroom Variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bathroom-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bathroom Variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kitchen-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kitchen Variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#living-area-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Living Area Variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#specialization-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Specialization Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#19-lod-levels-level-of-detaildevelopment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        19. LOD Levels (Level of Detail/Development)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="19. LOD Levels (Level of Detail/Development)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lod-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD Definitions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#syntax_9" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LOD Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lod-100-conceptual" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD 100 - Conceptual
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-200-approximate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD 200 - Approximate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-300-precise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD 300 - Precise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-350-coordination" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD 350 - Coordination
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-400-fabrication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD 400 - Fabrication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-500-as-built" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD 500 - As-Built
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-progression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD Progression
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-and-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD and BOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#20-application-protocol-building-type-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        20. APPLICATION PROTOCOL (Building Type Templates)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="20. APPLICATION PROTOCOL (Building Type Templates)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax_10" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protocol-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Protocol Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-storey-residential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Single-Storey Residential
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-storey-residential" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Multi-Storey Residential
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apartment-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apartment Unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commercial-office" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commercial Office
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#airport-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Airport Terminal
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-protocols" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Protocols
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#protocol-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protocol Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#21-extension-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        21. Extension Protocol
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="21. Extension Protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-spacetype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a SpaceType
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-fixture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a Fixture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a Constraint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-localization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Localization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-specialization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a Specialization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#22-standards-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        22. Standards Alignment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="22. Standards Alignment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ifc-iso-16739" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC (ISO 16739)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lod-bim-forum" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOD (BIM Forum)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#classification-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Classification Systems
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#code-standards-supported" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Standards Supported
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#23-implementation-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        23. Implementation Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="23. Implementation Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#java-class-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Java Class Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#factory-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Factory Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-vs-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration vs Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#24-complete-example-with-modern-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        24. Complete Example with Modern Features
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="24. Complete Example with Modern Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#compiler-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compiler Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#version-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version History
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bim-dsl-dictionary">BIM DSL DICTIONARY<a class="headerlink" href="#bim-dsl-dictionary" title="Permanent link">&para;</a></h1>
+<h2 id="purpose">Purpose<a class="headerlink" href="#purpose" title="Permanent link">&para;</a></h2>
+<p>This dictionary defines the complete vocabulary for the BIM Intent Compiler DSL. It serves as:</p>
+<ol>
+<li><strong>Reference</strong> for DSL authors writing building definitions</li>
+<li><strong>Specification</strong> for parser implementation</li>
+<li><strong>Configuration</strong> for the factory pattern (extensible without code changes)</li>
+<li><strong>Validation rules</strong> for the compiler</li>
+</ol>
+<p>The dictionary follows the iDempiere pattern: vocabulary as data, behavior derived from type.</p>
+<hr />
+<h2 id="document-structure">Document Structure<a class="headerlink" href="#document-structure" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>DICTIONARY
+├── BUILDING (root container)
+│   ├── GRID (structural/spatial grid)
+│   ├── ENVELOPE (building shell)
+│   │   ├── FOUNDATION
+│   │   ├── ROOF
+│   │   └── DRAINAGE
+│   ├── SCHEDULE (door/window/material types)
+│   └── STOREY (floor levels)
+│       └── SPACE (universal container - the &quot;Document&quot;)
+│           ├── SpaceType (determines behavior)
+│           ├── Constraints (relationships)
+│           ├── Openings (doors, windows)
+│           ├── Fixtures (equipment, furniture)
+│           └── Zones (sub-areas without walls)
+</code></pre></div>
+<hr />
+<h2 id="1-building">1. BUILDING<a class="headerlink" href="#1-building" title="Permanent link">&para;</a></h2>
+<p>Root container for all building elements.</p>
+<h3 id="syntax">Syntax<a class="headerlink" href="#syntax" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;&lt;name&gt;&quot; {
+    GRID { ... }
+    ENVELOPE { ... }
+    SCHEDULE { ... }
+    STOREY &quot;&lt;name&gt;&quot; level:&lt;n&gt; height:&lt;m&gt;m { ... }
+}
+</code></pre></div>
+<h3 id="attributes">Attributes<a class="headerlink" href="#attributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>string</td>
+<td>Yes</td>
+<td>Building identifier</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;TB-LKTN&quot; {
+    ...
+}
+</code></pre></div>
+<hr />
+<h2 id="2-grid">2. GRID<a class="headerlink" href="#2-grid" title="Permanent link">&para;</a></h2>
+<p>Defines structural/spatial grid for positioning.</p>
+<h3 id="syntax_1">Syntax<a class="headerlink" href="#syntax_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>GRID {
+    axes: &lt;X-labels&gt; / &lt;Y-labels&gt;
+    spacing: &lt;X-spacing&gt; / &lt;Y-spacing&gt;
+}
+</code></pre></div>
+<h3 id="attributes_1">Attributes<a class="headerlink" href="#attributes_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>axes</td>
+<td>labels / labels</td>
+<td>Yes</td>
+<td>Grid line names (e.g., A,B,C,D,E / 1,2,3,4,5)</td>
+</tr>
+<tr>
+<td>spacing</td>
+<td>meters / meters</td>
+<td>Yes</td>
+<td>Distance between grid lines</td>
+</tr>
+</tbody>
+</table>
+<h3 id="computation">Computation<a class="headerlink" href="#computation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Position[axis[0]] = 0
+Position[axis[n]] = Position[axis[n-1]] + spacing[n-1]
+</code></pre></div>
+<h3 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>GRID {
+    axes: A, B, C, D, E / 1, 2, 3, 4, 5
+    spacing: 1.3, 1.8, 3.7, 3.1 / 2.3, 3.1, 1.5, 1.6
+}
+
+// Computed positions:
+// X: A=0, B=1.3, C=3.1, D=6.8, E=9.9
+// Y: 1=0, 2=2.3, 3=5.4, 4=6.9, 5=8.5
+</code></pre></div>
+<hr />
+<h2 id="3-envelope">3. ENVELOPE<a class="headerlink" href="#3-envelope" title="Permanent link">&para;</a></h2>
+<p>Building shell elements (foundation, roof, drainage).</p>
+<h3 id="syntax_2">Syntax<a class="headerlink" href="#syntax_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>ENVELOPE {
+    FOUNDATION type:&lt;type&gt; depth:&lt;m&gt;m
+    ROOF pitch:&lt;deg&gt;deg overhang:&lt;mm&gt;mm
+    PERIMETER_DRAIN offset:&lt;mm&gt;mm
+    GUTTER along:&lt;edge&gt;
+    DOWNPIPE at:&lt;grid-points&gt;
+}
+</code></pre></div>
+<h3 id="foundation-types">FOUNDATION Types<a class="headerlink" href="#foundation-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SLAB_ON_GRADE</td>
+<td>Concrete slab on ground</td>
+<td>Most residential</td>
+</tr>
+<tr>
+<td>STRIP</td>
+<td>Strip footings under walls</td>
+<td>Load-bearing walls</td>
+</tr>
+<tr>
+<td>PAD</td>
+<td>Isolated pad footings</td>
+<td>Column support</td>
+</tr>
+<tr>
+<td>PILE</td>
+<td>Deep pile foundation</td>
+<td>Poor soil conditions</td>
+</tr>
+</tbody>
+</table>
+<h3 id="roof-attributes">ROOF Attributes<a class="headerlink" href="#roof-attributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pitch</td>
+<td>degrees</td>
+<td>Yes</td>
+<td>Roof slope angle</td>
+</tr>
+<tr>
+<td>overhang</td>
+<td>mm</td>
+<td>No</td>
+<td>Eave projection beyond wall</td>
+</tr>
+<tr>
+<td>type</td>
+<td>enum</td>
+<td>No</td>
+<td>GABLE, HIP, FLAT, MONO (default: GABLE)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="drainage-attributes">DRAINAGE Attributes<a class="headerlink" href="#drainage-attributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PERIMETER_DRAIN offset</td>
+<td>mm</td>
+<td>Distance from building edge (typically = overhang)</td>
+</tr>
+<tr>
+<td>GUTTER along</td>
+<td>edge</td>
+<td>EAVE, VALLEY, HIP</td>
+</tr>
+<tr>
+<td>DOWNPIPE at</td>
+<td>grid refs</td>
+<td>Locations (e.g., A1, E1, A5, E5)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example_2">Example<a class="headerlink" href="#example_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>ENVELOPE {
+    FOUNDATION type:SLAB_ON_GRADE depth:150mm
+    ROOF pitch:25deg overhang:600mm type:GABLE
+    PERIMETER_DRAIN offset:600mm
+    GUTTER along:EAVE
+    DOWNPIPE at:A1, E1, A5, E5
+}
+</code></pre></div>
+<hr />
+<h2 id="4-schedule">4. SCHEDULE<a class="headerlink" href="#4-schedule" title="Permanent link">&para;</a></h2>
+<p>Defines reusable types for doors, windows, materials.</p>
+<h3 id="syntax_3">Syntax<a class="headerlink" href="#syntax_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SCHEDULE doors {
+    &lt;code&gt;: &lt;width&gt;x&lt;height&gt; &quot;&lt;description&gt;&quot;
+}
+
+SCHEDULE windows {
+    &lt;code&gt;: &lt;width&gt;x&lt;height&gt; &quot;&lt;description&gt;&quot;
+}
+
+SCHEDULE materials {
+    &lt;code&gt;: &quot;&lt;specification&gt;&quot;
+}
+</code></pre></div>
+<h3 id="example_3">Example<a class="headerlink" href="#example_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SCHEDULE doors {
+    D1: 900x2100 &quot;Metal frame, single leaf solid timber&quot;
+    D2: 750x2100 &quot;Flush door with gloss paint&quot;
+    D3: 900x2100 &quot;Flush door with gloss paint&quot;
+}
+
+SCHEDULE windows {
+    W1: 1800x1000 &quot;Aluminium 3 panel adjustable&quot;
+    W2: 1200x1000 &quot;Aluminium 2 panel adjustable&quot;
+    W3: 600x500 &quot;Aluminium top hung single panel&quot;
+}
+
+SCHEDULE materials {
+    WALL_EXT: &quot;150mm brick with plaster&quot;
+    WALL_INT: &quot;100mm brick with plaster&quot;
+    FLOOR: &quot;Cement render with tiles&quot;
+}
+</code></pre></div>
+<h3 id="usage-in-space">Usage in SPACE<a class="headerlink" href="#usage-in-space" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SPACE &quot;bedroom&quot; {
+    DOOR type:D2          // Looks up 750x2100 from schedule
+    WINDOW type:W1        // Looks up 1800x1000 from schedule
+}
+</code></pre></div>
+<hr />
+<h2 id="5-storey">5. STOREY<a class="headerlink" href="#5-storey" title="Permanent link">&para;</a></h2>
+<p>Horizontal division of building (floor level).</p>
+<h3 id="syntax_4">Syntax<a class="headerlink" href="#syntax_4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>STOREY &quot;&lt;name&gt;&quot; level:&lt;n&gt; height:&lt;m&gt;m {
+    SPACE definitions...
+}
+</code></pre></div>
+<h3 id="attributes_2">Attributes<a class="headerlink" href="#attributes_2" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name</td>
+<td>string</td>
+<td>Yes</td>
+<td>Storey identifier</td>
+</tr>
+<tr>
+<td>level</td>
+<td>integer</td>
+<td>Yes</td>
+<td>Floor number (0 = ground)</td>
+</tr>
+<tr>
+<td>height</td>
+<td>meters</td>
+<td>Yes</td>
+<td>Floor-to-floor height</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example_4">Example<a class="headerlink" href="#example_4" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>STOREY &quot;Ground&quot; level:0 height:2.8m {
+    ...
+}
+
+STOREY &quot;Upper&quot; level:1 height:2.8m {
+    ...
+}
+</code></pre></div>
+<hr />
+<h2 id="6-space-universal-container">6. SPACE (Universal Container)<a class="headerlink" href="#6-space-universal-container" title="Permanent link">&para;</a></h2>
+<p>The fundamental building block. All occupiable areas are SPACEs with a SpaceType that determines behavior.</p>
+<h3 id="syntax_5">Syntax<a class="headerlink" href="#syntax_5" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SPACE &quot;&lt;name&gt;&quot; type:&lt;SpaceType&gt; bounds:&lt;grid-bounds&gt; {
+    // Constraints
+    exterior: &lt;direction&gt;
+    opens_to: &lt;space-name&gt;
+    adjacent: &lt;space-name&gt;
+    not_adjacent: &lt;space-name&gt;
+    stack: &lt;stack-name&gt;
+    above: &lt;space-name&gt;
+    below: &lt;space-name&gt;
+
+    // Openings
+    DOOR type:&lt;code&gt; size:&lt;w&gt;x&lt;h&gt; wall:&lt;direction&gt;
+    WINDOW type:&lt;code&gt; size:&lt;w&gt;x&lt;h&gt; wall:&lt;direction&gt;
+
+    // Fixtures
+    FIXTURE &lt;type&gt; wall:&lt;direction&gt;
+
+    // Zones (for OPEN_PLAN only)
+    ZONE &quot;&lt;name&gt;&quot; position:&lt;position&gt;
+}
+</code></pre></div>
+<h3 id="alternative-syntax-type-as-keyword">Alternative Syntax (type as keyword)<a class="headerlink" href="#alternative-syntax-type-as-keyword" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BEDROOM &quot;&lt;name&gt;&quot; bounds:&lt;grid-bounds&gt; { ... }
+BATHROOM &quot;&lt;name&gt;&quot; bounds:&lt;grid-bounds&gt; { ... }
+OPEN_PLAN &quot;&lt;name&gt;&quot; bounds:&lt;grid-bounds&gt; { ... }
+</code></pre></div>
+<p>This is syntactic sugar for <code>SPACE "&lt;name&gt;" type:BEDROOM ...</code></p>
+<hr />
+<h2 id="7-spacetype-dictionary">7. SpaceType Dictionary<a class="headerlink" href="#7-spacetype-dictionary" title="Permanent link">&para;</a></h2>
+<p>SpaceType determines:
+- Wall generation rules
+- Required/optional fixtures
+- Validation rules
+- MEP requirements</p>
+<h3 id="spacetype-definitions">SpaceType Definitions<a class="headerlink" href="#spacetype-definitions" title="Permanent link">&para;</a></h3>
+<h4 id="bedroom">BEDROOM<a class="headerlink" href="#bedroom" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>BEDROOM {
+    category: HABITABLE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: [WARDROBE, CEILING_FAN]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET]
+        optional: [CEILING_FAN, AIR_CONDITIONING]
+    }
+
+    validation: {
+        min_area: 6.5 m²          // IRC R304.1
+        min_dimension: 2.134 m     // IRC R304.2
+        requires_window: true      // IRC R303.1
+        requires_egress: true      // IRC R310
+    }
+
+    openings: {
+        door: { min_width: 750, min_height: 2000 }
+        window: { min_area: 0.48 m² }  // 8% of floor area
+    }
+}
+</code></pre></div>
+<h4 id="bathroom">BATHROOM<a class="headerlink" href="#bathroom" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>BATHROOM {
+    category: SERVICE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        required: [TOILET, SINK]
+        optional: [SHOWER, BATHTUB, EXHAUST_FAN]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET, PLUMBING_STACK, EXHAUST]
+        optional: [WATER_HEATER]
+    }
+
+    validation: {
+        min_area: 2.5 m²
+        min_dimension: 1.2 m
+        requires_window: false     // Can be interior
+        requires_egress: true
+        requires_ventilation: true // Window OR exhaust fan
+    }
+
+    openings: {
+        door: { min_width: 600, min_height: 2000 }
+        window: { optional: true, type: W3 }
+    }
+
+    constraints: {
+        stack: plumbing           // Vertical alignment for drainage
+    }
+}
+</code></pre></div>
+<h4 id="toilet-wc-only">TOILET (WC Only)<a class="headerlink" href="#toilet-wc-only" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>TOILET {
+    category: SERVICE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        required: [TOILET, SINK]
+    }
+
+    mep: {
+        required: [LIGHT, PLUMBING_STACK, EXHAUST]
+    }
+
+    validation: {
+        min_area: 1.5 m²
+        min_dimension: 0.9 m
+        requires_window: false
+        requires_ventilation: true
+    }
+
+    constraints: {
+        stack: plumbing
+    }
+}
+</code></pre></div>
+<h4 id="kitchen">KITCHEN<a class="headerlink" href="#kitchen" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>KITCHEN {
+    category: HABITABLE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        required: [SINK, STOVE_POINT]
+        optional: [REFRIGERATOR_POINT, DISHWASHER_POINT, EXHAUST_HOOD]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET, PLUMBING_STACK]
+        optional: [GAS_POINT, EXHAUST_HOOD]
+    }
+
+    validation: {
+        min_area: 4.0 m²
+        requires_window: true      // Or exterior door
+        requires_egress: true
+    }
+
+    openings: {
+        door: { min_width: 750 }
+        window: { required: true }
+    }
+}
+</code></pre></div>
+<h4 id="living">LIVING<a class="headerlink" href="#living" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>LIVING {
+    category: HABITABLE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: [CEILING_FAN, AIR_CONDITIONING]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET]
+        optional: [CEILING_FAN, AIR_CONDITIONING, TV_POINT]
+    }
+
+    validation: {
+        min_area: 6.5 m²           // IRC R304.1
+        min_dimension: 2.134 m
+        requires_window: true
+    }
+
+    openings: {
+        door: { min_width: 900 }   // Main entry typically larger
+        window: { min_area: 0.48 m² }
+    }
+}
+</code></pre></div>
+<h4 id="dining">DINING<a class="headerlink" href="#dining" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>DINING {
+    category: HABITABLE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: [CEILING_FAN]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET]
+    }
+
+    validation: {
+        min_area: 6.0 m²
+        requires_window: false     // Can be interior if open to living
+    }
+}
+</code></pre></div>
+<h4 id="open_plan">OPEN_PLAN<a class="headerlink" href="#open_plan" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>OPEN_PLAN {
+    category: HABITABLE
+    wall_rule: PERIMETER_ONLY      // KEY: No internal walls
+
+    zones: {
+        allowed: [LIVING, DINING, KITCHEN]
+        // Zones are logical divisions, not physical walls
+    }
+
+    fixtures: {
+        // Inherited from contained zones
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET]
+        // Additional MEP from zones
+    }
+
+    validation: {
+        min_area: sum(zone.min_area)
+        requires_window: true
+        requires_egress: true
+    }
+
+    openings: {
+        door: { min_width: 900 }   // Main entry
+        // Rooms with opens_to get doors to this space
+    }
+}
+</code></pre></div>
+<h4 id="corridor">CORRIDOR<a class="headerlink" href="#corridor" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>CORRIDOR {
+    category: CIRCULATION
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: []
+    }
+
+    mep: {
+        required: [LIGHT]
+        optional: [SMOKE_DETECTOR]
+    }
+
+    validation: {
+        min_width: 0.914 m         // IRC R311.6 (36 inches)
+        requires_window: false
+    }
+}
+</code></pre></div>
+<h4 id="porch">PORCH<a class="headerlink" href="#porch" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PORCH {
+    category: EXTERIOR
+    wall_rule: NONE                // Open or partial walls
+
+    fixtures: {
+        optional: [CEILING_FAN, LIGHT]
+    }
+
+    mep: {
+        optional: [LIGHT, POWER_OUTLET]
+    }
+
+    validation: {
+        requires_window: false
+        requires_egress: false     // Exterior space
+    }
+
+    roof: {
+        options: [ATTACHED, SEPARATE, NONE]
+        default: ATTACHED
+    }
+}
+</code></pre></div>
+<h4 id="garage">GARAGE<a class="headerlink" href="#garage" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>GARAGE {
+    category: VEHICLE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: [WORKBENCH]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET]
+        optional: [EV_CHARGER]
+    }
+
+    validation: {
+        min_width: 3.0 m           // Single car
+        min_depth: 6.0 m
+        requires_window: false
+    }
+
+    openings: {
+        vehicle_door: { min_width: 2400, min_height: 2100 }
+        personnel_door: { optional: true }
+    }
+
+    constraints: {
+        fire_separation: true      // IRC R302.6 - separation from habitable
+    }
+}
+</code></pre></div>
+<h4 id="utility-laundry">UTILITY / LAUNDRY<a class="headerlink" href="#utility-laundry" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>UTILITY {
+    category: SERVICE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: [WASHING_MACHINE_POINT, DRYER_POINT, SINK]
+    }
+
+    mep: {
+        required: [LIGHT, POWER_OUTLET, PLUMBING_STACK]
+    }
+
+    validation: {
+        min_area: 2.0 m²
+        requires_window: false
+    }
+
+    constraints: {
+        stack: plumbing            // Near wet areas
+    }
+}
+</code></pre></div>
+<h4 id="storage">STORAGE<a class="headerlink" href="#storage" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>STORAGE {
+    category: SERVICE
+    wall_rule: ENCLOSED
+
+    fixtures: {
+        optional: []
+    }
+
+    mep: {
+        optional: [LIGHT]
+    }
+
+    validation: {
+        min_area: none
+        requires_window: false
+        requires_egress: false
+    }
+}
+</code></pre></div>
+<h4 id="stair">STAIR<a class="headerlink" href="#stair" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>STAIR {
+    category: CIRCULATION
+    wall_rule: AS_REQUIRED         // May be open or enclosed
+
+    fixtures: {
+        required: [STAIR_FLIGHT, LANDING]
+        optional: [RAILING]
+    }
+
+    validation: {
+        min_width: 0.914 m         // IRC R311.7
+        max_riser: 196 mm          // IRC R311.7.5.1
+        min_tread: 254 mm          // IRC R311.7.5.2
+        headroom: 2.032 m          // IRC R311.7.2
+    }
+
+    constraints: {
+        spans_storeys: true        // Vertical connection
+    }
+}
+</code></pre></div>
+<hr />
+<h2 id="8-constraints-dictionary">8. Constraints Dictionary<a class="headerlink" href="#8-constraints-dictionary" title="Permanent link">&para;</a></h2>
+<p>Constraints express SPACE-to-SPACE relationships.</p>
+<h3 id="constraint-types">Constraint Types<a class="headerlink" href="#constraint-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Constraint</th>
+<th>Syntax</th>
+<th>Meaning</th>
+<th>Compiler Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>exterior</td>
+<td><code>exterior: &lt;direction&gt;</code></td>
+<td>Space has exterior wall on this side</td>
+<td>Place windows, use exterior wall type</td>
+</tr>
+<tr>
+<td>opens_to</td>
+<td><code>opens_to: &lt;space&gt;</code></td>
+<td>Space has door connection to named space</td>
+<td>Generate door at shared edge</td>
+</tr>
+<tr>
+<td>adjacent</td>
+<td><code>adjacent: &lt;space&gt;</code></td>
+<td>Space must share wall with named space</td>
+<td>Solver constraint + auto-door</td>
+</tr>
+<tr>
+<td>not_adjacent</td>
+<td><code>not_adjacent: &lt;space&gt;</code></td>
+<td>Space must NOT share wall</td>
+<td>Solver constraint</td>
+</tr>
+<tr>
+<td>stack</td>
+<td><code>stack: &lt;name&gt;</code></td>
+<td>Vertical alignment group</td>
+<td>Same X,Y across storeys</td>
+</tr>
+<tr>
+<td>above</td>
+<td><code>above: &lt;space&gt;</code></td>
+<td>Directly above named space</td>
+<td>Implies stack alignment</td>
+</tr>
+<tr>
+<td>below</td>
+<td><code>below: &lt;space&gt;</code></td>
+<td>Directly below named space</td>
+<td>Implies stack alignment</td>
+</tr>
+<tr>
+<td>aligns</td>
+<td><code>aligns: &lt;space&gt;</code></td>
+<td>Same X,Y position (cross-storey)</td>
+<td>Solver constraint</td>
+</tr>
+</tbody>
+</table>
+<h3 id="direction-values">Direction Values<a class="headerlink" href="#direction-values" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>NORTH, SOUTH, EAST, WEST
+FRONT, BACK, LEFT, RIGHT  // Aliases based on building orientation
+</code></pre></div>
+<h3 id="stack-names-predefined">Stack Names (Predefined)<a class="headerlink" href="#stack-names-predefined" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>plumbing    // Wet areas - drainage alignment
+structure   // Columns, load-bearing walls
+mep         // Mechanical shafts
+</code></pre></div>
+<hr />
+<h2 id="9-openings-dictionary">9. Openings Dictionary<a class="headerlink" href="#9-openings-dictionary" title="Permanent link">&para;</a></h2>
+<h3 id="door">DOOR<a class="headerlink" href="#door" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>DOOR {
+    attributes: {
+        type: &lt;schedule-code&gt;      // References SCHEDULE doors
+        size: &lt;width&gt;x&lt;height&gt;     // Override schedule size
+        wall: &lt;direction&gt;          // Which wall to place on
+        offset: &lt;meters&gt;           // Distance from wall start
+    }
+
+    defaults: {
+        height: 2100               // Standard door height
+        width: by_spacetype        // From SpaceType.openings.door
+    }
+
+    auto_placement: {
+        trigger: opens_to          // Auto-generate for opens_to constraint
+        position: center           // Center on shared edge
+    }
+}
+</code></pre></div>
+<h3 id="window">WINDOW<a class="headerlink" href="#window" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>WINDOW {
+    attributes: {
+        type: &lt;schedule-code&gt;      // References SCHEDULE windows
+        size: &lt;width&gt;x&lt;height&gt;     // Override schedule size
+        wall: &lt;direction&gt;          // Must match exterior direction
+        offset: &lt;meters&gt;           // Distance from wall start
+        sill_height: &lt;meters&gt;      // Height from floor (default 0.9m)
+    }
+
+    defaults: {
+        sill_height: 900           // Standard sill height
+        size: by_spacetype         // From SpaceType.openings.window
+    }
+
+    auto_placement: {
+        trigger: exterior          // Auto-generate for exterior walls
+        condition: spacetype.requires_window
+    }
+}
+</code></pre></div>
+<hr />
+<h2 id="10-fixtures-dictionary">10. Fixtures Dictionary<a class="headerlink" href="#10-fixtures-dictionary" title="Permanent link">&para;</a></h2>
+<p>Fixtures are elements that occupy spaces, placed per SpaceType rules.</p>
+<h3 id="fixture-types">Fixture Types<a class="headerlink" href="#fixture-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Fixture</th>
+<th>Dimensions (mm)</th>
+<th>Placement</th>
+<th>Clearance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TOILET</td>
+<td>510 × 800</td>
+<td>Against wall</td>
+<td>450mm front, 380mm sides</td>
+</tr>
+<tr>
+<td>SINK_BATHROOM</td>
+<td>610 × 510</td>
+<td>Against wall</td>
+<td>530mm front</td>
+</tr>
+<tr>
+<td>SINK_KITCHEN</td>
+<td>530 × 850</td>
+<td>Against wall, under window</td>
+<td>900mm front</td>
+</tr>
+<tr>
+<td>SHOWER</td>
+<td>900 × 900</td>
+<td>Corner</td>
+<td>Door swing clearance</td>
+</tr>
+<tr>
+<td>BATHTUB</td>
+<td>1700 × 750</td>
+<td>Against wall</td>
+<td>600mm access side</td>
+</tr>
+<tr>
+<td>STOVE</td>
+<td>600 × 600</td>
+<td>Against wall</td>
+<td>400mm sides</td>
+</tr>
+<tr>
+<td>REFRIGERATOR_POINT</td>
+<td>900 × 700</td>
+<td>Corner/wall</td>
+<td>Door swing clearance</td>
+</tr>
+<tr>
+<td>CEILING_FAN</td>
+<td>1200 diameter</td>
+<td>Center of room</td>
+<td>2400mm floor clearance</td>
+</tr>
+<tr>
+<td>EXHAUST_FAN</td>
+<td>290 × 290</td>
+<td>Ceiling, wet area</td>
+<td>Duct to exterior</td>
+</tr>
+<tr>
+<td>WARDROBE</td>
+<td>600 × variable</td>
+<td>Against wall</td>
+<td>600mm front</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fixture-placement-rules">Fixture Placement Rules<a class="headerlink" href="#fixture-placement-rules" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>FIXTURE {
+    placement_priority: [
+        wall_mounted: [BACK, SIDE, FRONT]
+        corner: [BACK_LEFT, BACK_RIGHT]
+        center: [CEILING_CENTER]
+    ]
+
+    clash_detection: {
+        min_separation: 50mm
+        skip_if_clash: true        // Log as GEOMETRY_IMPOSSIBLE
+    }
+
+    auto_placement: {
+        by_spacetype: true         // Place fixtures per SpaceType.fixtures
+    }
+}
+</code></pre></div>
+<hr />
+<h2 id="11-zone-sub-area-within-open_plan">11. ZONE (Sub-area within OPEN_PLAN)<a class="headerlink" href="#11-zone-sub-area-within-open_plan" title="Permanent link">&para;</a></h2>
+<p>Zones are logical divisions without physical walls.</p>
+<h3 id="syntax_6">Syntax<a class="headerlink" href="#syntax_6" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>ZONE &quot;&lt;name&gt;&quot; position:&lt;position&gt; {
+    FIXTURE &lt;type&gt; wall:&lt;direction&gt;
+}
+</code></pre></div>
+<h3 id="position-values">Position Values<a class="headerlink" href="#position-values" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>NORTH, SOUTH, EAST, WEST, CENTER
+FRONT, BACK, LEFT, RIGHT
+</code></pre></div>
+<h3 id="example_5">Example<a class="headerlink" href="#example_5" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>OPEN_PLAN &quot;common&quot; bounds:B2-D5 {
+    ZONE &quot;living&quot; position:SOUTH {
+        FIXTURE ceiling_fan
+    }
+    ZONE &quot;dining&quot; position:CENTER
+    ZONE &quot;kitchen&quot; position:NORTH {
+        FIXTURE sink wall:NORTH
+        FIXTURE stove wall:NORTH
+    }
+}
+</code></pre></div>
+<h3 id="compiler-behavior">Compiler Behavior<a class="headerlink" href="#compiler-behavior" title="Permanent link">&para;</a></h3>
+<ul>
+<li>No walls generated between zones</li>
+<li>Fixtures placed per zone position</li>
+<li>MEP aggregated from all zones</li>
+</ul>
+<hr />
+<h2 id="12-wall-rules">12. Wall Rules<a class="headerlink" href="#12-wall-rules" title="Permanent link">&para;</a></h2>
+<p>How walls are generated based on SpaceType.</p>
+<table>
+<thead>
+<tr>
+<th>wall_rule</th>
+<th>Meaning</th>
+<th>Generated Walls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ENCLOSED</td>
+<td>Fully walled room</td>
+<td>All 4 sides</td>
+</tr>
+<tr>
+<td>PERIMETER_ONLY</td>
+<td>Walls at building edge only</td>
+<td>Exterior sides only</td>
+</tr>
+<tr>
+<td>NONE</td>
+<td>No walls</td>
+<td>Columns/posts only (if structural)</td>
+</tr>
+<tr>
+<td>AS_REQUIRED</td>
+<td>Context-dependent</td>
+<td>Per constraint resolution</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wall-types">Wall Types<a class="headerlink" href="#wall-types" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Context</th>
+<th>Wall Type</th>
+<th>Thickness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exterior</td>
+<td>EXTERIOR</td>
+<td>150mm (from Terminal)</td>
+</tr>
+<tr>
+<td>Interior partition</td>
+<td>INTERIOR</td>
+<td>100mm</td>
+</tr>
+<tr>
+<td>Wet area</td>
+<td>WET_AREA</td>
+<td>100mm with waterproofing</td>
+</tr>
+<tr>
+<td>Fire separation</td>
+<td>FIRE_RATED</td>
+<td>150mm with rating</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13-mep-dictionary">13. MEP Dictionary<a class="headerlink" href="#13-mep-dictionary" title="Permanent link">&para;</a></h2>
+<h3 id="mep-elements">MEP Elements<a class="headerlink" href="#mep-elements" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>SpaceTypes</th>
+<th>Placement</th>
+<th>Grid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LIGHT</td>
+<td>All</td>
+<td>Ceiling center or grid</td>
+<td>3.0m</td>
+</tr>
+<tr>
+<td>POWER_OUTLET</td>
+<td>All</td>
+<td>Wall, 300mm AFF</td>
+<td>Per code</td>
+</tr>
+<tr>
+<td>CEILING_FAN</td>
+<td>BEDROOM, LIVING</td>
+<td>Ceiling center</td>
+<td>-</td>
+</tr>
+<tr>
+<td>EXHAUST_FAN</td>
+<td>BATHROOM, TOILET, KITCHEN</td>
+<td>Ceiling</td>
+<td>-</td>
+</tr>
+<tr>
+<td>SMOKE_DETECTOR</td>
+<td>CORRIDOR, BEDROOM</td>
+<td>Ceiling</td>
+<td>Per code</td>
+</tr>
+<tr>
+<td>SPRINKLER</td>
+<td>All (if required)</td>
+<td>Ceiling grid</td>
+<td>4.6m max</td>
+</tr>
+<tr>
+<td>PLUMBING_STACK</td>
+<td>SERVICE spaces</td>
+<td>Vertical alignment</td>
+<td>-</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mep-routing">MEP Routing<a class="headerlink" href="#mep-routing" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>MEP {
+    ceiling_zone: 440-727mm below structure    // From Terminal G3
+    wall_zone: 87-229mm inside face            // From Terminal G3
+
+    plumbing_stack: {
+        alignment: stack constraint
+        max_offset: 500mm from stack center
+    }
+}
+</code></pre></div>
+<hr />
+<h2 id="14-validation-rules">14. Validation Rules<a class="headerlink" href="#14-validation-rules" title="Permanent link">&para;</a></h2>
+<h3 id="building-level">Building-Level<a class="headerlink" href="#building-level" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>VALIDATION building {
+    min_rooms: 1
+    max_storeys: 10
+    requires_egress: true
+    requires_entry: true
+}
+</code></pre></div>
+<h3 id="storey-level">Storey-Level<a class="headerlink" href="#storey-level" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>VALIDATION storey {
+    min_height: 2.4m
+    max_height: 6.0m
+    floor_coverage: 100%           // No gaps
+}
+</code></pre></div>
+<h3 id="space-level">Space-Level<a class="headerlink" href="#space-level" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>VALIDATION space {
+    // From SpaceType definitions
+    check: min_area
+    check: min_dimension
+    check: requires_window
+    check: requires_egress
+    check: requires_ventilation
+}
+</code></pre></div>
+<h3 id="geometry-level">Geometry-Level<a class="headerlink" href="#geometry-level" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>VALIDATION geometry {
+    max_gap: 5mm                   // TOLERANCE from Terminal
+    wall_connectivity: required
+    room_enclosure: required       // For ENCLOSED wall_rule
+    manifold: required             // Watertight solids
+}
+</code></pre></div>
+<hr />
+<h2 id="15-localization">15. Localization<a class="headerlink" href="#15-localization" title="Permanent link">&para;</a></h2>
+<h3 id="malaysian-terms-auto-mapped">Malaysian Terms (Auto-mapped)<a class="headerlink" href="#malaysian-terms-auto-mapped" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Malaysian</th>
+<th>English SpaceType</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RUANG_TAMU</td>
+<td>LIVING</td>
+</tr>
+<tr>
+<td>BILIK_UTAMA</td>
+<td>BEDROOM (primary)</td>
+</tr>
+<tr>
+<td>BILIK</td>
+<td>BEDROOM</td>
+</tr>
+<tr>
+<td>BILIK_MANDI</td>
+<td>BATHROOM</td>
+</tr>
+<tr>
+<td>TANDAS</td>
+<td>TOILET</td>
+</tr>
+<tr>
+<td>DAPUR</td>
+<td>KITCHEN</td>
+</tr>
+<tr>
+<td>RUANG_MAKAN</td>
+<td>DINING</td>
+</tr>
+<tr>
+<td>ANJUNG</td>
+<td>PORCH</td>
+</tr>
+<tr>
+<td>RUANG_BASUH</td>
+<td>UTILITY</td>
+</tr>
+<tr>
+<td>KORIDOR</td>
+<td>CORRIDOR</td>
+</tr>
+<tr>
+<td>GARAJ</td>
+<td>GARAGE</td>
+</tr>
+<tr>
+<td>STOR</td>
+<td>STORAGE</td>
+</tr>
+</tbody>
+</table>
+<h3 id="code-standards">Code Standards<a class="headerlink" href="#code-standards" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Region</th>
+<th>Code</th>
+<th>Validation Set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>US</td>
+<td>IRC 2021</td>
+<td>Default</td>
+</tr>
+<tr>
+<td>Malaysia</td>
+<td>UBBL</td>
+<td>Localized minimums</td>
+</tr>
+<tr>
+<td>UK</td>
+<td>Building Regs</td>
+<td>Localized minimums</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="16-complete-example">16. Complete Example<a class="headerlink" href="#16-complete-example" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;TB-LKTN&quot; {
+
+    GRID {
+        axes: A, B, C, D, E / 1, 2, 3, 4, 5
+        spacing: 1.3, 1.8, 3.7, 3.1 / 2.3, 3.1, 1.5, 1.6
+    }
+
+    SCHEDULE doors {
+        D1: 900x2100 &quot;Metal frame solid timber&quot;
+        D2: 750x2100 &quot;Flush door gloss paint&quot;
+        D3: 900x2100 &quot;Flush door gloss paint&quot;
+    }
+
+    SCHEDULE windows {
+        W1: 1800x1000 &quot;Aluminium 3 panel&quot;
+        W2: 1200x1000 &quot;Aluminium 2 panel&quot;
+        W3: 600x500 &quot;Aluminium top hung&quot;
+    }
+
+    ENVELOPE {
+        FOUNDATION type:SLAB_ON_GRADE depth:150mm
+        ROOF pitch:25deg overhang:600mm
+        PERIMETER_DRAIN offset:600mm
+    }
+
+    STOREY &quot;Ground&quot; level:0 height:2.8m {
+
+        PORCH &quot;anjung&quot; bounds:A1-E2 {
+            roof: ATTACHED
+        }
+
+        OPEN_PLAN &quot;common&quot; bounds:B2-D5 {
+            exterior: south
+            DOOR type:D1 wall:south
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+
+            ZONE &quot;living&quot; position:south
+            ZONE &quot;dining&quot; position:center
+            ZONE &quot;kitchen&quot; position:north {
+                FIXTURE sink wall:north
+            }
+        }
+
+        BEDROOM &quot;bilik_utama&quot; bounds:A2-C3 {
+            exterior: west
+            opens_to: common
+            DOOR type:D2
+            WINDOW type:W1 wall:west
+        }
+
+        BATHROOM &quot;bilik_mandi&quot; bounds:A3-B4 {
+            exterior: west
+            opens_to: common
+            stack: plumbing
+            DOOR type:D3
+            WINDOW type:W3 wall:west
+        }
+
+        TOILET &quot;tandas&quot; bounds:A4-B5 {
+            exterior: west
+            opens_to: common
+            stack: plumbing
+            DOOR type:D3
+            WINDOW type:W3 wall:west
+        }
+
+        BEDROOM &quot;bilik_2&quot; bounds:D2-E3 {
+            exterior: east
+            opens_to: common
+            DOOR type:D2
+            WINDOW type:W1 wall:east
+        }
+
+        BEDROOM &quot;bilik_3&quot; bounds:D3-E5 {
+            exterior: east
+            opens_to: common
+            DOOR type:D2
+            WINDOW type:W1 wall:east
+        }
+    }
+}
+</code></pre></div>
+<hr />
+<h2 id="17-profile-regionaldomain-variants">17. PROFILE (Regional/Domain Variants)<a class="headerlink" href="#17-profile-regionaldomain-variants" title="Permanent link">&para;</a></h2>
+<p>Profiles adapt the base dictionary for regional codes, building types, or project requirements. Inspired by <strong>HL7 FHIR Profiles</strong> and <strong>STEP Application Protocols</strong>.</p>
+<h3 id="syntax_7">Syntax<a class="headerlink" href="#syntax_7" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>PROFILE &quot;&lt;name&gt;&quot; extends &lt;base&gt; {
+    validation: &lt;code_standard&gt;
+    localization: &lt;language&gt;
+    spacetypes: include [...] | exclude [...]
+    defaults: { ... }
+    constraints: { ... }
+}
+</code></pre></div>
+<h3 id="predefined-profiles">Predefined Profiles<a class="headerlink" href="#predefined-profiles" title="Permanent link">&para;</a></h3>
+<h4 id="malaysian-residential">Malaysian Residential<a class="headerlink" href="#malaysian-residential" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROFILE &quot;Malaysian_Residential&quot; extends BASE {
+    validation: UBBL_1984
+    localization: MS_MY
+
+    spacetypes: include [
+        ANJUNG, RUANG_TAMU, BILIK, BILIK_UTAMA,
+        BILIK_MANDI, TANDAS, DAPUR, RUANG_BASUH
+    ]
+
+    defaults: {
+        storey_height: 2.8m
+        roof_pitch: 25deg
+        roof_overhang: 600mm
+        wall_exterior: 150mm_brick
+        wall_interior: 100mm_brick
+        door_main: 900x2100
+        door_room: 750x2100
+        door_wet: 900x2100
+        window_habitable: 1800x1000
+        window_wet: 600x500
+    }
+
+    constraints: {
+        wet_areas_clustered: true
+        plumbing_stack_required: true
+        cross_ventilation: recommended
+    }
+
+    climate: TROPICAL_HUMID
+}
+</code></pre></div>
+<h4 id="us-residential-irc">US Residential (IRC)<a class="headerlink" href="#us-residential-irc" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROFILE &quot;US_Residential_IRC&quot; extends BASE {
+    validation: IRC_2021
+    localization: EN_US
+
+    defaults: {
+        storey_height: 2.74m          // 9 ft
+        wall_exterior: 2x6_frame
+        wall_interior: 2x4_frame
+        door_main: 914x2032           // 36&quot; x 80&quot;
+        door_room: 762x2032           // 30&quot; x 80&quot;
+        window_egress: 0.44_sqm       // 5.7 sq ft
+    }
+
+    validation_rules: {
+        bedroom_min_area: 6.5_sqm     // 70 sq ft
+        bedroom_min_dimension: 2.134m  // 7 ft
+        ceiling_min_height: 2.286m    // 7.5 ft
+        corridor_min_width: 0.914m    // 36&quot;
+        stair_min_width: 0.914m       // 36&quot;
+        stair_max_riser: 0.196m       // 7.75&quot;
+        stair_min_tread: 0.254m       // 10&quot;
+    }
+
+    climate: VARIES_BY_ZONE
+}
+</code></pre></div>
+<h4 id="uk-residential">UK Residential<a class="headerlink" href="#uk-residential" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROFILE &quot;UK_Residential&quot; extends BASE {
+    validation: BUILDING_REGS_2010
+    localization: EN_GB
+
+    defaults: {
+        storey_height: 2.4m
+        wall_exterior: cavity_wall
+        wall_interior: 100mm_block
+    }
+
+    validation_rules: {
+        bedroom_min_area: 6.5_sqm     // Single
+        bedroom_double_min: 11.0_sqm  // Double
+        ceiling_min_height: 2.3m
+    }
+
+    climate: TEMPERATE_MARITIME
+}
+</code></pre></div>
+<h4 id="commercial-ibc">Commercial (IBC)<a class="headerlink" href="#commercial-ibc" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROFILE &quot;Commercial_IBC&quot; extends BASE {
+    validation: IBC_2021
+    localization: EN_US
+
+    spacetypes: include [
+        OFFICE, CONFERENCE, LOBBY, CORRIDOR,
+        RESTROOM, BREAK_ROOM, STORAGE, MECHANICAL,
+        DEPARTURE_LOUNGE, GATE, CONCOURSE  // Terminal types
+    ]
+
+    defaults: {
+        storey_height: 4.0m
+        sprinkler_grid: 4.6m          // NFPA 13
+        light_grid: 3.0m
+    }
+
+    validation_rules: {
+        occupancy_load: by_use_group
+        egress_width: by_occupancy
+        accessibility: ADA_required
+    }
+}
+</code></pre></div>
+<h3 id="profile-inheritance">Profile Inheritance<a class="headerlink" href="#profile-inheritance" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>PROFILE &quot;Malaysian_Low_Cost&quot; extends &quot;Malaysian_Residential&quot; {
+    // Inherits all Malaysian defaults, adds constraints
+
+    constraints: {
+        max_built_up: 93_sqm          // 1000 sq ft limit
+        min_bedrooms: 3
+        open_plan_encouraged: true    // Cost efficiency
+    }
+
+    defaults: {
+        wall_interior: 100mm_brick    // Simplified
+        finishes: basic               // Cost control
+    }
+}
+</code></pre></div>
+<h3 id="using-profiles">Using Profiles<a class="headerlink" href="#using-profiles" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;TB-LKTN&quot; profile:&quot;Malaysian_Residential&quot; {
+    // All Malaysian defaults apply automatically
+    // Validation uses UBBL
+    // Malaysian terms auto-recognized
+}
+</code></pre></div>
+<hr />
+<h2 id="18-specialization-type-hierarchy">18. SPECIALIZATION (Type Hierarchy)<a class="headerlink" href="#18-specialization-type-hierarchy" title="Permanent link">&para;</a></h2>
+<p>SpaceTypes can specialize base types, inheriting and extending behavior. Inspired by <strong>DITA specialization</strong>.</p>
+<h3 id="syntax_8">Syntax<a class="headerlink" href="#syntax_8" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SPACETYPE &quot;&lt;name&gt;&quot; specializes &lt;base_type&gt; {
+    // Override or extend base attributes
+}
+</code></pre></div>
+<h3 id="specialization-examples">Specialization Examples<a class="headerlink" href="#specialization-examples" title="Permanent link">&para;</a></h3>
+<h4 id="bedroom-variants">Bedroom Variants<a class="headerlink" href="#bedroom-variants" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACETYPE &quot;MASTER_BEDROOM&quot; specializes BEDROOM {
+    validation: {
+        min_area: 12.0_sqm           // Larger than base 6.5
+        min_dimension: 3.0m
+    }
+
+    fixtures: {
+        required: [WARDROBE]         // Added requirement
+        optional: [CEILING_FAN, AIR_CONDITIONING, TV_POINT]
+    }
+
+    constraints: {
+        allows_ensuite: true         // Can have adjacent bathroom
+        preferred_position: corner   // Privacy
+    }
+
+    openings: {
+        window: { min_count: 2 }     // Cross ventilation
+    }
+}
+
+SPACETYPE &quot;CHILD_BEDROOM&quot; specializes BEDROOM {
+    validation: {
+        min_area: 9.0_sqm
+    }
+
+    fixtures: {
+        optional: [STUDY_DESK, WARDROBE]
+    }
+
+    safety: {
+        window_restrictor: required
+    }
+}
+
+SPACETYPE &quot;GUEST_BEDROOM&quot; specializes BEDROOM {
+    validation: {
+        min_area: 9.0_sqm
+    }
+
+    constraints: {
+        near_bathroom: preferred
+    }
+}
+</code></pre></div>
+<h4 id="bathroom-variants">Bathroom Variants<a class="headerlink" href="#bathroom-variants" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACETYPE &quot;ENSUITE&quot; specializes BATHROOM {
+    constraints: {
+        adjacent: MASTER_BEDROOM     // Required adjacency
+        access: private              // Only from bedroom
+    }
+
+    validation: {
+        min_area: 3.5_sqm
+    }
+
+    fixtures: {
+        required: [TOILET, SINK, SHOWER]
+    }
+}
+
+SPACETYPE &quot;POWDER_ROOM&quot; specializes TOILET {
+    // Half-bath for guests
+    constraints: {
+        near: [LIVING, DINING, ENTRY]
+        access: public
+    }
+
+    validation: {
+        min_area: 1.5_sqm
+    }
+
+    fixtures: {
+        required: [TOILET, SINK]
+        excluded: [SHOWER, BATHTUB]
+    }
+}
+
+SPACETYPE &quot;JACK_AND_JILL&quot; specializes BATHROOM {
+    // Shared between two bedrooms
+    constraints: {
+        adjacent: [BEDROOM, BEDROOM]  // Two connections
+        doors: 2
+    }
+
+    fixtures: {
+        required: [TOILET, SINK, SHOWER]
+        optional: [DOUBLE_SINK]
+    }
+}
+</code></pre></div>
+<h4 id="kitchen-variants">Kitchen Variants<a class="headerlink" href="#kitchen-variants" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACETYPE &quot;GALLEY_KITCHEN&quot; specializes KITCHEN {
+    validation: {
+        min_width: 1.8m              // Narrow
+        max_width: 3.0m
+    }
+
+    layout: linear_parallel
+}
+
+SPACETYPE &quot;ISLAND_KITCHEN&quot; specializes KITCHEN {
+    validation: {
+        min_area: 12.0_sqm           // Needs space for island
+    }
+
+    fixtures: {
+        required: [SINK, STOVE_POINT, ISLAND]
+    }
+
+    layout: with_island
+}
+
+SPACETYPE &quot;WET_KITCHEN&quot; specializes KITCHEN {
+    // Malaysian - separate for heavy cooking
+    constraints: {
+        ventilation: enhanced
+        separate_from: DRY_KITCHEN
+    }
+
+    fixtures: {
+        required: [SINK, STOVE_POINT, EXHAUST_HOOD]
+    }
+
+    finishes: {
+        floor: non_slip_tile
+        wall: washable_tile
+    }
+}
+
+SPACETYPE &quot;DRY_KITCHEN&quot; specializes KITCHEN {
+    // Malaysian - prep and light cooking
+    constraints: {
+        can_be_open_plan: true
+    }
+
+    fixtures: {
+        required: [SINK, COUNTER]
+        optional: [MICROWAVE_POINT, COFFEE_POINT]
+    }
+}
+</code></pre></div>
+<h4 id="living-area-variants">Living Area Variants<a class="headerlink" href="#living-area-variants" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACETYPE &quot;FAMILY_ROOM&quot; specializes LIVING {
+    constraints: {
+        adjacent: KITCHEN            // Informal connection
+        can_be_open_plan: true
+    }
+}
+
+SPACETYPE &quot;FORMAL_LIVING&quot; specializes LIVING {
+    constraints: {
+        near: ENTRY                  // For guests
+        separate_from: FAMILY_ROOM
+    }
+
+    validation: {
+        min_area: 15.0_sqm
+    }
+}
+
+SPACETYPE &quot;SUNROOM&quot; specializes LIVING {
+    constraints: {
+        exterior: minimum_3_sides
+        glazing: enhanced
+    }
+
+    openings: {
+        window: { coverage: 60_percent }
+    }
+}
+</code></pre></div>
+<h3 id="specialization-rules">Specialization Rules<a class="headerlink" href="#specialization-rules" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Inheritance</strong>: Child inherits all parent attributes</li>
+<li><strong>Override</strong>: Child can make requirements stricter, not looser</li>
+<li><strong>Extension</strong>: Child can add new attributes</li>
+<li><strong>Validation</strong>: Child must satisfy parent validation + own</li>
+</ol>
+<div class="highlight"><pre><span></span><code>// Compiler resolves:
+MASTER_BEDROOM
+    ├── inherits: BEDROOM.category (HABITABLE)
+    ├── inherits: BEDROOM.wall_rule (ENCLOSED)
+    ├── inherits: BEDROOM.requires_window (true)
+    ├── overrides: BEDROOM.min_area (6.5 → 12.0)
+    ├── extends: allows_ensuite (new attribute)
+    └── validates: both BEDROOM rules AND MASTER_BEDROOM rules
+</code></pre></div>
+<hr />
+<h2 id="19-lod-levels-level-of-detaildevelopment">19. LOD Levels (Level of Detail/Development)<a class="headerlink" href="#19-lod-levels-level-of-detaildevelopment" title="Permanent link">&para;</a></h2>
+<p>Same space can be defined at different detail levels. Inspired by <strong>CityGML LOD</strong> and <strong>BIM LOD specifications</strong>.</p>
+<h3 id="lod-definitions">LOD Definitions<a class="headerlink" href="#lod-definitions" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>LOD</th>
+<th>Name</th>
+<th>Content</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LOD 100</td>
+<td>Conceptual</td>
+<td>Area, type only</td>
+<td>Early design</td>
+</tr>
+<tr>
+<td>LOD 200</td>
+<td>Approximate</td>
+<td>Dimensions, positions</td>
+<td>Schematic design</td>
+</tr>
+<tr>
+<td>LOD 300</td>
+<td>Precise</td>
+<td>Exact geometry, openings</td>
+<td>Design development</td>
+</tr>
+<tr>
+<td>LOD 350</td>
+<td>Coordination</td>
+<td>MEP, structure coordination</td>
+<td>Construction docs</td>
+</tr>
+<tr>
+<td>LOD 400</td>
+<td>Fabrication</td>
+<td>Shop drawings, products</td>
+<td>Fabrication</td>
+</tr>
+<tr>
+<td>LOD 500</td>
+<td>As-Built</td>
+<td>Verified field conditions</td>
+<td>Facilities mgmt</td>
+</tr>
+</tbody>
+</table>
+<h3 id="syntax_9">Syntax<a class="headerlink" href="#syntax_9" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SPACE &quot;&lt;name&gt;&quot; type:&lt;type&gt; lod:&lt;level&gt; {
+    // Content varies by LOD
+}
+</code></pre></div>
+<h3 id="lod-examples">LOD Examples<a class="headerlink" href="#lod-examples" title="Permanent link">&para;</a></h3>
+<h4 id="lod-100-conceptual">LOD 100 - Conceptual<a class="headerlink" href="#lod-100-conceptual" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACE &quot;master&quot; type:BEDROOM lod:100 {
+    area: 12_sqm
+    // That&#39;s it - just type and area
+}
+</code></pre></div>
+<h4 id="lod-200-approximate">LOD 200 - Approximate<a class="headerlink" href="#lod-200-approximate" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACE &quot;master&quot; type:BEDROOM lod:200 bounds:A2-C3 {
+    exterior: west
+    opens_to: common
+    // Dimensions from grid, relationships defined
+}
+</code></pre></div>
+<h4 id="lod-300-precise">LOD 300 - Precise<a class="headerlink" href="#lod-300-precise" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACE &quot;master&quot; type:BEDROOM lod:300 bounds:A2-C3 {
+    exterior: west
+    opens_to: common
+    DOOR type:D2 wall:east offset:0.5m
+    WINDOW type:W1 wall:west offset:1.2m sill:0.9m
+    // Exact opening positions
+}
+</code></pre></div>
+<h4 id="lod-350-coordination">LOD 350 - Coordination<a class="headerlink" href="#lod-350-coordination" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACE &quot;master&quot; type:BEDROOM lod:350 bounds:A2-C3 {
+    exterior: west
+    opens_to: common
+    DOOR type:D2 wall:east offset:0.5m
+    WINDOW type:W1 wall:west offset:1.2m sill:0.9m
+
+    MEP {
+        LIGHT position:center type:LED_PANEL
+        POWER_OUTLET wall:east count:2 height:0.3m
+        POWER_OUTLET wall:west count:1 height:0.3m
+        CEILING_FAN position:center
+        AIR_CONDITIONING wall:north height:2.1m
+    }
+
+    STRUCTURE {
+        lintel: above_openings
+    }
+}
+</code></pre></div>
+<h4 id="lod-400-fabrication">LOD 400 - Fabrication<a class="headerlink" href="#lod-400-fabrication" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACE &quot;master&quot; type:BEDROOM lod:400 bounds:A2-C3 {
+    exterior: west
+    opens_to: common
+
+    DOOR type:D2 wall:east offset:0.5m {
+        product: &quot;Acme Flush Door 750x2100&quot;
+        hardware: &quot;SS Lever Handle Set&quot;
+        finish: &quot;Gloss White Paint&quot;
+    }
+
+    WINDOW type:W1 wall:west offset:1.2m sill:0.9m {
+        product: &quot;YKK AP 3-Panel Sliding&quot;
+        glass: &quot;6mm Clear Float&quot;
+        frame: &quot;Powder Coated Aluminium - White&quot;
+    }
+
+    FINISHES {
+        floor: &quot;Timber Laminate 8mm - Oak&quot;
+        wall: &quot;Plastered Brick - Emulsion Paint White&quot;
+        ceiling: &quot;Plasterboard 9mm - Emulsion Paint White&quot;
+        skirting: &quot;Timber 75mm - Gloss White&quot;
+    }
+
+    MEP {
+        LIGHT position:center {
+            product: &quot;Philips LED Panel 600x600&quot;
+            circuit: &quot;DB1-C3&quot;
+        }
+        // ... full MEP with products and circuits
+    }
+}
+</code></pre></div>
+<h4 id="lod-500-as-built">LOD 500 - As-Built<a class="headerlink" href="#lod-500-as-built" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>SPACE &quot;master&quot; type:BEDROOM lod:500 bounds:A2-C3 {
+    // LOD 400 content plus:
+
+    AS_BUILT {
+        survey_date: &quot;2025-01-15&quot;
+        surveyor: &quot;ABC Surveyors&quot;
+
+        deviations: {
+            actual_area: 11.8_sqm    // vs designed 12.0
+            wall_north: +15mm        // As-built deviation
+        }
+
+        installations: {
+            door: { serial: &quot;ACM-2025-0042&quot;, installed: &quot;2025-01-10&quot; }
+            window: { serial: &quot;YKK-2025-1234&quot;, installed: &quot;2025-01-08&quot; }
+        }
+    }
+}
+</code></pre></div>
+<h3 id="lod-progression">LOD Progression<a class="headerlink" href="#lod-progression" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Design workflow:
+LOD 100 (concept) → LOD 200 (schematic) → LOD 300 (DD) → LOD 350 (CD) → LOD 400 (fab)
+                                                                              ↓
+                                                                         Construction
+                                                                              ↓
+                                                                    LOD 500 (as-built)
+</code></pre></div>
+<h3 id="lod-and-bom">LOD and BOM<a class="headerlink" href="#lod-and-bom" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>LOD</th>
+<th>BOM Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>100</td>
+<td>Not applicable</td>
+</tr>
+<tr>
+<td>200</td>
+<td>Room types only</td>
+</tr>
+<tr>
+<td>300</td>
+<td>Generic quantities (walls, openings)</td>
+</tr>
+<tr>
+<td>350</td>
+<td>Coordinated quantities</td>
+</tr>
+<tr>
+<td>400</td>
+<td><strong>Product-specific BOM</strong> (procurement-ready)</td>
+</tr>
+<tr>
+<td>500</td>
+<td>Verified quantities</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="20-application-protocol-building-type-templates">20. APPLICATION PROTOCOL (Building Type Templates)<a class="headerlink" href="#20-application-protocol-building-type-templates" title="Permanent link">&para;</a></h2>
+<p>Protocols define complete building type requirements. Inspired by <strong>STEP Application Protocols</strong> (AP214, AP242).</p>
+<h3 id="syntax_10">Syntax<a class="headerlink" href="#syntax_10" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>PROTOCOL &quot;&lt;name&gt;&quot; {
+    description: &quot;&lt;text&gt;&quot;
+    applicable_profiles: [...]
+
+    required_spaces: [...]
+    optional_spaces: [...]
+    excluded_spaces: [...]
+
+    required_relationships: [...]
+    validation_rules: [...]
+}
+</code></pre></div>
+<h3 id="protocol-examples">Protocol Examples<a class="headerlink" href="#protocol-examples" title="Permanent link">&para;</a></h3>
+<h4 id="single-storey-residential">Single-Storey Residential<a class="headerlink" href="#single-storey-residential" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROTOCOL &quot;Residential_Single_Storey&quot; {
+    description: &quot;Single-storey detached house&quot;
+    applicable_profiles: [Malaysian_Residential, US_Residential_IRC, UK_Residential]
+
+    required_spaces: {
+        BEDROOM: { min: 1, max: 6 }
+        BATHROOM: { min: 1 }
+        KITCHEN: { min: 1 } OR OPEN_PLAN: { with_zone: KITCHEN }
+        LIVING: { min: 1 } OR OPEN_PLAN: { with_zone: LIVING }
+    }
+
+    optional_spaces: [
+        DINING, STUDY, GARAGE, PORCH,
+        UTILITY, STORAGE, TOILET
+    ]
+
+    excluded_spaces: [
+        STAIR,                        // Single storey
+        ELEVATOR,
+        DEPARTURE_LOUNGE, GATE        // Commercial only
+    ]
+
+    required_relationships: {
+        all_bedrooms: { requires_window: true }
+        wet_areas: { stack: plumbing }
+        kitchen: { requires: [ventilation, water_supply] }
+    }
+
+    validation_rules: {
+        min_habitable_area: by_profile
+        max_storeys: 1
+        requires_entry: true
+        requires_egress: per_bedroom
+    }
+
+    envelope: {
+        foundation: required
+        roof: required
+        external_walls: required
+    }
+}
+</code></pre></div>
+<h4 id="multi-storey-residential">Multi-Storey Residential<a class="headerlink" href="#multi-storey-residential" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROTOCOL &quot;Residential_Multi_Storey&quot; extends &quot;Residential_Single_Storey&quot; {
+    description: &quot;Multi-storey detached house&quot;
+
+    required_spaces: {
+        // Inherited from single-storey plus:
+        STAIR: { min: 1 }
+    }
+
+    optional_spaces: [
+        // Inherited plus:
+        ELEVATOR
+    ]
+
+    excluded_spaces: [
+        // Remove STAIR from exclusion
+    ]
+
+    required_relationships: {
+        stair: { connects_all_storeys: true }
+        bedrooms_upper: { requires_egress: enhanced }  // Fire safety
+        wet_areas: { stack: plumbing, vertical_aligned: preferred }
+    }
+
+    validation_rules: {
+        max_storeys: 4               // Beyond = high-rise regulations
+        stair_width: by_profile
+        fire_separation: per_storey
+    }
+}
+</code></pre></div>
+<h4 id="apartment-unit">Apartment Unit<a class="headerlink" href="#apartment-unit" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROTOCOL &quot;Apartment_Unit&quot; {
+    description: &quot;Individual apartment unit within building&quot;
+
+    required_spaces: {
+        BEDROOM: { min: 0 }          // Studio allowed
+        BATHROOM: { min: 1 }
+        KITCHEN: { min: 1 } OR KITCHENETTE: { min: 1 }
+        LIVING: { min: 1 }
+    }
+
+    optional_spaces: [
+        DINING, STUDY, UTILITY, STORAGE, BALCONY
+    ]
+
+    excluded_spaces: [
+        STAIR,                        // Building common area
+        ELEVATOR,
+        GARAGE
+    ]
+
+    constraints: {
+        single_storey: true          // No internal stairs
+        entry: { type: APARTMENT_DOOR, count: 1 }
+        party_walls: { fire_rated: true, sound_rated: true }
+    }
+
+    validation_rules: {
+        min_area: by_profile         // Varies by bedroom count
+        natural_light: required
+        ventilation: required
+    }
+}
+</code></pre></div>
+<h4 id="commercial-office">Commercial Office<a class="headerlink" href="#commercial-office" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROTOCOL &quot;Commercial_Office&quot; {
+    description: &quot;Commercial office building&quot;
+    applicable_profiles: [Commercial_IBC]
+
+    required_spaces: {
+        LOBBY: { min: 1, at: GROUND }
+        ELEVATOR: { min: 1, if: storeys &gt; 3 }
+        STAIR: { min: 2, type: FIRE_STAIR }
+        RESTROOM: { min: 2, type: [MALE, FEMALE] }  // Per floor
+    }
+
+    optional_spaces: [
+        OFFICE, OPEN_OFFICE, CONFERENCE, BREAK_ROOM,
+        RECEPTION, MAILROOM, SERVER_ROOM, MECHANICAL
+    ]
+
+    required_relationships: {
+        stairs: { distributed: true, max_travel_distance: 60m }
+        restrooms: { accessible: min_1_per_type }
+        mechanical: { access: maintenance }
+    }
+
+    validation_rules: {
+        occupancy_load: calculate_by_area
+        egress_width: calculate_by_occupancy
+        accessibility: ADA_required
+        fire_protection: NFPA_required
+        sprinklers: if_area_exceeds_threshold
+    }
+}
+</code></pre></div>
+<h4 id="airport-terminal">Airport Terminal<a class="headerlink" href="#airport-terminal" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>PROTOCOL &quot;Airport_Terminal&quot; {
+    description: &quot;Passenger terminal building&quot;
+    applicable_profiles: [Commercial_IBC]
+
+    required_spaces: {
+        CHECK_IN_HALL: { min: 1 }
+        SECURITY_SCREENING: { min: 1 }
+        DEPARTURE_LOUNGE: { min: 1 }
+        GATE: { min: 1 }
+        ARRIVAL_HALL: { min: 1 }
+        BAGGAGE_CLAIM: { min: 1 }
+    }
+
+    optional_spaces: [
+        CONCOURSE, RETAIL, F_AND_B, LOUNGE_PREMIUM,
+        IMMIGRATION, CUSTOMS, AIRLINE_OFFICE
+    ]
+
+    required_relationships: {
+        passenger_flow: CHECK_IN → SECURITY → DEPARTURE_LOUNGE → GATE
+        separation: { sterile: [DEPARTURE_LOUNGE, GATE], non_sterile: [CHECK_IN] }
+        baggage: { separate_from: passenger_flow }
+    }
+
+    validation_rules: {
+        // Terminal-specific from extracted patterns
+        gate_spacing: by_aircraft_type
+        lounge_area: by_gate_capacity
+        ceiling_height: min_4.5m
+        sprinkler_spacing: 4.6m      // NFPA 13
+    }
+}
+</code></pre></div>
+<h3 id="using-protocols">Using Protocols<a class="headerlink" href="#using-protocols" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;TB-LKTN&quot; 
+    profile: &quot;Malaysian_Residential&quot;
+    protocol: &quot;Residential_Single_Storey&quot; 
+{
+    // Compiler validates against protocol requirements
+    // Missing required spaces → ERROR
+    // Excluded spaces present → ERROR
+    // Relationship violations → ERROR
+}
+</code></pre></div>
+<h3 id="protocol-validation">Protocol Validation<a class="headerlink" href="#protocol-validation" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Compiler checks:
+1. All required_spaces present
+2. No excluded_spaces present
+3. All required_relationships satisfied
+4. All validation_rules pass
+5. Envelope requirements met
+
+Output:
+[PASS] Protocol &quot;Residential_Single_Storey&quot; satisfied
+  ✓ BEDROOM count: 3 (required: 1-6)
+  ✓ BATHROOM count: 2 (required: min 1)
+  ✓ KITCHEN: via OPEN_PLAN zone
+  ✓ LIVING: via OPEN_PLAN zone
+  ✓ All bedrooms have windows
+  ✓ Wet areas on plumbing stack
+  ✓ Entry door present
+</code></pre></div>
+<hr />
+<h2 id="21-extension-protocol">21. Extension Protocol<a class="headerlink" href="#21-extension-protocol" title="Permanent link">&para;</a></h2>
+<p>To add new vocabulary:</p>
+<h3 id="adding-a-spacetype">Adding a SpaceType<a class="headerlink" href="#adding-a-spacetype" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define in SpaceType dictionary section</li>
+<li>Specify: category, wall_rule, fixtures, mep, validation, openings</li>
+<li>Add localization mappings if needed</li>
+<li>Register in SpaceTypeResolver.java</li>
+</ol>
+<h3 id="adding-a-fixture">Adding a Fixture<a class="headerlink" href="#adding-a-fixture" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add to Fixtures Dictionary with dimensions and placement rules</li>
+<li>Assign to SpaceTypes that receive it</li>
+<li>Add to component_library.db (or document parametric fallback)</li>
+<li>Implement placer in FixturePlacer.java</li>
+</ol>
+<h3 id="adding-a-constraint">Adding a Constraint<a class="headerlink" href="#adding-a-constraint" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add to Constraints Dictionary</li>
+<li>Implement in SpaceSolver.java</li>
+<li>Implement geometry realization in BuildingCompiler.java</li>
+<li>Add validation if needed</li>
+</ol>
+<h3 id="adding-localization">Adding Localization<a class="headerlink" href="#adding-localization" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add term mapping to Localization section</li>
+<li>Register in SpaceTypeResolver for auto-mapping</li>
+</ol>
+<h3 id="adding-a-profile">Adding a Profile<a class="headerlink" href="#adding-a-profile" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define in Profiles section with validation rules and defaults</li>
+<li>Can extend existing profile</li>
+<li>Register in ProfileResolver.java</li>
+</ol>
+<h3 id="adding-a-specialization">Adding a Specialization<a class="headerlink" href="#adding-a-specialization" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define with <code>specializes</code> parent type</li>
+<li>Override/extend attributes (can only make stricter, not looser)</li>
+<li>Register in SpaceTypeResolver.java</li>
+</ol>
+<h3 id="adding-a-protocol">Adding a Protocol<a class="headerlink" href="#adding-a-protocol" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Define required/optional/excluded spaces</li>
+<li>Define required relationships</li>
+<li>Define validation rules</li>
+<li>Register in ProtocolValidator.java</li>
+</ol>
+<hr />
+<h2 id="22-standards-alignment">22. Standards Alignment<a class="headerlink" href="#22-standards-alignment" title="Permanent link">&para;</a></h2>
+<p>This dictionary aligns with industry standards:</p>
+<h3 id="ifc-iso-16739">IFC (ISO 16739)<a class="headerlink" href="#ifc-iso-16739" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>BIM DSL Concept</th>
+<th>IFC Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BUILDING</td>
+<td>IfcBuilding</td>
+</tr>
+<tr>
+<td>STOREY</td>
+<td>IfcBuildingStorey</td>
+</tr>
+<tr>
+<td>SPACE</td>
+<td>IfcSpace</td>
+</tr>
+<tr>
+<td>SpaceType</td>
+<td>IfcSpaceType + PredefinedType</td>
+</tr>
+<tr>
+<td>OPEN_PLAN zones</td>
+<td>IfcZone</td>
+</tr>
+<tr>
+<td>Wall</td>
+<td>IfcWall / IfcWallStandardCase</td>
+</tr>
+<tr>
+<td>DOOR</td>
+<td>IfcDoor</td>
+</tr>
+<tr>
+<td>WINDOW</td>
+<td>IfcWindow</td>
+</tr>
+<tr>
+<td>opens_to</td>
+<td>IfcRelSpaceBoundary</td>
+</tr>
+<tr>
+<td>adjacent</td>
+<td>IfcRelSpaceBoundary</td>
+</tr>
+<tr>
+<td>Assembly</td>
+<td>IfcElementAssembly</td>
+</tr>
+</tbody>
+</table>
+<h3 id="lod-bim-forum">LOD (BIM Forum)<a class="headerlink" href="#lod-bim-forum" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>BIM DSL LOD</th>
+<th>BIM Forum LOD</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LOD 100</td>
+<td>LOD 100</td>
+<td>Conceptual</td>
+</tr>
+<tr>
+<td>LOD 200</td>
+<td>LOD 200</td>
+<td>Approximate geometry</td>
+</tr>
+<tr>
+<td>LOD 300</td>
+<td>LOD 300</td>
+<td>Precise geometry</td>
+</tr>
+<tr>
+<td>LOD 350</td>
+<td>LOD 350</td>
+<td>Coordination</td>
+</tr>
+<tr>
+<td>LOD 400</td>
+<td>LOD 400</td>
+<td>Fabrication</td>
+</tr>
+<tr>
+<td>LOD 500</td>
+<td>LOD 500</td>
+<td>As-built</td>
+</tr>
+</tbody>
+</table>
+<h3 id="classification-systems">Classification Systems<a class="headerlink" href="#classification-systems" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Use in DSL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OmniClass (Table 13)</td>
+<td>SpaceType classification</td>
+</tr>
+<tr>
+<td>UniFormat</td>
+<td>Assembly classification</td>
+</tr>
+<tr>
+<td>MasterFormat</td>
+<td>Material classification</td>
+</tr>
+<tr>
+<td>Uniclass (UK)</td>
+<td>Profile: UK_Residential</td>
+</tr>
+</tbody>
+</table>
+<h3 id="code-standards-supported">Code Standards Supported<a class="headerlink" href="#code-standards-supported" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Profile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IRC 2021 (US Residential)</td>
+<td>US_Residential_IRC</td>
+</tr>
+<tr>
+<td>IBC 2021 (US Commercial)</td>
+<td>Commercial_IBC</td>
+</tr>
+<tr>
+<td>UBBL 1984 (Malaysia)</td>
+<td>Malaysian_Residential</td>
+</tr>
+<tr>
+<td>Building Regs 2010 (UK)</td>
+<td>UK_Residential</td>
+</tr>
+<tr>
+<td>NFPA 13 (Sprinklers)</td>
+<td>All commercial profiles</td>
+</tr>
+<tr>
+<td>ADA (Accessibility)</td>
+<td>All US profiles</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="23-implementation-architecture">23. Implementation Architecture<a class="headerlink" href="#23-implementation-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="java-class-mapping">Java Class Mapping<a class="headerlink" href="#java-class-mapping" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Dictionary Section          Java Implementation
+─────────────────────────────────────────────────
+BUILDING                 → BuildingDefinition.java
+GRID                     → GridDefinition.java
+ENVELOPE                 → EnvelopeDefinition.java
+SCHEDULE                 → ScheduleRegistry.java
+STOREY                   → StoreyDefinition.java
+SPACE                    → SpaceDefinition.java
+SpaceType                → SpaceType.java (enum + rules)
+Constraints              → ConstraintType.java
+Openings                 → OpeningSpec.java
+Fixtures                 → FixtureSpec.java
+ZONE                     → ZoneDefinition.java
+PROFILE                  → ProfileDefinition.java
+Specialization           → SpaceTypeHierarchy.java
+LOD                      → LODLevel.java
+PROTOCOL                 → ProtocolDefinition.java
+</code></pre></div>
+<h3 id="factory-pattern">Factory Pattern<a class="headerlink" href="#factory-pattern" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>DictionaryReader
+    ↓ loads
+ProfileResolver ←── selects profile
+    ↓
+SpaceTypeResolver ←── resolves types (with specialization)
+    ↓
+ScheduleRegistry ←── looks up door/window types
+    ↓
+HybridFactory
+    ├── LibraryFactory (LOD 400 components)
+    └── ParametricFactory (generated geometry)
+    ↓
+BuildingCompiler
+    ↓
+ValidatorChain ←── validates against Profile + Protocol
+    ↓
+IFCExporter
+</code></pre></div>
+<h3 id="configuration-vs-code">Configuration vs Code<a class="headerlink" href="#configuration-vs-code" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Configuration (Dictionary)</th>
+<th>Code (Java)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SpaceType definitions</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td>Validation rules</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td>Fixture dimensions</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td>Profile defaults</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td>Protocol requirements</td>
+<td>✓</td>
+<td></td>
+</tr>
+<tr>
+<td>Parsing logic</td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Geometry generation</td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td>Solver algorithms</td>
+<td></td>
+<td>✓</td>
+</tr>
+<tr>
+<td>IFC export</td>
+<td></td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Principle</strong>: Vocabulary as data, algorithms as code.</p>
+<hr />
+<h2 id="24-complete-example-with-modern-features">24. Complete Example with Modern Features<a class="headerlink" href="#24-complete-example-with-modern-features" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>// Full TB-LKTN with Profile, Specialization, LOD
+
+BUILDING &quot;TB-LKTN&quot; 
+    profile: &quot;Malaysian_Residential&quot;
+    protocol: &quot;Residential_Single_Storey&quot;
+    lod: 300
+{
+
+    GRID {
+        axes: A, B, C, D, E / 1, 2, 3, 4, 5
+        spacing: 1.3, 1.8, 3.7, 3.1 / 2.3, 3.1, 1.5, 1.6
+    }
+
+    SCHEDULE doors {
+        D1: 900x2100 &quot;Metal frame solid timber&quot;
+        D2: 750x2100 &quot;Flush door gloss paint&quot;
+        D3: 900x2100 &quot;Flush door gloss paint&quot;
+    }
+
+    SCHEDULE windows {
+        W1: 1800x1000 &quot;Aluminium 3 panel&quot;
+        W2: 1200x1000 &quot;Aluminium 2 panel&quot;
+        W3: 600x500 &quot;Aluminium top hung&quot;
+    }
+
+    ENVELOPE {
+        FOUNDATION type:SLAB_ON_GRADE depth:150mm
+        ROOF pitch:25deg overhang:600mm type:GABLE
+        PERIMETER_DRAIN offset:600mm
+    }
+
+    STOREY &quot;Ground&quot; level:0 height:2.8m {
+
+        // Using specialized type
+        PORCH &quot;anjung&quot; bounds:A1-E2 {
+            roof: ATTACHED
+        }
+
+        // Open plan with zones
+        OPEN_PLAN &quot;common&quot; bounds:B2-D5 {
+            exterior: south
+            DOOR type:D1 wall:south
+            DOOR type:D1 wall:north
+            WINDOW type:W1 wall:south
+
+            ZONE &quot;living&quot; position:south
+            ZONE &quot;dining&quot; position:center
+            ZONE &quot;kitchen&quot; position:north {
+                FIXTURE sink wall:north
+            }
+        }
+
+        // Master bedroom - specialized type
+        MASTER_BEDROOM &quot;bilik_utama&quot; bounds:A2-C3 {
+            exterior: west
+            opens_to: common
+            DOOR type:D2
+            WINDOW type:W1 wall:west
+            WINDOW type:W1 wall:south  // Cross ventilation
+        }
+
+        // Ensuite could be added with specialized type
+        BATHROOM &quot;bilik_mandi&quot; bounds:A3-B4 {
+            exterior: west
+            opens_to: common
+            stack: plumbing
+            DOOR type:D3
+            WINDOW type:W3 wall:west
+        }
+
+        TOILET &quot;tandas&quot; bounds:A4-B5 {
+            exterior: west
+            opens_to: common
+            stack: plumbing
+            adjacent: bilik_mandi
+            DOOR type:D3
+            WINDOW type:W3 wall:west
+        }
+
+        // Regular bedrooms
+        BEDROOM &quot;bilik_2&quot; bounds:D2-E3 {
+            exterior: east
+            opens_to: common
+            DOOR type:D2
+            WINDOW type:W1 wall:east
+        }
+
+        BEDROOM &quot;bilik_3&quot; bounds:D3-E5 {
+            exterior: east
+            opens_to: common
+            DOOR type:D2
+            WINDOW type:W1 wall:east
+        }
+    }
+}
+</code></pre></div>
+<h3 id="compiler-output">Compiler Output<a class="headerlink" href="#compiler-output" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>=== BUILD REPORT ===
+
+Profile: Malaysian_Residential
+  ✓ Validation: UBBL_1984
+  ✓ Localization: MS_MY
+  ✓ Defaults applied
+
+Protocol: Residential_Single_Storey
+  ✓ BEDROOM: 3 (required 1-6)
+  ✓ BATHROOM: 1 + TOILET: 1 (required min 1 wet area)
+  ✓ KITCHEN: via OPEN_PLAN zone
+  ✓ LIVING: via OPEN_PLAN zone
+  ✓ All bedrooms have windows
+  ✓ Wet areas on plumbing stack
+
+LOD: 300
+  ✓ Precise geometry
+  ✓ Exact opening positions
+  ✗ MEP details (LOD 350 required)
+  ✗ Product specifications (LOD 400 required)
+
+Geometry:
+  Spaces: 7
+  Walls: 18 (perimeter + partitions, none inside OPEN_PLAN)
+  Doors: 7
+  Windows: 8
+  Fixtures: 5
+
+Validation:
+  ✓ All rooms meet minimum area
+  ✓ All habitable rooms have windows
+  ✓ Entry door present
+  ✓ 0.0mm gaps (geometry verified)
+
+Output:
+  → tb_lktn.ifc (valid IFC4)
+  → tb_lktn.db (geometry database)
+  → tb_lktn_bom.csv (quantities)
+</code></pre></div>
+<hr />
+<h2 id="version-history">Version History<a class="headerlink" href="#version-history" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Date</th>
+<th>Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1.0</td>
+<td>January 2025</td>
+<td>Initial dictionary from TB-LKTN analysis</td>
+</tr>
+<tr>
+<td>2.0</td>
+<td>January 2025</td>
+<td>Added Profile, Specialization, LOD, Protocol (modern standards alignment)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>HL7 FHIR</strong>: https://hl7.org/fhir/ (Profiles, Resources)</li>
+<li><strong>DITA</strong>: https://www.oasis-open.org/committees/dita/ (Specialization)</li>
+<li><strong>CityGML</strong>: https://www.ogc.org/standards/citygml (LOD, ADE)</li>
+<li><strong>STEP/ISO 10303</strong>: https://www.iso.org/standard/72237.html (Application Protocols)</li>
+<li><strong>IFC/ISO 16739</strong>: https://www.buildingsmart.org/standards/bsi-standards/ifc/ (BIM Standard)</li>
+<li><strong>BIM Forum LOD</strong>: https://bimforum.org/lod/ (Level of Development)</li>
+<li><strong>OmniClass</strong>: https://www.csiresources.org/standards/omniclass (Classification)</li>
+</ul>
+<hr />
+<p><em>Dictionary follows the principle: SPACE is the universal container (like Document in ERP). SpaceType determines behavior. Extend vocabulary through dictionary entries, not code changes. Align with industry standards for interoperability.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

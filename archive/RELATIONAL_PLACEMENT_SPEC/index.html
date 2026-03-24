@@ -1,0 +1,3390 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Relational Placement Specification - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#relational-placement-specification" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Relational Placement Specification
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="relational-placement-specification">Relational Placement Specification<a class="headerlink" href="#relational-placement-specification" title="Permanent link">&para;</a></h1>
+<h1 id="from-hardcoded-coordinates-to-computed-metadata">From Hardcoded Coordinates to Computed Metadata<a class="headerlink" href="#from-hardcoded-coordinates-to-computed-metadata" title="Permanent link">&para;</a></h1>
+<p><strong>Version:</strong> 1.0
+<strong>Date:</strong> 2026-02-17
+<strong>Status:</strong> DESIGN — awaiting approval before implementation
+<strong>Validates against:</strong> Rosetta Stones (SampleHouse, Duplex, Terminal) at 100% x-ray
+<strong>Prime Rule:</strong> ALL DATA, NOTHING HARDCODED. Coordinates are computed from relationships, never stored as source of truth.</p>
+<hr />
+<h2 id="1-problem-statement">1. Problem Statement<a class="headerlink" href="#1-problem-statement" title="Permanent link">&para;</a></h2>
+<h3 id="11-the-violation">1.1 The Violation<a class="headerlink" href="#11-the-violation" title="Permanent link">&para;</a></h3>
+<p>The <code>ad_element_placement</code> table holds 68,472 rows of absolute coordinates:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Current: hardcoded position (WHERE but not WHY)</span>
+<span class="n">building_type</span><span class="o">=</span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">storey</span><span class="o">=</span><span class="s1">&#39;Ground Floor&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">ifc_class</span><span class="o">=</span><span class="s1">&#39;IfcDoor&#39;</span><span class="p">,</span>
+<span class="n">min_x</span><span class="o">=</span><span class="mi">1510</span><span class="p">,</span><span class="w"> </span><span class="n">max_x</span><span class="o">=</span><span class="mi">2410</span><span class="p">,</span><span class="w"> </span><span class="n">min_y</span><span class="o">=-</span><span class="mi">570</span><span class="p">,</span><span class="w"> </span><span class="n">max_y</span><span class="o">=</span><span class="mi">310</span><span class="p">,</span><span class="w"> </span><span class="n">min_z</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">max_z</span><span class="o">=</span><span class="mi">2150</span>
+</code></pre></div>
+<p>This is the prime rule violation: SQL hardcode instead of Java hardcode. The coordinates were extracted from reference IFC files and frozen. They are correct for reproduction but:</p>
+<ul>
+<li><strong>Not editable</strong> — move a wall and the door doesn't follow</li>
+<li><strong>Not general</strong> — cannot generate a new building (TB-LKTN) from intent</li>
+<li><strong>Not auditable</strong> — no trace of WHY the door is at that position</li>
+<li><strong>Not the source of truth</strong> — the relationship "door on south wall of bedroom" is the truth; the coordinates are a consequence</li>
+</ul>
+<h3 id="12-the-goal">1.2 The Goal<a class="headerlink" href="#12-the-goal" title="Permanent link">&para;</a></h3>
+<p>Replace stored coordinates with <strong>relational rules</strong> that compute the same coordinates. Verify against existing flat placement rows (68,472 oracle values). Maintain 100% x-ray scores on all 3 Rosetta Stones. Enable new buildings (TB-LKTN) by adding metadata rows only — zero code change.</p>
+<h3 id="13-the-contract">1.3 The Contract<a class="headerlink" href="#13-the-contract" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>CODE (invariant) + METADATA (per building) = EXACT output
+
+Stones: metadata extracted from reference → validates code is correct
+New buildings: metadata from intent → same code produces correct output
+X-ray tests: regression gate — every code change must pass all 3 Stones
+</code></pre></div>
+<hr />
+<h2 id="2-architecture-overview">2. Architecture Overview<a class="headerlink" href="#2-architecture-overview" title="Permanent link">&para;</a></h2>
+<h3 id="21-current-pipeline-flat">2.1 Current Pipeline (Flat)<a class="headerlink" href="#21-current-pipeline-flat" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>ad_element_placement (68,472 absolute coordinate rows)
+    → PlacementAD.java reads rows
+        → ElementPersistence writes to output DB
+            → X-ray scores: 100%
+</code></pre></div>
+<p>No relationships. No computation. Just copy.</p>
+<h3 id="22-target-pipeline-relational">2.2 Target Pipeline (Relational)<a class="headerlink" href="#22-target-pipeline-relational" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>ad_building_grid          (building → grid lines)
+ad_room_boundary          (room → grid cells → wall faces)
+c_orderline           (element type → host → position rule)
+    → RelationalResolver.java computes coordinates from rules
+        → ad_element_placement becomes COMPUTED CACHE
+            → PlacementAD.java reads cache (unchanged)
+                → ElementPersistence writes to output DB (unchanged)
+                    → X-ray scores: still 100%
+</code></pre></div>
+<p>Everything downstream of the cache is unchanged. The compiler doesn't know the coordinates were computed, not stored. The x-ray tests see identical output.</p>
+<h3 id="23-migration-safety">2.3 Migration Safety<a class="headerlink" href="#23-migration-safety" title="Permanent link">&para;</a></h3>
+<p>The 68,472 existing flat placement rows become the <strong>test oracle</strong>:</p>
+<div class="highlight"><pre><span></span><code>For each building:
+    computed_coords = RelationalResolver.compute(building_metadata)
+    stored_coords   = ad_element_placement.get(building)
+    ASSERT computed_coords == stored_coords within 0.01mm
+</code></pre></div>
+<p>If any coordinate differs, the relational rule is wrong, not the Stone. Fix the rule, not the test.</p>
+<hr />
+<h2 id="3-relational-schema">3. Relational Schema<a class="headerlink" href="#3-relational-schema" title="Permanent link">&para;</a></h2>
+<h3 id="31-building-grid-ad_building_grid">3.1 Building Grid — <code>ad_building_grid</code><a class="headerlink" href="#31-building-grid-ad_building_grid" title="Permanent link">&para;</a></h3>
+<p>Defines the structural grid for each building. Grid lines are the skeleton from which all room boundaries and wall positions derive.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_building_grid</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">            </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">building_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;Ifc4_SampleHouse&#39;, &#39;TB_LKTN&#39;</span>
+<span class="w">    </span><span class="n">axis</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;X&#39; or &#39;Y&#39;</span>
+<span class="w">    </span><span class="n">grid_label</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;A&#39;, &#39;B&#39;, &#39;1&#39;, &#39;2&#39; etc.</span>
+<span class="w">    </span><span class="n">position_mm</span><span class="w">   </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- absolute position in mm</span>
+<span class="w">    </span><span class="k">UNIQUE</span><span class="p">(</span><span class="n">building_type</span><span class="p">,</span><span class="w"> </span><span class="n">axis</span><span class="p">,</span><span class="w"> </span><span class="n">grid_label</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Example: TB-LKTN</span>
+<span class="c1">-- X-axis: A=0, B=3100, C=6800, E=9900</span>
+<span class="c1">-- Y-axis: 1=0, 2=2300, 3=5400, 4=7000, 5=8500</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_building_grid</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;A&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;B&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3100</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;C&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">6800</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;E&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">9900</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;1&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;2&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">2300</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;3&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">5400</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;4&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">7000</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;5&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">8500</span><span class="p">);</span>
+
+<span class="c1">-- Example: SampleHouse (extracted from Stone)</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_building_grid</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;1&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;2&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3000</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;3&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">6000</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;A&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;B&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">3100</span><span class="p">),</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;C&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">6100</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>Design note:</strong> Grid positions are absolute from building origin (0,0). Multi-unit buildings (Duplex) have per-unit offsets applied by the resolver. Grid labels match the drawing sheet convention.</p>
+<h3 id="32-room-boundary-ad_room_boundary">3.2 Room Boundary — <code>ad_room_boundary</code><a class="headerlink" href="#32-room-boundary-ad_room_boundary" title="Permanent link">&para;</a></h3>
+<p>Maps each room to its grid cell boundaries and identifies which faces are exterior.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">            </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">building_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">storey</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;Ground Floor&#39;</span>
+<span class="w">    </span><span class="n">room_name</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;BILIK_2&#39;, &#39;master_bedroom&#39;</span>
+<span class="w">    </span><span class="n">room_type</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;BEDROOM&#39; → links to ad_space_type</span>
+<span class="w">    </span><span class="n">grid_min_x</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- grid label: &#39;D&#39;</span>
+<span class="w">    </span><span class="n">grid_max_x</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- grid label: &#39;E&#39;</span>
+<span class="w">    </span><span class="n">grid_min_y</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- grid label: &#39;2&#39;</span>
+<span class="w">    </span><span class="n">grid_max_y</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- grid label: &#39;3&#39;</span>
+<span class="w">    </span><span class="n">z_offset_mm</span><span class="w">   </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">     </span><span class="c1">-- floor level offset from storey</span>
+<span class="w">    </span><span class="k">UNIQUE</span><span class="p">(</span><span class="n">building_type</span><span class="p">,</span><span class="w"> </span><span class="n">storey</span><span class="p">,</span><span class="w"> </span><span class="n">room_name</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Resolver computes absolute coords:</span>
+<span class="c1">--   min_x = ad_building_grid WHERE label=&#39;D&#39; → 6800</span>
+<span class="c1">--   max_x = ad_building_grid WHERE label=&#39;E&#39; → 9900</span>
+<span class="c1">--   min_y = ad_building_grid WHERE label=&#39;2&#39; → 2300</span>
+<span class="c1">--   max_y = ad_building_grid WHERE label=&#39;3&#39; → 5400</span>
+</code></pre></div>
+<p><strong>Design note:</strong> Room boundaries reference grid labels, not coordinates. Moving a grid line moves all rooms that reference it. This is the cascade mechanism.</p>
+<h3 id="33-wall-face-ad_wall_face">3.3 Wall Face — <code>ad_wall_face</code><a class="headerlink" href="#33-wall-face-ad_wall_face" title="Permanent link">&para;</a></h3>
+<p>Each room boundary face that needs a wall. Derived from room adjacency — shared faces get interior walls, unshared faces touching the building envelope get exterior walls.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_wall_face</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">            </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">building_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">storey</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">room_name</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- owner room</span>
+<span class="w">    </span><span class="n">face</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;NORTH&#39;, &#39;SOUTH&#39;, &#39;EAST&#39;, &#39;WEST&#39;</span>
+<span class="w">    </span><span class="n">wall_type</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- → ad_wall_type: &#39;EXTERIOR_BRICK&#39;, &#39;INTERIOR_BLOCK&#39;</span>
+<span class="w">    </span><span class="n">is_exterior</span><span class="w">   </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">    </span><span class="c1">-- 1 = exterior envelope, 0 = interior partition</span>
+<span class="w">    </span><span class="n">adjacent_room</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                </span><span class="c1">-- NULL if exterior, else neighbour room name</span>
+<span class="w">    </span><span class="k">UNIQUE</span><span class="p">(</span><span class="n">building_type</span><span class="p">,</span><span class="w"> </span><span class="n">storey</span><span class="p">,</span><span class="w"> </span><span class="n">room_name</span><span class="p">,</span><span class="w"> </span><span class="n">face</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Example: BILIK_2 in TB-LKTN</span>
+<span class="c1">-- SOUTH face (y=2300): adjacent to ANJUNG → interior wall</span>
+<span class="c1">-- NORTH face (y=5400): adjacent to BILIK_3 zone → interior wall</span>
+<span class="c1">-- EAST face (x=9900): exterior envelope → exterior wall</span>
+<span class="c1">-- WEST face (x=6800): adjacent to RUANG_TAMU → interior wall</span>
+</code></pre></div>
+<p><strong>Design note:</strong> The resolver computes wall coordinates from the room boundary + face direction + wall type thickness. No coordinates stored here — only topology.</p>
+<h3 id="34-element-rule-c_orderline-construction-order-details">3.4 Element Rule — C_OrderLine (Construction Order Details)<a class="headerlink" href="#34-element-rule-c_orderline-construction-order-details" title="Permanent link">&para;</a></h3>
+<p>The core relational table. Each row is a C_OrderLine placement rule: "put element X on host Y at position Z."</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">c_orderline</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">              </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">building_type</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">storey</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">element_ref</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- unique element name: &#39;DOOR_BILIK2_ENTRY&#39;</span>
+<span class="w">    </span><span class="n">ifc_class</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;IfcDoor&#39;, &#39;IfcWindow&#39;, &#39;IfcLightFixture&#39;</span>
+<span class="w">    </span><span class="n">discipline</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;ARC&#39;, &#39;ELEC&#39;, &#39;FP&#39;, etc.</span>
+
+<span class="w">    </span><span class="c1">-- Host reference (what this element is attached to)</span>
+<span class="w">    </span><span class="n">host_type</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;WALL&#39;, &#39;ROOM&#39;, &#39;GRID&#39;, &#39;BUILDING&#39;, &#39;ELEMENT&#39;</span>
+<span class="w">    </span><span class="n">host_ref</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;WALL_BILIK2_SOUTH&#39;, &#39;BILIK_2&#39;, &#39;B3&#39;, etc.</span>
+
+<span class="w">    </span><span class="c1">-- Position on host</span>
+<span class="w">    </span><span class="n">position_rule</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;CENTER&#39;, &#39;FRACTION&#39;, &#39;OFFSET&#39;, &#39;GRID_INTERSECTION&#39;</span>
+<span class="w">    </span><span class="n">position_value</span><span class="w">  </span><span class="nb">REAL</span><span class="p">,</span><span class="w">                </span><span class="c1">-- 0.5 for center, 0.35 for 35% along host, 200 for 200mm offset</span>
+<span class="w">    </span><span class="n">height_mm</span><span class="w">       </span><span class="nb">REAL</span><span class="p">,</span><span class="w">                </span><span class="c1">-- height above host floor (sill height, outlet height, etc.)</span>
+
+<span class="w">    </span><span class="c1">-- Element sizing</span>
+<span class="w">    </span><span class="n">family_ref</span><span class="w">      </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                </span><span class="c1">-- → ad_opening_family or component_definitions</span>
+<span class="w">    </span><span class="n">width_mm</span><span class="w">        </span><span class="nb">REAL</span><span class="p">,</span><span class="w">                </span><span class="c1">-- override or from family</span>
+<span class="w">    </span><span class="n">height_extent_mm</span><span class="w"> </span><span class="nb">REAL</span><span class="p">,</span><span class="w">               </span><span class="c1">-- override or from family</span>
+<span class="w">    </span><span class="n">depth_mm</span><span class="w">        </span><span class="nb">REAL</span><span class="p">,</span><span class="w">                </span><span class="c1">-- override or from family</span>
+
+<span class="w">    </span><span class="c1">-- Orientation</span>
+<span class="w">    </span><span class="n">orientation</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                </span><span class="c1">-- &#39;ALONG_HOST&#39;, &#39;PERPENDICULAR&#39;, &#39;NORTH&#39;, &#39;SOUTH&#39;, etc.</span>
+
+<span class="w">    </span><span class="c1">-- Geometry</span>
+<span class="w">    </span><span class="n">geometry_hash</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                </span><span class="c1">-- → component_geometries (NULL = bbox only)</span>
+<span class="w">    </span><span class="n">material_name</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">material_rgba</span><span class="w">   </span><span class="nb">TEXT</span><span class="p">,</span>
+
+<span class="w">    </span><span class="n">is_active</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="k">UNIQUE</span><span class="p">(</span><span class="n">building_type</span><span class="p">,</span><span class="w"> </span><span class="n">storey</span><span class="p">,</span><span class="w"> </span><span class="n">element_ref</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p><strong>Position rules explained:</strong></p>
+<table>
+<thead>
+<tr>
+<th><code>position_rule</code></th>
+<th><code>position_value</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CENTER</code></td>
+<td>NULL</td>
+<td>Centered on host (wall midpoint, room center)</td>
+</tr>
+<tr>
+<td><code>FRACTION</code></td>
+<td>0.0–1.0</td>
+<td>Fractional position along host (0.35 = 35% from start)</td>
+</tr>
+<tr>
+<td><code>OFFSET</code></td>
+<td>mm value</td>
+<td>Absolute offset from host start point</td>
+</tr>
+<tr>
+<td><code>GRID_INTERSECTION</code></td>
+<td>NULL</td>
+<td>At grid intersection (for columns)</td>
+</tr>
+<tr>
+<td><code>SPACING</code></td>
+<td>mm value</td>
+<td>Repeated at interval (for MEP points, rebar)</td>
+</tr>
+<tr>
+<td><code>INSET</code></td>
+<td>mm value</td>
+<td>Inset from room boundary (for furniture)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Examples across both buildings:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- SampleHouse: bedroom window (extracted from Stone)</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">c_orderline</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;Ifc4_SampleHouse&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ground Floor&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;WIN_BEDROOM_N&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;IfcWindow&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ARC&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;WALL&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;WALL_BEDROOM_NORTH&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;FRACTION&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">.</span><span class="mi">47</span><span class="p">,</span><span class="w">  </span><span class="mi">900</span><span class="p">,</span><span class="w">           </span><span class="c1">-- 47% along north wall, 900mm sill</span>
+<span class="w">    </span><span class="s1">&#39;RES_CASEMENT&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1200</span><span class="p">,</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="mi">150</span><span class="p">,</span><span class="w">  </span><span class="c1">-- 1200×1000 casement</span>
+<span class="w">    </span><span class="s1">&#39;ALONG_HOST&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Glass&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0.7,0.8,0.85,0.3&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="mi">1</span><span class="p">);</span>
+
+<span class="c1">-- TB-LKTN: bedroom 2 window (from drawing intent)</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">c_orderline</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;TB_LKTN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Ground Floor&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;WIN_BILIK2_E&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;IfcWindow&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ARC&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;WALL&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;WALL_BILIK2_EAST&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;CENTER&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">    </span><span class="mi">900</span><span class="p">,</span><span class="w">            </span><span class="c1">-- centered on east wall, 900mm sill</span>
+<span class="w">    </span><span class="s1">&#39;RES_CASEMENT&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1200</span><span class="p">,</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span><span class="w"> </span><span class="mi">150</span><span class="p">,</span><span class="w">   </span><span class="c1">-- same family, same dims</span>
+<span class="w">    </span><span class="s1">&#39;ALONG_HOST&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Glass&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0.7,0.8,0.85,0.3&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="mi">1</span><span class="p">);</span>
+</code></pre></div>
+<p>Same <code>ifc_class</code>, same <code>family_ref</code>, same <code>position_rule</code> pattern. Different <code>building_type</code>, different <code>host_ref</code>, different <code>position_value</code> (SH extracted as 0.47, TB-LKTN defaults to CENTER). Same code computes both.</p>
+<h3 id="35-element-dependency-ad_element_dependency">3.5 Element Dependency — <code>ad_element_dependency</code><a class="headerlink" href="#35-element-dependency-ad_element_dependency" title="Permanent link">&para;</a></h3>
+<p>Tracks parent-child relationships for cascade updates. Populated alongside C_OrderLine.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_element_dependency</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w">            </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">building_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">element_ref</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- child: &#39;DOOR_BILIK2_ENTRY&#39;</span>
+<span class="w">    </span><span class="n">parent_ref</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- parent: &#39;WALL_BILIK2_SOUTH&#39;</span>
+<span class="w">    </span><span class="n">relation</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;HOSTED_ON&#39;, &#39;CONTAINED_IN&#39;, &#39;CONNECTS_TO&#39;, &#39;SUPPORTS&#39;</span>
+<span class="w">    </span><span class="n">cascade_rule</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;MOVE&#39;</span><span class="p">,</span><span class="w"> </span><span class="c1">-- &#39;MOVE&#39; = follows parent, &#39;RECOMPUTE&#39; = re-resolve, &#39;NONE&#39;</span>
+<span class="w">    </span><span class="k">UNIQUE</span><span class="p">(</span><span class="n">building_type</span><span class="p">,</span><span class="w"> </span><span class="n">element_ref</span><span class="p">,</span><span class="w"> </span><span class="n">parent_ref</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Cascade chain example:</span>
+<span class="c1">-- GRID_LINE_D moves → ROOM BILIK_2 boundary changes</span>
+<span class="c1">--   → WALL_BILIK2_WEST recomputes position</span>
+<span class="c1">--     → DOOR_BILIK2_ENTRY recomputes position (HOSTED_ON, cascade=MOVE)</span>
+<span class="c1">--     → OUTLET_BILIK2_01 recomputes position (HOSTED_ON, cascade=MOVE)</span>
+</code></pre></div>
+<hr />
+<h2 id="4-computation-engine-relationalresolverjava">4. Computation Engine — <code>RelationalResolver.java</code><a class="headerlink" href="#4-computation-engine-relationalresolverjava" title="Permanent link">&para;</a></h2>
+<h3 id="41-class-design">4.1 Class Design<a class="headerlink" href="#41-class-design" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * Computes element coordinates from relational metadata.</span>
+<span class="cm"> * Reads: ad_building_grid, ad_room_boundary, ad_wall_face, c_orderline</span>
+<span class="cm"> * Writes: ad_element_placement (computed cache)</span>
+<span class="cm"> *</span>
+<span class="cm"> * Pattern: stateless resolver. All state in metadata tables.</span>
+<span class="cm"> * Singleton lazy-load, same as PlacementAD / CompilerConfig.</span>
+<span class="cm"> */</span>
+<span class="kd">class</span> <span class="nc">RelationalResolver</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="kd">record</span> <span class="nc">GridSystem</span><span class="p">(</span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">xLines</span><span class="p">,</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">yLines</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">RoomExtent</span><span class="p">(</span><span class="kt">double</span><span class="w"> </span><span class="n">minX</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">maxX</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">minY</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">maxY</span><span class="p">,</span>
+<span class="w">                      </span><span class="kt">double</span><span class="w"> </span><span class="n">minZ</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">maxZ</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+<span class="w">    </span><span class="kd">record</span> <span class="nc">WallSegment</span><span class="p">(</span><span class="kt">double</span><span class="w"> </span><span class="n">x1</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">y1</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">x2</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">y2</span><span class="p">,</span>
+<span class="w">                       </span><span class="n">String</span><span class="w"> </span><span class="n">face</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">thickness</span><span class="p">,</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="n">exterior</span><span class="p">)</span><span class="w"> </span><span class="p">{}</span>
+
+<span class="w">    </span><span class="cm">/**</span>
+<span class="cm">     * Resolve all elements for a building into placement rows.</span>
+<span class="cm">     * This is the ONLY public entry point.</span>
+<span class="cm">     */</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">PlacementAD</span><span class="p">.</span><span class="na">Placement</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">buildingType</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">GridSystem</span><span class="w"> </span><span class="n">grid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loadGrid</span><span class="p">(</span><span class="n">buildingType</span><span class="p">);</span>
+<span class="w">        </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">RoomExtent</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rooms</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resolveRooms</span><span class="p">(</span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">grid</span><span class="p">);</span>
+<span class="w">        </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">WallSegment</span><span class="o">&gt;</span><span class="w"> </span><span class="n">walls</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resolveWalls</span><span class="p">(</span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">rooms</span><span class="p">);</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">PlacementAD</span><span class="p">.</span><span class="na">Placement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">placements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resolveElements</span><span class="p">(</span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">rooms</span><span class="p">,</span><span class="w"> </span><span class="n">walls</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">placements</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="42-resolution-order">4.2 Resolution Order<a class="headerlink" href="#42-resolution-order" title="Permanent link">&para;</a></h3>
+<p>The computation is strictly ordered — each step depends on the previous:</p>
+<div class="highlight"><pre><span></span><code>Step 1: loadGrid()        — read ad_building_grid → GridSystem
+Step 2: resolveRooms()    — read ad_room_boundary + grid → RoomExtent per room
+Step 3: resolveWalls()    — read ad_wall_face + rooms → WallSegment per face
+Step 4: resolveElements() — read c_orderline + rooms + walls → Placement per element
+</code></pre></div>
+<p>No circular dependencies. Each step is a pure function of its inputs.</p>
+<h3 id="43-position-computation">4.3 Position Computation<a class="headerlink" href="#43-position-computation" title="Permanent link">&para;</a></h3>
+<p>For each C_OrderLine row, compute absolute coordinates:</p>
+<div class="highlight"><pre><span></span><code><span class="n">Placement</span><span class="w"> </span><span class="nf">computePlacement</span><span class="p">(</span><span class="n">ElementRule</span><span class="w"> </span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">RoomExtent</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rooms</span><span class="p">,</span>
+<span class="w">                           </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">WallSegment</span><span class="o">&gt;</span><span class="w"> </span><span class="n">walls</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">rule</span><span class="p">.</span><span class="na">hostType</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;WALL&quot;</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">WallSegment</span><span class="w"> </span><span class="n">wall</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">walls</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">rule</span><span class="p">.</span><span class="na">hostRef</span><span class="p">());</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">wallLength</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">length</span><span class="p">();</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">posAlongWall</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">rule</span><span class="p">.</span><span class="na">positionRule</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;CENTER&quot;</span><span class="w">   </span><span class="o">-&gt;</span><span class="w"> </span><span class="mf">0.5</span><span class="p">;</span>
+<span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;FRACTION&quot;</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">rule</span><span class="p">.</span><span class="na">positionValue</span><span class="p">();</span>
+<span class="w">                </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;OFFSET&quot;</span><span class="w">   </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">rule</span><span class="p">.</span><span class="na">positionValue</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">wallLength</span><span class="p">;</span>
+<span class="w">                </span><span class="k">default</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">IllegalArgumentException</span><span class="p">(</span><span class="n">rule</span><span class="p">.</span><span class="na">positionRule</span><span class="p">());</span>
+<span class="w">            </span><span class="p">};</span>
+<span class="w">            </span><span class="c1">// Compute element center point on wall</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">cx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">x1</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">wall</span><span class="p">.</span><span class="na">x2</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">x1</span><span class="p">())</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">posAlongWall</span><span class="p">;</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">cy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">y1</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">wall</span><span class="p">.</span><span class="na">y2</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">y1</span><span class="p">())</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">posAlongWall</span><span class="p">;</span>
+<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">cz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rule</span><span class="p">.</span><span class="na">heightMm</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rule</span><span class="p">.</span><span class="na">heightExtentMm</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="p">;</span>
+<span class="w">            </span><span class="c1">// Derive bbox from center + element dimensions + wall orientation</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">buildPlacement</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">cx</span><span class="p">,</span><span class="w"> </span><span class="n">cy</span><span class="p">,</span><span class="w"> </span><span class="n">cz</span><span class="p">,</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">face</span><span class="p">());</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;ROOM&quot;</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">RoomExtent</span><span class="w"> </span><span class="n">room</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rooms</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">rule</span><span class="p">.</span><span class="na">hostRef</span><span class="p">());</span>
+<span class="w">            </span><span class="c1">// INSET, CENTER, etc. relative to room boundary</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">computeRoomHostedPlacement</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">room</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;GRID&quot;</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// Column at grid intersection, beam spanning grid lines</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">computeGridHostedPlacement</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">grid</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="44-orientation-logic">4.4 Orientation Logic<a class="headerlink" href="#44-orientation-logic" title="Permanent link">&para;</a></h3>
+<p>Orientation derives from host, not stored independently:</p>
+<div class="highlight"><pre><span></span><code><span class="n">String</span><span class="w"> </span><span class="nf">resolveOrientation</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">face</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">orientationRule</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;ALONG_HOST&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">orientationRule</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="n">face</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;NORTH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SOUTH&quot;</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&quot;EW&quot;</span><span class="p">;</span><span class="w">  </span><span class="c1">// element runs east-west along wall</span>
+<span class="w">            </span><span class="k">case</span><span class="w"> </span><span class="s">&quot;EAST&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;WEST&quot;</span><span class="w">   </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&quot;NS&quot;</span><span class="p">;</span><span class="w">  </span><span class="c1">// element runs north-south along wall</span>
+<span class="w">            </span><span class="k">default</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&quot;EW&quot;</span><span class="p">;</span>
+<span class="w">        </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">orientationRule</span><span class="p">;</span><span class="w">  </span><span class="c1">// explicit override</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>No hardcoded rotation angles. The wall face determines the element orientation.</p>
+<hr />
+<h2 id="5-migration-strategy">5. Migration Strategy<a class="headerlink" href="#5-migration-strategy" title="Permanent link">&para;</a></h2>
+<h3 id="50-scope-limitation">5.0 Scope Limitation<a class="headerlink" href="#50-scope-limitation" title="Permanent link">&para;</a></h3>
+<p><strong>SCOPE: SampleHouse + Duplex only.</strong> Terminal is excluded from relational migration until SH+DX are proven. TB-LKTN is the generative test — only attempted after SH+DX pass 100% relational.</p>
+<p>Rationale: SH (55 elements) and Duplex (1,085 elements) are small enough to verify every element by hand. They share the same ARC-dominant profile as TB-LKTN (walls, openings, furniture, slabs). Terminal's 51K elements include MEP pipe networks and 33K roof tiles that need specialized models — defer until the core relational model is proven on simpler Stones.</p>
+<div class="highlight"><pre><span></span><code>Phase RM-1 to RM-3: SampleHouse + Duplex → relational at 100%
+Phase RM-4:         TB-LKTN → generative proof using same rules
+Phase RM-future:    Terminal → extend model for pipes, roof tiles
+</code></pre></div>
+<h3 id="51-phase-rm-1-schema-extraction-non-breaking">5.1 Phase RM-1: Schema + Extraction (Non-Breaking)<a class="headerlink" href="#51-phase-rm-1-schema-extraction-non-breaking" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Create relational tables. Extract relationships from SampleHouse + Duplex. Do NOT change compiler.</p>
+<ol>
+<li>Create tables: <code>ad_building_grid</code>, <code>ad_room_boundary</code>, <code>ad_wall_face</code>, <code>c_orderline</code>, <code>ad_element_dependency</code></li>
+<li>Write Python extractor: <code>relational_extractor.py</code></li>
+<li>Input: reference DB + existing <code>ad_element_placement</code> rows</li>
+<li>Output: relational metadata rows</li>
+<li>Method: for each placement row, determine which room it's in, which wall it's on, what position along the wall</li>
+<li>Run extractor on all 3 Stones</li>
+<li>Verify: relational metadata populated, flat placement unchanged</li>
+<li><strong>X-ray test: run all 3 Stones — must still pass 100%</strong> (nothing changed in compiler)</li>
+</ol>
+<h3 id="52-phase-rm-2-computation-engine-shadow-mode">5.2 Phase RM-2: Computation Engine (Shadow Mode)<a class="headerlink" href="#52-phase-rm-2-computation-engine-shadow-mode" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Build resolver that computes coordinates from relational rules. Verify against flat placement.</p>
+<ol>
+<li>Implement <code>RelationalResolver.java</code></li>
+<li>Add shadow-mode validation to E2E tests:
+   <div class="highlight"><pre><span></span><code><span class="n">List</span><span class="o">&lt;</span><span class="n">Placement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">computed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">resolver</span><span class="p">.</span><span class="na">resolve</span><span class="p">(</span><span class="n">buildingType</span><span class="p">);</span>
+<span class="n">List</span><span class="o">&lt;</span><span class="n">Placement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">stored</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">placementAD</span><span class="p">.</span><span class="na">getAll</span><span class="p">(</span><span class="n">buildingType</span><span class="p">);</span>
+<span class="n">assertCoordsMatch</span><span class="p">(</span><span class="n">computed</span><span class="p">,</span><span class="w"> </span><span class="n">stored</span><span class="p">,</span><span class="w"> </span><span class="mf">0.01</span><span class="p">);</span><span class="w"> </span><span class="c1">// 0.01mm tolerance</span>
+</code></pre></div></li>
+<li>Fix any relational rules where computed != stored</li>
+<li><strong>X-ray test: run all 3 Stones — must still pass 100%</strong> (compiler still reads flat placement)</li>
+</ol>
+<h3 id="53-phase-rm-3-switch-to-computed-the-cutover">5.3 Phase RM-3: Switch to Computed (The Cutover)<a class="headerlink" href="#53-phase-rm-3-switch-to-computed-the-cutover" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Compiler reads computed placement instead of flat stored placement.</p>
+<ol>
+<li>Add mode flag to <code>CompilerConfig</code>:
+   <div class="highlight"><pre><span></span><code><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_sysconfig</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;placement_mode&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;RELATIONAL&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Use computed placement from relational rules&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+</code></pre></div></li>
+<li>Modify <code>PlacementAD.load()</code>:
+   <div class="highlight"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="s">&quot;RELATIONAL&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">CompilerConfig</span><span class="p">.</span><span class="na">getInstance</span><span class="p">().</span><span class="na">getValues</span><span class="p">(</span><span class="s">&quot;placement_mode&quot;</span><span class="p">).</span><span class="na">get</span><span class="p">(</span><span class="mi">0</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Compute from rules</span>
+<span class="w">    </span><span class="n">placements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RelationalResolver</span><span class="p">.</span><span class="na">getInstance</span><span class="p">().</span><span class="na">resolve</span><span class="p">(</span><span class="n">buildingType</span><span class="p">);</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Legacy: read flat table</span>
+<span class="w">    </span><span class="n">placements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loadFromFlatTable</span><span class="p">(</span><span class="n">buildingType</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></li>
+<li><strong>X-ray test: run all 3 Stones — must still pass 100%</strong></li>
+<li>If scores hold → relational mode is proven</li>
+<li>If scores drop → revert to flat mode, debug relational rules</li>
+</ol>
+<h3 id="54-phase-rm-4-tb-lktn-from-intent">5.4 Phase RM-4: TB-LKTN from Intent<a class="headerlink" href="#54-phase-rm-4-tb-lktn-from-intent" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Add TB-LKTN metadata rows. Compile from intent. No IFC.</p>
+<ol>
+<li>Populate <code>ad_building_grid</code> for TB-LKTN (from drawing dimensions)</li>
+<li>Populate <code>ad_room_boundary</code> (9 rooms from floor plan)</li>
+<li>Populate <code>ad_wall_face</code> (room adjacency from floor plan)</li>
+<li>Populate C_OrderLines (openings from schedule, MEP from room rules)</li>
+<li>Create minimal TB-LKTN DSL manifest (building type selector only)</li>
+<li>Run compiler → output DB</li>
+<li>Validate: room dimensions match drawing, element counts match schedule</li>
+<li>Visual check in Bonsai</li>
+</ol>
+<h3 id="55-phase-rm-5-deprecate-flat-placement">5.5 Phase RM-5: Deprecate Flat Placement<a class="headerlink" href="#55-phase-rm-5-deprecate-flat-placement" title="Permanent link">&para;</a></h3>
+<p><strong>Goal:</strong> Flat <code>ad_element_placement</code> becomes read-only computed cache.</p>
+<ol>
+<li><code>RelationalResolver.resolve()</code> writes to <code>ad_element_placement</code> as cache</li>
+<li>Remove manually-stored rows for Stones (replaced by computed)</li>
+<li>Flat table kept for performance (avoid recomputing on every compile)</li>
+<li>Cache invalidation: recompute when relational metadata changes</li>
+</ol>
+<hr />
+<h2 id="6-element-type-coverage">6. Element Type Coverage<a class="headerlink" href="#6-element-type-coverage" title="Permanent link">&para;</a></h2>
+<h3 id="61-by-host-type">6.1 By Host Type<a class="headerlink" href="#61-by-host-type" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Host Type</th>
+<th>Element Types</th>
+<th>Position Rule</th>
+<th>Count (across Stones)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WALL</td>
+<td>IfcDoor, IfcWindow, IfcLightFixture, IfcOutlet, IfcSwitch, IfcAlarm</td>
+<td>FRACTION, CENTER, OFFSET</td>
+<td>~2,500</td>
+</tr>
+<tr>
+<td>ROOM</td>
+<td>IfcFurniture, IfcCovering (floor finish), IfcSlab (floor)</td>
+<td>CENTER, INSET</td>
+<td>~1,200</td>
+</tr>
+<tr>
+<td>GRID</td>
+<td>IfcColumn, IfcBeam</td>
+<td>GRID_INTERSECTION, SPAN</td>
+<td>~600</td>
+</tr>
+<tr>
+<td>BUILDING</td>
+<td>IfcRoof, IfcRailing, IfcStairFlight</td>
+<td>ENVELOPE, EDGE</td>
+<td>~100</td>
+</tr>
+<tr>
+<td>PIPE_RUN</td>
+<td>IfcPipeSegment, IfcPipeFitting, IfcDuctSegment</td>
+<td>SPACING, ENDPOINT</td>
+<td>~10,000+ (Terminal)</td>
+</tr>
+<tr>
+<td>ROOM_ZONE</td>
+<td>IfcFireSuppressionTerminal, IfcSensor</td>
+<td>SPACING, COVERAGE</td>
+<td>~1,000</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-priority-for-migration">6.2 Priority for Migration<a class="headerlink" href="#62-priority-for-migration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>TIER 1 (ARC core — proves the concept):
+  Walls from room boundaries         ~500 elements
+  Doors/windows on walls              ~400 elements
+  Slabs under rooms                   ~700 elements
+  → Covers SampleHouse fully (55 elements)
+
+TIER 2 (ARC extended):
+  Furniture in rooms                  ~250 elements
+  Columns at grid intersections       ~160 elements
+  Beams spanning grids                ~440 elements
+  Roof over building envelope         ~33,300 elements (Terminal plates)
+  Railing, stairs                     ~70 elements
+  → Covers Duplex ARC fully
+
+TIER 3 (MEP disciplines):
+  Pipe segments between fittings      ~8,000 elements
+  Pipe/duct fittings at junctions     ~5,300 elements
+  MEP terminals in rooms              ~2,800 elements
+  Fire suppression coverage           ~900 elements
+  → Covers Terminal MEP
+
+TIER 4 (Structural):
+  Rebar in structural elements        ~2,660 elements
+  → Terminal only
+</code></pre></div>
+<h3 id="63-extraction-complexity">6.3 Extraction Complexity<a class="headerlink" href="#63-extraction-complexity" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Relationship</th>
+<th>Extraction Method</th>
+<th>Difficulty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Element → Room</td>
+<td>Spatial containment (bbox inside room bbox)</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Element → Wall</td>
+<td>Spatial adjacency (element bbox touches wall plane)</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Position on wall</td>
+<td>Project element center onto wall line, compute fraction</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Wall → Room face</td>
+<td>Match wall position to room boundary edge</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Grid lines</td>
+<td>Cluster wall/column X and Y positions</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Pipe connectivity</td>
+<td>Endpoint proximity between segments and fittings</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Rebar → Host</td>
+<td>Spatial containment in structural element</td>
+<td>Medium</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-java-design-standards">7. Java Design Standards<a class="headerlink" href="#7-java-design-standards" title="Permanent link">&para;</a></h2>
+<h3 id="71-package-structure">7.1 Package Structure<a class="headerlink" href="#71-package-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>com.bim.compiler.dsl/
+    RelationalResolver.java    — stateless computation engine
+    GridResolver.java          — grid line loading + room extent computation
+    WallResolver.java          — wall face → wall segment computation
+    ElementResolver.java       — element rule → placement computation
+    RelationalExtractor.java   — (optional) extract rules from flat placement
+</code></pre></div>
+<h3 id="72-design-principles">7.2 Design Principles<a class="headerlink" href="#72-design-principles" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Stateless resolvers.</strong> All state lives in metadata tables. Resolvers are pure functions: metadata in → placements out. No caches except the lazy-loaded singleton pattern already used throughout.</p>
+</li>
+<li>
+<p><strong>Record types for data.</strong> Follow <code>BuildingSpecs.java</code> pattern — immutable Java records for all intermediate data (GridSystem, RoomExtent, WallSegment). No mutable state.</p>
+</li>
+<li>
+<p><strong>Single responsibility per class.</strong> GridResolver handles grid → room coords. WallResolver handles room → wall segments. ElementResolver handles rules → element placements. RelationalResolver orchestrates the chain.</p>
+</li>
+<li>
+<p><strong>Fail-fast on missing data.</strong> If a rule references a wall that doesn't exist, throw immediately with a clear message. No silent fallback to hardcoded values.</p>
+</li>
+<li>
+<p><strong>Tolerance constants in metadata.</strong> Wall thickness lookups, sill heights, clearances — all from <code>ad_*</code> tables, never from Java constants.</p>
+</li>
+</ol>
+<h3 id="73-testing-contract">7.3 Testing Contract<a class="headerlink" href="#73-testing-contract" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * Every E2E test gains a relational validation step:</span>
+<span class="cm"> *</span>
+<span class="cm"> * 1. Compute placements from relational rules</span>
+<span class="cm"> * 2. Compare against stored flat placement (oracle)</span>
+<span class="cm"> * 3. Assert coordinate match within 0.01mm</span>
+<span class="cm"> * 4. THEN run normal compilation + x-ray check</span>
+<span class="cm"> *</span>
+<span class="cm"> * The relational step is ADDITIVE — it validates the rules</span>
+<span class="cm"> * without changing what the compiler emits. The compiler</span>
+<span class="cm"> * still reads from ad_element_placement (flat cache) until</span>
+<span class="cm"> * Phase RM-3 cutover.</span>
+<span class="cm"> */</span>
+</code></pre></div>
+<h3 id="74-configuration">7.4 Configuration<a class="headerlink" href="#74-configuration" title="Permanent link">&para;</a></h3>
+<p>All modes controlled via <code>ad_sysconfig</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Phase RM-2: shadow mode (compute + validate, don&#39;t use)</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_sysconfig</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="w">    </span><span class="p">(</span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;placement_mode&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;FLAT&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Read stored ad_element_placement&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+
+<span class="c1">-- Phase RM-3: relational mode (compute + use)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">ad_sysconfig</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">config_value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;RELATIONAL&#39;</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">config_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;placement_mode&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Rollback: switch back to flat if scores drop</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">ad_sysconfig</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">config_value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;FLAT&#39;</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">config_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;placement_mode&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>Toggle without code change. Toggle without recompilation.</p>
+<hr />
+<h2 id="8-risk-analysis">8. Risk Analysis<a class="headerlink" href="#8-risk-analysis" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Probability</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Extracted relationships don't match flat placement exactly</td>
+<td>HIGH for first pass</td>
+<td>LOW — iterative fix</td>
+<td>Shadow mode validates before cutover</td>
+</tr>
+<tr>
+<td>SampleHouse window not perfectly centered (offset by 20mm)</td>
+<td>MEDIUM</td>
+<td>LOW</td>
+<td>Store extracted FRACTION value, not CENTER</td>
+</tr>
+<tr>
+<td>Terminal MEP pipe connectivity too complex to express relationally</td>
+<td>HIGH</td>
+<td>MEDIUM</td>
+<td>Keep flat placement for Tier 3-4 initially</td>
+</tr>
+<tr>
+<td>Performance: computing 51K+ placements from rules on every compile</td>
+<td>LOW</td>
+<td>MEDIUM</td>
+<td>Cache in ad_element_placement, invalidate on metadata change</td>
+</tr>
+<tr>
+<td>Grid extraction ambiguous (multiple possible grid interpretations)</td>
+<td>MEDIUM</td>
+<td>MEDIUM</td>
+<td>Manual verification against Stone reference drawings</td>
+</tr>
+</tbody>
+</table>
+<h3 id="81-fallback-plan">8.1 Fallback Plan<a class="headerlink" href="#81-fallback-plan" title="Permanent link">&para;</a></h3>
+<p>At every phase boundary, <code>ad_sysconfig.placement_mode</code> can be toggled:
+- <code>FLAT</code> = current behavior, proven at 100%
+- <code>RELATIONAL</code> = new behavior, validated against flat oracle</p>
+<p>If Phase RM-3 causes any score drop, toggle back to FLAT immediately. Debug relational rules offline. No data loss. No score regression.</p>
+<hr />
+<h2 id="9-verification-checklist">9. Verification Checklist<a class="headerlink" href="#9-verification-checklist" title="Permanent link">&para;</a></h2>
+<p>Each phase must satisfy ALL checks before proceeding:</p>
+<h3 id="phase-rm-1-exit-criteria">Phase RM-1 Exit Criteria<a class="headerlink" href="#phase-rm-1-exit-criteria" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] All 5 relational tables created in {PREFIX}_BOM.db</li>
+<li>[ ] Extractor populates tables for all 3 Stones</li>
+<li>[ ] Zero compiler changes</li>
+<li>[ ] X-ray: SampleHouse 100%, Duplex 100%, Terminal ~100%</li>
+</ul>
+<h3 id="phase-rm-2-exit-criteria">Phase RM-2 Exit Criteria<a class="headerlink" href="#phase-rm-2-exit-criteria" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] RelationalResolver computes placements for all 3 Stones</li>
+<li>[ ] Shadow validation: computed coords match stored coords within 0.01mm</li>
+<li>[ ] Coverage: ≥95% of elements resolved relationally (Tier 1-2)</li>
+<li>[ ] X-ray: SampleHouse 100%, Duplex 100%, Terminal ~100%</li>
+</ul>
+<h3 id="phase-rm-3-exit-criteria">Phase RM-3 Exit Criteria<a class="headerlink" href="#phase-rm-3-exit-criteria" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Compiler reads RELATIONAL mode placements</li>
+<li>[ ] X-ray: SampleHouse 100%, Duplex 100%, Terminal ~100%</li>
+<li>[ ] No coordinate differs by more than 0.01mm from flat oracle</li>
+<li>[ ] Rollback to FLAT mode verified working</li>
+</ul>
+<h3 id="phase-rm-4-exit-criteria">Phase RM-4 Exit Criteria<a class="headerlink" href="#phase-rm-4-exit-criteria" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] TB-LKTN metadata populated (~35 rows + element rules)</li>
+<li>[ ] Compiler produces TB-LKTN output DB from intent only</li>
+<li>[ ] Room dimensions match drawing within 1mm</li>
+<li>[ ] Element counts match drawing schedule</li>
+<li>[ ] Visual check passes in Bonsai</li>
+</ul>
+<h3 id="phase-rm-5-exit-criteria">Phase RM-5 Exit Criteria<a class="headerlink" href="#phase-rm-5-exit-criteria" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Flat placement table populated by resolver (cache, not source)</li>
+<li>[ ] All 3 Stones + TB-LKTN compile from relational rules</li>
+<li>[ ] Flat table regenerable: delete → recompute → scores unchanged</li>
+<li>[ ] X-ray: all buildings pass</li>
+</ul>
+<hr />
+<h2 id="10-summary">10. Summary<a class="headerlink" href="#10-summary" title="Permanent link">&para;</a></h2>
+<p>The flat <code>ad_element_placement</code> table was a correct but architecturally wrong shortcut. It achieved 100% scores by copying positions from Stones. The relational model achieves the same 100% scores by computing positions from rules — and enables new buildings from intent.</p>
+<p>The migration is safe because:
+1. <strong>The Stones remain the test oracle</strong> — flat placement rows validate relational computation
+2. <strong>Shadow mode validates before cutover</strong> — no score risk
+3. <strong>Config toggle enables instant rollback</strong> — one SQL UPDATE
+4. <strong>Each phase is independently verifiable</strong> — clear exit criteria
+5. <strong>The compiler's output path is unchanged</strong> — only the input source switches</p>
+<p>The prime rule is restored: coordinates are computed from relationships, never stored as source of truth. The same code + different metadata = different building. The Stones prove the code. The metadata defines the building.</p>
+<hr />
+<p><em>Relational Placement Specification v1.0</em>
+<em>BIM Intent Compiler — Phase RM (Relational Migration)</em>
+<em>February 2026</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

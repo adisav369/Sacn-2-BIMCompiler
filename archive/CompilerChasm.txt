@@ -1,0 +1,115 @@
+The Compiler Chasm — Pre-Placement Dimensional Contracts
+=========================================================
+Date: 2026-02-18
+Phase: RM-4 post-mortem / RM-5 prerequisite
+
+Context
+-------
+Phase RM-4 achieved 100% X-ray scores on all three Rosetta stones plus
+58 generative elements for TB-LKTN. Yet three visual defects persist:
+
+  1. SH furniture is disarrayed (wrong items in wrong positions)
+  2. Duplex glass openings appear opaque
+  3. TB-LKTN windows are oversized
+
+X-ray only checks bounding boxes. The defects are in the MESH pipeline,
+which is decoupled from the BBOX pipeline.
+
+
+The Fundamental Chasm
+---------------------
+The compiler has a split-brain architecture — two independent pipelines
+that were never contractually bound:
+
+  PIPELINE 1: BBOX (the "address")
+    ad_building_grid → ad_room_boundary → ad_wall_face → ad_element_rule
+    → RelationalResolver.computeOne()
+    → PlacementAD.Placement
+    → (minX, maxX, minY, maxY, minZ, maxZ)
+
+  PIPELINE 2: MESH (the "shape")
+    component_library.db → component_definitions → component_geometries
+    → geometry_hash → vertices + faces
+    → DoorWindowLibraryMapper → transformAndWrite()
+
+  These two meet at BuildingWriter with NO dimensional contract between them.
+
+Why invisible until now: SH and DX are IFC-extracted buildings. Both bbox
+AND mesh came from the same IFC ground truth, so they were always coherent.
+TB-LKTN is the first GENERATIVE building — bbox comes from relational rules,
+mesh comes from the library — and the two sources have no inherent coherence.
+
+
+Five Blind Spots
+----------------
+
+1. ORDINAL IDENTITY GAP → SH Furniture Disarray
+   ad_element_rule has element_refs IfcFurnishingElement_4 through _17.
+   ad_geometry_map has ordinals 1 through 14.
+   Lookup by ordinal 4 finds the wrong geometry (offset by 3).
+   Fix: Renumber ad_element_rule refs to _1 through _14.
+
+2. DIMENSION COHERENCE GAP → TB-LKTN Oversized Windows
+   resolveLibraryGeometry() does MIN-CORNER alignment + TRANSLATE but
+   NO SCALING. A 1200x1200mm bbox receives an 1860mm-wide mesh (155%).
+   Fix: Compute scale factors in resolveLibraryGeometry, call
+   transformAndWriteGeometryScaled() when mesh != bbox size.
+
+3. MATERIAL LINKAGE GAP → Duplex Opaque Glass
+   GLTF exporter clamps alpha < 0.3 to 0.3. IfcWindow alpha=0.1
+   (90% transparent by IFC convention) gets clamped.
+   Fix: Only default alpha=0.0 to 1.0; preserve intentional transparency.
+
+4. VALIDATION ONLY CHECKS ADDRESSES, NOT SHAPES
+   SpatialDigest, spatial_checker.py, GeometryIntegrityChecker — all
+   bbox-centric. Library mesh dimensions never compared against bbox.
+   Fix: Pre-write dimensional assert in emitGlobalPlacementElements.
+
+5. TB-LKTN DOOR WIDTH/DEPTH SWAP
+   Internal doors (D2-D6) have width_mm=4.0 and depth_mm=700-800.
+   Columns are swapped — doors should be 700-800mm wide, 100mm deep.
+   Fix: Swap the two columns where width_mm < 10.
+
+
+Resolution: Pre-Placement Dimensional Contract
+-----------------------------------------------
+Before any mesh is written to the output DB, a mathematical contract
+must prove the mesh fits its intended placement:
+
+  For every element E with placement bbox B and resolved mesh M:
+    Let S = required scale factors (Bw/Mw, Bd/Md, Bh/Mh)
+    Assert: S within allowable range [0.3, 3.0] per axis
+    Apply: M' = Scale(S) → Rotate(R) → Translate(T) on M
+    Assert: M'.bounds ≈ B (within 2mm tolerance)
+
+Implementation (Watchdog Architecture)
+--------------------------------------
+Instead of patching BuildingWriter inline, the resolution extracts mesh
+binding as a first-class compilation stage with proof-carrying types:
+
+  BoundElement.java — record whose existence PROVES mesh fits bbox.
+    Constructor validates transformed mesh bounds vs placement bbox.
+    Static validateScaleFactors() enforces [0.3, 3.0] per axis.
+
+  MeshBinder.java — convergence point where Pipeline 1 meets Pipeline 2.
+    bind() resolves mesh, computes scale, validates contract, transforms.
+    bindParametric() creates box geometry fallback.
+    Returns BoundElement or throws DimensionalContractViolation.
+
+  DimensionalContractViolation.java — fail-fast exception for impossible fits.
+  GeometryProvenance.java — enum: EXTRACTED | LIBRARY | PARAMETRIC.
+
+  BuildingWriter.emitGlobalPlacementElements() routes generative buildings
+  (has_ifc_ref=0) through MeshBinder. IFC-extracted buildings stay on legacy
+  path. Contract violations fall back to parametric box (not suppressed).
+
+Files Changed
+-------------
+  docs/CompilerChasm.txt — architectural record
+  migration/migration_RM4_fix_ordinals.sql — SH geometry_map ordinal fix + door swap
+  BoundElement.java — NEW: proof-carrying type
+  MeshBinder.java — NEW: bind stage
+  DimensionalContractViolation.java — NEW: contract enforcement exception
+  GeometryProvenance.java — NEW: provenance enum
+  BuildingWriter.java — add writeBoundElement + generative routing via MeshBinder
+  scripts/export_to_gltf.py — remove alpha floor clamp

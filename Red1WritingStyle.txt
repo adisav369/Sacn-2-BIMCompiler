@@ -1,0 +1,57 @@
+Red1 Writing Style — Redhuan D. Oon
+=====================================
+
+VOICE
+- Humble first, bold second. The audacity is in the facts, never in the tone.
+- Self-deprecating framing: "I just copy and paste," "lakeside retiree,"
+  "sleeping on the other side of the circadian rhythm."
+- Let the numbers do the bragging. Never say "I'm great." Say "753 commits
+  in 57 days" and let the reader do the math.
+
+STRUCTURE
+- Short paragraphs. Often one sentence. Sometimes one word.
+- "Retired, basically." — fragment as a paragraph. Rhythmic. Punchy.
+- Build up with plain facts, then land a one-liner:
+  "A habitat is a BOM. A BOM is a BOM."
+- No formal transitions. Jump cuts between ideas. Trust the reader.
+
+CHEEKINESS
+- Disguised, never direct. The title says "Elon Musk will call me" but
+  the text says "Claude made me write this." The reader gets both signals.
+- Uses the AI-as-narrator trick: Claude speaks TO Red1 in second person.
+  Removes ego. Reader eavesdrops on AI talking to its operator.
+- Leaves stage directions visible ("P/S do not include the last paragraph,
+  replace me with you"). Proof of authenticity. The messiness IS the message.
+- Quiet flexes buried in passing: "I can write any code since 1995" — no
+  elaboration, no emphasis, just stated and moved on.
+
+HUMILITY MECHANICS
+- Credits others and tools first. "Claude AI made me." "Bonsai/BlenderBIM."
+  "iDempiere community."
+- Frames personal achievement as accidental: "Then Claude happened. And I
+  came out of retirement with a stupid idea."
+- Never claims to be the best. Claims to be the only one who tried:
+  "Nobody else has built this compiler."
+- Shares everything openly. The openness itself is the credibility.
+  "It's all on GitHub. Every spec, every commit, every audit trail. Public."
+
+TECHNICAL WRITING
+- ERP jargon used naturally, never explained defensively. If you know
+  C_Order and M_Product, you're the audience. If you don't, the numbers
+  still work.
+- Tables for data, prose for story. Never mix.
+- Citations at the end, not inline. Don't interrupt the flow with footnotes.
+- Monospace/code for technical terms in context, plain English for the pitch.
+
+WHAT TO AVOID
+- Never sound like a pitch deck. No "leveraging," "synergies," "disrupting."
+- Never apologise for ambition. Frame it as humour instead.
+- Never explain jokes. "He goes FOSS and puts Open in OpenAI" — no
+  follow-up explanation.
+- Never use emojis in professional writing.
+- Never write long introductions. Start mid-story. "2006, end September."
+
+THE RED1 TEST
+If a paragraph sounds like it could come from any LinkedIn thought leader,
+delete it. If it sounds like a retired ERP guy talking to you over coffee
+at a lakeside in Putrajaya, keep it.

@@ -1,0 +1,3247 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>1-Day Technology Update Workshop - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#1-day-technology-update-workshop" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              1-Day Technology Update Workshop
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="1-day-technology-update-workshop">1-Day Technology Update Workshop<a class="headerlink" href="#1-day-technology-update-workshop" title="Permanent link">&para;</a></h1>
+<h1 id="ai-disruption-and-the-future-of-cooperative-enterprise-systems">AI Disruption and the Future of Cooperative Enterprise Systems<a class="headerlink" href="#ai-disruption-and-the-future-of-cooperative-enterprise-systems" title="Permanent link">&para;</a></h1>
+<p><strong>Prepared for:</strong> ANGKASA IT Division (Bahagian Teknologi Maklumat)
+<strong>Prepared by:</strong> Entruss Ventures Sdn. Bhd. (1186369-A)
+<strong>Facilitators:</strong> Prof. Dr. Hj. Wan Mohtar Wan Yusoff | Redhuan D. Oon
+<strong>Date:</strong> February 2026
+<strong>Classification:</strong> Discussion Draft — For Internal Review</p>
+<hr />
+<h2 id="executive-summary">Executive Summary<a class="headerlink" href="#executive-summary" title="Permanent link">&para;</a></h2>
+<p>ANGKASA sits at a critical juncture. Its core SPGA salary deduction system — serving <strong>3.5 million cooperative members</strong> across <strong>16,284 cooperatives</strong> — runs on <strong>Unisys ClearPath technology deployed since 1996</strong>. This 30-year-old mainframe backbone has been reliable, but the world around it is changing at unprecedented speed.</p>
+<p>This paper presents the case that <strong>any ERP procurement exercise conducted in 2026 without accounting for AI disruption risks locking ANGKASA into another generation of vendor dependency</strong> — precisely at the moment when the economics of enterprise software are being fundamentally rewritten.</p>
+<p>The opportunity is equally significant: ANGKASA's unique position as the <strong>apex body for 16,284 cooperatives with RM165.8 billion in assets</strong> makes it an ideal incubator for a <strong>cooperative-owned technology platform</strong> that could serve the entire movement — at a fraction of proprietary costs.</p>
+<hr />
+<h2 id="part-1-the-fud-that-should-concern-you">Part 1: The FUD That Should Concern You<a class="headerlink" href="#part-1-the-fud-that-should-concern-you" title="Permanent link">&para;</a></h2>
+<h3 id="11-your-erp-rfp-may-already-be-outdated">1.1 Your ERP RFP May Already Be Outdated<a class="headerlink" href="#11-your-erp-rfp-may-already-be-outdated" title="Permanent link">&para;</a></h3>
+<p>If ANGKASA is evaluating enterprise systems using a traditional RFP framework — comparing SAP, Oracle, and Microsoft on features, pricing, and implementation timelines — the evaluation criteria themselves may be obsolete within 18 months.</p>
+<p><strong>Why?</strong> Because the ERP market is undergoing its most significant disruption in 35 years:</p>
+<blockquote>
+<p><em>"Through 2027, GenAI and AI agent use will create the first true challenge to mainstream productivity tools in 35 years, prompting a </em><em>$58 billion market shake-up</em><em>."</em>
+— Gartner, 2025</p>
+</blockquote>
+<p><strong>Key data points your RFP evaluation may not have considered:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Indicator</th>
+<th>2024</th>
+<th>2026 (Now)</th>
+<th>2027 Projection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Enterprise apps with AI agents</td>
+<td>&lt;5%</td>
+<td>~20%</td>
+<td><strong>40%</strong> (Gartner)</td>
+</tr>
+<tr>
+<td>ERP spending including AI capabilities</td>
+<td>14%</td>
+<td>~35%</td>
+<td><strong>62%</strong> (Gartner)</td>
+</tr>
+<tr>
+<td>AI-native ERP startups funded</td>
+<td>Emerging</td>
+<td>DualEntry ($90M), others</td>
+<td>$270B AI software market</td>
+</tr>
+<tr>
+<td>SAP ECC end of support</td>
+<td>Active</td>
+<td>22 months left</td>
+<td><strong>Dec 31, 2027</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>The risk:</strong> Selecting a vendor today based on 2024-era criteria means you are buying a system designed for <strong>the era that is ending</strong>, not the one beginning.</p>
+<h3 id="12-the-sap-2027-cliff">1.2 The SAP 2027 Cliff<a class="headerlink" href="#12-the-sap-2027-cliff" title="Permanent link">&para;</a></h3>
+<p>SAP has set a hard deadline: <strong>mainstream ECC support ends December 31, 2027</strong>. Extended maintenance (to 2030) costs a <strong>2% premium</strong> on top of the existing 22% maintenance fee. Organizations that wait face <strong>30-50% higher consulting rates</strong> due to the global migration demand surge.</p>
+<p><strong>What this means for ANGKASA:</strong> Any vendor proposing SAP is proposing a system whose predecessor is being forcibly retired. The migration track record is sobering:</p>
+<ul>
+<li><strong>32% of companies</strong> migrating to S/4HANA have <strong>underestimated total cost</strong></li>
+<li>Typical migration: <strong>12-24 months</strong>, often extending beyond</li>
+<li>Organizations on unsupported ECC face <strong>40-60% higher total cost of ownership</strong></li>
+</ul>
+<h3 id="13-oracle-and-microsoft-are-raising-prices">1.3 Oracle and Microsoft Are Raising Prices<a class="headerlink" href="#13-oracle-and-microsoft-are-raising-prices" title="Permanent link">&para;</a></h3>
+<p>The proprietary ERP vendors are coordinating price increases while bundling AI features that may or may not deliver value:</p>
+<table>
+<thead>
+<tr>
+<th>Vendor</th>
+<th>Current Pricing</th>
+<th>Recent Changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Oracle Fusion Cloud ERP</strong></td>
+<td>RM33,000/user/year ($7,500)</td>
+<td>3-year minimum contract, minimum 25 users</td>
+</tr>
+<tr>
+<td><strong>SAP S/4HANA Cloud</strong></td>
+<td>RM31,000-66,000+/user/year</td>
+<td>Forced migration from ECC by 2027</td>
+</tr>
+<tr>
+<td><strong>Microsoft Dynamics 365</strong></td>
+<td>RM9,500-20,600/user/year</td>
+<td>First price increase in 5 years (Nov 2025); M365 suite +8-23% effective (Jul 2026)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>At Oracle pricing, 100 ANGKASA staff = RM3.3 million/year in license fees alone.</strong>
+<strong>At SAP pricing, the same could exceed RM6.6 million/year.</strong></p>
+<p>This is before implementation, customisation, training, and ongoing support.</p>
+<h3 id="14-the-ai-native-disruption-is-real">1.4 The AI-Native Disruption Is Real<a class="headerlink" href="#14-the-ai-native-disruption-is-real" title="Permanent link">&para;</a></h3>
+<p>In October 2025, a startup called <strong>DualEntry</strong> emerged from stealth with <strong>$90 million</strong> in funding (Lightspeed, Khosla Ventures, Google Ventures) and a provocative claim: they can migrate organisations off legacy ERP systems <strong>in 24 hours</strong>.</p>
+<p>Their investor thesis was published under the title: <strong>"The Death of the Legacy ERP"</strong>.</p>
+<p>Key claims:
+- First ERP built from the ground up with AI (not AI bolted onto legacy code)
+- Already processed <strong>$100 billion</strong> in journal entries
+- Signed <strong>thousands</strong> of global users in months
+- Valued at <strong>$415 million</strong> in 15 months</p>
+<p><strong>Whether DualEntry succeeds is not the point.</strong> The point is that <strong>$100M+ in venture capital is betting that legacy ERP can be replaced by AI-native alternatives</strong>. This is a structural market shift, not a trend.</p>
+<h3 id="15-forresters-warning-on-vendor-lock-in">1.5 Forrester's Warning on Vendor Lock-In<a class="headerlink" href="#15-forresters-warning-on-vendor-lock-in" title="Permanent link">&para;</a></h3>
+<p>Forrester's 2026 enterprise software predictions contain a specific warning:</p>
+<blockquote>
+<p><em>"Consolidating to a primary platform concentrates risk and neuters negotiation leverage, making the next major software decision </em><em>a bet on a single vendor's security posture, pricing model, and innovation capacity for the next decade</em><em>."</em></p>
+<p><em>"Vendors are using AI to drive new revenue streams while </em><em>tightening control</em><em>... The era of experimentation is over. The era of monetisation has begun."</em></p>
+</blockquote>
+<p><strong>Translation:</strong> The vendors offering AI features are using them as a justification to raise prices and deepen lock-in. An RFP that selects a proprietary vendor today is not just buying software — it is accepting a decade of pricing decisions made by that vendor.</p>
+<hr />
+<h2 id="part-2-the-strategic-position">Part 2: The Strategic Position<a class="headerlink" href="#part-2-the-strategic-position" title="Permanent link">&para;</a></h2>
+<h3 id="21-erp-vendor-landscape-cost-vs-ai-readiness">2.1 ERP Vendor Landscape — Cost vs AI Readiness<a class="headerlink" href="#21-erp-vendor-landscape-cost-vs-ai-readiness" title="Permanent link">&para;</a></h3>
+<p>The following matrix positions major ERP options on two axes that matter for ANGKASA's decision:</p>
+<div class="highlight"><pre><span></span><code>                        AI READINESS
+                    HIGH
+                     |
+        SAP S/4HANA  |  DualEntry (AI-native)
+        RM31-66K/u/y |  (startup, unproven)
+                     |
+        Oracle Fusion|
+        RM33K/u/y    |
+                     |
+        MS Dynamics  |.....OPPORTUNITY ZONE.....
+        RM10-21K/u/y |  Open Source + AI Layer
+                     |  (iDempiere/ERPNext +
+                     |   local AI integration)
+                     |
+        Odoo Ent.    |
+        RM1.3-2K/u/y |
+                     |
+        ERPNext      |  iDempiere
+        &lt;RM50/u/y    |  RM0 license
+                     |
+                    LOW
+                     +----------------------------------&gt;
+                   HIGH          COST          LOW
+                   COST                        COST
+</code></pre></div>
+<p><strong>Reading the matrix:</strong></p>
+<ul>
+<li><strong>Top-left quadrant (High Cost, High AI):</strong> SAP and Oracle are investing heavily in AI, but at extreme cost. ANGKASA would pay RM3-7M/year for 100 users and still be locked into their roadmap.</li>
+<li><strong>Bottom-right quadrant (Low Cost, Low AI):</strong> Open source ERP (iDempiere, ERPNext) costs almost nothing in licensing but has no native AI today.</li>
+<li><strong>The Opportunity Zone (center-right):</strong> An open-source ERP base enhanced with a targeted AI layer — built or integrated locally — combines low cost with relevant AI capability. <strong>This is where ANGKASA should position.</strong></li>
+</ul>
+<h3 id="22-deployment-strategy-implementation-risk-vs-cooperative-fit">2.2 Deployment Strategy — Implementation Risk vs Cooperative Fit<a class="headerlink" href="#22-deployment-strategy-implementation-risk-vs-cooperative-fit" title="Permanent link">&para;</a></h3>
+<p>This matrix evaluates deployment approaches against the unique requirements of a <strong>federated cooperative movement</strong>:</p>
+<div class="highlight"><pre><span></span><code>                     COOPERATIVE FIT
+                    HIGH
+                     |
+                     |  Cooperative      iDempiere
+                     |  Tech Incubator   Shared Platform
+                     |  (ANGKASA-owned)  (OSGi modular)
+                     |
+                     |         ERPNext
+                     |         (shared instance)
+                     |
+                     |                Odoo Enterprise
+                     |
+                     |  DualEntry     MS Dynamics
+                     |  (fast but
+                     |   no coop      SAP/Oracle
+                     |   model)       (enterprise-only,
+                     |                no federation)
+                     |
+                    LOW
+                     +----------------------------------&gt;
+                   HIGH     IMPLEMENTATION      LOW
+                   RISK         RISK            RISK
+</code></pre></div>
+<p><strong>Reading the matrix:</strong></p>
+<ul>
+<li><strong>Bottom-left (High Risk, Low Fit):</strong> SAP/Oracle are designed for single enterprises, not federated cooperative movements. Implementation risk is extreme (12-24 months, cost overruns).</li>
+<li><strong>Top-right (Low Risk, High Fit):</strong> A cooperative-owned technology incubator using open-source ERP scores highest. Proven in the credit union sector (Velera serves 4,000 credit unions; CU*Answers is cooperative-owned core processing).</li>
+<li><strong>iDempiere</strong> sits in the best position for ANGKASA specifically: Java/OSGi modularity means each cooperative type can have custom plugins, it matches ANGKASA's enterprise IT culture, and it has an active Malaysia community.</li>
+</ul>
+<h3 id="23-the-cost-reality-at-angkasas-scale">2.3 The Cost Reality at ANGKASA's Scale<a class="headerlink" href="#23-the-cost-reality-at-angkasas-scale" title="Permanent link">&para;</a></h3>
+<p>ANGKASA is not a single company. It is the technology backbone for <strong>16,284 cooperatives</strong> and <strong>7.22 million members</strong>. At this scale, vendor pricing models produce staggering numbers:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Annual License Cost (est.)</th>
+<th>5-Year TCO (est.)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Oracle Fusion (500 core users)</td>
+<td><strong>RM16.5 million</strong></td>
+<td>RM82+ million</td>
+</tr>
+<tr>
+<td>SAP S/4HANA Cloud (500 core users)</td>
+<td><strong>RM15-33 million</strong></td>
+<td>RM75-165+ million</td>
+</tr>
+<tr>
+<td>Microsoft Dynamics 365 (500 core users)</td>
+<td><strong>RM4.8-10.3 million</strong></td>
+<td>RM24-52 million</td>
+</tr>
+<tr>
+<td>Odoo Enterprise (500 users)</td>
+<td><strong>RM650K-1M</strong></td>
+<td>RM3.3-5 million</td>
+</tr>
+<tr>
+<td>iDempiere (self-hosted, cooperative-owned)</td>
+<td><strong>RM0 license</strong></td>
+<td>Infrastructure + support only</td>
+</tr>
+<tr>
+<td>ERPNext (self-hosted)</td>
+<td><strong>&lt;RM25K</strong></td>
+<td>Infrastructure + support only</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The question is not "Can ANGKASA afford SAP?" The question is: "Can 16,284 cooperatives justify sending RM80-160 million to a foreign vendor over 5 years when cooperative-owned alternatives exist?"</strong></p>
+<hr />
+<h2 id="part-3-angkasa-as-technology-incubator">Part 3: ANGKASA as Technology Incubator<a class="headerlink" href="#part-3-angkasa-as-technology-incubator" title="Permanent link">&para;</a></h2>
+<h3 id="31-the-precedent-credit-union-shared-services">3.1 The Precedent: Credit Union Shared Services<a class="headerlink" href="#31-the-precedent-credit-union-shared-services" title="Permanent link">&para;</a></h3>
+<p>The model already exists — not in theory, but in production at massive scale:</p>
+<table>
+<thead>
+<tr>
+<th>Organisation</th>
+<th>Model</th>
+<th>Scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Velera</strong> (formerly PSCU/Co-op Solutions)</td>
+<td>Cooperative-owned payments CUSO</td>
+<td><strong>4,000+ credit unions</strong> across North America</td>
+</tr>
+<tr>
+<td><strong>CU*Answers</strong> (CUaxis/CBX)</td>
+<td>Cooperative-owned core data processing</td>
+<td>Hundreds of credit unions</td>
+</tr>
+<tr>
+<td><strong>Co-op Shared Branch Network</strong></td>
+<td>Federated transaction network</td>
+<td>5,000+ branches</td>
+</tr>
+</tbody>
+</table>
+<p><strong>These are cooperatives building technology platforms for cooperatives.</strong> The members own the platform. The costs are shared. The vendor lock-in is zero.</p>
+<p>ANGKASA already operates this way for salary deductions (SPGA). The question is: <strong>why not extend the model to ERP?</strong></p>
+<h3 id="32-the-angkasa-incubator-concept">3.2 The ANGKASA Incubator Concept<a class="headerlink" href="#32-the-angkasa-incubator-concept" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>+------------------------------------------------------------------+
+|                   ANGKASA TECHNOLOGY INCUBATOR                    |
+|                                                                   |
+|  +-------------------+  +-------------------+  +---------------+ |
+|  | Shared ERP        |  | AI Services       |  | Training &amp;    | |
+|  | Platform          |  | Layer             |  | Certification | |
+|  | (iDempiere/       |  | (Local LLM,       |  | (HRD Corp     | |
+|  |  open source)     |  |  document AI,     |  |  claimable)   | |
+|  |                   |  |  workflow agents)  |  |               | |
+|  +-------------------+  +-------------------+  +---------------+ |
+|           |                      |                     |          |
+|  +-----------------------------------------------------------+   |
+|  |              ANGKASA Data Center (Tier-3 Certified)        |   |
+|  +-----------------------------------------------------------+   |
+|           |                      |                     |          |
+|  +--------+--------+   +--------+--------+   +--------+------+  |
+|  | Housing Coops   |   | Credit Coops    |   | Agri Coops    |  |
+|  | (BIM Compiler   |   | (Financial      |   | (SRI paddy,   |  |
+|  |  + BOM/cost)    |   |  management)    |   |  supply chain) |  |
+|  +-----------------+   +-----------------+   +---------------+  |
+|  | Transport Coops |   | Consumer Coops  |   | Mosque Coops  |  |
+|  | (Fleet/fuel     |   | (Retail/        |   | (Waqf asset   |  |
+|  |  management)    |   |  inventory)     |   |  management)  |  |
+|  +-----------------+   +-----------------+   +---------------+  |
++------------------------------------------------------------------+
+                              |
+                    16,284 cooperatives
+                    7.22 million members
+                    RM165.8 billion assets
+</code></pre></div>
+<h3 id="33-why-idempiere-fits-angkasa">3.3 Why iDempiere Fits ANGKASA<a class="headerlink" href="#33-why-idempiere-fits-angkasa" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>iDempiere Capability</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Java enterprise stack</strong></td>
+<td>Matches ANGKASA's existing IT culture (enterprise-grade, not startup-grade)</td>
+</tr>
+<tr>
+<td><strong>OSGi modularity</strong></td>
+<td>Each cooperative type gets purpose-built plugins without forking the core</td>
+</tr>
+<tr>
+<td><strong>100% open source (GPLv2)</strong></td>
+<td>Zero license fees. ANGKASA owns the code. No vendor can raise prices.</td>
+</tr>
+<tr>
+<td><strong>Active Malaysia community</strong></td>
+<td>Redhuan D. Oon (author of <em>Open Source ERP</em>, Pearson Malaysia) is based in Putrajaya. Local expertise exists.</td>
+</tr>
+<tr>
+<td><strong>Manufacturing + Distribution</strong></td>
+<td>Modules for supply chain, warehousing, POS — relevant to diverse cooperative types</td>
+</tr>
+<tr>
+<td><strong>Multi-organisation architecture</strong></td>
+<td>Built-in support for multiple entities sharing one database — ideal for cooperative federation</td>
+</tr>
+<tr>
+<td><strong>20+ year track record</strong></td>
+<td>Descended from Compiere (2000) → ADempiere (2006) → iDempiere (2012). Battle-tested.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="34-the-ai-layer-built-not-bought">3.4 The AI Layer — Built, Not Bought<a class="headerlink" href="#34-the-ai-layer-built-not-bought" title="Permanent link">&para;</a></h3>
+<p>Rather than buying AI from SAP or Oracle (at their prices, on their terms), ANGKASA could <strong>build an AI capability layer on top of open-source ERP</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>AI Capability</th>
+<th>Approach</th>
+<th>Cooperative Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Document processing</strong></td>
+<td>Local LLM (Ollama/vLLM) + OCR</td>
+<td>Automate invoice/receipt processing for 16K cooperatives</td>
+</tr>
+<tr>
+<td><strong>Financial reporting agents</strong></td>
+<td>Agentic AI on structured ERP data</td>
+<td>Monthly close, audit preparation, regulatory compliance</td>
+</tr>
+<tr>
+<td><strong>BIM + Cost estimation</strong></td>
+<td>BIM Intent Compiler (open source)</td>
+<td>Housing cooperative design → BOM → cost estimate</td>
+</tr>
+<tr>
+<td><strong>Credit assessment</strong></td>
+<td>AI on SPeKAR + cooperative financial data</td>
+<td>Enhance loan assessment for cooperative members</td>
+</tr>
+<tr>
+<td><strong>Workflow automation</strong></td>
+<td>AI agents replacing manual approval chains</td>
+<td>Procurement, HR, membership management</td>
+</tr>
+</tbody>
+</table>
+<p><strong>This is the "Opportunity Zone" from the strategy matrix — open source ERP + locally-built AI, owned by the cooperative movement.</strong></p>
+<hr />
+<h2 id="part-4-the-dakom-2030-alignment">Part 4: The DaKoM 2030 Alignment<a class="headerlink" href="#part-4-the-dakom-2030-alignment" title="Permanent link">&para;</a></h2>
+<p>Malaysia's <strong>Dasar Koperasi Malaysia (DaKoM) 2030</strong> targets:</p>
+<ul>
+<li>Cooperative sector revenue of <strong>RM73 billion</strong> by 2030 (from RM45.5 billion)</li>
+<li>Active cooperative rate of <strong>65%</strong></li>
+<li>Improvement in Cooperative Member Well-being Index (IndeKA) to <strong>80</strong></li>
+</ul>
+<p>A technology incubator directly supports all three targets:</p>
+<table>
+<thead>
+<tr>
+<th>DaKoM Target</th>
+<th>Technology Contribution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RM73B revenue</strong></td>
+<td>Shared ERP reduces operational costs, freeing capital for growth. AI automation improves productivity.</td>
+</tr>
+<tr>
+<td><strong>65% active rate</strong></td>
+<td>Low-cost shared platform makes digital tools accessible to small and inactive cooperatives currently priced out.</td>
+</tr>
+<tr>
+<td><strong>IndeKA score 80</strong></td>
+<td>Better financial management, faster loan processing, transparent reporting improve member well-being.</td>
+</tr>
+</tbody>
+</table>
+<p>Budget 2026 allocated <strong>RM50 million</strong> for cooperative development through SKM. A portion directed toward a cooperative technology incubator would have multiplied impact across all 16,284 cooperatives.</p>
+<hr />
+<h2 id="part-5-workshop-agenda">Part 5: Workshop Agenda<a class="headerlink" href="#part-5-workshop-agenda" title="Permanent link">&para;</a></h2>
+<h3 id="morning-understanding-the-threat">Morning — Understanding the Threat<a class="headerlink" href="#morning-understanding-the-threat" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Module</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>09:00</td>
+<td><strong>Opening</strong></td>
+<td>Workshop objectives. Why this matters now.</td>
+</tr>
+<tr>
+<td>09:15</td>
+<td><strong>Module 1: The AI Disruption</strong></td>
+<td>Gartner's 40% AI agent prediction. DualEntry and the "Death of Legacy ERP" thesis. What "AI-native" means vs "AI-bolted-on". Demo: AI agent processing a cooperative financial report.</td>
+</tr>
+<tr>
+<td>10:15</td>
+<td><strong>Break</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>10:30</td>
+<td><strong>Module 2: The Pricing Trap</strong></td>
+<td>SAP 2027 deadline. Oracle's RM33K/user/year. Microsoft's 23% effective increase. Forrester's lock-in warning. Cost projections at ANGKASA's scale. Interactive exercise: calculate your own 5-year TCO under three scenarios.</td>
+</tr>
+<tr>
+<td>11:30</td>
+<td><strong>Module 3: Your Current Position</strong></td>
+<td>ANGKASA's Unisys ClearPath — 30 years of service. SPGA system strengths and risks. Where the gaps are. Facilitated discussion: what keeps the IT team up at night?</td>
+</tr>
+<tr>
+<td>12:30</td>
+<td><strong>Lunch</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="afternoon-seeing-the-opportunity">Afternoon — Seeing the Opportunity<a class="headerlink" href="#afternoon-seeing-the-opportunity" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Module</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13:30</td>
+<td><strong>Module 4: The Open Source Alternative</strong></td>
+<td>iDempiere, ERPNext, Odoo — live comparison. Total cost of ownership at cooperative scale. Case study: Velera (4,000 credit unions on shared platform).</td>
+</tr>
+<tr>
+<td>14:30</td>
+<td><strong>Module 5: ANGKASA as Incubator</strong></td>
+<td>The cooperative technology incubator model. Architecture walkthrough. How OSGi modularity serves 16,284 diverse cooperatives. DaKoM 2030 alignment. Interactive: mapping cooperative types to ERP modules.</td>
+</tr>
+<tr>
+<td>15:30</td>
+<td><strong>Break</strong></td>
+<td></td>
+</tr>
+<tr>
+<td>15:45</td>
+<td><strong>Module 6: The AI Layer You Can Own</strong></td>
+<td>Local AI deployment (not cloud-dependent). Document processing demo. BIM Compiler demo (housing cooperative use case). Financial reporting agent concept.</td>
+</tr>
+<tr>
+<td>16:30</td>
+<td><strong>Module 7: Strategic Planning Exercise</strong></td>
+<td>9-Quadrant SWOT analysis (Prof. Wan Mohtar's methodology). Teams draft a 90-day action plan. Presentation and critique.</td>
+</tr>
+<tr>
+<td>17:15</td>
+<td><strong>Closing</strong></td>
+<td>Summary of key decisions. Next steps. Commitment to action.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="part-6-recommended-next-steps-for-angkasa">Part 6: Recommended Next Steps for ANGKASA<a class="headerlink" href="#part-6-recommended-next-steps-for-angkasa" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Action</th>
+<th>Timeline</th>
+<th>Owner</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td>Pause or reframe any active ERP RFP to include AI-readiness and cooperative-fit criteria</td>
+<td>Immediate</td>
+<td>IT Division</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td>Commission a formal TCO comparison: proprietary vs open-source at ANGKASA scale</td>
+<td>30 days</td>
+<td>IT Division + EVSB</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td>Pilot iDempiere with one cooperative type (e.g., credit cooperative) as proof of concept</td>
+<td>90 days</td>
+<td>IT Division + Redhuan D. Oon</td>
+</tr>
+<tr>
+<td><strong>4</strong></td>
+<td>Establish a Technology Incubator steering committee with representation from diverse cooperative types</td>
+<td>60 days</td>
+<td>Prof. Wan Mohtar + ANGKASA board</td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td>Present incubator concept to SKM for alignment with DaKoM 2030 and Budget 2026 allocation</td>
+<td>Q3 2026</td>
+<td>Prof. Wan Mohtar + ANGKASA CEO</td>
+</tr>
+<tr>
+<td><strong>6</strong></td>
+<td>Develop HRDC-claimable training curriculum for cooperative digital readiness</td>
+<td>Q3 2026</td>
+<td>EVSB</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Gartner. "40% of Enterprise Apps Will Feature Task-Specific AI Agents by 2026." August 2025. <a href="https://www.gartner.com/en/newsroom/press-releases/2025-08-26-gartner-predicts-40-percent-of-enterprise-apps-will-feature-task-specific-ai-agents-by-2026-up-from-less-than-5-percent-in-2025">gartner.com</a></li>
+<li>Gartner. "Strategic Predictions for 2026: How AI's Underestimated Influence Is Reshaping Business." <a href="https://www.gartner.com/en/articles/strategic-predictions-for-2026">gartner.com</a></li>
+<li>Forrester. "Predictions 2026: AI Agents Impact Enterprise Software." <a href="https://www.forrester.com/blogs/predictions-2026-ai-agents-changing-business-models-and-workplace-culture-impact-enterprise-software/">forrester.com</a></li>
+<li>Forrester. "AI means bigger margins and lock-in for enterprise software vendors." The Register. <a href="https://www.theregister.com/2025/08/01/forrester_ai_enterprise_software/">theregister.com</a></li>
+<li>Lightspeed Venture Partners. "The Death of the Legacy ERP: Why We Led DualEntry's Series A." <a href="https://lsvp.com/stories/the-death-of-the-legacy-erp-why-we-led-dualentrys-series-a/">lsvp.com</a></li>
+<li>DualEntry. "$90M Series A Funding Announcement." <a href="https://www.dualentry.com/funding-announcement">dualentry.com</a></li>
+<li>Sapphire Ventures. "2026 Outlook: 10 AI Predictions." <a href="https://sapphireventures.com/blog/2026-outlook-10-ai-predictions-shaping-enterprise-infrastructure-the-next-wave-of-innovation/">sapphireventures.com</a></li>
+<li>Foundation Capital. "Where AI is headed in 2026." <a href="https://foundationcapital.com/where-ai-is-headed-in-2026/">foundationcapital.com</a></li>
+<li>Kellton. "SAP ECC to S/4HANA Migration: 2027 Deadline Guide." <a href="https://www.kellton.com/kellton-tech-blog/sap-ecc-s4hana-migration-2027-deadline">kellton.com</a></li>
+<li>Top10ERP. "Oracle Fusion Cloud ERP Pricing Guide 2026." <a href="https://www.top10erp.org/products/oracle-fusion-cloud-erp/pricing">top10erp.org</a></li>
+<li>SAMExpert. "Microsoft 365 Price Increase July 2026." <a href="https://samexpert.com/microsoft-365-july-2026-price-increase/">samexpert.com</a></li>
+<li>Mordor Intelligence. "Open Source ERP Market — USD 2.85B (2025) to USD 4.60B (2030)." <a href="https://www.mordorintelligence.com/industry-reports/open-source-erp-market">mordorintelligence.com</a></li>
+<li>Unisys. "ANGKASA Selects Unisys Software to Enhance Client Experience." <a href="https://www.unisys.com/news-release/malaysias-angkasa-selects-unisys-software-to-enhance-client-experience/">unisys.com</a></li>
+<li>Unisys. "ANGKASA Renews Contract for Unisys ClearPath." <a href="https://www.prnewswire.com/news-releases/angkasa-renews-contract-for-unisys-clearpath-software-and-services-to-support-mission-critical-application-214770101.html">prnewswire.com</a></li>
+<li>The Star. "Over 16,000 cooperatives registered in Malaysia as of Dec 2024." <a href="https://www.thestar.com.my/news/nation/2025/05/13/over-16000-cooperatives-registered-in-malaysia-as-of-dec-2024">thestar.com.my</a></li>
+<li>BERNAMA. "53 Years On, Angkasa Maintains Successful Track Record." <a href="https://www.bernama.com/en/news.php?id=2296815">bernama.com</a></li>
+<li>SKM. "National Co-operative Policy (DaKoM) 2030." <a href="https://www.skm.gov.my/en/koperasi/gerakan-koperasi/dasar-koperasi-malaysia-dakom-2030">skm.gov.my</a></li>
+<li>The Star. "Budget 2026: Angkasa hails RM50mil support for cooperative development." <a href="https://www.thestar.com.my/news/nation/2025/10/11/budget-2026-angkasa-hails-rm50mil-support-for-cooperative-development">thestar.com.my</a></li>
+<li>Oon, Redhuan D. <em>Open Source ERP.</em> Pearson Malaysia, 2010. ISBN 978-967-349-022-6.</li>
+<li>iDempiere. "Community Powered Enterprise — Free Open Source ERP and CRM." <a href="https://idempiere.org/">idempiere.org</a></li>
+</ol>
+<hr />
+<p><strong>Entruss Ventures Sdn. Bhd.</strong> (1186369-A)
+No. 15, Jalan 1/3c, Seksyen 1, 43650 Bandar Baru Bangi, Selangor D.E.
+Tel: 03-8925 8301 | Email: info@entruss.net</p>
+<p><strong>Workshop Enquiries:</strong> red1org@gmail.com</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,4831 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../BlenderBridge/">
+      
+      
+        <link rel="next" href="../DISC_VALIDATION_DB_SRS/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Validation SRS - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#multi-discipline-bom-design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Validation SRS
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ctfl-review-status-session-33-2026-03-19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTFL Review Status (session 33, 2026-03-19)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-discipline-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Discipline Vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-bom-tree-structure-5-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. BOM Tree Structure — 5 Levels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-m_bomcategory-as-discipline-classifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. M_BomCategory as Discipline Classifier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-two-classifiers-on-m_product-independent-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Two Classifiers on M_Product — Independent Dimensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-yaml-schema-v2-discipline-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. YAML Schema v2 — Discipline Classification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. YAML Schema v2 — Discipline Classification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-disambiguation-via-system_type-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Disambiguation via system_type Filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-schema-v1-backward-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Schema v1 Backward Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-extracted-vs-generative-one-schema-two-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Extracted vs Generative — One Schema, Two Modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Extracted vs Generative — One Schema, Two Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-generative-pattern-grammars-future-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Generative Pattern Grammars (future reference)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-tack-io-for-mep-topology-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Tack I/O for MEP Topology (future)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-implementation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Implementation Sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Implementation Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-dx-discipline-reclassification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: DX Discipline Reclassification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-dx-discipline-bom-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: DX Discipline BOM Generation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-compilation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Compilation Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-terminal-discipline-structure-phase-b-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Terminal Discipline Structure (Phase B scope)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#future-generative-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future: Generative Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Design Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-lod-assembly-library-geometry-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. LOD Assembly — Library Geometry Only
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. LOD Assembly — Library Geometry Only">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-docevent-lod-resolution-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 DocEvent LOD Resolution Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-metadata-tables-what-each-contributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Metadata Tables — What Each Contributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-quantity-resolution-fixed-vs-per-area" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Quantity Resolution — Fixed vs Per-Area
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-placement-rule-verb-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 Placement Rule → Verb Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-coverage-by-space-type-current-seed-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Coverage by Space Type (current seed data)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-post-placement-handlers-connectivity-clash-completeness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Post-Placement Handlers — Connectivity, Clash, Completeness
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Post-Placement Handlers — Connectivity, Clash, Completeness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-handler-cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Handler Cascade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-handler-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Handler Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-handler-verb-metadata-linkage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Handler → Verb → Metadata Linkage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-implementation-status-preconditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 Implementation Status &amp; Preconditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#105-handler-witness-claims" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.5 Handler Witness Claims
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ctfl-review-status-session-33-2026-03-19" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CTFL Review Status (session 33, 2026-03-19)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-discipline-vocabulary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Discipline Vocabulary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-bom-tree-structure-5-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. BOM Tree Structure — 5 Levels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-m_bomcategory-as-discipline-classifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. M_BomCategory as Discipline Classifier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-two-classifiers-on-m_product-independent-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Two Classifiers on M_Product — Independent Dimensions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-yaml-schema-v2-discipline-classification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. YAML Schema v2 — Discipline Classification
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. YAML Schema v2 — Discipline Classification">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-disambiguation-via-system_type-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Disambiguation via system_type Filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-schema-v1-backward-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Schema v1 Backward Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-extracted-vs-generative-one-schema-two-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Extracted vs Generative — One Schema, Two Modes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Extracted vs Generative — One Schema, Two Modes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-generative-pattern-grammars-future-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Generative Pattern Grammars (future reference)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-tack-io-for-mep-topology-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Tack I/O for MEP Topology (future)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-implementation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Implementation Sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Implementation Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-dx-discipline-reclassification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1: DX Discipline Reclassification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-dx-discipline-bom-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2: DX Discipline BOM Generation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-compilation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3: Compilation Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4-terminal-discipline-structure-phase-b-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Terminal Discipline Structure (Phase B scope)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#future-generative-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Future: Generative Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-design-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Design Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-lod-assembly-library-geometry-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. LOD Assembly — Library Geometry Only
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. LOD Assembly — Library Geometry Only">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-docevent-lod-resolution-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 DocEvent LOD Resolution Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-metadata-tables-what-each-contributes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 Metadata Tables — What Each Contributes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-quantity-resolution-fixed-vs-per-area" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 Quantity Resolution — Fixed vs Per-Area
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-placement-rule-verb-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 Placement Rule → Verb Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-coverage-by-space-type-current-seed-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Coverage by Space Type (current seed data)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-post-placement-handlers-connectivity-clash-completeness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Post-Placement Handlers — Connectivity, Clash, Completeness
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Post-Placement Handlers — Connectivity, Clash, Completeness">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-handler-cascade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 Handler Cascade
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-handler-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 Handler Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-handler-verb-metadata-linkage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 Handler → Verb → Metadata Linkage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#104-implementation-status-preconditions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4 Implementation Status &amp; Preconditions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#105-handler-witness-claims" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.5 Handler Witness Claims
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="multi-discipline-bom-design">Multi-Discipline BOM Design<a class="headerlink" href="#multi-discipline-bom-design" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../ConstructionAsERP/">ConstructionAsERP</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+</blockquote>
+<h2 id="ctfl-review-status-session-33-2026-03-19">CTFL Review Status (session 33, 2026-03-19)<a class="headerlink" href="#ctfl-review-status-session-33-2026-03-19" title="Permanent link">&para;</a></h2>
+<p><strong>Last reviewed:</strong> 2026-03-19 session 34 — CTFL review: §10.4 H3 blocker added,
+§10.5 handler witness claims + acceptance criteria added (12 witnesses, 6 auto-fix limits).
+<strong>Open:</strong> H1-H6 handlers DESIGNED, NOT IMPLEMENTED. Remaining blockers:
+AD_Clash_Rule (0 rows → H2), AD_Val_Rule SPACING (0 rows → H3),
+AD_Val_Rule CONTINUITY (0 rows → H5). See §10.4 for full status matrix.</p>
+<p><em>How discipline-separated BOMs organize extracted buildings and prepare for generative placement</em></p>
+<blockquote>
+<p><strong>Governing principle:</strong> Each construction discipline (ARC, STR, PLB, ELC, FPR...)
+is a separate BOM sub-tree under its storey. This mirrors real-world drawing sheets
+(A-101, S-101, P-101, E-101) and construction contracts. The BOM structure is
+designed once for both extracted and generative modes — extraction populates
+positions, generative mode populates rules. Same schema, two modes.</p>
+</blockquote>
+<hr />
+<h2 id="1-discipline-vocabulary">1. Discipline Vocabulary<a class="headerlink" href="#1-discipline-vocabulary" title="Permanent link">&para;</a></h2>
+<p>Derived from Terminal extraction (51,088 elements across 9 disciplines) and
+validated against standard construction drawing sheet conventions.</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Discipline</th>
+<th>Drawing Sheet</th>
+<th style="text-align: right;">Terminal Count</th>
+<th style="text-align: right;">DX Count</th>
+<th>IFC Classes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ARC</td>
+<td>Architectural</td>
+<td>A-series</td>
+<td style="text-align: right;">34,724</td>
+<td style="text-align: right;">183</td>
+<td>IfcWall, IfcDoor, IfcWindow, IfcSlab, IfcFurnishingElement, IfcCovering, IfcRailing, IfcStairFlight, IfcRoof, IfcRampFlight</td>
+</tr>
+<tr>
+<td>STR</td>
+<td>Structural</td>
+<td>S-series</td>
+<td style="text-align: right;">1,429</td>
+<td style="text-align: right;">12</td>
+<td>IfcBeam, IfcMember, IfcColumn, IfcSlab<em>, IfcWall</em></td>
+</tr>
+<tr>
+<td>FP</td>
+<td>Fire Protection</td>
+<td>FP-series</td>
+<td style="text-align: right;">6,863</td>
+<td style="text-align: right;">—</td>
+<td>IfcFireSuppressionTerminal, IfcAlarm, IfcPipeSegment<em>, IfcPipeFitting</em>, IfcValve<em>, IfcFlowController</em></td>
+</tr>
+<tr>
+<td>ACMV</td>
+<td>Air Conditioning &amp; Mechanical Ventilation</td>
+<td>M-series</td>
+<td style="text-align: right;">1,621</td>
+<td style="text-align: right;">—</td>
+<td>IfcDuctSegment, IfcDuctFitting, IfcAirTerminal</td>
+</tr>
+<tr>
+<td>CW</td>
+<td>Chilled Water</td>
+<td>—</td>
+<td style="text-align: right;">1,431</td>
+<td style="text-align: right;">—</td>
+<td>IfcPipeSegment<em>, IfcPipeFitting</em>, IfcFlowTerminal<em>, IfcValve</em></td>
+</tr>
+<tr>
+<td>ELEC</td>
+<td>Electrical</td>
+<td>E-series</td>
+<td style="text-align: right;">1,172</td>
+<td style="text-align: right;">—</td>
+<td>IfcLightFixture, IfcElectricAppliance</td>
+</tr>
+<tr>
+<td>SP</td>
+<td>Sanitary Plumbing</td>
+<td>P-series</td>
+<td style="text-align: right;">979</td>
+<td style="text-align: right;">—</td>
+<td>IfcPipeSegment<em>, IfcPipeFitting</em>, IfcFlowTerminal<em>, IfcValve</em></td>
+</tr>
+<tr>
+<td>LPG</td>
+<td>Liquefied Petroleum Gas</td>
+<td>—</td>
+<td style="text-align: right;">209</td>
+<td style="text-align: right;">—</td>
+<td>IfcPipeSegment<em>, IfcPipeFitting</em>, IfcValve*</td>
+</tr>
+<tr>
+<td>REB</td>
+<td>Reinforcing Bar</td>
+<td>S-series (sub)</td>
+<td style="text-align: right;">2,660</td>
+<td style="text-align: right;">—</td>
+<td>IfcReinforcingBar</td>
+</tr>
+</tbody>
+</table>
+<p><strong>* Shared IFC classes:</strong> IfcPipeSegment, IfcPipeFitting, IfcValve, IfcFlowTerminal
+appear in multiple disciplines (FP, CW, SP, LPG). Disambiguation requires
+<code>system_type</code> from IFC property sets — see §5.</p>
+<p><strong>DX coarse mapping:</strong> DX extraction currently classifies all piping/electrical as
+<code>MEP</code> (904 elements). Reclassification into PLB/ELC/FPR needed for fine-grained
+discipline BOMs. SH has no MEP elements (55 ARC+STR only).</p>
+<p><strong>SH stays flat:</strong> No discipline wrapper for proven single-discipline stone.
+RosettaStone integrity preserved as-is for sanity.</p>
+<hr />
+<h2 id="2-bom-tree-structure-5-levels">2. BOM Tree Structure — 5 Levels<a class="headerlink" href="#2-bom-tree-structure-5-levels" title="Permanent link">&para;</a></h2>
+<p>Mirrors real construction drawing sheet hierarchy: discipline letter + storey number.</p>
+<div class="highlight"><pre><span></span><code>L0: BUILDING_DX_STD                      (the project)
+│
+├── DUPLEX_MEP_TRUNK_STD                  (storey-spanning verticals: risers)
+│   ├── PLB_RISER_DX                      (plumbing riser)
+│   ├── ELC_RISER_DX                      (electrical riser, if any)
+│   └── FPR_RISER_DX                      (fire protection riser, if any)
+│
+├── FLOOR_DX_L1_STD                       (L1: storey)
+│   ├── ARC_DX_L1                         (A-101: discipline BOM)
+│   │   ├── room SETs (LIVING, KITCHEN…)  (assembly)
+│   │   │   └── wall, door, window, furniture (leaves)
+│   │   └── structural-arch (slabs, stairs, railings)
+│   ├── PLB_DX_L1                         (P-101: plumbing)
+│   │   └── pipe runs, fittings, fixtures
+│   ├── ELC_DX_L1                         (E-101: electrical)
+│   │   └── conduit runs, receptacles, switches, lights
+│   ├── FPR_DX_L1                         (FP-101: fire protection)
+│   │   └── sprinkler mains, heads, alarms
+│   └── STR_DX_L1                         (S-101: structural)
+│       └── beams, members
+│
+└── FLOOR_DX_L2_STD                       (L2: storey)
+    ├── ARC_DX_L2                         (A-201)
+    ├── PLB_DX_L2                         (P-201)
+    ├── ELC_DX_L2                         (E-201)
+    ├── FPR_DX_L2                         (FP-201)
+    └── STR_DX_L2                         (S-201)
+</code></pre></div>
+<p><strong>Terminal at scale (same structure):</strong>
+<div class="highlight"><pre><span></span><code>L0: BUILDING_TE_STD
+├── [per storey]
+│   ├── ARC_TE_LXX       (~34,724 elements / N storeys)
+│   ├── STR_TE_LXX       (~1,429)
+│   ├── FP_TE_LXX        (~6,863)
+│   ├── ACMV_TE_LXX      (~1,621)
+│   ├── CW_TE_LXX        (~1,431)
+│   ├── ELEC_TE_LXX      (~1,172)
+│   ├── SP_TE_LXX        (~979)
+│   ├── LPG_TE_LXX       (~209)
+│   └── REB_TE_LXX       (~2,660)
+└── [risers / storey-spanning trunks]
+</code></pre></div></p>
+<p><strong>Why 5 levels is correct:</strong> A general contractor doesn't hand the whole building
+to the electrician. He hands him E-101 (Floor 1 Electrical), E-201 (Floor 2
+Electrical), and the riser diagram. Three BOM nodes = three scopes of work. Each
+discipline BOM per storey = one drawing sheet = one subcontract scope. The
+hierarchy encodes contractual reality, not just element counts. Even FPR with
+1 element on a floor gets its own node — fire protection is a separate contract,
+separate permit, separate inspection.</p>
+<p><strong>Storey first, then discipline:</strong> The subcontractor works one floor at a time
+within his trade. He completes Floor 1 electrical, then moves up. He doesn't
+install all conduits in the building top-to-bottom. Exception: risers
+(vertical trunks spanning storeys) sit at BUILDING level, not under any floor.</p>
+<hr />
+<h2 id="3-m_bomcategory-as-discipline-classifier">3. M_BomCategory as Discipline Classifier<a class="headerlink" href="#3-m_bomcategory-as-discipline-classifier" title="Permanent link">&para;</a></h2>
+<p><code>M_BomCategory</code> (= iDempiere M_Product_Category) serves as the shared catalog
+classifier. Discipline codes become new bom_category values:</p>
+<table>
+<thead>
+<tr>
+<th>bom_category</th>
+<th>Current Use</th>
+<th>New Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GF, L1, L2, RF, FN, MS, CW</td>
+<td>Storey codes</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td>LI, BD, KT, FR, RE</td>
+<td>Room/functional types</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td>ST</td>
+<td>Buffer space</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td>HU</td>
+<td>Half-unit</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td><strong>ARC</strong></td>
+<td>—</td>
+<td>Architectural discipline BOM</td>
+</tr>
+<tr>
+<td><strong>STR</strong></td>
+<td>—</td>
+<td>Structural discipline BOM</td>
+</tr>
+<tr>
+<td><strong>PLB</strong></td>
+<td>—</td>
+<td>Plumbing discipline BOM</td>
+</tr>
+<tr>
+<td><strong>ELC</strong></td>
+<td>—</td>
+<td>Electrical discipline BOM</td>
+</tr>
+<tr>
+<td><strong>FPR</strong></td>
+<td>—</td>
+<td>Fire Protection discipline BOM</td>
+</tr>
+<tr>
+<td><strong>ACMV</strong></td>
+<td>—</td>
+<td>HVAC/Mechanical discipline BOM</td>
+</tr>
+<tr>
+<td><strong>SP</strong></td>
+<td>—</td>
+<td>Sanitary Plumbing discipline BOM</td>
+</tr>
+<tr>
+<td><strong>LPG</strong></td>
+<td>—</td>
+<td>LPG discipline BOM</td>
+</tr>
+<tr>
+<td><strong>REB</strong></td>
+<td>—</td>
+<td>Reinforcing Bar discipline BOM</td>
+</tr>
+</tbody>
+</table>
+<p>The discipline lives on <code>m_bom.bom_category</code>, NOT on M_Product. A product is
+just a product (pipe, conduit, sprinkler head). Which discipline it belongs to
+is determined by which discipline BOM tree it sits in. Same product can appear
+in multiple discipline BOMs — same screw in 50 BOMs (pure iDempiere pattern).</p>
+<hr />
+<h2 id="4-two-classifiers-on-m_product-independent-dimensions">4. Two Classifiers on M_Product — Independent Dimensions<a class="headerlink" href="#4-two-classifiers-on-m_product-independent-dimensions" title="Permanent link">&para;</a></h2>
+<p>iDempiere teaches us two orthogonal classifiers:</p>
+<table>
+<thead>
+<tr>
+<th>Classifier</th>
+<th>Lives On</th>
+<th>What It Means</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>M_BomCategory</strong></td>
+<td><code>m_bom</code> (the BOM node)</td>
+<td>Organizational grouping — which trade</td>
+<td>PLB, ELC, FPR</td>
+</tr>
+<tr>
+<td><strong>M_AttributeSet</strong></td>
+<td><code>M_Product</code> (the leaf)</td>
+<td>Engineering behavior — how to parameterize</td>
+<td>BIM_Pipe, BIM_Wall</td>
+</tr>
+</tbody>
+</table>
+<p>They correlate but don't collapse:
+- A <code>BIM_Pipe</code> product lives inside a PLB discipline BOM — but could also appear
+  in FPR (fire protection pipes use same fittings).
+- A <code>BIM_Component</code> product (smoke detector) is discipline-agnostic at the product
+  level — it becomes FPR by living under a FPR discipline BOM.</p>
+<p><strong>M_AttributeSet is for generative mode</strong> — when a user selects a wall variant
+(material, thickness) like iDempiere GardenWorld's T-shirt (Size S/M/L × Color
+Red/Blue). For extracted RosettaStones, there's no selection moment — the IFC
+file already decided. AttributeSet columns stay NULL during extraction.</p>
+<p>Five attribute sets (§11.38, designed for generative future):</p>
+<table>
+<thead>
+<tr>
+<th>M_AttributeSet</th>
+<th>IsInstance</th>
+<th>Generative Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BIM_Pipe</code></td>
+<td>1 (length varies)</td>
+<td>Cross-section stamp; length = instance attribute</td>
+</tr>
+<tr>
+<td><code>BIM_Conduit</code></td>
+<td>1 (length varies)</td>
+<td>Same pattern as pipe</td>
+</tr>
+<tr>
+<td><code>BIM_Wall</code></td>
+<td>1 (height varies)</td>
+<td>Thickness stamp; height/length = instance</td>
+</tr>
+<tr>
+<td><code>BIM_Slab</code></td>
+<td>1 (area varies)</td>
+<td>Thickness stamp; area = instance</td>
+</tr>
+<tr>
+<td><code>BIM_Component</code></td>
+<td>0 (identical)</td>
+<td>Every instance is the same (qty on BOM line)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-yaml-schema-v2-discipline-classification">5. YAML Schema v2 — Discipline Classification<a class="headerlink" href="#5-yaml-schema-v2-discipline-classification" title="Permanent link">&para;</a></h2>
+<h3 id="51-structure">5.1 Structure<a class="headerlink" href="#51-structure" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+
+<span class="nt">building</span><span class="p">:</span>
+<span class="w">  </span><span class="c1"># ... existing fields (building_type, prefix, storeys, etc.) ...</span>
+
+<span class="w">  </span><span class="nt">disciplines</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ARC</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcWall</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcDoor</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcWindow</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcSlab</span><span class="p p-Indicator">,</span>
+<span class="w">                    </span><span class="nv">IfcFurnishingElement</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcCovering</span><span class="p p-Indicator">,</span>
+<span class="w">                    </span><span class="nv">IfcRailing</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcStairFlight</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcRoof</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcRampFlight</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ARC</span>
+
+<span class="w">    </span><span class="nt">STR</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcBeam</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcMember</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcColumn</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPlate</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">STR</span>
+
+<span class="w">    </span><span class="nt">PLB</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Domestic Cold Water</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Domestic Hot Water</span><span class="p p-Indicator">,</span>
+<span class="w">                </span><span class="nv">Sanitary</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Waste</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Hydronic Supply</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Hydronic Return</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PLB</span>
+
+<span class="w">    </span><span class="nt">ELC</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcLightFixture</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcElectricAppliance</span><span class="p p-Indicator">,</span>
+<span class="w">                    </span><span class="nv">IfcFlowSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowController</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Electrical</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Telecom</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Lightning</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ELC</span>
+
+<span class="w">    </span><span class="nt">FPR</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcFireSuppressionTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcAlarm</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcSensor</span><span class="p p-Indicator">,</span>
+<span class="w">                    </span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowController</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Fire Alarm</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Sprinkler</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Fire Suppression</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FPR</span>
+
+<span class="w">    </span><span class="nt">ACMV</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcDuctSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcDuctFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcAirTerminal</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ACMV</span>
+
+<span class="w">    </span><span class="nt">SP</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Sanitary Waste</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Storm Drain</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Vent</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SP</span>
+
+<span class="w">    </span><span class="nt">LPG</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">LPG</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Gas</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LPG</span>
+
+<span class="w">    </span><span class="nt">REB</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcReinforcingBar</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">REB</span>
+</code></pre></div>
+<h3 id="52-disambiguation-via-system_type-filter">5.2 Disambiguation via system_type Filter<a class="headerlink" href="#52-disambiguation-via-system_type-filter" title="Permanent link">&para;</a></h3>
+<p>Some IFC classes (IfcPipeSegment, IfcPipeFitting, IfcValve) appear across
+multiple disciplines. The <code>filter.system_type</code> disambiguates using IFC property
+set data (Pset_DistributionSystemCommon.PredefinedType or similar).</p>
+<p><strong>Prerequisite:</strong> The extraction pipeline must capture system_type from IFC
+property sets into <code>I_Element_Extraction</code>. This column does not exist yet.
+Until it does, DX MEP elements can be classified by <code>element_ref</code> string
+parsing (e.g., "Domestic Cold Water" in the Revit type name) as an interim
+heuristic.</p>
+<h3 id="53-schema-v1-backward-compatibility">5.3 Schema v1 Backward Compatibility<a class="headerlink" href="#53-schema-v1-backward-compatibility" title="Permanent link">&para;</a></h3>
+<p>Buildings without a <code>disciplines:</code> key (schema_version 1, e.g. classify_sh.yaml)
+default to single-discipline ARC — no discipline BOM level inserted. SH
+RosettaStone is untouched.</p>
+<hr />
+<h2 id="6-extracted-vs-generative-one-schema-two-modes">6. Extracted vs Generative — One Schema, Two Modes<a class="headerlink" href="#6-extracted-vs-generative-one-schema-two-modes" title="Permanent link">&para;</a></h2>
+<p>The BOM model is designed once. Extraction populates positions. Generative mode
+(future) populates rules. Same columns, different fill patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Extracted (current)</th>
+<th>Generative (future)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>m_bom_line.dx/dy/dz</code></td>
+<td>Copied from IFC (parent-relative)</td>
+<td>Computed from rules + AABB</td>
+</tr>
+<tr>
+<td><code>m_bom_line.layout_strategy</code></td>
+<td>NULL</td>
+<td>GRID, CEILING_RUN, AXIS_ALIGNED</td>
+</tr>
+<tr>
+<td><code>m_bom_line.z_rule</code></td>
+<td>NULL</td>
+<td>CEILING_OFFSET, WALL_HEIGHT, FLOOR_EMBED</td>
+</tr>
+<tr>
+<td><code>m_bom_line.anchor_face</code></td>
+<td>NULL</td>
+<td>TOP, WALL, FLOOR</td>
+</tr>
+<tr>
+<td><code>m_bom_line.qty</code></td>
+<td>1 (one line per element)</td>
+<td>N (rule expands to N instances)</td>
+</tr>
+<tr>
+<td><code>m_attribute</code> regulation params</td>
+<td>NULL</td>
+<td>max_spacing, coverage_area, regulation_ref</td>
+</tr>
+</tbody>
+</table>
+<h3 id="61-generative-pattern-grammars-future-reference">6.1 Generative Pattern Grammars (future reference)<a class="headerlink" href="#61-generative-pattern-grammars-future-reference" title="Permanent link">&para;</a></h3>
+<p>Three discipline families produce three fundamentally different placement patterns:</p>
+<p><strong>ARC = Containment (nested boxes)</strong>
+Room enclosure: walls forming polygon + openings + furniture placed within AABB.
+Already proven in SH. Pattern = spatial arrangement within a bounding box.</p>
+<p><strong>STR = Grid repetition (parametric spacing)</strong>
+Column-beam grid at regular intervals. BOM captures one bay; qty + parametric
+offset reproduces the grid.</p>
+<p><strong>MEP = Topology (directed connection graph)</strong>
+Pipe/conduit runs: source → segment → fitting → segment → terminal device.
+Pattern = directed connection chain. Tack I/O captures which port connects where.</p>
+<p>Examples (illustrative, not current scope):
+- <strong>Sprinkler grid:</strong> NFPA 13 Light Hazard → max 4.6m spacing, 2.3m from wall,
+  200mm below ceiling. Given room AABB, compiler produces head positions.
+- <strong>Conduit ceiling run:</strong> NEC-compliant axis-aligned routing, 25mm below slab
+  soffit, 90° turns only, hanger every 1500mm.</p>
+<p>These rules slot into the existing <code>m_bom_line</code> columns (<code>layout_strategy</code>,
+<code>z_rule</code>, <code>anchor_face</code>) and <code>m_attribute</code> overflow table without schema changes.</p>
+<h3 id="62-tack-io-for-mep-topology-future">6.2 Tack I/O for MEP Topology (future)<a class="headerlink" href="#62-tack-io-for-mep-topology-future" title="Permanent link">&para;</a></h3>
+<p>Current <code>m_bom_line</code> has placement (dx/dy/dz) but not explicit connection ports.
+For ARC containment, position is sufficient. For MEP topology, the walker needs
+to know which port of a tee connects to which downstream pipe.</p>
+<p>Future columns or m_attribute entries:
+- <code>tack_in</code> — upstream connection port identifier
+- <code>tack_out</code> — downstream connection port identifier(s)
+- <code>connection_type</code> — rigid, flexible, sealed, open</p>
+<p>Not needed for extraction (positions are explicit). Required for generative MEP
+routing where the compiler must chain segments through fittings.</p>
+<hr />
+<h2 id="7-implementation-sequence">7. Implementation Sequence<a class="headerlink" href="#7-implementation-sequence" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1-dx-discipline-reclassification">Phase 1: DX Discipline Reclassification<a class="headerlink" href="#phase-1-dx-discipline-reclassification" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Reclassify DX's 904 <code>MEP</code> elements into PLB/ELC/FPR using <code>element_ref</code> heuristic</li>
+<li>Update <code>I_Element_Extraction.discipline</code> for DX elements</li>
+<li>Verify counts: PLB + ELC + FPR = 904</li>
+</ol>
+<h3 id="phase-2-dx-discipline-bom-generation">Phase 2: DX Discipline BOM Generation<a class="headerlink" href="#phase-2-dx-discipline-bom-generation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Update <code>classify_dx.yaml</code> to schema_version 2 with <code>disciplines:</code> map</li>
+<li>Extend IFCtoBOM pipeline to read discipline map and create per-storey
+   discipline BOM nodes (ARC_DX_L1, PLB_DX_L1, ELC_DX_L1, etc.)</li>
+<li>Generate <code>DX_BOM.db</code> with discipline-organized BOM tree</li>
+<li>Verify: BOM walk reproduces all 1099 elements</li>
+</ol>
+<h3 id="phase-3-compilation-pipeline">Phase 3: Compilation Pipeline<a class="headerlink" href="#phase-3-compilation-pipeline" title="Permanent link">&para;</a></h3>
+<ol>
+<li>BOM walker traverses discipline BOM level transparently (it's just another
+   m_bom node — no walker changes needed if the tree is correct)</li>
+<li>Verify: SH compilation unchanged (no discipline level in SH BOM)</li>
+<li>Verify: DX compilation produces same 1099 elements via discipline BOMs</li>
+<li>G1-G6 gates GREEN for both SH and DX</li>
+</ol>
+<h3 id="phase-4-terminal-discipline-structure-phase-b-scope">Phase 4: Terminal Discipline Structure (Phase B scope)<a class="headerlink" href="#phase-4-terminal-discipline-structure-phase-b-scope" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Terminal already has 9 disciplines in <code>I_Element_Extraction.discipline</code></li>
+<li>Assign storey values (currently "Unknown" for all Terminal elements)</li>
+<li>Create <code>classify_te.yaml</code> schema_version 2</li>
+<li>Generate <code>TE_BOM.db</code> with 9 discipline sub-trees per storey</li>
+<li>Scale proof: 51,088 elements organized into ~N×9 discipline BOMs</li>
+</ol>
+<h3 id="future-generative-extension">Future: Generative Extension<a class="headerlink" href="#future-generative-extension" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Add <code>system_type</code> column to <code>I_Element_Extraction</code> (from IFC property sets)</li>
+<li>Populate <code>layout_strategy</code>, <code>z_rule</code>, <code>anchor_face</code> on m_bom_line</li>
+<li>Populate <code>m_attribute</code> with regulation parameters (spacing, clearance, code ref)</li>
+<li>Compiler reads rules + AABB → produces positions (instead of copying from IFC)</li>
+<li>Tack I/O for MEP connection topology</li>
+</ol>
+<hr />
+<h2 id="8-design-decisions">8. Design Decisions<a class="headerlink" href="#8-design-decisions" title="Permanent link">&para;</a></h2>
+<p><strong>D1: Storey first, discipline second.</strong>
+Matches real construction sequencing — subcontractors work one floor at a time
+within their trade. Exception: risers (storey-spanning verticals) sit at
+BUILDING level.</p>
+<p><strong>D2: Fine discipline split even for small counts.</strong>
+FPR with 1 element on a floor still gets its own BOM node. Fire protection is
+a separate contract, separate permit, separate inspection. The BOM encodes
+contractual reality, not element count.</p>
+<p><strong>D3: SH stays flat.</strong>
+No discipline wrapper for proven single-discipline RosettaStone. Schema v1
+backward compatibility — buildings without <code>disciplines:</code> key default to
+single-discipline, no extra BOM level.</p>
+<p><strong>D4: Discipline on BOM, not on Product.</strong>
+<code>m_bom.bom_category</code> carries the discipline. <code>M_Product</code> is discipline-agnostic.
+Same product can appear in multiple discipline BOMs (iDempiere pattern: same
+screw in 50 BOMs).</p>
+<p><strong>D5: AttributeSet is for generative mode.</strong>
+M_AttributeSet on M_Product defines product variant behavior (pipe length varies,
+component is identical). Irrelevant for extraction — relevant when the compiler
+generates placements from rules instead of copying from IFC.</p>
+<p><strong>D6: One schema, two modes.</strong>
+m_bom_line columns (layout_strategy, z_rule, anchor_face) and m_attribute
+regulation params stay NULL for extraction, get populated for generative mode.
+No schema changes when transitioning from extraction to generation.</p>
+<hr />
+<h2 id="9-lod-assembly-library-geometry-only">9. LOD Assembly — Library Geometry Only<a class="headerlink" href="#9-lod-assembly-library-geometry-only" title="Permanent link">&para;</a></h2>
+<p><strong>No parametric mesh in pipeline</strong> (feedback_no_parametric.md). Every element
+gets its geometry from component_library.db:</p>
+<div class="highlight"><pre><span></span><code>C_OrderLine.family_ref (product_id)
+  → M_Product (width, depth, height, ifc_class)
+  → component_definitions (attachment_face, orientation, geometry_hash)
+  → component_geometries (vertices, faces, normals via geometry_hash)
+
+ASI overrides instance sizing:
+  M_AttributeSetInstance → M_AttributeInstance (width_mm, depth_mm, height_mm)
+  ASI controls scaling — library LOD provides base shape.
+</code></pre></div>
+<h3 id="91-docevent-lod-resolution-chain">9.1 DocEvent LOD Resolution Chain<a class="headerlink" href="#91-docevent-lod-resolution-chain" title="Permanent link">&para;</a></h3>
+<p>When <code>YAML.discipline = DocEvent</code>, the engine resolves default products per
+space type and area via a 5-table chain spanning disc_validation.db (steps 1-3)
+and component_library.db (steps 4-5):</p>
+<div class="highlight"><pre><span></span><code>DocEvent processIt() for discipline FP in a BEDROOM (12m²):
+
+Step 1: ad_space_type_mep_bom
+  WHERE space_type_id = &#39;BEDROOM&#39; AND mep_product_id = &#39;SPRINKLER&#39;
+  → qty_normal = 0  (use per_area instead)
+  → per_area_normal = 0.07/m²  → qty = ceil(12 × 0.07) = 1
+  → placement_rule = &#39;CEILING_GRID&#39;
+  → host_surface = &#39;CEILING&#39;
+  → building_code = &#39;NFPA 13&#39;, code_clause = &#39;8.5.5&#39;
+
+Step 2: ad_element_mep
+  WHERE element_type = &#39;SPRINKLER&#39;
+  → ifc_class = &#39;IfcFireSuppressionTerminal&#39;
+  → discipline = &#39;FP&#39;
+  → host_type = &#39;CEILING&#39;
+  → ports = [{&quot;id&quot;:&quot;IN&quot;,&quot;size&quot;:0.015}]
+  → code_ref = &#39;NFPA 13&#39;
+
+Step 3: ad_fp_coverage (FP-specific spacing)
+  WHERE hazard_class = &#39;LIGHT&#39;  (from YAML occupancy_class or project default)
+  → max_spacing_m = 4.6, min_spacing_m = 1.8
+  → wall_distance_m = 2.3
+  → max_coverage_m2 = 18.6
+  → k_factor = 5.6
+
+Step 4: M_Product (actual product with dimensions)
+  Resolved via ad_element_mep_alias cascade (DISC_VALIDATION_DB_SRS.md §5.1):
+    P1: ifc_class match → P2: predefined_type → P3: type_class → P4: element_name LIKE
+  → product_id, width, depth, height
+  → Multiple products may match — select by building_type affinity
+    or closest dimensions to room context
+
+Step 5: component_definitions → component_geometries (LOD mesh)
+  WHERE name LIKE &#39;%sprinkler%&#39; (matched via product_id → geometry_hash)
+  → attachment_face = &#39;TOP&#39; (pendant) or &#39;BOTTOM&#39; (upright)
+  → orientation = &#39;PENDANT&#39; or &#39;UPRIGHT&#39;
+  → geometry_hash → vertices, faces, normals (actual mesh)
+</code></pre></div>
+<h3 id="92-metadata-tables-what-each-contributes">9.2 Metadata Tables — What Each Contributes<a class="headerlink" href="#92-metadata-tables-what-each-contributes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Role</th>
+<th>Key Columns</th>
+<th>Drives</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_space_type_mep_bom</code></td>
+<td>Default product schedule per room type</td>
+<td>space_type_id, mep_product_id, qty_normal, per_area_normal, placement_rule, host_surface, building_code</td>
+<td>HOW MANY + WHERE</td>
+</tr>
+<tr>
+<td><code>ad_element_mep</code></td>
+<td>Logical MEP element definition</td>
+<td>element_type, ifc_class, discipline, host_type, ports, mount_height, clearance</td>
+<td>WHAT (ifc_class + ports)</td>
+</tr>
+<tr>
+<td><code>ad_fp_coverage</code></td>
+<td>FP-specific coverage by hazard class</td>
+<td>hazard_class, max_spacing_m, max_coverage_m2, wall_distance_m, k_factor</td>
+<td>SPACING (FP only)</td>
+</tr>
+<tr>
+<td><code>M_Product</code></td>
+<td>Physical product with dimensions</td>
+<td>product_id, width, depth, height, ifc_class</td>
+<td>DIMENSIONS</td>
+</tr>
+<tr>
+<td><code>component_definitions</code></td>
+<td>LOD geometry link + attachment convention</td>
+<td>name, geometry_hash, attachment_face, orientation</td>
+<td>LOD MESH + ATTACHMENT</td>
+</tr>
+<tr>
+<td><code>component_geometries</code></td>
+<td>Actual mesh data</td>
+<td>geometry_hash, vertices, faces, normals</td>
+<td>GEOMETRY</td>
+</tr>
+</tbody>
+</table>
+<h3 id="93-quantity-resolution-fixed-vs-per-area">9.3 Quantity Resolution — Fixed vs Per-Area<a class="headerlink" href="#93-quantity-resolution-fixed-vs-per-area" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>When</th>
+<th>Formula</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fixed qty</strong></td>
+<td><code>qty_normal &gt; 0 AND per_area_normal = 0</code></td>
+<td><code>qty = qty_normal</code></td>
+<td>BATHROOM/TOILET = 1, KITCHEN/SINK = 1</td>
+</tr>
+<tr>
+<td><strong>Per-area</strong></td>
+<td><code>per_area_normal &gt; 0</code></td>
+<td><code>qty = ceil(room_area_m2 × per_area_normal)</code></td>
+<td>OFFICE/SPRINKLER = ceil(50 × 0.07) = 4</td>
+</tr>
+<tr>
+<td><strong>Both zero</strong></td>
+<td><code>qty_normal = 0 AND per_area_normal = 0</code></td>
+<td>Not placed in this room type</td>
+<td>CORRIDOR/OUTLET = 0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="94-placement-rule-verb-mapping">9.4 Placement Rule → Verb Mapping<a class="headerlink" href="#94-placement-rule-verb-mapping" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Placement Rule</th>
+<th>Verb</th>
+<th>Position Computation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CEILING_CENTER</code></td>
+<td>PLACE</td>
+<td>Room centroid, at ceiling Z</td>
+</tr>
+<tr>
+<td><code>CEILING_GRID</code></td>
+<td>TILE / ALONG</td>
+<td>Grid at spacing from ad_fp_coverage or AD_Val_Rule</td>
+</tr>
+<tr>
+<td><code>WALL_ENTRY</code></td>
+<td>PLACE</td>
+<td>Near door, at mount_height from ad_element_mep</td>
+</tr>
+<tr>
+<td><code>WALL_SPACED</code></td>
+<td>ALONG</td>
+<td>Evenly spaced along longest wall</td>
+</tr>
+<tr>
+<td><code>WALL_BACK</code></td>
+<td>PLACE</td>
+<td>Against back wall, at mount_height</td>
+</tr>
+<tr>
+<td><code>WALL_SINK</code></td>
+<td>PLACE</td>
+<td>Adjacent to sink, at mount_height</td>
+</tr>
+<tr>
+<td><code>WALL_COOKER</code></td>
+<td>PLACE</td>
+<td>Above cooker position</td>
+</tr>
+<tr>
+<td><code>WALL_HIGH</code></td>
+<td>MOUNT</td>
+<td>High on wall (AC point: ~2.3m)</td>
+</tr>
+<tr>
+<td><code>COUNTER_BACK</code></td>
+<td>PLACE</td>
+<td>At counter height, against wall</td>
+</tr>
+<tr>
+<td><code>FLOOR_LOW</code></td>
+<td>PLACE</td>
+<td>Floor level, low point for drainage</td>
+</tr>
+<tr>
+<td><code>AUTO</code></td>
+<td><em>(engine decides)</em></td>
+<td>Fallback — centroid or grid based on qty</td>
+</tr>
+</tbody>
+</table>
+<h3 id="95-coverage-by-space-type-current-seed-data">9.5 Coverage by Space Type (current seed data)<a class="headerlink" href="#95-coverage-by-space-type-current-seed-data" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Space Type</th>
+<th>SPRINKLER</th>
+<th>LIGHT</th>
+<th>OUTLET</th>
+<th>EXHAUST</th>
+<th>DIFFUSER</th>
+<th>Code Base</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BEDROOM</td>
+<td>0.07/m²</td>
+<td>1</td>
+<td>3</td>
+<td>—</td>
+<td>1</td>
+<td>NFPA 13 + NEC + MS1525</td>
+</tr>
+<tr>
+<td>BATHROOM</td>
+<td>1</td>
+<td>1</td>
+<td>1 GFCI</td>
+<td>1</td>
+<td>—</td>
+<td>NFPA 13 + NEC + IMC</td>
+</tr>
+<tr>
+<td>KITCHEN</td>
+<td>1</td>
+<td>2</td>
+<td>3×20A + 2 GFCI</td>
+<td>1</td>
+<td>1</td>
+<td>NFPA 13 + NEC + IMC</td>
+</tr>
+<tr>
+<td>LIVING</td>
+<td>0.07/m²</td>
+<td>2</td>
+<td>4</td>
+<td>—</td>
+<td>1</td>
+<td>NFPA 13 + NEC + MS1525</td>
+</tr>
+<tr>
+<td>OFFICE</td>
+<td>0.07/m²</td>
+<td>0.1/m²</td>
+<td>0.2/m²</td>
+<td>—</td>
+<td>1</td>
+<td>NFPA 13 + NEC</td>
+</tr>
+<tr>
+<td>CORRIDOR</td>
+<td>0.05/m²</td>
+<td>1</td>
+<td>—</td>
+<td>—</td>
+<td>1</td>
+<td>NFPA 13 + NEC</td>
+</tr>
+<tr>
+<td>ASSEMBLY_HALL</td>
+<td>0.07/m²</td>
+<td>0.1/m²</td>
+<td>6</td>
+<td>—</td>
+<td>1</td>
+<td>NFPA 13 + NEC</td>
+</tr>
+</tbody>
+</table>
+<p>Metadata-driven. Adding a new space type or changing a product count = SQL
+UPDATE, no Java change.</p>
+<hr />
+<h2 id="10-post-placement-handlers-connectivity-clash-completeness">10. Post-Placement Handlers — Connectivity, Clash, Completeness<a class="headerlink" href="#10-post-placement-handlers-connectivity-clash-completeness" title="Permanent link">&para;</a></h2>
+<p>After elements are placed (by either <code>{prefix}_BOM</code> pipeline or DocEvent),
+handler routines run to ensure the placed elements form a valid construction
+system. These are iDempiere <code>ModelValidator.afterSave()</code> equivalents — they
+fire after each placement batch, not per-element.</p>
+<h3 id="101-handler-cascade">10.1 Handler Cascade<a class="headerlink" href="#101-handler-cascade" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Elements placed (from BOM pipeline or DocEvent)
+  │
+  ├── H1: CONNECTIVITY handler
+  │   │  Ensures every terminal connects to a source via fittings/pipes.
+  │   │
+  │   │  IFC GROUPING SEMANTICS: IFC&#39;s IfcRelConnectsPortToElement and
+  │   │  IfcDistributionPort define system topology. The BOM tree mirrors
+  │   │  this: DISCIPLINE BOM → RISER (parent) → BRANCH (child) → HEAD
+  │   │  (leaf). Parent-child in the BOM IS the connection graph. A
+  │   │  disconnected element = orphan node with no parent in its
+  │   │  discipline sub-tree. ad_assembly_connector.connects_to names
+  │   │  the system network (PLUMBING_STACK, FP_MAIN, etc.) — the BOM
+  │   │  tree path from leaf to root must traverse these system names.
+  │   │
+  │   │  For FP:  BFS from riser → every sprinkler head reachable?
+  │   │  For CW:  BFS from supply → every fixture has supply_in?
+  │   │  For SP:  BFS from stack → every fixture has waste_out?
+  │   │  For ELEC: BFS from panel → every outlet/light has circuit?
+  │   │
+  │   │  Uses: ad_assembly_connector.connects_to (system graph)
+  │   │        ad_element_mep.ports (port definitions)
+  │   │        BOM tree Parent_OrderLine_ID (containment = connectivity)
+  │   │
+  │   │  If disconnected:
+  │   │    → Auto-insert connecting pipe/conduit segments (ROUTE verb)
+  │   │    → Or flag WARN: &quot;sprinkler_23 unreachable from riser&quot;
+  │   │
+  │   └── Writes: PP_Order_Node (verb_ref=&#39;CONNECT FITTINGS&#39;)
+  │               W_Validation_Result (tier=1, CONNECTIVITY check)
+  │
+  ├── H2: NON-CLASH handler
+  │   │  Ensures no hard/soft clashes between placed elements and
+  │   │  elements from OTHER disciplines already in the BOM.
+  │   │
+  │   │  For each newly placed element:
+  │   │    → ERP-maths clearance against all elements on same storey
+  │   │      clearance = centroid_dist - radius_a - radius_b
+  │   │    → Check AD_Clash_Rule for discipline pair
+  │   │
+  │   │  Uses: AD_Clash_Rule (discipline pairs, clash_type, min_distance_mm)
+  │   │        M_Product dimensions (cross-section radii)
+  │   │
+  │   │  If clash detected:
+  │   │    → HARD clash: nudge element to nearest clear position
+  │   │    → SOFT clash: flag WARN with clearance value
+  │   │    → MATERIAL clash: flag WARN with resolution_note
+  │   │      (&quot;Add fire collar at penetration point&quot;)
+  │   │
+  │   └── Writes: W_Validation_Result (tier=2, CLASH check)
+  │               C_OrderLine.dx/dy/dz updated if nudged
+  │
+  ├── H3: SPACING COMPLIANCE handler
+  │   │  Ensures placed elements meet code spacing requirements.
+  │   │
+  │   │  For FP:  NN distance between heads ∈ [min_spacing, max_spacing]
+  │   │           Wall distance ≥ wall_distance_m (ad_fp_coverage)
+  │   │  For ELEC: NN distance between fixtures ≤ max_spacing_mm
+  │   │  For outlets: NEC 210.52 — max 1.8m from any point on wall
+  │   │
+  │   │  Uses: AD_Val_Rule (NFPA13_LH_SPACING, IES_LIGHT_SPACING, etc.)
+  │   │        ad_fp_coverage (hazard-class-specific thresholds)
+  │   │
+  │   │  If spacing violated:
+  │   │    → Adjust grid pitch to comply (recalc from processIt formula)
+  │   │    → Or insert additional element to fill gap
+  │   │    → Flag WARN if adjustment exceeds ±10% of typical_spacing
+  │   │
+  │   └── Writes: W_Validation_Result (tier=1, SPACING check)
+  │
+  ├── H4: HOST ATTACHMENT handler
+  │   │  Ensures every placed element has a valid host surface.
+  │   │
+  │   │  IFC GROUPING SEMANTICS: IFC&#39;s IfcRelVoidsElement (openings in
+  │   │  walls) and IfcRelFillsElement (doors/windows filling voids)
+  │   │  encode host relationships explicitly. For MEP, IFC uses
+  │   │  IfcRelContainedInSpatialStructure to place elements within
+  │   │  their spatial container (storey/room). The BOM tree mirrors
+  │   │  this: a CEILING-hosted element sits under a FLOOR node whose
+  │   │  AABB defines the ceiling surface. A WALL-hosted element sits
+  │   │  under a ROOM node with ad_wall_face defining available faces.
+  │   │  Host existence = parent node + face existence in the BOM tree.
+  │   │
+  │   │  CEILING elements: parent FLOOR node has slab (AABB height &gt; 0)
+  │   │  WALL elements: parent ROOM node has ad_wall_face for that face
+  │   │  FLOOR elements: parent FLOOR node has ground slab
+  │   │
+  │   │  Uses: ad_element_mep.host_type
+  │   │        ad_space_type_mep_bom.host_surface
+  │   │        ad_wall_face (room boundary faces)
+  │   │        placement_rules (offset_from_host)
+  │   │        BOM tree AABB (parent node dimensions)
+  │   │
+  │   │  If host missing:
+  │   │    → Flag WARN: &quot;light_01 has no ceiling host at Z=2.8m&quot;
+  │   │    → Snap to nearest valid host surface
+  │   │
+  │   └── Writes: W_Validation_Result (tier=1, HOST check)
+  │
+  ├── H5: VERTICAL CONTINUITY handler
+  │   │  For risers/stacks that span storeys: verify X,Y alignment.
+  │   │
+  │   │  IFC GROUPING SEMANTICS: IFC&#39;s spatial containment hierarchy
+  │   │  (IfcRelContainedInSpatialStructure, IfcRelAggregates) encodes
+  │   │  the storey relationship. When elements sit under their correct
+  │   │  IfcBuildingStorey, the absolute Z is inherited from the storey
+  │   │  elevation. The BOM tree mirrors this exactly:
+  │   │    BUILDING → FLOOR (dz = storey elevation) → DISCIPLINE → LEAF
+  │   │  Tack dz on each node is RELATIVE to parent (BBC.md §4).
+  │   │  World Z = sum of dz up the tree. This means vertical alignment
+  │   │  is a TREE STRUCTURE concern, not a raw coordinate concern.
+  │   │
+  │   │  What H5 actually checks:
+  │   │    → Riser elements exist under correct storey nodes
+  │   │    → Same riser&#39;s dx/dy is IDENTICAL across storey nodes
+  │   │      (only dz differs — inherited from parent FLOOR node)
+  │   │    → If dx/dy differs across storeys → tree is malformed
+  │   │
+  │   │  Uses: AD_Val_Rule WHERE rule_type=&#39;CONTINUITY&#39;
+  │   │        max_xy_drift_mm per discipline
+  │   │        BOM tree parent hierarchy (Parent_OrderLine_ID)
+  │   │
+  │   │  If drift detected:
+  │   │    → Snap riser segment dx/dy to match storey below
+  │   │    → Flag WARN if drift &gt; tolerance
+  │   │    → Root cause is almost always REPARENT to wrong node
+  │   │
+  │   └── Writes: W_Validation_Result (tier=3, CONTINUITY check)
+  │
+  └── H6: COMPLETENESS handler
+      │  Ensures the room has all required MEP elements per
+      │  ad_space_type_mep_bom schedule.
+      │
+      │  IFC GROUPING SEMANTICS: IFC&#39;s IfcRelAggregates decomposes a
+      │  spatial element into its parts. A room (IfcSpace) aggregates
+      │  all elements within it. The BOM tree mirrors this: ROOM node
+      │  contains all LEAF children. Completeness = counting children
+      │  of a ROOM node by mep_product_id and comparing to the schedule.
+      │  The spatial container IS the count boundary — no spatial query
+      │  needed, just a tree walk of C_OrderLine children.
+      │
+      │  For each space_type_id × mep_product_id row:
+      │    → Count C_OrderLine children under ROOM node
+      │      WHERE family_ref resolves to matching mep_product_id
+      │    → Compare to qty_normal (or ceil(area × per_area_normal))
+      │    → If count &lt; required: flag WARN with missing items
+      │
+      │  Uses: ad_space_type_mep_bom (the schedule)
+      │        BOM tree Parent_OrderLine_ID (room containment)
+      │        bom_category on ROOM node (space_type lookup)
+      │
+      │  Example: BATHROOM missing EXHAUST_FAN
+      │    → WARN: &quot;BATHROOM requires 1 EXHAUST_FAN per IMC 2021 403.3&quot;
+      │
+      └── Writes: W_Validation_Result (tier=1, COMPLETENESS check)
+</code></pre></div>
+<h3 id="102-handler-summary">10.2 Handler Summary<a class="headerlink" href="#102-handler-summary" title="Permanent link">&para;</a></h3>
+<p><strong>Common handlers</strong> fire for ALL disciplines — both <code>{prefix}_BOM</code> and <code>DocEvent</code>.
+They are shared cross-cutting checks, like iDempiere's tax calculation that
+fires on every invoice line regardless of product category.</p>
+<table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>What</th>
+<th>Common?</th>
+<th>Fires After</th>
+<th>Auto-Fix</th>
+<th>Tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>H1 CONNECTIVITY</strong></td>
+<td>Every terminal reachable from source</td>
+<td><strong>COMMON</strong></td>
+<td>Each discipline batch</td>
+<td>Insert connecting segments</td>
+<td>1</td>
+</tr>
+<tr>
+<td><strong>H2 NON-CLASH</strong></td>
+<td>No hard/soft clashes across disciplines</td>
+<td><strong>COMMON</strong></td>
+<td>Each discipline batch</td>
+<td>Nudge to clear position</td>
+<td>2</td>
+</tr>
+<tr>
+<td>H3 SPACING</td>
+<td>Code-compliant spacing (NFPA, NEC, IES)</td>
+<td>DocEvent only</td>
+<td>FP, ELEC batches</td>
+<td>Adjust grid pitch</td>
+<td>1</td>
+</tr>
+<tr>
+<td><strong>H4 HOST ATTACHMENT</strong></td>
+<td>Every element has valid host surface</td>
+<td><strong>COMMON</strong></td>
+<td>Each discipline batch</td>
+<td>Snap to nearest host</td>
+<td>1</td>
+</tr>
+<tr>
+<td><strong>H5 VERTICAL CONTINUITY</strong></td>
+<td>Risers/stacks aligned across storeys</td>
+<td><strong>COMMON</strong></td>
+<td>After all storeys</td>
+<td>Snap to match below</td>
+<td>3</td>
+</tr>
+<tr>
+<td><strong>H6 COMPLETENESS</strong></td>
+<td>Room has all required MEP per schedule</td>
+<td><strong>COMMON</strong></td>
+<td>After all disciplines</td>
+<td>Flag missing items</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p>H1, H2, H4, H5, H6 are <strong>common</strong> — they validate structural integrity
+regardless of how elements arrived (BOM pipeline or DocEvent). A pipe from
+<code>{prefix}_BOM</code> needs connectivity just as much as one placed by DocEvent.</p>
+<p>H3 (SPACING) is DocEvent-only because <code>{prefix}_BOM</code> elements already have
+their spacing baked into the BOM tack positions from extraction. DocEvent
+computes spacing from rules, so it needs the compliance check.</p>
+<h3 id="103-handler-verb-metadata-linkage">10.3 Handler → Verb → Metadata Linkage<a class="headerlink" href="#103-handler-verb-metadata-linkage" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Verb Used</th>
+<th>Metadata Read</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>H1</td>
+<td><code>CONNECT FITTINGS</code>, <code>JOIN</code></td>
+<td><code>ad_assembly_connector</code>, <code>ad_element_mep.ports</code></td>
+</tr>
+<tr>
+<td>H2</td>
+<td><code>CHECK CLASH</code></td>
+<td><code>AD_Clash_Rule</code>, <code>M_Product</code> (cross-section)</td>
+</tr>
+<tr>
+<td>H3</td>
+<td><code>CHECK PLACEMENT</code></td>
+<td><code>AD_Val_Rule</code>, <code>ad_fp_coverage</code></td>
+</tr>
+<tr>
+<td>H4</td>
+<td><code>ATTACH</code>, <code>MOUNT</code>, <code>HANG</code></td>
+<td><code>placement_rules</code>, <code>component_definitions.attachment_face</code></td>
+</tr>
+<tr>
+<td>H5</td>
+<td><em>(vertical check)</em></td>
+<td><code>AD_Val_Rule WHERE rule_type='CONTINUITY'</code></td>
+</tr>
+<tr>
+<td>H6</td>
+<td><em>(schedule audit)</em></td>
+<td><code>ad_space_type_mep_bom</code></td>
+</tr>
+</tbody>
+</table>
+<p>All handlers write to <code>W_Validation_Result</code> in work_output.db. The ambient
+compliance strip in BIM Designer reads these results to show live status.
+Handlers that auto-fix also update <code>C_OrderLine.dx/dy/dz</code> (nudge/snap).</p>
+<h3 id="104-implementation-status-preconditions">10.4 Implementation Status &amp; Preconditions<a class="headerlink" href="#104-implementation-status-preconditions" title="Permanent link">&para;</a></h3>
+<p><strong>Status (session 34):</strong> H1-H6 handlers are <strong>DESIGNED, NOT IMPLEMENTED</strong>.
+Zero handler code exists. The cascade above is the target specification.</p>
+<p><strong>Metadata table readiness (disc_validation.db created session 33):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>DB</th>
+<th>Status</th>
+<th>Seeded?</th>
+<th>Blocks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_space_type_mep_bom</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV001+DV002)</td>
+<td>YES — 186 rows (41 space types × 12 MEP products)</td>
+<td>H6</td>
+</tr>
+<tr>
+<td><code>ad_element_mep</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV001+DV002)</td>
+<td>YES — 12 element types</td>
+<td>H1, H4</td>
+</tr>
+<tr>
+<td><code>ad_element_mep_alias</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV003)</td>
+<td>YES — 84 alias rows (4-tier IFC cascade)</td>
+<td>H1, H4</td>
+</tr>
+<tr>
+<td><code>ad_fp_coverage</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV001+DV002)</td>
+<td>YES — 4 hazard classes</td>
+<td>H1, H3</td>
+</tr>
+<tr>
+<td><code>ad_assembly_connector</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV001+DV002)</td>
+<td>YES — 10 connector rows</td>
+<td>H1</td>
+</tr>
+<tr>
+<td><code>ad_wall_face</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV001+DV002)</td>
+<td>YES — 204 rows</td>
+<td>H4</td>
+</tr>
+<tr>
+<td><code>placement_rules</code></td>
+<td>disc_validation.db</td>
+<td>CREATED (DV001+DV002)</td>
+<td>YES — 4801 rows</td>
+<td>H4</td>
+</tr>
+<tr>
+<td><code>AD_Clash_Rule</code></td>
+<td>validation.db</td>
+<td><strong>SCHEMA ONLY</strong></td>
+<td>NO — 0 rows</td>
+<td><strong>H2 blocked</strong></td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule</code> (SPACING)</td>
+<td>validation.db</td>
+<td><strong>SCHEMA ONLY</strong></td>
+<td>NO — 0 rows of type SPACING</td>
+<td><strong>H3 blocked</strong></td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule</code> (CONTINUITY)</td>
+<td>validation.db</td>
+<td><strong>SCHEMA ONLY</strong></td>
+<td>NO — 0 rows of type CONTINUITY</td>
+<td><strong>H5 blocked</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>H3 SPACING blocked:</strong> H3 requires both <code>ad_fp_coverage</code> (seeded, 4 rows) AND
+<code>AD_Val_Rule WHERE rule_type='SPACING'</code> (0 rows). The coverage thresholds exist
+but the rule engine entry to trigger H3 does not. H3 fires DocEvent-only because
+<code>{prefix}_BOM</code> elements have spacing baked into tack positions from extraction.</p>
+<p><strong>Precondition for TE validation:</strong> CLUSTER verb fidelity must improve before
+handlers can produce meaningful results. Current 29mm max positional error
+(improved from 29m after F3 sort fix, session 34) may still generate
+false-positive clash/connectivity/spacing violations at tight tolerances.
+Handler implementation should follow CLUSTER→exact verb promotion.</p>
+<p><strong>Precondition for generative (DocEvent) validation:</strong> All metadata tables
+above must be seeded. H3 SPACING requires <code>ad_fp_coverage</code> + <code>AD_Val_Rule</code>
+rows. H2 NON-CLASH requires <code>AD_Clash_Rule</code> discipline-pair rows.</p>
+<h3 id="105-handler-witness-claims">10.5 Handler Witness Claims<a class="headerlink" href="#105-handler-witness-claims" title="Permanent link">&para;</a></h3>
+<p>Each handler requires witness claims BEFORE implementation (CTFL best practice).
+Implementation is BLOCKED until these claims are written as <code>@Test</code> methods.</p>
+<table>
+<thead>
+<tr>
+<th>Witness</th>
+<th>Handler</th>
+<th>What it Proves</th>
+<th>Acceptance Criteria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W-H1-CONNECT-1</td>
+<td>H1</td>
+<td>Every FP head reachable from riser via BOM tree path</td>
+<td>BFS from riser node reaches all IfcFireSuppressionTerminal leaves. Path length ≤ 50 nodes.</td>
+</tr>
+<tr>
+<td>W-H1-CONNECT-2</td>
+<td>H1</td>
+<td>Disconnected element flagged WARN</td>
+<td>Orphan leaf with no parent in discipline sub-tree → W_Validation_Result(tier=1, result='WARN').</td>
+</tr>
+<tr>
+<td>W-H2-CLASH-1</td>
+<td>H2</td>
+<td>No hard clash between FP and ELEC on same storey</td>
+<td>ERP-maths clearance ≥ AD_Clash_Rule.min_distance_mm for all FP×ELEC pairs.</td>
+</tr>
+<tr>
+<td>W-H2-CLASH-2</td>
+<td>H2</td>
+<td>Clash detected and nudged</td>
+<td>Element moved to nearest clear position. C_OrderLine.dx/dy/dz updated. W_Validation_Result(tier=2, result='WARN').</td>
+</tr>
+<tr>
+<td>W-H3-SPACING-1</td>
+<td>H3</td>
+<td>FP NN spacing within [min, max]</td>
+<td>All head pairs ≥ min_spacing_m AND ≤ max_spacing_m from ad_fp_coverage.</td>
+</tr>
+<tr>
+<td>W-H3-SPACING-2</td>
+<td>H3</td>
+<td>Wall distance ≥ wall_distance_m</td>
+<td>Every head ≥ wall_distance_m from nearest wall face (ad_fp_coverage).</td>
+</tr>
+<tr>
+<td>W-H4-HOST-1</td>
+<td>H4</td>
+<td>Ceiling element has valid host</td>
+<td>Parent FLOOR node has slab (AABB height &gt; 0). ad_element_mep.host_type = 'CEILING' matches.</td>
+</tr>
+<tr>
+<td>W-H4-HOST-2</td>
+<td>H4</td>
+<td>Missing host flagged WARN</td>
+<td>Element with no valid host surface → W_Validation_Result(tier=1, result='WARN').</td>
+</tr>
+<tr>
+<td>W-H5-CONT-1</td>
+<td>H5</td>
+<td>Riser X,Y identical across storeys</td>
+<td>Same riser's dx,dy values differ ≤ max_xy_drift_mm across all FLOOR nodes.</td>
+</tr>
+<tr>
+<td>W-H5-CONT-2</td>
+<td>H5</td>
+<td>XY drift flagged WARN</td>
+<td>Riser with dx drift &gt; max_xy_drift_mm → W_Validation_Result(tier=3, result='WARN').</td>
+</tr>
+<tr>
+<td>W-H6-COMPLETE-1</td>
+<td>H6</td>
+<td>Room has all required MEP per schedule</td>
+<td>BATHROOM has ≥ 1 EXHAUST_FAN, 1 SPRINKLER, 1 LIGHT per ad_space_type_mep_bom.</td>
+</tr>
+<tr>
+<td>W-H6-COMPLETE-2</td>
+<td>H6</td>
+<td>Missing element flagged WARN</td>
+<td>BATHROOM missing EXHAUST_FAN → W_Validation_Result(tier=1, result='WARN', description contains 'IMC 2021 403.3').</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Auto-fix acceptance criteria:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Handler</th>
+<th>Auto-fix Action</th>
+<th>Limit</th>
+<th>If Exceeded</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>H1</td>
+<td>Insert connecting pipe/conduit segment</td>
+<td>≤ 3 segments</td>
+<td>WARN (manual routing needed)</td>
+</tr>
+<tr>
+<td>H2</td>
+<td>Nudge element to clear position</td>
+<td>≤ 100mm</td>
+<td>WARN (clash too severe for auto-fix)</td>
+</tr>
+<tr>
+<td>H3</td>
+<td>Adjust grid pitch</td>
+<td>≤ ±10% of typical_spacing</td>
+<td>WARN (room too small/large for standard grid)</td>
+</tr>
+<tr>
+<td>H4</td>
+<td>Snap to nearest valid host surface</td>
+<td>≤ 200mm</td>
+<td>WARN (no host nearby)</td>
+</tr>
+<tr>
+<td>H5</td>
+<td>Snap riser dx/dy to match storey below</td>
+<td>≤ max_xy_drift_mm</td>
+<td>BLOCK (tree structure error)</td>
+</tr>
+<tr>
+<td>H6</td>
+<td>Flag missing items (no auto-insert)</td>
+<td>—</td>
+<td>WARN always (user decides)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>References: ConstructionAsERP.md §11.38 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
+TheRosettaStoneStrategy.txt (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
+DocAction_SRS.md §1 (processIt lifecycle), DocValidate.md §13 (three-tier cascade),
+BIM_COBOL.md §4.6 (joining verbs)</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,3598 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Geometry Contract Appraisal - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#geometry-contract-appraisal" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Geometry Contract Appraisal
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-escaped-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The Escaped Bug
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-the-contract-architecture-didnt-catch-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Why the Contract Architecture Didn't Catch It
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Why the Contract Architecture Didn&#39;t Catch It">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-current-layer-model-from-contract-architecture-specificationmd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Current Layer Model (from contract-architecture-specification.md)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-the-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 The Gap
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-roofspec-contract-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 RoofSpec Contract Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-research-findings-industry-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Research Findings: Industry Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Research Findings: Industry Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-cgal-computational-geometry-algorithms-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 CGAL (Computational Geometry Algorithms Library)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-manifold-library-best-design-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Manifold Library (Best Design Found)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-euler-characteristic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Euler Characteristic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-gltf-validator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 glTF Validator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-brepeuler-operators-cadsolid-modeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 BRep/Euler Operators (CAD/Solid Modeling)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-comparative-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Comparative Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Comparative Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-what-the-current-spec-does-well" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 What the Current Spec Does Well
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-what-the-current-spec-misses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 What the Current Spec Misses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-layer-model-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Layer Model Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-why-layer-0-geometry-is-needed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Why Layer 0 (Geometry) is Needed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Why Layer 0 (Geometry) is Needed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-separation-of-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Separation of Concerns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-fail-fast-principle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Fail-Fast Principle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-the-euler-characteristic-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 The Euler Characteristic Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-proposed-layer-0-geometry-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Proposed Layer 0: Geometry Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Proposed Layer 0: Geometry Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-interface-design-following-manifold-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Interface Design (Following Manifold Pattern)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-why-this-is-better" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Why This is Better
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-implementation-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Implementation Path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-spec-coverage-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Spec Coverage Audit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Spec Coverage Audit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-current-state-19-specs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Current State (19 Specs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-which-need-layer-0-geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Which Need Layer 0 (Geometry)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-recommendation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Recommendation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Recommendation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-immediate-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Immediate Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-architectural-enhancement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Architectural Enhancement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#83-why-not-just-fix-the-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.3 Why Not Just Fix the Bug?
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="geometry-contract-appraisal">Geometry Contract Appraisal<a class="headerlink" href="#geometry-contract-appraisal" title="Permanent link">&para;</a></h1>
+<p><strong>Date:</strong> 2026-02-03
+<strong>Purpose:</strong> Evaluate the gap in contract-architecture-specification.md that allowed the roof geometry bug to escape
+<strong>For Review:</strong> Next session</p>
+<hr />
+<h2 id="1-the-escaped-bug">1. The Escaped Bug<a class="headerlink" href="#1-the-escaped-bug" title="Permanent link">&para;</a></h2>
+<p><strong>Symptom:</strong> Roof appears rotated/twisted in 3D viewer for TB-LKTN single-storey house.</p>
+<p><strong>Root Cause:</strong> In <code>BuildingCompiler.java</code> lines 3634-3641, the face indices for <code>ridgeAlongX=true</code> create diagonal triangles instead of proper roof slopes:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// CURRENT (WRONG for ridgeAlongX)</span>
+<span class="n">List</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">[]&gt;</span><span class="w"> </span><span class="n">faces</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="kt">int</span><span class="o">[]</span><span class="p">{</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">},</span><span class="w">  </span><span class="c1">// SW → SE → W_ridge  ← diagonal!</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="kt">int</span><span class="o">[]</span><span class="p">{</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="mi">4</span><span class="p">},</span><span class="w">  </span><span class="c1">// E_ridge → NE → NW  ← diagonal!</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>The faces connect vertices across the building diagonally rather than forming proper south/north slopes.</p>
+<hr />
+<h2 id="2-why-the-contract-architecture-didnt-catch-it">2. Why the Contract Architecture Didn't Catch It<a class="headerlink" href="#2-why-the-contract-architecture-didnt-catch-it" title="Permanent link">&para;</a></h2>
+<h3 id="21-current-layer-model-from-contract-architecture-specificationmd">2.1 Current Layer Model (from contract-architecture-specification.md)<a class="headerlink" href="#21-current-layer-model-from-contract-architecture-specificationmd" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Layer 5: SEMANTIC    - Domain validation rules
+Layer 4: AGGREGATION - Merge, compose, deduplicate
+Layer 3: RELATIONSHIP - Connect, host, feed, require
+Layer 2: IDENTITY    - Same, different, continues
+Layer 1: EXISTENCE   - GUID, storey, discipline, bounds
+</code></pre></div>
+<h3 id="22-the-gap">2.2 The Gap<a class="headerlink" href="#22-the-gap" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What It Validates</th>
+<th>Does It Catch Roof Bug?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>5</td>
+<td>"Bathroom must have ventilation"</td>
+<td>No - domain rules, not geometry</td>
+</tr>
+<tr>
+<td>4</td>
+<td>"Deduplicate by uniqueKey()"</td>
+<td>No - about merging, not mesh validity</td>
+</tr>
+<tr>
+<td>3</td>
+<td>"Element connectsTo() junctions"</td>
+<td>No - about relationships, not faces</td>
+</tr>
+<tr>
+<td>2</td>
+<td>"continuityId() across storeys"</td>
+<td>No - about identity, not triangles</td>
+</tr>
+<tr>
+<td>1</td>
+<td>"Must have GUID, storey, bounds"</td>
+<td><strong>Almost</strong> - has <code>bounds()</code> but only BoundingBox</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical Finding:</strong> <code>IBIMEntity.bounds()</code> returns <code>BoundingBox</code> (min/max coordinates), NOT mesh validity. A mesh with completely wrong face winding still produces a valid bounding box.</p>
+<h3 id="23-roofspec-contract-status">2.3 RoofSpec Contract Status<a class="headerlink" href="#23-roofspec-contract-status" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// BuildingCompiler.java line 4368</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">RoofSpec</span><span class="p">(</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">type</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">pitchDegrees</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">width</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">depth</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">ridgeRise</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point3D</span><span class="o">&gt;</span><span class="w"> </span><span class="n">vertices</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">[]&gt;</span><span class="w"> </span><span class="n">faces</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{}</span><span class="w">  </span><span class="c1">// NO INTERFACE IMPLEMENTATION</span>
+</code></pre></div>
+<p><strong>RoofSpec implements ZERO contracts.</strong> Even if it did, no existing layer validates:
+- Face indices within vertex bounds
+- Consistent face winding
+- No degenerate triangles
+- Proper normal directions</p>
+<hr />
+<h2 id="3-research-findings-industry-patterns">3. Research Findings: Industry Patterns<a class="headerlink" href="#3-research-findings-industry-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="31-cgal-computational-geometry-algorithms-library">3.1 CGAL (Computational Geometry Algorithms Library)<a class="headerlink" href="#31-cgal-computational-geometry-algorithms-library" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> <a href="https://doc.cgal.org/latest/Polygon_mesh_processing/index.html">CGAL Polygon Mesh Processing</a></p>
+<ul>
+<li>Uses <strong>concept-based design</strong> (C++ concepts ≈ Java interfaces)</li>
+<li><code>is_valid_polygon_mesh()</code> checks 2-manifold topology</li>
+<li><code>does_self_intersect()</code> detects geometric problems</li>
+<li>Separates <strong>combinatorial validity</strong> from <strong>geometric validity</strong></li>
+</ul>
+<h3 id="32-manifold-library-best-design-found">3.2 Manifold Library (Best Design Found)<a class="headerlink" href="#32-manifold-library-best-design-found" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> <a href="https://github.com/elalish/manifold/wiki/Manifold-Library">Manifold Library Wiki</a></p>
+<p>Key principle: <strong>"Topological exactness over geometric precision"</strong></p>
+<ul>
+<li>Topology (integer connectivity) is EXACT</li>
+<li>Geometry (float positions) is INEXACT</li>
+<li><strong>Three-level validation:</strong></li>
+<li>Topological: every edge connects to exactly one reversed edge</li>
+<li>ε-Validity: valid input → valid output (precision tracked)</li>
+<li>Soft Geometric: remove degenerate triangles</li>
+</ul>
+<h3 id="33-euler-characteristic">3.3 Euler Characteristic<a class="headerlink" href="#33-euler-characteristic" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> <a href="https://max-limper.de/a_euler.html">Mesh Topology Analysis</a></p>
+<p>Formula: <strong>χ = V + F - E</strong></p>
+<ul>
+<li>Closed manifold: χ = 2</li>
+<li>With genus g: χ = 2 - 2g</li>
+<li>With boundaries b: χ = V + F - E + B</li>
+</ul>
+<p><strong>Use:</strong> Fast topological sanity check before expensive operations.</p>
+<h3 id="34-gltf-validator">3.4 glTF Validator<a class="headerlink" href="#34-gltf-validator" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> <a href="https://github.com/KhronosGroup/glTF-Validator">Khronos glTF Validator</a></p>
+<ul>
+<li>Specification-based validation rules</li>
+<li>Example: <code>ACCESSOR_INDEX_TRIANGLE_DEGENERATE</code></li>
+<li>Returns structured report with violation codes</li>
+</ul>
+<h3 id="35-brepeuler-operators-cadsolid-modeling">3.5 BRep/Euler Operators (CAD/Solid Modeling)<a class="headerlink" href="#35-brepeuler-operators-cadsolid-modeling" title="Permanent link">&para;</a></h3>
+<p><strong>Source:</strong> <a href="https://en.wikipedia.org/wiki/Boundary_representation">Boundary Representation - Wikipedia</a></p>
+<ul>
+<li><strong>Euler operators</strong> guarantee valid topology by construction</li>
+<li>Every modification preserves Euler formula</li>
+<li>Manifold requirement: each edge shared by exactly 2 faces</li>
+</ul>
+<hr />
+<h2 id="4-comparative-analysis">4. Comparative Analysis<a class="headerlink" href="#4-comparative-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="41-what-the-current-spec-does-well">4.1 What the Current Spec Does Well<a class="headerlink" href="#41-what-the-current-spec-does-well" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Strength</th>
+<th>Evidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Grounded in IFC standard</strong></td>
+<td>Maps to IfcRelConnects*, IfcRelAggregates</td>
+</tr>
+<tr>
+<td><strong>Theoretical foundation</strong></td>
+<td>RCC-8, mereotopology, DDD patterns</td>
+</tr>
+<tr>
+<td><strong>Solves boundary ownership</strong></td>
+<td>SharedElementRegistry + JunctionPoint</td>
+</tr>
+<tr>
+<td><strong>Layered abstraction</strong></td>
+<td>Clean separation of concerns</td>
+</tr>
+<tr>
+<td><strong>Practical migration path</strong></td>
+<td>Phase 1-5 incremental rollout</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-what-the-current-spec-misses">4.2 What the Current Spec Misses<a class="headerlink" href="#42-what-the-current-spec-misses" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Consequence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>No mesh primitive validation</strong></td>
+<td>Invalid faces go undetected</td>
+</tr>
+<tr>
+<td><strong>BoundingBox ≠ mesh validity</strong></td>
+<td>Wrong geometry, correct bounds</td>
+</tr>
+<tr>
+<td><strong>No topological invariant check</strong></td>
+<td>Can't detect non-manifold meshes</td>
+</tr>
+<tr>
+<td><strong>No face winding validation</strong></td>
+<td>Inverted normals, rendering issues</td>
+</tr>
+<tr>
+<td><strong>RoofSpec not covered</strong></td>
+<td>14 of 19 specs have no contract</td>
+</tr>
+</tbody>
+</table>
+<h3 id="43-layer-model-comparison">4.3 Layer Model Comparison<a class="headerlink" href="#43-layer-model-comparison" title="Permanent link">&para;</a></h3>
+<p><strong>Current (5 layers):</strong>
+<div class="highlight"><pre><span></span><code>L5: Semantic (domain rules)
+L4: Aggregation (merge/dedupe)
+L3: Relationship (connect/host)
+L2: Identity (unique/continuous)
+L1: Existence (guid/bounds)
+</code></pre></div></p>
+<p><strong>Proposed Extension (Layer 0):</strong>
+<div class="highlight"><pre><span></span><code>L5: Semantic (domain rules)
+L4: Aggregation (merge/dedupe)
+L3: Relationship (connect/host)
+L2: Identity (unique/continuous)
+L1: Existence (guid/bounds)
+L0: GEOMETRY (mesh validity)  ← NEW
+</code></pre></div></p>
+<hr />
+<h2 id="5-why-layer-0-geometry-is-needed">5. Why Layer 0 (Geometry) is Needed<a class="headerlink" href="#5-why-layer-0-geometry-is-needed" title="Permanent link">&para;</a></h2>
+<h3 id="51-separation-of-concerns">5.1 Separation of Concerns<a class="headerlink" href="#51-separation-of-concerns" title="Permanent link">&para;</a></h3>
+<p>The Manifold library insight: <strong>topology and geometry are different concerns</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Type</th>
+<th>Validation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Topology</td>
+<td>Integer (face indices)</td>
+<td>Exact - can be proven correct</td>
+</tr>
+<tr>
+<td>Geometry</td>
+<td>Float (vertex positions)</td>
+<td>Inexact - bounded by epsilon</td>
+</tr>
+</tbody>
+</table>
+<p>Current Layer 1 (<code>IBIMEntity.bounds()</code>) conflates these - it derives a geometric property (bounding box) without validating topological correctness (face indices).</p>
+<h3 id="52-fail-fast-principle">5.2 Fail-Fast Principle<a class="headerlink" href="#52-fail-fast-principle" title="Permanent link">&para;</a></h3>
+<p>Invalid geometry should fail at creation, not at rendering:</p>
+<div class="highlight"><pre><span></span><code>CURRENT:  DSL → Parse → Compile → Write DB → Export glTF → View → &quot;Why is roof wrong?&quot;
+                            ↑
+                    Bug here, detected here ──────────────────────────────→
+
+PROPOSED: DSL → Parse → Compile → VALIDATE → Write DB → Export → View
+                            ↑         ↑
+                    Bug here, caught here
+</code></pre></div>
+<h3 id="53-the-euler-characteristic-test">5.3 The Euler Characteristic Test<a class="headerlink" href="#53-the-euler-characteristic-test" title="Permanent link">&para;</a></h3>
+<p>A simple topological invariant check would have caught this:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// For the roof (6 vertices, 6 faces, ? edges)</span>
+<span class="c1">// If faces are wrong, edge count will be wrong</span>
+<span class="c1">// χ = V + F - E should equal expected value for roof topology</span>
+</code></pre></div>
+<hr />
+<h2 id="6-proposed-layer-0-geometry-contract">6. Proposed Layer 0: Geometry Contract<a class="headerlink" href="#6-proposed-layer-0-geometry-contract" title="Permanent link">&para;</a></h2>
+<h3 id="61-interface-design-following-manifold-pattern">6.1 Interface Design (Following Manifold Pattern)<a class="headerlink" href="#61-interface-design-following-manifold-pattern" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * Layer 0: Geometry Contract - Mesh primitive validity.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Validates BEFORE element becomes a BIM entity.</span>
+<span class="cm"> * Separates topological correctness (exact) from geometric precision (bounded).</span>
+<span class="cm"> *</span>
+<span class="cm"> * Theory: Euler characteristic, manifold topology</span>
+<span class="cm"> * Reference: Manifold Library, CGAL concepts</span>
+<span class="cm"> */</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">IGeometryValidatable</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="c1">// === Topological Checks (Exact) ===</span>
+
+<span class="w">    </span><span class="cm">/** All face indices must reference valid vertices */</span>
+<span class="w">    </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">hasValidIndices</span><span class="p">();</span>
+
+<span class="w">    </span><span class="cm">/** Euler characteristic matches expected topology */</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="nf">eulerCharacteristic</span><span class="p">();</span><span class="w">  </span><span class="c1">// V + F - E</span>
+
+<span class="w">    </span><span class="cm">/** Each edge shared by exactly 2 faces (for closed mesh) */</span>
+<span class="w">    </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">isManifold</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// === Geometric Checks (Bounded) ===</span>
+
+<span class="w">    </span><span class="cm">/** No zero-area triangles */</span>
+<span class="w">    </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">hasNoDegenerateFaces</span><span class="p">();</span>
+
+<span class="w">    </span><span class="cm">/** Face normals consistent (all outward or all inward) */</span>
+<span class="w">    </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">hasConsistentWinding</span><span class="p">();</span>
+
+<span class="w">    </span><span class="cm">/** Vertices/faces arrays provided */</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point3D</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">vertices</span><span class="p">();</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">[]&gt;</span><span class="w"> </span><span class="nf">faces</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// === Combined Validation ===</span>
+
+<span class="w">    </span><span class="k">default</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">GeometryViolation</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">validateGeometry</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">GeometryViolation</span><span class="o">&gt;</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">hasValidIndices</span><span class="p">())</span>
+<span class="w">            </span><span class="n">v</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">GeometryViolation</span><span class="p">.</span><span class="na">error</span><span class="p">(</span><span class="s">&quot;FACE_INDEX_OUT_OF_BOUNDS&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">hasNoDegenerateFaces</span><span class="p">())</span>
+<span class="w">            </span><span class="n">v</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">GeometryViolation</span><span class="p">.</span><span class="na">warning</span><span class="p">(</span><span class="s">&quot;DEGENERATE_FACE&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">hasConsistentWinding</span><span class="p">())</span>
+<span class="w">            </span><span class="n">v</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">GeometryViolation</span><span class="p">.</span><span class="na">error</span><span class="p">(</span><span class="s">&quot;INCONSISTENT_WINDING&quot;</span><span class="p">));</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">v</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="62-why-this-is-better">6.2 Why This is Better<a class="headerlink" href="#62-why-this-is-better" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Current Spec</th>
+<th>With Layer 0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Roof bug</strong></td>
+<td>Escapes</td>
+<td>Caught by <code>hasConsistentWinding()</code></td>
+</tr>
+<tr>
+<td><strong>Theoretical grounding</strong></td>
+<td>IFC/DDD only</td>
+<td>+ Euler characteristic, manifold theory</td>
+</tr>
+<tr>
+<td><strong>Fail-fast</strong></td>
+<td>At viewer</td>
+<td>At compile time</td>
+</tr>
+<tr>
+<td><strong>Separation</strong></td>
+<td>Bounds = geometry</td>
+<td>Topology ≠ geometry</td>
+</tr>
+<tr>
+<td><strong>Industry alignment</strong></td>
+<td>IFC only</td>
+<td>+ CGAL, Manifold, glTF patterns</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-implementation-path">6.3 Implementation Path<a class="headerlink" href="#63-implementation-path" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Define IGeometryValidatable</strong> in <code>com.bim.compiler.contract</code></li>
+<li><strong>RoofSpec implements IGeometryValidatable</strong> (catches roof bug)</li>
+<li><strong>StairSpec implements IGeometryValidatable</strong> (stairs have vertices/faces)</li>
+<li><strong>Add GEOMETRY_VALID witness claim</strong> to verify at compile time</li>
+<li><strong>Existing contracts unchanged</strong> - Layer 0 is below Layer 1</li>
+</ol>
+<hr />
+<h2 id="7-spec-coverage-audit">7. Spec Coverage Audit<a class="headerlink" href="#7-spec-coverage-audit" title="Permanent link">&para;</a></h2>
+<h3 id="71-current-state-19-specs">7.1 Current State (19 Specs)<a class="headerlink" href="#71-current-state-19-specs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Spec</th>
+<th>Has Contract</th>
+<th>Layer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WallAssemblySpec</td>
+<td>✓</td>
+<td>IAggregatable (L4)</td>
+</tr>
+<tr>
+<td>FrameSpec</td>
+<td>✓</td>
+<td>IIdentifiable (L2)</td>
+</tr>
+<tr>
+<td>RoomSpec</td>
+<td>✓</td>
+<td>IIdentifiable (L2)</td>
+</tr>
+<tr>
+<td>ColumnSpec</td>
+<td>✓</td>
+<td>IAggregatable (L4)</td>
+</tr>
+<tr>
+<td>BeamSpec</td>
+<td>✓</td>
+<td>IAggregatable (L4)</td>
+</tr>
+<tr>
+<td><strong>RoofSpec</strong></td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>StairSpec</strong></td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>DoorSpec</strong></td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>WindowSpec</strong></td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td><strong>SlabSpec</strong></td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>LandingSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>CladdingSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>OpeningSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>SprinklerSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>LightSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>ElectricalSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>FixtureSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>PlumbingSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+<tr>
+<td>DiffuserSpec</td>
+<td>✗</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Coverage: 5 of 19 specs (26%)</strong></p>
+<h3 id="72-which-need-layer-0-geometry">7.2 Which Need Layer 0 (Geometry)<a class="headerlink" href="#72-which-need-layer-0-geometry" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Spec</th>
+<th>Has vertices/faces</th>
+<th>Needs IGeometryValidatable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RoofSpec</td>
+<td>✓ List<Point3D>, List<int[]></td>
+<td><strong>YES</strong></td>
+</tr>
+<tr>
+<td>StairSpec</td>
+<td>✓ vertices, faces</td>
+<td><strong>YES</strong></td>
+</tr>
+<tr>
+<td>LandingSpec</td>
+<td>Uses createBoxGeometry</td>
+<td>Maybe (via box)</td>
+</tr>
+<tr>
+<td>SlabSpec</td>
+<td>Uses createBoxGeometry</td>
+<td>Maybe (via box)</td>
+</tr>
+<tr>
+<td>DoorSpec</td>
+<td>Uses library or box</td>
+<td>Maybe</td>
+</tr>
+<tr>
+<td>WindowSpec</td>
+<td>Uses createBoxGeometry</td>
+<td>Maybe</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-recommendation">8. Recommendation<a class="headerlink" href="#8-recommendation" title="Permanent link">&para;</a></h2>
+<h3 id="81-immediate-fix">8.1 Immediate Fix<a class="headerlink" href="#81-immediate-fix" title="Permanent link">&para;</a></h3>
+<p>Fix the roof face indices in <code>BuildingCompiler.java</code> - this is a code bug independent of architecture.</p>
+<h3 id="82-architectural-enhancement">8.2 Architectural Enhancement<a class="headerlink" href="#82-architectural-enhancement" title="Permanent link">&para;</a></h3>
+<p>Add Layer 0 (Geometry) to the contract hierarchy:</p>
+<ol>
+<li>Create <code>IGeometryValidatable</code> interface</li>
+<li>Have <code>RoofSpec</code> and <code>StairSpec</code> implement it</li>
+<li>Add <code>GEOMETRY_VALID</code> witness claim</li>
+<li>Document in contract-architecture-specification.md</li>
+</ol>
+<h3 id="83-why-not-just-fix-the-bug">8.3 Why Not Just Fix the Bug?<a class="headerlink" href="#83-why-not-just-fix-the-bug" title="Permanent link">&para;</a></h3>
+<p>The bug will recur. Any spec with <code>vertices</code> + <code>faces</code> can have:
+- Wrong face indices
+- Inconsistent winding
+- Degenerate triangles</p>
+<p>Without a contract, each is a latent bug waiting for visual discovery.</p>
+<hr />
+<h2 id="9-references">9. References<a class="headerlink" href="#9-references" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://doc.cgal.org/latest/Polygon_mesh_processing/index.html">CGAL Polygon Mesh Processing</a></li>
+<li><a href="https://github.com/elalish/manifold/wiki/Manifold-Library">Manifold Library</a></li>
+<li><a href="https://max-limper.de/a_euler.html">Mesh Topology Analysis - Euler Characteristic</a></li>
+<li><a href="https://github.com/KhronosGroup/glTF-Validator">Khronos glTF Validator</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Boundary_representation">Boundary Representation - Wikipedia</a></li>
+<li><a href="https://standards.buildingsmart.org/IFC/RELEASE/IFC4_3/HTML/lexical/IfcFaceSurface.htm">IfcFaceSurface - IFC4.3</a></li>
+</ul>
+<hr />
+<p><em>Document prepared for review. The existing contract architecture is sound for relationship/identity/semantic concerns. The gap is in geometric primitive validation, which operates at a lower level than BIM entity relationships.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,4756 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>BIM Compiler Architecture - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bim-compiler-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              BIM Compiler Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-founding-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Founding Principles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Founding Principles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-extract-or-compile-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 EXTRACT OR COMPILE ONLY
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-construction-is-a-compilation-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Construction is a Compilation Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-dsl-selects-bom-parameterises-java-resolves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 DSL Selects. BOM Parameterises. Java Resolves.
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.3 DSL Selects. BOM Parameterises. Java Resolves.">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-dsl-is-a-catalog-selector-phase-117" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The DSL is a Catalog Selector (Phase 117)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-application-dictionary-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Application Dictionary Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The Application Dictionary Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-origin-idempiere-erp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Origin: iDempiere ERP
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-why-ad-works-for-bim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Why AD Works for BIM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-ad-table-inventory-34-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 AD Table Inventory (34 tables)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-bom-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The BOM Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. The BOM Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-building-as-bill-of-materials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Building as Bill of Materials
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-bom-assembly-output-proven" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 BOM Assembly Output (Proven)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-nested-bom-2-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Nested BOM (2-Level)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-bom-recipe-in-ad" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 BOM Recipe in AD
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-furniture-assembly-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Furniture Assembly BOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-tower-level-bom-hierarchy-phase-94-vision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Tower-Level BOM Hierarchy (Phase 94+ Vision)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-floor-plate-as-spatial-bom-phase-95-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Floor Plate as Spatial BOM (Phase 95 Target)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#38-evolution-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.8 Evolution Path
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-compilation-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Compilation Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Compilation Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-five-stage-dag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Five-Stage DAG
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-override-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Override Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-correctness-dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Correctness Dimensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Correctness Dimensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-the-seven-levels-complementary-to-lod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 The Seven Levels (Complementary to LOD)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-relationship-to-lod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Relationship to LOD
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-witness-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Witness System
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Witness System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-proof-carrying-compilation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Proof-Carrying Compilation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-current-witness-count" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Current Witness Count
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-sanity-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Sanity Checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-current-migration-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Current Migration State
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Current Migration State">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-whats-ad-driven-working" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 What's AD-Driven (Working)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-whats-still-hardcoded-migration-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 What's Still Hardcoded (Migration Targets)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-migration-discipline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Migration Discipline
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-known-risks-and-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Known Risks and Mitigations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-key-files-phase-114" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Key Files (Phase 114+)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Key Files (Phase 114+)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metadata-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Metadata Layer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#java-layer-srcmainjavacombimcompilerdsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Java Layer (src/main/java/com/bim/compiler/dsl/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#library-layer-srcmainjavacombimcompilerlibrary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Library Layer (src/main/java/com/bim/compiler/library/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#contract-layer-srcmainjavacombimcompilercontract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contract Layer (src/main/java/com/bim/compiler/contract/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-layer-srcmainjavacombimcompilervalidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Layer (src/main/java/com/bim/compiler/validation/)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output Layer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-ifc-naming-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A: IFC Naming Convention
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-b-source-consolidation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix B: Source Consolidation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-c-lessons-learned-100-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix C: Lessons Learned (100 Phases)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-spatial-storage-model-building-as-spacesize-aabb-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9. Spatial Storage Model — Building as SpaceSize AABB Hierarchy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§9. Spatial Storage Model — Building as SpaceSize AABB Hierarchy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-spacesize-aabb-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 SpaceSize AABB Hierarchy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-mm-cube-is-the-physical-truth-at-every-spacesize-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 mm Cube is the Physical Truth — at Every SpaceSize Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-emptystorage-overlay" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 EmptyStorage Overlay
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-full-erp-bim-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 Full ERP ↔ BIM Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#95-cross-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.5 Cross-references
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-d-idempiere-lineage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix D: iDempiere Lineage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-e-superseded-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix E: Superseded Documents
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bim-compiler-architecture">BIM Compiler Architecture<a class="headerlink" href="#bim-compiler-architecture" title="Permanent link">&para;</a></h1>
+<p><strong>Version:</strong> 3.0
+<strong>Date:</strong> 2026-02-08
+<strong>Status:</strong> Historical — redirect to <code>METADATA_DRIVEN_ARCHITECTURE.md</code> for current architecture</p>
+<p><strong>Supersedes:</strong>
+- <code>bim-compiler-architecture-evolution.md</code> (Jan 2025 — factory pattern proposal)
+- <code>BUILDING_AS_BOM_CONCEPT.md</code> (Feb 2026 — BOM POC, now integrated)</p>
+<blockquote>
+<p><strong>Staleness note (2026-02-26):</strong> This document predates Phase G-1 (type-blind BOM).
+Class references like <code>FurnitureBOMResolver</code>, <code>FixturePlacer</code>, <code>FurnitureTypeResolver</code>
+refer to <strong>deleted</strong> code. Current equivalents: <code>BOMTierResolver</code> (unified resolver),
+<code>FurnitureWorker</code> (BundleWorker impl), <code>BOMTreeLoader</code> (tree infrastructure).
+<code>ad_room_slot</code> is deprecated by <code>bom_category</code> on M_BOM.</p>
+<p><strong>Canonical references:</strong>
+- <strong><code>docs/ConstructionAsERP.md</code></strong> — C_Order model, 1D Intent (§3.7), geometry chain (§5.5), ST mode TODOs
+- <strong><code>docs/METADATA_DRIVEN_ARCHITECTURE.md</code></strong> — domain architecture, phase roadmap (§12), abstract engine vision (§13)</p>
+</blockquote>
+<p><strong>Founding reference:</strong> <code>docs/ARCHIVE_intent_compiler_method.md</code> (READ-ONLY)</p>
+<hr />
+<h2 id="1-founding-principles">1. Founding Principles<a class="headerlink" href="#1-founding-principles" title="Permanent link">&para;</a></h2>
+<h3 id="11-extract-or-compile-only">1.1 EXTRACT OR COMPILE ONLY<a class="headerlink" href="#11-extract-or-compile-only" title="Permanent link">&para;</a></h3>
+<p>The compiler's source of truth is the <strong>federated model database</strong> — a real building, measured, baked, and stored in SQLite. Every type, relationship, dimension, and placement rule must trace back to extracted data or be computed by the compiler (via BIM COBOL verbs). Never invent.</p>
+<h3 id="12-construction-is-a-compilation-problem">1.2 Construction is a Compilation Problem<a class="headerlink" href="#12-construction-is-a-compilation-problem" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Intent Document → Compiler → BIM Database → Viewer
+</code></pre></div>
+<p>This mirrors: Source Code → Compiler → Bytecode → VM. The DSL is the source language. The compiler enforces construction logic. The output database is the bytecode. The viewer is the debugger.</p>
+<h3 id="13-dsl-selects-bom-parameterises-java-resolves">1.3 DSL Selects. BOM Parameterises. Java Resolves.<a class="headerlink" href="#13-dsl-selects-bom-parameterises-java-resolves" title="Permanent link">&para;</a></h3>
+<p>This is the governing separation of concerns, proven in Phase 85:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Who Edits</th>
+<th>Responsibility</th>
+<th>Changes by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>DSL</strong></td>
+<td>Layman end-user</td>
+<td>Selects from catalog — an <strong>OSGI-style MANIFEST</strong></td>
+<td>User edits <code>.bim</code> file</td>
+</tr>
+<tr>
+<td><strong>BOM metadata</strong></td>
+<td>Hobbyist expert</td>
+<td>Defines all detailing (BOM recipes, wall types, room slots)</td>
+<td>SQL editor on {PREFIX}_BOM.db</td>
+</tr>
+<tr>
+<td><strong>Java</strong></td>
+<td>Developer</td>
+<td>Resolves final coordinates (<code>resolveZ()</code>)</td>
+<td>Code change (rare)</td>
+</tr>
+</tbody>
+</table>
+<p>Change a parameter in the database, recompile, all instances update. No code change.</p>
+<h4 id="the-dsl-is-a-catalog-selector-phase-117">The DSL is a Catalog Selector (Phase 117)<a class="headerlink" href="#the-dsl-is-a-catalog-selector-phase-117" title="Permanent link">&para;</a></h4>
+<p>The DSL is <strong>intentionally simple</strong> — a layman picks from a catalog, like selecting items from a shopping list. All detailing lives in the metadata DB, curated by domain experts. The DSL <strong>never invents</strong> new types, dimensions, or assemblies — it only references things that already exist in the catalog.</p>
+<p><strong>OSGI MANIFEST analogy:</strong></p>
+<table>
+<thead>
+<tr>
+<th>OSGI Concept</th>
+<th>BIM Compiler Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Bundle-SymbolicName</code></td>
+<td><code>BUILDING "name"</code></td>
+</tr>
+<tr>
+<td><code>Require-Bundle</code></td>
+<td><code>floor_bom:TYPICAL_CONDO_FLOOR</code></td>
+</tr>
+<tr>
+<td><code>Import-Package</code></td>
+<td>Room types (<code>BEDROOM</code>, <code>KITCHEN</code>, etc.)</td>
+</tr>
+<tr>
+<td><code>Bundle-Version</code></td>
+<td><code>profile:Malaysian_Residential</code></td>
+</tr>
+<tr>
+<td><code>Export-Package</code></td>
+<td>Output DB (compiled building)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Enforcement:</strong> <code>CatalogValidator</code> (Phase 117) checks every DSL reference against <code>{PREFIX}_BOM.db</code> at parse time. Unresolved references produce warnings — the compiler never silently invents what the catalog doesn't have. See <code>com.bim.compiler.contract.CatalogContract</code>.</p>
+<hr />
+<h2 id="2-the-application-dictionary-pattern">2. The Application Dictionary Pattern<a class="headerlink" href="#2-the-application-dictionary-pattern" title="Permanent link">&para;</a></h2>
+<h3 id="21-origin-idempiere-erp">2.1 Origin: iDempiere ERP<a class="headerlink" href="#21-origin-idempiere-erp" title="Permanent link">&para;</a></h3>
+<p>The Application Dictionary (AD) is the core architecture of the iDempiere ERP system: metadata tables define windows, fields, validation rules, and workflows. The application reads AD tables at runtime — adding a new business object requires SQL inserts, not Java code.</p>
+<p><strong>iDempiere parallel:</strong></p>
+<table>
+<thead>
+<tr>
+<th>iDempiere</th>
+<th>BIM Compiler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AD_Table</code></td>
+<td><code>ad_space_type</code>, <code>ad_element_type</code></td>
+</tr>
+<tr>
+<td><code>AD_Column</code></td>
+<td><code>ad_space_type_mep</code>, <code>m_attribute</code></td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule</code></td>
+<td><code>ad_check_threshold</code>, <code>ad_placement_rule</code></td>
+</tr>
+<tr>
+<td><code>M_BOM</code> / <code>M_Product</code></td>
+<td><code>m_bom</code>, <code>m_bom_line</code></td>
+</tr>
+<tr>
+<td><code>M_BOM_Component</code></td>
+<td><code>m_bom_line</code> with role and sequence</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22-why-ad-works-for-bim">2.2 Why AD Works for BIM<a class="headerlink" href="#22-why-ad-works-for-bim" title="Permanent link">&para;</a></h3>
+<p><strong>Table-driven compilation</strong> has 50+ years of precedent (LL/LR parser tables). The BIM compiler extends this:</p>
+<ul>
+<li><strong>Parser tables</strong> → <code>ad_space_type_alias</code> (52 room name aliases)</li>
+<li><strong>Type tables</strong> → <code>ad_space_type</code> (26 space types with categories and rules)</li>
+<li><strong>Placement tables</strong> → <code>m_attribute</code> (Z-rules, spacing, diameter)</li>
+<li><strong>Validation tables</strong> → <code>ad_check_threshold</code> (36 code-driven thresholds)</li>
+</ul>
+<p>The compiler is a table-driven system where the tables happen to encode construction knowledge.</p>
+<h3 id="23-ad-table-inventory-34-tables">2.3 AD Table Inventory (34 tables)<a class="headerlink" href="#23-ad-table-inventory-34-tables" title="Permanent link">&para;</a></h3>
+<p><strong>Actively consumed (13 tables, 38%):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Rows</th>
+<th>Consumer</th>
+<th>Domain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>m_bom</code></td>
+<td>9</td>
+<td>BOMAssemblerAD</td>
+<td>Assembly definitions</td>
+</tr>
+<tr>
+<td><code>m_bom_line</code></td>
+<td>38</td>
+<td>BOMAssemblerAD</td>
+<td>Component rules</td>
+</tr>
+<tr>
+<td><code>m_attribute</code></td>
+<td>10</td>
+<td>BOMRuleAD</td>
+<td>Placement params</td>
+</tr>
+<tr>
+<td><code>ad_space_type</code></td>
+<td>26</td>
+<td>SpaceTypeRegistry</td>
+<td>Room types</td>
+</tr>
+<tr>
+<td><code>ad_space_type_alias</code></td>
+<td>54</td>
+<td>MEPBOMResolver</td>
+<td>Room name resolution</td>
+</tr>
+<tr>
+<td><code>ad_space_type_mep</code></td>
+<td>22</td>
+<td>MEPAD</td>
+<td>MEP requirements</td>
+</tr>
+<tr>
+<td><code>ad_space_type_mep_bom</code></td>
+<td>89</td>
+<td>MEPBOMResolver</td>
+<td>Ceiling MEP quantity rules</td>
+</tr>
+<tr>
+<td><code>ad_opening_family</code></td>
+<td>10</td>
+<td>OpeningBomAD</td>
+<td>Door/window families</td>
+</tr>
+<tr>
+<td><code>ad_space_type_opening</code></td>
+<td>21</td>
+<td>OpeningBomAD</td>
+<td>Opening defaults</td>
+</tr>
+<tr>
+<td><code>ad_check_applicability</code></td>
+<td>35</td>
+<td>SanityCheckAD</td>
+<td>Check selection</td>
+</tr>
+<tr>
+<td><code>ad_check_threshold</code></td>
+<td>36</td>
+<td>SanityCheckAD</td>
+<td>Code thresholds</td>
+</tr>
+<tr>
+<td><code>ad_placement_rule</code></td>
+<td>21</td>
+<td>PlacementRuleAD</td>
+<td>MEP placement</td>
+</tr>
+<tr>
+<td><code>ad_mep_profile</code></td>
+<td>3</td>
+<td>MEPBomAD</td>
+<td>Budget/Standard/Premium</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Populated but not yet consumed (22 tables, 65%):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Rows</th>
+<th>Future Domain</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ad_building_code</code></td>
+<td>14</td>
+<td>Multi-jurisdiction compliance</td>
+</tr>
+<tr>
+<td><code>ad_code_requirement</code></td>
+<td>23</td>
+<td>Outlet spacing, GFCI rules</td>
+</tr>
+<tr>
+<td><code>ad_jurisdiction_codes</code></td>
+<td>17</td>
+<td>Malaysia/USA code mapping</td>
+</tr>
+<tr>
+<td><code>ad_fire_compartment</code></td>
+<td>6</td>
+<td>Compartment area limits</td>
+</tr>
+<tr>
+<td><code>ad_fp_trigger</code></td>
+<td>12</td>
+<td>Sprinkler/alarm triggers</td>
+</tr>
+<tr>
+<td><code>ad_fp_coverage</code></td>
+<td>4</td>
+<td>Sprinkler coverage rules</td>
+</tr>
+<tr>
+<td><code>ad_elevator_requirement</code></td>
+<td>9</td>
+<td>Elevator sizing</td>
+</tr>
+<tr>
+<td><code>ad_stair_requirement</code></td>
+<td>7</td>
+<td>Stair dimensions</td>
+</tr>
+<tr>
+<td><code>ad_vert_circ_trigger</code></td>
+<td>11</td>
+<td>Stairs/elevator triggers</td>
+</tr>
+<tr>
+<td><code>ad_egress_travel</code></td>
+<td>14</td>
+<td>Travel distance limits</td>
+</tr>
+<tr>
+<td><code>ad_pressurization_trigger</code></td>
+<td>7</td>
+<td>Pressurisation rules</td>
+</tr>
+<tr>
+<td><code>ad_fire_riser_requirement</code></td>
+<td>9</td>
+<td>Wet riser sizing</td>
+</tr>
+<tr>
+<td><code>ad_building_bom</code></td>
+<td>8</td>
+<td>Building-level templates</td>
+</tr>
+<tr>
+<td><code>ad_building_template</code></td>
+<td>8</td>
+<td>Building type profiles</td>
+</tr>
+<tr>
+<td><code>ad_floor_type</code></td>
+<td>12</td>
+<td>Typical floor definitions</td>
+</tr>
+<tr>
+<td><code>ad_unit_type</code></td>
+<td>7</td>
+<td>Unit templates</td>
+</tr>
+<tr>
+<td><code>ad_space_type_alias</code></td>
+<td>54</td>
+<td>Room name resolution (also in MEPBOMResolver)</td>
+</tr>
+<tr>
+<td><code>ad_product_dim</code></td>
+<td>16</td>
+<td>Product dimension catalog</td>
+</tr>
+<tr>
+<td><code>ad_space_dim</code></td>
+<td>6</td>
+<td>Room dimension constraints</td>
+</tr>
+<tr>
+<td><code>ad_element_mep</code></td>
+<td>12</td>
+<td>Element-specific MEP</td>
+</tr>
+<tr>
+<td><code>ad_ref_list</code></td>
+<td>26</td>
+<td>Reference data</td>
+</tr>
+<tr>
+<td><code>ad_reference</code></td>
+<td>5</td>
+<td>Reference definitions</td>
+</tr>
+</tbody>
+</table>
+<p>The 22 unused tables represent the project's <strong>future runway</strong> — construction knowledge already encoded, awaiting Java consumers.</p>
+<hr />
+<h2 id="3-the-bom-pattern">3. The BOM Pattern<a class="headerlink" href="#3-the-bom-pattern" title="Permanent link">&para;</a></h2>
+<h3 id="31-building-as-bill-of-materials">3.1 Building as Bill of Materials<a class="headerlink" href="#31-building-as-bill-of-materials" title="Permanent link">&para;</a></h3>
+<p>A building is a hierarchical BOM, inspired by the iDempiere M_BOM / M_Product hierarchy:</p>
+<div class="highlight"><pre><span></span><code>BUILDING
+├── HEAD (basement, ground floor)
+├── STANDARD (typical floors × N)
+└── TAIL (penthouse, roof)
+
+Each floor is a sub-assembly:
+FLOOR
+├── ROOMS (units)
+│   └── Each room contains PRODUCTS (fixtures, MEP, furniture)
+├── CORRIDORS
+└── STRUCTURE (slabs, beams, columns)
+</code></pre></div>
+<h3 id="32-bom-assembly-output-proven">3.2 BOM Assembly Output (Proven)<a class="headerlink" href="#32-bom-assembly-output-proven" title="Permanent link">&para;</a></h3>
+<p>The condo_mid.db output demonstrates working BOM assemblies:</p>
+<table>
+<thead>
+<tr>
+<th>Assembly Type</th>
+<th>Count</th>
+<th>Components</th>
+<th>Roles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>WALL_PANEL</td>
+<td>269</td>
+<td>Frame + cladding + openings</td>
+<td>FRAME, CLADDING, OPENING</td>
+</tr>
+<tr>
+<td>DOOR_ASSEMBLY</td>
+<td>85</td>
+<td>Leaf + frame + hardware</td>
+<td>LEAF, FRAME, HARDWARE</td>
+</tr>
+<tr>
+<td>FP_PIPE_ASSEMBLY</td>
+<td>18</td>
+<td>T-assembly + pipes</td>
+<td>HEAD, MAIN, BRANCH, RISER, TEE, DROP</td>
+</tr>
+<tr>
+<td>MEP_ROOM</td>
+<td>18</td>
+<td>Lights + sprinklers + fans</td>
+<td>LIGHT, SPRINKLER, DIFFUSER, FAN</td>
+</tr>
+<tr>
+<td>FLOOR_STRUCTURAL</td>
+<td>18</td>
+<td>Slab + beam + column</td>
+<td>SLAB, BEAM, COLUMN</td>
+</tr>
+<tr>
+<td>STAIR_COMPLETE</td>
+<td>3</td>
+<td>Flight + landing + railing</td>
+<td>FLIGHT, LANDING, RAILING</td>
+</tr>
+<tr>
+<td>ROOF_ASSEMBLY</td>
+<td>1</td>
+<td>Complete roof structure</td>
+<td>RAFTER, RIDGE, PURLIN</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>414</strong></td>
+<td><strong>3,884 component links</strong></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="33-nested-bom-2-level">3.3 Nested BOM (2-Level)<a class="headerlink" href="#33-nested-bom-2-level" title="Permanent link">&para;</a></h3>
+<p>BOM children can themselves be assemblies:</p>
+<div class="highlight"><pre><span></span><code>SPRINKLER_PENDANT_ASSEMBLY
+├── FP_Sprinkler_Head_Pendent (leaf)
+└── T_CONNECTOR_ASSEMBLY (nested)
+    ├── FP_Tee_Threaded
+    ├── FP_Transition_Fitting
+    └── FP_Drop_Pipe
+</code></pre></div>
+<p>This is the standard ERP BOM pattern — M_BOM containing M_BOM_Component which references another M_BOM.</p>
+<h3 id="34-bom-recipe-in-ad">3.4 BOM Recipe in AD<a class="headerlink" href="#34-bom-recipe-in-ad" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">-- m_bom defines assembly types</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">bom_id</span><span class="p">,</span><span class="w"> </span><span class="n">target_ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">group_by</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">m_bom</span><span class="p">;</span>
+<span class="c1">-- FP_PIPE_ASSEMBLY, IfcElementAssembly, ROOM</span>
+
+<span class="c1">-- m_bom_line defines components</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="k">role</span><span class="p">,</span><span class="w"> </span><span class="n">child_ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">z_rule</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;FP_PIPE_ASSEMBLY&#39;</span><span class="p">;</span>
+<span class="c1">-- HEAD, IfcFireSuppressionTerminal, BELOW_SLAB</span>
+<span class="c1">-- MAIN, IfcPipeSegment,            BELOW_SLAB</span>
+<span class="c1">-- RISER, IfcPipeSegment,           BETWEEN_FLOORS</span>
+
+<span class="c1">-- m_attribute carries placement knowledge</span>
+<span class="k">SELECT</span><span class="w"> </span><span class="n">param_key</span><span class="p">,</span><span class="w"> </span><span class="n">param_value</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">m_attribute</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">bom_child_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">12</span><span class="p">;</span>
+<span class="c1">-- spacing, 4.3</span>
+<span class="c1">-- diameter, 0.027</span>
+<span class="c1">-- z_offset, 0.1</span>
+</code></pre></div>
+<h3 id="35-furniture-assembly-bom">3.5 Furniture Assembly BOM<a class="headerlink" href="#35-furniture-assembly-bom" title="Permanent link">&para;</a></h3>
+<p><strong>Phase BOM-1 DONE (2026-02-21).</strong> <code>ad_room_slot x ad_room_boundary</code> JOIN produces BOM anchor rows as C_OrderLines. <code>RelationalResolver</code> detects <code>family_ref</code> in <code>bomIds</code> set -&gt; calls <code>FurnitureBOMResolver.resolveForRoom()</code> -&gt; N child Placements. SH=63, DX=1197, TB-LKTN=138 elements confirmed. The MRP BOM Drop pattern is live for the bottom three hierarchy levels (Parent/Room BOM -&gt; Child/Set BOM -&gt; Leaf/Item).</p>
+<p><strong>Remaining (Phase BOM-2):</strong> GGF layer (<code>UNIT_DUPLEX_STD</code>, <code>UNIT_SH_STD</code>) + GF floor assemblies (<code>FLOOR_1_STD</code>, <code>FLOOR_2_STD</code>). <code>family_ref</code> normalisation for 261 DX ABSOLUTE rows (Revit strings → catalog product IDs). Read Technical Guide §0.1 before starting BOM-2.</p>
+<p>Furniture is placed with relative offsets resolved recursively — the same pattern as <code>T_CONNECTOR_ASSEMBLY</code>.</p>
+<div class="highlight"><pre><span></span><code>OFFICE_SEATING_SET                          &lt;- phantom (grouping, not physical)
+├── WORKSTATION_ASSEMBLY          seq=1     &lt;- phantom
+│   ├── Office_Desk               seq=1     role=DESK       offset=(0, 0, 0)
+│   ├── Office_Chair              seq=2     role=USER_CHAIR  offset=(0, -0.6, 0) rot=π
+│   └── iMac_27                   seq=3     role=MONITOR     offset=(-0.59, 0, +deskH)
+├── VISITOR_TABLE                 seq=2     role=TABLE       offset=(0, +2.0, 0)
+└── VISITOR_SEATING_PAIR          seq=3     &lt;- phantom
+    ├── Visitor_Chair_A           seq=1     role=GUEST       offset=(0, -0.3, 0) rot=0
+    └── Visitor_Chair_B           seq=2     role=GUEST       offset=(0, +0.3, 0) rot=π
+</code></pre></div>
+<p>The <code>child_bom_id</code> column on <code>m_bom_line</code> already supports nesting. Spatial offsets use <code>m_attribute</code> with keys <code>x_offset</code>, <code>y_offset</code>, <code>z_offset</code>, <code>rotation</code>. No schema change needed — just new rows.</p>
+<p><strong>Placement rules per space type:</strong>
+- <strong>Office</strong>: workstation against longest free wall, visitor seating against opposite wall, both avoiding openings
+- <strong>Big room</strong> (area &gt;= 80m²): two sets at mirrored positions (NW + SE corners, second set rotation=π)
+- <strong>Small room</strong>: workstation only, no visitor zone</p>
+<p><strong>Java pattern — Composite + recursive resolve:</strong>
+<div class="highlight"><pre><span></span><code><span class="n">List</span><span class="o">&lt;</span><span class="n">PlacedComponent</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">resolveBOM</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">bomId</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">anchorX</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">anchorY</span><span class="p">,</span>
+<span class="w">                                  </span><span class="kt">double</span><span class="w"> </span><span class="n">anchorZ</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">parentRotation</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">PlacedComponent</span><span class="o">&gt;</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">BOMChild</span><span class="w"> </span><span class="n">child</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">getBOMChildren</span><span class="p">(</span><span class="n">bomId</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Rotate child offset by parent rotation</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">cx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">anchorX</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rotate</span><span class="p">(</span><span class="n">child</span><span class="p">.</span><span class="na">xOffset</span><span class="p">,</span><span class="w"> </span><span class="n">child</span><span class="p">.</span><span class="na">yOffset</span><span class="p">,</span><span class="w"> </span><span class="n">parentRotation</span><span class="p">).</span><span class="na">x</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">cy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">anchorY</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rotate</span><span class="p">(</span><span class="n">child</span><span class="p">.</span><span class="na">xOffset</span><span class="p">,</span><span class="w"> </span><span class="n">child</span><span class="p">.</span><span class="na">yOffset</span><span class="p">,</span><span class="w"> </span><span class="n">parentRotation</span><span class="p">).</span><span class="na">y</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">cz</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">anchorZ</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">child</span><span class="p">.</span><span class="na">zOffset</span><span class="p">;</span>
+<span class="w">        </span><span class="kt">double</span><span class="w"> </span><span class="n">cr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parentRotation</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">child</span><span class="p">.</span><span class="na">rotation</span><span class="p">;</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">child</span><span class="p">.</span><span class="na">nestedBomId</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">result</span><span class="p">.</span><span class="na">addAll</span><span class="p">(</span><span class="n">resolveBOM</span><span class="p">(</span><span class="n">child</span><span class="p">.</span><span class="na">nestedBomId</span><span class="p">,</span><span class="w"> </span><span class="n">cx</span><span class="p">,</span><span class="w"> </span><span class="n">cy</span><span class="p">,</span><span class="w"> </span><span class="n">cz</span><span class="p">,</span><span class="w"> </span><span class="n">cr</span><span class="p">));</span><span class="w"> </span><span class="c1">// recurse</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">result</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">PlacedComponent</span><span class="p">(</span><span class="n">child</span><span class="p">.</span><span class="na">name</span><span class="p">,</span><span class="w"> </span><span class="n">cx</span><span class="p">,</span><span class="w"> </span><span class="n">cy</span><span class="p">,</span><span class="w"> </span><span class="n">cz</span><span class="p">,</span><span class="w"> </span><span class="n">cr</span><span class="p">));</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p>Big room mirroring comes free: resolve the same BOM at two anchors with rotation 0 and π — all child offsets flip automatically.</p>
+<h3 id="36-tower-level-bom-hierarchy-phase-94-vision">3.6 Tower-Level BOM Hierarchy (Phase 94+ Vision)<a class="headerlink" href="#36-tower-level-bom-hierarchy-phase-94-vision" title="Permanent link">&para;</a></h3>
+<p>The BOM pattern extends beyond rooms to the full building hierarchy. Currently the compiler thinks in <strong>storeys with rooms</strong>. The target: <strong>assemblies all the way up</strong>.</p>
+<div class="highlight"><pre><span></span><code>TOWER_BOM                                    &lt;- top-level
+├── GROUND_FLOOR_TEMPLATE       x1           &lt;- variant: ground
+│   ├── ENTRANCE_LOBBY          role=LOBBY
+│   ├── MANAGEMENT_OFFICE       role=OFFICE
+│   ├── STAIR_ENCLOSURE_A       role=STAIR
+│   └── UTILITY_ROOMS           role=SERVICE
+├── TYPICAL_FLOOR_TEMPLATE      x16          &lt;- variant: typical (repeated)
+│   ├── LIFT_LOBBY              role=LOBBY
+│   ├── CORRIDOR                role=CIRCULATION
+│   ├── UNIT_1BR x4             role=UNIT
+│   ├── TOILET_BLOCK            role=SERVICE
+│   ├── STAIR_A                 role=VERTICAL
+│   └── ELEVATOR_SHAFT          role=VERTICAL
+├── ROOF_FLOOR_TEMPLATE         x1           &lt;- variant: roof
+└── VERTICAL_SERVICES                        &lt;- spans all floors
+    ├── RISER_STACK             role=PLUMBING
+    ├── ELEVATOR_CAR            role=TRANSPORT
+    └── STAIR_FLIGHTS           role=EGRESS
+</code></pre></div>
+<p><strong>iDempiere Libero Manufacturing BOM concepts that map here:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Libero Concept</th>
+<th>BIM Compiler Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phantom BOM</td>
+<td>FLOOR_TEMPLATE — resolves to children, not physical</td>
+</tr>
+<tr>
+<td>BOM Type = Standard</td>
+<td>Fixed recipe (every typical floor identical)</td>
+</tr>
+<tr>
+<td>BOM Type = Variant</td>
+<td>Ground vs Typical vs Roof — same parent, different children</td>
+</tr>
+<tr>
+<td>Feature/Selection</td>
+<td>DSL user picks: <code>floor_type: TYPICAL with TOILET_BLOCK_A</code></td>
+</tr>
+<tr>
+<td>qty_type = VARIABLE</td>
+<td>Floor count from DSL: <code>TYPICAL_FLOOR x16</code></td>
+</tr>
+<tr>
+<td>Optional component</td>
+<td>Elevator: present in high-rise, absent in walkup</td>
+</tr>
+</tbody>
+</table>
+<p><strong>DSL evolution (future):</strong>
+<div class="highlight"><pre><span></span><code>TOWER condo_mid {
+  GROUND  template:GROUND_LOBBY
+  TYPICAL template:TYPICAL_4UNIT  floors:2-17  height:3.4
+  ROOF    template:ROOF_PLANT
+}
+</code></pre></div></p>
+<p>Where <code>TYPICAL_4UNIT</code> is a BOM in the library. User can override:
+<div class="highlight"><pre><span></span><code>TYPICAL template:TYPICAL_4UNIT floors:2-17 {
+  option TOILET_BLOCK: VARIANT_B
+  option STAIR: PRESSURIZED
+  remove UNIT_1BR slot:4
+  add    UNIT_STUDIO slot:4
+}
+</code></pre></div></p>
+<p><strong>Schema additions needed (minimal):</strong>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">bom_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;STANDARD&#39;</span><span class="p">;</span>
+<span class="c1">-- Values: STANDARD, PHANTOM, VARIANT, OPTIONAL</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom_variant</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">variant_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">variant_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w"> </span><span class="n">is_default</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom_feature</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">feature_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span><span class="w"> </span><span class="n">bom_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">feature_name</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w"> </span><span class="n">required</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+</code></pre></div></p>
+<p>The existing <code>ad_building_template</code> (8 rows), <code>ad_floor_type</code> (12 rows), and <code>ad_unit_type</code> (7 rows) tables are already populated — they await Java consumers.</p>
+<blockquote>
+<p><strong>See also:</strong> <a href="PREFAB_ARCHITECTURE.md">PREFAB_ARCHITECTURE.md</a> — Phase 115 concretizes this vision with a prefab assembly catalog (<code>prefab_product</code>, <code>prefab_bom</code>, <code>prefab_interface</code>) that replaces runtime spatial resolution with DAG expansion of pre-computed assemblies.</p>
+</blockquote>
+<h3 id="37-floor-plate-as-spatial-bom-phase-95-target">3.7 Floor Plate as Spatial BOM (Phase 95 Target)<a class="headerlink" href="#37-floor-plate-as-spatial-bom-phase-95-target" title="Permanent link">&para;</a></h3>
+<p><strong>The problem:</strong> The DSL currently specifies exact grid bounds for every room (<code>bounds:C2-D4</code>). When you add a toilet, you manually shrink the lobby. When you remove a corridor, you manually expand the units. The compiler has no spatial reasoning — it trusts the user's manual layout.</p>
+<p><strong>The insight:</strong> A floor plate is a BOM with <strong>spatial resolution rules</strong>. Instead of explicit bounds, each child declares its spatial role. A <code>FloorPlateBOMResolver</code> computes the bounds.</p>
+<div class="highlight"><pre><span></span><code>Current DSL (explicit bounds — fragile):
+  LIFT_LOBBY bounds:C2-D4          // user computes coordinates
+  TOILET_BLOCK bounds:D3-E4        // user computes coordinates
+  UNIT &quot;E1&quot; bounds:D1-F3           // user adjusts when toilet moves
+
+BOM DSL (spatial rules — resilient):
+  CORE {
+      STAIR_A at:north                    // resolver: first cell of core
+      LIFT_LOBBY fill:center              // resolver: whatever remains between stairs
+      TOILET carve:1cell from:LIFT_LOBBY  // resolver: shrinks lobby, places toilet
+      STAIR_B at:south                    // resolver: last cell of core
+  }
+  CORRIDOR side:west width:1bay           // resolver: adjacent to core, one grid bay
+  UNITS side:west fill:remaining          // resolver: everything west of corridor
+  UNITS side:east fill:remaining          // resolver: everything east of core
+</code></pre></div>
+<p><strong>Spatial rule vocabulary</strong> (from <code>m_attribute</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>at:north</code></td>
+<td>Place at northernmost available cell</td>
+<td>Stairs</td>
+</tr>
+<tr>
+<td><code>at:south</code></td>
+<td>Place at southernmost available cell</td>
+<td>Stairs</td>
+</tr>
+<tr>
+<td><code>fill:center</code></td>
+<td>Fill remaining cells between fixed children</td>
+<td>Lobby</td>
+</tr>
+<tr>
+<td><code>fill:remaining</code></td>
+<td>Fill all unassigned cells</td>
+<td>Units</td>
+</tr>
+<tr>
+<td><code>carve:Ncell from:PARENT</code></td>
+<td>Shrink parent, create child in freed cell</td>
+<td>Toilet from lobby</td>
+</tr>
+<tr>
+<td><code>side:west</code></td>
+<td>Allocate adjacent bay on west side</td>
+<td>Corridor</td>
+</tr>
+<tr>
+<td><code>width:Nbay</code></td>
+<td>Width in grid bays</td>
+<td>Corridor (1 bay = 2m)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Resolution algorithm:</strong>
+1. Parse zone declarations (CORE, CORRIDOR, UNITS) with spatial rules
+2. Allocate fixed children first (<code>at:north</code>, <code>at:south</code>) — these claim specific cells
+3. Resolve <code>fill:center</code> — lobby takes whatever's left in the core
+4. Resolve <code>carve:</code> — shrink parent, assign freed cells to child
+5. Resolve <code>side:</code> — corridor bay adjacent to core
+6. Resolve <code>fill:remaining</code> — units take everything else
+7. Output: same grid bounds as before, but computed not manual</p>
+<p><strong>Why this works:</strong> The spatial rules use the same <code>m_attribute</code> table and the same recursive resolver pattern as furniture BOM. The difference is the resolver operates on <strong>grid cells</strong> instead of <strong>metric offsets</strong>. A <code>FloorPlateBOMResolver</code> is structurally identical to <code>FurnitureBOMResolver</code> — load BOM tree from AD, walk children, resolve positions.</p>
+<p><strong>Key benefit:</strong> Adding a toilet doesn't require touching unit bounds. The resolver automatically shrinks the lobby and adjusts units. Removing a corridor → units expand. Changing from 2 stairs to 3 → lobby shrinks. The DSL declares <em>what</em>, the BOM resolves <em>where</em>.</p>
+<p><strong>AD tables already populated:</strong>
+- <code>ad_building_template</code> (8 rows) — building type profiles
+- <code>ad_floor_type</code> (12 rows) — typical floor definitions
+- <code>ad_unit_type</code> (7 rows) — unit templates
+- These await Java consumers — the <code>FloorPlateBOMResolver</code> would read them.</p>
+<h3 id="38-evolution-path">3.8 Evolution Path<a class="headerlink" href="#38-evolution-path" title="Permanent link">&para;</a></h3>
+<p>The BOM hierarchy builds incrementally:</p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Scope</th>
+<th>Status</th>
+<th>Visual Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>93</td>
+<td>Furniture BOM assemblies (nested offsets)</td>
+<td><strong>DONE</strong></td>
+<td>Coordinated workstation + visitor seating</td>
+</tr>
+<tr>
+<td>94</td>
+<td>Toilet blocks, floor plate manual layout</td>
+<td><strong>DONE</strong></td>
+<td>Single toilet block, east unit expansion</td>
+</tr>
+<tr>
+<td>BOM-1</td>
+<td>Room slot dispatch + BOM expansion wired (SH/DX/TB-LKTN)</td>
+<td><strong>DONE (2026-02-21)</strong></td>
+<td>Furniture generated from <code>ad_room_slot × ad_room_boundary</code> — SH=15, DX=66, TB-LKTN=138 elements</td>
+</tr>
+<tr>
+<td>BOM-2a/b</td>
+<td>GGF/GF catalog entries + ROOM spacing facts as C_OrderLines</td>
+<td><strong>DONE (2026-02-21)</strong></td>
+<td>Five-hop BOM chain data complete</td>
+</tr>
+<tr>
+<td>Phase 4b</td>
+<td>Floor orientation cascade — DX L2 = π rotation, floorZOffsets map</td>
+<td><strong>DONE (2026-02-24)</strong></td>
+<td>DX upper furniture at correct Z=3.0m + 180° bearing</td>
+</tr>
+<tr>
+<td>Phase 4c</td>
+<td>GPD dispatch (locator_ref/layout_strategy) + sub-BOM recursion (child_bom_id)</td>
+<td><strong>PARTIAL (2026-02-25)</strong></td>
+<td>NORTH_WALL linear placement; SOFA_AREA sub-BOM proves child_bom_id pattern</td>
+</tr>
+<tr>
+<td>BOM-2c</td>
+<td>UNIT/FLOOR Orderlines as C_OrderLines</td>
+<td><strong>NEXT</strong></td>
+<td>Full 5-level relational cascade — closes top two hops</td>
+</tr>
+<tr>
+<td>BOMCascadeResolver</td>
+<td>Unify BomTierResolver + FurnitureBOMResolver into single recursive walker</td>
+<td><strong>Planned</strong></td>
+<td>All levels handled by one engine (see PREFAB_ARCHITECTURE.md §9)</td>
+</tr>
+<tr>
+<td>95</td>
+<td>Floor plate as spatial BOM (<code>FloorPlateBOMResolver</code>)</td>
+<td>Future</td>
+<td>Auto-resolve room bounds from zone rules</td>
+</tr>
+<tr>
+<td>96</td>
+<td><code>bom_type</code> + <code>m_bom_variant</code>, floor templates as BOM</td>
+<td>Future</td>
+<td>Floor template reuse</td>
+</tr>
+<tr>
+<td>97</td>
+<td>Vertical services as tower-level BOM children</td>
+<td>Future</td>
+<td>Complete building hierarchy</td>
+</tr>
+<tr>
+<td>98+</td>
+<td>DSL <code>option</code>/<code>remove</code>/<code>add</code> syntax (Libero selection)</td>
+<td>Future</td>
+<td>User-selectable building variants</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-compilation-pipeline">4. Compilation Pipeline<a class="headerlink" href="#4-compilation-pipeline" title="Permanent link">&para;</a></h2>
+<h3 id="41-five-stage-dag">4.1 Five-Stage DAG<a class="headerlink" href="#41-five-stage-dag" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>PARSE → RESOLVE → COMPILE → PLACE → WRITE
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Input</th>
+<th>Output</th>
+<th>AD Tables Used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Parse</strong></td>
+<td><code>.bim</code> DSL file</td>
+<td>BuildingDefinition</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Resolve</strong></td>
+<td>BuildingDefinition</td>
+<td>Room sizes, BOM rules</td>
+<td>ad_space_type, ad_room_sizing</td>
+</tr>
+<tr>
+<td><strong>Compile</strong></td>
+<td>Resolved rooms</td>
+<td>Walls, slabs, structure</td>
+<td>m_bom, m_bom_line</td>
+</tr>
+<tr>
+<td><strong>Place</strong></td>
+<td>Compiled structure</td>
+<td>MEP, furniture, openings</td>
+<td>ad_space_type_mep, ad_opening_family</td>
+</tr>
+<tr>
+<td><strong>Write</strong></td>
+<td>All elements</td>
+<td>SQLite output DB</td>
+<td>m_bom (assembly creation)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="42-override-chain">4.2 Override Chain<a class="headerlink" href="#42-override-chain" title="Permanent link">&para;</a></h3>
+<p>DSL declarations override BOM defaults override hardcoded fallbacks:</p>
+<div class="highlight"><pre><span></span><code>DSL explicit  &gt;  opens_to connection  &gt;  BOM default  &gt;  hardcoded fallback
+     ↑                  ↑                     ↑                ↑
+User specifies    Room adjacency       ad_space_type_*     Last resort
+</code></pre></div>
+<hr />
+<h2 id="5-correctness-dimensions">5. Correctness Dimensions<a class="headerlink" href="#5-correctness-dimensions" title="Permanent link">&para;</a></h2>
+<h3 id="51-the-seven-levels-complementary-to-lod">5.1 The Seven Levels (Complementary to LOD)<a class="headerlink" href="#51-the-seven-levels-complementary-to-lod" title="Permanent link">&para;</a></h3>
+<p>LOD (Level of Development) measures <strong>detail richness</strong> — how precisely geometry is modelled. These correctness dimensions measure <strong>validity</strong> — whether elements form a constructible building.</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Name</th>
+<th>Question</th>
+<th>Current Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>L0</td>
+<td><strong>Geometric</strong></td>
+<td>Do elements have valid shapes?</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>L1</td>
+<td><strong>Spatial</strong></td>
+<td>Are elements in correct locations?</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>L2</td>
+<td><strong>Topological</strong></td>
+<td>Do elements connect correctly?</td>
+<td>40%</td>
+</tr>
+<tr>
+<td>L3</td>
+<td><strong>Systemic</strong></td>
+<td>Do systems function as wholes?</td>
+<td>10%</td>
+</tr>
+<tr>
+<td>L4</td>
+<td><strong>Constructible</strong></td>
+<td>Can this be built in sequence?</td>
+<td>0%</td>
+</tr>
+<tr>
+<td>L5</td>
+<td><strong>Compliant</strong></td>
+<td>Does it pass inspection?</td>
+<td>40%</td>
+</tr>
+<tr>
+<td>L6</td>
+<td><strong>Operable</strong></td>
+<td>Can it be maintained?</td>
+<td>0%</td>
+</tr>
+</tbody>
+</table>
+<p>Each level is <strong>independently provable</strong> through the witness system.</p>
+<h3 id="52-relationship-to-lod">5.2 Relationship to LOD<a class="headerlink" href="#52-relationship-to-lod" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>LOD 100 (Conceptual)    → L0 Geometric only
+LOD 200 (Schematic)     → L0 + L1 Spatial
+LOD 300 (Design)        → L0 + L1 + L2 Topological
+LOD 350 (Coordination)  → L0-L2 + L3 Systemic
+LOD 400 (Fabrication)   → L0-L3 + L4 Constructible + L5 Compliant
+LOD 500 (As-Built)      → L0-L5 + L6 Operable
+</code></pre></div>
+<p>The BIM compiler currently targets <strong>LOD 400 geometry</strong> with <strong>L0-L1 correctness</strong> and partial L2/L5. Full AD utilisation would bring L2-L5 to completion.</p>
+<hr />
+<h2 id="6-witness-system">6. Witness System<a class="headerlink" href="#6-witness-system" title="Permanent link">&para;</a></h2>
+<h3 id="61-proof-carrying-compilation">6.1 Proof-Carrying Compilation<a class="headerlink" href="#61-proof-carrying-compilation" title="Permanent link">&para;</a></h3>
+<p>Every compiled building produces a witness file (<code>*_witness.json</code>) with validation claims. Each claim is either <strong>PROVEN</strong> (with numerical proof data), <strong>SKIPPED</strong> (not applicable), or <strong>UNPROVABLE</strong> (proof system deficiency — must never appear in production).</p>
+<p>The witness system solves the known weakness of metadata-driven architectures: <strong>debugging difficulty</strong>. When behaviour is defined in data rather than code, errors are hard to trace. Witnesses make metadata-driven decisions auditable.</p>
+<h3 id="62-current-witness-count">6.2 Current Witness Count<a class="headerlink" href="#62-current-witness-count" title="Permanent link">&para;</a></h3>
+<p>24 witness claims covering geometric, spatial, structural, and MEP correctness. See <code>docs/witness-system-specification.md</code> for the full specification.</p>
+<h3 id="63-sanity-checks">6.3 Sanity Checks<a class="headerlink" href="#63-sanity-checks" title="Permanent link">&para;</a></h3>
+<p>32 sanity checks (separate from witnesses) validate the output database against construction codes. Checks are registered via <code>ad_check_applicability</code> — the check selection itself is metadata-driven.</p>
+<hr />
+<h2 id="7-current-migration-state">7. Current Migration State<a class="headerlink" href="#7-current-migration-state" title="Permanent link">&para;</a></h2>
+<h3 id="71-whats-ad-driven-working">7.1 What's AD-Driven (Working)<a class="headerlink" href="#71-whats-ad-driven-working" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Mechanism</th>
+<th>Lines of Java Eliminated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BOM assembly creation</td>
+<td>m_bom + m_bom_line → BOMAssemblerAD</td>
+<td>Assembly logic is generic</td>
+</tr>
+<tr>
+<td>FP Z-positioning</td>
+<td>m_attribute → BOMRuleAD.resolveZ()</td>
+<td>70 slab overlaps → 0</td>
+</tr>
+<tr>
+<td>Opening defaults</td>
+<td>ad_opening_family + ad_space_type_opening → OpeningBomAD</td>
+<td>BOM-driven doors/windows</td>
+</tr>
+<tr>
+<td>Sanity check selection</td>
+<td>ad_check_applicability → SanityCheckAD</td>
+<td>Data-driven check registration</td>
+</tr>
+<tr>
+<td>Space type definitions</td>
+<td>ad_space_type → SpaceTypeRegistry</td>
+<td>26 types from metadata</td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-whats-still-hardcoded-migration-targets">7.2 What's Still Hardcoded (Migration Targets)<a class="headerlink" href="#72-whats-still-hardcoded-migration-targets" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Current Location</th>
+<th>Target AD Table</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~~MEP guarantee loop~~</td>
+<td>~~BuildingCompiler~~</td>
+<td>~~ad_space_type_mep_bom~~</td>
+<td>~~Done (92D)~~</td>
+</tr>
+<tr>
+<td>Furniture placement offsets</td>
+<td>FurniturePlacer (hardcoded)</td>
+<td>m_bom_line + m_attribute</td>
+<td><strong>P1</strong> (Phase 93)</td>
+</tr>
+<tr>
+<td>Room type string matching</td>
+<td>BuildingCompiler:3152-3159</td>
+<td>ad_space_type_alias</td>
+<td><strong>P1</strong></td>
+</tr>
+<tr>
+<td>Double-set threshold (80m²)</td>
+<td>BuildingCompiler:3702</td>
+<td>ad_space_type_mep</td>
+<td><strong>P2</strong></td>
+</tr>
+<tr>
+<td>High-rise detection (18m)</td>
+<td>FireProtectionResolver</td>
+<td>ad_fp_trigger</td>
+<td><strong>P2</strong></td>
+</tr>
+<tr>
+<td>Floor templates</td>
+<td>DSL <code>copies</code> keyword</td>
+<td>ad_building_template + ad_floor_type</td>
+<td><strong>P2</strong> (Phase 94)</td>
+</tr>
+<tr>
+<td>Outlet/switch placement</td>
+<td>ElectricalPlacer</td>
+<td>ad_code_requirement</td>
+<td><strong>P3</strong></td>
+</tr>
+<tr>
+<td>Unit interiors</td>
+<td>skipKeywords blocks it</td>
+<td>ad_unit_type</td>
+<td><strong>P4</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="73-migration-discipline">7.3 Migration Discipline<a class="headerlink" href="#73-migration-discipline" title="Permanent link">&para;</a></h3>
+<p>Proven in Phase 85:</p>
+<ol>
+<li><strong>One parameter at a time.</strong> Move one constant from Java to <code>m_attribute</code>.</li>
+<li><strong>Audit all consumers.</strong> Shared variables are the #1 trap (Phase 85: ceilingZ served sprinklers + fans + diffusers).</li>
+<li><strong>Verify numerically.</strong> Witness proofs must pass before and after.</li>
+<li><strong>Don't let two sources of truth coexist.</strong> If BOM has <code>spacing=4.3</code> and Java has <code>SPACING=4.3</code>, one must go.</li>
+</ol>
+<hr />
+<h2 id="8-known-risks-and-mitigations">8. Known Risks and Mitigations<a class="headerlink" href="#8-known-risks-and-mitigations" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Severity</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Schema complexity</strong> (34 tables)</td>
+<td>High</td>
+<td>This document + AD table inventory</td>
+</tr>
+<tr>
+<td><strong>Debugging difficulty</strong></td>
+<td>High</td>
+<td>Witness system (proof-carrying compilation)</td>
+</tr>
+<tr>
+<td><strong>Schema evolution</strong></td>
+<td>Medium</td>
+<td>Manual today; consider Flyway if tables grow</td>
+</tr>
+<tr>
+<td><strong>Performance</strong> (DB lookups)</td>
+<td>Low</td>
+<td>Static loading + caching at compile start</td>
+</tr>
+<tr>
+<td><strong>Two parallel systems</strong></td>
+<td>High</td>
+<td>Phase-by-phase migration (Section 7.2)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="9-key-files-phase-114">9. Key Files (Phase 114+)<a class="headerlink" href="#9-key-files-phase-114" title="Permanent link">&para;</a></h2>
+<h3 id="metadata-layer">Metadata Layer<a class="headerlink" href="#metadata-layer" title="Permanent link">&para;</a></h3>
+<p><code>library/{PREFIX}_BOM.db</code> — unified working database (~73 tables: <code>ad_*</code> config + <code>m_*</code> BOM).
+<code>library/component_library.db</code> (127MB, Git LFS) — LOD geometry store (~12 tables: <code>lod_*</code>).
+- Migration scripts in <code>migration/</code> — idempotent, run in order</p>
+<h3 id="java-layer-srcmainjavacombimcompilerdsl">Java Layer (<code>src/main/java/com/bim/compiler/dsl/</code>)<a class="headerlink" href="#java-layer-srcmainjavacombimcompilerdsl" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+<th>~Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BuildingSpecs.java</code></td>
+<td>26 record types (specs)</td>
+<td>700</td>
+</tr>
+<tr>
+<td><code>BuildingCompiler.java</code></td>
+<td>Entry points, validation, orchestration</td>
+<td>1,630</td>
+</tr>
+<tr>
+<td><code>MultiUnitCompiler.java</code></td>
+<td>Multi-unit layout, party walls</td>
+<td>1,450</td>
+</tr>
+<tr>
+<td><code>StoreyCompiler.java</code></td>
+<td>compileStorey, walls, openings, stairs</td>
+<td>2,300</td>
+</tr>
+<tr>
+<td><code>WitnessGenerator.java</code></td>
+<td>All witness generation</td>
+<td>1,000</td>
+</tr>
+<tr>
+<td><code>BuildingWriter.java</code></td>
+<td>Schema, write(), QTO, BOM orchestrator</td>
+<td>900</td>
+</tr>
+</tbody>
+</table>
+<p>Sub-writers: <code>ElementPersistence</code>, <code>StructuralWriter</code>, <code>StairWriter</code>, <code>OpeningWriter</code>, <code>MEPWriter</code></p>
+<h3 id="library-layer-srcmainjavacombimcompilerlibrary">Library Layer (<code>src/main/java/com/bim/compiler/library/</code>)<a class="headerlink" href="#library-layer-srcmainjavacombimcompilerlibrary" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FurnitureBOMResolver.java</code></td>
+<td>Data-driven furniture from m_bom</td>
+</tr>
+<tr>
+<td><code>ManifestResolver.java</code></td>
+<td>Assembly MANIFEST face clearances (Phase 115B)</td>
+</tr>
+<tr>
+<td><code>FixturePlacer.java</code></td>
+<td>Bathroom/kitchen fixture placement</td>
+</tr>
+<tr>
+<td><code>ComponentLibrary.java</code></td>
+<td>LOD400 component lookup</td>
+</tr>
+</tbody>
+</table>
+<h3 id="contract-layer-srcmainjavacombimcompilercontract">Contract Layer (<code>src/main/java/com/bim/compiler/contract/</code>)<a class="headerlink" href="#contract-layer-srcmainjavacombimcompilercontract" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BundleWorker.java</code></td>
+<td>OSGi-inspired worker interface (Phase 118)</td>
+</tr>
+<tr>
+<td><code>CatalogContract.java</code></td>
+<td>DSL-as-Catalog-Selector enforcement (Phase 117)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="verification-layer-srcmainjavacombimcompilervalidation">Verification Layer (<code>src/main/java/com/bim/compiler/validation/</code>)<a class="headerlink" href="#verification-layer-srcmainjavacombimcompilervalidation" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SpatialDigest.java</code></td>
+<td>SHA256 deterministic regression fingerprint (Phase 118)</td>
+</tr>
+<tr>
+<td><code>CatalogValidator.java</code></td>
+<td>Checks DSL refs against component_library.db (Phase 117)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>See also:</strong> <a href="../BUNDLE_WORKER_FRAMEWORK/">BUNDLE_WORKER_FRAMEWORK.md</a> — OSGi bundle worker vision, dispatch protocol, SpatialDigest, progressive migration path.</p>
+</blockquote>
+<h3 id="output-layer">Output Layer<a class="headerlink" href="#output-layer" title="Permanent link">&para;</a></h3>
+<p><code>output/*.db</code> — SQLite with <code>elements_meta</code>, <code>base_geometries</code>, <code>elements_rtree</code>, <code>assembly_components</code>, <code>simple_qto</code>, <code>mep_systems</code></p>
+<hr />
+<h2 id="appendix-a-ifc-naming-convention">Appendix A: IFC Naming Convention<a class="headerlink" href="#appendix-a-ifc-naming-convention" title="Permanent link">&para;</a></h2>
+<p>Pattern: <code>{Category}_{Variant}_{Room}_{Storey}</code></p>
+<table>
+<thead>
+<tr>
+<th>Segment</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Category</td>
+<td><code>Door</code>, <code>Light</code>, <code>Alarm</code>, <code>Water_Tank</code></td>
+</tr>
+<tr>
+<td>Variant</td>
+<td><code>D1_900x2100</code>, <code>Downlight</code>, <code>Smoke</code></td>
+</tr>
+<tr>
+<td>Room</td>
+<td><code>Living</code>, <code>Kitchen</code>, <code>Corridor</code></td>
+</tr>
+<tr>
+<td>Storey</td>
+<td><code>G</code>, <code>F2</code>, <code>Roof</code></td>
+</tr>
+</tbody>
+</table>
+<p>Rules: Category first (Outliner grouping). Underscores only. No JKR prefixes, no Revit IDs, no GUIDs. Standard abbreviations: <code>WC</code>, <code>CW</code>, <code>HW</code>, <code>FP</code>, <code>Ext</code>.</p>
+<hr />
+<h2 id="appendix-b-source-consolidation">Appendix B: Source Consolidation<a class="headerlink" href="#appendix-b-source-consolidation" title="Permanent link">&para;</a></h2>
+<p><strong><code>library/{PREFIX}_BOM.db</code></strong> + <strong><code>library/component_library.db</code></strong> = source of truth (see <code>ConstructionAsERP.md</code> for 3-DB architecture).</p>
+<table>
+<thead>
+<tr>
+<th>Archive</th>
+<th>Location</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source IFC files (23)</td>
+<td><code>archive/IFC_source_files/</code></td>
+<td>Extraction complete</td>
+</tr>
+<tr>
+<td>Federation DB</td>
+<td><code>database/enhanced_federation_GI.db</code></td>
+<td>Reference only</td>
+</tr>
+<tr>
+<td>Duplex reference</td>
+<td><code>database/Stacked_Duplex.db</code></td>
+<td>Reference only</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="appendix-c-lessons-learned-100-phases">Appendix C: Lessons Learned (100 Phases)<a class="headerlink" href="#appendix-c-lessons-learned-100-phases" title="Permanent link">&para;</a></h2>
+<p><strong>Engine evolution:</strong> Hardcoded (1-50) → BOM-driven (50-85) → Standards-as-data (85+). Each boundary asks: "Can this be a table row instead of a code change?"</p>
+<p><strong>Critical traps:</strong>
+- Orientation axis swap: <code>orientationMatched=false</code> swaps X/Y extents → protrusion failures
+- Z double-correction: pass raw Z, let writer handle
+- <code>skipKeywords</code>: UNIT/CORRIDOR create room objects but no geometry (intentional)
+- Grid axes vs spacing: trim to <code>spacing.size() + 1</code>
+- CladdingSpec bounds NOT normalized on west/south walls
+- Stale <code>__pycache__/*.pyc</code> after editing Python</p>
+<p><strong>Principles that held:</strong> Java records for immutable specs. World-space geometry (Pattern B, zero transforms). Single JDBC connection per compilation. Witness-first development.</p>
+<p><strong>Next time:</strong> Start with BOM tables from Phase 1. Smaller commits. Extract classes at 2000 lines. Federation-first for all geometry. Standards tables before features.</p>
+<hr />
+<h2 id="9-spatial-storage-model-building-as-spacesize-aabb-hierarchy">§9. Spatial Storage Model — Building as SpaceSize AABB Hierarchy<a class="headerlink" href="#9-spatial-storage-model-building-as-spacesize-aabb-hierarchy" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><em>"The whole building is a large storage Location whose bounds are an AABB in mm."</em></p>
+</blockquote>
+<p>The M_BOM SpaceSize model (AABB bounding box in mm) maps exactly onto the building's
+spatial hierarchy. Each level — building, storey, room, zone — carries a SpaceSize AABB
+that bounds its physical extent. This is not an analogy — it is the same data structure
+applied to cubic space instead of storage volume. The compiler IS a spatial placement engine.</p>
+<h3 id="91-spacesize-aabb-hierarchy">9.1 SpaceSize AABB Hierarchy<a class="headerlink" href="#91-spacesize-aabb-hierarchy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>SpaceSize Level</th>
+<th>BIM Layer</th>
+<th>Table</th>
+<th>Unit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Building AABB</td>
+<td>Building</td>
+<td>C_Order (Construction Order)</td>
+<td><strong>mm</strong></td>
+</tr>
+<tr>
+<td>Storey AABB</td>
+<td>Storey / Grid axis intersection</td>
+<td><code>ad_building_grid</code></td>
+<td><strong>mm</strong></td>
+</tr>
+<tr>
+<td>Room AABB</td>
+<td>Room</td>
+<td><code>ad_room_boundary</code></td>
+<td><strong>mm</strong></td>
+</tr>
+<tr>
+<td>Zone AABB / M_Locator</td>
+<td>Position within room — grid cell in mm (NORTH_WALL, CENTRE...)</td>
+<td>CO_EmptySpaceLine / PhantomLayout</td>
+<td><strong>mm</strong></td>
+</tr>
+</tbody>
+</table>
+<p>All physical coordinates at every SpaceSize level are in <strong>mm</strong>.
+<code>ad_building_grid</code> stores grid line positions as mm offsets from the building origin.
+The <code>M_Locator</code> X/Y/Z labels in iDempiere correspond to these grid line mm values:
+X = grid axis (storey mm), Y = room position (room mm), Z = storey elevation (level mm).</p>
+<p>Every placed element has a fully qualified SpaceSize address:
+<div class="highlight"><pre><span></span><code>Location : Ifc4_SampleHouse
+Aisle    : Level_1  →  grid_x=0mm, grid_y=0mm, z_offset=0mm   (storey / grid intersection in mm)
+Bin      : LIVING_ROOM  →  min_x=1620mm, max_x=6265mm, min_y=−1246mm, max_y=4558mm
+Lot      : NORTH_WALL   →  zone depth 700mm from wall face
+Sequence : 3            →  position in zone sequence (hostAxis mm)
+</code></pre></div></p>
+<h3 id="92-mm-cube-is-the-physical-truth-at-every-spacesize-level">9.2 mm Cube is the Physical Truth — at Every SpaceSize Level<a class="headerlink" href="#92-mm-cube-is-the-physical-truth-at-every-spacesize-level" title="Permanent link">&para;</a></h3>
+<p>SpaceSize labels at every level — storey names, room names, zone names — are <strong>human labels</strong>:
+convenience aliases for mm coordinates. The physical truth is always a mm value:</p>
+<div class="highlight"><pre><span></span><code>Aisle  &quot;Level_1&quot;   resolves to:  z_offset=0mm  (storey elevation above datum)
+Bin    &quot;LIVING_ROOM&quot; resolves to: min_x=1620mm, max_x=6265mm,
+                                  min_y=−1246mm, max_y=4558mm,
+                                  min_z=0mm,     max_z=3000mm
+Lot    &quot;NORTH_WALL&quot;  resolves to: min_x=1620mm, max_x=6265mm,
+                                  min_y=−1246mm, max_y=−546mm  (700mm zone depth from wall)
+                                  min_z=0mm,     max_z=2800mm
+</code></pre></div>
+<p>In iDempiere, <code>M_Locator</code> stores X/Y/Z as alphanumeric labels (e.g. "A", "01", "1").
+Here they carry mm values directly — there is no label-to-coordinate lookup layer needed
+because the grid line positions are the coordinates:</p>
+<div class="highlight"><pre><span></span><code>M_Locator.X  =  ad_building_grid.grid_x_mm   (Aisle — distance along X axis in mm)
+M_Locator.Y  =  ad_building_grid.grid_y_mm   (Bin   — distance along Y axis in mm)
+M_Locator.Z  =  c_orderline.position_value_3  (Level — storey Z elevation in mm)  -- C_OrderLine
+</code></pre></div>
+<p>The label is for navigation. The mm value is the address. The compiler always
+operates on mm coordinates — all SpaceSize labels dissolve to mm at resolution time.</p>
+<h3 id="93-emptystorage-overlay">9.3 EmptyStorage Overlay<a class="headerlink" href="#93-emptystorage-overlay" title="Permanent link">&para;</a></h3>
+<p>Two parallel records share the same SpaceSize address:</p>
+<div class="highlight"><pre><span></span><code>SpaceSize: SampleHouse / Level_1 / LIVING_ROOM / NORTH_WALL
+
+PlacedStock   → Piano(1200) + Sofa(2200) + Dining(1800) = 5200mm
+EmptyStorage  → remaining=1300mm, nextAnchor=(4.75, 0.5, 0.0)
+
+PlacedStock + EmptyStorage = room extent   ← always balances
+</code></pre></div>
+<p>The EmptyStorage record is the <strong>PhantomLayout</strong> — a transient (non-persisted) working
+state computed during BOM resolution. See <code>PREFAB_ARCHITECTURE.md §8</code> for the full
+PhantomLayout / Place / GPD specification.</p>
+<p>A contractor navigates by SpaceSize address to find available space — no BIM knowledge needed:</p>
+<div class="highlight"><pre><span></span><code>Bin: LIVING_ROOM  /  Lot: NORTH_WALL
+EmptyStorage: 1300mm available, nextAnchor: (4.75, 0.5, 0.0)
+→ any item ≤ 1300mm wide fits here
+</code></pre></div>
+<h3 id="94-full-erp-bim-mapping">9.4 Full ERP ↔ BIM Mapping<a class="headerlink" href="#94-full-erp-bim-mapping" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>iDempiere Entity</th>
+<th>BIM Compiler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M_Warehouse</code></td>
+<td>Building — C_Order (Construction Order)</td>
+</tr>
+<tr>
+<td><code>M_Locator</code> X/Y/Z labels</td>
+<td>Grid line mm values (<code>ad_building_grid</code>) + room label + zone label</td>
+</tr>
+<tr>
+<td><code>M_Locator</code> physical coordinates</td>
+<td>mm cube — from <code>ad_building_grid</code> + <code>ad_room_boundary</code></td>
+</tr>
+<tr>
+<td><code>M_Storage</code> / <code>M_StorageOnHand</code></td>
+<td>Placed elements (<code>elements_meta</code>)</td>
+</tr>
+<tr>
+<td>Empty capacity at locator</td>
+<td>CO_EmptySpaceLine</td>
+</tr>
+<tr>
+<td>Placement next coordinate</td>
+<td><code>PhantomLayout.nextAnchor</code></td>
+</tr>
+<tr>
+<td><code>M_Product_BOM</code></td>
+<td><code>m_bom</code> + <code>m_bom_line</code></td>
+</tr>
+<tr>
+<td>Space / Placement Rule</td>
+<td><code>Place</code> descriptor (resolved from C_OrderLine + <code>m_attribute</code>)</td>
+</tr>
+<tr>
+<td>Placement strategy</td>
+<td>ADJACENT / OPPOSITE / FLOAT</td>
+</tr>
+<tr>
+<td>Placement session (transient)</td>
+<td><code>PhantomLayout</code> (not persisted)</td>
+</tr>
+<tr>
+<td>Resolved placement line</td>
+<td>Resolved <code>PlacedFurniture</code></td>
+</tr>
+<tr>
+<td>Bin capacity check</td>
+<td><code>variance ≥ 0</code></td>
+</tr>
+<tr>
+<td>Bin overflow alert</td>
+<td><code>variance &lt; 0</code> → GIC violation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> The spatial concept is the <code>Place</code> descriptor: the resolved position rule for an
+element. CO_EmptySpaceLine tracks available capacity per room zone.</p>
+<h3 id="95-cross-references">9.5 Cross-references<a class="headerlink" href="#95-cross-references" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>PREFAB_ARCHITECTURE.md §8</code> — Place descriptor, GPD, PhantomLayout, variance child</li>
+<li><code>docs/DEVELOPER_GUIDE.md</code> — pipeline stages, build commands, tooling</li>
+<li><code>ad_room_boundary</code> — Bin registry (room extents in mm)</li>
+<li><code>ad_building_grid</code> — Aisle system (grid axis coordinates in mm — the M_Locator X/Y values)</li>
+<li><code>ad_room_slot</code> — Bin stock declaration (which BOMs fit which room type)</li>
+</ul>
+<hr />
+<h2 id="appendix-d-idempiere-lineage">Appendix D: iDempiere Lineage<a class="headerlink" href="#appendix-d-idempiere-lineage" title="Permanent link">&para;</a></h2>
+<p>The AD pattern traces to iDempiere/ADempiere ERP: Application Dictionary → metadata tables driving behaviour. <code>M_BOM / M_Product</code> → hierarchical BOM. Configuration over code → SQL INSERT, no Java change. The adaptation to BIM compilation is novel — the synthesis of table-driven compilation + manufacturing BOM + metadata-driven architecture applied to a construction compiler.</p>
+<hr />
+<h2 id="appendix-e-superseded-documents">Appendix E: Superseded Documents<a class="headerlink" href="#appendix-e-superseded-documents" title="Permanent link">&para;</a></h2>
+<p>All preserved in <code>docs/archive/</code> for provenance:</p>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>What survives in this doc</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ARCHIVE_intent_compiler_method.md</code></td>
+<td>Section 1.1-1.2 (founding principles)</td>
+</tr>
+<tr>
+<td><code>bim-compiler-architecture-evolution.md</code></td>
+<td>Section 5 (L0-L6 framework)</td>
+</tr>
+<tr>
+<td><code>METADATA_DRIVEN_ARCHITECTURE.md</code></td>
+<td>Section 2 (AD pattern)</td>
+</tr>
+<tr>
+<td><code>BUILDING_AS_BOM_CONCEPT.md</code></td>
+<td>Section 3 (BOM pattern)</td>
+</tr>
+<tr>
+<td><code>DSL_AS_CATALOG_SELECTOR.md</code></td>
+<td>Section 1.3 (DSL selects)</td>
+</tr>
+<tr>
+<td><code>IFC_NAMING_CONVENTION.md</code></td>
+<td>Appendix A</td>
+</tr>
+<tr>
+<td><code>SOURCE_CONSOLIDATION.md</code></td>
+<td>Appendix B</td>
+</tr>
+<tr>
+<td><code>LESSONS_LEARNED.md</code></td>
+<td>Appendix C</td>
+</tr>
+<tr>
+<td><code>GLOSSARY.md</code></td>
+<td>Terms absorbed into sections 1-8</td>
+</tr>
+<tr>
+<td><code>DSL_EXTENSION_GUIDE.md</code></td>
+<td>Outdated (references SpaceSolver pre-Phase 114)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Architecture Document v3.1 — "DSL Selects. BOM Parameterises. Java Resolves."</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

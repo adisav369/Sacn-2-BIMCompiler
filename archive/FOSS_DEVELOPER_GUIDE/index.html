@@ -1,0 +1,4903 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>BIM Intent Compiler — FOSS Developer's Guide - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#bim-intent-compiler-foss-developers-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              BIM Intent Compiler — FOSS Developer's Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prime-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PRIME RULE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Architecture Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Architecture Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Core Principles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-the-dag-compiler-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The DAG Compiler Engine
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The DAG Compiler Engine">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dag-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DAG Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-pipeline-stages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Pipeline Stages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Pipeline Stages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#stage-1-parse-dsl-ast" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 1: Parse (DSL → AST)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-2-resolve-constraints-csp-solver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 2: Resolve Constraints (CSP Solver)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-3-compile-building-geometry-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 3: Compile Building (Geometry Generation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-4-place-mep-elements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 4: Place MEP Elements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stage-5-write-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stage 5: Write Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-data-flow-diagram" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Data Flow Diagram
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-adding-a-new-building-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Adding a New Building (DSL)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Adding a New Building (DSL)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-0-declare-provenance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 0: Declare Provenance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-1-create-the-dsl-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Create the DSL File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-verify-space-types-exist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Verify Space Types Exist
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-compile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Compile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-verify-witnesses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Verify Witnesses
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-export-to-ifc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Export to IFC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#required-artifacts-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required Artifacts Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-configuration-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Configuration Files
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Configuration Files">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#spacetypesyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spacetypes.yaml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#categories" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Categories
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-witness-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. The Witness System
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. The Witness System">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-claims-25-total" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current Claims (25 total)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#witness-output-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Witness Output Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-witness-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Witness Claim
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-output-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Output Formats
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Output Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sqlite-database-db" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SQLite Database (.db)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ifc-file-ifc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC File (.ifc)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#witness-json-_witnessjson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Witness JSON (_witness.json)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-determinism-guarantee" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Determinism Guarantee
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Determinism Guarantee">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#verified-deterministic-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verified Deterministic Components
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#determinism-fixes-applied-watchdog-ruling-2026-02-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Determinism Fixes Applied (Watchdog ruling 2026-02-02)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#determinism-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Determinism Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#guid-generation-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GUID Generation Pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#under-constrained-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Under-Constrained Layouts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-key-classes-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Key Classes Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Key Classes Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parsing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#solving" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Solving
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compiling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compiling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mep-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MEP Placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-developer-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Developer Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Developer Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#session-startup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Startup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#making-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Making Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#session-closeout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Session Closeout
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-a-dsl-syntax-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix A: DSL Syntax Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix A: DSL Syntax Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#room-types-from-spacetypesyaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Room Types (from spacetypes.yaml)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-b-example-buildings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix B: Example Buildings
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix B: Example Buildings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tb-lktn-single-storey-house" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TB-LKTN (Single-storey house)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sekolah-kebangsaan-school" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sekolah-Kebangsaan (School)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-c-addon-framework-recommended-for-vocabulary-additions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix C: Addon Framework (Recommended for Vocabulary Additions)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-d-constant-reconciliation-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix D: Constant Reconciliation Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-e-ad-style-architecture-roadmap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix E: AD-Style Architecture Roadmap
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix E: AD-Style Architecture Roadmap">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current State
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#target-state-ad-style" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Target State (AD-Style)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idempiere-ad-parallel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iDempiere AD Parallel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timing-recommendation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Timing Recommendation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-vision-hybrid-ai-assisted-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Vision: Hybrid AI-Assisted Development
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-f-contract-architecture-compile-time-enforcement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix F: Contract Architecture (Compile-Time Enforcement)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix F: Contract Architecture (Compile-Time Enforcement)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="bim-intent-compiler-foss-developers-guide">BIM Intent Compiler — FOSS Developer's Guide<a class="headerlink" href="#bim-intent-compiler-foss-developers-guide" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Version</strong>: Phase 50+
+<strong>License</strong>: Open Source (FOSS)
+<strong>Language</strong>: Java 17 + Python 3.10 (IFC export)
+<strong>Audit</strong>: Watchdog-reviewed 2026-02-02</p>
+</blockquote>
+<h3 id="prime-rule">PRIME RULE<a class="headerlink" href="#prime-rule" title="Permanent link">&para;</a></h3>
+<p><strong>EXTRACT, DON'T IMAGINE.</strong> Every constant in this guide carries a provenance tag:
+- <code>[EXTRACTED: ...]</code> — Value measured from TERMINAL database or real drawings
+- <code>[RESEARCHED: ...]</code> — Value from building codes or standards (cited)
+- <code>[PENDING: ...]</code> — Estimated value awaiting verification</p>
+<hr />
+<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="#1-architecture-overview">Architecture Overview</a></li>
+<li><a href="#2-the-dag-compiler-engine">The DAG Compiler Engine</a></li>
+<li><a href="#3-pipeline-stages">Pipeline Stages</a></li>
+<li><a href="#4-data-flow-diagram">Data Flow Diagram</a></li>
+<li><a href="#5-adding-a-new-building-dsl">Adding a New Building (DSL)</a></li>
+<li><a href="#6-configuration-files">Configuration Files</a></li>
+<li><a href="#7-the-witness-system">The Witness System</a></li>
+<li><a href="#8-output-formats">Output Formats</a></li>
+<li><a href="#9-determinism-guarantee">Determinism Guarantee</a></li>
+<li><a href="#10-key-classes-reference">Key Classes Reference</a></li>
+<li><a href="#11-developer-workflow">Developer Workflow</a></li>
+</ol>
+<p><strong>Appendices</strong>
+- <a href="#appendix-a-dsl-syntax-reference">Appendix A: DSL Syntax Reference</a>
+- <a href="#appendix-b-example-buildings">Appendix B: Example Buildings</a>
+- <a href="#appendix-c-addon-framework-recommended-for-vocabulary-additions">Appendix C: Addon Framework</a>
+- <a href="#appendix-d-constant-reconciliation-notes">Appendix D: Constant Reconciliation Notes</a>
+- <a href="#appendix-e-ad-style-architecture-roadmap">Appendix E: AD-Style Architecture Roadmap</a>
+- <a href="#appendix-f-contract-architecture-compile-time-enforcement">Appendix F: Contract Architecture</a></p>
+<hr />
+<h2 id="1-architecture-overview">1. Architecture Overview<a class="headerlink" href="#1-architecture-overview" title="Permanent link">&para;</a></h2>
+<p>The BIM Intent Compiler transforms <strong>high-level building intent</strong> (expressed in a domain-specific language) into <strong>construction-ready BIM models</strong>. The compiler follows a strict DAG (Directed Acyclic Graph) pipeline with no backtracking.</p>
+<div class="highlight"><pre><span></span><code>┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   DSL       │───▶│   Parse     │───▶│  Compile    │───▶│   Output    │
+│   Input     │    │   + Solve   │    │  + Place    │    │  DB + IFC   │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+     .bim              AST              Geometry          .db + .ifc
+                   + Constraints        + MEP              + witness
+</code></pre></div>
+<h3 id="core-principles">Core Principles<a class="headerlink" href="#core-principles" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Intent over Geometry</strong>: Designers express <em>what</em> they want, not <em>how</em> to build it</li>
+<li><strong>Constraint-Driven Layout</strong>: Room positions derived from adjacency rules via CSP solver</li>
+<li><strong>Witness-Verified Output</strong>: Every compilation produces proof claims (witnesses)</li>
+<li><strong>Configuration over Code</strong>: Space types, MEP rules, and validation in YAML—no recompile needed</li>
+</ol>
+<hr />
+<h2 id="2-the-dag-compiler-engine">2. The DAG Compiler Engine<a class="headerlink" href="#2-the-dag-compiler-engine" title="Permanent link">&para;</a></h2>
+<p>The compilation is a <strong>5-stage DAG</strong> where each stage's output feeds the next with no cycles or backtracking:</p>
+<div class="highlight"><pre><span></span><code>Stage 1: PARSE          DSL text → BuildingDefinition
+         ↓
+Stage 2: RESOLVE        BuildingDefinition → Solved GridPositions
+         ↓
+Stage 3: COMPILE        StoreyDef → StoreySpec (geometry)
+         ↓
+Stage 4: PLACE MEP      StoreySpec → MEP elements positioned
+         ↓
+Stage 5: WRITE          BuildingSpec → SQLite DB + Witness JSON + IFC
+</code></pre></div>
+<h3 id="dag-properties">DAG Properties<a class="headerlink" href="#dag-properties" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Acyclic</strong></td>
+<td>Each stage only reads from previous stages</td>
+</tr>
+<tr>
+<td><strong>Deterministic</strong></td>
+<td>Same input always produces same output</td>
+</tr>
+<tr>
+<td><strong>Parallelizable</strong></td>
+<td>Storeys compile independently (except vertical constraints)</td>
+</tr>
+<tr>
+<td><strong>Incremental</strong></td>
+<td>Geometry cached by hash in <code>base_geometries</code> table</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="3-pipeline-stages">3. Pipeline Stages<a class="headerlink" href="#3-pipeline-stages" title="Permanent link">&para;</a></h2>
+<h3 id="stage-1-parse-dsl-ast">Stage 1: Parse (DSL → AST)<a class="headerlink" href="#stage-1-parse-dsl-ast" title="Permanent link">&para;</a></h3>
+<p><strong>Class</strong>: <code>BuildingParser.java</code>
+<strong>Input</strong>: <code>.bim</code> file (DSL text)
+<strong>Output</strong>: <code>BuildingDefinition</code> record</p>
+<p>The parser tokenizes DSL syntax and builds a typed AST:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">record</span> <span class="nc">BuildingDefinition</span><span class="p">(</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">BuildingType</span><span class="w"> </span><span class="n">buildingType</span><span class="p">,</span><span class="w">      </span><span class="c1">// SINGLE_UNIT or MULTI_UNIT</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">StoreyDef</span><span class="o">&gt;</span><span class="w"> </span><span class="n">storeys</span><span class="p">,</span>
+<span class="w">    </span><span class="n">RoofDef</span><span class="w"> </span><span class="n">roof</span><span class="p">,</span>
+<span class="w">    </span><span class="n">GridDef</span><span class="w"> </span><span class="n">grid</span><span class="p">,</span><span class="w">                   </span><span class="c1">// Structural grid (optional)</span>
+<span class="w">    </span><span class="n">ScheduleDef</span><span class="w"> </span><span class="n">doorSchedule</span><span class="p">,</span><span class="w">       </span><span class="c1">// Door types: D1, D2, etc.</span>
+<span class="w">    </span><span class="n">ScheduleDef</span><span class="w"> </span><span class="n">windowSchedule</span><span class="p">,</span><span class="w">     </span><span class="c1">// Window types: W1, W2, etc.</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">profile</span><span class="p">,</span><span class="w">                 </span><span class="c1">// e.g., &quot;Malaysian_Residential&quot;</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">protocol</span><span class="p">,</span><span class="w">                </span><span class="c1">// e.g., &quot;Residential_Single_Storey&quot;</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">lod</span><span class="p">,</span><span class="w">                        </span><span class="c1">// Level of Detail: 100-500</span>
+<span class="w">    </span><span class="n">ConstructionSystem</span><span class="w"> </span><span class="n">construction</span><span class="w"> </span><span class="c1">// FRAMED or MASONRY</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="stage-2-resolve-constraints-csp-solver">Stage 2: Resolve Constraints (CSP Solver)<a class="headerlink" href="#stage-2-resolve-constraints-csp-solver" title="Permanent link">&para;</a></h3>
+<p><strong>Class</strong>: <code>SpaceSolver.java</code>
+<strong>Input</strong>: <code>BuildingDefinition</code> with constraint annotations
+<strong>Output</strong>: <code>Map&lt;String, GridPosition&gt;</code> (room name → x,y coordinates)</p>
+<p>The solver uses the <strong>Choco CSP library</strong> to place rooms on an integer grid:</p>
+<div class="highlight"><pre><span></span><code>Constraints supported:
+  adjacent: roomA roomB      → Rooms share an edge
+  not_adjacent: roomA roomB  → Rooms don&#39;t touch
+  exterior: north|south|east|west → Room touches building envelope
+  aligns: roomA roomB        → Rooms share a wall line (multi-storey)
+  above: roomA               → Room is directly above (vertical stacking)
+</code></pre></div>
+<p><strong>Relaxation Priority</strong> (if unsolvable):
+1. <code>NOT_ADJACENT</code> dropped first
+2. <code>ALIGNS</code> dropped second
+3. <code>EXTERIOR</code> dropped third
+4. <code>ADJACENT</code> dropped last (most important)</p>
+<h3 id="stage-3-compile-building-geometry-generation">Stage 3: Compile Building (Geometry Generation)<a class="headerlink" href="#stage-3-compile-building-geometry-generation" title="Permanent link">&para;</a></h3>
+<p><strong>Class</strong>: <code>BuildingCompiler.java</code>
+<strong>Input</strong>: <code>BuildingDefinition</code> with solved positions
+<strong>Output</strong>: <code>BuildingSpec</code> with full geometry</p>
+<p>For each storey:
+1. Convert grid positions to metric bounds (minX, maxX, minY, maxY)
+2. Generate walls from room adjacency:
+   - Interior walls: 150mm thickness <code>[EXTRACTED: TERMINAL wall panels]</code>
+   - Exterior walls: 250mm thickness <code>[EXTRACTED: TERMINAL envelope walls]</code>
+   - <em>Note: Malaysian_Residential profile may override to 100mm/150mm per UBBL</em>
+3. Place doors at room connections per SCHEDULE and adjacency constraints
+4. Place windows on exterior walls per SCHEDULE and exterior constraints
+5. Generate slab: 150mm thickness <code>[RESEARCHED: UBBL 1984 minimum slab depth]</code></p>
+<div class="highlight"><pre><span></span><code><span class="kd">record</span> <span class="nc">StoreySpec</span><span class="p">(</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">name</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">level</span><span class="p">,</span><span class="w">              </span><span class="c1">// Z elevation (meters)</span>
+<span class="w">    </span><span class="kt">double</span><span class="w"> </span><span class="n">height</span><span class="p">,</span><span class="w">             </span><span class="c1">// Floor-to-ceiling height</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">WallSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">walls</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">RoomSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rooms</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">DoorSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">doors</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">WindowSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">windows</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">FixtureSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">fixtures</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">SprinklerSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">sprinklers</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">LightSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">lights</span><span class="p">,</span>
+<span class="w">    </span><span class="n">SlabSpec</span><span class="w"> </span><span class="n">slab</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="stage-4-place-mep-elements">Stage 4: Place MEP Elements<a class="headerlink" href="#stage-4-place-mep-elements" title="Permanent link">&para;</a></h3>
+<p><strong>Classes</strong>: <code>ElectricalPlacer</code>, <code>FixturePlacer</code>, <code>PlumbingPlacer</code>, <code>StructuralPlacer</code></p>
+<p>Each placer reads space type configuration from <code>spacetypes.yaml</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Placer</th>
+<th>Places</th>
+<th>Rules</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ElectricalPlacer</code></td>
+<td>Lights, outlets, switches</td>
+<td>Outlets: 300mm AFF, switches: 1200mm AFF <code>[RESEARCHED: MS IEC 60364 / IBC — values identical]</code></td>
+</tr>
+<tr>
+<td><code>FixturePlacer</code></td>
+<td>Toilet, sink, exhaust</td>
+<td>Clearances per fixture type, attached to walls <code>[RESEARCHED: MS 1184 accessibility]</code></td>
+</tr>
+<tr>
+<td><code>PlumbingPlacer</code></td>
+<td>Waste stack, vent, supply</td>
+<td>Vertical routing, diameter: 100mm waste, 50mm vent <code>[RESEARCHED: UBBL plumbing]</code></td>
+</tr>
+<tr>
+<td><code>StructuralPlacer</code></td>
+<td>Columns, beams</td>
+<td>Corners, T-junctions, spans &gt; 8m <code>[EXTRACTED: TERMINAL G8 grid pattern]</code></td>
+</tr>
+<tr>
+<td><code>SprinklerPlacer</code></td>
+<td>Sprinkler heads</td>
+<td>Grid at 4.6m spacing <code>[RESEARCHED: NFPA 13 — internationally adopted]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="stage-5-write-output">Stage 5: Write Output<a class="headerlink" href="#stage-5-write-output" title="Permanent link">&para;</a></h3>
+<p><strong>Class</strong>: <code>BuildingWriter.java</code>
+<strong>Input</strong>: <code>BuildingSpec</code>
+<strong>Output</strong>: SQLite <code>.db</code> + <code>_witness.json</code></p>
+<p>Database schema (TERMINAL-compatible):</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>elements_meta</code></td>
+<td>Element definitions (guid, ifc_class, name, storey)</td>
+</tr>
+<tr>
+<td><code>elements_rtree</code></td>
+<td>Spatial index (bounding boxes)</td>
+</tr>
+<tr>
+<td><code>base_geometries</code></td>
+<td>Geometry cache (vertices, faces as BLOB)</td>
+</tr>
+<tr>
+<td><code>element_instances</code></td>
+<td>Instance → geometry hash mapping</td>
+</tr>
+<tr>
+<td><code>spatial_structure</code></td>
+<td>Building → Storey → Space hierarchy</td>
+</tr>
+<tr>
+<td><code>mep_nodes</code></td>
+<td>MEP system equipment nodes</td>
+</tr>
+<tr>
+<td><code>mep_edges</code></td>
+<td>MEP system connectivity edges</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-data-flow-diagram">4. Data Flow Diagram<a class="headerlink" href="#4-data-flow-diagram" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────────────────┐
+│                        BIM INTENT COMPILER                              │
+│                       DAG COMPILATION ENGINE                            │
+└─────────────────────────────────────────────────────────────────────────┘
+
+Input: *.bim (DSL file)
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 1: PARSE                                                          │
+│ BuildingParser.parse(dslText)                                           │
+│ Output: BuildingDefinition { name, storeys[], roof, grid, profile }     │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 2: RESOLVE CONSTRAINTS                                            │
+│ SpaceSolver.solve(buildingDef)                                          │
+│ - CSP model from adjacency/separation/exterior constraints              │
+│ - Choco solver finds valid room positions                               │
+│ - Relaxation if needed (drop constraints by priority)                   │
+│ Output: Map&lt;roomName, GridPosition(x, y)&gt;                               │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 3: COMPILE GEOMETRY                                               │
+│ BuildingCompiler.compile(buildingDef)                                   │
+│ For each storey:                                                        │
+│   - Grid → metric bounds                                                │
+│   - Adjacency → walls (thickness per profile constants)                 │
+│   - Place doors per SCHEDULE + adjacency constraints                    │
+│   - Place windows per SCHEDULE + exterior constraints                   │
+│   - Generate slab (thickness per profile)                               │
+│ Output: StoreySpec[] with walls, rooms, doors, windows, slab            │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 4: PLACE MEP                                                      │
+│ ElectricalPlacer, FixturePlacer, PlumbingPlacer, StructuralPlacer       │
+│ - Read spacetypes.yaml for room-specific rules                          │
+│ - Position per MS IEC 60364 / NFPA (see provenance in Section 3)        │
+│ Output: Enhanced StoreySpec with fixtures, lights, pipes, structure     │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 5A: BUILD MEP SYSTEMS                                             │
+│ BuildingCompiler.buildMEPSystems(storeys)                               │
+│ - Aggregate MEP elements into system graphs                             │
+│ Output: List&lt;MEPSystem&gt; { nodes[], edges[] }                            │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 5B: VALIDATE                                                      │
+│ ValidatorChain.validate(buildingSpec)                                   │
+│ - Profile rules (Malaysian_Residential, etc.)                           │
+│ - Protocol rules (Residential_Single_Storey, etc.)                      │
+│ Output: ValidationReport (critical failures block compilation)          │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 5C: WRITE DATABASE                                                │
+│ BuildingWriter.write(buildingSpec, outputPath)                          │
+│ - Create SQLite schema                                                  │
+│ - Write elements with geometry hashes                                   │
+│ - Build spatial hierarchy                                               │
+│ Output: *.db (SQLite)                                                   │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 5D: WITNESS CLAIMS                                                │
+│ WitnessBuilder.collect(buildingSpec)                                    │
+│ - 24 proof claims (foundation, entry, windows, MEP, structure)          │
+│ Output: *_witness.json                                                  │
+└──────────────────────────────────────────────────────────────────────────┘
+  │
+  ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ STAGE 6: IFC EXPORT (offline, Python)                                   │
+│ python export_building_to_ifc.py input.db output.ifc                    │
+│ - Reads SQLite DB                                                       │
+│ - Writes IFC4 file via IfcOpenShell                                     │
+│ Output: *.ifc                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+
+Final Outputs:
+  • *.db          (SQLite database, TERMINAL-compatible)
+  • *_witness.json (24 proof claims)
+  • *.ifc          (IFC4 BIM model)
+</code></pre></div>
+<hr />
+<h2 id="5-adding-a-new-building-dsl">5. Adding a New Building (DSL)<a class="headerlink" href="#5-adding-a-new-building-dsl" title="Permanent link">&para;</a></h2>
+<h3 id="step-0-declare-provenance">Step 0: Declare Provenance<a class="headerlink" href="#step-0-declare-provenance" title="Permanent link">&para;</a></h3>
+<p><strong>Every DSL file must declare where its values come from.</strong> This is the provenance gate.</p>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;MyBuilding&quot;
+    provenance: &quot;TB-LKTN drawing set, Sheet A-101&quot;  # Real building
+    # OR
+    provenance: &quot;EXAMPLE — not from a real building&quot;  # Tutorial
+    # OR
+    provenance: &quot;RESEARCHED: JKR standard school plan, ref KKR.PK(S)-07&quot;  # Standard
+</code></pre></div>
+<p>Without provenance, invented values propagate unchecked. The witnesses validate <em>geometric</em> correctness but not <em>provenance</em> correctness.</p>
+<h3 id="step-1-create-the-dsl-file">Step 1: Create the DSL File<a class="headerlink" href="#step-1-create-the-dsl-file" title="Permanent link">&para;</a></h3>
+<p>Create <code>examples/MyBuilding.bim</code>:</p>
+<div class="highlight"><pre><span></span><code># ══════════════════════════════════════════════════════════════
+# EXAMPLE VALUES — not from a real building plan
+# For production use, extract dimensions from architectural drawings
+# ══════════════════════════════════════════════════════════════
+BUILDING &quot;MyHouse&quot;
+    provenance: &quot;EXAMPLE — tutorial only&quot;
+    profile: &quot;Malaysian_Residential&quot;
+    protocol: &quot;Residential_Single_Storey&quot;
+    lod: 300
+{
+    GRID {
+        axes: A, B, C / 1, 2, 3
+        spacing: 3.0, 3.5 / 2.5, 2.8   # EXAMPLE ONLY — extract from drawings
+    }
+
+    STOREY &quot;Ground&quot; level:0 height:2.8m {
+        BEDROOM &quot;master&quot; bounds:A1-B2 {
+            exterior: west
+            adjacent: common
+        }
+
+        BATHROOM &quot;bath&quot; bounds:B1-B2 {
+            adjacent: common
+        }
+
+        OPEN_PLAN &quot;common&quot; bounds:B2-C3 {
+            exterior: south
+            DOOR type:D1 wall:south
+        }
+    }
+
+    ROOF pitch:25deg overhang:600mm
+}
+</code></pre></div>
+<h3 id="step-2-verify-space-types-exist">Step 2: Verify Space Types Exist<a class="headerlink" href="#step-2-verify-space-types-exist" title="Permanent link">&para;</a></h3>
+<p>Check <code>config/spacetypes.yaml</code> for required space types:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">BEDROOM</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HABITABLE</span>
+<span class="w">  </span><span class="nt">wall_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ENCLOSED</span>
+<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">min_area</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">9.0</span>
+<span class="w">    </span><span class="nt">min_dimension</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.4</span>
+<span class="w">    </span><span class="nt">requires_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">mep</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">electrical</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">light_points</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+<span class="w">      </span><span class="nt">power_points</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span>
+</code></pre></div>
+<p>If adding a new space type (e.g., CLASSROOM), add it to the YAML—no Java recompile needed.</p>
+<h3 id="step-3-compile">Step 3: Compile<a class="headerlink" href="#step-3-compile" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>mvn<span class="w"> </span>exec:java<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.compiler.dsl.BuildingCompiler&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;examples/MyBuilding.bim output/mybuilding.db&quot;</span>
+</code></pre></div>
+<h3 id="step-4-verify-witnesses">Step 4: Verify Witnesses<a class="headerlink" href="#step-4-verify-witnesses" title="Permanent link">&para;</a></h3>
+<p>Check <code>output/mybuilding_witness.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;building&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;MyHouse&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total_claims&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;proven&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;unprovable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;claims&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;BEDROOM_WINDOW&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PROVEN&quot;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="nt">&quot;ENTRY_ACCESSIBLE&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PROVEN&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="step-5-export-to-ifc">Step 5: Export to IFC<a class="headerlink" href="#step-5-export-to-ifc" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/export_building_to_ifc.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>output/mybuilding.db<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>output/mybuilding.ifc
+</code></pre></div>
+<h3 id="required-artifacts-checklist">Required Artifacts Checklist<a class="headerlink" href="#required-artifacts-checklist" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Artifact</th>
+<th>Location</th>
+<th>Config Only?</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DSL file</td>
+<td><code>examples/*.bim</code></td>
+<td>Yes</td>
+<td>Building definition with provenance</td>
+</tr>
+<tr>
+<td>Space types</td>
+<td><code>config/spacetypes.yaml</code></td>
+<td>Yes</td>
+<td>Add YAML entries (no recompile)</td>
+</tr>
+<tr>
+<td>Door schedule</td>
+<td>In DSL</td>
+<td>Yes</td>
+<td><code>SCHEDULE doors { D1: 900x2100 }</code></td>
+</tr>
+<tr>
+<td>Window schedule</td>
+<td>In DSL</td>
+<td>Yes</td>
+<td><code>SCHEDULE windows { W1: 1200x1200 }</code></td>
+</tr>
+<tr>
+<td>Library geometry</td>
+<td><code>library/component_library.db</code></td>
+<td>Yes</td>
+<td>Pre-built 3D components</td>
+</tr>
+<tr>
+<td>End-to-end test</td>
+<td><code>src/.../dsl/*EndToEndTest.java</code></td>
+<td>No (Code)</td>
+<td>Regression test</td>
+</tr>
+<tr>
+<td>New fixture type</td>
+<td><code>config/spacetypes.yaml</code> + <code>FixturePlacer.java</code></td>
+<td><strong>Config + Code</strong></td>
+<td>YAML defines properties, Placer handles positioning</td>
+</tr>
+<tr>
+<td>New MEP system</td>
+<td><code>config/</code> + new <code>*Placer.java</code></td>
+<td><strong>Config + Code</strong></td>
+<td>Requires new Placer class</td>
+</tr>
+<tr>
+<td>New witness claim</td>
+<td><code>WitnessBuilder.java</code></td>
+<td>No (Code)</td>
+<td>Requires Java implementation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Configuration vs Code boundary</strong>: Space type <em>values</em> (min_area, light_points) are configuration. The <em>placers</em> that interpret them are code. Adding a fundamentally new element type (not just a new space type) requires Placer support.</p>
+<hr />
+<h2 id="6-configuration-files">6. Configuration Files<a class="headerlink" href="#6-configuration-files" title="Permanent link">&para;</a></h2>
+<h3 id="spacetypesyaml">spacetypes.yaml<a class="headerlink" href="#spacetypesyaml" title="Permanent link">&para;</a></h3>
+<p><strong>Path</strong>: <code>config/spacetypes.yaml</code></p>
+<p>Defines room types and their rules:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">CLASSROOM</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">HABITABLE</span>
+<span class="w">  </span><span class="nt">omniclass</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;13-31</span><span class="nv"> </span><span class="s">11</span><span class="nv"> </span><span class="s">11&quot;</span><span class="w">            </span><span class="c1"># [RESEARCHED: OmniClass Table 13]</span>
+<span class="w">  </span><span class="nt">wall_rule</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ENCLOSED</span>
+<span class="w">  </span><span class="nt">validation</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">min_area</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">48.0</span><span class="w">                     </span><span class="c1"># [RESEARCHED: JKR school guidelines, 1.2m²/student × 40]</span>
+<span class="w">    </span><span class="nt">min_dimension</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">6.0</span><span class="w">                 </span><span class="c1"># [RESEARCHED: JKR minimum classroom width]</span>
+<span class="w">    </span><span class="nt">requires_window</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">              </span><span class="c1"># [RESEARCHED: UBBL natural daylighting requirement]</span>
+<span class="w">    </span><span class="nt">requires_egress</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">              </span><span class="c1"># [RESEARCHED: UBBL escape route requirements]</span>
+<span class="w">  </span><span class="nt">structural</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">structural_grid</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">              </span><span class="c1"># Enable beam/column placement</span>
+<span class="w">    </span><span class="nt">beam_max_span</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8.0</span><span class="w">                 </span><span class="c1"># [EXTRACTED: TERMINAL G8 floor-to-floor pattern]</span>
+<span class="w">  </span><span class="nt">mep</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">electrical</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">light_points</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                  </span><span class="c1"># [RESEARCHED: MS IEC 60364 — 300 lux educational]</span>
+<span class="w">      </span><span class="nt">power_points</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w">                  </span><span class="c1"># [RESEARCHED: MS IEC 60364 — corners + teacher wall]</span>
+<span class="w">      </span><span class="nt">switch_points</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w">                 </span><span class="c1"># [RESEARCHED: single entry control]</span>
+<span class="w">    </span><span class="nt">hvac</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">allows_aircon</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w">              </span><span class="c1"># [RESEARCHED: MOE guidelines — optional for standard]</span>
+<span class="w">      </span><span class="nt">ventilation_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">natural</span><span class="w">        </span><span class="c1"># [RESEARCHED: JKR — cross-ventilation preferred]</span>
+</code></pre></div>
+<p><strong>Provenance requirement</strong>: Every numeric value in spacetypes.yaml must carry a comment with <code>[EXTRACTED: ...]</code>, <code>[RESEARCHED: ...]</code>, or <code>[PENDING: ...]</code>. Values without provenance tags fail code review.</p>
+<h3 id="categories">Categories<a class="headerlink" href="#categories" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Examples</th>
+<th>Characteristics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HABITABLE</td>
+<td>BEDROOM, LIVING, CLASSROOM</td>
+<td>Requires windows, MEP</td>
+</tr>
+<tr>
+<td>WET</td>
+<td>BATHROOM, KITCHEN, TOILET</td>
+<td>Plumbing fixtures</td>
+</tr>
+<tr>
+<td>CIRCULATION</td>
+<td>CORRIDOR, LOBBY, STAIR</td>
+<td>Path connectivity</td>
+</tr>
+<tr>
+<td>EXTERIOR</td>
+<td>PORCH, CARPORT, BALCONY</td>
+<td>Open air, no roof validation</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="7-the-witness-system">7. The Witness System<a class="headerlink" href="#7-the-witness-system" title="Permanent link">&para;</a></h2>
+<p><strong>Class</strong>: <code>WitnessBuilder.java</code></p>
+<p>Witnesses are <strong>proof claims</strong> that verify design intent was achieved.</p>
+<h3 id="current-claims-25-total">Current Claims (25 total)<a class="headerlink" href="#current-claims-25-total" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Claim</th>
+<th>Verifies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>FOUNDATION_LEVEL</code></td>
+<td>Foundation elevation correct</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>ENTRY_ACCESSIBLE</code></td>
+<td>Entry door width meets accessibility</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>ROOM_PATH</code></td>
+<td>All rooms reachable from entry</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>BEDROOM_WINDOW</code></td>
+<td>All bedrooms have windows</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>WINDOW_EXTERIOR</code></td>
+<td>Windows only on exterior walls</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>ROOF_ENVELOPE</code></td>
+<td>Roof covers all rooms</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>ROOM_CORNERS_CORRECT</code></td>
+<td>Room geometry matches bounds</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>EXTERIOR_WALL_CONTAINMENT</code></td>
+<td>Exterior walls at envelope</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>ELECTRICAL_CONTAINED</code></td>
+<td>Electrical within walls</td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>FIXTURE_ATTACHED</code></td>
+<td>Fixtures against walls</td>
+</tr>
+<tr>
+<td>11</td>
+<td><code>FIXTURE_NOT_FLOATING</code></td>
+<td>No floating fixtures</td>
+</tr>
+<tr>
+<td>12</td>
+<td><code>FIXTURE_NOT_CLASHING</code></td>
+<td>No fixture-structure clashes</td>
+</tr>
+<tr>
+<td>13</td>
+<td><code>PLUMBING_PIPE_VALID</code></td>
+<td>Pipes exist for wet rooms</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>WASTE_STACK_CONNECTED</code></td>
+<td>Waste system connected</td>
+</tr>
+<tr>
+<td>15</td>
+<td><code>VENT_PIPE_EXTENDED</code></td>
+<td>Vent reaches roof</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>WATER_SUPPLY_ACCESSIBLE</code></td>
+<td>Supply reaches fixtures</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>ELECTRICAL_CIRCUITS</code></td>
+<td>Circuits per space type</td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>CIRCUIT_BREAKER_CAPACITY</code></td>
+<td>Breaker sizing correct</td>
+</tr>
+<tr>
+<td>19</td>
+<td><code>ALIGNS_CONSTRAINT_SATISFIED</code></td>
+<td>Vertical alignment met</td>
+</tr>
+<tr>
+<td>20</td>
+<td><code>CLASSROOM_DAYLIGHT</code></td>
+<td>Daylight ratio &gt;= 5%</td>
+</tr>
+<tr>
+<td>21</td>
+<td><code>TOILET_ACCESSIBLE</code></td>
+<td>Toilet door width</td>
+</tr>
+<tr>
+<td>22</td>
+<td><code>CORRIDOR_CONNECTS_ALL</code></td>
+<td>Corridor reachability</td>
+</tr>
+<tr>
+<td>23</td>
+<td><code>FIRE_TRAVEL_DISTANCE</code></td>
+<td>Exit distance &lt;= 30m</td>
+</tr>
+<tr>
+<td>24</td>
+<td><code>STRUCTURAL_GRID_COMPLETE</code></td>
+<td>Grid beams/columns present</td>
+</tr>
+<tr>
+<td>25</td>
+<td><code>BEAM_SPAN_LIMIT</code></td>
+<td>No beam exceeds max span for construction type</td>
+</tr>
+</tbody>
+</table>
+<h3 id="witness-output-format">Witness Output Format<a class="headerlink" href="#witness-output-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;building&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TB-LKTN&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;timestamp&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2025-02-02T10:30:00Z&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;summary&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;total_claims&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">24</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;proven&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">17</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;unprovable&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;skipped&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;claims&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;BEDROOM_WINDOW&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;status&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;PROVEN&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;bedrooms_checked&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;master&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bed2&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;bed3&quot;</span><span class="p">],</span>
+<span class="w">      </span><span class="nt">&quot;all_have_windows&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="adding-a-new-witness-claim">Adding a New Witness Claim<a class="headerlink" href="#adding-a-new-witness-claim" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>Define the claim in <code>WitnessBuilder.java</code> <strong>with provenance for the threshold</strong>:
+<div class="highlight"><pre><span></span><code><span class="c1">// THRESHOLD must come from one of:</span>
+<span class="c1">//   [EXTRACTED: TERMINAL measurement] — cite query</span>
+<span class="c1">//   [RESEARCHED: Building code]       — cite clause</span>
+<span class="c1">//   [PENDING: Estimated]              — mark for verification</span>
+<span class="c1">//</span>
+<span class="c1">// Example: Daylight factor threshold</span>
+<span class="c1">// [RESEARCHED: UBBL educational daylighting ≥ 5%]</span>
+<span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">DAYLIGHT_THRESHOLD</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">;</span>
+
+<span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">claimMyFeature</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">roomName</span><span class="p">,</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">measuredValue</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">claims</span><span class="p">.</span><span class="na">put</span><span class="p">(</span><span class="s">&quot;MY_FEATURE&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Map</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">        </span><span class="s">&quot;status&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">measuredValue</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">DAYLIGHT_THRESHOLD</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="s">&quot;PROVEN&quot;</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;UNPROVABLE&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;room&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">roomName</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;value&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">measuredValue</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;threshold&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">DAYLIGHT_THRESHOLD</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;threshold_source&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;UBBL educational daylighting requirement&quot;</span><span class="w">  </span><span class="c1">// REQUIRED</span>
+<span class="w">    </span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Call from compiler at appropriate stage</p>
+</li>
+<li>Document in witness specification</li>
+<li><strong>Threshold without provenance fails code review</strong></li>
+</ol>
+<hr />
+<h2 id="8-output-formats">8. Output Formats<a class="headerlink" href="#8-output-formats" title="Permanent link">&para;</a></h2>
+<h3 id="sqlite-database-db">SQLite Database (<code>.db</code>)<a class="headerlink" href="#sqlite-database-db" title="Permanent link">&para;</a></h3>
+<p>TERMINAL-compatible schema for BIM viewers:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Element definitions</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">elements_meta</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">guid</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ifc_class</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">           </span><span class="c1">-- e.g., &#39;IfcWallStandardCase&#39;</span>
+<span class="w">    </span><span class="n">name</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="k">type</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">storey</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">discipline</span><span class="w"> </span><span class="nb">TEXT</span><span class="w">           </span><span class="c1">-- ARCH, STRUCT, MEP</span>
+<span class="p">);</span>
+
+<span class="c1">-- Spatial index</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="n">VIRTUAL</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">elements_rtree</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">rtree</span><span class="p">(</span>
+<span class="w">    </span><span class="n">guid</span><span class="p">,</span>
+<span class="w">    </span><span class="n">minX</span><span class="p">,</span><span class="w"> </span><span class="n">maxX</span><span class="p">,</span>
+<span class="w">    </span><span class="n">minY</span><span class="p">,</span><span class="w"> </span><span class="n">maxY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">minZ</span><span class="p">,</span><span class="w"> </span><span class="n">maxZ</span>
+<span class="p">);</span>
+
+<span class="c1">-- Geometry cache</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">base_geometries</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">geometry_hash</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">vertices</span><span class="w"> </span><span class="nb">BLOB</span><span class="p">,</span><span class="w">            </span><span class="c1">-- Float array</span>
+<span class="w">    </span><span class="n">faces</span><span class="w"> </span><span class="nb">BLOB</span><span class="w">                </span><span class="c1">-- Int array (triangle indices)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Instance-to-geometry mapping</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">element_instances</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">guid</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">geometry_hash</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">geometry_hash</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">base_geometries</span>
+<span class="p">);</span>
+
+<span class="c1">-- MEP system graph</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">mep_nodes</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">node_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
+<span class="w">    </span><span class="n">system_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">         </span><span class="c1">-- PLUMBING_WASTE, ELECTRICAL, etc.</span>
+<span class="w">    </span><span class="n">element_guid</span><span class="w"> </span><span class="nb">TEXT</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">mep_edges</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">from_node</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">to_node</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">system_type</span><span class="w"> </span><span class="nb">TEXT</span>
+<span class="p">);</span>
+</code></pre></div>
+<h3 id="ifc-file-ifc">IFC File (<code>.ifc</code>)<a class="headerlink" href="#ifc-file-ifc" title="Permanent link">&para;</a></h3>
+<p>IFC4 export via Python script:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>scripts/export_building_to_ifc.py<span class="w"> </span>input.db<span class="w"> </span>output.ifc
+</code></pre></div>
+<p>Entities exported:
+- <code>IfcSite</code>, <code>IfcBuilding</code>, <code>IfcBuildingStorey</code>
+- <code>IfcWallStandardCase</code>, <code>IfcDoor</code>, <code>IfcWindow</code>
+- <code>IfcSpace</code> (rooms)
+- <code>IfcStair</code>, <code>IfcRamp</code>
+- <code>IfcFurniture</code> (fixtures)
+- <code>IfcFlowTerminal</code> (plumbing, electrical)</p>
+<h3 id="witness-json-_witnessjson">Witness JSON (<code>_witness.json</code>)<a class="headerlink" href="#witness-json-_witnessjson" title="Permanent link">&para;</a></h3>
+<p>Machine-readable proof claims (see Section 7).</p>
+<hr />
+<h2 id="9-determinism-guarantee">9. Determinism Guarantee<a class="headerlink" href="#9-determinism-guarantee" title="Permanent link">&para;</a></h2>
+<p><strong>The compiler is fully deterministic.</strong> Same DSL input always produces identical output.</p>
+<h3 id="verified-deterministic-components">Verified Deterministic Components<a class="headerlink" href="#verified-deterministic-components" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Implementation</th>
+<th>Why Deterministic</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GUIDs</strong></td>
+<td>Name-based: <code>WALL_bedroom_Ground</code></td>
+<td>Derived from element names, not random</td>
+</tr>
+<tr>
+<td><strong>Element ordering</strong></td>
+<td>ArrayList throughout pipeline</td>
+<td>Preserves insertion order</td>
+</tr>
+<tr>
+<td><strong>HashMap iteration</strong></td>
+<td>Sorted keys before iteration</td>
+<td>Canonical ordering regardless of JVM</td>
+</tr>
+<tr>
+<td><strong>CSP Solver (Choco)</strong></td>
+<td>Pinned <code>inputOrderLBSearch</code> strategy</td>
+<td>Version-independent search order</td>
+</tr>
+<tr>
+<td><strong>Geometry generation</strong></td>
+<td>Pure functions of coordinates</td>
+<td>No randomness in calculations</td>
+</tr>
+</tbody>
+</table>
+<h3 id="determinism-fixes-applied-watchdog-ruling-2026-02-02">Determinism Fixes Applied (Watchdog ruling 2026-02-02)<a class="headerlink" href="#determinism-fixes-applied-watchdog-ruling-2026-02-02" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>ElectricalPlacer.java</strong> — Circuit types sorted alphabetically before iteration</li>
+<li><strong>SpaceSolver.java</strong> — Search strategy explicitly pinned to <code>inputOrderLBSearch</code></li>
+<li><strong>pom.xml</strong> — Choco version pinned with determinism warning comment</li>
+</ol>
+<h3 id="determinism-level">Determinism Level<a class="headerlink" href="#determinism-level" title="Permanent link">&para;</a></h3>
+<p><strong>What we guarantee:</strong>
+- <strong>Functional determinism</strong>: Geometry, topology, element IDs, relationships — identical every run
+- <strong>Database reproducibility</strong>: <code>.db</code> files are byte-identical across runs (same machine)</p>
+<p><strong>What varies:</strong>
+- <strong>Witness timestamp</strong>: <code>_witness.json</code> includes <code>generated</code> field with compilation time</p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Location</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Instant.now()</code></td>
+<td><code>WitnessBuilder.java:851</code></td>
+<td>Timestamp in witness JSON — metadata only, geometry unaffected</td>
+</tr>
+<tr>
+<td><code>UUID.randomUUID()</code></td>
+<td><code>IBuilder.java:26</code></td>
+<td><strong>NOT USED</strong> in production pipeline (legacy/test only)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reproducibility test</strong>: To verify determinism, compile twice and diff:
+<div class="highlight"><pre><span></span><code><span class="c1"># Compile twice</span>
+mvn<span class="w"> </span>exec:java<span class="w"> </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="w"> </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;input.bim output1.db&quot;</span>
+mvn<span class="w"> </span>exec:java<span class="w"> </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;...&quot;</span><span class="w"> </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;input.bim output2.db&quot;</span>
+
+<span class="c1"># Compare (excluding witness timestamp)</span>
+sqlite3<span class="w"> </span>output1.db<span class="w"> </span><span class="s2">&quot;.dump&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;^--&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>dump1.sql
+sqlite3<span class="w"> </span>output2.db<span class="w"> </span><span class="s2">&quot;.dump&quot;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-v<span class="w"> </span><span class="s2">&quot;^--&quot;</span><span class="w"> </span>&gt;<span class="w"> </span>dump2.sql
+diff<span class="w"> </span>dump1.sql<span class="w"> </span>dump2.sql<span class="w">  </span><span class="c1"># Should be empty</span>
+</code></pre></div></p>
+<h3 id="guid-generation-pattern">GUID Generation Pattern<a class="headerlink" href="#guid-generation-pattern" title="Permanent link">&para;</a></h3>
+<p>BuildingWriter uses deterministic name-based GUIDs:
+<div class="highlight"><pre><span></span><code><span class="s">&quot;WALL_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">wall</span><span class="p">.</span><span class="na">assemblyName</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">storeyName</span>
+<span class="s">&quot;SPACE_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">storey</span><span class="p">.</span><span class="na">name</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">room</span><span class="p">.</span><span class="na">name</span><span class="p">()</span>
+<span class="s">&quot;SPRINKLER_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">storey</span><span class="p">.</span><span class="na">name</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;_&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">sprinkler</span><span class="p">.</span><span class="na">id</span><span class="p">()</span>
+</code></pre></div></p>
+<p>This ensures:
+- Diffing outputs between runs shows only real changes
+- Version control of databases is meaningful
+- Witness claims reference stable identifiers</p>
+<h3 id="under-constrained-layouts">Under-Constrained Layouts<a class="headerlink" href="#under-constrained-layouts" title="Permanent link">&para;</a></h3>
+<p>If DSL constraints don't fully specify room positions, the CSP solver picks the <strong>first valid solution</strong> in its search order. This is:
+- <strong>Reproducible</strong>: Same constraints → same solution every time
+- <strong>But possibly unexpected</strong>: Multiple valid arrangements exist; solver picks one deterministically</p>
+<p>To ensure expected layouts, fully constrain room positions with <code>bounds:</code> or sufficient <code>adjacent:</code>/<code>exterior:</code> rules.</p>
+<hr />
+<h2 id="10-key-classes-reference">10. Key Classes Reference<a class="headerlink" href="#10-key-classes-reference" title="Permanent link">&para;</a></h2>
+<h3 id="parsing">Parsing<a class="headerlink" href="#parsing" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BuildingParser</code></td>
+<td><code>dsl/BuildingParser.java</code></td>
+<td>DSL tokenizer and parser</td>
+</tr>
+<tr>
+<td><code>BuildingDefinition</code></td>
+<td><code>dsl/BuildingDefinition.java</code></td>
+<td>Parsed AST record</td>
+</tr>
+<tr>
+<td><code>StoreyDef</code></td>
+<td><code>dsl/BuildingDefinition.java</code></td>
+<td>Storey definition</td>
+</tr>
+<tr>
+<td><code>RoomDef</code></td>
+<td><code>dsl/BuildingDefinition.java</code></td>
+<td>Room definition with constraints</td>
+</tr>
+</tbody>
+</table>
+<h3 id="solving">Solving<a class="headerlink" href="#solving" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SpaceSolver</code></td>
+<td><code>solver/SpaceSolver.java</code></td>
+<td>CSP constraint solver</td>
+</tr>
+<tr>
+<td><code>GridPosition</code></td>
+<td><code>solver/SpaceSolver.java</code></td>
+<td>Solution: room x,y coordinates</td>
+</tr>
+<tr>
+<td><code>SolvedLayout</code></td>
+<td><code>solver/SpaceSolver.java</code></td>
+<td>Full solution with metadata</td>
+</tr>
+</tbody>
+</table>
+<h3 id="compiling">Compiling<a class="headerlink" href="#compiling" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BuildingCompiler</code></td>
+<td><code>dsl/BuildingCompiler.java</code></td>
+<td>Main compiler orchestrator</td>
+</tr>
+<tr>
+<td><code>BuildingSpec</code></td>
+<td><code>dsl/BuildingCompiler.java</code></td>
+<td>Compiled building</td>
+</tr>
+<tr>
+<td><code>StoreySpec</code></td>
+<td><code>dsl/BuildingCompiler.java</code></td>
+<td>Compiled storey geometry</td>
+</tr>
+<tr>
+<td><code>RoomCompiler</code></td>
+<td><code>dsl/RoomCompiler.java</code></td>
+<td>Room geometry generator</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mep-placement">MEP Placement<a class="headerlink" href="#mep-placement" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ElectricalPlacer</code></td>
+<td><code>library/ElectricalPlacer.java</code></td>
+<td>Lights, outlets, switches</td>
+</tr>
+<tr>
+<td><code>FixturePlacer</code></td>
+<td><code>library/FixturePlacer.java</code></td>
+<td>Bathroom/kitchen fixtures</td>
+</tr>
+<tr>
+<td><code>PlumbingPlacer</code></td>
+<td><code>library/PlumbingPlacer.java</code></td>
+<td>Pipes and stacks</td>
+</tr>
+<tr>
+<td><code>StructuralPlacer</code></td>
+<td><code>library/StructuralPlacer.java</code></td>
+<td>Columns and beams</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output">Output<a class="headerlink" href="#output" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BuildingWriter</code></td>
+<td><code>dsl/BuildingWriter.java</code></td>
+<td>SQLite database writer</td>
+</tr>
+<tr>
+<td><code>WitnessBuilder</code></td>
+<td><code>witness/WitnessBuilder.java</code></td>
+<td>Proof claim collector</td>
+</tr>
+<tr>
+<td><code>DSLExporter</code></td>
+<td><code>dsl/DSLExporter.java</code></td>
+<td>DSL round-trip export</td>
+</tr>
+</tbody>
+</table>
+<h3 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SpaceTypeRegistry</code></td>
+<td><code>dsl/SpaceTypeRegistry.java</code></td>
+<td>Loads spacetypes.yaml</td>
+</tr>
+<tr>
+<td><code>BIMConstants</code></td>
+<td><code>BIMConstants.java</code></td>
+<td>Threshold constants</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="11-developer-workflow">11. Developer Workflow<a class="headerlink" href="#11-developer-workflow" title="Permanent link">&para;</a></h2>
+<h3 id="session-startup">Session Startup<a class="headerlink" href="#session-startup" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Read <code>CLAUDE.md</code> (prime rules)</li>
+<li>Read <code>PROGRESS.md</code> (current state)</li>
+<li>Read relevant Java interfaces</li>
+<li>Run witnesses to verify current state</li>
+</ol>
+<h3 id="making-changes">Making Changes<a class="headerlink" href="#making-changes" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Configuration change</strong> (new space type):</li>
+<li>Edit <code>config/spacetypes.yaml</code></li>
+<li>No recompile needed</li>
+<li>
+<p>Run tests to verify</p>
+</li>
+<li>
+<p><strong>New feature</strong>:</p>
+</li>
+<li>Write witness claim FIRST</li>
+<li>Implement feature</li>
+<li>
+<p>Verify witness passes</p>
+</li>
+<li>
+<p><strong>Bug fix</strong>:</p>
+</li>
+<li>Write failing test</li>
+<li>Fix bug</li>
+<li>Verify test passes</li>
+</ol>
+<h3 id="running-tests">Running Tests<a class="headerlink" href="#running-tests" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Full test suite</span>
+mvn<span class="w"> </span><span class="nb">test</span>
+
+<span class="c1"># Specific end-to-end test</span>
+mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-Dtest<span class="o">=</span>TBLKTNEndToEndTest
+
+<span class="c1"># Sanity checker</span>
+mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>tools/sanity-checker<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.tools.sanity.HouseSanityChecker&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;output/tb_lktn.db&quot;</span>
+</code></pre></div>
+<h3 id="session-closeout">Session Closeout<a class="headerlink" href="#session-closeout" title="Permanent link">&para;</a></h3>
+<p>Update <code>PROGRESS.md</code> with:
+- What was done
+- What's next
+- Witness count if claims changed</p>
+<hr />
+<h2 id="appendix-a-dsl-syntax-reference">Appendix A: DSL Syntax Reference<a class="headerlink" href="#appendix-a-dsl-syntax-reference" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;&lt;name&gt;&quot;
+    profile: &quot;&lt;profile_name&gt;&quot;
+    protocol: &quot;&lt;protocol_name&gt;&quot;
+    lod: &lt;100-500&gt;
+{
+    GRID {
+        axes: A, B, C / 1, 2, 3
+        spacing: &lt;x1&gt;, &lt;x2&gt; / &lt;y1&gt;, &lt;y2&gt;
+    }
+
+    SCHEDULE doors {
+        D1: &lt;width&gt;x&lt;height&gt; &quot;&lt;description&gt;&quot;
+    }
+
+    SCHEDULE windows {
+        W1: &lt;width&gt;x&lt;height&gt; &quot;&lt;description&gt;&quot;
+    }
+
+    STOREY &quot;&lt;name&gt;&quot; level:&lt;z&gt; height:&lt;h&gt;m {
+        &lt;ROOM_TYPE&gt; &quot;&lt;name&gt;&quot; bounds:&lt;cell1&gt;-&lt;cell2&gt; {
+            exterior: &lt;north|south|east|west&gt;
+            adjacent: &lt;room_name&gt;
+            not_adjacent: &lt;room_name&gt;
+            aligns: &lt;room_name&gt;
+            above: &lt;room_name&gt;
+            DOOR type:&lt;type&gt; wall:&lt;direction&gt;
+            WINDOW type:&lt;type&gt; wall:&lt;direction&gt;
+        }
+
+        STAIR &quot;&lt;name&gt;&quot; bounds:&lt;cell1&gt;-&lt;cell2&gt; {
+            connects: &lt;lower_storey&gt;, &lt;upper_storey&gt;
+        }
+    }
+
+    ROOF pitch:&lt;deg&gt;deg overhang:&lt;mm&gt;mm
+}
+</code></pre></div>
+<h3 id="room-types-from-spacetypesyaml">Room Types (from spacetypes.yaml)<a class="headerlink" href="#room-types-from-spacetypesyaml" title="Permanent link">&para;</a></h3>
+<p><strong>Residential</strong>: BEDROOM, BATHROOM, KITCHEN, LIVING, DINING, OFFICE, LAUNDRY, STORE
+<strong>Circulation</strong>: CORRIDOR, LOBBY, STAIR, ELEVATOR
+<strong>Institutional</strong>: CLASSROOM, ASSEMBLY_HALL, CANTEEN, STAFFROOM, TOILET_BLOCK
+<strong>Exterior</strong>: PORCH, CARPORT, VERANDAH, BALCONY</p>
+<hr />
+<h2 id="appendix-b-example-buildings">Appendix B: Example Buildings<a class="headerlink" href="#appendix-b-example-buildings" title="Permanent link">&para;</a></h2>
+<h3 id="tb-lktn-single-storey-house">TB-LKTN (Single-storey house)<a class="headerlink" href="#tb-lktn-single-storey-house" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;TB-LKTN&quot;
+    profile: &quot;Malaysian_Residential&quot;
+    protocol: &quot;Residential_Single_Storey&quot;
+    lod: 300
+{
+    STOREY &quot;Ground&quot; level:0 height:2.8m {
+        BEDROOM &quot;master&quot; ... { exterior: west; adjacent: common }
+        BATHROOM &quot;bath&quot; ... { adjacent: common }
+        OPEN_PLAN &quot;common&quot; ... { exterior: south, north }
+        BEDROOM &quot;bed2&quot; ... { adjacent: common }
+        BEDROOM &quot;bed3&quot; ... { adjacent: common }
+    }
+    ROOF pitch:25deg overhang:600mm
+}
+</code></pre></div>
+<h3 id="sekolah-kebangsaan-school">Sekolah-Kebangsaan (School)<a class="headerlink" href="#sekolah-kebangsaan-school" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>BUILDING &quot;Sekolah-Kebangsaan&quot;
+    profile: &quot;Malaysian_Educational&quot;
+    protocol: &quot;School_Primary&quot;
+    lod: 300
+{
+    GRID { axes: A-G / 1-5; spacing: 8.0 / 8.0 }
+
+    STOREY &quot;Ground&quot; ... {
+        CLASSROOM &quot;class_1&quot; ... { exterior: north }
+        CLASSROOM &quot;class_2&quot; ... { adjacent: class_1 }
+        CORRIDOR &quot;main_corridor&quot; ... { connects: class_1, class_2, ... }
+        ASSEMBLY_HALL &quot;hall&quot; ... { exterior: south }
+        TOILET_BLOCK &quot;toilets&quot; ... { adjacent: corridor }
+    }
+}
+</code></pre></div>
+<hr />
+<h2 id="appendix-c-addon-framework-recommended-for-vocabulary-additions">Appendix C: Addon Framework (Recommended for Vocabulary Additions)<a class="headerlink" href="#appendix-c-addon-framework-recommended-for-vocabulary-additions" title="Permanent link">&para;</a></h2>
+<p>For non-trivial vocabulary additions (new space types, new building typologies), use the <strong>Addon Framework</strong> instead of directly editing spacetypes.yaml.</p>
+<p>An addon is a YAML manifest that declares a vocabulary extension across all six enrichment layers:</p>
+<ol>
+<li><strong>Vocabulary</strong> — SpaceType definition with provenance</li>
+<li><strong>Component Activation</strong> — TERMINAL library mapping</li>
+<li><strong>MEP Rules</strong> — Electrical, plumbing, HVAC configuration</li>
+<li><strong>Witness Claims</strong> — Required proofs for this space type</li>
+<li><strong>Profile Overrides</strong> — Jurisdiction-specific rules</li>
+<li><strong>Spatial Patterns</strong> — Typical adjacencies and groupings</li>
+</ol>
+<p><strong>Benefits</strong>:
+- Structurally enforces provenance (validation rejects values without tags)
+- Ensures vocabulary completeness across all layers
+- Declares attendant elements (CLASSROOM requires CORRIDOR)
+- Supports gap declaration (PENDING items tracked, not hidden)</p>
+<p>See <code>docs/foss-guide-audit-addon-framework.md</code> for the full specification.</p>
+<p><strong>Example addon structure</strong>:
+<div class="highlight"><pre><span></span><code>addons/
+  educational/
+    classroom.addon.yaml
+    assembly_hall.addon.yaml
+  residential/
+    bedroom.addon.yaml
+    bathroom.addon.yaml
+  _index.yaml              # Registry with activation status
+</code></pre></div></p>
+<p>The addon framework sits above the config layer — it generates/validates spacetypes.yaml entries without touching the engine.</p>
+<hr />
+<h2 id="appendix-d-constant-reconciliation-notes">Appendix D: Constant Reconciliation Notes<a class="headerlink" href="#appendix-d-constant-reconciliation-notes" title="Permanent link">&para;</a></h2>
+<p>Some constants in this guide may differ from <code>docs/GLOSSARY.md</code> due to profile-dependency:</p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>FOSS Guide</th>
+<th>Glossary</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Interior wall</td>
+<td>150mm</td>
+<td>100mm</td>
+<td>Profile-dependent: TERMINAL uses 150mm (concrete), Malaysian residential uses 100mm (brick partition)</td>
+</tr>
+<tr>
+<td>Exterior wall</td>
+<td>250mm</td>
+<td>150mm</td>
+<td>Profile-dependent: TERMINAL uses 250mm (marine terminal), Malaysian residential uses 150mm (standard)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule</strong>: The <code>profile:</code> declaration in the DSL determines which constants apply. When in doubt, check <code>BIMConstants.java</code> for the profile-specific override chain.</p>
+<hr />
+<h2 id="appendix-e-ad-style-architecture-roadmap">Appendix E: AD-Style Architecture Roadmap<a class="headerlink" href="#appendix-e-ad-style-architecture-roadmap" title="Permanent link">&para;</a></h2>
+<p>The BIM Compiler is evolving toward an <strong>Application Dictionary (AD) style</strong> architecture similar to iDempiere's metadata-driven design. This section documents the current state and planned evolution.</p>
+<h3 id="current-state">Current State<a class="headerlink" href="#current-state" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>config/
+├── spacetypes.yaml    ← AD_SpaceType equivalent (RICH - 670+ lines)
+└── [nothing else]
+
+src/ (constants scattered)
+├── BIMConstants.java          ~30 constants (tolerance, offsets, grid)
+├── StoreyConvention.java      ~10 constants (floor heights, MEP zones)
+├── OpeningConstraints.java    ~6 constants (door/window ratios)
+├── StructuralPlacer.java      ~6 constants (lintel, column, beam limits)
+├── FixturePlacer.java         ~5 constants (clearances)
+└── ... more scattered
+</code></pre></div>
+<p><strong>What works well</strong>: <code>spacetypes.yaml</code> is effectively the "AD_SpaceType" table — 670+ lines of room type definitions with validation rules, MEP requirements, and provenance tags. No Java recompile needed to add room types.</p>
+<p><strong>What needs externalization</strong>: Construction-specific constants (beam span limits, lintel thresholds) are still hardcoded in Java Placer classes.</p>
+<h3 id="target-state-ad-style">Target State (AD-Style)<a class="headerlink" href="#target-state-ad-style" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>config/
+├── spacetypes.yaml                ← EXISTS (mature)
+├── construction_profiles/         ← NEW
+│   ├── masonry.yaml              (MAX_BEAM_SPAN: 8.0, lintel rules)
+│   └── framed.yaml               (MAX_BEAM_SPAN: 10.0)
+├── structural_rules.yaml         ← NEW
+├── electrical_rules.yaml         ← NEW
+├── plumbing_rules.yaml           ← NEW
+├── witness_claims.yaml           ← NEW (claim #1-25 definitions)
+└── building_codes/               ← NEW
+    ├── ubbl_2012.yaml
+    ├── ms_1195.yaml
+    └── irc_2021.yaml
+</code></pre></div>
+<h3 id="idempiere-ad-parallel">iDempiere AD Parallel<a class="headerlink" href="#idempiere-ad-parallel" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>iDempiere AD</th>
+<th>BIM Compiler Equivalent</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AD_Window</code>, <code>AD_Tab</code>, <code>AD_Field</code></td>
+<td>N/A (no UI)</td>
+<td>Not applicable</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule</code></td>
+<td><code>spacetypes.yaml</code> validation block</td>
+<td>✓ Complete</td>
+</tr>
+<tr>
+<td><code>AD_Reference</code></td>
+<td>OmniClass codes in spacetypes</td>
+<td>✓ Complete</td>
+</tr>
+<tr>
+<td><code>AD_Process</code></td>
+<td>Witness claims</td>
+<td>Hardcoded</td>
+</tr>
+<tr>
+<td><code>AD_ModelValidator</code></td>
+<td>Placer constraint constants</td>
+<td>Hardcoded</td>
+</tr>
+</tbody>
+</table>
+<h3 id="timing-recommendation">Timing Recommendation<a class="headerlink" href="#timing-recommendation" title="Permanent link">&para;</a></h3>
+<p><strong>Wait until Phase 55+ completion before major AD refactor.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Factor</th>
+<th>Assessment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Constants scattered</td>
+<td>Yes — getting messy</td>
+</tr>
+<tr>
+<td>spacetypes.yaml mature</td>
+<td>Yes — 670 lines, solid schema</td>
+</tr>
+<tr>
+<td>Core features complete</td>
+<td>No — still adding (Phase 51 just added beam spans)</td>
+</tr>
+<tr>
+<td>Pattern visibility</td>
+<td>Not yet — only 3 example buildings</td>
+</tr>
+<tr>
+<td>Addon framework spec</td>
+<td>Exists — ready when needed</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommended sequence</strong>:
+1. Complete Phase 55 (stair grid position bug fix)
+2. Add 1-2 more building examples (duplex, shophouse)
+3. Patterns become clearer
+4. THEN refactor constants to YAML</p>
+<p><strong>Why wait</strong>: The risk of premature externalization is designing a YAML schema, then realizing the next phase needs a different structure. Better to let dust settle from Phase 50-55's rapid feature additions.</p>
+<h3 id="the-vision-hybrid-ai-assisted-development">The Vision: Hybrid AI-Assisted Development<a class="headerlink" href="#the-vision-hybrid-ai-assisted-development" title="Permanent link">&para;</a></h3>
+<p>Once AD-style configuration is complete, the system enables rapid AI-assisted development:</p>
+<div class="highlight"><pre><span></span><code>User: &quot;Add beam span limit check for FRAMED construction at 10m&quot;
+         ↓
+AI edits config/construction_profiles/framed.yaml (~50 tokens)
+         ↓
+Compiler uses new limit (no recompile)
+         ↓
+Witness verifies: BEAM_SPAN_LIMIT PROVEN
+         ↓
+Package + Deploy
+</code></pre></div>
+<p>This mirrors the iDempiere modernization vision: <strong>YAML as the hot-swappable intent layer</strong>, deterministic compilation downstream, witnesses prove correctness. The AI handles the YAML editing; no complex rules engine runtime needed.</p>
+<p><strong>Key insight</strong>: For BIM (greenfield), we're BUILDING the rules into configuration. For iDempiere (brownfield), we'd EXTRACT existing rules to configuration. Both converge on the same architecture.</p>
+<hr />
+<h2 id="appendix-f-contract-architecture-compile-time-enforcement">Appendix F: Contract Architecture (Compile-Time Enforcement)<a class="headerlink" href="#appendix-f-contract-architecture-compile-time-enforcement" title="Permanent link">&para;</a></h2>
+<p>The BIM Compiler uses a layered interface contract system to prevent structural bugs at compile-time. This architecture is documented in detail in:</p>
+<p><strong>→ <code>docs/contract-architecture-specification.md</code></strong></p>
+<h3 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h3>
+<p>The contract system addresses the "owns bounds" anti-pattern where assemblies create their own boundary elements instead of connecting to shared infrastructure.</p>
+<p><strong>Layer Model:</strong>
+<div class="highlight"><pre><span></span><code>Layer 5: SEMANTIC    - Domain validation rules
+Layer 4: AGGREGATION - Merge, compose, deduplicate
+Layer 3: RELATIONSHIP - Connect, host, feed, require
+Layer 2: IDENTITY    - Same, different, continues
+Layer 1: EXISTENCE   - Mandatory attributes (GUID, storey, discipline)
+</code></pre></div></p>
+<p><strong>Core Interfaces:</strong>
+| Interface | Purpose | Prevents |
+|-----------|---------|----------|
+| <code>IConnectable.connectsTo()</code> | Declare shared junction connections | Duplicate boundary elements |
+| <code>IIdentifiable.uniqueKey()</code> | Deduplication within context | Duplicates during merge |
+| <code>IIdentifiable.continuityId()</code> | Identity across storeys | Discontinuous spanning elements |
+| <code>IAggregatable.role()</code> | INTERNAL vs BOUNDARY vs SHARED | Ownership ambiguity |</p>
+<p><strong>Theoretical Foundations:</strong>
+- IFC relationship entities (ISO 16739)
+- Mereotopology / RCC-8 spatial calculus
+- Domain-Driven Design aggregate patterns
+- Gang of Four Registry/Composite patterns</p>
+<p>See the full specification for interface definitions, migration strategy, and implementation details.</p>
+<hr />
+<p><em>Document generated from BIM Intent Compiler codebase analysis.</em>
+<em>Watchdog-audited 2026-02-02 — provenance gates added per findings 1-8.</em>
+<em>Contract architecture added 2026-02-03 — grounded in IFC/mereotopology/DDD.</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

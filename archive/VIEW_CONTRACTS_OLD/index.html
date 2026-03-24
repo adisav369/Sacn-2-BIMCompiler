@@ -1,0 +1,3564 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>View Contracts — The Compiler's Data Access Layer - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#view-contracts-the-compilers-data-access-layer" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              View Contracts — The Compiler's Data Access Layer
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-why-this-document-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Why This Document Exists
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Why This Document Exists">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-the-idempiere-lineage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 The iDempiere Lineage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-the-three-layer-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 The Three-Layer Stack
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-relationship-to-existing-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Relationship to Existing Documents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-document-status-pattern-borrowed-from-idempiere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Document Status Pattern — Borrowed from iDempiere
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Document Status Pattern — Borrowed from iDempiere">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-the-docstatus-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 The DocStatus Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-what-co-means-in-construction-terms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 What CO Means in Construction Terms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-terminal-and-partial-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Terminal and Partial Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-core-view-definitions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Core View Definitions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Core View Definitions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-v_placeable_bom_child" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 v_placeable_bom_child
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#31b-bom-layering-and-spatial-qualification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1b BOM Layering and Spatial Qualification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-v_verified_room_boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 v_verified_room_boundary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-v_compilable_element_rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 v_compilable_element_rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-v_proven_geometry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 v_proven_geometry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-v_active_bom_assembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 v_active_bom_assembly
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-java-refactoring-compiler-access-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Java Refactoring — Compiler Access Layer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Java Refactoring — Compiler Access Layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-the-access-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 The Access Contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-what-this-removes-from-java" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 What This Removes from Java
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-archunit-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 ArchUnit Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-mcolumn-style-validation-self-describing-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. MColumn-Style Validation — Self-Describing Schema
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-view-maintenance-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. View Maintenance Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-implementation-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Implementation Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-watchdog-constraints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Watchdog Constraints
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="view-contracts-the-compilers-data-access-layer">View Contracts — The Compiler's Data Access Layer<a class="headerlink" href="#view-contracts-the-compilers-data-access-layer" title="Permanent link">&para;</a></h1>
+<p><strong>Version:</strong> 1.0<br />
+<strong>Date:</strong> 2026-02-22<br />
+<strong>Status:</strong> GOVERNING — defines the data contract between base AD tables and the compiler<br />
+<strong>Authors:</strong> red1 (architect) + Claude Watchdog (reviewer)<br />
+<strong>Supplements:</strong> PREFAB_ARCHITECTURE.md, METADATA_DRIVEN_ARCHITECTURE.md, AD_Events_Spatial_Rules.md<br />
+<strong>iDempiere analogues:</strong> AD_Role permissions, DocStatus filter, MTable/MColumn validation, DB.executeQuery() access layer</p>
+<hr />
+<blockquote>
+<p><em>"The base tables are the workshop. The views are the showroom.<br />
+The compiler only walks through the showroom."</em></p>
+</blockquote>
+<hr />
+<h2 id="1-why-this-document-exists">1. Why This Document Exists<a class="headerlink" href="#1-why-this-document-exists" title="Permanent link">&para;</a></h2>
+<h3 id="11-the-idempiere-lineage">1.1 The iDempiere Lineage<a class="headerlink" href="#11-the-idempiere-lineage" title="Permanent link">&para;</a></h3>
+<p>iDempiere never lets application code decide what data is valid. The Application Dictionary defines validity. The application reads only what the AD says is ready. This is why adding a new document type in iDempiere requires no Java — the AD already knows how to handle it.</p>
+<p>The BIM compiler has accumulated the same knowledge encoded differently:
+- Java resolver methods that check for null and throw exceptions
+- MetadataMissingException as a runtime gate
+- Silent fallbacks that mask missing data</p>
+<p>All of these are symptoms of the same problem: <strong>the compiler is deciding validity at runtime instead of the data layer deciding at query time.</strong></p>
+<p>The view contract layer solves this permanently. A compiler query that returns zero rows is not an error — it means the data is not yet construction-ready. No exception. No fallback. No silent failure. The data simply does not exist in the compiler's world until it meets the contract.</p>
+<h3 id="12-the-three-layer-stack">1.2 The Three-Layer Stack<a class="headerlink" href="#12-the-three-layer-stack" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────┐
+│  COMPILER (Java)                                    │
+│  Reads ONLY from v_verified_* views                 │
+│  Never touches base ad_* tables directly            │
+├─────────────────────────────────────────────────────┤
+│  VIEW CONTRACTS (SQL Views)                         │  ← THIS DOCUMENT
+│  Define what is construction-ready                  │
+│  Filter: doc_status=CO, provenance≠PENDING,         │
+│          dimensions&gt;0, geometry extracted           │
+├─────────────────────────────────────────────────────┤
+│  BASE TABLES (ad_* SQLite)                          │
+│  Workshop — partial data, migrations in progress    │
+│  Protected by CHECK constraints                     │
+│  Write path: migrations and extractions only        │
+└─────────────────────────────────────────────────────┘
+</code></pre></div>
+<h3 id="13-relationship-to-existing-documents">1.3 Relationship to Existing Documents<a class="headerlink" href="#13-relationship-to-existing-documents" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Layer</th>
+<th>Relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PREFAB_ARCHITECTURE.md</td>
+<td>Assembly structure</td>
+<td>Defines WHAT assemblies exist and their dimensions</td>
+</tr>
+<tr>
+<td>METADATA_DRIVEN_ARCHITECTURE.md</td>
+<td>Passive AD tables</td>
+<td>Defines the base table schemas</td>
+</tr>
+<tr>
+<td>AD_Events_Spatial_Rules.md</td>
+<td>Reactive layer</td>
+<td>Defines callouts that fire when data changes</td>
+</tr>
+<tr>
+<td><strong>VIEW_CONTRACTS.md</strong> (this doc)</td>
+<td><strong>Access layer</strong></td>
+<td><strong>Defines what the compiler can see</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The view layer sits between passive data and reactive events. It is the filter that makes incomplete data invisible.</p>
+<hr />
+<h2 id="2-document-status-pattern-borrowed-from-idempiere">2. Document Status Pattern — Borrowed from iDempiere<a class="headerlink" href="#2-document-status-pattern-borrowed-from-idempiere" title="Permanent link">&para;</a></h2>
+<h3 id="21-the-docstatus-contract">2.1 The DocStatus Contract<a class="headerlink" href="#21-the-docstatus-contract" title="Permanent link">&para;</a></h3>
+<p>In iDempiere, <code>C_Invoice.DocStatus</code> determines what the accounting engine can see:
+- <code>DR</code> (Draft) — being prepared, invisible to posting
+- <code>CO</code> (Completed) — verified, visible to posting<br />
+- <code>VO</code> (Voided) — superseded, invisible to everything</p>
+<p>The BIM compiler adopts the same pattern for every AD row that feeds compilation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- doc_status applies at BOM/OrderLine level only</span>
+<span class="c1">-- iDempiere principle: M_Product has no DocStatus —</span>
+<span class="c1">-- a product exists or doesn&#39;t.</span>
+<span class="c1">-- C_OrderLine/M_BOMLine has DocStatus —</span>
+<span class="c1">-- this instance is Draft, Complete, or Voided.</span>
+
+<span class="c1">-- M_BOM uses active flag only — not a document, no DocStatus</span>
+<span class="c1">-- (doc_status belongs on C_ tables only)</span>
+
+<span class="c1">-- M_BOMLine uses active flag only — not a document, no DocStatus</span>
+<span class="c1">-- Activation controlled by: active = 1</span>
+<span class="c1">-- (doc_status belongs on C_ tables only)</span>
+
+<span class="c1">-- Placement instance — element rule readiness (C_OrderLine analogue)</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_element_rule</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">doc_status</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;DR&#39;</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">doc_status</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;DR&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;VO&#39;</span><span class="p">));</span>
+
+<span class="c1">-- Room boundary — spatial placement instance readiness</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_room_boundary</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">doc_status</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;DR&#39;</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">doc_status</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;DR&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;VO&#39;</span><span class="p">));</span>
+
+<span class="c1">-- Product-level tables use extracted_from provenance, NOT doc_status</span>
+<span class="c1">-- A product fact either has proven extraction or it doesn&#39;t —</span>
+<span class="c1">-- that is not a document state, it is a data quality flag.</span>
+
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">component_definitions</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">extracted_from</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;PENDING&#39;</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="k">length</span><span class="p">(</span><span class="n">extracted_from</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_product_dim</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">extracted_from</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;PENDING&#39;</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">extracted_from</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="s1">&#39;PENDING&#39;</span><span class="p">);</span>
+</code></pre></div>
+<h3 id="22-what-co-means-in-construction-terms">2.2 What CO Means in Construction Terms<a class="headerlink" href="#22-what-co-means-in-construction-terms" title="Permanent link">&para;</a></h3>
+<p>A row is <code>CO</code> (Completed) when:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Level</th>
+<th>CO/provenance condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M_BOM</code></td>
+<td>BOM header</td>
+<td>active=1 only — no DocStatus</td>
+</tr>
+<tr>
+<td><code>M_BOMLine</code></td>
+<td>BOM line</td>
+<td>active=1, min_space_mm declared — no DocStatus</td>
+</tr>
+<tr>
+<td><code>ad_element_rule</code></td>
+<td>Placement instance (C_OrderLine)</td>
+<td>position values non-null, storey exists, family_ref resolves</td>
+</tr>
+<tr>
+<td><code>ad_room_boundary</code></td>
+<td>Spatial instance (C_OrderLine)</td>
+<td>coordinates extracted from reference IFC, coordinate_frame declared</td>
+</tr>
+<tr>
+<td><code>component_definitions</code></td>
+<td>Product (M_Product)</td>
+<td>extracted_from ≠ PENDING — no doc_status</td>
+</tr>
+<tr>
+<td><code>ad_product_dim</code></td>
+<td>Product attributes</td>
+<td>extracted_from ≠ PENDING — no doc_status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="23-terminal-and-partial-extraction">2.3 Terminal and Partial Extraction<a class="headerlink" href="#23-terminal-and-partial-extraction" title="Permanent link">&para;</a></h3>
+<p>Terminal (Rosetta Stone 3) is in FLAT mode — relational recompilation pending T1-T5. Its rows are legitimately <code>DR</code>. The view layer makes this honest rather than hiding it:</p>
+<ul>
+<li>Terminal FLAT-extracted elements: <code>doc_status = CO</code> (extracted, proven)</li>
+<li>Terminal relational rows pending T1-T5: <code>doc_status = DR</code> (in progress)</li>
+<li>The compiler sees only CO rows — Terminal compiles from what is proven</li>
+</ul>
+<p>This is not a regression. It is honest compilation.</p>
+<hr />
+<h2 id="3-core-view-definitions">3. Core View Definitions<a class="headerlink" href="#3-core-view-definitions" title="Permanent link">&para;</a></h2>
+<h3 id="31-v_placeable_bom_child">3.1 v_placeable_bom_child<a class="headerlink" href="#31-v_placeable_bom_child" title="Permanent link">&para;</a></h3>
+<p>The compiler's entry point for BOM expansion. A BOM child only appears here if the full chain — component, geometry, dimensions — is simultaneously verified.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_placeable_bom_child</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">child_ref</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="k">role</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">seq_no</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">wall_rule</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">opposite_wall</span><span class="p">,</span>
+<span class="w">    </span><span class="n">bc</span><span class="p">.</span><span class="n">child_name_pattern</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">width_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">depth_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">height_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">id</span><span class="w">            </span><span class="k">AS</span><span class="w"> </span><span class="n">component_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span><span class="w">          </span><span class="k">AS</span><span class="w"> </span><span class="n">component_name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">geometry_hash</span><span class="p">,</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">geometry_source</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">ad_bom_child</span><span class="w"> </span><span class="n">bc</span>
+<span class="c1">-- Must be completed and active</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_bom</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">bom_id</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span>
+<span class="c1">-- Component must exist by name pattern</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">component_definitions</span><span class="w"> </span><span class="n">cd</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%&#39;</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="k">REPLACE</span><span class="p">(</span><span class="n">bc</span><span class="p">.</span><span class="n">child_name_pattern</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;%&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="s1">&#39;%&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="c1">-- Geometry must be extracted not invented</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_geometry_map</span><span class="w"> </span><span class="n">gm</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">element_ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="c1">-- Dimensions must be proven</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_product_dim</span><span class="w"> </span><span class="n">pd</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="k">role</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">width_mm</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">depth_mm</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">height_mm</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>What this eliminates:</strong>
+- MetadataMissingException for missing geometry_map (child absent from view)
+- dims=null fallback to 0.5×0.5×1.0m (child absent from view)
+- % wildcard resolving to wrong component (JOIN filters to correct match)</p>
+<h3 id="31b-bom-layering-and-spatial-qualification">3.1b BOM Layering and Spatial Qualification<a class="headerlink" href="#31b-bom-layering-and-spatial-qualification" title="Permanent link">&para;</a></h3>
+<p>The view handles multi-level BOM hierarchy naturally. A parent BOM (e.g. <code>SH_LIVING_FULLSET</code>) contains child BOMs (<code>DINING_SET</code>, <code>SOFA_SET</code>) as M_BOMLine entries. The spatial filter gates at the parent line level — if a child BOM set requires 3000mm and the room is 2800mm, the entire child BOM is excluded. The remaining child BOMs expand normally.</p>
+<div class="highlight"><pre><span></span><code>C_RoomBoundary: LIVING_ROOM, width=2800mm
+  → AD_RoomSlot → M_BOM: SH_LIVING_FULLSET
+      → M_BOMLine: DINING_SET  fit_priority=10, min_space_mm=2400 → FITS   → expands all children
+      → M_BOMLine: SOFA_SET    fit_priority=20, min_space_mm=3000 → FILTERED OUT (2800 &lt; 3000)
+      → M_BOMLine: COFFEE_TABLE fit_priority=30, min_space_mm=0   → FITS   → expands all children
+</code></pre></div>
+<p>The same <code>DINING_SET</code> and <code>SOFA_SET</code> M_BOMs serve SH, DX, and TB-LKTN without redefinition.
+TB-LKTN's smaller rooms simply qualify fewer parent lines. No new BOMs required.</p>
+<p><strong>Two new columns on M_BOMLine:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_BOMLine</span>
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">fit_priority</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">20</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">fit_priority</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="mi">30</span><span class="p">));</span>
+<span class="c1">-- 10 = essential: always include if room type matches</span>
+<span class="c1">-- 20 = standard:  include if min_space_mm satisfied</span>
+<span class="c1">-- 30 = optional:  include only if space remaining after 10+20</span>
+
+<span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">min_space_mm</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">CHECK</span><span class="p">(</span><span class="n">min_space_mm</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="c1">-- Minimum room width OR depth required for this line</span>
+<span class="c1">-- 0 = always fits (small items, accessories)</span>
+<span class="c1">-- Checked against: MIN(room_width_mm, room_depth_mm)</span>
+</code></pre></div>
+<p><strong>Seeded values from PREFAB_ARCHITECTURE.md room dimensions [RESEARCHED]:</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- LIVING room sets</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">2400</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;DINING_SET&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">3000</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;SOFA_SET&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">0</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;COFFEE_TABLE&#39;</span><span class="p">;</span>
+
+<span class="c1">-- BEDROOM sets</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">1800</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;BED_KING&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">1400</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;BED_QUEEN&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">2400</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;WARDROBE_PAIR&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">1200</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;WARDROBE_SINGLE&#39;</span><span class="p">;</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_BOMLine</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">fit_priority</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span><span class="w"> </span><span class="n">min_space_mm</span><span class="o">=</span><span class="mi">0</span>
+<span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="k">role</span><span class="o">=</span><span class="s1">&#39;BEDSIDE_TABLE&#39;</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="32-v_verified_room_boundary">3.2 v_verified_room_boundary<a class="headerlink" href="#32-v_verified_room_boundary" title="Permanent link">&para;</a></h3>
+<p>Room boundaries with proven coordinate provenance. The living-room-9m-east drift cannot recur — unprovenanced boundaries are invisible.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_verified_room_boundary</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">room_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">building_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">room_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">min_x_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">max_x_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">min_y_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">max_y_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">storey_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">extracted_from</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rb</span><span class="p">.</span><span class="n">coordinate_frame</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">ad_room_boundary</span><span class="w"> </span><span class="n">rb</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">rb</span><span class="p">.</span><span class="n">coordinate_frame</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IFC_GLOBAL_MM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;LOCAL_MM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DRAWING_MM&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>What this eliminates:</strong>
+- Hand-generated grid coordinates (never reach CO unless extracted)
+- Wrong coordinate frame (unknown frame rows invisible)
+- The SH living-room-9m-east class of drift</p>
+<h3 id="33-v_compilable_element_rule">3.3 v_compilable_element_rule<a class="headerlink" href="#33-v_compilable_element_rule" title="Permanent link">&para;</a></h3>
+<p>Element placement rules where every referenced entity exists and is verified.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_compilable_element_rule</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">element_ref</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">family_ref</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">building_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">storey_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_rule</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_1</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_2</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_3</span><span class="p">,</span>
+<span class="w">    </span><span class="n">er</span><span class="p">.</span><span class="n">orientation</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">width_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">depth_mm</span><span class="p">,</span>
+<span class="w">    </span><span class="n">pd</span><span class="p">.</span><span class="n">height_mm</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">ad_element_rule</span><span class="w"> </span><span class="n">er</span>
+<span class="c1">-- Family ref must resolve to verified product</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_product_dim</span><span class="w"> </span><span class="n">pd</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">family_ref</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">pd</span><span class="p">.</span><span class="n">width_mm</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
+<span class="c1">-- Storey Z must be non-negative</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">position_value_3</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">er</span><span class="p">.</span><span class="n">family_ref</span><span class="w"> </span><span class="k">IS</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">;</span>
+</code></pre></div>
+<h3 id="34-v_proven_geometry">3.4 v_proven_geometry<a class="headerlink" href="#34-v_proven_geometry" title="Permanent link">&para;</a></h3>
+<p>Components where geometry is extracted from a real reference, not generated as a fallback.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_proven_geometry</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">ifc_class</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cd</span><span class="p">.</span><span class="n">component_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">geometry_hash</span><span class="p">,</span>
+<span class="w">    </span><span class="n">cg</span><span class="p">.</span><span class="n">vertex_count</span><span class="p">,</span>
+<span class="w">    </span><span class="n">gm</span><span class="p">.</span><span class="n">extracted_from</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">component_definitions</span><span class="w"> </span><span class="n">cd</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_geometry_map</span><span class="w"> </span><span class="n">gm</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">element_ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">name</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">component_geometries</span><span class="w"> </span><span class="n">cg</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">cg</span><span class="p">.</span><span class="n">geometry_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">geometry_hash</span>
+<span class="c1">-- Real geometry only — BBox has exactly 8 vertices</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">cg</span><span class="p">.</span><span class="n">vertex_count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">8</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">gm</span><span class="p">.</span><span class="n">extracted_from</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%PENDING%&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">cd</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>What this eliminates:</strong>
+- BBox placeholders reaching IFC output (vertex_count &gt; 8 filter)
+- The entire LodGeometryXRayTest X1-X4 class of detection (prevention replaces detection)</p>
+<h3 id="35-v_active_bom_assembly">3.5 v_active_bom_assembly<a class="headerlink" href="#35-v_active_bom_assembly" title="Permanent link">&para;</a></h3>
+<p>Complete BOM assemblies where every level of the hierarchy is verified.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">VIEW</span><span class="w"> </span><span class="n">v_active_bom_assembly</span><span class="w"> </span><span class="k">AS</span>
+<span class="k">SELECT</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_name</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">bom_type</span><span class="p">,</span>
+<span class="w">    </span><span class="n">b</span><span class="p">.</span><span class="n">building_type</span><span class="p">,</span>
+<span class="w">    </span><span class="k">COUNT</span><span class="p">(</span><span class="n">bc</span><span class="p">.</span><span class="n">child_ref</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">child_count</span><span class="p">,</span>
+<span class="w">    </span><span class="k">SUM</span><span class="p">(</span><span class="k">CASE</span><span class="w"> </span><span class="k">WHEN</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span><span class="w"> </span><span class="k">THEN</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">ELSE</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">END</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">completed_children</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">ad_bom</span><span class="w"> </span><span class="n">b</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">ad_bom_child</span><span class="w"> </span><span class="n">bc</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">bc</span><span class="p">.</span><span class="n">bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">doc_status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;CO&#39;</span>
+<span class="w">    </span><span class="k">AND</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">b</span><span class="p">.</span><span class="n">bom_id</span>
+<span class="c1">-- Only assemblies where ALL children are completed</span>
+<span class="k">HAVING</span><span class="w"> </span><span class="n">child_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">completed_children</span><span class="p">;</span>
+</code></pre></div>
+<hr />
+<h2 id="4-java-refactoring-compiler-access-layer">4. Java Refactoring — Compiler Access Layer<a class="headerlink" href="#4-java-refactoring-compiler-access-layer" title="Permanent link">&para;</a></h2>
+<h3 id="41-the-access-contract">4.1 The Access Contract<a class="headerlink" href="#41-the-access-contract" title="Permanent link">&para;</a></h3>
+<p>Every compiler query must go through a typed access object that only queries views:</p>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * ViewAccessLayer — the compiler&#39;s only data access path.</span>
+<span class="cm"> * Never queries base ad_* tables directly.</span>
+<span class="cm"> * All methods return Optional — absent = not construction-ready.</span>
+<span class="cm"> * No exceptions for missing data. Missing = not in view = not ready.</span>
+<span class="cm"> */</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ViewAccessLayer</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="c1">// ONLY query target — views, never base tables</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">BOM_CHILDREN</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_placeable_bom_child WHERE bom_id = ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ROOM_BOUNDARY</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_verified_room_boundary &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;WHERE building_type = ? AND room_type = ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">ELEMENT_RULE</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_compilable_element_rule &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">        </span><span class="s">&quot;WHERE element_ref = ? AND building_type = ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">PROVEN_GEOMETRY</span><span class="w"> </span><span class="o">=</span>
+<span class="w">        </span><span class="s">&quot;SELECT * FROM v_proven_geometry WHERE name LIKE ?&quot;</span><span class="p">;</span>
+
+<span class="w">    </span><span class="cm">/**</span>
+<span class="cm">     * Returns empty list if BOM not CO or children incomplete.</span>
+<span class="cm">     * Caller does not need to handle missing data — </span>
+<span class="cm">     * empty list is the signal.</span>
+<span class="cm">     */</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">PlaceableBomChild</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">getBomChildren</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">bomId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">query</span><span class="p">(</span><span class="n">BOM_CHILDREN</span><span class="p">,</span><span class="w"> </span><span class="n">bomId</span><span class="p">,</span><span class="w"> </span><span class="n">PlaceableBomChild</span><span class="p">::</span><span class="n">from</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Optional</span><span class="o">&lt;</span><span class="n">VerifiedRoomBoundary</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">getRoomBoundary</span><span class="p">(</span>
+<span class="w">            </span><span class="n">String</span><span class="w"> </span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">roomType</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">queryOne</span><span class="p">(</span><span class="n">ROOM_BOUNDARY</span><span class="p">,</span><span class="w"> </span><span class="n">buildingType</span><span class="p">,</span><span class="w"> </span><span class="n">roomType</span><span class="p">,</span>
+<span class="w">            </span><span class="n">VerifiedRoomBoundary</span><span class="p">::</span><span class="n">from</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">Optional</span><span class="o">&lt;</span><span class="n">ProvenGeometry</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">getGeometry</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">namePattern</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">queryOne</span><span class="p">(</span><span class="n">PROVEN_GEOMETRY</span><span class="p">,</span><span class="w"> </span><span class="n">namePattern</span><span class="p">,</span>
+<span class="w">            </span><span class="n">ProvenGeometry</span><span class="p">::</span><span class="n">from</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="42-what-this-removes-from-java">4.2 What This Removes from Java<a class="headerlink" href="#42-what-this-removes-from-java" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Current Java</th>
+<th>Replaced by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MetadataMissingException</code> in hot paths</td>
+<td>Empty Optional from view</td>
+</tr>
+<tr>
+<td><code>if (geometry == null) throw...</code></td>
+<td><code>Optional.empty()</code> from v_proven_geometry</td>
+</tr>
+<tr>
+<td><code>dims == null</code> → 0.5×0.5×1.0m fallback</td>
+<td>Child absent from v_placeable_bom_child</td>
+</tr>
+<tr>
+<td><code>getOrDefault(ref, null)</code></td>
+<td>Not needed — view only returns complete rows</td>
+</tr>
+<tr>
+<td><code>bindParametric()</code> BBox fallback</td>
+<td>Not needed — incomplete geometry not in view</td>
+</tr>
+</tbody>
+</table>
+<p>The resolver classes become simpler:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// BEFORE — defensive, exception-heavy</span>
+<span class="n">Geometry</span><span class="w"> </span><span class="n">g</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">geometryMap</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">ref</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">g</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MetadataMissingException</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;No geometry for &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">ref</span><span class="p">);</span>
+<span class="n">ProductDim</span><span class="w"> </span><span class="n">dims</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">productDims</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">role</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">dims</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">bindParametric</span><span class="p">(</span><span class="n">bounds</span><span class="p">);</span><span class="w"> </span><span class="c1">// BBox fallback</span>
+
+<span class="c1">// AFTER — view-backed, clean</span>
+<span class="n">Optional</span><span class="o">&lt;</span><span class="n">ProvenGeometry</span><span class="o">&gt;</span><span class="w"> </span><span class="n">g</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">viewAccess</span><span class="p">.</span><span class="na">getGeometry</span><span class="p">(</span><span class="n">ref</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">g</span><span class="p">.</span><span class="na">isEmpty</span><span class="p">())</span><span class="w"> </span><span class="k">return</span><span class="p">;</span><span class="w"> </span><span class="c1">// Not construction-ready — skip cleanly</span>
+<span class="c1">// dims are already in the view row — always present if geometry is</span>
+</code></pre></div>
+<h3 id="43-archunit-gate">4.3 ArchUnit Gate<a class="headerlink" href="#43-archunit-gate" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">compilerOnlyReadsViews</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">noClasses</span><span class="p">()</span>
+<span class="w">        </span><span class="p">.</span><span class="na">that</span><span class="p">().</span><span class="na">resideInAPackage</span><span class="p">(</span><span class="s">&quot;..compiler..&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">should</span><span class="p">().</span><span class="na">callMethodWhere</span><span class="p">(</span>
+<span class="w">            </span><span class="n">target</span><span class="p">().</span><span class="na">hasNameMatching</span><span class="p">(</span><span class="s">&quot;.*ad_bom_child.*&quot;</span><span class="p">)</span><span class="w"> </span>
+<span class="w">            </span><span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="n">target</span><span class="p">().</span><span class="na">hasNameMatching</span><span class="p">(</span><span class="s">&quot;.*ad_element_rule.*&quot;</span><span class="p">))</span>
+<span class="w">            </span><span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="n">target</span><span class="p">().</span><span class="na">hasNameMatching</span><span class="p">(</span><span class="s">&quot;.*ad_room_boundary.*&quot;</span><span class="p">))</span>
+<span class="w">            </span><span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="n">target</span><span class="p">().</span><span class="na">hasNameMatching</span><span class="p">(</span><span class="s">&quot;.*component_definitions.*&quot;</span><span class="p">))</span>
+<span class="w">        </span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="na">because</span><span class="p">(</span><span class="s">&quot;Compiler must query views only via ViewAccessLayer. &quot;</span><span class="w"> </span><span class="o">+</span>
+<span class="w">                 </span><span class="s">&quot;Direct base table access bypasses construction-ready filter.&quot;</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="5-mcolumn-style-validation-self-describing-schema">5. MColumn-Style Validation — Self-Describing Schema<a class="headerlink" href="#5-mcolumn-style-validation-self-describing-schema" title="Permanent link">&para;</a></h2>
+<p>Borrowed from iDempiere's <code>AD_Column</code> — every column declares its own validation rule. MetadataIntegrityTest reads this table rather than having hardcoded per-column assertions.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_column_contract</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="k">table_name</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">column_name</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ref_type</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">ref_type</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span>
+<span class="w">                        </span><span class="s1">&#39;FOREIGN_KEY&#39;</span><span class="p">,</span><span class="w">    </span><span class="c1">-- references another table</span>
+<span class="w">                        </span><span class="s1">&#39;VOCABULARY&#39;</span><span class="p">,</span><span class="w">     </span><span class="c1">-- closed set of values</span>
+<span class="w">                        </span><span class="s1">&#39;POSITIVE_NUMBER&#39;</span><span class="p">,</span><span class="c1">-- must be &gt; 0</span>
+<span class="w">                        </span><span class="s1">&#39;COORDINATE_MM&#39;</span><span class="p">,</span><span class="w">  </span><span class="c1">-- valid coordinate range</span>
+<span class="w">                        </span><span class="s1">&#39;PROVENANCE&#39;</span><span class="p">,</span><span class="w">     </span><span class="c1">-- must not be PENDING</span>
+<span class="w">                        </span><span class="s1">&#39;ROTATION_DEG&#39;</span><span class="p">,</span><span class="w">   </span><span class="c1">-- 0/90/180/270 only</span>
+<span class="w">                        </span><span class="s1">&#39;DOC_STATUS&#39;</span><span class="w">      </span><span class="c1">-- DR/CO/VO only</span>
+<span class="w">                    </span><span class="p">)),</span>
+<span class="w">    </span><span class="n">ref_target</span><span class="w">      </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">   </span><span class="c1">-- for FOREIGN_KEY: target table.column</span>
+<span class="w">                            </span><span class="c1">-- for VOCABULARY: CSV of valid values</span>
+<span class="w">                            </span><span class="c1">-- for COORDINATE_MM: MIN,MAX</span>
+<span class="w">    </span><span class="n">is_mandatory</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="k">CHECK</span><span class="p">(</span><span class="n">is_mandatory</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">)),</span>
+<span class="w">    </span><span class="n">provenance</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="k">table_name</span><span class="p">,</span><span class="w"> </span><span class="k">column_name</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="c1">-- Self-registering examples</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_column_contract</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="p">(</span><span class="s1">&#39;ad_bom_child&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;seq_no&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;POSITIVE_NUMBER&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;RESEARCHED: iDempiere BOM sequence pattern&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;ad_bom_child&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;doc_status&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;VOCABULARY&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DR,CO,VO&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;RESEARCHED: iDempiere DocStatus pattern&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;ad_bom_child_param&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;rotation_deg&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;VOCABULARY&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;0,90,180,270&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;RESEARCHED: IFC orthogonal rotation constraint&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;ad_product_dim&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;width_mm&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;POSITIVE_NUMBER&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;RESEARCHED: physical dimension must be positive&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;ad_room_boundary&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;coordinate_frame&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;VOCABULARY&#39;</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;IFC_GLOBAL_MM,LOCAL_MM,DRAWING_MM&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;RESEARCHED: coordinate frame must be declared&#39;</span><span class="p">),</span>
+<span class="p">(</span><span class="s1">&#39;ad_room_boundary&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;extracted_from&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;PROVENANCE&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w"> </span><span class="s1">&#39;PRIME RULE: all coordinates must have extraction source&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>MetadataIntegrityTest then becomes:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">allColumnContractsEnforced</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Read ad_column_contract</span>
+<span class="w">    </span><span class="c1">// For each row: query the named table.column</span>
+<span class="w">    </span><span class="c1">// Apply the ref_type validation rule</span>
+<span class="w">    </span><span class="c1">// Fail with: &quot;{table}.{column}: {value} violates {ref_type} contract&quot;</span>
+<span class="w">    </span><span class="c1">// Zero hardcoded column names — the data drives the test</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="6-view-maintenance-rules">6. View Maintenance Rules<a class="headerlink" href="#6-view-maintenance-rules" title="Permanent link">&para;</a></h2>
+<p><strong>Rule 1 — Views are read-only to the compiler.</strong>
+No INSERT, UPDATE, or DELETE via views. The compiler is a reader. Migrations are writers.</p>
+<p><strong>Rule 2 — A view filter change is an architecture change.</strong>
+Any modification to view WHERE clauses must be reviewed by the watchdog. Loosening a filter is equivalent to allowing incomplete data into compilation.</p>
+<p><strong>Rule 3 — New tables need views before compiler use.</strong>
+When a new AD table is created (e.g., ad_spatial_rule), its corresponding view (v_active_spatial_rule) must be defined before any compiler code references the table.</p>
+<p><strong>Rule 4 — SpatialDigest stability proves view correctness.</strong>
+After redirecting any compiler query from base table to view, SpatialDigest for all four buildings must be identical. If a digest changes, the view is filtering differently from the base table query it replaced. Find the delta before proceeding.</p>
+<hr />
+<h2 id="7-implementation-sequence">7. Implementation Sequence<a class="headerlink" href="#7-implementation-sequence" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Action</th>
+<th>Prerequisite</th>
+<th>Unlocks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Add doc_status to C_PlacementOrder, C_RoomBoundary only</td>
+<td>MetadataIntegrityTest green</td>
+<td>DocStatus filter in views</td>
+</tr>
+<tr>
+<td>1a</td>
+<td>Add active=1 default to M_BOM, M_BOMLine (already exists — verify)</td>
+<td>Phase 1</td>
+<td>Active filter in views</td>
+</tr>
+<tr>
+<td>1b</td>
+<td>Add extracted_from to component_definitions, ad_product_dim</td>
+<td>Phase 1</td>
+<td>Product provenance enforced</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Seed CO for all current verified BOM/OrderLine rows</td>
+<td>Phase 1</td>
+<td>Views return correct data</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Create 5 core views</td>
+<td>Phase 2</td>
+<td>Compiler can be redirected</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Create ViewAccessLayer.java</td>
+<td>Phase 3</td>
+<td>Compiler reads views</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Redirect resolvers to ViewAccessLayer</td>
+<td>Phase 4</td>
+<td>MetadataMissingException eliminated</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Add ArchUnit gate</td>
+<td>Phase 5</td>
+<td>Direct base table access blocked</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Create ad_column_contract + self-describing tests</td>
+<td>Phase 6</td>
+<td>Schema is self-validating</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Each phase: verify SpatialDigests identical before proceeding to next.</strong></p>
+<hr />
+<h2 id="8-watchdog-constraints">8. Watchdog Constraints<a class="headerlink" href="#8-watchdog-constraints" title="Permanent link">&para;</a></h2>
+<ul>
+<li>A view that returns zero rows is correct behaviour — it means data is not CO. It is never a bug to fix by loosening the view filter.</li>
+<li>The <code>doc_status = CO</code> filter is the strongest gate. Never add <code>OR doc_status = 'DR'</code> to any view. That defeats the entire pattern.</li>
+<li>Views must never contain subqueries that write data or call procedures. Pure SELECT only.</li>
+<li>Performance: all JOIN columns (bom_id, element_ref, product_id, geometry_hash) must have indexes on base tables. View performance depends entirely on base table indexes.</li>
+<li>The iDempiere codebase is the Rosetta Stone for this layer. When in doubt about a pattern, consult how iDempiere implements the equivalent mechanism.</li>
+</ul>
+<hr />
+<p><em>BIM Intent Compiler | View Contracts — Compiler Data Access Layer | v1.0 | February 2026</em></p>
+<p><em>"The base tables are the workshop. The views are the showroom. The compiler only walks through the showroom."</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

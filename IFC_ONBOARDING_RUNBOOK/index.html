@@ -1,0 +1,4040 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../BackOfficeUserGuide/">
+      
+      
+        <link rel="next" href="../SYSTEMS_INSTALLER_GUIDE/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>IFC Onboarding (8 Steps) - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ifc-onboarding-runbook" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              IFC Onboarding (8 Steps)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#one-command-onboarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One-Command Onboarding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-0-pre-flight-verify-ifc-class-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 0 — Pre-Flight: Verify IFC Class Coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-extract-geometry-from-ifc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Extract Geometry from IFC
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-inspect-the-extracted-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Inspect the Extracted Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-write-the-classification-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Write the Classification YAML
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3 — Write the Classification YAML">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mandatory-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mandatory Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Sections
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roles-storey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles (storey)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roles-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles (space)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-write-the-bim-cobol-dsl-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Write the BIM COBOL DSL Script
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-register-in-construction-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Register in Construction Manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-register-in-gate_scope-critical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Register in GATE_SCOPE (Critical)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 6 — Register in GATE_SCOPE (Critical)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6a-buildingregistrytest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6a. BuildingRegistryTest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6b-rosettastonegatetest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6b. RosettaStoneGateTest
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-run-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 7 — Run the Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-8-interpret-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 8 — Interpret Gate Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 8 — Interpret Gate Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-gate-suite-after-gate_scope-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full gate suite (after GATE_SCOPE registration)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-results-by-building-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Results by Building Scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-9-mine-validation-rules-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 9 — Mine Validation Rules (Optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-you-will-create-modify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files You Will Create / Modify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripts Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#one-command-onboarding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One-Command Onboarding
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-0-pre-flight-verify-ifc-class-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 0 — Pre-Flight: Verify IFC Class Coverage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-extract-geometry-from-ifc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Extract Geometry from IFC
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-inspect-the-extracted-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Inspect the Extracted Data
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-write-the-classification-yaml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Write the Classification YAML
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 3 — Write the Classification YAML">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mandatory-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mandatory Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Sections
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roles-storey" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles (storey)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#roles-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles (space)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-write-the-bim-cobol-dsl-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4 — Write the BIM COBOL DSL Script
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-register-in-construction-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5 — Register in Construction Manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-6-register-in-gate_scope-critical" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6 — Register in GATE_SCOPE (Critical)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 6 — Register in GATE_SCOPE (Critical)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#6a-buildingregistrytest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6a. BuildingRegistryTest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6b-rosettastonegatetest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6b. RosettaStoneGateTest
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-7-run-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 7 — Run the Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-8-interpret-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 8 — Interpret Gate Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Step 8 — Interpret Gate Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-gate-suite-after-gate_scope-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full gate suite (after GATE_SCOPE registration)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gate-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate Reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#expected-results-by-building-scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Expected Results by Building Scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-9-mine-validation-rules-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 9 — Mine Validation Rules (Optional)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-you-will-create-modify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files You Will Create / Modify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scripts-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scripts Reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="ifc-onboarding-runbook">IFC Onboarding Runbook<a class="headerlink" href="#ifc-onboarding-runbook" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>CP-3 Deliverable.</strong> Self-service guide: take any IFC file through the full pipeline
+with zero code changes. Proven on 12 buildings (5–48,428 elements).</p>
+<p><strong>Prerequisite:</strong> Build passes (<code>mvn compile -q</code>). See <a href="../SYSTEMS_INSTALLER_GUIDE/">SYSTEMS_INSTALLER_GUIDE.md</a> §1–2.</p>
+</blockquote>
+<hr />
+<h2 id="one-command-onboarding">One-Command Onboarding<a class="headerlink" href="#one-command-onboarding" title="Permanent link">&para;</a></h2>
+<p>The fastest path — runs all 8 steps automatically:</p>
+<div class="highlight"><pre><span></span><code>./scripts/onboard_ifc.sh<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--prefix<span class="w"> </span>SC<span class="w"> </span>--type<span class="w"> </span>Schependomlaan<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--name<span class="w"> </span><span class="s2">&quot;Schependomlaan Residential&quot;</span><span class="w"> </span>--base<span class="w"> </span>RE<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--ifc<span class="w"> </span>DAGCompiler/lib/input/IFC/Schependomlaan_IFC2x3.ifc
+</code></pre></div>
+<p>This runs: recon → extract → generate YAML/DSL → manifest → GATE_SCOPE → pipeline → validation rules → report. Review the generated YAML and commit.</p>
+<p>Add <code>--dry-run</code> to preview without executing. Add <code>--skip-extract</code> if the extracted DB already exists.</p>
+<hr />
+<h2 id="quick-reference">Quick Reference<a class="headerlink" href="#quick-reference" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>IFC file ──→ recon ──→ extract ──→ classify_XX.yaml ──→ pipeline ──→ gates + rules
+   │           │          │              │                  │              │
+   │     (ifc_recon.py)  (one-time)  (generated)     (deterministic)  (automated)
+   │           │          │              │                  │              │
+   ▼           ▼          ▼              ▼                  ▼              ▼
+ source    benefits   extracted.db   config only      *_BOM.db +      G1-G6 + C8/C9
+                                                     *_BOM.db +       + DV rules
+                                                     output.db
+</code></pre></div>
+<p><strong>No Java code changes required.</strong> The entire pipeline is configuration-driven.</p>
+<hr />
+<h2 id="step-0-pre-flight-verify-ifc-class-coverage">Step 0 — Pre-Flight: Verify IFC Class Coverage<a class="headerlink" href="#step-0-pre-flight-verify-ifc-class-coverage" title="Permanent link">&para;</a></h2>
+<p>The extraction tool reads supported IFC classes from <code>ad_ifc_class_map</code>. Unregistered types are <strong>silently skipped</strong>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># List element types in your IFC file</span>
+python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
+<span class="s2">import ifcopenshell</span>
+<span class="s2">f = ifcopenshell.open(&#39;path/to/source.ifc&#39;)</span>
+<span class="s2">print(sorted(set(e.is_a() for e in f.by_type(&#39;IfcElement&#39;))))</span>
+<span class="s2">&quot;</span>
+
+<span class="c1"># Compare with registered types</span>
+sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class&quot;</span>
+</code></pre></div>
+<p><strong>If types are missing</strong>, register them (no code change):</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- In library/disc_validation.db</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_ifc_class_map</span>
+<span class="w">    </span><span class="p">(</span><span class="n">ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">category</span><span class="p">,</span><span class="w"> </span><span class="n">attachment_face</span><span class="p">,</span><span class="w"> </span><span class="n">ifc_schema</span><span class="p">,</span><span class="w"> </span><span class="k">domain</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IfcNewType&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ARC&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NEW_CATEGORY&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;BOTTOM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IFC4&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;BUILDING&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Description&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>See <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a> §5.2 for the full schema.</p>
+<hr />
+<h2 id="step-1-extract-geometry-from-ifc">Step 1 — Extract Geometry from IFC<a class="headerlink" href="#step-1-extract-geometry-from-ifc" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># IFC source files live in DAGCompiler/lib/input/IFC/</span>
+python3<span class="w"> </span>tools/extract.py<span class="w"> </span>--to<span class="w"> </span>reference<span class="w"> </span>DAGCompiler/lib/input/IFC/source.ifc<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span>DAGCompiler/lib/input/<span class="o">{</span>BuildingType<span class="o">}</span>_extracted.db
+</code></pre></div>
+<p><strong>Naming convention:</strong> <code>{BuildingType}</code> must match the <code>building_type</code> field in your YAML (Step 3).</p>
+<table>
+<thead>
+<tr>
+<th>Proven names</th>
+<th>Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ifc4_SampleHouse</code></td>
+<td><code>{Schema}_{Name}</code> for standard buildings</td>
+</tr>
+<tr>
+<td><code>Ifc2x3_Duplex</code></td>
+<td><code>{Schema}_{Name}</code> for IFC2x3</td>
+</tr>
+<tr>
+<td><code>SJTII_Terminal</code></td>
+<td><code>{Project}_{Name}</code> for commercial</td>
+</tr>
+<tr>
+<td><code>PCERT_Infra_Bridge_IFC4X3</code></td>
+<td><code>{Source}_{Type}_{Schema}</code> for infrastructure</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Output tables</strong> (<code>{TYPE}_extracted.db</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>spatial_structure</code></td>
+<td>Buildings, storeys, facilities</td>
+</tr>
+<tr>
+<td><code>elements_meta</code></td>
+<td>GUID, IFC class, discipline, storey, material</td>
+</tr>
+<tr>
+<td><code>elements_rtree</code></td>
+<td>Per-element bounding boxes (AABB)</td>
+</tr>
+<tr>
+<td><code>element_instances</code></td>
+<td>GUID → geometry_hash mapping</td>
+</tr>
+<tr>
+<td><code>base_geometries</code></td>
+<td>Mesh blobs (vertices + faces)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="step-2-inspect-the-extracted-data">Step 2 — Inspect the Extracted Data<a class="headerlink" href="#step-2-inspect-the-extracted-data" title="Permanent link">&para;</a></h2>
+<p>Query the reference DB to understand your building's structure:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">DB</span><span class="o">=</span><span class="s2">&quot;DAGCompiler/lib/input/{BuildingType}_extracted.db&quot;</span>
+
+<span class="c1"># Storey names and element counts (MUST match YAML storeys: keys)</span>
+sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DB</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;SELECT storey, COUNT(*) FROM elements_meta GROUP BY storey&quot;</span>
+
+<span class="c1"># IFC class distribution</span>
+sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DB</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;SELECT ifc_class, COUNT(*) FROM elements_meta</span>
+<span class="s2">     GROUP BY ifc_class ORDER BY COUNT(*) DESC&quot;</span>
+
+<span class="c1"># Building envelope (for AABB / grid sizing)</span>
+sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DB</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;SELECT ROUND(MIN(minX),2), ROUND(MAX(maxX),2),</span>
+<span class="s2">            ROUND(MIN(minY),2), ROUND(MAX(maxY),2),</span>
+<span class="s2">            ROUND(MIN(minZ),2), ROUND(MAX(maxZ),2)</span>
+<span class="s2">     FROM elements_rtree&quot;</span>
+
+<span class="c1"># Per-storey AABB (for floor_rooms spaces)</span>
+sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DB</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="s2">&quot;SELECT em.storey,</span>
+<span class="s2">            ROUND(MIN(r.minX),2) as minX, ROUND(MAX(r.maxX),2) as maxX,</span>
+<span class="s2">            ROUND(MIN(r.minY),2) as minY, ROUND(MAX(r.maxY),2) as maxY</span>
+<span class="s2">     FROM elements_meta em JOIN elements_rtree r ON em.id = r.id</span>
+<span class="s2">     GROUP BY em.storey&quot;</span><span class="w"> </span>-header<span class="w"> </span>-column
+
+<span class="c1"># Total element count (this is your expected_elements)</span>
+sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$DB</span><span class="s2">&quot;</span><span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM elements_meta&quot;</span>
+</code></pre></div>
+<p><strong>Record these values</strong> — you need storey names, element counts, and AABBs for the YAML.</p>
+<hr />
+<h2 id="step-3-write-the-classification-yaml">Step 3 — Write the Classification YAML<a class="headerlink" href="#step-3-write-the-classification-yaml" title="Permanent link">&para;</a></h2>
+<p>Create <code>IFCtoBOM/src/main/resources/classify_{prefix}.yaml</code>.</p>
+<p><strong>Use the template generator</strong> (auto-detects storeys from reference DB):</p>
+<div class="highlight"><pre><span></span><code>mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>IFCtoBOM<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.ifctobom.NewBuildingGenerator&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;--prefix XX --type BuildingType --name &#39;Human Name&#39;&quot;</span><span class="w"> </span>-q
+</code></pre></div>
+<p>Or copy from an existing YAML and adapt:</p>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>classify_sh.yaml</code></td>
+<td>Simple building, no composition</td>
+</tr>
+<tr>
+<td><code>classify_fk.yaml</code></td>
+<td>Multi-storey residential with rooms</td>
+</tr>
+<tr>
+<td><code>classify_dx.yaml</code></td>
+<td>Mirrored pair (duplex/row house)</td>
+</tr>
+<tr>
+<td><code>classify_in.yaml</code></td>
+<td>Large institutional, many storeys</td>
+</tr>
+<tr>
+<td><code>classify_te.yaml</code></td>
+<td>Commercial (CO mode)</td>
+</tr>
+<tr>
+<td><code>classify_rd.yaml</code></td>
+<td>Infrastructure (road/rail/bridge)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="mandatory-fields">Mandatory Fields<a class="headerlink" href="#mandatory-fields" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+
+<span class="nt">building</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">building_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">BuildingType</span><span class="p p-Indicator">}</span><span class="w">          </span><span class="c1"># must match extracted DB name</span>
+<span class="w">  </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span><span class="w">                           </span><span class="c1"># 2-3 char code (uppercase)</span>
+<span class="w">  </span><span class="nt">building_bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BUILDING_{XX}_STD</span><span class="w">     </span><span class="c1"># BOM root ID</span>
+<span class="w">  </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span><span class="w">                     </span><span class="c1"># matches prefix</span>
+<span class="w">  </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                      </span><span class="c1"># RE=residential, CO=commercial</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">Human Name</span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="nt">dsl_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dsl_{xx}.bim</span><span class="w">                 </span><span class="c1"># BIM COBOL script (Step 4)</span>
+
+<span class="w">  </span><span class="nt">storeys</span><span class="p">:</span><span class="w">                               </span><span class="c1"># keys MUST match extraction storey names</span>
+<span class="w">    </span><span class="p p-Indicator">{</span><span class="nv">StoreyName</span><span class="p p-Indicator">}:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> code</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">SC</span><span class="p p-Indicator">},</span><span class="nt"> bom_category</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">SC</span><span class="p p-Indicator">},</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">ROLE</span><span class="p p-Indicator">},</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">N</span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<h3 id="optional-sections">Optional Sections<a class="headerlink" href="#optional-sections" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>When to include</th>
+<th>Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>floor_rooms:</code></td>
+<td>Building has named rooms with AABB scope</td>
+<td>SH, FK, IN</td>
+</tr>
+<tr>
+<td><code>static_children:</code></td>
+<td>Fixed assemblies (slabs, roof)</td>
+<td>SH</td>
+</tr>
+<tr>
+<td><code>composition:</code></td>
+<td>Mirror/repeated units</td>
+<td>DX</td>
+</tr>
+</tbody>
+</table>
+<h3 id="roles-storey">Roles (storey)<a class="headerlink" href="#roles-storey" title="Permanent link">&para;</a></h3>
+<p><code>FOUNDATION</code>, <code>GROUND_FLOOR</code>, <code>UPPER_FLOOR</code>, <code>ROOF</code>, <code>ROOF_FLOOR</code>, <code>BASEMENT</code>, <code>LEVEL_N</code>, <code>CURTAIN_WALL</code>, <code>MISC</code></p>
+<h3 id="roles-space">Roles (space)<a class="headerlink" href="#roles-space" title="Permanent link">&para;</a></h3>
+<p><code>LIVING</code>, <code>DINING</code>, <code>BEDROOM</code>, <code>BATHROOM</code>, <code>KITCHEN</code>, <code>CORRIDOR</code>, <code>OFFICE</code>, <code>GALLERY</code>, <code>MASTER</code></p>
+<p>See <a href="../WorkOrderGuide/">WorkOrderGuide.md</a> for the complete field dictionary.</p>
+<hr />
+<h2 id="step-4-write-the-bim-cobol-dsl-script">Step 4 — Write the BIM COBOL DSL Script<a class="headerlink" href="#step-4-write-the-bim-cobol-dsl-script" title="Permanent link">&para;</a></h2>
+<p>Create <code>IFCtoBOM/src/main/resources/dsl_{prefix}.bim</code>.</p>
+<p><strong>Minimal template:</strong></p>
+<div class="highlight"><pre><span></span><code>// {BuildingType} — Rosetta Stone for {source}.ifc
+// {description}
+
+BUILDING &quot;{BuildingType}&quot; type:{TYPE} profile:&quot;{profile}&quot; {
+
+    GRID {
+        axes: A, B / 1, 2
+        spacing: {X_span} / {Y_span}
+    }
+
+    STOREY &quot;{StoreyName}&quot; level:0 height:{H}m {
+        ROOM &quot;{room}&quot; bounds:A1-B2 {
+            exterior: south;
+        }
+    }
+}
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>type:</code></td>
+<td><code>SINGLE_UNIT</code>, <code>DUPLEX</code>, <code>MULTI_STOREY</code>, <code>COMMERCIAL</code></td>
+</tr>
+<tr>
+<td><code>spacing:</code></td>
+<td>From Step 2 building envelope query</td>
+</tr>
+<tr>
+<td><code>height:</code></td>
+<td>From <code>maxZ - minZ</code> per storey</td>
+</tr>
+<tr>
+<td><code>bounds:</code></td>
+<td>Grid cell references</td>
+</tr>
+</tbody>
+</table>
+<p>Copy structure from existing DSL:
+- <code>dsl_sh.bim</code> — simple 1-storey
+- <code>dsl_fk.bim</code> — 2-storey residential
+- <code>dsl_dx.bim</code> — duplex with mirror
+- <code>dsl_te.bim</code> — commercial</p>
+<p>Reference the DSL in YAML: <code>dsl_file: dsl_{prefix}.bim</code></p>
+<p>Verb catalog: <a href="../BIM_COBOL/">BIM_COBOL.md</a>.</p>
+<hr />
+<h2 id="step-5-register-in-construction-manifest">Step 5 — Register in Construction Manifest<a class="headerlink" href="#step-5-register-in-construction-manifest" title="Permanent link">&para;</a></h2>
+<p>Add a block to <code>scripts/construction_manifest.yaml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="p p-Indicator">{</span><span class="nv">BuildingType</span><span class="p p-Indicator">}:</span>
+<span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">doc_type_id</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">RE</span><span class="p p-Indicator">}</span><span class="l l-Scalar l-Scalar-Plain">_{XX}</span><span class="w">               </span><span class="c1"># RE_ or CO_ prefix</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">Human Name</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">RE</span><span class="p p-Indicator">}</span><span class="w">                   </span><span class="c1"># RE or CO</span>
+<span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{schema}</span><span class="nv"> </span><span class="s">{name}</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">{description}&quot;</span>
+<span class="w">    </span><span class="nt">provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EXTRACTED</span>
+<span class="w">    </span><span class="nt">climate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SCAN</span><span class="w">                         </span><span class="c1"># SCAN=scanned, INST=institutional</span>
+<span class="w">    </span><span class="nt">expected_elements</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">N</span><span class="p p-Indicator">}</span><span class="w">                </span><span class="c1"># from Step 2 COUNT(*)</span>
+<span class="w">    </span><span class="nt">output_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DAGCompiler/lib/output/{building_type_lower}.db</span>
+<span class="w">    </span><span class="nt">reference_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DAGCompiler/lib/input/{BuildingType}_extracted.db</span>
+<span class="w">    </span><span class="nt">building_bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BUILDING_{XX}_STD</span>
+<span class="w">    </span><span class="nt">seq_no</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">next_available</span><span class="p p-Indicator">}</span><span class="w">              </span><span class="c1"># 10, 20, 30, ...</span>
+<span class="w">    </span><span class="nt">storeys</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">{</span><span class="nv">StoreyName</span><span class="p p-Indicator">}:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> code</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">SC</span><span class="p p-Indicator">},</span><span class="nt"> bom_category</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">SC</span><span class="p p-Indicator">},</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">ROLE</span><span class="p p-Indicator">},</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">N</span><span class="p p-Indicator">}</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p><strong>Rules:</strong>
+- Declare identity only (names, roles, paths, prefix)
+- Never declare derived values (counts, AABB, offsets — these belong in YAML)
+- <code>expected_elements</code> is the total from Step 2 (verified at gate time)</p>
+<hr />
+<h2 id="step-6-register-in-gate_scope-critical">Step 6 — Register in GATE_SCOPE (Critical)<a class="headerlink" href="#step-6-register-in-gate_scope-critical" title="Permanent link">&para;</a></h2>
+<p><strong>Without this step, tests silently skip your building.</strong> Two files need the <code>doc_type_id</code>:</p>
+<h3 id="6a-buildingregistrytest">6a. BuildingRegistryTest<a class="headerlink" href="#6a-buildingregistrytest" title="Permanent link">&para;</a></h3>
+<p>File: <code>DAGCompiler/src/test/java/com/bim/compiler/contract/BuildingRegistryTest.java</code></p>
+<div class="highlight"><pre><span></span><code><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GATE_SCOPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;RE_SH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_DX&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ST_SH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ST_DX&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;CO_TE&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;IN_BR&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_FK&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_IN&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;RE_{XX}&quot;</span><span class="w">  </span><span class="c1">// ← add your building</span>
+<span class="p">);</span>
+</code></pre></div>
+<h3 id="6b-rosettastonegatetest">6b. RosettaStoneGateTest<a class="headerlink" href="#6b-rosettastonegatetest" title="Permanent link">&para;</a></h3>
+<p>File: <code>DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java</code></p>
+<div class="highlight"><pre><span></span><code><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Set</span><span class="o">&lt;</span><span class="n">String</span><span class="o">&gt;</span><span class="w"> </span><span class="n">GATE_SCOPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Set</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;RE_SH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_DX&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;CO_TE&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_IN&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;RE_{XX}&quot;</span><span class="w">  </span><span class="c1">// ← add your building</span>
+<span class="p">);</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Tip:</strong> For initial testing, skip this step and just run the pipeline (Step 7).
+Add to GATE_SCOPE after the pipeline passes, then run <code>./scripts/run_tests.sh</code>.</p>
+</blockquote>
+<hr />
+<h2 id="step-7-run-the-pipeline">Step 7 — Run the Pipeline<a class="headerlink" href="#step-7-run-the-pipeline" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="c1"># Clean any previous BOM (optional but recommended for first run)</span>
+rm<span class="w"> </span>-f<span class="w"> </span>library/<span class="o">{</span>XX<span class="o">}</span>_BOM.db
+
+<span class="c1"># Run full pipeline: IFCtoBOM → compile → contract tests → fidelity</span>
+./scripts/run_RosettaStones.sh<span class="w"> </span>classify_<span class="o">{</span>prefix<span class="o">}</span>.yaml
+</code></pre></div>
+<p><strong>What happens internally:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>What</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IFCtoBOM</td>
+<td>YAML → BOM hierarchy + verb detection</td>
+<td><code>library/{XX}_BOM.db</code></td>
+</tr>
+<tr>
+<td>Compile</td>
+<td>C_OrderLine → BOM explosion → elements</td>
+<td><code>{type}.db</code></td>
+</tr>
+<tr>
+<td>Contracts</td>
+<td>G1-G6 gate tests</td>
+<td>PASS/FAIL per gate</td>
+</tr>
+<tr>
+<td>Integrity</td>
+<td>Rule 8 + clash check</td>
+<td>PASS/FAIL</td>
+</tr>
+<tr>
+<td>Fidelity</td>
+<td>C8 diversity + C9 axis dimension</td>
+<td>PASS/FAIL</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Expected terminal output (success):</strong></p>
+<div class="highlight"><pre><span></span><code>=== IFCtoBOM: classify_{prefix}.yaml ===
+  ... BOM creation ...
+  QA: 9/9 PASS
+=== COMPILE {XX} ===
+  ... 9 pipeline stages ...
+  VERDICT: PASS — compiled OK
+=== INTEGRITY ===
+  Rule 8:          PASS
+  Clash check:     PASS
+=== FIDELITY ===
+  C8-DIVERSITY:    PASS
+  C9-AXIS:         PASS
+</code></pre></div>
+<hr />
+<h2 id="step-8-interpret-gate-results">Step 8 — Interpret Gate Results<a class="headerlink" href="#step-8-interpret-gate-results" title="Permanent link">&para;</a></h2>
+<h3 id="full-gate-suite-after-gate_scope-registration">Full gate suite (after GATE_SCOPE registration)<a class="headerlink" href="#full-gate-suite-after-gate_scope-registration" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>./scripts/run_tests.sh
+</code></pre></div>
+<h3 id="gate-reference">Gate Reference<a class="headerlink" href="#gate-reference" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>What</th>
+<th>PASS means</th>
+<th>Common FAIL cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>G1-COUNT</strong></td>
+<td>Element count matches BOM</td>
+<td>Exact count match</td>
+<td>Missing storey mapping in YAML</td>
+</tr>
+<tr>
+<td><strong>G2-VOLUME</strong></td>
+<td>Compiled volume ≈ extracted</td>
+<td>Within ±0.5%</td>
+<td>Geometry extraction incomplete</td>
+</tr>
+<tr>
+<td><strong>G3-DIGEST</strong></td>
+<td>SHA256 spatial fingerprint</td>
+<td>Position + dims stable</td>
+<td>Tack offset drift</td>
+</tr>
+<tr>
+<td><strong>G4-TAMPER</strong></td>
+<td>Git history integrity</td>
+<td>Seal verified</td>
+<td>Uncommitted changes (expected on first run)</td>
+</tr>
+<tr>
+<td><strong>G5-PROVENANCE</strong></td>
+<td>No unauthorized data</td>
+<td>Traceability intact</td>
+<td>Missing <code>element_ref</code> on LEAF</td>
+</tr>
+<tr>
+<td><strong>G6-ISOLATION</strong></td>
+<td>All elements inside BOM tree</td>
+<td>No orphan elements</td>
+<td>Composition pairing error</td>
+</tr>
+<tr>
+<td><strong>C8-DIVERSITY</strong></td>
+<td>Per-instance geometry</td>
+<td>Library has all variants</td>
+<td>Missing geometry in component_library</td>
+</tr>
+<tr>
+<td><strong>C9-AXIS</strong></td>
+<td>Element orientation</td>
+<td>Axis consistency</td>
+<td>Rotation convention mismatch</td>
+</tr>
+<tr>
+<td><strong>W-TOT</strong></td>
+<td>Per-element identity</td>
+<td>Every element accounted for</td>
+<td>GUID collision or dropped element</td>
+</tr>
+</tbody>
+</table>
+<h3 id="expected-results-by-building-scale">Expected Results by Building Scale<a class="headerlink" href="#expected-results-by-building-scale" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Scale</th>
+<th>Elements</th>
+<th>Typical first-run result</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Small</strong> (SH, FK)</td>
+<td>50–100</td>
+<td>All PASS (7/7 delta, G1-G6)</td>
+<td>Simple buildings, few verb patterns</td>
+</tr>
+<tr>
+<td><strong>Medium</strong> (IN)</td>
+<td>500–1,000</td>
+<td>G1-G2 PASS, G3 may FAIL</td>
+<td>More verb diversity, room AABB tuning needed</td>
+</tr>
+<tr>
+<td><strong>Large</strong> (DX)</td>
+<td>1,000–5,000</td>
+<td>G1 PASS, G2 close, G3/C8 may FAIL</td>
+<td>Composition/mirror requires careful partition</td>
+</tr>
+<tr>
+<td><strong>Very large</strong> (TE)</td>
+<td>10,000+</td>
+<td>G1-G2 PASS, C8 may FAIL</td>
+<td>Library gaps expected, CLUSTER verb complexity</td>
+</tr>
+</tbody>
+</table>
+<h3 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Unmapped storey</code> warning</td>
+<td>Storey name in ref DB not in YAML</td>
+<td>Add the storey key to <code>storeys:</code></td>
+</tr>
+<tr>
+<td><code>NULL M_Product_ID</code></td>
+<td>Broken extraction</td>
+<td>Check reference DB has <code>elements_meta</code> rows</td>
+</tr>
+<tr>
+<td><code>No geometry for ...</code></td>
+<td>Missing mesh in reference DB</td>
+<td>Check <code>element_instances</code> table</td>
+</tr>
+<tr>
+<td><code>QA FAIL: Product-linked LEAF lines</code></td>
+<td>NULL <code>child_product_id</code> on leaf</td>
+<td>Check <code>I_Element_Extraction.M_Product_ID</code></td>
+</tr>
+<tr>
+<td>Delta count mismatch</td>
+<td>Composition pairing issue</td>
+<td>Check mirror <code>position</code> matches party wall center</td>
+</tr>
+<tr>
+<td>G4 FAIL</td>
+<td>Uncommitted changes</td>
+<td>Expected on first run; commit and re-seal</td>
+</tr>
+<tr>
+<td>C8 FAIL</td>
+<td>Library gaps</td>
+<td>Missing geometry variants; see <code>LAST_MILE_PROBLEM.md</code> §8</td>
+</tr>
+<tr>
+<td>Pipeline aborts immediately</td>
+<td>YAML parse error</td>
+<td>Check <code>schema_version: 1</code>, storey key quoting</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="step-9-mine-validation-rules-optional">Step 9 — Mine Validation Rules (Optional)<a class="headerlink" href="#step-9-mine-validation-rules-optional" title="Permanent link">&para;</a></h2>
+<p>After gates pass, extract patterns for discipline validation:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># All buildings with output DBs</span>
+./scripts/extract_validation_rules.sh
+
+<span class="c1"># Specific buildings</span>
+./scripts/extract_validation_rules.sh<span class="w"> </span>BA<span class="w"> </span>BS
+
+<span class="c1"># Save as migration SQL</span>
+./scripts/extract_validation_rules.sh<span class="w"> </span>BA<span class="w"> </span>&gt;<span class="w"> </span>migration/DV0XX_ba_rules.sql
+</code></pre></div>
+<p>The script mines 5 sections per building: structural dimensions, material distribution,
+spacing patterns, IFC class inventory, and candidate <code>ad_val_rule</code> INSERT stubs.
+Review and adjust rule IDs before applying. See <a href="../WorkOrderGuide/">WorkOrderGuide.md</a> §Step 7 for details.</p>
+<hr />
+<h2 id="checklist">Checklist<a class="headerlink" href="#checklist" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] Step 0: All IFC element types registered in <code>ad_ifc_class_map</code></li>
+<li>[ ] Step 1: <code>{TYPE}_extracted.db</code> created in <code>DAGCompiler/lib/input/</code></li>
+<li>[ ] Step 2: Storey names, element count, and AABBs recorded</li>
+<li>[ ] Step 3: <code>classify_{prefix}.yaml</code> created in <code>IFCtoBOM/src/main/resources/</code></li>
+<li>[ ] Step 4: <code>dsl_{prefix}.bim</code> created in <code>IFCtoBOM/src/main/resources/</code></li>
+<li>[ ] Step 5: Entry added to <code>scripts/construction_manifest.yaml</code></li>
+<li>[ ] Step 6: <code>doc_type_id</code> added to <code>GATE_SCOPE</code> in BuildingRegistryTest + RosettaStoneGateTest</li>
+<li>[ ] Step 7: <code>./scripts/run_RosettaStones.sh classify_{prefix}.yaml</code> — 7/7 PASS</li>
+<li>[ ] Step 8: <code>./scripts/run_tests.sh</code> — all gates GREEN</li>
+<li>[ ] Verify: <code>./scripts/rosetta_report.sh {PREFIX}</code> — consolidated gate status</li>
+<li>[ ] Commit: <code>git add</code> all new files + modified test files</li>
+</ul>
+<hr />
+<h2 id="files-you-will-create-modify">Files You Will Create / Modify<a class="headerlink" href="#files-you-will-create-modify" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Action</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IFCtoBOM/src/main/resources/classify_{prefix}.yaml</code></td>
+<td><strong>CREATE</strong></td>
+<td>Human-crafted</td>
+</tr>
+<tr>
+<td><code>IFCtoBOM/src/main/resources/dsl_{prefix}.bim</code></td>
+<td><strong>CREATE</strong></td>
+<td>Human-crafted</td>
+</tr>
+<tr>
+<td><code>DAGCompiler/lib/input/{Type}_extracted.db</code></td>
+<td><strong>CREATE</strong> (by extract.py)</td>
+<td>Generated</td>
+</tr>
+<tr>
+<td><code>scripts/construction_manifest.yaml</code></td>
+<td><strong>MODIFY</strong> (add block)</td>
+<td>Config</td>
+</tr>
+<tr>
+<td><code>BuildingRegistryTest.java</code></td>
+<td><strong>MODIFY</strong> (add to GATE_SCOPE)</td>
+<td>Test</td>
+</tr>
+<tr>
+<td><code>RosettaStoneGateTest.java</code></td>
+<td><strong>MODIFY</strong> (add to GATE_SCOPE)</td>
+<td>Test</td>
+</tr>
+<tr>
+<td><code>library/{XX}_BOM.db</code></td>
+<td><strong>CREATED</strong> (by pipeline)</td>
+<td>Generated</td>
+</tr>
+<tr>
+<td><code>migration/DV_{prefix}_rules.sql</code></td>
+<td><strong>CREATED</strong> (by extract_validation_rules.sh)</td>
+<td>Candidate rules</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="scripts-reference">Scripts Reference<a class="headerlink" href="#scripts-reference" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Purpose</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Script</td>
+<td>Purpose</td>
+<td>Usage</td>
+</tr>
+<tr>
+<td>--------</td>
+<td>---------</td>
+<td>-------</td>
+</tr>
+<tr>
+<td><code>scripts/onboard_ifc.sh</code></td>
+<td><strong>End-to-end</strong>: recon → extract → YAML → pipeline → rules → report</td>
+<td><code>./scripts/onboard_ifc.sh --prefix XX --type Type --name 'Name' --ifc path.ifc</code></td>
+</tr>
+<tr>
+<td><code>scripts/ifc_recon.py</code></td>
+<td>Fast IFC recon (no extraction needed)</td>
+<td><code>python3 scripts/ifc_recon.py path/to/*.ifc</code></td>
+</tr>
+<tr>
+<td><code>scripts/ifc_benefits.sh</code></td>
+<td>Pre-onboarding analysis from extracted DB</td>
+<td><code>./scripts/ifc_benefits.sh Building_Architecture</code> or <code>--all</code></td>
+</tr>
+<tr>
+<td><code>scripts/run_RosettaStones.sh</code></td>
+<td>Pipeline: IFCtoBOM → compile → delta → fidelity</td>
+<td><code>./scripts/run_RosettaStones.sh classify_ba.yaml</code></td>
+</tr>
+<tr>
+<td><code>scripts/rosetta_report.sh</code></td>
+<td>Gate status + library enrichment report</td>
+<td><code>./scripts/rosetta_report.sh</code> or <code>./scripts/rosetta_report.sh BA BS</code></td>
+</tr>
+<tr>
+<td><code>scripts/extract_validation_rules.sh</code></td>
+<td>Mine validation rules from compiled output</td>
+<td><code>./scripts/extract_validation_rules.sh BA</code></td>
+</tr>
+<tr>
+<td><code>scripts/run_tests.sh</code></td>
+<td>Full Java test suite (all gates)</td>
+<td><code>./scripts/run_tests.sh</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<blockquote>
+<p><strong>Further reading:</strong>
+<a href="../WorkOrderGuide/">WorkOrderGuide.md</a> — field dictionary, drift guards, what NOT to do |
+<a href="../BIM_COBOL/">BIM_COBOL.md</a> — verb catalog (63 verbs) |
+<a href="../TestArchitecture/">TestArchitecture.md</a> — G1-G6 gate definitions |
+<a href="../ACInstituteAnalysis/">ACInstituteAnalysis.md</a> — worked example (699 elements, 5 storeys)</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

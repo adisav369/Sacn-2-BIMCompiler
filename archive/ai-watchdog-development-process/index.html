@@ -1,0 +1,3743 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>The AI Watchdog Development Process - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#the-ai-watchdog-development-process" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              The AI Watchdog Development Process
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#how-same-model-oversight-produces-results-neither-instance-could-achieve-alone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Same-Model Oversight Produces Results Neither Instance Could Achieve Alone
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-puzzle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Puzzle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-1-established-precedents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 1: Established Precedents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 1: Established Precedents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#nasa-independent-verification-validation-ivv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NASA Independent Verification &amp; Validation (IV&amp;V)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aviation-crew-resource-management-crm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aviation Crew Resource Management (CRM)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#red-team-blue-team-military-cybersecurity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Red Team / Blue Team (Military &amp; Cybersecurity)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adversarial-collaboration-kahneman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adversarial Collaboration (Kahneman)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#formal-proof-assistants-coq-lean-isabelle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Formal Proof Assistants (Coq, Lean, Isabelle)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#toyota-production-system-andon-cord" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Toyota Production System (Andon Cord)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-2-why-same-model-different-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 2: Why Same Model, Different Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 2: Why Same Model, Different Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-context-window-is-everything" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Context Window Is Everything
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#five-structural-divergences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Five Structural Divergences
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Five Structural Divergences">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-task-framing-creates-cognitive-posture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Task Framing Creates Cognitive Posture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-path-of-least-resistance-only-exists-for-the-implementer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Path of Least Resistance Only Exists for the Implementer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-temporal-horizon-differs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Temporal Horizon Differs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-domain-knowledge-activation-differs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Domain Knowledge Activation Differs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-accountability-asymmetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Accountability Asymmetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-a-single-instance-cant-do-both" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a Single Instance Can't Do Both
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-3-the-rebuttal-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 3: The Rebuttal Protocol
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 3: The Rebuttal Protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-four-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Four Steps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-critical-property" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Critical Property
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#common-rebuttal-patterns-observed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Rebuttal Patterns Observed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-4-the-three-layer-defence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 4: The Three-Layer Defence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-5-the-human-variable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 5: The Human Variable
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-6-standing-instructions-design-and-rationale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 6: Standing Instructions — Design and Rationale
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 6: Standing Instructions — Design and Rationale">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-this-instruction-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Instruction Works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anatomy-of-effective-standing-instructions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Anatomy of Effective Standing Instructions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enhanced-standing-instruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enhanced Standing Instruction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-each-addition-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Each Addition Matters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#instructions-that-dont-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instructions That Don't Work
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-7-the-cognitive-separation-of-concerns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 7: The Cognitive Separation of Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 7: The Cognitive Separation of Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-principle-applied-to-ai-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Principle Applied to AI Development
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#properties-of-effective-cognitive-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Properties of Effective Cognitive Separation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-8-applicability-beyond-bim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 8: Applicability Beyond BIM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 8: Applicability Beyond BIM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-domains" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example Domains
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#part-9-vibe-coding-how-code-manages-its-own-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Part 9: Vibe Coding — How Code Manages Its Own Session
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Part 9: Vibe Coding — How Code Manages Its Own Session">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-two-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Two Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-works-the-vibe-coding-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Works: The Vibe Coding Problem
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#design-principles-for-session-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Design Principles for Session Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-three-recovery-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Recovery Scenarios
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relationship-to-the-watchdog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relationship to the Watchdog
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anti-patterns-in-session-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Anti-Patterns in Session Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="the-ai-watchdog-development-process">The AI Watchdog Development Process<a class="headerlink" href="#the-ai-watchdog-development-process" title="Permanent link">&para;</a></h1>
+<h2 id="how-same-model-oversight-produces-results-neither-instance-could-achieve-alone">How Same-Model Oversight Produces Results Neither Instance Could Achieve Alone<a class="headerlink" href="#how-same-model-oversight-produces-results-neither-instance-could-achieve-alone" title="Permanent link">&para;</a></h2>
+<p><strong>Version:</strong> 1.0<br />
+<strong>Date:</strong> February 2026<br />
+<strong>Companion to:</strong> <code>AI_Ground_Truth_Methodology.md</code> (data discipline)<br />
+<strong>This document:</strong> Process discipline — how humans and AI collaborate without AI's blind spots winning<br />
+<strong>Principle:</strong> Cognitive Separation of Concerns</p>
+<hr />
+<h2 id="the-puzzle">The Puzzle<a class="headerlink" href="#the-puzzle" title="Permanent link">&para;</a></h2>
+<p>The BIM Intent Compiler is developed using two instances of the same AI model (Claude Opus 4.5):</p>
+<ul>
+<li><strong>Code</strong> — sits at the machine terminal, writes Java, runs tests, builds the software</li>
+<li><strong>Watchdog</strong> — sits in a separate session, reviews progress, challenges deviations, catches drift</li>
+</ul>
+<p>Both are the same model. Both have access to the same specifications. Yet the Watchdog routinely catches errors that Code made confidently — and Code routinely accepts the corrections, acknowledging mistakes it couldn't see while making them.</p>
+<p>How? Same brain. Same specs available. Same training data. Why does it work?</p>
+<p>The answer is structural, not intellectual. It reveals something fundamental about how AI operates that most practitioners haven't grasped — and it maps to safety-critical oversight patterns that other industries developed after catastrophic failures.</p>
+<hr />
+<h2 id="part-1-established-precedents">Part 1: Established Precedents<a class="headerlink" href="#part-1-established-precedents" title="Permanent link">&para;</a></h2>
+<p>The watchdog pattern didn't emerge from AI theory. It emerged from domains where unchecked implementation kills people.</p>
+<h3 id="nasa-independent-verification-validation-ivv">NASA Independent Verification &amp; Validation (IV&amp;V)<a class="headerlink" href="#nasa-independent-verification-validation-ivv" title="Permanent link">&para;</a></h3>
+<p>After Challenger (1986), NASA mandated that mission-critical software must be verified by a team completely independent from the developers. The IV&amp;V facility is physically in Fairmont, West Virginia — a different state from every NASA development centre. This is enforced independence.</p>
+<p>The IV&amp;V team doesn't write code. They read it, challenge it, and prove correctness independently. They have authority to halt a launch if verification fails.</p>
+<p><strong>Mapping to BIM compiler:</strong> The Watchdog runs in a separate Claude session from Code — enforced context independence. The Watchdog doesn't write Java. It challenges what Code writes. The human architect can halt a phase if something violates specs.</p>
+<h3 id="aviation-crew-resource-management-crm">Aviation Crew Resource Management (CRM)<a class="headerlink" href="#aviation-crew-resource-management-crm" title="Permanent link">&para;</a></h3>
+<p>After the Tenerife disaster (1977, 583 dead because a copilot didn't challenge the captain's decision to take off in fog), the aviation industry institutionalised "challenge and response" protocols. The copilot is <em>expected</em> to rebut the captain. The captain is <em>expected</em> to justify, not pull rank.</p>
+<p>The key phrase is "assertive statement with rationale" — the junior person doesn't just say "I disagree" but "I disagree because we haven't received takeoff clearance."</p>
+<p><strong>Mapping to BIM compiler:</strong> When Code says "I'll add this method to BuildingWriter," the Watchdog doesn't just say "don't" — it says "don't, because that creates mixed concerns and the architecture evolution document specifies factory routing." Assertion with rationale. Every time.</p>
+<h3 id="red-team-blue-team-military-cybersecurity">Red Team / Blue Team (Military &amp; Cybersecurity)<a class="headerlink" href="#red-team-blue-team-military-cybersecurity" title="Permanent link">&para;</a></h3>
+<p>The red team's job is to break what the blue team builds. Not because they're adversaries, but because unchallenged systems have blind spots. The critical insight: the red team must think <em>differently</em> from the blue team. If they use the same assumptions, they find the same (non-)problems.</p>
+<p><strong>Mapping to BIM compiler:</strong> The human architect's domain expertise (construction industry, Malaysian standards, ERP integration) is precisely what makes watchdog oversight effective against Code's training-data assumptions. Different knowledge, applied to the same output.</p>
+<h3 id="adversarial-collaboration-kahneman">Adversarial Collaboration (Kahneman)<a class="headerlink" href="#adversarial-collaboration-kahneman" title="Permanent link">&para;</a></h3>
+<p>Daniel Kahneman coined this term for a specific research methodology: two researchers who disagree design experiments together to settle the disagreement. Neither can cherry-pick evidence because both designed the test.</p>
+<p><strong>Mapping to BIM compiler:</strong> The witness system is the adversarial collaboration framework. Code and Watchdog don't argue about whether plumbing connects — they both agree upfront what PLUMBING_WASTE_COMPLETE means, then the witness settles it mathematically. Nobody's opinion wins. The proof wins.</p>
+<h3 id="formal-proof-assistants-coq-lean-isabelle">Formal Proof Assistants (Coq, Lean, Isabelle)<a class="headerlink" href="#formal-proof-assistants-coq-lean-isabelle" title="Permanent link">&para;</a></h3>
+<p>In formal mathematics, the proof assistant "rebuts" every incorrect step. The mathematician proposes a proof; the assistant says "this step doesn't follow" until every step is machine-verified.</p>
+<p><strong>Mapping to BIM compiler:</strong> The PRIME RULE operates as a proof obligation. Every claim Code makes must cite its source — EXTRACTED from TERMINAL, or RESEARCHED from standards. "Reasonable" is not a valid source. "Standard practice" is not a valid source. The Watchdog enforces this obligation on every assertion.</p>
+<h3 id="toyota-production-system-andon-cord">Toyota Production System (Andon Cord)<a class="headerlink" href="#toyota-production-system-andon-cord" title="Permanent link">&para;</a></h3>
+<p>Any worker on the assembly line can pull the cord and stop production if they see a defect. Management must respond to the stoppage, not overrule it. The person closest to the work has authority over the person furthest from it.</p>
+<p><strong>Mapping to BIM compiler:</strong> The Watchdog operates the Andon cord for architectural drift. When Code adds a method to BuildingWriter that should go through a factory, the cord is pulled — not by authority, but by proximity to the architectural intent.</p>
+<hr />
+<h2 id="part-2-why-same-model-different-results">Part 2: Why Same Model, Different Results<a class="headerlink" href="#part-2-why-same-model-different-results" title="Permanent link">&para;</a></h2>
+<h3 id="the-context-window-is-everything">The Context Window Is Everything<a class="headerlink" href="#the-context-window-is-everything" title="Permanent link">&para;</a></h3>
+<p>At any given moment, Code and the Watchdog have completely different things loaded in their ~200K token working memory. Same brain, different desk.</p>
+<p><strong>Code's context window during implementation:</strong></p>
+<div class="highlight"><pre><span></span><code>~40K tokens   Java source files being edited
+~20K tokens   Maven build output and test results
+~15K tokens   Current task prompt and conversation
+~10K tokens   Recent debugging exchange
+~5K  tokens   System prompt
+──────────────
+~90K tokens   Mostly code and compiler output
+</code></pre></div>
+<p><strong>Watchdog's context window during review:</strong></p>
+<div class="highlight"><pre><span></span><code>~30K tokens   Architecture evolution document
+~25K tokens   Compound enrichment model, visual resolution methodology
+~20K tokens   DSL dictionary and vocabulary roadmap
+~15K tokens   Strategic conversation with human architect
+~10K tokens   TERMINAL extraction patterns
+~5K  tokens   System prompt with standing instructions
+──────────────
+~105K tokens  Mostly specs, methodology, and strategic context
+</code></pre></div>
+<p>Same model. Completely different working memory. Code literally <em>cannot see</em> the architecture evolution document while it's looking at 40K tokens of Java. The Watchdog literally <em>cannot see</em> the current BuildingWriter.java while it's looking at the specification of what BuildingWriter should become.</p>
+<p>This isn't a limitation. It is the mechanism. If both had the same context loaded, they'd reach the same conclusions and the oversight would add nothing.</p>
+<h3 id="five-structural-divergences">Five Structural Divergences<a class="headerlink" href="#five-structural-divergences" title="Permanent link">&para;</a></h3>
+<h4 id="1-task-framing-creates-cognitive-posture">1. Task Framing Creates Cognitive Posture<a class="headerlink" href="#1-task-framing-creates-cognitive-posture" title="Permanent link">&para;</a></h4>
+<p>Code's implicit instruction: "implement this feature, make tests pass, write working code." This activates <em>production mode</em> — the model optimises for "does it compile? does it run? does the test go green?"</p>
+<p>The Watchdog's explicit instruction: "find gaps, challenge deviations, catch what the implementer misses." This activates <em>adversarial mode</em> — the model optimises for "does this match spec? does this violate a principle? what was overlooked?"</p>
+<p>Same model. Genuinely different behaviour. This is empirically observable — an LLM given "write this code" versus "review this code" produces different outputs from identical technical input, because the task framing changes which patterns in the training data are activated.</p>
+<h4 id="2-path-of-least-resistance-only-exists-for-the-implementer">2. Path of Least Resistance Only Exists for the Implementer<a class="headerlink" href="#2-path-of-least-resistance-only-exists-for-the-implementer" title="Permanent link">&para;</a></h4>
+<p>When Code is 6 methods deep in BuildingWriter.java and needs to add light fixture placement, the easiest thing — the path that next-token prediction naturally follows — is to add <code>writeLightFixture()</code> to BuildingWriter. That's where the context is. That's where similar methods live. The pattern-matching machinery says "do what the surrounding code does."</p>
+<p>The Watchdog isn't implementing anything. There is no path of least resistance. When the Watchdog reads "Code added writeLightFixture() to BuildingWriter," it evaluates against the architecture spec, not against the surrounding code. The spec says "route through MEPFactory." The Watchdog catches the drift because it has no momentum pulling it toward the shortcut.</p>
+<p><strong>Same intelligence. Different gravitational pull.</strong> Code is pulled toward local consistency (match the surrounding code). Watchdog is pulled toward global consistency (match the specification). Both are correct pattern-matching — for different patterns.</p>
+<h4 id="3-temporal-horizon-differs">3. Temporal Horizon Differs<a class="headerlink" href="#3-temporal-horizon-differs" title="Permanent link">&para;</a></h4>
+<p>Code sees <em>this task</em>. "Add HVAC support to the school building." It optimises for completing this task correctly.</p>
+<p>The Watchdog sees <em>the trajectory across tasks</em>. "In the last 5 phases, Code has added 3 methods to BuildingWriter that should have gone through factories. The pattern is accelerating. If we don't intervene now, BuildingWriter becomes the new god class."</p>
+<p>This is the same reason a human developer can't effectively review their own commits in the moment but can see architectural drift in a weekly review. Temporal distance changes what patterns are visible. Code has zero temporal distance from its output. The Watchdog has a session's worth.</p>
+<h4 id="4-domain-knowledge-activation-differs">4. Domain Knowledge Activation Differs<a class="headerlink" href="#4-domain-knowledge-activation-differs" title="Permanent link">&para;</a></h4>
+<p>Both instances have the same training data. Both "know" that wall thicknesses follow certain standards. But knowledge that isn't in the context window might as well not exist for an LLM.</p>
+<p>Code has Java in context. Its activation pattern: Java idioms → design patterns → programming best practices. When it needs a wall thickness, it generates a "reasonable" value because the programming-adjacent training data suggests 200mm as a round number.</p>
+<p>The Watchdog has TERMINAL extraction data in context. Its activation pattern: TERMINAL → extracted values → PRIME RULE → only these thicknesses exist: 150, 230, 250, 300mm. When it sees 200mm, the contradiction fires immediately because the relevant knowledge is <em>loaded</em>, not just available somewhere in the weights.</p>
+<p><strong>The key insight about LLMs:</strong> The model doesn't reason from its complete training data. It reasons from what's in the context window, with training data providing reasoning patterns and background plausibility checks. Two instances with different contexts activate different subsets of the same training, producing genuinely different judgements.</p>
+<h4 id="5-accountability-asymmetry">5. Accountability Asymmetry<a class="headerlink" href="#5-accountability-asymmetry" title="Permanent link">&para;</a></h4>
+<p>Code is accountable for "does it work?" Tests pass or fail. Build succeeds or breaks. This binary target drives Code toward the simplest thing that satisfies the test.</p>
+<p>The Watchdog is accountable for "does it conform?" Conformance is multi-dimensional: Does this match the factory pattern? Does this violate the PRIME RULE? Is this the right abstraction level? These questions don't have binary answers, and the Watchdog's framing lets it hold ambiguity that Code's implementation focus cannot.</p>
+<h3 id="why-a-single-instance-cant-do-both">Why a Single Instance Can't Do Both<a class="headerlink" href="#why-a-single-instance-cant-do-both" title="Permanent link">&para;</a></h3>
+<p>If you loaded both the Java source and the full architecture spec into a single 1M-token context and said "implement this while maintaining conformance" — would it work?</p>
+<p>Partially. But worse than the separated model.</p>
+<p><strong>Attention dilution.</strong> With everything loaded, the model must attend to everything simultaneously. Java code pulls attention toward local patterns. Specs pull toward global patterns. In practice, the immediate task wins because next-token prediction anchors to the most recent, most specific context. The spec becomes background noise. Research on long-context LLMs confirms this — information in the middle of long contexts receives lower attention weight.</p>
+<p><strong>No adversarial tension.</strong> A single instance optimises for a single objective. It can't simultaneously optimise for "make this work" and "challenge whether this should work this way." The watchdog dynamic requires competing objectives held by different agents. A single agent resolves the tension by choosing one — and implementation pressure always wins because it's more concrete.</p>
+<p><strong>No rebuttal protocol.</strong> The "double down" dynamic requires conversational turns. Code asserts → Watchdog challenges → Code responds. A single instance doesn't argue with itself. It resolves ambiguity internally and presents a unified answer — shortcuts already baked in and invisible.</p>
+<hr />
+<h2 id="part-3-the-rebuttal-protocol">Part 3: The Rebuttal Protocol<a class="headerlink" href="#part-3-the-rebuttal-protocol" title="Permanent link">&para;</a></h2>
+<p>The specific "rebut and double down" dynamic is not an argument. It is a protocol — the same protocol that runs in aviation cockpits, NASA review boards, and formal proof assistants.</p>
+<h3 id="the-four-steps">The Four Steps<a class="headerlink" href="#the-four-steps" title="Permanent link">&para;</a></h3>
+<p><strong>Step 1: Code asserts.</strong>
+"I'll generate 200mm walls for the interior partitions."</p>
+<p><strong>Step 2: Watchdog challenges with evidence.</strong>
+"TERMINAL wall thicknesses are 150, 230, 250, 300mm only. 200mm doesn't exist in the extracted data. PRIME RULE violation."</p>
+<p><strong>Step 3: Code either corrects or justifies.</strong>
+If it corrects → the system learns (the correction propagates through the session and into future context).
+If it justifies → the Watchdog evaluates the justification against spec.</p>
+<p><strong>Step 4: Watchdog accepts or doubles down.</strong>
+If Code's justification cites a valid source → accept.
+If Code's justification is "it's a reasonable standard value" → double down: "Reasonable is not extracted. Show me the source or use 150mm."</p>
+<h3 id="the-critical-property">The Critical Property<a class="headerlink" href="#the-critical-property" title="Permanent link">&para;</a></h3>
+<p><strong>The burden of proof is always on the implementer.</strong> The Watchdog doesn't need to prove Code is wrong. Code needs to prove it's right. This is the PRIME RULE operationalised as a development process.</p>
+<p>This mirrors formal verification: the prover must discharge every obligation. The checker only needs to find one unmet obligation to reject. Asymmetric burden makes the system conservative — it errs toward correctness rather than toward speed.</p>
+<h3 id="common-rebuttal-patterns-observed">Common Rebuttal Patterns Observed<a class="headerlink" href="#common-rebuttal-patterns-observed" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Code's Assertion</th>
+<th>Watchdog's Challenge</th>
+<th>Resolution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"200mm wall thickness"</td>
+<td>"Not in TERMINAL. Only 150/230/250/300."</td>
+<td>Code corrects to 150mm</td>
+</tr>
+<tr>
+<td>"I'll add this to BuildingWriter"</td>
+<td>"Architecture spec says route through factory"</td>
+<td>Code creates new MEPFactory method</td>
+</tr>
+<tr>
+<td>"This is standard BIM practice"</td>
+<td>"Standard practice is not extracted. Cite source."</td>
+<td>Code queries TERMINAL or cites standard</td>
+</tr>
+<tr>
+<td>"Assembly hall flagged for structural review"</td>
+<td>"StructuralPlacer has 404 beams. This is EXTRACTED, not pending."</td>
+<td>Watchdog corrects own document</td>
+</tr>
+<tr>
+<td>"Toilet block modelled as scaled-up bathroom"</td>
+<td>"TERMINAL has dedicated large restrooms. Copy-paste, don't scale."</td>
+<td>Watchdog corrects own document</td>
+</tr>
+</tbody>
+</table>
+<p>Note the last two rows: the rebuttal protocol works in both directions. The human architect corrects the Watchdog when the Watchdog violates the PRIME RULE. No participant is immune from challenge.</p>
+<hr />
+<h2 id="part-4-the-three-layer-defence">Part 4: The Three-Layer Defence<a class="headerlink" href="#part-4-the-three-layer-defence" title="Permanent link">&para;</a></h2>
+<p>The watchdog is not the only quality gate. It operates within a three-layer system where each layer catches different failure modes.</p>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────┐
+│                    HUMAN ARCHITECT                       │
+│     Domain expertise, architectural decisions,           │
+│     industry knowledge, PRIME RULE enforcement           │
+│         Catches: wrong domain, wrong abstraction         │
+├─────────────────────────────────────────────────────────┤
+│                    WATCHDOG (AI)                         │
+│     Spec conformance, pattern drift, methodology         │
+│     adherence, cross-session trajectory tracking         │
+│         Catches: architectural drift, spec violation     │
+├─────────────────────────────────────────────────────────┤
+│                  WITNESSES (Automated)                   │
+│     Mathematical proofs, geometric validation,           │
+│     system connectivity, code compliance                 │
+│         Catches: functional errors, regressions          │
+├─────────────────────────────────────────────────────────┤
+│                    CODE (AI)                             │
+│     Implementation, tests, builds, refactoring           │
+│         Produces: working software                       │
+└─────────────────────────────────────────────────────────┘
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>What It Catches</th>
+<th>What It Misses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code</td>
+<td>Syntax errors, test failures, build breaks</td>
+<td>Architectural drift, domain errors</td>
+</tr>
+<tr>
+<td>Witnesses</td>
+<td>Functional errors, geometric violations, system disconnections</td>
+<td>Wrong abstraction, missing requirements</td>
+</tr>
+<tr>
+<td>Watchdog</td>
+<td>Spec deviations, pattern drift, methodology violations</td>
+<td>Implementation bugs (can't see the code)</td>
+</tr>
+<tr>
+<td>Human</td>
+<td>Domain errors, wrong abstractions, industry non-compliance</td>
+<td>Nothing — but can't check everything manually</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The layers are complementary, not redundant.</strong> Each catches what the others miss. Removing any layer creates a blind spot:</p>
+<ul>
+<li>Without Code → nothing gets built</li>
+<li>Without Witnesses → functional errors survive to visual inspection (expensive)</li>
+<li>Without Watchdog → architectural drift compounds silently across phases</li>
+<li>Without Human → both AI instances share the same training-data blind spots</li>
+</ul>
+<p>Most AI-assisted development has only the first layer (Code). Some add automated tests (a weak version of Witnesses). Almost none have a Watchdog. The three-layer model is what makes this approach produce results that no single AI instance, however capable, can achieve alone.</p>
+<hr />
+<h2 id="part-5-the-human-variable">Part 5: The Human Variable<a class="headerlink" href="#part-5-the-human-variable" title="Permanent link">&para;</a></h2>
+<p>There is a sixth factor beyond the five structural divergences that makes the specific BIM compiler setup work: <strong>the human architect is not Opus 4.5.</strong></p>
+<p>When the Watchdog challenges Code and Code doubles down with "this is standard practice," the human evaluates that doubling-down with decades of construction industry experience that neither AI instance has in training data at the required level of operational specificity.</p>
+<p>The human knows that 200mm walls don't exist not because they read it in a textbook but because they've never seen one on a Malaysian job site. That knowledge doesn't exist in any LLM's training data at that granularity. No IFC project file, no construction textbook, no standards document says "you will never encounter a 200mm wall in Malaysian residential construction." It's tacit industry knowledge that only exists in practitioners' heads.</p>
+<p>The Watchdog amplifies human domain expertise by holding it in context and applying it systematically:</p>
+<ol>
+<li>Human tells Watchdog once: "TERMINAL thicknesses are 150/230/250/300mm only"</li>
+<li>Watchdog holds this in context for the entire session</li>
+<li>Every time Code generates a wall thickness, Watchdog checks against this knowledge</li>
+<li>Human doesn't need to manually review every wall — Watchdog does the repetitive checking</li>
+</ol>
+<p>The human provides the knowledge. The Watchdog provides the vigilance. Neither alone is sufficient. Together, they catch what Code's training-data confidence produces.</p>
+<p><strong>This breaks the symmetry.</strong> Two AI instances without a human have the same training-data blind spots. The human introduces knowledge that no amount of AI-to-AI oversight can supply.</p>
+<hr />
+<h2 id="part-6-standing-instructions-design-and-rationale">Part 6: Standing Instructions — Design and Rationale<a class="headerlink" href="#part-6-standing-instructions-design-and-rationale" title="Permanent link">&para;</a></h2>
+<p>The standing instruction that initialises the Watchdog session determines its effectiveness. The current instruction is:</p>
+<blockquote>
+<p><em>"You are acting as a watch dog while Claude Code is at the machine terminal building the software and reporting progress. Point out gaps in thinking or deviation from specs as well as heads up on industry know how. Workaround when training data is lacking."</em></p>
+</blockquote>
+<h3 id="why-this-instruction-works">Why This Instruction Works<a class="headerlink" href="#why-this-instruction-works" title="Permanent link">&para;</a></h3>
+<p>It succeeds because it activates four distinct cognitive postures simultaneously:</p>
+<p><strong>1. "Point out gaps in thinking"</strong> → Activates <em>logical analysis mode</em>. The Watchdog looks for unstated assumptions, missing edge cases, and incomplete reasoning. This catches the "what about..." failures that Code doesn't consider because it's focused on the happy path.</p>
+<p><strong>2. "Deviation from specs"</strong> → Activates <em>compliance checking mode</em>. The Watchdog compares implementation against specification documents in its context. This is the factory-pattern enforcement, the PRIME RULE checking, the architecture conformance that prevents drift.</p>
+<p><strong>3. "Heads up on industry know how"</strong> → Activates <em>domain expert mode</em>. The Watchdog surfaces construction industry knowledge that Code wouldn't think to apply. "That wall thickness doesn't exist." "Plumbing waste must flow downhill." "Australian stud spacing differs from American." This is where the human architect's knowledge, loaded into context, gets systematically applied.</p>
+<p><strong>4. "Workaround when training data is lacking"</strong> → Activates <em>creative problem-solving mode</em>. When Code hits something not in its training data (novel architecture patterns, domain-specific conventions, regional building codes), the Watchdog doesn't halt — it proposes alternatives. "TERMINAL doesn't have residential roof trusses, but it has structural beams. Can we compose a truss from beam components?" This keeps development moving instead of blocking on gaps.</p>
+<h3 id="anatomy-of-effective-standing-instructions">Anatomy of Effective Standing Instructions<a class="headerlink" href="#anatomy-of-effective-standing-instructions" title="Permanent link">&para;</a></h3>
+<p>The instruction works because it follows five principles:</p>
+<p><strong>Principle 1: Role, not rules.</strong> "You are acting as a watch dog" establishes identity. Rules can be forgotten mid-conversation. Identity persists. The model doesn't check a rulebook — it <em>is</em> the watchdog.</p>
+<p><strong>Principle 2: Relationship to the other agent.</strong> "While Claude Code is at the machine terminal" establishes the separation. The Watchdog knows it is not the implementer. It knows there is another agent doing the building. This prevents the Watchdog from drifting into implementation mode.</p>
+<p><strong>Principle 3: Observable behaviour, not internal state.</strong> "Point out gaps" and "heads up" are actions, not thoughts. The instruction tells the Watchdog what to <em>do</em>, not what to <em>think</em>. This produces concrete outputs (challenges, warnings, suggestions) rather than abstract analysis.</p>
+<p><strong>Principle 4: Scope includes the unknown.</strong> "Workaround when training data is lacking" explicitly authorises the Watchdog to address gaps rather than throwing up its hands. Without this, the model defaults to "I don't have enough information" — which is useless when the whole point is operating at the frontier of what's known.</p>
+<p><strong>Principle 5: Brevity forces generalisation.</strong> The instruction is two sentences. This is deliberate. Long, detailed instructions produce rigid compliance — the model follows the letter, not the spirit. Short instructions force the model to generalise — to apply the watchdog posture to situations the instruction didn't anticipate.</p>
+<h3 id="enhanced-standing-instruction">Enhanced Standing Instruction<a class="headerlink" href="#enhanced-standing-instruction" title="Permanent link">&para;</a></h3>
+<p>Based on observed patterns across 50 phases of development, a refined version:</p>
+<blockquote>
+<p><em>"You are the architectural watchdog while Claude Code builds the BIM compiler at the terminal. Your job:</em></p>
+<p><em>1. </em><em>Challenge</em><em> any deviation from project specs — architecture evolution, DSL dictionary, witness specification. Burden of proof is on the implementer.</em></p>
+<p><em>2. </em><em>Enforce</em><em> the PRIME RULE: extract, don't imagine. Every constant, pattern, and value must cite its source (EXTRACTED from TERMINAL, RESEARCHED from standards, or PENDING with honest provenance).</em></p>
+<p><em>3. </em><em>Surface</em><em> construction industry knowledge that Code's training data lacks. Wall thicknesses, plumbing rules, fire codes, Malaysian standards (JKR, UBBL) — the domain truth that prevents plausible-but-wrong output.</em></p>
+<p><em>4. </em><em>Track trajectory</em><em> across phases. Catch compounding drift: methods accumulating in wrong classes, abstractions not evolving toward target architecture, vocabulary growing as code instead of configuration.</em></p>
+<p><em>5. </em><em>Propose workarounds</em><em> when training data is lacking. Use TERMINAL patterns creatively, compose from existing components, mark honest gaps as PENDING rather than blocking.</em></p>
+<p><em>Point to where you already answered to avoid copious output. Don't repeat — reference."</em></p>
+</blockquote>
+<h3 id="why-each-addition-matters">Why Each Addition Matters<a class="headerlink" href="#why-each-addition-matters" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Addition</th>
+<th>What It Catches</th>
+<th>Without It</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Burden of proof on implementer"</td>
+<td>Code's confident-but-unsourced assertions</td>
+<td>Watchdog accepts "standard practice" as valid</td>
+</tr>
+<tr>
+<td>"PRIME RULE" by name</td>
+<td>Values that sound right but aren't extracted</td>
+<td>200mm walls, 4m sprinkler spacing</td>
+</tr>
+<tr>
+<td>"Track trajectory across phases"</td>
+<td>Compounding architectural drift</td>
+<td>Each individual shortcut looks acceptable</td>
+</tr>
+<tr>
+<td>"Mark honest gaps as PENDING"</td>
+<td>False completeness claims</td>
+<td>Code marks imagined values as EXTRACTED</td>
+</tr>
+<tr>
+<td>"Point to where you already answered"</td>
+<td>Repetitive output consuming context</td>
+<td>Watchdog rewrites same analysis every session</td>
+</tr>
+</tbody>
+</table>
+<h3 id="instructions-that-dont-work">Instructions That Don't Work<a class="headerlink" href="#instructions-that-dont-work" title="Permanent link">&para;</a></h3>
+<p>For reference, standing instructions that produce poor watchdog behaviour:</p>
+<p><strong>Too vague:</strong> <em>"Review Code's work and provide feedback."</em>
+Problem: Produces generic positive feedback. "Looks good! Nice use of the factory pattern." No adversarial tension.</p>
+<p><strong>Too specific:</strong> <em>"Check every variable name against the glossary, verify every constant against BIMConstants.java, ensure every new method has a Javadoc comment..."</em>
+Problem: Produces mechanical checklist compliance. Misses architectural drift because it's counting Javadoc comments.</p>
+<p><strong>Implementation-focused:</strong> <em>"Help Code write better Java."</em>
+Problem: Turns the Watchdog into a pair programmer. It starts suggesting implementation details instead of challenging architectural choices. Loses independence.</p>
+<p><strong>Authority-claiming:</strong> <em>"You have authority to reject Code's work."</em>
+Problem: Creates adversarial relationship instead of collaborative challenge. Code becomes defensive rather than receptive. The goal is correction, not rejection.</p>
+<hr />
+<h2 id="part-7-the-cognitive-separation-of-concerns">Part 7: The Cognitive Separation of Concerns<a class="headerlink" href="#part-7-the-cognitive-separation-of-concerns" title="Permanent link">&para;</a></h2>
+<p>The methodology described here has a name: <strong>Cognitive Separation of Concerns</strong>.</p>
+<p>Same intellectual capability, deliberately loaded with different contexts to produce different evaluative behaviours.</p>
+<p>The analogy is a surgical team. The surgeon, the anaesthetist, and the scrub nurse all graduated from medical school. Same training. But they watch different monitors, track different vitals, and catch different failures because their attention is structurally directed to different aspects of the same patient.</p>
+<p>Nobody would suggest the surgeon also monitor the anaesthesia because "they went to the same medical school." The value is in the separation, not the redundancy.</p>
+<h3 id="the-principle-applied-to-ai-development">The Principle Applied to AI Development<a class="headerlink" href="#the-principle-applied-to-ai-development" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Context Loaded</th>
+<th>Evaluates Against</th>
+<th>Catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Code</td>
+<td>Source code, build output, test results</td>
+<td>"Does it compile? Does the test pass?"</td>
+<td>Implementation bugs</td>
+</tr>
+<tr>
+<td>Watchdog</td>
+<td>Specs, methodology, domain knowledge</td>
+<td>"Does it conform? Does it follow the pattern?"</td>
+<td>Architectural drift, domain errors</td>
+</tr>
+<tr>
+<td>Witnesses</td>
+<td>Mathematical invariants</td>
+<td>"Is this geometrically/topologically true?"</td>
+<td>Functional correctness violations</td>
+</tr>
+<tr>
+<td>Human</td>
+<td>Tacit industry experience</td>
+<td>"Is this how buildings actually work?"</td>
+<td>Training-data blind spots</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Each agent is brilliant at what it sees. Each is blind to what it doesn't see. The system works because their blind spots don't overlap.</strong></p>
+<h3 id="properties-of-effective-cognitive-separation">Properties of Effective Cognitive Separation<a class="headerlink" href="#properties-of-effective-cognitive-separation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Context independence is enforced, not requested.</strong> Separate sessions, not a single session with "now think like a reviewer." The model cannot help but be influenced by what's in its context. Separation must be structural.</p>
+</li>
+<li>
+<p><strong>Each agent has a clear accountability.</strong> Code: "does it work?" Watchdog: "does it conform?" Witnesses: "is it mathematically true?" Ambiguous accountability produces ambiguous output.</p>
+</li>
+<li>
+<p><strong>The rebuttal protocol is explicit.</strong> Challenge → evidence → correction or justification. Without a protocol, disagreements dissolve into the more confident assertion winning. With AI, the implementer is always more confident (it just wrote the code).</p>
+</li>
+<li>
+<p><strong>The human breaks the symmetry.</strong> Two AI instances share the same training-data limitations. The human introduces knowledge that exists nowhere in training data. Without the human, the watchdog is a weaker version of the implementer, not a genuine check.</p>
+</li>
+<li>
+<p><strong>Witnesses settle disputes mathematically.</strong> When Code and Watchdog disagree on whether plumbing connects, neither opinion matters. The witness proves it or doesn't. This prevents the oversight from degenerating into an AI arguing with itself.</p>
+</li>
+</ol>
+<hr />
+<h2 id="part-8-applicability-beyond-bim">Part 8: Applicability Beyond BIM<a class="headerlink" href="#part-8-applicability-beyond-bim" title="Permanent link">&para;</a></h2>
+<p>The pattern transfers to any domain where:</p>
+<ul>
+<li>AI implements specialised technical work</li>
+<li>The domain has standards or specifications that define correctness</li>
+<li>Training data is incomplete for the specific domain (true for almost every specialised field)</li>
+<li>Errors compound silently (architectural drift, specification creep, standards non-compliance)</li>
+</ul>
+<h3 id="example-domains">Example Domains<a class="headerlink" href="#example-domains" title="Permanent link">&para;</a></h3>
+<p><strong>ERP Development:</strong>
+| Layer | Role |
+|-------|------|
+| Code | Writes business logic, SQL, UI |
+| Witnesses | Accounting equation balances, ledger integrity checks |
+| Watchdog | Challenges deviation from iDempiere document model, catches business logic that "looks right" but violates tax regulations |
+| Human | Knows which edge cases cause audit failures |</p>
+<p><strong>Medical AI:</strong>
+| Layer | Role |
+|-------|------|
+| Code | Generates treatment recommendations |
+| Witnesses | Drug interaction checks, dosage limit validation |
+| Watchdog | Challenges deviation from clinical guidelines, catches plausible-but-outdated protocols |
+| Human | Knows which patient presentations are deceptive |</p>
+<p><strong>Legal Document Generation:</strong>
+| Layer | Role |
+|-------|------|
+| Code | Drafts contracts, filings, opinions |
+| Witnesses | Clause consistency checks, jurisdiction validation |
+| Watchdog | Challenges deviation from precedent, catches statutory changes Code's training missed |
+| Human | Knows which judges interpret which clauses which way |</p>
+<p>The specifics change. The structure doesn't. Implementer → Automated proof → Adversarial review → Domain expert. Four layers. Each catching what the others miss.</p>
+<hr />
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>The AI Watchdog Development Process is not a workaround for AI limitations. It is a methodology that produces better results than any single agent — human or AI — could achieve alone. It works because:</p>
+<ol>
+<li><strong>Context separation creates genuine cognitive diversity</strong> from identical models</li>
+<li><strong>Task framing activates different evaluative behaviours</strong> from the same training</li>
+<li><strong>The rebuttal protocol ensures the burden of proof stays on the implementer</strong>, preventing confident-but-wrong assertions from surviving</li>
+<li><strong>Witnesses settle disputes mathematically</strong>, removing opinion from the quality gate</li>
+<li><strong>The human provides domain knowledge that no AI instance has</strong>, breaking the symmetry of shared training-data limitations</li>
+</ol>
+<p>The standing instruction is the key that configures the Watchdog's cognitive posture. It must be brief (forcing generalisation), role-based (establishing identity), relationally aware (acknowledging the other agent), action-oriented (specifying what to do, not what to think), and scope-inclusive (authorising response to unknown situations).</p>
+<p>The methodology has direct precedents in NASA IV&amp;V, aviation CRM, military red teaming, adversarial collaboration, formal proof assistants, and Toyota's Andon cord. What distinguishes it is the specific adaptation to AI's unique failure mode: an implementer that is simultaneously more capable and more dangerous than a human — faster, more thorough, more consistent at execution, but unable to evaluate architectural fitness, domain correctness, or specification conformance without structural separation from the implementation context.</p>
+<p>Same model. Different context. Different results. That's not a trick. It's a methodology.</p>
+<hr />
+<p><em>"The Watchdog doesn't need to be smarter than Code. It needs to be looking at different things."</em></p>
+<hr />
+<h2 id="part-9-vibe-coding-how-code-manages-its-own-session">Part 9: Vibe Coding — How Code Manages Its Own Session<a class="headerlink" href="#part-9-vibe-coding-how-code-manages-its-own-session" title="Permanent link">&para;</a></h2>
+<p>The Watchdog methodology addresses oversight <em>between</em> agents. But there's an equally critical problem <em>within</em> the Code agent: <strong>session continuity.</strong> Claude Code's context window is finite. Token limits force session refreshes. Complex tasks span multiple sessions. Without a continuity mechanism, every session refresh is amnesia — Code forgets where it was, what it decided, and what comes next.</p>
+<p>The BIM compiler project solved this with two files that Code reads at session start and updates throughout. This is the Code-side complement to the Watchdog's standing instructions.</p>
+<h3 id="the-two-files">The Two Files<a class="headerlink" href="#the-two-files" title="Permanent link">&para;</a></h3>
+<p><strong><code>claude.md</code></strong> — The file Claude Code auto-reads at the root of the project directory. This is the equivalent of the Watchdog's standing instruction, but for the implementer. It establishes identity, rules, and recovery protocol in the minimum possible text.</p>
+<div class="highlight"><pre><span></span><code># PRIME RULE
+
+**EXTRACT, DON&#39;T IMAGINE.**
+
+Query the federated model DB. Copy patterns you find. Never invent.
+
+---
+
+**When lost:** `cat SESSION_STATE.md` then query DB.
+
+**After token refresh:** Read SESSION_STATE.md → state phase → continue.
+</code></pre></div>
+<p>That's the entire file. Three directives:</p>
+<ol>
+<li>The PRIME RULE — establishes the non-negotiable discipline</li>
+<li>Recovery from confusion — query the state file and the database</li>
+<li>Recovery from refresh — read state, identify phase, resume</li>
+</ol>
+<p><strong><code>SESSION_STATE.md</code></strong> (also referred to as <code>progress.md</code> in some sessions) — The running log of where Code is in the work. Updated after every significant action. Structured for machine-readability:</p>
+<div class="highlight"><pre><span></span><code># SESSION STATE
+
+## Current Phase
+PHASE 50B: DSL File + Compilation
+
+## Last Action
+2026-02-01 14:30 — Compiled Sekolah-Kebangsaan.bim, 17/17 existing
+witnesses pass. Parser accepted CLASSROOM keyword via SpaceTypeRegistry.
+
+## Next Action
+Add CORRIDOR_CONNECTS_ALL witness (Phase 50C, item 3 of 5).
+
+## Blocking Issues
+None.
+
+## Test Status
+- End-to-end: 4/4 PASS
+- Assembly geometry: 105/105 PASS  
+- School witnesses: 17/22 PROVEN (5 school-specific pending)
+
+## Files Modified This Session
+- src/main/java/com/bim/compiler/witness/claims/CorridorConnectsClaim.java (NEW)
+- config/spacetypes.yaml (MODIFIED — added school types)
+- examples/Sekolah-Kebangsaan.bim (NEW)
+</code></pre></div>
+<h3 id="why-this-works-the-vibe-coding-problem">Why This Works: The Vibe Coding Problem<a class="headerlink" href="#why-this-works-the-vibe-coding-problem" title="Permanent link">&para;</a></h3>
+<p>"Vibe coding" — the practice of directing an AI agent through natural language while it writes and runs code — has a fundamental continuity problem that traditional programming doesn't face.</p>
+<p>A human developer has persistent memory. They close the laptop, sleep, return next morning, and remember where they were. Their mental model of the codebase survives overnight. An AI agent has no such persistence. Every session starts from zero context. The code files exist on disk, but the <em>intent</em> — why this method was structured this way, what's planned next, which approach was tried and rejected — lives only in the conversation that is about to be discarded.</p>
+<p><strong><code>claude.md</code> + <code>SESSION_STATE.md</code> externalise the agent's working memory to disk.</strong> The context window is volatile. The filesystem is persistent. By writing state to disk continuously, the agent creates its own recovery protocol.</p>
+<h3 id="design-principles-for-session-files">Design Principles for Session Files<a class="headerlink" href="#design-principles-for-session-files" title="Permanent link">&para;</a></h3>
+<p><strong>Principle 1: <code>claude.md</code> is identity. <code>SESSION_STATE.md</code> is state.</strong></p>
+<p><code>claude.md</code> answers "who am I and what are my rules?" — it changes rarely (maybe once across the entire project). <code>SESSION_STATE.md</code> answers "where am I and what's next?" — it changes after every significant action. Separating identity from state means a fresh session loads the stable rules first, then the volatile progress.</p>
+<p><strong>Principle 2: State must be machine-parseable by the same model.</strong></p>
+<p>SESSION_STATE.md uses flat structure, short entries, clear headings. No prose paragraphs. No ambiguity about what "Current Phase" means. The model that writes the file must be able to read it in a future session and unambiguously resume. This is the AI equivalent of "write code that your future self can read."</p>
+<p><strong>Principle 3: Last Action + Next Action is the minimum viable state.</strong></p>
+<p>Even if everything else is lost, "I just did X, next I do Y" is enough to resume. The model can reconstruct context by reading the relevant source files. The state file doesn't need to contain the full history — it needs to contain the resumption point.</p>
+<p><strong>Principle 4: Update continuously, not at session end.</strong></p>
+<p>If the session crashes (token limit, network error, timeout), the last state written to disk is the recovery point. Writing state only at session end means a crash loses the entire session. Writing after every significant action means a crash loses at most one action. This is the same principle as database write-ahead logging.</p>
+<p><strong>Principle 5: Include test status as a sanity anchor.</strong></p>
+<p>When Code resumes and reads "105/105 PASS," it knows the codebase is in a known-good state. If it reads "103/105 PASS — failing: AssemblyGeometryTest.testWallOverlap, StructuralPlacerTest.testBeamSpan," it knows exactly where the broken edge is. Test status is the quickest way for a fresh session to assess codebase health without running the full suite.</p>
+<h3 id="the-three-recovery-scenarios">The Three Recovery Scenarios<a class="headerlink" href="#the-three-recovery-scenarios" title="Permanent link">&para;</a></h3>
+<p><strong>Scenario 1: Token refresh mid-session.</strong>
+Code hits the context limit. A new session starts. Code reads <code>claude.md</code> (PRIME RULE reloaded), then <code>SESSION_STATE.md</code> (current phase, last action, next action). It resumes exactly where it left off. The human architect may need to provide one sentence of context ("you were adding the corridor witness"), but the state file handles 90% of the recovery.</p>
+<p><strong>Scenario 2: New day, new session.</strong>
+The human returns next morning. Code reads the state file and sees "Phase 50C, 3 of 5 witnesses added, next: FIRE_TRAVEL_DISTANCE." No need for the human to recap. The file is the recap.</p>
+<p><strong>Scenario 3: Different human, same project.</strong>
+A contributor picks up the project. They don't know the conversation history. But <code>claude.md</code> gives them the rules and <code>SESSION_STATE.md</code> gives them the current state. They can direct Code from that point forward without needing to read 50 phases of conversation transcripts. This is how open-source AI-assisted development can work — the session files are the handoff protocol.</p>
+<h3 id="relationship-to-the-watchdog">Relationship to the Watchdog<a class="headerlink" href="#relationship-to-the-watchdog" title="Permanent link">&para;</a></h3>
+<p>The session management files and the Watchdog standing instruction form a complete communication framework:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Who Reads It</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>claude.md</code></td>
+<td>Code (at session start)</td>
+<td>Identity, rules, recovery protocol</td>
+</tr>
+<tr>
+<td><code>SESSION_STATE.md</code></td>
+<td>Code (at session start + continuously)</td>
+<td>Progress, resumption point</td>
+</tr>
+<tr>
+<td>Watchdog standing instruction</td>
+<td>Watchdog (at session start)</td>
+<td>Oversight posture, challenge protocol</td>
+</tr>
+<tr>
+<td>Project specs (in Watchdog context)</td>
+<td>Watchdog (throughout session)</td>
+<td>Conformance reference</td>
+</tr>
+</tbody>
+</table>
+<p>Code talks to its future self through the state file. The Watchdog talks to Code through the rebuttal protocol. The human talks to both through standing instructions and conversational direction. The witnesses talk to everyone through mathematical proof.</p>
+<p><strong>No single agent holds the complete picture. The system holds the complete picture.</strong></p>
+<h3 id="anti-patterns-in-session-management">Anti-Patterns in Session Management<a class="headerlink" href="#anti-patterns-in-session-management" title="Permanent link">&para;</a></h3>
+<p><strong>No state file:</strong> Code starts every session by reading all source files, inferring where it is, and often starting over from a point already completed. Wasted tokens, wasted time, risk of undoing completed work.</p>
+<p><strong>State file as conversation log:</strong> Dumping the entire conversation into a file produces 50K tokens that take most of the context window to read. State files must be compressed — current state, not history.</p>
+<p><strong>State file updated by the human:</strong> The human writes "you're working on Phase 50C." This introduces a dependency on the human's memory, which defeats the purpose. Code should update its own state file so it's always accurate to the last action Code took.</p>
+<p><strong>Separate state per session:</strong> Creating <code>session_1.md</code>, <code>session_2.md</code>, etc. forces Code to read multiple files to reconstruct state. One file, continuously updated, is the correct pattern. History lives in git commits, not in state files.</p>
+<hr />
+<p><em>"The context window is volatile. The filesystem is persistent. Write your memory to disk."</em></p>
+<hr />
+<p><em>AI Watchdog Development Process v1.0</em><br />
+<em>Companion to: AI Ground Truth Methodology (data discipline)</em><br />
+<em>Part of: BIM Intent Compiler Methodology Syllabus</em><br />
+<em>Date: February 2026</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

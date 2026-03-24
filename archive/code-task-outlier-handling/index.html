@@ -1,0 +1,3199 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>CODE TASK: Implement Outlier Handling Framework - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#code-task-implement-outlier-handling-framework" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CODE TASK: Implement Outlier Handling Framework
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SystemContract/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_COBOL/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Compiler
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../DISC_VALIDATE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Disciplines
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../CORE_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/bim-compiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SystemContract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    System Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation (Master Spec)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ConstructionAsERP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Construction as ERP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TheRosettaStoneStrategy.txt" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stone Strategy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compiler
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Compiler
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (64 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Architecture (6 Gates)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EYES (Geometric Proofs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile Gaps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TACK_FIX_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tack Fix Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SRS (50 Requirements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Document Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    G4 Work Output
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../VIEW_CONTRACTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    View Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Disciplines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation DB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../CORE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core SRS (4D-7D)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tier 1 (6D Carbon, 7D FM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office SRS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Order Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../AUDIT_S51_FOCUSED/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Report
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH, 55 elements)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK, 82)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX, 1099)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN, 699)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE, 48428)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM, 64)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../TE_MINING_RESULTS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TE Mining Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding (8 Steps)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../INSTALLER_SPEC/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installer Spec
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Logger
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-1-create-outlierlogger-utility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1: Create OutlierLogger Utility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-2-implement-spacetype-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2: Implement SpaceType Fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-3-component-library-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3: Component Library Fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-4-solver-constraint-relaxation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 4: Solver Constraint Relaxation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-5-fixture-placement-clash-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 5: Fixture Placement Clash Handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-6-validation-unknown-spacetype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 6: Validation Unknown SpaceType
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-7-intent-vocabulary-gap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 7: Intent Vocabulary Gap
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-8-compilation-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 8: Compilation Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-9-test-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 9: Test Cases
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#definition-of-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition of Done
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="code-task-implement-outlier-handling-framework">CODE TASK: Implement Outlier Handling Framework<a class="headerlink" href="#code-task-implement-outlier-handling-framework" title="Permanent link">&para;</a></h1>
+<p><strong>Priority:</strong> High<br />
+<strong>Reference:</strong> <code>bim-compiler-dsl-architecture.md</code> (Section: Handling Outliers)<br />
+<strong>Goal:</strong> System handles unknown inputs gracefully with actionable debug logs</p>
+<hr />
+<h2 id="context">Context<a class="headerlink" href="#context" title="Permanent link">&para;</a></h2>
+<p>The BIM Compiler DSL treats SPACE as the universal primitive. However, the system will encounter:
+- Unknown SpaceTypes not yet in enum
+- Missing components not in library
+- Unsatisfiable constraints
+- Vocabulary gaps in intent parsing
+- Geometry that can't accommodate requested fixtures</p>
+<p>Currently these may cause crashes, silent failures, or wrong output. We need graceful degradation with developer-actionable logging.</p>
+<hr />
+<h2 id="task-1-create-outlierlogger-utility">Task 1: Create OutlierLogger Utility<a class="headerlink" href="#task-1-create-outlierlogger-utility" title="Permanent link">&para;</a></h2>
+<p>Create <code>src/main/java/com/bim/compiler/util/OutlierLogger.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">OutlierLogger</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">enum</span><span class="w"> </span><span class="n">OutlierCategory</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">UNKNOWN_SPACETYPE</span><span class="p">,</span>
+<span class="w">        </span><span class="n">MISSING_COMPONENT</span><span class="p">,</span>
+<span class="w">        </span><span class="n">UNSATISFIABLE</span><span class="p">,</span>
+<span class="w">        </span><span class="n">GEOMETRY_IMPOSSIBLE</span><span class="p">,</span>
+<span class="w">        </span><span class="n">VALIDATION_UNKNOWN</span><span class="p">,</span>
+<span class="w">        </span><span class="n">VOCABULARY_GAP</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Log format: [OUTLIER:&lt;category&gt;] &lt;component&gt; | &lt;context&gt; | &lt;action&gt;</span>
+<span class="w">    </span><span class="c1">//   → GUIDANCE: &lt;developer action&gt;</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">log</span><span class="p">(</span><span class="n">OutlierCategory</span><span class="w"> </span><span class="n">category</span><span class="p">,</span><span class="w"> </span>
+<span class="w">                          </span><span class="n">String</span><span class="w"> </span><span class="n">component</span><span class="p">,</span>
+<span class="w">                          </span><span class="n">String</span><span class="w"> </span><span class="n">context</span><span class="p">,</span>
+<span class="w">                          </span><span class="n">String</span><span class="w"> </span><span class="n">actionTaken</span><span class="p">,</span>
+<span class="w">                          </span><span class="n">String</span><span class="w"> </span><span class="n">guidance</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Accumulate for summary report</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">summarize</span><span class="p">(</span><span class="n">Path</span><span class="w"> </span><span class="n">outputPath</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Clear between compilations</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">reset</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="task-2-implement-spacetype-fallback">Task 2: Implement SpaceType Fallback<a class="headerlink" href="#task-2-implement-spacetype-fallback" title="Permanent link">&para;</a></h2>
+<p>In <code>SpaceType.java</code> or new <code>SpaceTypeResolver.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">SpaceType</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">requested</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 1. Exact match</span>
+<span class="w">    </span><span class="n">SpaceType</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SpaceType</span><span class="p">.</span><span class="na">fromString</span><span class="p">(</span><span class="n">requested</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">exact</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">exact</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// 2. Partial match (MASTER_BEDROOM → BEDROOM)</span>
+<span class="w">    </span><span class="n">SpaceType</span><span class="w"> </span><span class="n">partial</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findPartialMatch</span><span class="p">(</span><span class="n">requested</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">partial</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">UNKNOWN_SPACETYPE</span><span class="p">,</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span><span class="w"> </span>
+<span class="w">            </span><span class="s">&quot;DSL parsing&quot;</span><span class="p">,</span><span class="w"> </span>
+<span class="w">            </span><span class="s">&quot;Using &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">partial</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Add &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">requested</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; to SpaceType enum&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">partial</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// 3. Category match (guess from name)</span>
+<span class="w">    </span><span class="n">SpaceType</span><span class="w"> </span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">guessCategory</span><span class="p">(</span><span class="n">requested</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">category</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">UNKNOWN_SPACETYPE</span><span class="p">,</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;DSL parsing&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Using category default &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">category</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Add &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">requested</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; to SpaceType enum with specific rules&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">category</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// 4. GENERIC fallback</span>
+<span class="w">    </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">UNKNOWN_SPACETYPE</span><span class="p">,</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;DSL parsing&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Using GENERIC fallback&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Add &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">requested</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; to SpaceType enum - no fixtures/MEP will be placed&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">SpaceType</span><span class="p">.</span><span class="na">GENERIC</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Add <code>GENERIC</code> to SpaceType enum if not present, with minimal rules.</p>
+<hr />
+<h2 id="task-3-component-library-fallback">Task 3: Component Library Fallback<a class="headerlink" href="#task-3-component-library-fallback" title="Permanent link">&para;</a></h2>
+<p>In <code>HybridFactory.java</code> or <code>ComponentLibrary.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="n">ComponentDefinition</span><span class="w"> </span><span class="nf">getComponent</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 1. Exact match</span>
+<span class="w">    </span><span class="n">ComponentDefinition</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">library</span><span class="p">.</span><span class="na">findExact</span><span class="p">(</span><span class="n">requested</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">exact</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">exact</span><span class="p">;</span>
+
+<span class="w">    </span><span class="c1">// 2. Similar match (fuzzy search)</span>
+<span class="w">    </span><span class="n">ComponentDefinition</span><span class="w"> </span><span class="n">similar</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">library</span><span class="p">.</span><span class="na">findSimilar</span><span class="p">(</span><span class="n">requested</span><span class="p">,</span><span class="w"> </span><span class="mf">0.8</span><span class="p">);</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">similar</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">MISSING_COMPONENT</span><span class="p">,</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span>
+<span class="w">            </span><span class="n">context</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Using similar: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">similar</span><span class="p">.</span><span class="na">getName</span><span class="p">(),</span>
+<span class="w">            </span><span class="s">&quot;Add &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">requested</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; to component_library.db&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">similar</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// 3. Parametric fallback</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">hasParametricFallback</span><span class="p">(</span><span class="n">requested</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">MISSING_COMPONENT</span><span class="p">,</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span>
+<span class="w">            </span><span class="n">context</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Using parametric generation&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Add LOD400 &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">requested</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; to library for better quality&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">generateParametric</span><span class="p">(</span><span class="n">requested</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// 4. Skip</span>
+<span class="w">    </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">MISSING_COMPONENT</span><span class="p">,</span><span class="w"> </span><span class="n">requested</span><span class="p">,</span>
+<span class="w">        </span><span class="n">context</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Skipped - no fallback available&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Add &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">requested</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; to component_library.db or create parametric fallback&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="task-4-solver-constraint-relaxation">Task 4: Solver Constraint Relaxation<a class="headerlink" href="#task-4-solver-constraint-relaxation" title="Permanent link">&para;</a></h2>
+<p>In <code>SpaceSolver.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="n">SolverResult</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">SpaceConstraint</span><span class="o">&gt;</span><span class="w"> </span><span class="n">constraints</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">SolverResult</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solveStrict</span><span class="p">(</span><span class="n">constraints</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="na">getStatus</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">SATISFIABLE</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Log the conflict</span>
+<span class="w">    </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">UNSATISFIABLE</span><span class="p">,</span><span class="w"> </span>
+<span class="w">        </span><span class="n">formatConflicts</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="na">getConflictingConstraints</span><span class="p">()),</span>
+<span class="w">        </span><span class="s">&quot;Constraint solving&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Attempting relaxation&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Review constraints for logical conflicts&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="c1">// Try relaxation in priority order</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">ConstraintType</span><span class="o">&gt;</span><span class="w"> </span><span class="n">relaxOrder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Arrays</span><span class="p">.</span><span class="na">asList</span><span class="p">(</span>
+<span class="w">        </span><span class="n">NOT_ADJACENT</span><span class="p">,</span><span class="w">  </span><span class="c1">// Drop separation constraints first</span>
+<span class="w">        </span><span class="n">ALIGNS</span><span class="p">,</span><span class="w">        </span><span class="c1">// Then alignment</span>
+<span class="w">        </span><span class="n">STACK</span><span class="p">,</span><span class="w">         </span><span class="c1">// Then vertical grouping</span>
+<span class="w">        </span><span class="n">ADJACENT</span><span class="w">       </span><span class="c1">// Adjacent last (most important)</span>
+<span class="w">    </span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">ConstraintType</span><span class="w"> </span><span class="n">toRelax</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">relaxOrder</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">SpaceConstraint</span><span class="o">&gt;</span><span class="w"> </span><span class="n">relaxed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">removeConstraintsOfType</span><span class="p">(</span><span class="n">constraints</span><span class="p">,</span><span class="w"> </span><span class="n">toRelax</span><span class="p">);</span>
+<span class="w">        </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solveStrict</span><span class="p">(</span><span class="n">relaxed</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="na">getStatus</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">SATISFIABLE</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">UNSATISFIABLE</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;Dropped: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">toRelax</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;Constraint relaxation&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;Solved with relaxed constraints&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;Original constraints were over-constrained&quot;</span><span class="p">);</span>
+<span class="w">            </span><span class="n">result</span><span class="p">.</span><span class="na">setDroppedConstraints</span><span class="p">(</span><span class="n">getDropped</span><span class="p">(</span><span class="n">constraints</span><span class="p">,</span><span class="w"> </span><span class="n">relaxed</span><span class="p">));</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Cannot solve even fully relaxed</span>
+<span class="w">    </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">UNSATISFIABLE</span><span class="p">,</span>
+<span class="w">        </span><span class="n">formatConflicts</span><span class="p">(</span><span class="n">result</span><span class="p">.</span><span class="na">getConflictingConstraints</span><span class="p">()),</span>
+<span class="w">        </span><span class="s">&quot;Constraint solving&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;FAILED - cannot solve&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s">&quot;Layout is fundamentally impossible - review room sizes and constraints&quot;</span><span class="p">);</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span><span class="w"> </span><span class="c1">// Status = UNSATISFIABLE</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="task-5-fixture-placement-clash-handling">Task 5: Fixture Placement Clash Handling<a class="headerlink" href="#task-5-fixture-placement-clash-handling" title="Permanent link">&para;</a></h2>
+<p>In <code>FixturePlacer.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">placeFixtures</span><span class="p">(</span><span class="n">Space</span><span class="w"> </span><span class="n">space</span><span class="p">,</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">PlacedElement</span><span class="o">&gt;</span><span class="w"> </span><span class="n">existing</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">FixtureSpec</span><span class="o">&gt;</span><span class="w"> </span><span class="n">required</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getFixturesForSpaceType</span><span class="p">(</span><span class="n">space</span><span class="p">.</span><span class="na">getType</span><span class="p">());</span>
+
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">FixtureSpec</span><span class="w"> </span><span class="n">fixture</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">required</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">PlacementResult</span><span class="w"> </span><span class="n">placement</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findValidPlacement</span><span class="p">(</span><span class="n">fixture</span><span class="p">,</span><span class="w"> </span><span class="n">space</span><span class="p">,</span><span class="w"> </span><span class="n">existing</span><span class="p">);</span>
+
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">placement</span><span class="p">.</span><span class="na">isValid</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">existing</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">placement</span><span class="p">.</span><span class="na">getElement</span><span class="p">());</span>
+<span class="w">        </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">GEOMETRY_IMPOSSIBLE</span><span class="p">,</span>
+<span class="w">                </span><span class="n">fixture</span><span class="p">.</span><span class="na">getName</span><span class="p">(),</span>
+<span class="w">                </span><span class="s">&quot;Space: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">space</span><span class="p">.</span><span class="na">getName</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; (&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">space</span><span class="p">.</span><span class="na">getType</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;)&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s">&quot;Skipped - &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">placement</span><span class="p">.</span><span class="na">getReason</span><span class="p">(),</span>
+<span class="w">                </span><span class="n">getGuidanceForFailure</span><span class="p">(</span><span class="n">fixture</span><span class="p">,</span><span class="w"> </span><span class="n">space</span><span class="p">,</span><span class="w"> </span><span class="n">placement</span><span class="p">.</span><span class="na">getReason</span><span class="p">()));</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">private</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">getGuidanceForFailure</span><span class="p">(</span><span class="n">FixtureSpec</span><span class="w"> </span><span class="n">fixture</span><span class="p">,</span><span class="w"> </span><span class="n">Space</span><span class="w"> </span><span class="n">space</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">reason</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reason</span><span class="p">.</span><span class="na">contains</span><span class="p">(</span><span class="s">&quot;too narrow&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&quot;Min width for %s = %.2fm. Space is %.2fm. Increase room size or remove fixture requirement.&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">fixture</span><span class="p">.</span><span class="na">getName</span><span class="p">(),</span><span class="w"> </span><span class="n">fixture</span><span class="p">.</span><span class="na">getMinWidth</span><span class="p">(),</span><span class="w"> </span><span class="n">space</span><span class="p">.</span><span class="na">getWidth</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">reason</span><span class="p">.</span><span class="na">contains</span><span class="p">(</span><span class="s">&quot;clash&quot;</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&quot;Fixture clashes with existing element. Increase room size or reduce fixture count.&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;Review fixture placement rules for &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">space</span><span class="p">.</span><span class="na">getType</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="task-6-validation-unknown-spacetype">Task 6: Validation Unknown SpaceType<a class="headerlink" href="#task-6-validation-unknown-spacetype" title="Permanent link">&para;</a></h2>
+<p>In validators (e.g., <code>HabitabilityValidator.java</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="n">Space</span><span class="w"> </span><span class="n">space</span><span class="p">,</span><span class="w"> </span><span class="n">ValidationReport</span><span class="w"> </span><span class="n">report</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">ValidationRules</span><span class="w"> </span><span class="n">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rulesMap</span><span class="p">.</span><span class="na">get</span><span class="p">(</span><span class="n">space</span><span class="p">.</span><span class="na">getType</span><span class="p">());</span>
+
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rules</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="n">VALIDATION_UNKNOWN</span><span class="p">,</span>
+<span class="w">            </span><span class="n">space</span><span class="p">.</span><span class="na">getType</span><span class="p">().</span><span class="na">name</span><span class="p">(),</span>
+<span class="w">            </span><span class="s">&quot;Space: &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">space</span><span class="p">.</span><span class="na">getName</span><span class="p">(),</span>
+<span class="w">            </span><span class="s">&quot;Using GENERIC validation rules&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s">&quot;Define validation rules for &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">space</span><span class="p">.</span><span class="na">getType</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; in validator&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ValidationRules</span><span class="p">.</span><span class="na">GENERIC</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="c1">// Apply rules...</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="task-7-intent-vocabulary-gap">Task 7: Intent Vocabulary Gap<a class="headerlink" href="#task-7-intent-vocabulary-gap" title="Permanent link">&para;</a></h2>
+<p>In <code>intent_resolver.py</code> (Python):</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_space_type</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="c1"># Known mappings</span>
+    <span class="n">known</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;bedroom&#39;</span><span class="p">:</span> <span class="s1">&#39;BEDROOM&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;bathroom&#39;</span><span class="p">:</span> <span class="s1">&#39;BATHROOM&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;kitchen&#39;</span><span class="p">:</span> <span class="s1">&#39;KITCHEN&#39;</span><span class="p">,</span>
+        <span class="c1"># ... etc</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">token</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="n">known</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">known</span><span class="p">[</span><span class="n">token</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
+
+    <span class="c1"># Fuzzy match</span>
+    <span class="n">match</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">fuzzy_match</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">known</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">score</span> <span class="o">&gt;</span> <span class="mf">0.8</span><span class="p">:</span>
+        <span class="n">log_outlier</span><span class="p">(</span><span class="s1">&#39;VOCABULARY_GAP&#39;</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;Mapped to </span><span class="si">{</span><span class="n">known</span><span class="p">[</span><span class="n">match</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;Consider adding &quot;</span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s1">&quot; as alias for </span><span class="si">{</span><span class="n">known</span><span class="p">[</span><span class="n">match</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">known</span><span class="p">[</span><span class="n">match</span><span class="p">]</span>
+
+    <span class="c1"># Guess from context</span>
+    <span class="k">if</span> <span class="s1">&#39;sun&#39;</span> <span class="ow">in</span> <span class="n">token</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s1">&#39;glass&#39;</span> <span class="ow">in</span> <span class="n">token</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+        <span class="n">log_outlier</span><span class="p">(</span><span class="s1">&#39;VOCABULARY_GAP&#39;</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span>
+            <span class="s1">&#39;Guessed LIVING with exterior constraint&#39;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s1">&#39;Consider adding </span><span class="si">{</span><span class="n">token</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="si">}</span><span class="s1"> as new SpaceType&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s1">&#39;LIVING&#39;</span>  <span class="c1"># With exterior flag</span>
+
+    <span class="c1"># Unknown</span>
+    <span class="n">log_outlier</span><span class="p">(</span><span class="s1">&#39;VOCABULARY_GAP&#39;</span><span class="p">,</span> <span class="n">token</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span>
+        <span class="s1">&#39;Unknown - using GENERIC&#39;</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s1">&#39;Add &quot;</span><span class="si">{</span><span class="n">token</span><span class="si">}</span><span class="s1">&quot; to vocabulary with appropriate SpaceType mapping&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s1">&#39;GENERIC&#39;</span>
+</code></pre></div>
+<hr />
+<h2 id="task-8-compilation-summary">Task 8: Compilation Summary<a class="headerlink" href="#task-8-compilation-summary" title="Permanent link">&para;</a></h2>
+<p>At end of <code>BuildingCompiler.compile()</code> or <code>IntentCompiler.compile()</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="n">CompilationResult</span><span class="w"> </span><span class="nf">compile</span><span class="p">(</span><span class="n">BuildingDefinition</span><span class="w"> </span><span class="n">def</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">reset</span><span class="p">();</span>
+
+<span class="w">    </span><span class="c1">// ... existing compilation logic ...</span>
+
+<span class="w">    </span><span class="c1">// At end</span>
+<span class="w">    </span><span class="n">Path</span><span class="w"> </span><span class="n">outlierLog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">outputDir</span><span class="p">.</span><span class="na">resolve</span><span class="p">(</span><span class="s">&quot;outliers.log&quot;</span><span class="p">);</span>
+<span class="w">    </span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">summarize</span><span class="p">(</span><span class="n">outlierLog</span><span class="p">);</span>
+
+<span class="w">    </span><span class="n">result</span><span class="p">.</span><span class="na">setOutlierCount</span><span class="p">(</span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">getTotalCount</span><span class="p">());</span>
+<span class="w">    </span><span class="n">result</span><span class="p">.</span><span class="na">setOutlierSummary</span><span class="p">(</span><span class="n">OutlierLogger</span><span class="p">.</span><span class="na">getSummary</span><span class="p">());</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Summary output format:</p>
+<div class="highlight"><pre><span></span><code>=== OUTLIER SUMMARY ===
+Compilation: output/my_house
+Date: 2025-01-29 14:32:00
+
+UNKNOWN_SPACETYPE: 1
+  - OBSERVATORY (1 occurrence)
+    → GUIDANCE: Add to SpaceType enum with fixture/MEP/validation rules
+
+MISSING_COMPONENT: 2
+  - bidet (1 in BATHROOM &quot;ensuite&quot;)
+    → GUIDANCE: Add to component_library.db
+  - japanese_toilet (1 in BATHROOM &quot;master_bath&quot;)
+    → GUIDANCE: Add to component_library.db
+
+GEOMETRY_IMPOSSIBLE: 1
+  - exhaust_fan in BATHROOM &quot;powder&quot; (too small)
+    → GUIDANCE: Min width for exhaust_fan = 1.5m. Space is 1.2m.
+
+Total: 4 outliers
+Outlier rate: 4/127 elements = 3.1%
+
+Full details: output/my_house/outliers.log
+</code></pre></div>
+<hr />
+<h2 id="task-9-test-cases">Task 9: Test Cases<a class="headerlink" href="#task-9-test-cases" title="Permanent link">&para;</a></h2>
+<p>Create <code>OutlierHandlingTest.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@Test</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">unknownSpaceTypeFallsBackToGeneric</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// SPACE type:OBSERVATORY should not crash</span>
+<span class="w">    </span><span class="c1">// Should log outlier and use GENERIC</span>
+<span class="p">}</span>
+
+<span class="nd">@Test</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">missingComponentSkipsGracefully</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Request bidet in bathroom</span>
+<span class="w">    </span><span class="c1">// Should log and skip, not crash</span>
+<span class="p">}</span>
+
+<span class="nd">@Test</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">unsatisfiableConstraintsRelax</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// A adjacent B, A not_adjacent B</span>
+<span class="w">    </span><span class="c1">// Should relax not_adjacent and solve</span>
+<span class="p">}</span>
+
+<span class="nd">@Test</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">tooSmallRoomSkipsFixtures</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// 1m x 1m bathroom</span>
+<span class="w">    </span><span class="c1">// Should skip toilet (too small) with log</span>
+<span class="p">}</span>
+
+<span class="nd">@Test</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">outlierSummaryGenerated</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Compile with multiple outliers</span>
+<span class="w">    </span><span class="c1">// Verify outliers.log exists with correct format</span>
+<span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="acceptance-criteria">Acceptance Criteria<a class="headerlink" href="#acceptance-criteria" title="Permanent link">&para;</a></h2>
+<ol>
+<li><strong>No crashes</strong> from unknown SpaceType, missing component, or impossible geometry</li>
+<li><strong>Every outlier logged</strong> with consistent format</li>
+<li><strong>Guidance actionable</strong> - developer knows exactly what to add</li>
+<li><strong>Summary generated</strong> after each compilation</li>
+<li><strong>Metrics tracked</strong> - outlier rate calculable</li>
+<li><strong>Tests pass</strong> for all outlier scenarios</li>
+</ol>
+<hr />
+<h2 id="reference-files">Reference Files<a class="headerlink" href="#reference-files" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Architecture: <code>bim-compiler-dsl-architecture.md</code></li>
+<li>SpaceType enum: <code>src/main/java/com/bim/compiler/dsl/SpaceType.java</code> (or RoomType.java)</li>
+<li>Component library: <code>library/component_library.db</code></li>
+<li>Fixture placer: <code>src/main/java/com/bim/compiler/library/FixturePlacer.java</code></li>
+<li>Solver: <code>src/main/java/com/bim/compiler/solver/SpaceSolver.java</code></li>
+<li>Validators: <code>src/main/java/com/bim/compiler/validation/</code></li>
+</ul>
+<hr />
+<h2 id="definition-of-done">Definition of Done<a class="headerlink" href="#definition-of-done" title="Permanent link">&para;</a></h2>
+<ul>
+<li>[ ] OutlierLogger utility created</li>
+<li>[ ] SpaceType fallback implemented with GENERIC</li>
+<li>[ ] Component library fallback with skip</li>
+<li>[ ] Solver constraint relaxation</li>
+<li>[ ] Fixture placement clash → skip with log</li>
+<li>[ ] Validator unknown SpaceType → GENERIC rules</li>
+<li>[ ] Intent resolver vocabulary gap handling</li>
+<li>[ ] Outlier summary at compilation end</li>
+<li>[ ] All tests passing</li>
+<li>[ ] Documentation updated</li>
+</ul>
+<hr />
+<p><em>Task created: January 2025</em>
+<em>Reference: SA discussion on graceful degradation and developer feedback loop</em></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

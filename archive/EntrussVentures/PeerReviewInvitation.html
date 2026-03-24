@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation for Peer Review — BIM Intent Compiler</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            min-height: 100vh;
+            padding: 60px 80px;
+            animation: fadeIn 0.6s ease;
+        }
+        .slide.active { display: flex; flex-direction: column; justify-content: center; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            font-size: 14px;
+            color: #444;
+            font-weight: 600;
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #10b981;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        h1 {
+            font-size: 68px;
+            font-weight: 800;
+            line-height: 1.05;
+            margin-bottom: 24px;
+            max-width: 900px;
+        }
+
+        h2 {
+            font-size: 52px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            max-width: 850px;
+        }
+
+        .subtitle {
+            font-size: 22px;
+            color: #666;
+            max-width: 750px;
+            line-height: 1.6;
+        }
+
+        .highlight { color: #10b981; }
+        .highlight-blue { color: #3b82f6; }
+        .highlight-gold { color: #fbbf24; }
+        .highlight-purple { color: #a855f7; }
+        .highlight-red { color: #ef4444; }
+
+        .oneliner {
+            font-size: 28px;
+            color: #888;
+            margin-top: 40px;
+            font-weight: 300;
+            font-style: italic;
+        }
+
+        .stat-row {
+            display: flex;
+            gap: 80px;
+            margin-top: 50px;
+        }
+
+        .stat-item .value {
+            font-size: 64px;
+            font-weight: 800;
+        }
+
+        .stat-item .label {
+            font-size: 18px;
+            color: #555;
+            margin-top: 8px;
+        }
+
+        .quote-block {
+            background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(6,182,212,0.04));
+            border-left: 4px solid #10b981;
+            padding: 40px 50px;
+            margin-top: 40px;
+            max-width: 850px;
+        }
+
+        .quote-block .text {
+            font-size: 24px;
+            font-weight: 300;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        .quote-block .author {
+            margin-top: 16px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .pillar-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .pillar-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
+            padding: 36px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .pillar-card .icon {
+            font-size: 32px;
+            margin-bottom: 16px;
+        }
+
+        .pillar-card .name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .pillar-card .desc {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .cite-list {
+            margin-top: 40px;
+            max-width: 850px;
+        }
+
+        .cite-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 20px;
+            padding: 24px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .cite-item .num {
+            font-size: 14px;
+            font-weight: 700;
+            color: #10b981;
+            min-width: 32px;
+            padding-top: 2px;
+        }
+
+        .cite-item .ref {
+            font-size: 15px;
+            color: #999;
+            line-height: 1.5;
+        }
+
+        .cite-item .ref strong {
+            color: #ccc;
+        }
+
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .criteria-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .criteria-card .domain {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #10b981;
+            margin-bottom: 12px;
+        }
+
+        .criteria-card .title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .criteria-card .detail {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .team-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            margin-top: 50px;
+        }
+
+        .team-card {
+            text-align: center;
+            padding: 40px 24px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 20px;
+        }
+
+        .team-card .role {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #10b981;
+            margin-bottom: 16px;
+        }
+
+        .team-card .name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .team-card .title {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .response-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 50px;
+        }
+
+        .response-card {
+            padding: 36px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 20px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .response-card:hover {
+            border-color: #10b981;
+        }
+
+        .response-card .label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #10b981;
+            margin-bottom: 12px;
+        }
+
+        .response-card .action {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .response-card .detail {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .nav {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav button {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 2px solid #222;
+            background: rgba(0,0,0,0.9);
+            color: #fff;
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav button:hover {
+            border-color: #10b981;
+            background: rgba(16,185,129,0.15);
+        }
+
+        .progress {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #3b82f6);
+            transition: width 0.4s;
+        }
+
+        .keyboard-hint {
+            position: fixed;
+            bottom: 50px;
+            left: 80px;
+            font-size: 12px;
+            color: #333;
+        }
+
+        kbd {
+            background: #1a1a1a;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin: 0 3px;
+            border: 1px solid #333;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 30px;
+            left: 80px;
+            font-size: 11px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Slide 1: Title -->
+    <div class="slide active" id="slide1">
+        <span class="slide-number">01 / 10</span>
+        <div class="tag">Formal Invitation</div>
+        <h1>
+            Invitation for<br>
+            <span class="highlight">Peer Review</span>
+        </h1>
+        <h2 style="font-size: 36px; color: #888; margin-bottom: 32px; font-weight: 400;">
+            BIM Intent Compiler — A Novel DAG-Based Approach<br>
+            to Automated Building Information Modelling
+        </h2>
+        <p class="subtitle">
+            Entruss Ventures Sdn. Bhd. cordially invites academicians and domain experts
+            to peer review a metadata-driven compiler that generates IFC-compliant building models
+            from declarative architectural intent.
+        </p>
+        <div style="margin-top: 48px; padding: 28px 36px; background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); max-width: 750px;">
+            <div style="font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #10b981; margin-bottom: 16px; font-weight: 600;">Presented by</div>
+            <div style="font-size: 16px; color: #ccc; line-height: 2;">
+                <strong>Emeritus Prof. Dr. Che Husna Azhari</strong>, CEng — Director, Entruss Ventures<br>
+                <strong>Prof. Dr. Hj. Wan Mohtar Wan Yusoff</strong> — EVSB Expert, Cooperatives &amp; Biotechnology<br>
+                <strong>Redhuan D. Oon</strong> — Subject Matter Expert, FOSS ERP &amp; AI
+            </div>
+        </div>
+        <div class="footer">Entruss Ventures Sdn. Bhd. (1186369-A) — February 2026</div>
+    </div>
+
+    <!-- Slide 2: The Novel Challenge -->
+    <div class="slide" id="slide2">
+        <span class="slide-number">02 / 10</span>
+        <div class="tag">The Challenge</div>
+        <h2>
+            BIM is a <span class="highlight-red">manual</span> process.<br>
+            What if it were <span class="highlight">compiled</span>?
+        </h2>
+        <p class="subtitle">
+            Current BIM practice requires skilled operators placing elements one by one
+            in proprietary GUI tools. The BIM Intent Compiler inverts this —
+            it treats building design as a compilation problem, where architectural intent
+            is the source code and IFC geometry is the compiled output.
+        </p>
+        <p class="oneliner">"The same leap that took us from assembly to high-level languages."</p>
+    </div>
+
+    <!-- Slide 3: Academic Lineage -->
+    <div class="slide" id="slide3">
+        <span class="slide-number">03 / 10</span>
+        <div class="tag">Academic Foundations</div>
+        <h2>
+            Standing on the shoulders<br>
+            of <span class="highlight-blue">compiler science</span>.
+        </h2>
+        <p class="subtitle" style="margin-bottom: 20px;">
+            The DAG (Directed Acyclic Graph) compiler is a well-established construct
+            in computer science. This work applies it to a novel domain — construction informatics.
+        </p>
+        <div class="cite-list">
+            <div class="cite-item">
+                <div class="num">[1]</div>
+                <div class="ref"><strong>Aho, Lam, Sethi & Ullman</strong> — <em>Compilers: Principles, Techniques, and Tools</em> (the "Dragon Book"). DAGs for expression optimisation and common sub-expression elimination — the theoretical basis for our dependency graph.</div>
+            </div>
+            <div class="cite-item">
+                <div class="num">[2]</div>
+                <div class="ref"><strong>Eastman, Teicholz, Sacks & Liston</strong> — <em>BIM Handbook</em> (Wiley). The definitive academic text on Building Information Modelling — defines the IFC data model our compiler targets.</div>
+            </div>
+            <div class="cite-item">
+                <div class="num">[3]</div>
+                <div class="ref"><strong>buildingSMART International</strong> — <em>IFC4 / ISO 16739</em>. The open standard for building data exchange. Our compiler emits standards-compliant IFC output validated against reference models.</div>
+            </div>
+            <div class="cite-item">
+                <div class="num">[4]</div>
+                <div class="ref"><strong>Fowler, M.</strong> — <em>Domain-Specific Languages</em> (Addison-Wesley). The DSL pattern applied here transforms building specifications into a compilable intermediate representation.</div>
+            </div>
+            <div class="cite-item">
+                <div class="num">[5]</div>
+                <div class="ref"><strong>CIDB Malaysia</strong> — <em>Construction 4.0 Strategic Plan 2021–2025</em>. National policy mandating BIM adoption for projects exceeding RM10 million — the industry context for this work.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 4: What Was Built -->
+    <div class="slide" id="slide4">
+        <span class="slide-number">04 / 10</span>
+        <div class="tag">Working System</div>
+        <h2>
+            <span class="highlight">158</span> commits.<br>
+            <span class="highlight-blue">100%</span> fidelity.
+        </h2>
+        <p class="subtitle">
+            A fully functional compiler producing IFC-compliant building models,<br>
+            validated against industry-standard reference files.
+        </p>
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="value highlight">55</div>
+                <div class="label">SampleHouse elements — 100% F1</div>
+            </div>
+            <div class="stat-item">
+                <div class="value highlight-blue">1,085</div>
+                <div class="label">Duplex elements — 100% F1</div>
+            </div>
+            <div class="stat-item">
+                <div class="value highlight-gold">51,088</div>
+                <div class="label">Terminal elements — ~100% F1</div>
+            </div>
+        </div>
+        <p class="oneliner">"Not a proposal. Working code. Measured results."</p>
+    </div>
+
+    <!-- Slide 5: The Novel Contribution -->
+    <div class="slide" id="slide5">
+        <span class="slide-number">05 / 10</span>
+        <div class="tag">Novel Contribution</div>
+        <h2>
+            DAG compilation meets<br>
+            <span class="highlight-purple">construction informatics</span>.
+        </h2>
+        <div class="pillar-grid">
+            <div class="pillar-card">
+                <div class="icon">1</div>
+                <div class="name highlight">Metadata-First Architecture</div>
+                <div class="desc">23,888 components across 55 relational tables. Zero hardcoded values. All geometry computed from declarative rules — a pure data-driven approach unprecedented in BIM tooling.</div>
+            </div>
+            <div class="pillar-card">
+                <div class="icon">2</div>
+                <div class="name highlight-blue">Rosetta Stone Validation</div>
+                <div class="desc">A rigorous scoring methodology: extract reference IFC files into spatial databases, then measure compiler output against them element-by-element. Recall, precision, F1 — borrowed from information retrieval science.</div>
+            </div>
+            <div class="pillar-card">
+                <div class="icon">3</div>
+                <div class="name highlight-purple">Human-AI Pair Compilation</div>
+                <div class="desc">The compiler was developed through human-AI collaboration — demonstrating that AI can serve as a pair-programming partner in domain-specific engineering, not just code generation.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 6: Why Peer Review -->
+    <div class="slide" id="slide6">
+        <span class="slide-number">06 / 10</span>
+        <div class="tag">The Opportunity</div>
+        <h2>
+            An <span class="highlight-gold">industry practitioner</span><br>
+            seeks <span class="highlight">academic rigour</span>.
+        </h2>
+        <p class="subtitle">
+            The principal developer is not an academician — but a FOSS practitioner with
+            two decades of open-source enterprise systems experience. This work has reached
+            a stage where academic scrutiny, theoretical grounding, and peer validation
+            would significantly strengthen its contribution.
+        </p>
+        <div class="quote-block">
+            <div class="text">
+                Working with Emeritus Prof. Dr. Che Husna Azhari and
+                Prof. Dr. Hj. Wan Mohtar Wan Yusoff through Entruss Ventures,
+                we now have the institutional framework to invite formal peer review
+                and pursue collaborative research.
+            </div>
+            <div class="author">— Redhuan D. Oon, Subject Matter Expert, EVSB</div>
+        </div>
+    </div>
+
+    <!-- Slide 7: Review Domains -->
+    <div class="slide" id="slide7">
+        <span class="slide-number">07 / 10</span>
+        <div class="tag">Reviewer Criteria</div>
+        <h2>
+            We seek expertise in<br>
+            <span class="highlight">these domains</span>.
+        </h2>
+        <div class="criteria-grid">
+            <div class="criteria-card">
+                <div class="domain">Domain A</div>
+                <div class="title">Construction Informatics &amp; BIM</div>
+                <div class="detail">IFC standards, openBIM, building data modelling, interoperability. Familiarity with buildingSMART frameworks and construction digitalisation policy.</div>
+            </div>
+            <div class="criteria-card">
+                <div class="domain">Domain B</div>
+                <div class="title">Compiler Design &amp; DSL Engineering</div>
+                <div class="detail">DAG-based compilation, domain-specific languages, code generation, intermediate representations. Theoretical computer science foundations.</div>
+            </div>
+            <div class="criteria-card">
+                <div class="domain">Domain C</div>
+                <div class="title">AI in Architecture &amp; Engineering</div>
+                <div class="detail">Machine learning for AEC, generative design, AI-assisted engineering workflows, human-AI collaboration in technical domains.</div>
+            </div>
+            <div class="criteria-card">
+                <div class="domain">Domain D</div>
+                <div class="title">Open-Source Software Engineering</div>
+                <div class="detail">FOSS governance, ERP systems, metadata-driven architectures, enterprise data management applied to construction.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 8: What We Ask -->
+    <div class="slide" id="slide8">
+        <span class="slide-number">08 / 10</span>
+        <div class="tag">Scope of Review</div>
+        <h2>
+            What we ask<br>
+            <span class="highlight-blue">reviewers to evaluate</span>.
+        </h2>
+        <div class="pillar-grid">
+            <div class="pillar-card">
+                <div class="icon">A</div>
+                <div class="name">Methodology</div>
+                <div class="desc">Is the Rosetta Stone validation approach (element-level F1 scoring against reference IFC) a sound method for compiler verification? Are there gaps?</div>
+            </div>
+            <div class="pillar-card">
+                <div class="icon">B</div>
+                <div class="name">Architecture</div>
+                <div class="desc">Is the metadata-first, zero-hardcode approach viable at scale? Does the relational migration from flat coordinates to computed placement hold theoretical merit?</div>
+            </div>
+            <div class="pillar-card">
+                <div class="icon">C</div>
+                <div class="name">Contribution</div>
+                <div class="desc">Does this work represent a genuine advance in construction informatics? What are its limitations, and where should further research focus?</div>
+            </div>
+        </div>
+        <p class="oneliner">"We welcome critique. Rigour makes the work stronger."</p>
+    </div>
+
+    <!-- Slide 9: The Team -->
+    <div class="slide" id="slide9">
+        <span class="slide-number">09 / 10</span>
+        <div class="tag">Institutional Support</div>
+        <h2>
+            Facilitated by<br>
+            <span class="highlight">Entruss Ventures</span>.
+        </h2>
+        <div class="team-grid">
+            <div class="team-card">
+                <div class="role">Director, EVSB</div>
+                <div class="name">Emeritus Prof. Dr. Che Husna Azhari, CEng</div>
+                <div class="title">Universiti Kebangsaan Malaysia (UKM).<br>Non-metallic materials &amp; fabrication. 37+ years in academia.<br>IP development &amp; commercialisation.</div>
+            </div>
+            <div class="team-card">
+                <div class="role">EVSB Expert</div>
+                <div class="name">Prof. Dr. Hj. Wan Mohtar Wan Yusoff</div>
+                <div class="title">Industrial biotechnologist. Chairman, KOPERASI UNIKEB BHD (11 years).<br>Board member, KOPSYA &amp; ANGKASA network.<br>Founder President, iWAQF.</div>
+            </div>
+            <div class="team-card">
+                <div class="role">Subject Matter Expert</div>
+                <div class="name">Redhuan D. Oon</div>
+                <div class="title">Author, <em>Open Source ERP</em> (Pearson).<br>Lead developer, BIM Intent Compiler.<br>20+ years FOSS ERP &amp; AI.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Slide 10: How to Respond -->
+    <div class="slide" id="slide10">
+        <span class="slide-number">10 / 10</span>
+        <div class="tag">Next Steps</div>
+        <h1>
+            Join the <span class="highlight">review</span>.
+        </h1>
+        <div class="response-grid">
+            <div class="response-card">
+                <div class="label">Review the Code</div>
+                <div class="action">GitHub Repository</div>
+                <div class="detail">Full source, commit history, and documentation at<br><strong>github.com/red1oon/BIMCompiler</strong></div>
+            </div>
+            <div class="response-card">
+                <div class="label">Watch the Demo</div>
+                <div class="action">Video Showcase</div>
+                <div class="detail">Live demonstration of the compiler in action,<br>producing IFC output from declarative intent.</div>
+            </div>
+            <div class="response-card">
+                <div class="label">Read the Whitepaper</div>
+                <div class="action">Technical Documentation</div>
+                <div class="detail">Architecture, validation methodology, and results<br>documented in the project whitepaper.</div>
+            </div>
+            <div class="response-card">
+                <div class="label">Express Interest</div>
+                <div class="action">Contact Us</div>
+                <div class="detail">
+                    <strong>Entruss Ventures Sdn. Bhd.</strong> (1186369-A)<br>
+                    No. 15, Jalan 1/3c, Seksyen 1, 43650 Bandar Baru Bangi, Selangor<br>
+                    Tel: 03-8925 8301 | info@entruss.net<br>
+                    Redhuan D. Oon: red1org@gmail.com
+                </div>
+            </div>
+        </div>
+        <div class="quote-block" style="margin-top: 40px; text-align: center;">
+            <div class="text" style="font-size: 22px;">
+                Open source. Open review. Open to collaboration.<br>
+                The code is the evidence — we invite your judgement.
+            </div>
+        </div>
+        <div class="footer">Entruss Ventures Sdn. Bhd. (1186369-A) — BIM Intent Compiler Peer Review — February 2026</div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav">
+        <button onclick="prevSlide()">&#8592;</button>
+        <button onclick="nextSlide()">&#8594;</button>
+    </div>
+
+    <div class="progress" id="progress"></div>
+
+    <div class="keyboard-hint">
+        <kbd>&#8592;</kbd> <kbd>&#8594;</kbd> or <kbd>Space</kbd> to navigate
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 10;
+
+        function showSlide(n) {
+            document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+            document.getElementById('slide' + n).classList.add('active');
+            document.getElementById('progress').style.width = (n / totalSlides * 100) + '%';
+        }
+
+        function nextSlide() {
+            if (currentSlide < totalSlides) {
+                currentSlide++;
+                showSlide(currentSlide);
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 1) {
+                currentSlide--;
+                showSlide(currentSlide);
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+
+        let touchStartX = 0;
+        document.addEventListener('touchstart', e => touchStartX = e.touches[0].clientX);
+        document.addEventListener('touchend', e => {
+            const diff = touchStartX - e.changedTouches[0].clientX;
+            if (Math.abs(diff) > 50) {
+                diff > 0 ? nextSlide() : prevSlide();
+            }
+        });
+
+        showSlide(1);
+    </script>
+</body>
+</html>
