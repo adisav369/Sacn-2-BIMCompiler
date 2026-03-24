@@ -89,11 +89,11 @@ class DXPipelineTest {
     void g2_halfUnitBomExists() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             var rs = conn.createStatement().executeQuery(
-                    "SELECT bom_type, group_by, bom_category FROM m_bom WHERE bom_id='DUPLEX_SINGLE_UNIT_STD'");
+                    "SELECT bom_type, group_by, m_product_category_id FROM m_bom WHERE bom_id='DUPLEX_SINGLE_UNIT_STD'");
             assertTrue(rs.next(), "DUPLEX_SINGLE_UNIT_STD must exist");
             assertEquals("FLOOR", rs.getString(1), "bom_type must be FLOOR");
             assertEquals("STOREY", rs.getString(2), "group_by must be STOREY");
-            assertEquals("HU", rs.getString(3), "bom_category must be HU");
+            assertEquals("HU", rs.getString(3), "m_product_category_id must be HU");
         }
     }
 
@@ -101,11 +101,11 @@ class DXPipelineTest {
     void g2_pairContainerBomExists() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + BOM_DB)) {
             var rs = conn.createStatement().executeQuery(
-                    "SELECT bom_type, group_by, bom_category FROM m_bom WHERE bom_id='DUPLEX_SET_STD'");
+                    "SELECT bom_type, group_by, m_product_category_id FROM m_bom WHERE bom_id='DUPLEX_SET_STD'");
             assertTrue(rs.next(), "DUPLEX_SET_STD must exist");
             assertEquals("SET", rs.getString(1), "bom_type must be SET");
             assertEquals("BUILDING", rs.getString(2), "group_by must be BUILDING");
-            assertEquals("PR", rs.getString(3), "bom_category must be PR");
+            assertEquals("PR", rs.getString(3), "m_product_category_id must be PR");
         }
     }
 

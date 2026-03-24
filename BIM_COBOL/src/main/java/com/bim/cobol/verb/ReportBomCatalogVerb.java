@@ -22,7 +22,7 @@ import java.util.List;
  * <p>Produces a professional Excel report listing every active BOM with
  * child counts by component type and ERP dimension metadata.
  *
- * <p>Columns: bom_id, bom_name, bom_type, bom_category, doc_sub_type,
+ * <p>Columns: bom_id, bom_name, bom_type, m_product_category_id, doc_sub_type,
  * entity_type, child_count, buy_count, make_count, phantom_count.
  *
  * <p>Standards compliance: ISO 19650 information containers, IFC4 classification,

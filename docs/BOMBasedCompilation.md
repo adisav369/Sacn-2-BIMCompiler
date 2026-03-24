@@ -290,11 +290,11 @@ For multi-discipline buildings (DX, Terminal), the YAML `disciplines:` map
 inserts a discipline BOM level between STOREY and SCOPE SPACE. See
 `DISC_BOM_DESIGN.md` §2 for the 5-level hierarchy and §5 for YAML schema v2.
 See `TerminalAnalysis.md` §ERP Model Architecture for how discipline codes
-sit on M_BomCategory with `doc_type='CO'` and how ROUTE/TILE verbs map to
+sit on M_Product_Category with `doc_type='CO'` and how ROUTE/TILE verbs map to
 M_AttributeSet/Instance.
 
 Single-discipline buildings (SH, schema_version 1) skip this layer — no
-discipline wrapper needed. DocBaseType (RE/CO) on M_BomCategory determines
+discipline wrapper needed. DocBaseType (RE/CO) on M_Product_Category determines
 which L2 axis is used: rooms (RE) or disciplines (CO).
 
 ### 2.1.6 Recipe vs Placement — The BOM Contract
@@ -877,7 +877,7 @@ its own half-width — the formula becomes context-dependent. LBD offsets are al
 | 1 | **Metadata** | Referential integrity checks against `{PREFIX}_BOM.db` |
 | 2 | **Parse** | Reads `.bim` DSL text into records |
 | 3 | **Compile** | Produces `BuildingSpec` from BOM hierarchy |
-| 4 | **Template** | ST-mode: walks M_BomCategoryLine slots |
+| 4 | **Template** | ST-mode: walks M_Product_Category_Line slots |
 | 5 | **Write** | Emits SQLite output DB |
 | 6 | **Verb** | BIM COBOL script hook → PP_Order_Node audit trail |
 | 7 | **Digest** | Per-element SHA256 spatial fingerprint |

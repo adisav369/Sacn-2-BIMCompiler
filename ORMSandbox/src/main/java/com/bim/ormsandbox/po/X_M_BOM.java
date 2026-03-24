@@ -24,7 +24,7 @@ import java.sql.Connection;
  *   is_active        INTEGER DEFAULT 1
  *   bom_level        TEXT DEFAULT 'SET'
  *   bom_type         TEXT NOT NULL CHECK(UNIT|FLOOR|ROOM|SET|ITEM)
- *   bom_category     TEXT           FK → M_BomCategory(M_BomCategory_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
+ *   m_product_category_id TEXT      FK → M_Product_Category(M_Product_Category_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
  *   doc_base_type    TEXT           C_DocType.DocBaseType (RE|CO|IN), NULL = not classified. ST is DocSubType.
  *   doc_sub_type     TEXT           C_DocType.DocSubType (SH|DX|TB|TE), NULL = generic
  *   seq_no           INTEGER DEFAULT 10  display/tiebreaker order (lower = preferred)
@@ -51,7 +51,7 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_is_active          = "is_active";
     public static final String COLUMNNAME_bom_level          = "bom_level";
     public static final String COLUMNNAME_bom_type           = "bom_type";
-    public static final String COLUMNNAME_bom_category       = "bom_category";
+    public static final String COLUMNNAME_bom_category       = "m_product_category_id";
     public static final String COLUMNNAME_doc_base_type        = "doc_base_type";
     public static final String COLUMNNAME_doc_sub_type         = "doc_sub_type";
     public static final String COLUMNNAME_seq_no              = "seq_no";

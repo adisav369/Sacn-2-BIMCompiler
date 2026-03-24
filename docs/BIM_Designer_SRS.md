@@ -3326,7 +3326,7 @@ See [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) for the full 10-item co
 **Architectural changes (S60):**
 - Compiler walks C_OrderLine tree, not C_DocType (#2)
 - run_RosettaStones.sh uses bomDrop + completeIt path (#4)
-- M_BomCategory replaced by M_Product_Category (#6)
+- The former M_BomCategory, now M_Product_Category (#6)
 - OrderLineHydrationDAO bridges C_OrderLine → PlacementRequest (#7)
 
 #### 30.6.7 UAT Acceptance Criteria

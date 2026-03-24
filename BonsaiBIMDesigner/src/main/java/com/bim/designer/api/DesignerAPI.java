@@ -58,7 +58,7 @@ public interface DesignerAPI extends AssemblyAPI {
      * For buildings, these are storeys. For infra, these are segments:
      * carriageways (CW), track sections (TRK), piers (PIR), etc.
      *
-     * <p>The bom_category on each segment encodes the vocabulary:
+     * <p>The m_product_category_id on each segment encodes the vocabulary:
      * Bridge: ABT (abutment), PIR (pier), DCK (deck), SUP (superstructure), APR (approach)
      * Road: CW (carriageway), PKG (parking)
      * Rail: TRK (track)
@@ -329,10 +329,10 @@ public interface DesignerAPI extends AssemblyAPI {
     /**
      * Suggest room contents via BBC.md §3.5 Selection Cascade.
      * For each room DesignBBox with a category, finds the best-matching SET BOM
-     * from the library by bom_category + AABB fit.
+     * from the library by m_product_category_id + AABB fit.
      *
      * <p>This is the generative path's auto-suggest: YAML defines rooms with
-     * bom_category + AABB → cascade finds matching BOMs → same compiler.
+     * m_product_category_id + AABB → cascade finds matching BOMs → same compiler.
      * Zero new compilation code.
      *
      * // Implementing GENERATIVE_ROOM_SRS.md §3 — Witness: W-GEN-1
@@ -369,7 +369,7 @@ public interface DesignerAPI extends AssemblyAPI {
      * If the product IsBOM (has a matching m_bom entry), the engine walks
      * m_bom / m_bom_line recursively to explode the tree. Non-BOM products
      * become LEAF C_OrderLine rows. The user can then navigate, swap by
-     * M_Product_Category (bom_category), add, or remove nodes.
+     * M_Product_Category (m_product_category_id), add, or remove nodes.
      *
      * <p>Instant Drop (TC-1): bomDrop with no edits → compile produces
      * identical output to the Rosetta Stone for that building.

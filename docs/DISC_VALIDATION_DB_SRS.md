@@ -786,7 +786,7 @@ this trajectory. Three patterns currently coexist:
 - Pattern 3 (disciplineStack) disappears — AD_Org_ID is on C_OrderLine, inherited down
   the BOM tree via the walker, not pushed/popped manually.
 
-**The 77-file M_BomCategory cleanup (S60-S2 Task 5) is the same refactor.** bom_category
+**The 77-file M_Product_Category cleanup (S60-S2 Task 5) is the same refactor.** bom_category
 is a string proxy for AD_Org. Once AD_Org_ID exists on m_bom, bom_category becomes a
 derived display field (or drops entirely). The 40+ files touching discipline strings
 converge to a single FK lookup pattern.

@@ -63,7 +63,7 @@ public class FacilityMgmtDAO {
         Map<String, ProductFM> fmMap = loadFMMap(compLibConn);
 
         String sql = """
-                SELECT bl.child_product_id, bl.qty, b.bom_category, b.bom_name
+                SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.bom_id = b.bom_id
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
@@ -79,7 +79,7 @@ public class FacilityMgmtDAO {
             while (rs.next()) {
                 String productId = rs.getString("child_product_id");
                 int qty = rs.getInt("qty");
-                String discipline = rs.getString("bom_category");
+                String discipline = rs.getString("m_product_category_id");
                 String location = rs.getString("bom_name");
                 if (discipline == null) discipline = "UNKNOWN";
 
@@ -175,11 +175,11 @@ public class FacilityMgmtDAO {
 
         String sql = """
                 SELECT bl.child_product_id, bl.bom_id, bl.storey,
-                       b.bom_category, b.bom_name
+                       b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.bom_id = b.bom_id
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
-                ORDER BY bl.storey, b.bom_category
+                ORDER BY bl.storey, b.m_product_category_id
                 """;
 
         List<AssetRecord> records = new ArrayList<>();
@@ -189,7 +189,7 @@ public class FacilityMgmtDAO {
                 String productId = rs.getString("child_product_id");
                 String bomId = rs.getString("bom_id");
                 String storey = rs.getString("storey");
-                String discipline = rs.getString("bom_category");
+                String discipline = rs.getString("m_product_category_id");
                 String location = rs.getString("bom_name");
 
                 ProductFM fm = fmMap.get(productId);

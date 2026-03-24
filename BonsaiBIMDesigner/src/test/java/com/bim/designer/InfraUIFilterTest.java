@@ -64,7 +64,7 @@ class InfraUIFilterTest {
         assertEquals(13, validator.getRuleCount(),
                 "BRIDGE must load exactly 13 rules");
 
-        // Bridge rules are wildcard-keyed (no bom_category), so they apply to any
+        // Bridge rules are wildcard-keyed (no m_product_category_id), so they apply to any
         // request including bedrooms. The proof of no building-rule leak is the rule
         // count: exactly 13 bridge rules, not the ~10 MY building rules.
         // (Individual rule name verification done in PlacementValidatorImplTest)

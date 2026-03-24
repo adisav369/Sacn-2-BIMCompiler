@@ -12,12 +12,12 @@ CREATE TABLE IF NOT EXISTS "m_attribute" (
     UNIQUE(bom_child_id, param_key)
 );
 CREATE TABLE sqlite_sequence(name,seq);
-CREATE TABLE M_BomCategory (
-    M_BomCategory_ID  TEXT PRIMARY KEY,
+CREATE TABLE M_Product_Category (
+    M_Product_Category_ID  TEXT PRIMARY KEY,
     Name              TEXT NOT NULL,
     Description       TEXT,
     IsActive          INTEGER DEFAULT 1
-, C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL 
+, C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL
     CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')), doc_sub_type TEXT DEFAULT NULL);
 CREATE TABLE ad_building_storey (
     building_type  TEXT NOT NULL,     -- 'Ifc2x3_Duplex', 'Ifc4_SampleHouse', 'SJTII_Terminal'
@@ -1029,10 +1029,10 @@ CREATE TABLE C_BPartner (
     Description     TEXT,
     IsActive        INTEGER DEFAULT 1
 );
-CREATE TABLE M_BomCategoryLine (
-    M_BomCategoryLine_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-    M_BomCategory_ID      TEXT NOT NULL REFERENCES M_BomCategory(M_BomCategory_ID),
-    Child_BomCategory_ID  TEXT NOT NULL REFERENCES M_BomCategory(M_BomCategory_ID),
+CREATE TABLE M_Product_Category_Line (
+    M_Product_Category_Line_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+    M_Product_Category_ID      TEXT NOT NULL REFERENCES M_Product_Category(M_Product_Category_ID),
+    Child_Category_ID  TEXT NOT NULL REFERENCES M_Product_Category(M_Product_Category_ID),
     Sequence              INTEGER NOT NULL DEFAULT 10,
     Value                 TEXT NOT NULL,
     Name                  TEXT NOT NULL,
@@ -1124,7 +1124,7 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     bom_level         TEXT DEFAULT 'SET',
     bom_type          TEXT NOT NULL DEFAULT 'SET'
         CHECK(bom_type IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM')),
-    bom_category      TEXT DEFAULT NULL,
+    m_product_category_id TEXT DEFAULT NULL,
     doc_sub_type      TEXT DEFAULT NULL,
     seq_no            INTEGER DEFAULT 10,
     origin_x          REAL DEFAULT 0.0,
@@ -1193,7 +1193,7 @@ CREATE TABLE IF NOT EXISTS C_OrderLine (
     Line              INTEGER NOT NULL DEFAULT 10,
     family_ref        TEXT NOT NULL,
     host_type         TEXT NOT NULL,
-    bom_category      TEXT,
+    m_product_category_id TEXT,
     bom_child_id      INTEGER,
     dx                REAL NOT NULL DEFAULT 0,
     dy                REAL NOT NULL DEFAULT 0,

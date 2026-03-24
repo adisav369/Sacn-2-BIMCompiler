@@ -57,7 +57,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Unit role prefix for mirrored compositions (e.g. "A_", "B_"). Empty when not in a pair. */
     private final Deque<String> unitPrefixStack = new ArrayDeque<>();
 
-    /** Discipline codes from SET-level BOMs (bom_category: ARC, STR, FP, ...).
+    /** Discipline codes from SET-level BOMs (m_product_category_id: ARC, STR, FP, ...).
      *  Overrides deriveDiscipline() which loses extraction context (e.g. IfcSlab → STR always). */
     private final Deque<String> disciplineStack = new ArrayDeque<>();
 
@@ -116,7 +116,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                         storeyStack.push(inferStoreyName(line.getRole(), childBom));
                     }
 
-                    // Track discipline from SET-level BOMs (bom_category = ARC, STR, FP, ...)
+                    // Track discipline from SET-level BOMs (m_product_category_id = ARC, STR, FP, ...)
                     if ("SET".equals(childBom.getBomType()) && childBom.getBomCategory() != null) {
                         disciplineStack.push(childBom.getBomCategory());
                     }
@@ -608,7 +608,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 default -> role.replace('_', ' ');
             };
         }
-        // Fall back to bom_category
+        // Fall back to m_product_category_id
         String cat = floorBom.getBomCategory();
         if (cat != null) {
             return switch (cat) {
@@ -656,7 +656,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
      * Resolve discipline: priority order:
      * <ol>
      *   <li>C_OrderLine.Discipline (from OrderLineWalker — authoritative when non-null, non-ARC)</li>
-     *   <li>disciplineStack (from SET-level BOM bom_category in hierarchy)</li>
+     *   <li>disciplineStack (from SET-level BOM m_product_category_id in hierarchy)</li>
      *   <li>deriveDiscipline() (static IFC class → discipline mapping, fallback)</li>
      * </ol>
      *

@@ -67,7 +67,7 @@ public class StubDataSeeder {
                         is_active        INTEGER DEFAULT 1,
                         bom_level        INTEGER DEFAULT 0,
                         bom_type         TEXT,
-                        bom_category     TEXT,
+                        m_product_category_id TEXT,
                         doc_base_type    TEXT,
                         doc_sub_type     TEXT,
                         seq_no           INTEGER DEFAULT 10,
@@ -162,7 +162,7 @@ public class StubDataSeeder {
         try (Statement s = conn.createStatement()) {
             // SH — BUILDING level BOM
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('BUILDING_SH', 'Sample House', 'BUILDING', NULL,
@@ -172,7 +172,7 @@ public class StubDataSeeder {
 
             // SH — FLOOR level BOMs
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('FLOOR_SH_GF', 'Ground Floor', 'FLOOR', NULL,
@@ -180,7 +180,7 @@ public class StubDataSeeder {
                         10000, 6000, 3000)
                     """);
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('FLOOR_SH_FF', 'First Floor', 'FLOOR', NULL,
@@ -190,7 +190,7 @@ public class StubDataSeeder {
 
             // SH — ROOM level BOMs with categories
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_LI', 'Living Room', 'ROOM', 'LIVING',
@@ -198,7 +198,7 @@ public class StubDataSeeder {
                         5000, 4000, 3000)
                     """);
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_KT', 'Kitchen', 'ROOM', 'KITCHEN',
@@ -206,7 +206,7 @@ public class StubDataSeeder {
                         3500, 2500, 3000)
                     """);
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_BD', 'Bedroom', 'ROOM', 'BEDROOM',
@@ -214,7 +214,7 @@ public class StubDataSeeder {
                         3100, 3100, 3000)
                     """);
             s.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
                         doc_base_type, doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_BT', 'Bathroom', 'ROOM', 'BATHROOM',

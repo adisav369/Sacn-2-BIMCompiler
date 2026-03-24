@@ -94,7 +94,7 @@ public class BomDropperOrderIdTest {
                     is_active INTEGER DEFAULT 1,
                     bom_level TEXT DEFAULT 'SET',
                     bom_type TEXT NOT NULL DEFAULT 'SET',
-                    bom_category TEXT DEFAULT NULL,
+                    m_product_category_id TEXT DEFAULT NULL,
                     doc_sub_type TEXT DEFAULT NULL,
                     seq_no INTEGER DEFAULT 10,
                     origin_x REAL DEFAULT 0.0,
@@ -157,7 +157,7 @@ public class BomDropperOrderIdTest {
                     Line INTEGER NOT NULL DEFAULT 10,
                     family_ref TEXT NOT NULL,
                     host_type TEXT NOT NULL,
-                    bom_category TEXT,
+                    m_product_category_id TEXT,
                     bom_child_id INTEGER,
                     dx REAL NOT NULL DEFAULT 0,
                     dy REAL NOT NULL DEFAULT 0,
@@ -180,7 +180,7 @@ public class BomDropperOrderIdTest {
         try (Statement stmt = conn.createStatement()) {
             // BUILDING BOM for RE/SH
             stmt.execute("""
-                INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, bom_category,
+                INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, m_product_category_id,
                     doc_base_type, doc_sub_type, is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                 VALUES ('SH_BUILDING', 'SH Building', 'BUILDING', 'BUILDING', 'LI',
                     'RE', 'SH', 1, 10000, 8000, 6000)

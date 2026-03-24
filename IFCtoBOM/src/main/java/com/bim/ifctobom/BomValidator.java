@@ -144,8 +144,8 @@ public class BomValidator {
 
             // BOM categories
             rs = stmt.executeQuery(
-                    "SELECT bom_category, COUNT(*) FROM m_bom " +
-                    "WHERE bom_category IS NOT NULL GROUP BY bom_category ORDER BY bom_category");
+                    "SELECT m_product_category_id, COUNT(*) FROM m_bom " +
+                    "WHERE m_product_category_id IS NOT NULL GROUP BY m_product_category_id ORDER BY m_product_category_id");
             StringBuilder cats = new StringBuilder();
             while (rs.next()) {
                 if (cats.length() > 0) cats.append(", ");
@@ -681,7 +681,7 @@ public class BomValidator {
         System.out.println("  Floor distribution:");
         try (Statement stmt = conn.createStatement()) {
             ResultSet rs = stmt.executeQuery(
-                    "SELECT b.bom_id, b.bom_category, " +
+                    "SELECT b.bom_id, b.m_product_category_id, " +
                     "  (SELECT COUNT(*) FROM m_bom_line l WHERE l.bom_id = b.bom_id AND l." + IS_LEAF + ") AS leaf_lines, " +
                     "  b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm " +
                     "FROM m_bom b WHERE b.bom_type = 'FLOOR' ORDER BY b.seq_no");
@@ -763,11 +763,11 @@ public class BomValidator {
 
             // Per-discipline breakdown
             rs = stmt.executeQuery(
-                    "SELECT b.bom_category, "
+                    "SELECT b.m_product_category_id, "
                     + "COUNT(*) AS lines, COALESCE(SUM(l.qty), COUNT(*)) AS instances "
                     + "FROM m_bom_line l JOIN m_bom b ON l.bom_id = b.bom_id "
                     + "WHERE l." + IS_LEAF + " "
-                    + "GROUP BY b.bom_category ORDER BY instances DESC");
+                    + "GROUP BY b.m_product_category_id ORDER BY instances DESC");
             boolean hasDisc = false;
             while (rs.next()) {
                 if (!hasDisc) {
@@ -817,7 +817,7 @@ public class BomValidator {
              ResultSet rs = stmt.executeQuery("""
                 SELECT l.bom_id, l.child_product_id, l.storey,
                        l.dx, l.dy, l.dz, l.qty, l.verb_ref,
-                       b.bom_category
+                       b.m_product_category_id
                 FROM m_bom_line l
                 JOIN m_bom b ON l.bom_id = b.bom_id
                 WHERE l.component_type = 'LEAF' AND l.verb_ref IS NOT NULL

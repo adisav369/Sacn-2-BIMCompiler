@@ -67,7 +67,7 @@ public class ScheduleDAO {
 
         // Phase 1: aggregate BOM lines into task groups
         String sql = """
-                SELECT bl.child_product_id, bl.qty, b.bom_category, b.bom_name
+                SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.bom_id = b.bom_id
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
@@ -82,7 +82,7 @@ public class ScheduleDAO {
             while (rs.next()) {
                 String productId = rs.getString("child_product_id");
                 int qty = rs.getInt("qty");
-                String rawDisc = rs.getString("bom_category");
+                String rawDisc = rs.getString("m_product_category_id");
                 String discipline = rawDisc != null ? rawDisc : "GEN";
 
                 ProductSchedule ps2 = schedMap.get(productId);

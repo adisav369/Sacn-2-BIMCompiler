@@ -12,7 +12,7 @@ import java.util.List;
  *
  * <p>Three orthogonal dimensions:
  * <ul>
- *   <li>{@code bom_category} — M_BomCategory FK (WHAT: LI, BD, KT, FR, ST, ...)</li>
+ *   <li>{@code m_product_category_id} — M_Product_Category FK (WHAT: LI, BD, KT, FR, ST, ...)</li>
  *   <li>{@code doc_base_type} — C_DocType.DocBaseType (RE=Residential, CO=Commercial, IN=Industrial)</li>
  *   <li>{@code doc_sub_type} — C_DocType.DocSubType (WHICH variant: SH, DX, TB, TE; NULL = generic)</li>
  *   <li>SpaceSize — on M_BOM_Line children (HOW MUCH: AABB in mm)</li>

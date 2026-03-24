@@ -426,7 +426,7 @@ class CheckMethodDispatchTest {
         return new PlacementValidatorImpl.CachedRule(
                 id, "Rule_" + paramName, "TEST",
                 Map.of(paramName, value),
-                Map.of("bom_category", category),
+                Map.of("m_product_category_id", category),
                 0);
     }
 
@@ -471,7 +471,7 @@ class CheckMethodDispatchTest {
         // Build rulesByCategory map manually for testing
         Map<String, List<PlacementValidatorImpl.CachedRule>> map = new java.util.HashMap<>();
         for (PlacementValidatorImpl.CachedRule rule : rules) {
-            String category = rule.stringParams().getOrDefault("bom_category", "*");
+            String category = rule.stringParams().getOrDefault("m_product_category_id", "*");
             map.computeIfAbsent(category, k -> new java.util.ArrayList<>()).add(rule);
         }
 

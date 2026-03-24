@@ -220,7 +220,7 @@ class IFCtoBOMGateTest {
     private static Map<String, String> getBomHeader(Connection conn, String bomId)
             throws SQLException {
         var rs = conn.createStatement().executeQuery(
-                "SELECT bom_type, group_by, bom_category FROM m_bom WHERE bom_id='" + bomId + "'");
+                "SELECT bom_type, group_by, m_product_category_id FROM m_bom WHERE bom_id='" + bomId + "'");
         if (!rs.next()) return null;
         Map<String, String> map = new HashMap<>();
         map.put("bom_type", rs.getString(1));

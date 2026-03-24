@@ -34,7 +34,7 @@ class Schedule5DCostTest {
             s.execute("""
                 CREATE TABLE m_bom (
                     bom_id TEXT PRIMARY KEY, bom_name TEXT NOT NULL,
-                    bom_type TEXT NOT NULL, bom_category TEXT,
+                    bom_type TEXT NOT NULL, m_product_category_id TEXT,
                     is_active INTEGER DEFAULT 1,
                     aabb_width_mm INTEGER DEFAULT 0,
                     aabb_depth_mm INTEGER DEFAULT 0,

@@ -12,7 +12,7 @@ import java.sql.SQLException;
 /**
  * REGISTER BOM &lt;bom_id&gt; AS &lt;category&gt; [WIDTH &lt;w&gt;] [DEPTH &lt;d&gt;] [HEIGHT &lt;h&gt;]
  *
- * <p>Level 4 catalog verb (§18.9). Updates m_bom.bom_category to make
+ * <p>Level 4 catalog verb (§18.9). Updates m_bom.m_product_category_id to make
  * the BOM selectable by {@link MBOM#findBestFitAnyOwner}. Optional
  * WIDTH/DEPTH/HEIGHT validate against actual child dimensions.
  *
@@ -87,7 +87,7 @@ public class RegisterBomVerb implements Verb<RegisterBomVerb.RegisterPayload> {
                         childSpace[2], heightMm), null);
         }
 
-        // Update bom_category
+        // Update m_product_category_id
         bom.setBomCategory(categoryId);
         bom.save();
 

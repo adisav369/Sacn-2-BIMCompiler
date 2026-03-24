@@ -255,7 +255,7 @@ public class BomDropper {
         String discipline = deriveDiscipline(bomCategory);
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
-                   + " bom_category, bom_child_id, dx, dy, dz, "
+                   + " m_product_category_id, bom_child_id, dx, dy, dz, "
                    + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, Qty) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -294,7 +294,7 @@ public class BomDropper {
     }
 
     /**
-     * Derive Discipline from bom_category — same logic as W003 backfill.
+     * Derive Discipline from m_product_category_id — same logic as W003 backfill.
      * RF/STR/SL → STR, FP → FPR, MEP/ELEC/PLB/ACMV → pass-through, else ARC.
      */
     static String deriveDiscipline(String bomCategory) {

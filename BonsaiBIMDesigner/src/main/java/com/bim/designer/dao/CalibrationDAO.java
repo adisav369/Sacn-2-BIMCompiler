@@ -172,12 +172,12 @@ public class CalibrationDAO {
      */
     public Map<String, Integer> bomDisciplineCounts(Connection bomConn) throws SQLException {
         String sql = """
-                SELECT mb.bom_id, mb.bom_category, SUM(ml.qty) as total_qty
+                SELECT mb.bom_id, mb.m_product_category_id, SUM(ml.qty) as total_qty
                 FROM m_bom_line ml
                 JOIN m_bom mb ON ml.bom_id = mb.bom_id
-                WHERE mb.bom_category IN ('FP','ELEC','CW','SP','ACMV')
+                WHERE mb.m_product_category_id IN ('FP','ELEC','CW','SP','ACMV')
                   AND mb.bom_type = 'SET'
-                GROUP BY mb.bom_id, mb.bom_category
+                GROUP BY mb.bom_id, mb.m_product_category_id
                 ORDER BY mb.bom_id
                 """;
         Map<String, Integer> result = new LinkedHashMap<>();

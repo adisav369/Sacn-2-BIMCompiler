@@ -102,7 +102,7 @@ R-PROJ-3 (Session 0) must be fixed before C_Project work.
 | # | Item | Severity | Status |
 |---|------|----------|--------|
 | R-PROJ-3 | C_Order_ID = docTypeId collision — blocks multi-order | **BLOCKING** | Session 0 (Blueprint §14.3) |
-| S60-6 | M_BomCategory → M_Product_Category (77 files) | HIGH | ASSESSED — defer (orthogonal to launch) |
+| S60-6 | M_Product_Category rename (formerly M_BomCategory) | HIGH | IN PROGRESS — S68 Tier 1 docs done |
 | CP-2 | DX MIRROR verb + structured BOM | MED | DEFERRED — quality-of-proof, not correctness |
 | R22 | Extract I_Element_Connectivity | MED | TODO — enables future MEP routing |
 | BBC-001 | CLUSTER expandCluster() entry validation | LOW | BACKLOG |

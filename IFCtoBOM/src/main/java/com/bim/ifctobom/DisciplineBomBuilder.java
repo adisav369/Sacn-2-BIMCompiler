@@ -204,7 +204,7 @@ public class DisciplineBomBuilder {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
                 (bom_id, bom_name, bom_type, group_by, entity_type,
-                 doc_sub_type, doc_base_type, bom_category,
+                 doc_sub_type, doc_base_type, m_product_category_id,
                  aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                  origin_x, origin_y, origin_z, is_active)
                 VALUES (?, ?, ?, ?, 'D', ?, ?, ?,

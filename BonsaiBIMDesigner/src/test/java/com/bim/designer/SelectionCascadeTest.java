@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assumptions.*;
 /**
  * Selection Cascade — BBC.md §3.5 proof for DemoHouse rooms.
  *
- * <p>Exercises the BOM cascade: given bom_category + AABB for each DemoHouse room,
+ * <p>Exercises the BOM cascade: given m_product_category_id + AABB for each DemoHouse room,
  * verify the cascade finds matching SET BOMs from the SH/FK library.
  * Zero new compilation code — the cascade is a data query.
  *
@@ -61,7 +61,7 @@ class SelectionCascadeTest {
             st.execute("""
                 CREATE TABLE m_bom (
                     bom_id TEXT, bom_name TEXT, bom_type TEXT,
-                    bom_category TEXT, source TEXT,
+                    m_product_category_id TEXT, source TEXT,
                     aabb_width_mm INTEGER DEFAULT 0,
                     aabb_depth_mm INTEGER DEFAULT 0,
                     aabb_height_mm INTEGER DEFAULT 0,
@@ -84,9 +84,9 @@ class SelectionCascadeTest {
             try (Statement st = conn.createStatement()) {
                 st.execute("ATTACH DATABASE '" + dbPath + "' AS " + alias);
                 st.execute("""
-                    INSERT INTO m_bom (bom_id, bom_name, bom_type, bom_category, source,
+                    INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, source,
                                        aabb_width_mm, aabb_depth_mm, aabb_height_mm, seq_no, is_active)
-                    SELECT bom_id, bom_name, bom_type, bom_category, '%s',
+                    SELECT bom_id, bom_name, bom_type, m_product_category_id, '%s',
                            aabb_width_mm, aabb_depth_mm, aabb_height_mm, seq_no, is_active
                     FROM %s.m_bom WHERE bom_type = 'SET' AND is_active = 1
                     """.formatted(source, alias));
@@ -112,17 +112,17 @@ class SelectionCascadeTest {
     // ═══════════════════════════════════════════════════════════════════
 
     @Test @Order(1)
-    @DisplayName("W-GEN-1a: Library has SET BOMs with bom_category from SH + FK")
+    @DisplayName("W-GEN-1a: Library has SET BOMs with m_product_category_id from SH + FK")
     void w_gen_1a_library_has_sets() throws Exception {
         try (Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT bom_category, source, COUNT(*) AS cnt " +
-                     "FROM m_bom GROUP BY bom_category, source ORDER BY source, bom_category")) {
+                     "SELECT m_product_category_id, source, COUNT(*) AS cnt " +
+                     "FROM m_bom GROUP BY m_product_category_id, source ORDER BY source, m_product_category_id")) {
             int total = 0;
             System.out.println("  Library SET BOMs:");
             while (rs.next()) {
                 System.out.printf("    [%s] %-12s → %d SETs%n",
-                        rs.getString("source"), rs.getString("bom_category"), rs.getInt("cnt"));
+                        rs.getString("source"), rs.getString("m_product_category_id"), rs.getInt("cnt"));
                 total += rs.getInt("cnt");
             }
             assertTrue(total >= 5, "Library must have ≥5 SET BOMs from SH+FK");
@@ -249,12 +249,12 @@ class SelectionCascadeTest {
         // Check if any SET has AABB=0 and matches a slot
         try (Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT bom_id, bom_category FROM m_bom " +
+                     "SELECT bom_id, m_product_category_id FROM m_bom " +
                      "WHERE aabb_width_mm = 0 AND aabb_depth_mm = 0 AND aabb_height_mm = 0")) {
             boolean foundZero = false;
             while (rs.next()) {
                 String bomId = rs.getString("bom_id");
-                String cat = rs.getString("bom_category");
+                String cat = rs.getString("m_product_category_id");
                 foundZero = true;
                 System.out.printf("  Universal-fit SET: %s (category=%s)%n", bomId, cat);
                 // Verify it matches any slot with its category
@@ -277,7 +277,7 @@ class SelectionCascadeTest {
         int cascadeElements = 0;
 
         System.out.println("  ═══ DemoHouse_2BR Element Projection ═══");
-        System.out.println("  Input: classify_dm.yaml (5 rooms, bom_category + AABB)");
+        System.out.println("  Input: classify_dm.yaml (5 rooms, m_product_category_id + AABB)");
         System.out.println("  Pipeline: YAML → cascade → compiler → output (ZERO new code)");
         System.out.println();
 
@@ -314,7 +314,7 @@ class SelectionCascadeTest {
 
     /**
      * BBC.md §3.5 Selection Cascade:
-     * 1. Scope: bom_category = slot category
+     * 1. Scope: m_product_category_id = slot category
      * 2. Fit: SET AABB ≤ slot AABB (0 = universal fit)
      * 3. Rank: largest volume first, then seq_no
      */
@@ -328,7 +328,7 @@ class SelectionCascadeTest {
                        (CAST(b.aabb_width_mm AS INTEGER) * CAST(b.aabb_depth_mm AS INTEGER)
                         * CAST(b.aabb_height_mm AS INTEGER)) AS volume
                 FROM m_bom b
-                WHERE b.bom_category = ?
+                WHERE b.m_product_category_id = ?
                   AND b.is_active = 1
                   AND (b.aabb_width_mm <= ? OR b.aabb_width_mm = 0)
                   AND (b.aabb_depth_mm <= ? OR b.aabb_depth_mm = 0)

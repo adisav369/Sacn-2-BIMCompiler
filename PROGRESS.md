@@ -41,6 +41,7 @@
 
 ## Session Log (recent first)
 
+**S68** — M_BomCategory → M_Product_Category rename. DV017 migration. 14 docs + 28 Java files + schema_snapshot. [AUDIT Appendix P](docs/AUDIT_S51_FOCUSED.md).
 **S67c** — Session C: Rule pack framing. DV016 pack_id migration. MY=13, US=17 proposals. RulePackTest 6/6. [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
 **S67b** — Session B: OrderLineMutation engine. 3 implementations. OrderLineMutationTest 8/8. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
 **S67** — ELEC onboarding + Session A + watchdog + SystemContract.md + Rosetta Dictionary + mkdocs site. [AUDIT Appendix I](docs/AUDIT_S51_FOCUSED.md).

@@ -16,7 +16,7 @@ public record RoomContext(int orderLineId, String bomCategory, double areaSqM) {
      * Room area is computed from AABB width × depth (mm² → m²).
      */
     static List<RoomContext> findRooms(Connection woConn, String orderId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, bom_category, "
+        String sql = "SELECT C_OrderLine_ID, m_product_category_id, "
                 + "COALESCE(aabb_width_mm, 0) * COALESCE(aabb_depth_mm, 0) / 1e6 AS area_sqm "
                 + "FROM C_OrderLine "
                 + "WHERE C_Order_ID = ? AND host_type = 'ROOM' "
@@ -28,7 +28,7 @@ public record RoomContext(int orderLineId, String bomCategory, double areaSqM) {
                 while (rs.next()) {
                     rooms.add(new RoomContext(
                             rs.getInt("C_OrderLine_ID"),
-                            rs.getString("bom_category"),
+                            rs.getString("m_product_category_id"),
                             rs.getDouble("area_sqm")));
                 }
             }

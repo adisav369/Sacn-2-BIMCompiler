@@ -64,7 +64,7 @@ public class CostDAO {
         Map<String, ProductCost> costMap = loadCostMap(compLibConn);
 
         String sql = """
-                SELECT bl.child_product_id, bl.qty, b.bom_category, b.bom_name
+                SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.bom_id = b.bom_id
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
@@ -82,7 +82,7 @@ public class CostDAO {
             while (rs.next()) {
                 String productId = rs.getString("child_product_id");
                 int qty = rs.getInt("qty");
-                String discipline = rs.getString("bom_category");
+                String discipline = rs.getString("m_product_category_id");
                 if (discipline == null) discipline = "GEN";
 
                 ProductCost pc = costMap.get(productId);

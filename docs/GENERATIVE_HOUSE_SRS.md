@@ -78,7 +78,7 @@ Compile explodes the tree. Instant BOM Drop pattern.
 
 | Dimension | iDempiere Pattern | DemoHouse Application |
 |-----------|------------------|----------------------|
-| **Category** | `M_BomCategory` — what kind of recipe | BATHROOM slot → look for BATHROOM BOMs |
+| **Category** | `M_Product_Category` — what kind of recipe | BATHROOM slot → look for BATHROOM BOMs |
 | **Owner** | `C_DocType.DocSubType` — which variant | DM building → prefer DM BOMs, fallback to SH/DX BOMs with same DocBaseType |
 | **SpaceSize** | `M_BOM_Line` AABB — how big | 2000×1500×2800 slot → child BOM must fit |
 

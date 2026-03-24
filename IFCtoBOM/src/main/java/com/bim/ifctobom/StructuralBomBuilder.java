@@ -113,7 +113,7 @@ public class StructuralBomBuilder {
                     null, null,  // floor BOMs don't carry doc type
                     floorAabbW, floorAabbD, floorAabbH,
                     0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
-            // Set bom_category separately
+            // Set m_product_category_id separately
             updateBomCategory(bomConn, floorBomId, storeyInfo.bomCategory());
 
             // ── Insert element lines (skip scope-assigned elements) ──────────
@@ -212,7 +212,7 @@ public class StructuralBomBuilder {
 
     private static void updateBomCategory(Connection conn, String bomId, String bomCategory)
             throws SQLException {
-        String sql = "UPDATE m_bom SET bom_category = ? WHERE bom_id = ?";
+        String sql = "UPDATE m_bom SET m_product_category_id = ? WHERE bom_id = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomCategory);
             stmt.setString(2, bomId);

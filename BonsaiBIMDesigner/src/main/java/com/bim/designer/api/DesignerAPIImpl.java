@@ -1301,7 +1301,7 @@ public class DesignerAPIImpl implements DesignerAPI {
             // 4a. Write m_bom for BUILDING/FLOOR/ROOM bboxes
             String insertBom = """
                     INSERT OR IGNORE INTO m_bom (bom_id, bom_name, description,
-                        bom_type, group_by, bom_category, entity_type,
+                        bom_type, group_by, m_product_category_id, entity_type,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                         doc_sub_type, origin_x, origin_y, origin_z)
                     VALUES (?, ?, 'GENERATIVE', ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)

@@ -427,7 +427,7 @@ class DemoHouseTest {
             st.execute("""
                 CREATE TABLE m_bom (
                     bom_id TEXT PRIMARY KEY, bom_name TEXT, bom_type TEXT,
-                    bom_category TEXT, group_by TEXT DEFAULT 'default',
+                    m_product_category_id TEXT, group_by TEXT DEFAULT 'default',
                     aabb_width_mm INTEGER DEFAULT 0, aabb_depth_mm INTEGER DEFAULT 0,
                     aabb_height_mm INTEGER DEFAULT 0, entity_type TEXT DEFAULT 'D',
                     is_active INTEGER DEFAULT 1)""");
@@ -543,7 +543,7 @@ class DemoHouseTest {
                 + "  AND p.name = ? "
                 + "  AND EXISTS (SELECT 1 FROM AD_Val_Rule_Param p2 "
                 + "              WHERE p2.ad_val_rule_id = p.ad_val_rule_id "
-                + "                AND p2.name = 'bom_category' "
+                + "                AND p2.name = 'm_product_category_id' "
                 + "                AND p2.value = ?)")) {
             ps.setString(1, paramName);
             ps.setString(2, bomCategory);

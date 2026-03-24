@@ -295,7 +295,7 @@ public class CompositionBomBuilder {
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
-                (bom_id, bom_name, bom_type, group_by, bom_category,
+                (bom_id, bom_name, bom_type, group_by, m_product_category_id,
                  entity_type, origin_x, origin_y, origin_z,
                  aabb_width_mm, aabb_depth_mm, aabb_height_mm, is_active)
                 VALUES (?, ?, ?, ?, ?, 'D', 0.0, 0.0, 0.0, ?, ?, ?, 1)

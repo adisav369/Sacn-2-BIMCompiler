@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * work_output.db → returns BomTreeNode for Outliner (expand/collapse).
  *
  * <p>iDempiere pattern: C_OrderLine has M_Product_ID (family_ref) and
- * M_Product_Category (bom_category). Only IsBOM products (matching m_bom
+ * M_Product_Category (m_product_category_id). Only IsBOM products (matching m_bom
  * entry) explode into children. The GUI renders the tree — users expand
  * or collapse each node, swap by category (e.g., Roof → Pitched/Curved).
  *
@@ -179,19 +179,19 @@ class BomDropTest {
                 "Error must mention IsBOM: " + result.error());
     }
 
-    // ── W-DROP-6: bom_category set on each node for swap browsing ───
+    // ── W-DROP-6: m_product_category_id set on each node for swap browsing ───
 
     @Test
     @Order(6)
-    @DisplayName("W-DROP-6: Each tree node carries bom_category (M_Product_Category) for swap")
+    @DisplayName("W-DROP-6: Each tree node carries m_product_category_id (M_Product_Category) for swap")
     void w_drop_6_bom_category_on_nodes() {
         assertNotNull(dropResult, "W-DROP-1 must run first");
 
-        // Walk tree and check that assembly nodes have bom_category
+        // Walk tree and check that assembly nodes have m_product_category_id
         int categorized = countCategorizedNodes(dropResult.tree());
         assertTrue(categorized > 0,
-                "At least some nodes must have bom_category for BOM chooser swap");
-        System.out.printf("[W-DROP-6] %d nodes with bom_category%n", categorized);
+                "At least some nodes must have m_product_category_id for BOM chooser swap");
+        System.out.printf("[W-DROP-6] %d nodes with m_product_category_id%n", categorized);
     }
 
     private int countCategorizedNodes(BomTreeNode node) {

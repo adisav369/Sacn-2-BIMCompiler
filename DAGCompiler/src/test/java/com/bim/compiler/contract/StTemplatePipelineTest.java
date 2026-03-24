@@ -57,7 +57,7 @@ class StTemplatePipelineTest {
     void st1_templateSelectsSHOwnerAtGF() throws Exception {
         // The CO_EmptySpace L0 line must reference a BUILDING BOM from the SH owner.
         // WriteStage derives the BUILDING BOM using the GF selection's owner from the template.
-        // BUILDING_SH_STD has doc_sub_type='SH', bom_category='RE'.
+        // BUILDING_SH_STD has doc_sub_type='SH', m_product_category_id='RE'.
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + ST_SH_DB);
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(

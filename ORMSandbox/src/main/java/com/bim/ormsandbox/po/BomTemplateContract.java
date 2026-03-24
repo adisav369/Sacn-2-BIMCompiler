@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Validates BOM catalog completeness against the M_BomCategoryLine template.
+ * Validates BOM catalog completeness against the M_Product_Category template.
  *
  * <p>Walks the template tree (e.g. RE→{SL,GF,RF}, GF→{LI,BD,DN,KT,BT}) and for each
  * leaf category, counts how many BOMs of that category exist within a given
@@ -49,7 +49,7 @@ public class BomTemplateContract {
      *
      * <p>Walks the template tree for the doc_type derived from docSubType
      * (e.g. SH→RE, DX→RE, TE→CO). Template lookup is by doc_type, not C_BPartner.
-     * At each leaf: queries MBOM catalog for matching bom_category + doc_sub_type.
+     * At each leaf: queries MBOM catalog for matching m_product_category_id + doc_sub_type.
      * Reports what exists, what's missing, what's optional.
      *
      * @param conn        JDBC connection to BOM.db

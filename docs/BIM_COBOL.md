@@ -2055,7 +2055,7 @@ In the Bonsai GUI, the user draws a box on screen. That box becomes the AABB inp
 │  {PREFIX}_BOM.db                                                         │
 │  m_bom ◀──── new rows                                          │
 │  m_bom_line ◀──── new children                                  │
-│  m_bom_category_line ◀──── new template rules (Level 4 only)   │
+│  m_product_category_line ◀──── new template rules (Level 4 only)│
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -2305,7 +2305,7 @@ Subdivide an AABB into room-sized slots. This is the 1D-to-rooms conversion: a b
 
 ```bimcobol
 PARTITION AABB 12000 10000 6000 INTO ROOMS LI DN KT BD BT
-    -- Uses M_BomCategory min/max constraints
+    -- Uses M_Product_Category min/max constraints
     -- Allocates width proportional to category typical ratios
     -- Output: 5 room AABBs that tile the floor plan
 
@@ -2324,7 +2324,7 @@ Check if an AABB is viable for a given category. Catches impossible rooms before
 
 ```bimcobol
 VALIDATE AABB 1500 1200 2800 FOR KITCHEN
-    -- FAIL: minimum kitchen width is 1800mm (M_BomCategoryLine.min_width_mm)
+    -- FAIL: minimum kitchen width is 1800mm (M_Product_Category_Line.min_width_mm)
 
 VALIDATE AABB 5000 4000 2800 FOR BEDROOM
     -- OK: within range, 3 candidate BOMs in catalog
@@ -2586,22 +2586,22 @@ STACK FLOORS IN SY_MY_DUPLEX
 
 ### 18.9 Level 4 — Catalog-Level Verbs (Template Grammar)
 
-These modify the `M_BomCategory` classification that drives COMPOSE BUILDING. This is the metaprogramming level — changing the rules that generate buildings, not the buildings themselves.
+These modify the `M_Product_Category` classification that drives COMPOSE BUILDING. This is the metaprogramming level — changing the rules that generate buildings, not the buildings themselves.
 
 #### DEFINE CATEGORY
 
-Create a new M_BomCategory entry. This adds a room type, structural type, or spatial concept to the grammar.
+Create a new M_Product_Category entry. This adds a room type, structural type, or spatial concept to the grammar.
 
 ```bimcobol
 DEFINE CATEGORY CL CLASSROOM doc_type Commercial
-    -- Creates M_BomCategory: category_id=CL, name=Classroom, doc_type=Commercial
+    -- Creates M_Product_Category: category_id=CL, name=Classroom, doc_type=Commercial
 
 DEFINE CATEGORY LB LOBBY doc_type Commercial
 DEFINE CATEGORY CF CAFETERIA doc_type Commercial
 DEFINE CATEGORY WS WORKSTATION doc_type Commercial
 ```
 
-**Writes to {PREFIX}_BOM.db:** 1 `m_bom_category` row.
+**Writes to {PREFIX}_BOM.db:** 1 `m_product_category` row.
 **Payload:** `DefineCategoryPayload(categoryId, name, docType)`
 
 #### ADD TEMPLATE RULE
@@ -2620,7 +2620,7 @@ ADD TEMPLATE RULE PR CONTAINS HU MIRRORING PARTY_WALL_PI
     -- Pair → Half-Unit with party wall mirroring (the DX pattern)
 ```
 
-**Writes to {PREFIX}_BOM.db:** 1 `m_bom_category_line` row.
+**Writes to {PREFIX}_BOM.db:** 1 `m_product_category_line` row.
 **Payload:** `AddRulePayload(parentCategory, childCategory, minQty, maxQty, zExtent, mirroringRule)`
 
 #### REGISTER BOM
@@ -2802,7 +2802,7 @@ CREATE ROOM DEPARTURE_LOUNGE 40000 30000 4500
     → DEPARTURE_LOUNGE_SET: 200 SEATING + 15 RETAIL_COUNTER + 40 BARRIER + ...
 ```
 
-The verb suite scales by adding `M_BomCategory` entries and `m_bom` catalog rows (SQL data). No Java changes. The grammar grows; the engine stays fixed.
+The verb suite scales by adding `M_Product_Category` entries and `m_bom` catalog rows (SQL data). No Java changes. The grammar grows; the engine stays fixed.
 
 **Terminal (51K elements) decomposition roadmap:**
 1. Extract Terminal rooms into SET-level BOMs (Phase B)
@@ -3172,7 +3172,7 @@ DISCOVER PATTERNS IN TE DISCIPLINE FP
 
 CLASSIFY ELEMENTS IN TE WHERE ifc_class = 'IfcBuildingElementProxy'
     -- Reads property sets (IfcPropertySingleValue, IfcClassificationReference)
-    -- Assigns M_BomCategory based on properties, not IFC class
+    -- Assigns M_Product_Category based on properties, not IFC class
     -- Output: reclassification map (proxy GUID → category)
 
 DISCOVER ZONES IN TE STOREY "Aras Tanah"

@@ -58,7 +58,7 @@ public class SustainabilityDAO {
         // Phase 2: iterate BOM lines, join in memory
         String sql = """
                 SELECT bl.bom_id, bl.child_product_id, bl.qty,
-                       b.bom_category
+                       b.m_product_category_id
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.bom_id = b.bom_id
                 WHERE bl.child_product_id IS NOT NULL
@@ -77,7 +77,7 @@ public class SustainabilityDAO {
                 String bomLineId = rs.getString("bom_id");
                 String productId = rs.getString("child_product_id");
                 int qty = rs.getInt("qty");
-                String discipline = rs.getString("bom_category");
+                String discipline = rs.getString("m_product_category_id");
                 if (discipline == null) discipline = "UNKNOWN";
 
                 ProductCarbon pc = carbonMap.get(productId);

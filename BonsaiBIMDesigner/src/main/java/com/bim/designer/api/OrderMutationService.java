@@ -36,7 +36,7 @@ public class OrderMutationService {
      * @param linesCreated   number of PROPOSED C_OrderLines inserted
      * @param roomsProcessed number of rooms that had matching MEP requirements
      * @param discipline     the discipline that was added
-     * @param details        per-room breakdown (room bom_category → product list)
+     * @param details        per-room breakdown (room m_product_category_id → product list)
      */
     public record AddDisciplineResult(
             int linesCreated,
@@ -166,7 +166,7 @@ public class OrderMutationService {
     // ── Space type mapping ──────────────────────────────────────────
 
     /**
-     * Derive ad_space_type_mep_bom.space_type_id from bom_category.
+     * Derive ad_space_type_mep_bom.space_type_id from m_product_category_id.
      * BOM categories map directly to space types in most cases.
      * Returns null for categories that have no MEP mapping.
      */
@@ -187,7 +187,7 @@ public class OrderMutationService {
             case "CLASSROOM" -> "CLASSROOM";
             case "ASSEMBLY_HALL" -> "ASSEMBLY_HALL";
             default -> {
-                BIMLogger.info(TAG, "No MEP space_type mapping for bom_category={}", bomCategory);
+                BIMLogger.info(TAG, "No MEP space_type mapping for m_product_category_id={}", bomCategory);
                 yield null;
             }
         };
@@ -216,14 +216,14 @@ public class OrderMutationService {
 
         String sql = "INSERT INTO C_OrderLine "
                 + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
-                + " bom_category, M_Product_ID, Discipline, Qty, proposal_status) "
+                + " m_product_category_id, M_Product_ID, Discipline, Qty, proposal_status) "
                 + "VALUES (?, ?, ?, ?, 'LEAF', ?, ?, ?, ?, 'PROPOSED')";
         try (PreparedStatement ps = woConn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, orderId);
             ps.setInt(2, parentLineId);
             ps.setInt(3, nextLine);
             ps.setString(4, mepProductId);       // family_ref = product ID
-            ps.setString(5, roomCategory);        // bom_category from parent room
+            ps.setString(5, roomCategory);        // m_product_category_id from parent room
             ps.setString(6, mepProductId);        // M_Product_ID
             ps.setString(7, discipline);          // FP, ELEC, SP, ACMV
             ps.setInt(8, qty);

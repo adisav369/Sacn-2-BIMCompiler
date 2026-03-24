@@ -14,7 +14,7 @@ import java.util.logging.Logger;
  * <p>This DAO reads from two sources:
  * <ul>
  *   <li>{@code BOM.db} — C_DocType (building types), m_bom (BOM headers),
- *       m_bom_line (BOM children), M_BomCategory (room types)</li>
+ *       m_bom_line (BOM children), M_Product_Category (room types)</li>
  *   <li>{@code component_library.db} — M_Product (product catalog)</li>
  * </ul>
  *
@@ -125,12 +125,12 @@ public class DesignerDAO {
     /** Distinct BOM categories for a given DocSubType. */
     public List<CategoryRow> listCategories(String docSubType) throws SQLException {
         String sql = """
-                SELECT bom_category, bom_type, COUNT(*) AS bom_count
+                SELECT m_product_category_id, bom_type, COUNT(*) AS bom_count
                 FROM m_bom
                 WHERE doc_sub_type = ? AND is_active = 1
-                  AND bom_category IS NOT NULL
-                GROUP BY bom_category, bom_type
-                ORDER BY bom_category
+                  AND m_product_category_id IS NOT NULL
+                GROUP BY m_product_category_id, bom_type
+                ORDER BY m_product_category_id
                 """;
         List<CategoryRow> rows = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
@@ -138,7 +138,7 @@ public class DesignerDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     rows.add(new CategoryRow(
-                            rs.getString("bom_category"),
+                            rs.getString("m_product_category_id"),
                             rs.getString("bom_type"),
                             rs.getInt("bom_count")
                     ));
@@ -152,15 +152,15 @@ public class DesignerDAO {
 
     /**
      * Lists FLOOR-level BOMs (segments) for a BUILDING bom_id.
-     * Each segment includes its bom_category and the disciplines
-     * (SET-level children bom_categories).
+     * Each segment includes its m_product_category_id and the disciplines
+     * (SET-level children m_product_category_ids).
      *
      * // Implementing INFRA_DESIGNER_SRS.md §0.2 — Witness: W-INFRA-SEG-1
      */
     public List<SegmentRow> listSegments(String buildingBomId) throws SQLException {
         // Step 1: find FLOOR-level BOMs that are children of the BUILDING BOM
         String floorSQL = """
-                SELECT f.bom_id, f.bom_name, f.bom_category,
+                SELECT f.bom_id, f.bom_name, f.m_product_category_id,
                        (SELECT COUNT(*) FROM m_bom_line fl
                         WHERE fl.bom_id IN (
                             SELECT s.bom_id FROM m_bom s
@@ -181,7 +181,7 @@ public class DesignerDAO {
                 while (rs.next()) {
                     String bomId = rs.getString("bom_id");
                     String name = rs.getString("bom_name");
-                    String category = rs.getString("bom_category");
+                    String category = rs.getString("m_product_category_id");
                     int elemCount = rs.getInt("element_count");
                     List<String> disciplines = loadDisciplines(bomId);
                     rows.add(new SegmentRow(bomId, name, category, elemCount, disciplines));
@@ -191,21 +191,21 @@ public class DesignerDAO {
         return rows;
     }
 
-    /** Load SET-level bom_categories (disciplines) for a FLOOR bom_id. */
+    /** Load SET-level m_product_category_ids (disciplines) for a FLOOR bom_id. */
     private List<String> loadDisciplines(String floorBomId) throws SQLException {
         String sql = """
-                SELECT DISTINCT s.bom_category
+                SELECT DISTINCT s.m_product_category_id
                 FROM m_bom s
                 JOIN m_bom_line bl ON bl.bom_id = ? AND bl.child_product_id = s.bom_id
                 WHERE s.bom_type = 'SET' AND s.is_active = 1
-                ORDER BY s.bom_category
+                ORDER BY s.m_product_category_id
                 """;
         List<String> disciplines = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, floorBomId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    disciplines.add(rs.getString("bom_category"));
+                    disciplines.add(rs.getString("m_product_category_id"));
                 }
             }
         }
@@ -222,7 +222,7 @@ public class DesignerDAO {
     /** BOM header by bom_id. */
     public BomHeaderRow getBomHeader(String bomId) throws SQLException {
         String sql = """
-                SELECT bom_id, bom_name, bom_type, bom_category,
+                SELECT bom_id, bom_name, bom_type, m_product_category_id,
                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                        entity_type
                 FROM m_bom WHERE bom_id = ?
@@ -235,7 +235,7 @@ public class DesignerDAO {
                             rs.getString("bom_id"),
                             rs.getString("bom_name"),
                             rs.getString("bom_type"),
-                            rs.getString("bom_category"),
+                            rs.getString("m_product_category_id"),
                             rs.getInt("aabb_width_mm"),
                             rs.getInt("aabb_depth_mm"),
                             rs.getInt("aabb_height_mm"),
@@ -447,7 +447,7 @@ public class DesignerDAO {
      *
      * <p>Five-tier priority:
      * <ol>
-     *   <li>Scope: bom_category = room's category</li>
+     *   <li>Scope: m_product_category_id = room's category</li>
      *   <li>Fit: SET AABB ≤ slot AABB (AABB=0 = universal fit)</li>
      *   <li>Rank: largest volume first</li>
      *   <li>Tiebreak: seq_no ascending</li>
@@ -458,13 +458,13 @@ public class DesignerDAO {
     public List<SetMatchRow> findMatchingSets(String category,
             int slotWidthMm, int slotDepthMm, int slotHeightMm) throws SQLException {
         String sql = """
-                SELECT b.bom_id, b.bom_name, b.bom_category,
+                SELECT b.bom_id, b.bom_name, b.m_product_category_id,
                        b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm,
                        (SELECT COUNT(*) FROM m_bom_line l
                         WHERE l.bom_id = b.bom_id AND l.is_active = 1
                           AND l.component_type != 'PHANTOM') AS child_count
                 FROM m_bom b
-                WHERE b.bom_category = ?
+                WHERE b.m_product_category_id = ?
                   AND b.bom_type = 'SET'
                   AND b.is_active = 1
                   AND (b.aabb_width_mm <= ? OR b.aabb_width_mm = 0)
@@ -485,7 +485,7 @@ public class DesignerDAO {
                     rows.add(new SetMatchRow(
                             rs.getString("bom_id"),
                             rs.getString("bom_name"),
-                            rs.getString("bom_category"),
+                            rs.getString("m_product_category_id"),
                             rs.getInt("aabb_width_mm"),
                             rs.getInt("aabb_depth_mm"),
                             rs.getInt("aabb_height_mm"),

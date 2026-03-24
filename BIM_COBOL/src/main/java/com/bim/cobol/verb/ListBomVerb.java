@@ -14,7 +14,7 @@ import java.util.List;
  * LIST BOMS [&lt;prefix&gt;] — enumerate BOMs in BOM.db.
  *
  * <p>Lists all active BOMs, optionally filtered by ID prefix.
- * Returns bom_id, bom_name, bom_type, bom_category, doc_sub_type for each.
+ * Returns bom_id, bom_name, bom_type, m_product_category_id, doc_sub_type for each.
  *
  * <p>Examples:
  * <pre>

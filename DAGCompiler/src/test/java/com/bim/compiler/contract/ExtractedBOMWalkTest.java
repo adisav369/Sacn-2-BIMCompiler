@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>W-BOM-EB-2: BUILDING_DX_STD walk = 1099 onLeaf, 5 onSubAssembly (5 floors)</li>
  *   <li>W-BOM-EB-3: Every leaf has non-null child_product_id + at least one AABB axis &gt; 0</li>
  *   <li>W-BOM-EB-4: All 8 SH IFC classes represented as leaf roles</li>
- *   <li>W-BOM-EB-5: bom_category = RE (Residential) for BUILDING BOMs</li>
+ *   <li>W-BOM-EB-5: m_product_category_id = RE (Residential) for BUILDING BOMs</li>
  * </ul>
  */
 class ExtractedBOMWalkTest {
@@ -132,17 +132,17 @@ class ExtractedBOMWalkTest {
         }
     }
 
-    // ── W-BOM-EB-5: bom_category = RE for BUILDING BOMs ──────────────────
+    // ── W-BOM-EB-5: m_product_category_id = RE for BUILDING BOMs ──────────────────
 
     @Test
-    @DisplayName("W-BOM-EB-5: bom_category = RE for BUILDING BOMs")
+    @DisplayName("W-BOM-EB-5: m_product_category_id = RE for BUILDING BOMs")
     void w_bom_eb_5_category() throws Exception {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath())) {
             for (String bomId : List.of(BUILDING_SH, BUILDING_DX)) {
                 MBOM bom = MBOM.get(conn, bomId);
                 assertNotNull(bom, bomId + " must exist and be active");
                 assertEquals("RE", bom.getBomCategory(),
-                    bomId + " bom_category must be RE (Residential)");
+                    bomId + " m_product_category_id must be RE (Residential)");
             }
         }
     }

@@ -189,7 +189,7 @@ For **ROOM-level** Orderlines (Phase BOM-1, already live):
 
 > **Full dimension model:** see [BBC.md](BOMBasedCompilation.md) §1.
 > M_Product is flattened into M_BOM. `m_bom_line` = M_BOM_Line.
-> Three orthogonal dimensions: `BOMCategory` (M_BomCategory — WHAT), `C_BPartner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
+> Three orthogonal dimensions: `M_Product_Category` (M_Product_Category — WHAT), `C_BPartner` (C_BPartner — WHO), SpaceSize (AABB — HOW MUCH).
 
 BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` layer convention:
 

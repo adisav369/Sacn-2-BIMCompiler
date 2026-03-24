@@ -12,8 +12,8 @@ import java.util.*;
  * PlacementValidatorImpl -- loads AD_Val_Rule + AD_Val_Rule_Param per jurisdiction,
  * caches rules in memory, validates PlacementRequest against them.
  *
- * <p>Rules are indexed by bom_category for O(1) lookup. Rules without a
- * bom_category param apply to ALL categories (stored under key "*").
+ * <p>Rules are indexed by m_product_category_id for O(1) lookup. Rules without a
+ * m_product_category_id param apply to ALL categories (stored under key "*").
  *
  * <p>Only COMPLIANCE rules with min/max threshold params are evaluated here.
  * CLASH and CLEARANCE rules require spatial queries and are out of scope.
@@ -54,7 +54,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
     /** Dimension deviation ratio threshold: flag if actual/typical > MAX or < 1/MAX. */
     private static final double DIM_RANGE_RATIO = 5.0;
 
-    /** Rules keyed by bom_category (or "*" for any-category rules). */
+    /** Rules keyed by m_product_category_id (or "*" for any-category rules). */
     private Map<String, List<CachedRule>> rulesByCategory = Map.of();
 
     /** Mined dimension rules from disc_validation.db, keyed by ifc_class. */
@@ -144,7 +144,7 @@ public class PlacementValidatorImpl implements PlacementValidator {
     /**
      * Loads all active COMPLIANCE rules for a jurisdiction (building mode).
      * Excludes infrastructure rules (provenance LIKE 'Infra_%').
-     * Groups them by bom_category (or "*" if no category filter).
+     * Groups them by m_product_category_id (or "*" if no category filter).
      */
     private Map<String, List<CachedRule>> loadRules(String jurisdiction, Connection conn) {
         Map<String, List<CachedRule>> result = new HashMap<>();
@@ -169,12 +169,12 @@ public class PlacementValidatorImpl implements PlacementValidator {
                     // Step 2: load params for this rule
                     Map<String, String> allParams = loadParams(conn, ruleId);
 
-                    // Step 3: separate bom_category, thresholds, and string params
-                    String category = allParams.getOrDefault("bom_category", WILDCARD);
+                    // Step 3: separate m_product_category_id, thresholds, and string params
+                    String category = allParams.getOrDefault("m_product_category_id", WILDCARD);
                     Map<String, Double> thresholds = new HashMap<>();
                     Map<String, String> stringParams = new HashMap<>();
                     for (var e : allParams.entrySet()) {
-                        if ("bom_category".equals(e.getKey())) continue;
+                        if ("m_product_category_id".equals(e.getKey())) continue;
                         if (isNumeric(e.getValue())) {
                             thresholds.put(e.getKey(), Double.parseDouble(e.getValue()));
                         } else {
@@ -220,11 +220,11 @@ public class PlacementValidatorImpl implements PlacementValidator {
                     int dependsOn = rs.getInt(4);
 
                     Map<String, String> allParams = loadParams(conn, ruleId);
-                    String category = allParams.getOrDefault("bom_category", WILDCARD);
+                    String category = allParams.getOrDefault("m_product_category_id", WILDCARD);
                     Map<String, Double> thresholds = new HashMap<>();
                     Map<String, String> stringParams = new HashMap<>();
                     for (var e : allParams.entrySet()) {
-                        if ("bom_category".equals(e.getKey())) continue;
+                        if ("m_product_category_id".equals(e.getKey())) continue;
                         if (isNumeric(e.getValue())) {
                             thresholds.put(e.getKey(), Double.parseDouble(e.getValue()));
                         } else {

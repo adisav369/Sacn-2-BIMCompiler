@@ -207,7 +207,7 @@ Building type classification. Prime Rule three-key match: DocBaseType + DocSubTy
 | bom_id | TEXT PK | e.g. BUILDING_SH_STD, SH_GF_STR, BED_SET |
 | bom_name | TEXT | Display name |
 | bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
-| bom_category | TEXT | Functional role — FK → M_BomCategory |
+| bom_category | TEXT | Functional role — FK → M_Product_Category |
 | doc_base_type | TEXT | RE/CO/IN — Prime Rule key |
 | doc_sub_type | TEXT | SH/DX/TB/TE — variant scope |
 | origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
@@ -262,9 +262,9 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 | M_Product_Category_ID | TEXT FK | → M_Product_Category |
 | is_active | INTEGER | |
 
-### M_BomCategory (flat classification — like M_Product_Category in iDempiere)
+### M_Product_Category (flat classification — aligned with iDempiere naming)
 
-| M_BomCategory_ID | Name | Purpose |
+| M_Product_Category_ID | Name | Purpose |
 |-------------------|------|---------|
 | RE | Residential Template | Standard residential decomposition |
 | GF | Ground Floor | Habitable body |

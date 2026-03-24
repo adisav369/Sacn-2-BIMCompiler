@@ -638,7 +638,7 @@ These get flat per-element BOM lines (qty=1 each).
 ## ERP Model Architecture — Terminal as Third Stone
 
 > **Interactive ERD:** `docs/terminal_erd.html` — 5-tab visualization with
-> entity relationships, BOM hierarchy, verb→ERP mapping, M_BomCategory scoping,
+> entity relationships, BOM hierarchy, verb→ERP mapping, M_Product_Category scoping,
 > and ROUTE-as-BOM tree with M_AttributeSetInstance.
 
 Terminal is the first building to stress the full iDempiere ERP model. SH/DX
@@ -676,9 +676,9 @@ DocSubType (SH/DX/TE) carries identity for the Prime Rule three-key match.
 When a second commercial building arrives (mall, factory), it will be CO with
 a different DocSubType. The hierarchy shape stays FLOOR→DISCIPLINE→ASSEMBLY.
 
-### M_BomCategory — Dual Axis, Scoped by doc_type/doc_sub_type
+### M_Product_Category — Dual Axis, Scoped by doc_type/doc_sub_type
 
-M_BomCategory already has `doc_type` (DocBaseType) and `doc_sub_type` columns.
+M_Product_Category already has `doc_type` (DocBaseType) and `doc_sub_type` columns.
 These columns on the category row itself determine which building types can use
 that category. Room categories have `doc_type='RE'`, discipline categories will
 have `doc_type='CO'`, and shared categories (storeys, structural) have `doc_type=NULL`.
@@ -694,7 +694,7 @@ have `doc_type='CO'`, and shared categories (storeys, structural) have `doc_type
 Room and discipline codes operate at **different BOM levels** and never compete.
 Storeys are shared across RE and CO — always at Level 1. The Level 2 axis
 changes from room-type to discipline-type based on DocBaseType. No new tables
-needed; M_BomCategory holds both sets, scoped by the doc_type column.
+needed; M_Product_Category holds both sets, scoped by the doc_type column.
 
 ### M_AttributeSet/Instance — Per-Verb Usage
 
@@ -1438,7 +1438,7 @@ with per-floor ESLine placement compresses further. If not, the current per-floo
 independent BOMs are correct and 42.8:1 is the natural compression limit.
 
 **This is a future investigation** — does not block current compilation. The spec
-(BOMBasedCompilation.md §3.3) supports recurrence via M_BomCategoryLine templates.
+(BOMBasedCompilation.md §3.3) supports recurrence via M_Product_Category_Line templates.
 
 ---
 

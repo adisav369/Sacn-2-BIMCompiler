@@ -206,7 +206,7 @@ public class WorkOutputDAO {
             // 3. Insert C_OrderLine for each bbox
             String insertLine = """
                     INSERT INTO C_OrderLine (C_Order_ID, Line, family_ref, host_type,
-                        bom_category, dx, dy, dz,
+                        m_product_category_id, dx, dy, dz,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """;
@@ -276,7 +276,7 @@ public class WorkOutputDAO {
      */
     public List<DesignBBox> recall(String variantOrderId) throws SQLException {
         String sql = """
-                SELECT family_ref, host_type, bom_category,
+                SELECT family_ref, host_type, m_product_category_id,
                        dx, dy, dz,
                        aabb_width_mm, aabb_depth_mm, aabb_height_mm
                 FROM C_OrderLine
@@ -291,7 +291,7 @@ public class WorkOutputDAO {
                 while (rs.next()) {
                     String bomId = rs.getString("family_ref");
                     String hostType = rs.getString("host_type");
-                    String category = rs.getString("bom_category");
+                    String category = rs.getString("m_product_category_id");
                     double dx = rs.getDouble("dx");
                     double dy = rs.getDouble("dy");
                     double dz = rs.getDouble("dz");
@@ -395,7 +395,7 @@ public class WorkOutputDAO {
         // Insert the C_OrderLine
         String insertLine = """
                 INSERT INTO C_OrderLine (C_Order_ID, Line, family_ref, host_type,
-                    bom_category, dx, dy, dz,
+                    m_product_category_id, dx, dy, dz,
                     aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
@@ -470,7 +470,7 @@ public class WorkOutputDAO {
      */
     private List<OrderLineRow> queryOrderLines(String subOrderId) throws SQLException {
         String sql = """
-                SELECT C_OrderLine_ID, family_ref, host_type, bom_category,
+                SELECT C_OrderLine_ID, family_ref, host_type, m_product_category_id,
                        dx, dy, dz,
                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                        Qty, validation_status,
@@ -489,7 +489,7 @@ public class WorkOutputDAO {
                             rs.getInt("C_OrderLine_ID"),
                             rs.getString("family_ref"),
                             rs.getString("host_type"),
-                            rs.getString("bom_category"),
+                            rs.getString("m_product_category_id"),
                             rs.getDouble("dx"),
                             rs.getDouble("dy"),
                             rs.getDouble("dz"),
@@ -510,11 +510,11 @@ public class WorkOutputDAO {
     private static final java.util.Set<String> EDITABLE_FIELDS = java.util.Set.of(
             "aabb_width_mm", "aabb_depth_mm", "aabb_height_mm",
             "dx", "dy", "dz", "Qty",
-            "bom_category", "family_ref", "host_type");
+            "m_product_category_id", "family_ref", "host_type");
 
     /** Text-type fields — use setString, not setDouble. */
     private static final java.util.Set<String> TEXT_FIELDS = java.util.Set.of(
-            "bom_category", "family_ref", "host_type");
+            "m_product_category_id", "family_ref", "host_type");
 
     /**
      * Update a single field on a C_OrderLine (ORDER View inline edit).
@@ -569,7 +569,7 @@ public class WorkOutputDAO {
      */
     public OrderLineRow getOrderLine(int orderLineId) throws SQLException {
         String sql = """
-                SELECT C_OrderLine_ID, family_ref, host_type, bom_category,
+                SELECT C_OrderLine_ID, family_ref, host_type, m_product_category_id,
                        dx, dy, dz,
                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                        Qty, validation_status,
@@ -585,7 +585,7 @@ public class WorkOutputDAO {
                             rs.getInt("C_OrderLine_ID"),
                             rs.getString("family_ref"),
                             rs.getString("host_type"),
-                            rs.getString("bom_category"),
+                            rs.getString("m_product_category_id"),
                             rs.getDouble("dx"),
                             rs.getDouble("dy"),
                             rs.getDouble("dz"),
@@ -658,7 +658,7 @@ public class WorkOutputDAO {
     /**
      * Insert a C_OrderLine for a BOM Drop tree node.
      * iDempiere pattern: C_OrderLine references M_Product_ID (family_ref)
-     * and M_Product_Category (bom_category). Only IsBOM products (those with
+     * and M_Product_Category (m_product_category_id). Only IsBOM products (those with
      * a matching m_bom entry) have children — this is the BOM tree structure.
      *
      * @param orderId           C_Order_ID (from createBomDropOrder)
@@ -692,7 +692,7 @@ public class WorkOutputDAO {
 
         String sql = """
                 INSERT INTO C_OrderLine (C_Order_ID, Parent_OrderLine_ID, Line,
-                    family_ref, host_type, bom_category, M_Product_ID,
+                    family_ref, host_type, m_product_category_id, M_Product_ID,
                     dx, dy, dz,
                     aabb_width_mm, aabb_depth_mm, aabb_height_mm, Qty)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1146,7 +1146,7 @@ public class WorkOutputDAO {
                 Line                  INTEGER NOT NULL DEFAULT 10,
                 family_ref            TEXT NOT NULL,
                 host_type             TEXT NOT NULL,
-                bom_category          TEXT,
+                m_product_category_id TEXT,
                 M_Product_ID          TEXT,
                 dx                    REAL NOT NULL DEFAULT 0,
                 dy                    REAL NOT NULL DEFAULT 0,

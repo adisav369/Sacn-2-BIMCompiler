@@ -343,7 +343,7 @@ class ASIAuthoringTest {
             s.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom (
                     bom_id TEXT PRIMARY KEY, bom_name TEXT, bom_type TEXT,
-                    bom_category TEXT, doc_base_type TEXT, doc_sub_type TEXT,
+                    m_product_category_id TEXT, doc_base_type TEXT, doc_sub_type TEXT,
                     group_by TEXT DEFAULT 'default', seq_no INTEGER DEFAULT 10,
                     aabb_width_mm INTEGER DEFAULT 0, aabb_depth_mm INTEGER DEFAULT 0,
                     aabb_height_mm INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1,
@@ -380,7 +380,7 @@ class ASIAuthoringTest {
                 ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'RE', 'SH', 1, 10, 55)
                 """);
 
-            // SET BOMs — room content packs with bom_category
+            // SET BOMs — room content packs with m_product_category_id
             // These are what the Selection Cascade queries
             s.execute("""
                 INSERT INTO m_bom VALUES

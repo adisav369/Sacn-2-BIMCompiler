@@ -295,13 +295,13 @@ class BomDropConfigureTest {
                     if (rs.next()) {
                         try (var ps = conn.prepareStatement("""
                                 INSERT OR IGNORE INTO m_bom (bom_id, bom_name, bom_type,
-                                    bom_category, group_by, aabb_width_mm, aabb_depth_mm,
+                                    m_product_category_id, group_by, aabb_width_mm, aabb_depth_mm,
                                     aabb_height_mm, entity_type, is_active)
                                 VALUES (?,?,?,?,?,?,?,?,?,?)""")) {
                             ps.setString(1, rs.getString("bom_id"));
                             ps.setString(2, rs.getString("bom_name"));
                             ps.setString(3, rs.getString("bom_type"));
-                            ps.setString(4, rs.getString("bom_category"));
+                            ps.setString(4, rs.getString("m_product_category_id"));
                             ps.setString(5, rs.getString("group_by"));
                             ps.setDouble(6, rs.getDouble("aabb_width_mm"));
                             ps.setDouble(7, rs.getDouble("aabb_depth_mm"));

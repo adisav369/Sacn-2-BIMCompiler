@@ -42,7 +42,7 @@ class Tier1Test {
                     bom_id TEXT PRIMARY KEY,
                     bom_name TEXT NOT NULL,
                     bom_type TEXT NOT NULL,
-                    bom_category TEXT,
+                    m_product_category_id TEXT,
                     is_active INTEGER DEFAULT 1,
                     aabb_width_mm INTEGER DEFAULT 0,
                     aabb_depth_mm INTEGER DEFAULT 0,

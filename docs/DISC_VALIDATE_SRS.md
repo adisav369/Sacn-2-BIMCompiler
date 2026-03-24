@@ -114,9 +114,9 @@ install all conduits in the building top-to-bottom. Exception: risers
 
 ---
 
-## 3. M_BomCategory as Discipline Classifier
+## 3. M_Product_Category as Discipline Classifier
 
-`M_BomCategory` (= iDempiere M_Product_Category) serves as the shared catalog
+`M_Product_Category` (the former M_BomCategory, now aligned with iDempiere naming) serves as the shared catalog
 classifier. Discipline codes become new bom_category values:
 
 | bom_category | Current Use | New Use |
@@ -148,7 +148,7 @@ iDempiere teaches us two orthogonal classifiers:
 
 | Classifier | Lives On | What It Means | Example |
 |---|---|---|---|
-| **M_BomCategory** | `m_bom` (the BOM node) | Organizational grouping — which trade | PLB, ELC, FPR |
+| **M_Product_Category** | `m_bom` (the BOM node) | Organizational grouping — which trade | PLB, ELC, FPR |
 | **M_AttributeSet** | `M_Product` (the leaf) | Engineering behavior — how to parameterize | BIM_Pipe, BIM_Wall |
 
 They correlate but don't collapse:

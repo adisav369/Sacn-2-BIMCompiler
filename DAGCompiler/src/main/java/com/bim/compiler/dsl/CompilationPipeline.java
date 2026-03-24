@@ -528,7 +528,7 @@ public class CompilationPipeline {
          * Write Level-2 ESLines: room-category children of a floor BOM.
          *
          * <p>Queries m_bom_line for the floor BOM, filters for room-category children
-         * (bom_category IN 'LI','BD','KT','BT','DN'), and writes one L2 ESLine per room.
+         * (m_product_category_id IN 'LI','BD','KT','BT','DN'), and writes one L2 ESLine per room.
          * AABB is read from {@code ad_room_boundary} if available; falls back to storey AABB.
          *
          * <p>Called for non-ST buildings only (ST uses CompositionReport for L2).
@@ -542,11 +542,11 @@ public class CompilationPipeline {
 
             // Room categories that get L2 ESLines
             String SQL_ROOM_CHILDREN = """
-                SELECT mbl.child_product_id, mbl.role, mbl.sequence, mb2.bom_category
+                SELECT mbl.child_product_id, mbl.role, mbl.sequence, mb2.m_product_category_id
                 FROM m_bom_line mbl
                 LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id
                 WHERE mbl.bom_id = ? AND mbl.is_active = 1
-                  AND mb2.bom_category IN ('LI','BD','KT','BT','DN')
+                  AND mb2.m_product_category_id IN ('LI','BD','KT','BT','DN')
                 ORDER BY mbl.sequence
                 """;
 
@@ -589,7 +589,7 @@ public class CompilationPipeline {
                     while (rsRoom.next()) {
                         String childBomId = rsRoom.getString("child_product_id");
                         String role       = rsRoom.getString("role");
-                        String bomCat     = rsRoom.getString("bom_category");
+                        String bomCat     = rsRoom.getString("m_product_category_id");
 
                         // Look up room AABB from ad_room_boundary
                         String roomType = categoryToRoomType(bomCat);

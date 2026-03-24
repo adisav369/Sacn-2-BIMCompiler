@@ -647,10 +647,10 @@ VERIFIED ✓ (or drift detected ✗)
 - Implementation sections: actual table names
 - `c_bpartner` = C_BPartner = "Construction Building Pattern" (SH/DX/TB/MY/TE/ST)
 - Storeys, rooms, components are ALL M_BOMs — compiler is logistics forwarder
-- Buffer space (BOMCategory=ST) = explicit M_BOM_Line child for SpaceSize invariant
+- Buffer space (M_Product_Category=ST) = explicit M_BOM_Line child for SpaceSize invariant
 
 ### iDempiere ERP Layer Mapping
-- `M_Product` (BOM.db), `m_bom`/`m_bom_line`/`m_attribute`/`M_BomCategory` (BOM.db)
+- `M_Product` (BOM.db), `m_bom`/`m_bom_line`/`m_attribute`/`M_Product_Category` (BOM.db)
 - `c_order`/`c_orderline`/`co_empty_space`/`co_empty_space_line` (output.db)
 - `C_BPartner`/`C_Campaign`/`AD_User`/`C_DocType` (BOM.db lookup/config)
 

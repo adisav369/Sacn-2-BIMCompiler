@@ -356,7 +356,7 @@ to GUI chooser panels:
 
 | Dimension | Drives | GUI panel |
 |-----------|--------|-----------|
-| **Category** (M_BomCategory) — WHAT | Room type: kitchen, bedroom, bathroom | Typology chooser |
+| **Category** (M_Product_Category) — WHAT | Room type: kitchen, bedroom, bathroom | Typology chooser |
 | **Owner** (C_DocType.DocSubType) — WHICH | Building variant: SH, DX, TB | Building type selector |
 | **SpaceSize** (AABB on M_BOM_Line) — HOW MUCH | Spatial fit in mm | Dimension sliders |
 | **Theme** (C_Campaign) — STYLE | Design palette: Bali, Scandinavian | Theme chooser (planned) |

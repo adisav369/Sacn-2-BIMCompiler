@@ -534,7 +534,7 @@ public class WebUIServer implements AutoCloseable {
                         "jdbc:sqlite:" + dbFile.getAbsolutePath());
                      Statement stmt = conn.createStatement();
                      ResultSet rs = stmt.executeQuery(
-                             "SELECT bom_id, bom_name, bom_category, " +
+                             "SELECT bom_id, bom_name, m_product_category_id, " +
                              "aabb_width_mm, aabb_depth_mm, aabb_height_mm, " +
                              "(SELECT COUNT(*) FROM m_bom_line bl WHERE bl.bom_id = b.bom_id) AS element_count " +
                              "FROM m_bom b WHERE b.bom_type = 'BUILDING' AND b.is_active = 1")) {
@@ -542,7 +542,7 @@ public class WebUIServer implements AutoCloseable {
                         Map<String, Object> entry = new LinkedHashMap<>();
                         entry.put("bomId", rs.getString("bom_id"));
                         entry.put("name", rs.getString("bom_name"));
-                        entry.put("category", rs.getString("bom_category"));
+                        entry.put("category", rs.getString("m_product_category_id"));
                         entry.put("source", code);
                         entry.put("dbFile", dbFile.getAbsolutePath());
                         entry.put("elementCount", rs.getInt("element_count"));

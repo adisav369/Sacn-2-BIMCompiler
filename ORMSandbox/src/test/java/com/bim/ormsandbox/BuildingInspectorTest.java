@@ -267,18 +267,18 @@ class BuildingInspectorTest {
     // ── W-CATEGORY-1: bom_category is functional code, never building code ──
 
     @Test
-    @DisplayName("W-CATEGORY-1: no building codes (SH/DX/TB/MY) in m_bom.bom_category")
+    @DisplayName("W-CATEGORY-1: no building codes (SH/DX/TB/MY) in m_bom.m_product_category_id")
     void w_category_1_noBuildingCodesInCategory() throws SQLException {
         String sql = """
-            SELECT bom_id, bom_category FROM m_bom
-            WHERE bom_category IN ('SH', 'DX', 'TB', 'MY', 'TL')
+            SELECT bom_id, m_product_category_id FROM m_bom
+            WHERE m_product_category_id IN ('SH', 'DX', 'TB', 'MY', 'TL')
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("bom_category"));
+            while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("m_product_category_id"));
         }
         assertTrue(bad.isEmpty(),
-            "W-CATEGORY-1: building codes found in bom_category (must be functional): " + bad);
+            "W-CATEGORY-1: building codes found in m_product_category_id (must be functional): " + bad);
     }
 
     // ── W-OWNER-1: no cross-variant references in BOM tree ───────────────────
@@ -340,19 +340,19 @@ class BuildingInspectorTest {
     // ── W-CATEGORY-2: M_BomCategory lookup table has all referenced codes ───
 
     @Test
-    @DisplayName("W-CATEGORY-2: every non-NULL bom_category in m_bom exists in M_BomCategory")
+    @DisplayName("W-CATEGORY-2: every non-NULL m_product_category_id in m_bom exists in M_Product_Category")
     void w_category_2_allCodesInLookup() throws SQLException {
         String sql = """
-            SELECT DISTINCT b.bom_category FROM m_bom b
-            WHERE b.bom_category IS NOT NULL
-              AND b.bom_category NOT IN (SELECT M_BomCategory_ID FROM M_BomCategory)
+            SELECT DISTINCT b.m_product_category_id FROM m_bom b
+            WHERE b.m_product_category_id IS NOT NULL
+              AND b.m_product_category_id NOT IN (SELECT M_Product_Category_ID FROM M_Product_Category)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("bom_category"));
+            while (rs.next()) bad.add(rs.getString("m_product_category_id"));
         }
         assertTrue(bad.isEmpty(),
-            "W-CATEGORY-2: bom_category codes not in M_BomCategory lookup: " + bad);
+            "W-CATEGORY-2: m_product_category_id codes not in M_Product_Category lookup: " + bad);
     }
 
     // ── W-OWNER-2: every C_DocType entry has required fields ─
@@ -406,16 +406,16 @@ class BuildingInspectorTest {
             "W-DOCTYPE-2: duplicate C_DocType_ID entries: " + bad);
     }
 
-    // ── W-CATEGORY-LINE-1: every M_BomCategoryLine child exists in M_BomCategory ──
+    // ── W-CATEGORY-LINE-1: every M_BomCategoryLine child exists in M_Product_Category ──
 
     @Test
-    @DisplayName("W-CATEGORY-LINE-1: every M_BomCategoryLine child_category exists in M_BomCategory")
+    @DisplayName("W-CATEGORY-LINE-1: every M_BomCategoryLine child_category exists in M_Product_Category")
     void w_categoryLine_1_allChildrenExist() throws SQLException {
         String sql = """
             SELECT cl.M_BomCategoryLine_ID, cl.Child_BomCategory_ID
             FROM M_BomCategoryLine cl
             WHERE cl.IsActive = 1
-              AND cl.Child_BomCategory_ID NOT IN (SELECT M_BomCategory_ID FROM M_BomCategory)
+              AND cl.Child_BomCategory_ID NOT IN (SELECT M_Product_Category_ID FROM M_Product_Category)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
@@ -423,6 +423,6 @@ class BuildingInspectorTest {
                 + " child=" + rs.getString("Child_BomCategory_ID"));
         }
         assertTrue(bad.isEmpty(),
-            "W-CATEGORY-LINE-1: M_BomCategoryLine references missing M_BomCategory: " + bad);
+            "W-CATEGORY-LINE-1: M_BomCategoryLine references missing M_Product_Category: " + bad);
     }
 }

@@ -170,7 +170,7 @@ class BuildingVerbTest {
     // ── W-SY-63..65: REGISTER BOM (L4) ──────────────────────────────────
 
     /**
-     * W-SY-63: REGISTER BOM updates bom_category.
+     * W-SY-63: REGISTER BOM updates m_product_category_id.
      */
     @Test
     @Order(7)

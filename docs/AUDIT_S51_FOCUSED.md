@@ -1887,3 +1887,55 @@ Cannot be bypassed without GodMode.txt on disk.
 **Conclusion for ProjectOrderBlueprint:** The product model is clean. No drift blocks
 the exception-based ordering (§1) or inheritance (§6) work ahead. Session D (Remove +
 Compress mutations) and Session E (Order inheritance) can proceed on a sound foundation.
+
+---
+
+## Appendix P — M_BomCategory → M_Product_Category Rename (S68)
+
+**Date:** 2026-03-24
+**Scope:** Schema + doc cleanup. No compilation behavior changes.
+**Witness:** W-CATEGORY-1
+
+### P.1 Rationale
+
+`M_BomCategory` was a project-specific drift from iDempiere's standard pattern.
+In iDempiere, product classification uses `M_Product_Category` — there is no
+separate BomCategory entity. The `bom_category` column on `m_bom` classifies the
+PRODUCT (what kind of thing), not the BOM structure. Since `m_bom` merges
+iDempiere's M_Product + M_BOM (see Appendix O.2), the column is renamed to
+`m_product_category_id` to align with iDempiere conventions.
+
+### P.2 Changes — Three Tiers
+
+**Tier 1 — Doc terminology (14 files):**
+All live doc references to `M_BomCategory` replaced with `M_Product_Category`.
+Historical/migration notes updated to past tense ("the former M_BomCategory,
+now M_Product_Category"). Archive and AUDIT files not touched.
+
+Files: BIM_COBOL.md, TerminalAnalysis.md, BOMBasedCompilation.md,
+DISC_VALIDATE_SRS.md, DATA_MODEL.md, TestArchitecture.md, SourceCodeGuide.md,
+PREFAB_ARCHITECTURE.md, GENERATIVE_HOUSE_SRS.md, DISC_VALIDATION_DB_SRS.md,
+BIM_Designer_SRS.md, BIM_Designer.md, ACTION_ROADMAP.md, schema_snapshot_bom.sql.
+
+**Tier 2 — SQL migration (`migration/DV017_product_category_rename.sql`):**
+- `ALTER TABLE m_bom RENAME COLUMN bom_category TO m_product_category_id`
+- `ALTER TABLE C_OrderLine RENAME COLUMN bom_category TO m_product_category_id`
+- `ALTER TABLE ad_pattern_rule RENAME COLUMN bom_category TO m_product_category_id`
+- `UPDATE ad_val_rule_param SET param_name = 'm_product_category_id' WHERE param_name = 'bom_category'`
+- `ALTER TABLE M_BomCategory RENAME TO M_Product_Category`
+- Requires SQLite 3.25.0+ (project uses 3.45.1). Append-only.
+
+**Tier 3 — Java SQL strings (~94 references across 28 files):**
+All SQL column references (`SELECT`, `INSERT`, `CREATE TABLE`, `WHERE`, `GROUP BY`,
+`ORDER BY`, `rs.getString()`) updated from `bom_category` to `m_product_category_id`.
+Java variable names, method names, and YAML key names unchanged.
+
+Modules: IFCtoBOM (9 files), ORMSandbox (4 files), DAGCompiler (6 files),
+BIMBackOffice (4 files), BIM_COBOL (3 files), BonsaiBIMDesigner (15 files).
+
+### P.3 Gate Result
+
+`./scripts/run_RosettaStones.sh classify_sh.yaml` — **6/7 PASS** (improved from 5/7).
+G4-TAMPER failure is pre-existing (T5 false positive on AUDIT doc self-reference).
+BuildingRegistryTest fixed by `schema_snapshot_bom.sql` column rename.
+`mvn compile -q` — clean.

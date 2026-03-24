@@ -395,8 +395,8 @@ Replace hardcoded category lists and switch statements with DB lookups:
 
 | Location | Hardcoded | Fix |
 |----------|-----------|-----|
-| CompilationPipeline:506 | `IN ('LI','BD','KT','BT','DN')` | Query M_BomCategory |
-| CompilationPipeline:597 | `categoryToRoomType()` switch | Lookup M_BomCategory.getName() |
+| CompilationPipeline:506 | `IN ('LI','BD','KT','BT','DN')` | Query M_Product_Category |
+| CompilationPipeline:597 | `categoryToRoomType()` switch | Lookup M_Product_Category.getName() |
 | ComposeBuildingVerb:36 | `RESIDENTIAL→RE` map | Query C_DocType |
 | BomTemplateComposer:128 | Hardcoded `"RE"` root | Derive from docSubType |
 | BomTemplateContract:65 | Hardcoded `"RE"` root | Same |
@@ -874,7 +874,7 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 ---
 
 **Sealed:** 2026-03-24 (v31: S67 watchdog cleanup — removed CompileProof/DemoHouseCompileTest. DM compiles via standard Rosetta Stone pipeline)
-**Super-hash:** `9740e0682de99cdcd83f5463f070901075716454f985369d3be06f65522e8d91`
+**Super-hash:** `3afbfe37af8f5960d942d696633309419f9dc5281099e74b1f6daabd54837bc7`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

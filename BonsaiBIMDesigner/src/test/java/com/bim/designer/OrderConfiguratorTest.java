@@ -187,9 +187,9 @@ class OrderConfiguratorTest {
     @Test @Order(8)
     @DisplayName("W-OC-8: updateOrderLine rejects dangerous fields, allows category/product swap")
     void w_oc_8_field_whitelist() throws Exception {
-        // bom_category and family_ref ARE now whitelisted (for category swap)
-        boolean updated = woDao.updateOrderLine(roofLineId, "bom_category", "RF");
-        assertTrue(updated, "bom_category must be editable (category swap)");
+        // m_product_category_id and family_ref ARE now whitelisted (for category swap)
+        boolean updated = woDao.updateOrderLine(roofLineId, "m_product_category_id", "RF");
+        assertTrue(updated, "m_product_category_id must be editable (category swap)");
 
         updated = woDao.updateOrderLine(roofLineId, "family_ref", "ROOF_ASSEMBLY");
         assertTrue(updated, "family_ref must be editable (product swap)");
@@ -387,10 +387,10 @@ class OrderConfiguratorTest {
     }
 
     @Test @Order(31)
-    @DisplayName("BUG-2 FIXED: bom_category and family_ref now editable")
+    @DisplayName("BUG-2 FIXED: m_product_category_id and family_ref now editable")
     void bug_2_fixed_category_editable() throws Exception {
-        boolean canEditCategory = woDao.updateOrderLine(roofLineId, "bom_category", "RF_PITCHED");
-        assertTrue(canEditCategory, "BUG-2 FIXED: bom_category must be editable");
+        boolean canEditCategory = woDao.updateOrderLine(roofLineId, "m_product_category_id", "RF_PITCHED");
+        assertTrue(canEditCategory, "BUG-2 FIXED: m_product_category_id must be editable");
 
         var roof = woDao.getOrderLine(roofLineId);
         assertEquals("RF_PITCHED", roof.bomCategory(), "Category must be updated");
@@ -426,7 +426,7 @@ class OrderConfiguratorTest {
             stmt.execute("""
                 CREATE TABLE m_bom (
                     bom_id TEXT PRIMARY KEY, bom_name TEXT, bom_type TEXT,
-                    bom_category TEXT, is_active INTEGER DEFAULT 1,
+                    m_product_category_id TEXT, is_active INTEGER DEFAULT 1,
                     aabb_width_mm REAL, aabb_depth_mm REAL, aabb_height_mm REAL
                 )""");
             stmt.execute("""
