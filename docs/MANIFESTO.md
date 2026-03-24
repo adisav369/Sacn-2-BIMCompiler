@@ -388,7 +388,7 @@ editing the same BOM line produce two changelog entries — the system detects
 the conflict at save time by comparing timestamps.
 
 **Current status:** ChangelogDAO is fully implemented and tested (TIER1_SRS.md §3).
-The `bim_changelog` table lives in work_output.db. Wire protocol supports
+The `bim_changelog` table lives in the per-building work_output database. Wire protocol supports
 `changelog` (query history) and `undoChanges` (revert N steps). Not yet
 integrated into BOM databases — the audit trail currently covers design
 edits in the viewport session.
