@@ -23,13 +23,11 @@ mvn compile -q                                        # Compile all modules
 
 ## Documentation
 
-Browse the full documentation site — 50 specs with search, dark mode, and sidebar navigation:
+**https://red1oon.github.io/BIMCompiler/**
 
-```bash
-./scripts/serve_docs.sh                 # http://localhost:8000
-```
+50 specs with full-text search, dark mode, and sidebar navigation.
 
-Also available online: **https://red1oon.github.io/BIMCompiler/**
+See a [walkthrough of how Claude does pair programming with the Creator](https://youtu.be/bOcwiILBVUE).
 
 ## How It Works
 
