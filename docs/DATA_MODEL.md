@@ -263,30 +263,30 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 | M_Product_Category_ID | TEXT FK | → M_Product_Category |
 | is_active | INTEGER | |
 
-### M_Product_Category (flat classification — aligned with iDempiere naming)
+<!-- Implementing SpecsAnalysis.txt §1 -->
+### M_Product_Category (flat classification — iDempiere standard)
 
-| M_Product_Category_ID | Name | Purpose |
-|-------------------|------|---------|
-| RE | Residential Template | Standard residential decomposition |
-| GF | Ground Floor | Habitable body |
-| L1 | Level 1 | Ground floor assembly |
-| L2 | Level 2 | Upper floor assembly |
-| RF | Roof | Roof assemblies |
-| SL | Slab | Floor slab assemblies |
-| LI | Living | Living room settings |
-| BD | Bedroom | Bedroom settings |
-| KT | Kitchen | Kitchen settings |
-| BT | Bathroom | Bathroom/toilet settings |
-| DN | Dining | Dining settings |
-| FR | Furniture | Leaf furniture items |
-| WL | Wall | Wall assemblies |
-| PH | Porch | Porch modules |
-| PR | Pair | Duplex pair container |
-| HU | Half-Unit | Duplex half-unit |
-| MP | MEP | MEP trunk/service group |
-| CW | Curtain Wall | Curtain wall structure |
-| FN | Foundation | Foundation/transfer structure |
-| MS | Miscellaneous | Stair, railing, misc |
+**M_Product_Category is FLAT.** No parent FK. No tree. This follows iDempiere standard
+where M_Product_Category is a simple grouping tag. The building→floor→room→leaf cascade
+is expressed by the BOM tree (M_BOM → M_BOM_Line parent-child relationships), not by
+the category table. To enforce swap-pool constraints, match `m_product_category_id` at
+the same BOM level — you never need to traverse a category tree.
+
+> **Note:** `Parent_Category_ID` was seeded in DV018 but is **DEPRECATED — to be dropped.**
+> It duplicates the BOM tree hierarchy. See §7.6 migration plan.
+
+117 rows total (DV018 migration). Representative categories:
+
+| Level | M_Product_Category_ID | Name | Example Buildings |
+|-------|----------------------|------|-------------------|
+| Top-level | RE, CO, IN, IP | Residential, Commercial, Infrastructure, Industrial Plant | SH, DX, TE, BR |
+| Floor | GF, L1, L2, L3, RF, FN, MS | Ground Floor, Level 1–3, Roof, Foundation, Misc | All buildings |
+| Room (RE) | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR | Room types — swap pool at room level | SH, DM, DX, FK, AC |
+| Discipline (CO) | ARC, STR, FP, ELEC, ACMV, CW, SP, LPG | Discipline types — swap pool at discipline level | TE, WA, WL, WT |
+| Infra segment | SUP, DCK, ABT, TRK, ROAD, RAIL, GEO | Segment types | BR, RD, RL |
+| Structural | PAIR, HALF_UNIT, SLAB, PORCH | Assembly containers | DX |
+
+Full list: `migration/DV018_product_category_cascade.sql`
 
 ---
 
@@ -568,14 +568,18 @@ Renaming `ERP.db` → `ERP.db` affects:
 - Doc references across ~10 specs
 - Estimated total touchpoints: 40–60 (bounded task, separate session)
 
+<!-- Implementing SpecsAnalysis.txt §2 -->
 ### 7.6 Migration Plan (follow-up sessions)
 
-1. **Session N+1:** Add missing M_Product_Category rows to ERP.db (DV018 migration)
+1. **Session N+1:** Add missing M_Product_Category rows to ERP.db (DV018 migration) — **DONE (117 rows)**
 2. **Session N+2:** Populate `m_product_category_id` on BUILDING BOMs (currently NULL where doc_base_type is set)
 3. **Session N+3:** Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)
 4. **Session N+4:** Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)
 5. **Session N+5:** Rename ERP.db → ERP.db + propagate all touchpoints
-6. **Each session:** Propagate doc corrections to 1–2 specs from §7.2 list
+6. **Session N+6:** Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map — replacing `bom_category` string proxy (per DISC_VALIDATION_DB_SRS.md §11.6.3)
+7. **Session N+7:** Retire `deriveDiscipline()` from compile path — extraction-only fallback (per DISC_VALIDATION_DB_SRS.md §11.6.3a)
+8. **Session N+8:** Drop `Parent_Category_ID` column from M_Product_Category — unnecessary invention. Hierarchy lives in M_BOM_Line, not in the category table. AD_Org.IsSummary handles discipline grouping (iDempiere-native).
+9. **Each session:** Propagate doc corrections to 1–2 specs from §7.2 list
 
 ---
 

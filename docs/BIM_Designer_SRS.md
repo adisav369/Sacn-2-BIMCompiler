@@ -3344,9 +3344,11 @@ The DemoHouse acceptance test (§30.4) passes when:
 
 ### 30.7 M_Product_Category — Hierarchical Product Catalog (S61 spec)
 
-> **iDempiere parallel:** `M_Product_Category` with self-referencing `Parent_Category_ID`,
-> same tree pattern as `AD_Org`. User browses by category to find products when
-> creating or swapping an OrderLine.
+<!-- Implementing SpecsAnalysis.txt §3 -->
+> **iDempiere parallel:** `M_Product_Category` — flat product classification.
+> User browses by category to find products when creating or swapping an OrderLine.
+> The cascade (building→floor→room→leaf) is expressed by the BOM tree (M_BOM → M_BOM_Line),
+> not by a category tree. Categories stay flat per iDempiere standard.
 
 #### 30.7.1 Schema
 
@@ -3354,11 +3356,10 @@ The DemoHouse acceptance test (§30.4) passes when:
 -- component_library.db
 CREATE TABLE M_Product_Category (
     M_Product_Category_ID  TEXT PRIMARY KEY,
-    Parent_Category_ID     TEXT,          -- self-reference (NULL = root)
+    Parent_Category_ID     TEXT,          -- **DEPRECATED — to be dropped (see DATA_MODEL.md §7.6)**
     Name                   TEXT NOT NULL,
     Description            TEXT,
-    IsActive               INTEGER DEFAULT 1,
-    FOREIGN KEY (Parent_Category_ID) REFERENCES M_Product_Category(M_Product_Category_ID)
+    IsActive               INTEGER DEFAULT 1
 );
 
 -- Add FK column to existing M_Product
@@ -3413,6 +3414,20 @@ ALL (root)
 
 Level 1 = discipline (`m_bom.bom_category`). Level 2 = IFC class grouping.
 Level 3 = product type (exterior/interior, fixture subtype).
+
+**RE (room-driven) cascade** — expressed by the BOM tree, not by category hierarchy:
+
+```
+M_BOM "SH" (M_Product_Category=RE)
+  └─ M_BOM_Line → M_BOM "GF" (M_Product_Category=GF)
+       └─ M_BOM_Line → M_BOM "LIVING" (M_Product_Category=LIVING)
+            ├─ M_BOM_Line → SOFA_001 (leaf, M_Product_Category=IFC_FURNISHING)
+            └─ M_BOM_Line → TABLE_001 (leaf, M_Product_Category=IFC_FURNISHING)
+```
+
+RE cascade is room-driven (swap pools at room level), CO cascade is
+discipline-driven (ARC, STR, FP sub-trees). Both expressed by BOM tree.
+M_Product_Category at each node is a flat tag, not a tree node.
 
 #### 30.7.3 Population Strategy
 

@@ -104,9 +104,8 @@ CO (Commercial)
 | **RE** (Residential) | SH, DM, DX, FK, AC | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
 | **RE** (Residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
 | **IN** (Infrastructure) | BR, RD, RL | SUP, DCK, ABT, TRK, ROAD, RAIL, GEO — segment types |
-| **CO** (Commercial) | WA, WL, WT | LOBBY, OFFICE, PLANT_ROOM, LOADING + floor-level (L1–L5) |
+| **CO** (Commercial) | WA, WL, WT, TE | LOBBY, OFFICE, PLANT_ROOM, LOADING + floor-level (L1–L5) + discipline-driven (ARC, STR, FP, ACMV, ELEC, CW, SP, LPG) |
 | **IP** (Industrial Plant) | IP | PROCESS, UTILITY, CONTROL, MISC + floor-level |
-| **(unclassified)** | TE | No categories (48,428-element terminal — needs extraction) |
 
 **Gaps:** 22 residential buildings have only floor-level categories (GF, L1, L2)
 but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
