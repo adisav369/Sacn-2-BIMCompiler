@@ -3064,10 +3064,10 @@ with production detail in PP_Order. We inherit the same separation:</p>
 <td>c_orderline</td>
 </tr>
 <tr>
-<td><strong>HOW</strong> to place</td>
-<td>PP_Order_Node</td>
-<td>Which verb, what parameters</td>
-<td>pp_order_node</td>
+<td><strong>HOW</strong> it was built</td>
+<td>Compiler pipeline</td>
+<td>9 stages, 64 verbs — hard code, not configurable</td>
+<td>(pipeline internals)</td>
 </tr>
 <tr>
 <td><strong>WHERE</strong> it goes</td>
@@ -3148,7 +3148,7 @@ names change:</p>
 <tbody>
 <tr>
 <td><strong>RE</strong> (Residential)</td>
-<td>SH, DM, DX, FK, IN</td>
+<td>SH, DM, DX, FK, AC</td>
 <td>LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2)</td>
 </tr>
 <tr>
@@ -3159,17 +3159,17 @@ names change:</p>
 <tr>
 <td><strong>IN</strong> (Infrastructure)</td>
 <td>BR, RD, RL</td>
-<td>SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW</td>
+<td>SUP, DCK, ABT, TRK, ROAD, RAIL, GEO — segment types</td>
 </tr>
 <tr>
 <td><strong>CO</strong> (Commercial)</td>
 <td>WA, WL, WT</td>
-<td>ARC, STR, MEP, L1–L5 — discipline + floor-level</td>
+<td>LOBBY, OFFICE, PLANT_ROOM, LOADING + floor-level (L1–L5)</td>
 </tr>
 <tr>
 <td><strong>IP</strong> (Industrial Plant)</td>
 <td>IP</td>
-<td>ARC, STR, MEP, MISC</td>
+<td>PROCESS, UTILITY, CONTROL, MISC + floor-level</td>
 </tr>
 <tr>
 <td><strong>(unclassified)</strong></td>
@@ -3270,7 +3270,6 @@ C_DocType (&quot;Construction Order&quot;)         ← ONE document type, always
 
 AD_Val_Rule                              ← jurisdiction rules (MY/UBBL, US/IBC)
 AD_ChangeLog                             ← full provenance (undo/redo stack)
-PP_Order_Node                            ← HOW it was placed (verb audit)
 CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
 </code></pre></div>
 <h3 id="the-mapping-idempiere-bim">The Mapping: iDempiere → BIM<a class="headerlink" href="#the-mapping-idempiere-bim" title="Permanent link">&para;</a></h3>
@@ -3317,11 +3316,6 @@ CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
 <td><strong>C_DocType</strong></td>
 <td>"Construction Order"</td>
 <td>ONE document type. Classification lives on M_Product_Category</td>
-</tr>
-<tr>
-<td><strong>PP_Order_Node</strong></td>
-<td>Verb execution record</td>
-<td>HOW it was placed. Full audit trail</td>
 </tr>
 <tr>
 <td><strong>CO_EmptySpace</strong></td>
