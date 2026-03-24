@@ -1,6 +1,6 @@
 # Data Model — Per-Building BOM Dictionary from Rosetta Stones
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [ConstructionAsERP](ConstructionAsERP.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 **This specification governs the creation of `{PREFIX}_BOM.db` dictionaries.**
 Each building has its own BOM dictionary (`SH_BOM.db`, `DX_BOM.db`), reproduced from fresh
@@ -9,7 +9,7 @@ No hand-editing. No patching. Code produces data.
 
 **Source authority:**
 - `TheRosettaStoneStrategy.md` §Stage 2: IFCtoBOM pipeline writes m_bom + m_bom_line per building
-- `ConstructionAsERP.md` §1.2 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
+- `BOMBasedCompilation.md` §4 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
 **Updated:** 2026-03-19
@@ -405,7 +405,6 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 
 ---
 
-*Authoritative reference. See `ConstructionAsERP.md` for design rationale,
-`TheRosettaStoneStrategy.md` for verification strategy,
-`BOMBasedCompilation.md` for tack convention and pipeline stages.*
-*Previous version: `docs/DATA_MODEL (Copy).md`*
+*Authoritative reference. See `BOMBasedCompilation.md` for tack convention and pipeline stages,
+`SystemContract.md` for the three-concern model (WHAT/HOW/WHERE),
+`TheRosettaStoneStrategy.md` for verification strategy.*
