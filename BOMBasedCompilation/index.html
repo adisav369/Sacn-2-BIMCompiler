@@ -1074,6 +1074,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#37-locator_ref-exception-order-addressing-session-d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 locator_ref — Exception-Order Addressing (Session D)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3617,6 +3628,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#37-locator_ref-exception-order-addressing-session-d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 locator_ref — Exception-Order Addressing (Session D)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4837,6 +4859,55 @@ not extracted from IFC.</p>
 - BOM Drop with actual swap choice → first test is DemoHouse via BIM Designer
 - DocValidate compliance checking → proven separately (<code>DocValidate.md</code>),
   applied in BIM Designer's ambient compliance (§18.4 in <code>BIM_Designer.md</code>)</p>
+<h3 id="37-locator_ref-exception-order-addressing-session-d">3.7 locator_ref — Exception-Order Addressing (Session D)<a class="headerlink" href="#37-locator_ref-exception-order-addressing-session-d" title="Permanent link">&para;</a></h3>
+<p>Every C_OrderLine carries a <code>locator_ref</code>: a dot-separated path from the root
+that uniquely identifies WHERE in the exploded BOM tree this node sits.</p>
+<div class="highlight"><pre><span></span><code>Syntax:  segment.segment.segment
+Segment: M_Product_Category code (preferred) or bom_id/product_id (fallback)
+Example: RE.GF.LI.SOFA_001
+         │   │  │  └─ leaf product (no category → product_id used)
+         │   │  └─── room category (LI = Living)
+         │   └────── floor category (GF = Ground Floor)
+         └────────── building category (RE = Residential)
+</code></pre></div>
+<p><strong>Stability guarantee:</strong> locator_ref is derived from BOM structure
+(M_Product_Category at each level), not from runtime state or insertion order.
+The same BOM always produces the same locator_refs. This makes them safe for
+exception orders to reference across recompilations.</p>
+<p><strong>Exception-order mutations</strong> (ProjectOrderBlueprint.md §1.1):</p>
+<table>
+<thead>
+<tr>
+<th>Mutation</th>
+<th>C_OrderLine state</th>
+<th>Compiler behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Remove</strong></td>
+<td><code>Qty=0</code> on a locator_ref</td>
+<td>BomDropper skips entire subtree</td>
+</tr>
+<tr>
+<td><strong>Compress</strong></td>
+<td><code>is_reference_class=1, Qty=N</code></td>
+<td>Walker instantiates N copies at computed dz offsets</td>
+</tr>
+<tr>
+<td><strong>Replace</strong></td>
+<td>Different <code>family_ref</code> on a locator_ref</td>
+<td>BomDropper swaps the product (existing)</td>
+</tr>
+<tr>
+<td><strong>Add</strong></td>
+<td>New C_OrderLine with locator_ref</td>
+<td>Direct insertion (addDiscipline, Session A)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Migration:</strong> <code>W005_orderline_locator_ref.sql</code> — adds <code>locator_ref TEXT</code> and
+<code>is_reference_class INTEGER DEFAULT 0</code> to C_OrderLine.</p>
 <hr />
 <h2 id="4-tack-convention-the-spatial-handshake">4. Tack Convention — The Spatial Handshake<a class="headerlink" href="#4-tack-convention-the-spatial-handshake" title="Permanent link">&para;</a></h2>
 <h3 id="40-the-one-rule">4.0 The One Rule<a class="headerlink" href="#40-the-one-rule" title="Permanent link">&para;</a></h3>

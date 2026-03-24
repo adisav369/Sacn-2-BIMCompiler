@@ -642,21 +642,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-application-dictionary-heritage" class="md-nav__link">
+  <a href="#the-three-concerns" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Application Dictionary Heritage
+        The Three Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Three Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-m_product_category-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WHAT: The M_Product_Category Hierarchy
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#the-three-concerns" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#category-population-current-state" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Three Concerns
+        Category Population — Current State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-application-dictionary-heritage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Application Dictionary Heritage
       
     </span>
   </a>
@@ -2775,21 +2803,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-application-dictionary-heritage" class="md-nav__link">
+  <a href="#the-three-concerns" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Application Dictionary Heritage
+        The Three Concerns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Three Concerns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-m_product_category-hierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WHAT: The M_Product_Category Hierarchy
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#the-three-concerns" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#category-population-current-state" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Three Concerns
+        Category Population — Current State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-application-dictionary-heritage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Application Dictionary Heritage
       
     </span>
   </a>
@@ -2962,6 +3018,115 @@ We add three columns to M_BOM_Line: <code>dx</code>, <code>dy</code>, <code>dz</
 tack offsets in millimetres. That is the entire difference between a flat
 BOM and a spatial BOM. Three integers turn procurement into construction.</p>
 <hr />
+<h2 id="the-three-concerns">The Three Concerns<a class="headerlink" href="#the-three-concerns" title="Permanent link">&para;</a></h2>
+<p>iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
+with production detail in PP_Order. We inherit the same separation:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>iDempiere</th>
+<th>BIM Compiler</th>
+<th>Table</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>WHAT</strong> to build</td>
+<td>C_OrderLine</td>
+<td>Which products, classified by M_Product_Category</td>
+<td>c_orderline</td>
+</tr>
+<tr>
+<td><strong>HOW</strong> to place</td>
+<td>PP_Order_Node</td>
+<td>Which verb, what parameters</td>
+<td>pp_order_node</td>
+</tr>
+<tr>
+<td><strong>WHERE</strong> it goes</td>
+<td>M_Locator / Warehouse</td>
+<td>Room slot, tack offset</td>
+<td>co_empty_space_line</td>
+</tr>
+</tbody>
+</table>
+<p>These three concerns are <strong>never merged</strong>. A change to WHAT (swap a product)
+does not require changes to HOW (verb stays the same) or WHERE (slot stays
+the same). This is the architectural invariant that makes exception-based
+ordering possible: override one concern, inherit the others.</p>
+<h3 id="what-the-m_product_category-hierarchy">WHAT: The M_Product_Category Hierarchy<a class="headerlink" href="#what-the-m_product_category-hierarchy" title="Permanent link">&para;</a></h3>
+<p>The WHAT concern is classified by <strong>M_Product_Category</strong> — the same entity
+iDempiere uses to group products into swap pools. A Patio Furniture Set belongs
+to category OUTDOOR_FURNITURE. A replacement table must come from the same
+category — you can't swap a table for a sprinkler head.</p>
+<p>In BIM compilation, M_Product_Category operates at three levels:</p>
+<div class="highlight"><pre><span></span><code>M_Product_Category (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG
+M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
+M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
+M_Product (leaf)                 → the actual element with geometry
+</code></pre></div>
+<p>A residential building (DocBaseType=RE) uses <strong>room categories</strong>: the Patio
+Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
+<strong>segment categories</strong>: a bridge deck lives in DCK. The category tree is the
+taxonomy — the engine never asks "is this a house?" It asks "what category
+constrains this swap?"</p>
+<p>There is only <strong>one C_DocType = "Construction Order"</strong>. DocBaseType and
+DocSubType are classification metadata — provenance tags that describe the
+building's origin (RE=residential, IN=infrastructure, CO=commercial). They
+are not routing logic. The compilation engine is generic; the categories
+carry the domain knowledge.</p>
+<h3 id="category-population-current-state">Category Population — Current State<a class="headerlink" href="#category-population-current-state" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>DocBaseType</th>
+<th>Buildings</th>
+<th>Room/Segment Categories</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RE</strong> (residential)</td>
+<td>SH, DM, DX, FK, IN</td>
+<td>LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2)</td>
+</tr>
+<tr>
+<td><strong>RE</strong> (residential, floor-only)</td>
+<td>BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI</td>
+<td>Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet</td>
+</tr>
+<tr>
+<td><strong>IN</strong> (infrastructure)</td>
+<td>BR, RD, RL</td>
+<td>SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW</td>
+</tr>
+<tr>
+<td><strong>CO</strong> (commercial)</td>
+<td>WA, WL, WT</td>
+<td>ARC, STR, MEP, L1–L5 — discipline + floor-level</td>
+</tr>
+<tr>
+<td><strong>IP</strong> (industrial plant)</td>
+<td>IP</td>
+<td>ARC, STR, MEP, MISC</td>
+</tr>
+<tr>
+<td><strong>(none)</strong></td>
+<td>TE</td>
+<td>No categories (48,428-element terminal — needs extraction)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Gaps:</strong> 22 residential buildings have only floor-level categories (GF, L1, L2)
+but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
+extracted before room-level classification was implemented. Re-extraction with
+the current pipeline would populate room categories automatically.</p>
+<p><strong>Vertical BOM levels:</strong> All buildings currently use <code>bom_level=SET</code>. The full
+hierarchy (BUILDING → FLOOR → ROOM → SET → ITEM) is specified in BBC.md §1
+but not yet populated — the BOM tree expresses hierarchy through parent-child
+M_BOM_Line relationships, not through bom_level values.</p>
+<hr />
 <h2 id="the-application-dictionary-heritage">The Application Dictionary Heritage<a class="headerlink" href="#the-application-dictionary-heritage" title="Permanent link">&para;</a></h2>
 <p>Compiere introduced the Application Dictionary (AD) in 2000 — metadata that
 defines the system itself. ADempiere inherited it. iDempiere perfected it.
@@ -3028,44 +3193,6 @@ or set quantities at order time. Our exception-based ordering (qty=0 removes
 a subtree, reference class compresses N copies) is the identical pattern
 applied to buildings. 200 houses, 6 lines of exceptions each.
 → <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §1</a></p>
-<hr />
-<h2 id="the-three-concerns">The Three Concerns<a class="headerlink" href="#the-three-concerns" title="Permanent link">&para;</a></h2>
-<p>iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
-with production detail in PP_Order. We inherit the same separation:</p>
-<table>
-<thead>
-<tr>
-<th>Concern</th>
-<th>iDempiere</th>
-<th>BIM Compiler</th>
-<th>Table</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>WHAT</strong> to build</td>
-<td>C_OrderLine</td>
-<td>Which products, how many</td>
-<td>c_orderline</td>
-</tr>
-<tr>
-<td><strong>HOW</strong> to place</td>
-<td>PP_Order_Node</td>
-<td>Which verb, what parameters</td>
-<td>pp_order_node</td>
-</tr>
-<tr>
-<td><strong>WHERE</strong> it goes</td>
-<td>M_Locator / Warehouse</td>
-<td>Room slot, tack offset</td>
-<td>co_empty_space_line</td>
-</tr>
-</tbody>
-</table>
-<p>These three concerns are <strong>never merged</strong>. A change to WHAT (swap a product)
-does not require changes to HOW (verb stays the same) or WHERE (slot stays
-the same). This is the architectural invariant that makes exception-based
-ordering possible: override one concern, inherit the others.</p>
 <hr />
 <h2 id="why-this-matters">Why This Matters<a class="headerlink" href="#why-this-matters" title="Permanent link">&para;</a></h2>
 <p><strong>For construction:</strong> The industry loses billions annually to the gap between

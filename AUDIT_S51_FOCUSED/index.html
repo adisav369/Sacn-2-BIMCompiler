@@ -3628,6 +3628,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#appendix-q-session-d-remove-compress-mutations-s68b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix Q — Session D: Remove + Compress Mutations (S68b)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix Q — Session D: Remove + Compress Mutations (S68b)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#q1-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.1 Deliverables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q2-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.2 Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q3-144-risk-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.3 — §14.4 Risk Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q4-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.4 — Gate Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q5-witness-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.5 — Witness Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q6-blueprint-aspirational-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.6 — Blueprint Aspirational Target
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6041,6 +6124,89 @@
     <span class="md-ellipsis">
       
         R.6 Housekeeping Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-q-session-d-remove-compress-mutations-s68b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix Q — Session D: Remove + Compress Mutations (S68b)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix Q — Session D: Remove + Compress Mutations (S68b)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#q1-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.1 Deliverables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q2-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.2 Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q3-144-risk-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.3 — §14.4 Risk Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q4-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.4 — Gate Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q5-witness-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.5 — Witness Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#q6-blueprint-aspirational-target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Q.6 — Blueprint Aspirational Target
       
     </span>
   </a>
@@ -9800,6 +9966,140 @@ Session E FAILS if any of:
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="appendix-q-session-d-remove-compress-mutations-s68b">Appendix Q — Session D: Remove + Compress Mutations (S68b)<a class="headerlink" href="#appendix-q-session-d-remove-compress-mutations-s68b" title="Permanent link">&para;</a></h2>
+<p><strong>Date:</strong> 2026-03-24
+<strong>Scope:</strong> BomDropper + OrderLineWalker learn exception-order mutations.
+<strong>Spec:</strong> ProjectOrderBlueprint.md §1.1 (four mutations), §1.2 (reference class)
+<strong>Witness:</strong> W-EXCEPTION-1, W-REFCLASS-1</p>
+<h3 id="q1-deliverables">Q.1 Deliverables<a class="headerlink" href="#q1-deliverables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Deliverable</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Migration W005_orderline_locator_ref.sql</td>
+<td>DONE — <code>locator_ref TEXT</code> + <code>is_reference_class INTEGER DEFAULT 0</code> on C_OrderLine</td>
+</tr>
+<tr>
+<td>2</td>
+<td>BomDropper locator_ref path building</td>
+<td>DONE — dot-separated M_Product_Category path built during explosion</td>
+</tr>
+<tr>
+<td>3</td>
+<td>BomDropper Remove mutation (qty=0 skip)</td>
+<td>DONE — <code>ExceptionLine.remove()</code> → subtree skipped</td>
+</tr>
+<tr>
+<td>4</td>
+<td>BomDropper Compress mutation (reference class)</td>
+<td>DONE — <code>ExceptionLine.compress(N)</code> → single node, qty=N, no children</td>
+</tr>
+<tr>
+<td>5</td>
+<td>OrderLineWalker qty=0 skip</td>
+<td>DONE — skips subtrees where Qty=0</td>
+</tr>
+<tr>
+<td>6</td>
+<td>OrderLineWalker reference class instantiation</td>
+<td>DONE — fires N visitor events at computed dz offsets</td>
+</tr>
+<tr>
+<td>7</td>
+<td>BBC.md §3.7 addendum (locator_ref spec)</td>
+<td>DONE — syntax, stability guarantee, mutation table</td>
+</tr>
+<tr>
+<td>8</td>
+<td>RemoveCompressTest.java (5 witnesses)</td>
+<td>DONE — all 5 PASS</td>
+</tr>
+<tr>
+<td>9</td>
+<td>WorkOutputDAO schema update</td>
+<td>DONE — new columns in CREATE TABLE</td>
+</tr>
+</tbody>
+</table>
+<h3 id="q2-architecture">Q.2 Architecture<a class="headerlink" href="#q2-architecture" title="Permanent link">&para;</a></h3>
+<p><strong>locator_ref addressing:</strong> Each C_OrderLine gets a stable, dot-separated path
+derived from M_Product_Category codes at each BOM level. Example: <code>RE.GF.LI.SOFA_001</code>.
+Falls back to bom_id/product_id when category is null. Stable across recompilations
+since it's derived from BOM structure, not insertion order.</p>
+<p><strong>Exception flow:</strong> <code>BomDropper.drop(conn, entry, orderId, exceptions)</code> accepts a
+<code>Map&lt;String, ExceptionLine&gt;</code>. During explosion, each node's locator_ref is checked
+against the exception map:
+- <strong>Remove (qty=0):</strong> Subtree is skipped entirely — no C_OrderLines created
+- <strong>Compress (is_reference_class + qty=N):</strong> Single C_OrderLine created with
+  <code>is_reference_class=1</code> and <code>Qty=N</code>. Children NOT exploded — instantiation
+  happens at walk time in OrderLineWalker.</p>
+<p><strong>Walker behavior:</strong> OrderLineWalker reads <code>Qty</code>, <code>locator_ref</code>, <code>is_reference_class</code>
+from C_OrderLine. Qty=0 → skip. is_reference_class + Qty=N → fire visitor events
+N times (evenly spaced along Z axis within parent AABB).</p>
+<p><strong>Backward compatibility:</strong> The new <code>drop()</code> overload with <code>Map.of()</code> default
+delegates to the existing 2-arg path. Existing callers unchanged.</p>
+<h3 id="q3-144-risk-resolution">Q.3 — §14.4 Risk Resolution<a class="headerlink" href="#q3-144-risk-resolution" title="Permanent link">&para;</a></h3>
+<p>The risk identified in §14.4 was: "locator_ref addressing conflicts with existing
+m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT)."</p>
+<p><strong>Resolution:</strong> locator_ref on C_OrderLine is a SEPARATE column from m_bom_line.locator_ref.
+They serve different purposes:
+- <code>m_bom_line.locator_ref</code> — spatial placement hint within a room (NORTH_WALL, FLOAT)
+- <code>C_OrderLine.locator_ref</code> — tree addressing for exception orders (RE.GF.LI.SOFA_001)</p>
+<p>No conflict — different tables, different semantics.</p>
+<h3 id="q4-gate-results">Q.4 — Gate Results<a class="headerlink" href="#q4-gate-results" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mvn compile -q</code></td>
+<td>CLEAN</td>
+</tr>
+<tr>
+<td>RemoveCompressTest (5 witnesses)</td>
+<td>5/5 PASS</td>
+</tr>
+<tr>
+<td>BomDropperOrderIdTest (existing)</td>
+<td>1/1 PASS</td>
+</tr>
+<tr>
+<td>SH Rosetta Stone</td>
+<td>5/7 (BuildingRegistryTest + g4_tamper pre-existing)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="q5-witness-results">Q.5 — Witness Results<a class="headerlink" href="#q5-witness-results" title="Permanent link">&para;</a></h3>
+<p><strong>W-LOCATOR-1:</strong> All C_OrderLines have non-null locator_ref. Leaves use dot-separated
+paths (e.g., <code>RE.GF.LI.SOFA_001</code>).</p>
+<p><strong>W-EXCEPTION-1:</strong> Remove mutation (qty=0) on locator_ref <code>RE.GF.LI.SOFA_001</code> →
+baseline 2 leaves drops to 1 leaf. Removed node absent from output.</p>
+<p><strong>W-EXCEPTION-2:</strong> Remove on assembly locator_ref <code>RE.GF.LI</code> → entire subtree
+skipped (2→0 leaves). Assembly and all descendants absent.</p>
+<p><strong>W-REFCLASS-1:</strong> Compress mutation (is_reference_class=true, qty=3) on floor
+locator_ref → C_OrderLine stored with <code>Qty=3, is_reference_class=1</code>. No exploded
+children (subtree collapsed to single node).</p>
+<p><strong>W-REFCLASS-2:</strong> Compressed order has fewer C_OrderLines than baseline
+(5 → 2 lines — root + compressed floor only).</p>
+<h3 id="q6-blueprint-aspirational-target">Q.6 — Blueprint Aspirational Target<a class="headerlink" href="#q6-blueprint-aspirational-target" title="Permanent link">&para;</a></h3>
+<p>§1.2 describes: "100-storey tower = 3 C_OrderLines." Session D proves the mechanism:
+- C_OrderLine #1: BUILDING root (normal)
+- C_OrderLine #2: FLOOR with is_reference_class=1, Qty=100 (Compress)
+- C_OrderLine #3: Exception on FLOOR[47] (indexed exception — Session E scope)</p>
+<p>Session D delivers #1 and #2. Indexed exceptions (<code>locator_ref[N]</code> syntax) are
+Session E scope (requires Order Inheritance for stacked overlays).</p>
 
 
 

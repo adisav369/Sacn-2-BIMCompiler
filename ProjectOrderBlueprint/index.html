@@ -6274,14 +6274,14 @@ rule pack rows. The framework is the value; FP is the proof of concept.</p>
 <tbody>
 <tr>
 <td><strong>§1</strong> Exception-based ordering</td>
-<td>BomDropper.drop() fully explodes. swapProduct() works (Replace).</td>
-<td>Missing: locator_ref addressing, Remove (qty=0 skip), Compress (reference class)</td>
+<td>BomDropper.drop() with exceptions. locator_ref addressing. swapProduct (Replace).</td>
+<td><strong>Session D DONE:</strong> Remove + Compress implemented. Indexed exceptions (Session E)</td>
 <td></td>
 </tr>
 <tr>
 <td><strong>§1.1</strong> Four mutations</td>
-<td>Replace ✓ (WorkOutputDAO.swapProduct). <strong>Add ✓</strong> (OrderMutationService.addDiscipline, S67).</td>
-<td>Remove + Compress not implemented</td>
+<td>Replace ✓. Add ✓. <strong>Remove ✓</strong> (qty=0 skip, S68b). <strong>Compress ✓</strong> (reference class, S68b).</td>
+<td>All 4 mutations implemented</td>
 <td></td>
 </tr>
 <tr>
@@ -6445,12 +6445,12 @@ Only the last order survives.</p>
 <li><strong>Gate:</strong> RulePackTest 6/6, OrderLineMutationTest 8/8, AddDisciplineTest 4/4, SH 7/7, full gate GREEN</li>
 <li><strong>Witness:</strong> W-RULEPACK-1 (MY=13 proposals, US=17 proposals — different codes, different counts)</li>
 </ul>
-<p><strong>Session D: Remove + Compress mutations (§1.1, §1.2)</strong></p>
+<p><strong>Session D: Remove + Compress mutations (§1.1, §1.2) — DONE (S68b)</strong></p>
 <ul>
-<li>Remove: qty=0 on C_OrderLine → BomDropper/OrderLineWalker skips branch</li>
-<li>Compress: reference class flag → compiler instantiates N at computed offsets</li>
-<li>locator_ref addressing: target specific node in exploded tree</li>
-<li><strong>Gate:</strong> 100-storey tower = 3 C_OrderLines (§1.2 example). Standard pipeline compiles</li>
+<li>Remove: qty=0 on C_OrderLine → BomDropper/OrderLineWalker skips branch ✓</li>
+<li>Compress: reference class flag → compiler instantiates N at computed offsets ✓</li>
+<li>locator_ref addressing: dot-separated M_Product_Category path on C_OrderLine ✓</li>
+<li><strong>Gate:</strong> RemoveCompressTest 5/5. BomDropperOrderIdTest 1/1. SH Rosetta Stone unchanged</li>
 <li><strong>Witness:</strong> W-EXCEPTION-1 (remove skips subtree), W-REFCLASS-1 (qty=N instantiated)</li>
 </ul>
 <p><strong>Session E: Order inheritance (§6)</strong></p>
