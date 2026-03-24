@@ -484,6 +484,100 @@ already serves this role for most AD data but has a misleading name and incomple
 
 ---
 
+## 7. DocBaseType → M_Product_Category Alignment — S70 Findings
+
+> **Status:** Analysis complete (S70). MANIFESTO.md corrected. Code + doc propagation pending.
+> **Pre-flight:** `// Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment`
+
+### 7.1 The Problem
+
+`doc_base_type` and `doc_sub_type` on `m_bom` are redundant with `m_product_category_id` and
+`bom_id`. The BUILDING BOM has `doc_base_type=RE, doc_sub_type=SH` but NULL `m_product_category_id`.
+Child BOMs have `m_product_category_id` set (GF, RF, LIVING) but NULL `doc_base_type`. Both carry
+classification — on different columns at different levels. The correct model: M_Product_Category
+carries classification at every level. C_DocType = ONE "Construction Order" (not per-building-type).
+
+### 7.2 Docs Needing Correction
+
+| Doc | What to fix |
+|-----|------------|
+| **BOMBasedCompilation.md** | L44-55: C_DocType.DocBaseType analogy. L297: "DocBaseType on M_Product_Category". L1149-1186: YAML schema refs |
+| **SystemContract.md** | L63: C_DocType = "Building type classification" → "Construction Order". L434: "per DocBaseType + DocSubType" |
+| **DATA_MODEL.md** | §1.4: doc_base_type/doc_sub_type on m_bom. §2 C_DocType/m_bom schema. This section (§7) is the correction anchor |
+| **TerminalAnalysis.md** | L661-697: entire "DocBaseType — Real Semantic Work" section. M_Product_Category scoped by doc_type column |
+| **SourceCodeGuide.md** | L292: "DocBaseType=CO" skip logic. L589: C_DocType identity definition |
+| **ProjectOrderBlueprint.md** | CLEAN — no changes needed |
+| **DocAction_SRS.md** | CLEAN — no changes needed |
+| **DISC_VALIDATION_DB_SRS.md** | CLEAN — no changes needed |
+
+### 7.3 Java Files Routing on DocBaseType/DocSubType
+
+**Source files (19) — routing logic that must migrate to M_Product_Category:**
+
+| Module | File | What it does |
+|--------|------|-------------|
+| DAGCompiler | `BomDropper.java` | `findBuildingBom()` WHERE doc_base_type = ? AND doc_sub_type = ? |
+| DAGCompiler | `BuildingRegistry.java` | `loadByDocBaseType()`, JOIN doc_base_type = DocBaseType |
+| DAGCompiler | `CompilationPipeline.java` | Three-key match, ST dispatch, CO dispatch |
+| BIM_COBOL | `ComposeBuildingVerb.java` | COMPOSE BUILDING \<docBaseType\> |
+| ORMSandbox | `MCDocType.java` | `getByDocBaseType()`, switch on docBaseType |
+| ORMSandbox | `X_C_DocType.java` | Column definitions (DocBaseType, DocSubType) |
+| ORMSandbox | `X_M_BOM.java` | doc_base_type column accessor |
+| ORMSandbox | `BomTemplateContract.java` | Template derivation from docSubType → docBaseType |
+| ORMSandbox | `BomTemplateComposer.java` | Three-key match (AABB + DocBaseType + DocSubType) |
+| ORMSandbox | `MBomCategory.java` | docType parameter matching DocBaseType |
+| ORMSandbox | `MBomCategoryLine.java` | docType parameter matching DocBaseType |
+| ORMSandbox | `X_CCampaign.java` | DocBaseType reference |
+| BonsaiBIMDesigner | `DesignerDAO.java` | JOIN doc_base_type = DocBaseType |
+| BonsaiBIMDesigner | `DesignerAPIImpl.java` | `deriveFacilityType()` routing, JOIN |
+| BonsaiBIMDesigner | `StubDataSeeder.java` | Schema creation with DocBaseType |
+| BonsaiBIMDesigner | `WorkOutputDAO.java` | doc_base_type in schema |
+| IFCtoBOM | `IFCtoBOMPipeline.java` | Dispatch on doc_base_type, C_DocType creation |
+| IFCtoBOM | `StructuralBomBuilder.java` | INSERT with doc_base_type |
+| IFCtoBOM | `DisciplineBomBuilder.java` | INSERT with doc_base_type |
+| IFCtoBOM | `ClassificationYaml.java` | Record with docBaseType field |
+| IFCtoBOM | `BomValidator.java` | Validates doc_base_type on BUILDING BOM |
+| BIMBackOffice | `PortfolioDAO.java` | SELECT DocBaseType |
+
+**Test files (12):** PrimeRuleWitnessTest, BuildingRegistryTest, DataIntegrityTest,
+RemoveCompressTest, OrderInheritanceTest, BomDropperOrderIdTest, BomDropCompileTest,
+BomDropConfigureTest, CompileBridgeTest, ASIAuthoringTest, DemoHouseTest, SelectionCascadeTest
+
+### 7.4 M_Product_Category Hierarchy — Current vs Target
+
+**Current (disc_validation.db, 46 rows):** IFC element classification only (IFC_WALL→STR,
+IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.
+
+**Missing for cascade model (need migration to add):**
+- Top-level: RE (Residential), IN (Infrastructure), CO (Commercial), IP (Industrial Plant)
+- Floor-level: GF, L1, L2, L3, L4, L5, RF, FN, MS
+- Room-level: LI (Living), KT (Kitchen), BD (Bedroom), BT (Bathroom), DN (Dining), FR (Furniture), etc.
+- Infra segments: SUP, DCK, ABT, TRK, ROAD, RAIL
+
+These values already exist as `bom_category` strings on `m_bom` rows in BOM databases — they just
+aren't registered as M_Product_Category rows in disc_validation.db. Migration: INSERT OR IGNORE
+from the existing bom_category vocabulary.
+
+### 7.5 ERP.db Rename — Touchpoint Count
+
+Renaming `disc_validation.db` → `ERP.db` affects:
+- Java system property references: `disc.validation.db` (grep needed for exact count)
+- Shell scripts: `run_RosettaStones.sh`, `run_tests.sh`, extraction scripts
+- Python scripts: `RosettaStoneToBOM.py`, `RosettaStoneExtract.py`
+- Doc references across ~10 specs
+- Estimated total touchpoints: 40–60 (bounded task, separate session)
+
+### 7.6 Migration Plan (follow-up sessions)
+
+1. **Session N+1:** Add missing M_Product_Category rows to disc_validation.db (DV018 migration)
+2. **Session N+2:** Populate `m_product_category_id` on BUILDING BOMs (currently NULL where doc_base_type is set)
+3. **Session N+3:** Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)
+4. **Session N+4:** Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)
+5. **Session N+5:** Rename disc_validation.db → ERP.db + propagate all touchpoints
+6. **Each session:** Propagate doc corrections to 1–2 specs from §7.2 list
+
+---
+
 *Authoritative reference. See `BOMBasedCompilation.md` for tack convention and pipeline stages,
 `SystemContract.md` for the three-concern model (WHAT/HOW/WHERE),
 `TheRosettaStoneStrategy.md` for verification strategy.*

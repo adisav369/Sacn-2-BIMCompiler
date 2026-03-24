@@ -21,9 +21,27 @@ does not require changes to HOW (verb stays the same) or WHERE (slot stays
 the same). This is the architectural invariant that makes exception-based
 ordering possible: override one concern, inherit the others.
 
-### WHAT: AD_Org (Discipline) + M_Product_Category (Classification)
+### WHAT: M_Product_Category (Classification) + AD_Org (Discipline)
 
-The WHAT concern has two layers — **who is responsible** and **what kind of thing**.
+The WHAT concern has two orthogonal axes — **what kind of thing** and **who is responsible**.
+
+**M_Product_Category — Product classification (WHAT kind of thing).**
+The same entity iDempiere uses to group products into swap pools. Categories
+form a cascade — each level of the building hierarchy has its own category:
+
+```
+Level       M_Product_Category    Examples
+─────       ──────────────────    ────────
+Building    RE (Residential)      SH, DX, DM, FK
+  Floor     GF, L1, RF            ground, first, roof
+    Room    LIVING, KITCHEN        swap pool — replace one LIVING layout for another
+      Leaf  IFC_WALL, IFC_DOOR     element classification (→ component library geometry)
+```
+
+The category at each level defines the **swap pool** — you can replace one
+LIVING room layout with another LIVING layout, but you can't swap a LIVING
+room for a KITCHEN. This is iDempiere's Configure-to-Order constraint
+applied to spatial BOMs.
 
 **AD_Org — Discipline (WHO is responsible).** In iDempiere, `AD_Org` partitions
 data by business unit. Here, engineering disciplines partition the BOM validation
@@ -34,48 +52,61 @@ AD_Val_Rule set, its own validation pass — but sharing the same product catalo
 AD_Org (discipline)  → ARC, STR, FP, ELEC, ACMV, SP, CW, LPG, REB, MEP, ROAD, GEO, RAIL, LAND, SIGN
 ```
 
-**M_Product_Category — Element and room classification (WHAT kind of thing).**
-The same entity iDempiere uses to group products into swap pools. In
-`disc_validation.db`, M_Product_Category maps IFC classes to parent disciplines
-(IFC_WALL→STR, IFC_DOOR→ARC, IFC_FLOWSEGMENT→MEP). In BOM databases, it
-classifies rooms and segments.
+**The distinction matters.** Disciplines cut ACROSS the category tree — they
+don't appear AS levels within it. Three products in the same room (same
+category path) can have three different AD_Orgs:
 
 ```
-M_Product_Category (element)     → IFC_WALL, IFC_DOOR, IFC_BEAM, IFC_FLOWSEGMENT...
-M_Product_Category (room)        → LIVING, KITCHEN, BEDROOM, BATHROOM, CORRIDOR, OFFICE
-M_Product_Category (infra)       → ROAD, RAIL, TRK, GEO, SUP, DCK, ABT
-M_Product (leaf)                 → the actual element with geometry
+Category cascade:     RE → GF → LIVING → SOFA_001       ← AD_Org = ARC
+Category cascade:     RE → GF → LIVING → SPRINKLER_001  ← AD_Org = FP
+Category cascade:     RE → GF → LIVING → LIGHT_001      ← AD_Org = ELEC
 ```
 
-**The distinction matters.** A Patio Furniture Set belongs to category
-OUTDOOR_FURNITURE (M_Product_Category) — that's what kind of thing it is.
-The trade responsible for installing it is AD_Org = ARC (Architecture) —
-that's who validates it. You can't swap a table for a sprinkler head
-(category constraint), and the sprinkler head is validated by FP, not ARC
-(discipline constraint). Two orthogonal axes.
+M_Product_Category answers "what kind of thing?" AD_Org answers "who installs it?"
 
-A residential building (DocBaseType=RE) uses **room categories**: the Patio
-Furniture Set lives in LIVING. An infrastructure project (DocBaseType=IN) uses
-**segment categories**: a bridge deck lives in DCK. The category tree is the
-taxonomy — the engine never asks "is this a house?" It asks "what category
-constrains this swap?"
+### The Category Cascade — One Pattern, Three Domains
 
-There is only **one C_DocType = "Construction Order"**. DocBaseType and
-DocSubType are classification metadata — provenance tags that describe the
-building's origin (RE=residential, IN=infrastructure, CO=commercial). They
-are not routing logic. The compilation engine is generic; the categories
-carry the domain knowledge.
+The cascade is universal. The same parent→child→grandchild pattern governs
+residential, infrastructure, and commercial buildings. Only the category
+names change:
+
+**Residential:**
+```
+RE (Residential)
+  └─ M_Product: SH (IsBOM=Y)              ← the building IS a product
+       └─ GF (Ground Floor, IsBOM=Y)       ← floor is a product
+            └─ LIVING (Room, IsBOM=Y)       ← room is a product
+                 ├─ SOFA_001 (IsBOM=N)      ← leaf — geometry from component library
+                 └─ TABLE_001 (IsBOM=N)     ← leaf — geometry from component library
+```
+
+**Infrastructure:**
+```
+IN (Infrastructure)
+  └─ M_Product: BR (Bridge, IsBOM=Y)
+       └─ SUP (Support, IsBOM=Y)           ← segment is a product
+            └─ PILE_001 (IsBOM=N)           ← leaf — geometry from component library
+```
+
+**Commercial:**
+```
+CO (Commercial)
+  └─ M_Product: WA (Warehouse A, IsBOM=Y)
+       └─ L1 (Level 1, IsBOM=Y)            ← floor is a product
+            └─ OFFICE (Space, IsBOM=Y)      ← space type — same swap-pool logic
+                 └─ DOOR_001 (IsBOM=N)      ← leaf — geometry from component library
+```
 
 ### Category Population — Current State
 
-| DocBaseType | Buildings | Room/Segment Categories |
-|-------------|-----------|------------------------|
-| **RE** (residential) | SH, DM, DX, FK, IN | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
-| **RE** (residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
-| **IN** (infrastructure) | BR, RD, RL | SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW |
-| **CO** (commercial) | WA, WL, WT | ARC, STR, MEP, L1–L5 — discipline + floor-level |
-| **IP** (industrial plant) | IP | ARC, STR, MEP, MISC |
-| **(none)** | TE | No categories (48,428-element terminal — needs extraction) |
+| M_Product_Category | Buildings | Sub-Categories |
+|-------------------|-----------|----------------|
+| **RE** (Residential) | SH, DM, DX, FK, IN | LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR, OFFICE + floor-level (GF, RF, L1, L2) |
+| **RE** (Residential, floor-only) | BA, BH, BS, CA, CE, CH, CL, CP, CS, ES, GH, HI, JE, JS, MO, NI, RA, RM, RS, SC, WB, WI | Floor-level categories only (GF, L1, L2, ROOF, FDN, MISC) — no room categories yet |
+| **IN** (Infrastructure) | BR, RD, RL | SUP, GEO, STR, TRK, ROAD, RAIL, DCK, ABT, ARC, CW |
+| **CO** (Commercial) | WA, WL, WT | ARC, STR, MEP, L1–L5 — discipline + floor-level |
+| **IP** (Industrial Plant) | IP | ARC, STR, MEP, MISC |
+| **(unclassified)** | TE | No categories (48,428-element terminal — needs extraction) |
 
 **Gaps:** 22 residential buildings have only floor-level categories (GF, L1, L2)
 but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
@@ -124,12 +155,12 @@ separate entity — they are a property of a product. A building is a product.
 A floor is a product. A room is a product. A door is a product.
 
 ```
-BUILDING (M_Product, IsBOM=Y)
-  └─ FLOOR (M_Product, IsBOM=Y)
-       └─ ROOM (M_Product, IsBOM=Y)
+BUILDING (M_Product, IsBOM=Y, M_Product_Category=RE)
+  └─ FLOOR (M_Product, IsBOM=Y, M_Product_Category=GF)
+       └─ ROOM (M_Product, IsBOM=Y, M_Product_Category=LIVING)
             ├─ WALL_PANEL (M_Product, IsBOM=N → geometry from component library)
             ├─ DOOR (M_Product, IsBOM=N → geometry from component library)
-            └─ FURNITURE_SET (M_Product, IsBOM=Y)
+            └─ FURNITURE_SET (M_Product, IsBOM=Y, M_Product_Category=FR)
                  ├─ TABLE (M_Product, IsBOM=N → leaf)
                  └─ CHAIR × 4 (M_Product, IsBOM=N → leaf)
 ```
@@ -141,32 +172,142 @@ when it explodes a manufacturing BOM into work orders.
 
 ---
 
-## The Mapping: iDempiere → BIM
+## The Order — Configure-to-Order
+
+In iDempiere, there is **one C_DocType per document purpose**: SOO (Sales Order),
+POO (Purchase Order), MOP (Manufacturing Order). Product classification lives
+on M_Product → M_Product_Category — never on the document type.
+
+**This project has exactly one document purpose: "Construction Order."** That is
+the C_DocType. Classification lives where it belongs — on the product's
+M_Product_Category, not on the order.
+
+The BOM cascade gives you the FULL product tree (SH → floors → rooms → furniture →
+thousands of leaves). But the C_Order does NOT repeat that tree. This is
+iDempiere's Configure-to-Order pattern: the order carries only the EXCEPTIONS.
+
+```
+M_Product SH (BOM template):     1099 elements (full cascade)
+C_Order "Build me SH":           0 lines (no exceptions — use template as-is)
+C_Order "SH but no sofa":        1 line  (qty=0 at locator_ref RE.GF.LI.SOFA_001)
+C_Order "SH Solar Premium":      6 lines (inherits from SH Solar, adds overrides)
+C_Order "200 houses, 6 variants": 200 × ~3 lines = 600 lines (not 200 × 1099)
+```
+
+The BOM template is the PRODUCT (M_Product + M_BOM + M_BOM_Line cascade).
+The Order is just the delta — Remove (qty=0), Compress (reference class × N),
+Replace (swap product at locator_ref), Add (new line). Inheritance chains
+(Ref_Order_ID) let you stack deltas: SH_BASE → SH_SOLAR → SH_SOLAR_PREMIUM.
+
+The category at each level constrains what the thin order can override.
+You can Replace a LIVING room layout with another LIVING layout, but you
+can't swap it for a KITCHEN. M_Product_Category is the swap-pool guard.
+
+---
+
+## The Entity-Relationship Model
 
 Every table in this project maps to a proven iDempiere entity. No invented
-abstractions. No BIM-specific data models. If iDempiere already solved the
-problem, we use iDempiere's solution.
+abstractions. No BIM-specific data models.
+
+### The ERD
+
+```
+M_Product_Category (RE, IN, CO)          ← WHAT kind of thing (cascade level)
+  └─ M_Product (SH, DX, BR)             ← the thing itself (IsBOM=Y or N)
+       ├─ M_BOM + M_BOM_Line            ← children (cascade down, dx/dy/dz tack offsets)
+       ├─ M_AttributeSet                ← WHICH attributes vary (BIM_Pipe, BIM_Component)
+       │    └─ M_AttributeSetInstance   ← per-instance values (length=3200mm)
+       └─ AD_Org                        ← WHO installs it (ARC, FP, ELEC) — tag, not level
+
+C_DocType ("Construction Order")         ← ONE document type, always
+  └─ C_Order ("Build me SH")            ← references M_Product
+       ├─ C_OrderLine                   ← exceptions only (thin order)
+       │    ├─ locator_ref              ← WHERE in the tree
+       │    └─ M_Product_Category       ← swap pool constraint
+       ├─ Ref_Order_ID                  ← inheritance chain
+       └─ C_Campaign                    ← design theme (orthogonal)
+
+AD_Val_Rule                              ← jurisdiction rules (MY/UBBL, US/IBC)
+AD_ChangeLog                             ← full provenance (undo/redo stack)
+PP_Order_Node                            ← HOW it was placed (verb audit)
+CO_EmptySpaceLine                        ← WHERE it goes (spatial slot)
+```
+
+### The Mapping: iDempiere → BIM
 
 | iDempiere Manufacturing | BIM Compiler | What It Does |
 |------------------------|-------------|-------------|
 | **M_Product** | Building element or assembly | The universal entity. Everything is a product |
+| **M_Product_Category** | RE, IN, CO, GF, LIVING, IFC_WALL... | Classifies products at every cascade level. WHAT kind of thing |
 | **AD_Org** | ARC, STR, FP, ELEC, ACMV... | Discipline = organisational unit. WHO is responsible |
-| **M_Product_Category** | IFC_WALL, IFC_DOOR, LIVING, DCK... | Classifies products by element type or room. WHAT kind of thing |
 | **M_BOM + M_BOM_Line** | Assembly recipe + children | BOM explosion. Each line has dx/dy/dz tack offset |
-| **C_Order** | Construction project | One order = one building. Carries design state |
-| **C_OrderLine** | Element instance | WHAT to build. References M_Product |
-| **C_DocType** | Building type classification | Routes compilation. Metadata, not logic |
+| **C_Order** | Construction project | One order = one building. Carries exceptions only |
+| **C_OrderLine** | Exception line | Deviation from BOM template (swap, remove, compress, add) |
+| **C_DocType** | "Construction Order" | ONE document type. Classification lives on M_Product_Category |
 | **PP_Order_Node** | Verb execution record | HOW it was placed. Full audit trail |
 | **CO_EmptySpace** | Room/floor slot | WHERE things go. Warehouse slot analogy |
 | **DocAction lifecycle** | DR → IP → CO → AP | Draft → In Progress → Complete → Approved |
 | **AD_Val_Rule** | Validation by jurisdiction | Same rule engine, construction codes instead of tax codes |
 | **C_Campaign** | Design theme | Bali, Scandinavian, Industrial — marketing drives variant |
 | **AD_PrintFormat** | Output selection | Which elements to render, which to hide |
+| **M_AttributeSet** | Instance variation | Per-element customization (pipe length, colour, finish) |
+| **C_Project** | Site development | 200 houses under one project. Groups C_Orders |
 
 **The extension:** Manufacturing MRP has product + quantity + sequence.
 We add three columns to M_BOM_Line: `dx`, `dy`, `dz` — parent-relative
 tack offsets in millimetres. That is the entire difference between a flat
 BOM and a spatial BOM. Three integers turn procurement into construction.
+
+### Orthogonal Dimensions
+
+Seven dimensions cut ACROSS the product category cascade. None of them
+appear AS levels within the tree:
+
+| Dimension | iDempiere Entity | What It Controls | Orthogonal To |
+|-----------|-----------------|------------------|---------------|
+| **Classification** | M_Product_Category | What kind of thing (swap pool) | — (this IS the cascade) |
+| **Discipline** | AD_Org | Who installs it | Category |
+| **Design theme** | C_Campaign | Bali, Scandinavian, Industrial | Category, Discipline |
+| **Jurisdiction** | AD_Val_Rule | MY/UBBL, US/IBC rules | Category, Discipline, Theme |
+| **Costing** | M_PriceList | Unit cost by region/contract | All above |
+| **Instance variation** | M_AttributeSetInstance | Pipe length, colour, finish | All above |
+| **Site grouping** | C_Project | 200 houses under one project | Everything |
+
+### M_AttributeSet — Why Product Count Stays Small
+
+Without AttributeSets, TE (Terminal) with 48,428 elements would need 48,428
+separate M_Products. That's wrong. In iDempiere, a shirt comes in S/M/L/XL —
+that's ONE M_Product with an M_AttributeSet (size) and 4 M_AttributeSetInstances.
+Not 4 products.
+
+Same pattern for construction. An FP (Fire Protection) route has:
+- START (pipe segment)
+- MID (pipe segment — different length)
+- JOINT (elbow, tee, reducer — fixed geometry)
+- DEVICE (sprinkler head, valve — fixed geometry)
+- END (cap, terminal)
+
+These are ~5 abstract M_Products, not thousands. The VARIABLE part (pipe length)
+lives on M_AttributeSetInstance. The FIXED part (elbow geometry) has no instance
+attributes — it's the same product everywhere.
+
+```
+M_Product: PIPE_CW_50MM (IsBOM=N, M_AttributeSet = BIM_Pipe)
+  └─ Instance 1: {length_mm: 3200}    ← segment in corridor
+  └─ Instance 2: {length_mm: 4800}    ← segment in main run
+  └─ Instance 3: {length_mm: 1200}    ← branch to sprinkler
+
+M_Product: ELBOW_90_50MM (IsBOM=N, M_AttributeSet = BIM_Component)
+  └─ No instances — fixed geometry, same everywhere
+
+M_Product: SPRINKLER_UPRIGHT_K80 (IsBOM=N, M_AttributeSet = BIM_Component)
+  └─ No instances — placement varies, product doesn't
+```
+
+The ROUTE verb assembles these into a BOM tree with per-segment instance
+attributes. TE's 9,345 FP/CW/SP/LPG pipe elements → ~20 abstract products
+× many instances. Without this, the product table explodes.
 
 ---
 
