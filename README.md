@@ -8,7 +8,7 @@ A metadata-driven, deterministic compiler that reads BOM data and produces 3D bu
 |---|---|
 | **35 buildings** compiled (48,428 elements largest) | **64 verbs**, 2,475 products |
 | **6 mathematical gates** prove every output | **392 tests**, all GREEN |
-| **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **Blender/Bonsai** live GUI |
+| **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** live GUI |
 
 ## Quick Start
 
