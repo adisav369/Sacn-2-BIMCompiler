@@ -59,7 +59,6 @@ nav:
       - Home: index.md
       - The ERP World View: MANIFESTO.md
       - Documentation Index: INDEX.md
-      - Quick Start: WorkOrderGuide.md
       #- Current State: ../PROGRESS.md  # outside docs_dir — link from landing page instead
 
   # ─── "I want to understand the system" ──────────────────
@@ -70,7 +69,7 @@ nav:
       - Source Code Guide: SourceCodeGuide.md
 
   # ─── DOMAIN: Compilation engine ─────────────────────────
-  - Compiler:
+  - Verb Engine:
       - BIM COBOL (64 Verbs): BIM_COBOL.md
       - Test Architecture (6 Gates): TestArchitecture.md
       - EYES (Geometric Proofs): EYES_SRS.md
@@ -85,14 +84,13 @@ nav:
       - DocAction Lifecycle: DocAction_SRS.md
       - Document Validation: DocValidate.md
       - Assembly Builder: ASSEMBLY_BUILDER_SRS.md
-      - G4 Work Output: G4_SRS.md
       - View Contracts: VIEW_CONTRACTS.md
       - Blender Bridge: BlenderBridge.md
 
   # ─── DOMAIN: Disciplines & Validation ───────────────────
   - Disciplines:
       - Validation SRS: DISC_VALIDATE_SRS.md
-      - Validation DB: DISC_VALIDATION_DB_SRS.md
+      - ERP Database: DISC_VALIDATION_DB_SRS.md
       - Generative House: GENERATIVE_HOUSE_SRS.md
       - Prefab Architecture: PREFAB_ARCHITECTURE.md
 
@@ -112,7 +110,6 @@ nav:
   # ─── DOMAIN: The Frontier ──────────────────────────────
   - Roadmap:
       - Action Roadmap: ACTION_ROADMAP.md
-      - Audit Report: AUDIT_S51_FOCUSED.md
       - Strategic Positioning: StrategicIndustryPositioning.md
       - BIM-ERP Paper: BIMERPPaper.md
 
@@ -129,7 +126,7 @@ nav:
 
   # ─── "How do I..." ─────────────────────────────────────
   - Guides:
-      - Getting Started: WorkOrderGuide.md
+      - Construction Order Guide: WorkOrderGuide.md
       - User Guide: USER_GUIDE.md
       - BIM Designer Guide: BIM_Designer_UserGuide.md
       - Back Office Guide: BackOfficeUserGuide.md

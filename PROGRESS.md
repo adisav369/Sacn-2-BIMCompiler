@@ -36,7 +36,7 @@
 
 **AD Dictionary (S62→S65):** Steps 0–5 DONE. Step 5-6 bulk migration DONE (S79). Next: Step 6 cleanup (drop vestigial TEXT columns). [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
-**Docs site:** https://red1oon.github.io/BIMCompiler/ — 50 specs, mkdocs-material.
+**Docs site:** https://red1oon.github.io/BIMCompiler/ — 55 specs, mkdocs-material.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
