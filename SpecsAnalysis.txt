@@ -40,19 +40,19 @@ Sources: DISC_VALIDATION_DB_SRS.md §10-11, DATA_MODEL.md §2+§7,
   Questionable: Parent_Category_ID (see §3 above — may drop in favour of AD_Org hierarchy)
   Gap: DATA_MODEL.md §2 omits Parent_Category_ID from schema. If kept, must be added.
 
-5. bom_category → AD_Org REPLACEMENT (confirmed)
+5. bom_category → AD_Org REPLACEMENT (confirmed) — DONE (S78-S79: AD_Org_ID FK + bulk migration)
 --------------------------------------------------
   "bom_category is a string proxy for AD_Org" — DISC_VALIDATION_DB_SRS.md line 789-792.
   Once AD_Org_ID exists on m_bom, bom_category becomes derived display or drops entirely.
   Migration table: DISC_VALIDATION_DB_SRS.md §11.6.3 (8 table.column replacements).
 
-6. DocBaseType — REDUNDANT (confirmed)
+6. DocBaseType — REDUNDANT (confirmed) — DONE (S77: Java routing migrated to M_Product_Category)
 ----------------------------------------
   DocBaseType = singular 'Construction'. Classification lives on M_Product_Category,
   not on C_DocType. Legacy columns (DocBaseType, DocSubType) deprecated per DATA_MODEL.md §7.
   Migration: remove after M_Product_Category fully adopted on all BOM databases.
 
-7. ProductCategory.java vs M_Product_Category TABLE
+7. ProductCategory.java vs M_Product_Category TABLE — DONE (S79: deriveDiscipline @Deprecated, extraction-only)
 -----------------------------------------------------
   ProductCategory.java = Java class with deriveDiscipline(ifcClass) — LEGACY inference.
   M_Product_Category   = database table — DATA-DRIVEN taxonomy.
@@ -79,9 +79,9 @@ Sources: DISC_VALIDATION_DB_SRS.md §10-11, DATA_MODEL.md §2+§7,
 10. RECOMMENDED MIGRATION SEQUENCE
 ------------------------------------
   1. Seed AD_Org with parent summary rows (MEP, ALL) if grouped hierarchy needed
-  2. Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map
-  3. Populate AD_Org_ID from existing bom_category/discipline strings (CASE mapping)
-  4. Retire deriveDiscipline() from compile path (extraction-only fallback)
+  2. Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map — DONE (S78: W009)
+  3. Populate AD_Org_ID from existing bom_category/discipline strings (CASE mapping) — DONE (S78: W009 backfill)
+  4. Retire deriveDiscipline() from compile path (extraction-only fallback) — DONE (S79: resolveDiscipline replaces it)
   5. Drop bom_category string columns (or keep as derived display)
   6. Drop deprecated DocBaseType/DocSubType columns
   7. Drop Parent_Category_ID column — DECIDED: unnecessary (iDempiere flat, BOM tree = cascade)
@@ -131,7 +131,7 @@ or under-documented. Reviewed with project owner (iDempiere co-founder).
   M_InOut adds the physical logistics dimension — when materials actually
   arrive vs when the BOM sequence says they're needed.
 
-14. AD_Val_Rule — TWO TYPES OF RULES (spatial + regulatory)
+14. AD_Val_Rule — TWO TYPES OF RULES (spatial + regulatory) — DONE (S79: DocValidate §0 written, prompt 15)
 -------------------------------------------------------------
   Rules come from two sources that are SYMBIOTIC, not competing:
 
@@ -167,7 +167,7 @@ or under-documented. Reviewed with project owner (iDempiere co-founder).
   - Cross-links from MANIFESTO §HOW, DocValidate.md, DISC_VALIDATION_DB_SRS.md
   - Prominent link from github.io landing page (INDEX.md)
 
-  **Prompt task:** Write prompts/15_rule_provenance_spec.md for this.
+  **Prompt task:** Write prompts/15_rule_provenance_spec.md for this. — DONE (9f1212f)
 
 15. processIt() vs ModelValidator — ENTERPRISE SCALING
 -------------------------------------------------------
@@ -207,3 +207,39 @@ or under-documented. Reviewed with project owner (iDempiere co-founder).
 
   No action now. These are logged in SystemContract.md §10 gap register
   or ProjectOrderBlueprint.md roadmap as appropriate.
+
+============================================================
+PART 3 — Audience-Facing Doc Audit (2026-03-25, Watchdog S80)
+============================================================
+Systematic review of github.io docs for stale numbers, terminology,
+and cross-doc inconsistency. Walk: index.md → MANIFESTO → deeper specs.
+
+17. STALE NUMBERS — FIXED (bulk update, 20 files)
+----------------------------------------------------
+  a. 63 verbs → 64 verbs: 11 files (INDEX, BIM_COBOL ×3, StrategicIndustry,
+     BOMBasedCompilation, BIM_Designer, SourceCodeGuide ×2, CORE_SRS,
+     WorkOrderGuide, IFC_ONBOARDING, BIMERPPaper ×2)
+  b. 22 ALL GREEN → 19 ALL GREEN: 3 files (ProjectOrderBlueprint,
+     BIM_Designer_UserGuide ×2). AUDIT_S51 occurrence is historical — left as-is.
+  c. 392 tests → 408+: 4 files (index.md ×2, BIM_Designer_UserGuide, ACTION_ROADMAP, AUDIT)
+  d. 248 tests → 408 (BonsaiBIMDesigner): 5 files (BIMERPPaper ×2,
+     BIM_Designer_UserGuide ×2, SYSTEMS_INSTALLER_GUIDE)
+  e. 53 docs → 52 docs: 2 files (SystemContract, ACTION_ROADMAP)
+  All DONE.
+
+18. index.md ROSETTA STONE MENTION — DONE
+--------------------------------------------
+  Added one-sentence link to TheRosettaStoneStrategy.md in the opening
+  paragraph (line 19), giving newcomers the strategy name at first contact.
+
+19. STALE TERMINOLOGY — REMAINING (not yet fixed)
+----------------------------------------------------
+  These are structural, not typos — need spec-level decisions:
+  a. bom_category: 12 refs in DISC_VALIDATE_SRS, 6 in DocAction_SRS,
+     3 in GENERATIVE_HOUSE_SRS, 1 in IFC_ONBOARDING. These describe
+     the OLD model. Should be rewritten to reference AD_Org_ID.
+  b. work_output.db: 15 refs in DocAction_SRS (§1.7-1.9 still written
+     as if it exists, then §1.10 says "removed"). Confuses newcomers.
+     Need: rewrite §1.7-1.9 to match post-S61 architecture.
+  c. doc_base_type in IFC_ONBOARDING (2 refs, already marked deprecated).
+  **Action:** Dedicated doc-cleanup session for these 3 specs.
