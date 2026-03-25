@@ -34,7 +34,7 @@
   Session E DONE — Order inheritance. W006 migration (Ref_Order_ID). InheritanceResolver + dropWithInheritance. OrderInheritanceTest 6/6. GAP-SC-5 CLOSED.
   Session F DONE — DiffVerb + Callout (§9). W007 migration (AD_Rule). DiffVerbService + CalloutEngine. DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
 
-**AD Dictionary (S62→S65):** Steps 0–5 DONE. Next: Step 6 (cleanup). [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
+**AD Dictionary (S62→S65):** Steps 0–5 DONE. Step 5-6 bulk migration DONE (S79). Next: Step 6 cleanup (drop vestigial TEXT columns). [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable).
 
 **Docs site:** https://red1oon.github.io/BIMCompiler/ — 50 specs, mkdocs-material.
 
@@ -43,6 +43,7 @@
 
 ## Session Log (recent first)
 
+**S79** — Bulk discipline migration: TEXT → Discipline enum + AD_Org_ID. W010 migration (FPR→FP normalization). 17 source files: Placement, NodeContext, disciplineStack all use Discipline enum. BomDropper.resolveDiscipline() replaces deriveDiscipline+deriveAD_Org_ID chain. deriveDiscipline() @Deprecated (extraction-only). ERP coherence check: AD_Org_ID=0 CLEAN, m_bom_line CLEAN, IsSummary CLEAN. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S78** — AD_Org_ID FK on discipline columns. W009 migration (AD_Org_ID INTEGER on C_OrderLine). Discipline.java enum gains adOrgId field + fromAD_Org_ID(). BomDropper, OrderMutationService, OrderLineWalker, BuildingWriter, WorkOutputDAO, X_C_OrderLine updated. FPR→FP legacy mapping handled. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S77** — Java routing: DocBaseType → M_Product_Category. 19 source + 12 test files. SQL routing queries changed from `doc_base_type` to `m_product_category_id` (BomDropper, BuildingRegistry, CompilationPipeline, DesignerDAO, DesignerAPIImpl, DataIntegrityTest, PrimeRuleWitnessTest). StructuralBomBuilder now writes `m_product_category_id` on BUILDING BOM INSERT. X_M_BOM accessors `@Deprecated`. Schema snapshot annotated. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S76** — Rename disc_validation.db → ERP.db. File copy + bulk grep-replace across ~100 files (Java, shell, Python, SQL, docs, HTML). Java constant DISC_VALIDATION_DB_PATH → ERP_DB_PATH. `mvn compile -q` PASS.

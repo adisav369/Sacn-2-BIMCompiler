@@ -1,5 +1,7 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.topology.Discipline;
+
 import java.sql.*;
 import java.util.*;
 
@@ -34,10 +36,11 @@ public class MEPAD {
     /**
      * MEP Element definition from AD.
      */
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
     public record ElementMEP(
         String elementType,
         String ifcClass,
-        String discipline,
+        Discipline discipline,
         String mepSystem,
         String hostType,
         String distRole,
@@ -121,7 +124,7 @@ public class MEPAD {
     /**
      * Get all elements for a discipline.
      */
-    public static List<ElementMEP> getElementsByDiscipline(String discipline) {
+    public static List<ElementMEP> getElementsByDiscipline(Discipline discipline) {
         List<ElementMEP> result = new ArrayList<>();
         try {
             Connection conn = getConnection();
@@ -129,7 +132,7 @@ public class MEPAD {
 
             String sql = "SELECT * FROM ad_element_mep WHERE discipline = ? AND is_active = 1";
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setString(1, discipline.toUpperCase());
+                stmt.setString(1, discipline.name());
                 ResultSet rs = stmt.executeQuery();
                 while (rs.next()) {
                     result.add(parseElementMEP(rs));
@@ -339,7 +342,7 @@ public class MEPAD {
         return new ElementMEP(
             rs.getString("element_type"),
             rs.getString("ifc_class"),
-            rs.getString("discipline"),
+            Discipline.fromString(rs.getString("discipline")),
             rs.getString("mep_system"),
             rs.getString("host_type"),
             rs.getString("dist_role"),

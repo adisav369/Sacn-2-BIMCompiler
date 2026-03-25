@@ -1,5 +1,6 @@
 package com.bim.compiler.bom.walker;
 
+import com.bim.compiler.topology.Discipline;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
 import com.bim.ormsandbox.po.MProduct;
@@ -247,14 +248,21 @@ public class OrderLineWalker {
         return rows;
     }
 
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
     private static OrderLineRow readRow(ResultSet rs) throws SQLException {
+        // Prefer AD_Org_ID (integer FK) over TEXT Discipline for enum resolution
+        int adOrgId = rs.getInt("AD_Org_ID");
+        Discipline disc = Discipline.fromAD_Org_ID(adOrgId);
+        if (disc == null) {
+            disc = Discipline.fromString(rs.getString("Discipline")); // TEXT fallback
+        }
         return new OrderLineRow(
                 rs.getInt("C_OrderLine_ID"),
                 rs.getString("family_ref"),
                 rs.getString("host_type"),
                 rs.getInt("bom_child_id"),
-                rs.getString("Discipline"),
-                rs.getInt("AD_Org_ID"),
+                disc,
+                adOrgId,
                 rs.getInt("Qty"),
                 rs.getString("locator_ref"),
                 rs.getInt("is_reference_class") == 1);
@@ -266,6 +274,6 @@ public class OrderLineWalker {
     }
 
     private record OrderLineRow(int lineId, String familyRef, String hostType, int bomChildId,
-                                    String discipline, int adOrgId, int qty, String locatorRef,
+                                    Discipline discipline, int adOrgId, int qty, String locatorRef,
                                     boolean isReferenceClass) {}
 }

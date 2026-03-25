@@ -90,7 +90,12 @@ public final class ProductCategory {
         return category.equals(resolve(ifcClass));
     }
 
-    /** Derive discipline from product category. */
+    /**
+     * Derive discipline from product category — extraction-only.
+     * <p>In the compile path, use {@code BomDropper.resolveDiscipline()} or
+     * {@code Discipline.fromString()} instead. This method is for IFC extraction
+     * where AD_Org_ID is not yet available.
+     */
     public static String deriveDiscipline(String productCategory) {
         if (productCategory == null) return "ARC";
         return switch (productCategory) {

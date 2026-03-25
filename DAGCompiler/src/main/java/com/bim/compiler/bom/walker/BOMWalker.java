@@ -1,5 +1,6 @@
 package com.bim.compiler.bom.walker;
 
+import com.bim.compiler.topology.Discipline;
 import com.bim.orm.ModelQuery;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
@@ -89,13 +90,14 @@ public class BOMWalker {
      * the current product, the BOM line that introduced it, the owning BOM,
      * depth level, and the building/resolution context for spatial visitors.
      */
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
     public record NodeContext(
         MProduct product,          // current M_Product row
         MBOMLine line,             // current m_bom_line (null for root BOM entry)
         MBOM bom,                  // owning BOM of this node
         int level,                 // depth (0 = root BOM children)
         String buildingType,       // from walk entrypoint
-        String discipline          // from C_OrderLine.Discipline (null when using BOMWalker path)
+        Discipline discipline      // from C_OrderLine → Discipline enum (null when using BOMWalker path)
     ) {
         /** Backward-compatible constructor for BOMWalker path (discipline=null). */
         public NodeContext(MProduct product, MBOMLine line, MBOM bom, int level, String buildingType) {

@@ -151,16 +151,16 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
     // ── GUID generation (same logic as emitGlobalPlacementElements) ──
 
     private static String buildGuid(PlacementLoader.Placement p) {
-        String discPrefix = switch (p.discipline()) {
-            case "FP"   -> "FP_MD_";
-            case "ELEC" -> "ELEC_MD_";
-            case "ACMV" -> "ACMV_MD_";
-            case "SP"   -> "SP_MD_";
-            case "CW"   -> "CW_MD_";
-            case "LPG"  -> "LPG_MD_";
-            case "STR"  -> "STR_MD_";
-            case "MEP"  -> "MEP_MD_";
-            default -> "";  // ARC
+        // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
+        String discPrefix = p.discipline() == null ? "" : switch (p.discipline()) {
+            case FP   -> "FP_MD_";
+            case ELEC -> "ELEC_MD_";
+            case ACMV -> "ACMV_MD_";
+            case SP   -> "SP_MD_";
+            case CW   -> "CW_MD_";
+            case LPG  -> "LPG_MD_";
+            case STR  -> "STR_MD_";
+            default -> "";  // ARC, REB
         };
         String guidPrefix;
         if (!discPrefix.isEmpty()) {

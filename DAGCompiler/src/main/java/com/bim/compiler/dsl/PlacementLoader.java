@@ -3,6 +3,7 @@ package com.bim.compiler.dsl;
 import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.bom.walker.OrderLineWalker;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
+import com.bim.compiler.topology.Discipline;
 import com.bim.ormsandbox.po.MBOM;
 
 import java.sql.*;
@@ -41,6 +42,7 @@ import java.util.*;
  */
 public class PlacementLoader {
 
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
     public record Placement(
         String buildingType,
         String storey,
@@ -51,7 +53,7 @@ public class PlacementLoader {
         double minY, double maxY,
         double minZ, double maxZ,
         String orientation,
-        String discipline,
+        Discipline discipline,
         String materialName,
         String materialRgba,
         String familyRef,

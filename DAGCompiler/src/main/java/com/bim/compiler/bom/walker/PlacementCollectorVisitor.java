@@ -1,6 +1,7 @@
 package com.bim.compiler.bom.walker;
 
 import com.bim.compiler.dsl.PlacementLoader;
+import com.bim.compiler.topology.Discipline;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
 import com.bim.ormsandbox.po.MProduct;
@@ -57,9 +58,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Unit role prefix for mirrored compositions (e.g. "A_", "B_"). Empty when not in a pair. */
     private final Deque<String> unitPrefixStack = new ArrayDeque<>();
 
-    /** Discipline codes from SET-level BOMs (m_product_category_id: ARC, STR, FP, ...).
+    /** Discipline from SET-level BOMs (m_product_category_id → Discipline enum).
      *  Overrides deriveDiscipline() which loses extraction context (e.g. IfcSlab → STR always). */
-    private final Deque<String> disciplineStack = new ArrayDeque<>();
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
+    private final Deque<Discipline> disciplineStack = new ArrayDeque<>();
 
     /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
@@ -116,9 +118,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                         storeyStack.push(inferStoreyName(line.getRole(), childBom));
                     }
 
-                    // Track discipline from SET-level BOMs (m_product_category_id = ARC, STR, FP, ...)
+                    // Track discipline from SET-level BOMs (m_product_category_id → Discipline enum)
                     if ("SET".equals(childBom.getBomType()) && childBom.getProductCategory() != null) {
-                        disciplineStack.push(childBom.getProductCategory());
+                        Discipline setDisc = Discipline.fromString(childBom.getProductCategory());
+                        if (setDisc != null) disciplineStack.push(setDisc);
                     }
                 }
             } catch (SQLException e) {
@@ -195,7 +198,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     if (!storeyStack.isEmpty()) storeyStack.pop();
                 }
                 if (childBom != null && "SET".equals(childBom.getBomType())
-                        && childBom.getProductCategory() != null) {
+                        && childBom.getProductCategory() != null
+                        && Discipline.fromString(childBom.getProductCategory()) != null) {
                     if (!disciplineStack.isEmpty()) disciplineStack.pop();
                 }
             } catch (SQLException ex) {
@@ -655,17 +659,18 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /**
      * Resolve discipline: priority order:
      * <ol>
-     *   <li>C_OrderLine.Discipline (from OrderLineWalker — authoritative when non-null, non-ARC)</li>
-     *   <li>disciplineStack (from SET-level BOM m_product_category_id in hierarchy)</li>
-     *   <li>deriveDiscipline() (static IFC class → discipline mapping, fallback)</li>
+     *   <li>C_OrderLine.Discipline enum (from OrderLineWalker — authoritative when non-null, non-ARC)</li>
+     *   <li>disciplineStack (from SET-level BOM m_product_category_id → Discipline enum)</li>
+     *   <li>deriveDiscipline() (static IFC class → Discipline enum, extraction fallback)</li>
      * </ol>
      *
      * @param ifcClass     IFC class of the leaf element
-     * @param olDiscipline Discipline from C_OrderLine (null when using BOMWalker path)
+     * @param olDiscipline Discipline enum from C_OrderLine (null when using BOMWalker path)
      */
-    private String resolveDiscipline(String ifcClass, String olDiscipline) {
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
+    private Discipline resolveDiscipline(String ifcClass, Discipline olDiscipline) {
         // OrderLine discipline is authoritative when explicitly set to non-default
-        if (olDiscipline != null && !"ARC".equals(olDiscipline)) {
+        if (olDiscipline != null && olDiscipline != Discipline.ARC) {
             return olDiscipline;
         }
         if (!disciplineStack.isEmpty()) {
@@ -675,14 +680,17 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     }
 
     /**
-     * Derive discipline from product category — fallback when BOM hierarchy lacks discipline.
+     * Derive discipline from product category — extraction-only fallback when
+     * BOM hierarchy lacks discipline. Returns Discipline enum.
      *
      * <p>CP-4 semantic half: uses ProductCategory.deriveDiscipline() instead of
      * switching on IFC class strings. The primary path is still the disciplineStack.
      */
     // Implementing BBC.md §2.2.1 — Witness: W-PRODUCT-CATEGORY
-    private static String deriveDiscipline(String ifcClass) {
-        return com.bim.compiler.validation.ProductCategory.deriveDiscipline(
+    private static Discipline deriveDiscipline(String ifcClass) {
+        String text = com.bim.compiler.validation.ProductCategory.deriveDiscipline(
             com.bim.compiler.validation.ProductCategory.resolve(ifcClass));
+        Discipline d = Discipline.fromString(text);
+        return d != null ? d : Discipline.ARC;
     }
 }

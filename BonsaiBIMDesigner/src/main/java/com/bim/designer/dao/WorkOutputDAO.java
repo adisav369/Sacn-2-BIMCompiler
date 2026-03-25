@@ -105,6 +105,10 @@ public class WorkOutputDAO {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_orderline_ad_org_id ON C_OrderLine(AD_Org_ID)");
         } catch (SQLException ignored) {}
+        // W010: Normalize FPR → FP (DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6)
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("UPDATE C_OrderLine SET Discipline = 'FP' WHERE Discipline = 'FPR'");
+        } catch (SQLException ignored) {}
     }
 
     /**

@@ -398,9 +398,10 @@ public class BomDropper {
                                    double widthMm, double depthMm, double heightMm,
                                    int qty, String locatorRef, boolean isReferenceClass)
             throws SQLException {
-        // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5 — Witness: W-DV-DISC-ORG
-        String discipline = deriveDiscipline(productCategory);
-        int adOrgId = deriveAD_Org_ID(discipline);
+        // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
+        Discipline disc = resolveDiscipline(productCategory);
+        String discipline = disc.name();
+        int adOrgId = disc.getAD_Org_ID();
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                    + " m_product_category_id, bom_child_id, dx, dy, dz, "
@@ -446,26 +447,39 @@ public class BomDropper {
     }
 
     /**
-     * Derive Discipline from m_product_category_id — same logic as W003 backfill.
-     * RF/STR/SL → STR, FP → FPR, MEP/ELEC/PLB/ACMV → pass-through, else ARC.
+     * Resolve m_product_category_id → Discipline enum directly.
+     * RF/STR/SL → STR, FP → FP, ELEC → ELEC, ACMV → ACMV, else ARC.
+     * <p>Replaces deriveDiscipline() + deriveAD_Org_ID() two-step chain.
      */
-    static String deriveDiscipline(String productCategory) {
-        if (productCategory == null) return "ARC";
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
+    static Discipline resolveDiscipline(String productCategory) {
+        if (productCategory == null) return Discipline.ARC;
         return switch (productCategory) {
-            case "RF", "STR", "SL" -> "STR";
-            case "FP" -> "FPR";
-            case "MEP", "ELEC", "PLB", "ACMV" -> productCategory;
-            default -> "ARC";
+            case "RF", "STR", "SL" -> Discipline.STR;
+            case "FP" -> Discipline.FP;
+            case "ELEC" -> Discipline.ELEC;
+            case "ACMV" -> Discipline.ACMV;
+            case "SP", "PLB" -> Discipline.SP;
+            case "CW" -> Discipline.CW;
+            case "LPG" -> Discipline.LPG;
+            case "REB" -> Discipline.REB;
+            default -> Discipline.ARC;
         };
     }
 
     /**
-     * Resolve TEXT discipline code → AD_Org_ID via Discipline enum.
-     * Handles legacy "FPR" → FP mapping (W003 artifact).
-     * Falls back to 0 (Shared/*) for unknown codes.
+     * @deprecated Use {@link #resolveDiscipline(String)} instead. Kept for extraction fallback only.
      */
+    @Deprecated
+    static String deriveDiscipline(String productCategory) {
+        return resolveDiscipline(productCategory).name();
+    }
+
+    /**
+     * @deprecated Use {@code resolveDiscipline(cat).getAD_Org_ID()} instead.
+     */
+    @Deprecated
     static int deriveAD_Org_ID(String discipline) {
-        if ("FPR".equals(discipline)) discipline = "FP";  // W003 legacy
         Discipline d = Discipline.fromString(discipline);
         return d != null ? d.getAD_Org_ID() : 0;
     }

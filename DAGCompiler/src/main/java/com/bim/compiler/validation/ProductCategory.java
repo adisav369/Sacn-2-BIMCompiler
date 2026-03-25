@@ -28,6 +28,7 @@ public final class ProductCategory {
         return com.bim.eyes.ProductCategory.is(ifcClass, category);
     }
 
+    /** Extraction-only — delegates to BIMEyes. Compile path uses BomDropper.resolveDiscipline(). */
     public static String deriveDiscipline(String productCategory) {
         return com.bim.eyes.ProductCategory.deriveDiscipline(productCategory);
     }

@@ -1,6 +1,6 @@
 # Test Architecture — QA Hardening Plan
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 ## Anti-Drift Policy (read first)
 
@@ -873,8 +873,8 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 
 ---
 
-**Sealed:** 2026-03-25 (v34: S77 Java routing DocBaseType → M_Product_Category)
-**Super-hash:** `1f44f324715e0d716c71593e8c64e180d9285401fec00ac4988a3b3a711150dd`
+**Sealed:** 2026-03-26 (v35: S79 bulk discipline migration TEXT → Discipline enum)
+**Super-hash:** `081db5ad5eb3008bf2e397117f27779214b86fc593d9468b083ac418db0c6aea`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

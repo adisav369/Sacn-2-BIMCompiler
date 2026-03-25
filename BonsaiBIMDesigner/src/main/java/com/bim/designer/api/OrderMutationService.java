@@ -239,9 +239,8 @@ public class OrderMutationService {
         }
     }
 
-    /** Resolve TEXT discipline code → AD_Org_ID via Discipline enum. Handles legacy FPR→FP. */
+    /** Resolve TEXT discipline code → AD_Org_ID via Discipline enum. W010 normalized FPR→FP. */
     private static int resolveAD_Org_ID(String discipline) {
-        if ("FPR".equals(discipline)) discipline = "FP";  // W003 legacy
         Discipline d = Discipline.fromString(discipline);
         return d != null ? d.getAD_Org_ID() : 0;
     }

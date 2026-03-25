@@ -1,5 +1,6 @@
 package com.bim.designer.dao;
 
+import com.bim.compiler.topology.Discipline;
 import com.bim.orm.BIMLogger;
 
 import java.sql.*;
@@ -168,15 +169,24 @@ public class MEPBOMQuery {
     /**
      * Map discipline code to mep_product_id set.
      * Extracted from ERP.db product inventory analysis.
+     * <p>Accepts String for API boundary compatibility; resolves via Discipline enum.
      */
+    // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
     public static List<String> disciplineProducts(String discipline) {
+        Discipline d = Discipline.fromString(discipline);
+        if (d == null) return List.of();
+        return disciplineProducts(d);
+    }
+
+    /** Type-safe discipline → product mapping. */
+    public static List<String> disciplineProducts(Discipline discipline) {
         return switch (discipline) {
-            case "FP" -> List.of("SPRINKLER", "EMERGENCY_LIGHT");
-            case "ELEC" -> List.of("LIGHT", "OUTLET", "OUTLET_20A", "OUTLET_GFCI",
+            case FP -> List.of("SPRINKLER", "EMERGENCY_LIGHT");
+            case ELEC -> List.of("LIGHT", "OUTLET", "OUTLET_20A", "OUTLET_GFCI",
                     "SWITCH", "DATA_POINT", "CEILING_FAN");
-            case "SP" -> List.of("TOILET", "SINK", "FLOOR_TRAP", "WASHING_TAP");
-            case "ACMV" -> List.of("SUPPLY_DIFFUSER", "EXHAUST_FAN", "AIRCON_POINT");
-            default -> List.of(); // ARC = no MEP products
+            case SP -> List.of("TOILET", "SINK", "FLOOR_TRAP", "WASHING_TAP");
+            case ACMV -> List.of("SUPPLY_DIFFUSER", "EXHAUST_FAN", "AIRCON_POINT");
+            default -> List.of(); // ARC, STR, CW, LPG, REB = no MEP products
         };
     }
 }
