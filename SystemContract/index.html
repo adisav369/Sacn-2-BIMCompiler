@@ -4319,22 +4319,38 @@ Buildings ARE inventory. Put-away strategy assigns buildings to plots.</strong><
 <td>Which building goes where</td>
 </tr>
 <tr>
+<td><strong>C_ProjectLine</strong></td>
+<td><strong>Plot assignment</strong></td>
+<td><strong>One plot = one C_ProjectLine, FK to C_Order</strong></td>
+</tr>
+<tr>
 <td>M_InOut</td>
-<td>Compilation batch</td>
-<td>Placing buildings on plots</td>
+<td>Material delivery batch</td>
+<td>Goods receipt for construction materials to site</td>
 </tr>
 <tr>
 <td>M_InOutLine</td>
-<td>One building on one plot</td>
-<td>C_Order FK → Plot</td>
+<td>Individual material receipt</td>
+<td>100 panels delivered, 50 bags cement received</td>
 </tr>
 <tr>
 <td>M_InOutLineMA</td>
-<td>Plot attribution</td>
-<td>Variant, exceptions, terrain Z</td>
+<td>Lot/attribute tracking</td>
+<td>Batch number, inspection date, material cert</td>
 </tr>
 </tbody>
 </table>
+<!-- Implementing SpecsAnalysis.txt §13 — M_InOut = materials movement -->
+
+<blockquote>
+<p><strong>Clarification (S79):</strong> M_InOut is iDempiere's goods receipt/shipment — it
+tracks <strong>materials movement</strong>, not site allocation. Plot placement uses
+<code>C_ProjectLine</code> (one plot = one line under C_Project, FK to the building's
+C_Order). M_InOut enters the picture under 4D scheduling: when materials
+arrive on site, M_InOut records the delivery batch; M_InOutLine records each
+material item; M_InOutLineMA tracks lot numbers and inspection certificates.
+→ <a href="../ProjectOrderBlueprint/#51-4d-schedule--topological-sort-of-bom-tree">ProjectOrderBlueprint.md §5.1</a></p>
+</blockquote>
 <h3 id="62-plot-as-locator-abl-addressing">6.2 Plot as Locator — ABL Addressing<a class="headerlink" href="#62-plot-as-locator-abl-addressing" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>TERRAIN TOPOLOGY (from PDFTerrain survey: 689 points, 294m × 229m, Z: 28-48m)
 
