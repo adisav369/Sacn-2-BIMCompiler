@@ -582,7 +582,7 @@ sqlite3 library/component_library.db ".schema" > database/schema_snapshot_compon
 ## 15. Database Schema Reference
 
 Full table inventory with purpose, Java access patterns, and review status:
-**[`database/DATABASE_SCHEMA.md`](../database/DATABASE_SCHEMA.md)**
+**[`database/DATABASE_SCHEMA.md`](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md)**
 
 Quick summary: component_library.db (21 tables), ERP.db (20 tables),
 {PREFIX}_BOM.db (6 tables per building), output.db (written fresh each compile).

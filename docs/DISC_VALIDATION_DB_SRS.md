@@ -337,7 +337,7 @@ Zero code changes. Same data-not-code pattern as AD_Val_Rule.
 
 All discipline metadata migrated. Java code (CalibrationDAO, MEPAD, MEPBOMResolver,
 ManifestResolver) reads from ERP.db. component_library.db reduced from
-81→21 tables. See [`database/DATABASE_SCHEMA.md`](../database/DATABASE_SCHEMA.md)
+81→21 tables. See [`database/DATABASE_SCHEMA.md`](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md)
 for the current table inventory.
 
 ---

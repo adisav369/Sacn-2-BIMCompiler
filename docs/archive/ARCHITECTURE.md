@@ -336,7 +336,7 @@ CREATE TABLE m_bom_feature (
 
 The existing `ad_building_template` (8 rows), `ad_floor_type` (12 rows), and `ad_unit_type` (7 rows) tables are already populated — they await Java consumers.
 
-> **See also:** [PREFAB_ARCHITECTURE.md](PREFAB_ARCHITECTURE.md) — Phase 115 concretizes this vision with a prefab assembly catalog (`prefab_product`, `prefab_bom`, `prefab_interface`) that replaces runtime spatial resolution with DAG expansion of pre-computed assemblies.
+> **See also:** [PREFAB_ARCHITECTURE.md](../PREFAB_ARCHITECTURE.md) — Phase 115 concretizes this vision with a prefab assembly catalog (`prefab_product`, `prefab_bom`, `prefab_interface`) that replaces runtime spatial resolution with DAG expansion of pre-computed assemblies.
 
 ### 3.7 Floor Plate as Spatial BOM (Phase 95 Target)
 

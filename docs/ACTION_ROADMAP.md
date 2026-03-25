@@ -21,11 +21,11 @@
 |--------------|-------|
 | **Understand the system** | [MANIFESTO.md](MANIFESTO.md) (recursive BOM principle, entity registry) |
 | **Find a spec** | [INDEX.md](INDEX.md) (55 docs by tier) |
-| **See what's proven** | [PROGRESS.md](../PROGRESS.md) (gate table, session log) |
+| **See what's proven** | [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md) (gate table, session log) |
 | **Navigate the code** | [SourceCodeGuide.md](SourceCodeGuide.md) (entry points, DAOs) |
 | **Run the pipeline** | [WorkOrderGuide.md](WorkOrderGuide.md) (step-by-step) |
 | **Onboard a new IFC** | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) (8-step recipe) |
-| **See the schema** | [DATA_MODEL.md](DATA_MODEL.md) + [DATABASE_SCHEMA.md](../database/DATABASE_SCHEMA.md) |
+| **See the schema** | [DATA_MODEL.md](DATA_MODEL.md) + [DATABASE_SCHEMA.md](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md) |
 
 ---
 

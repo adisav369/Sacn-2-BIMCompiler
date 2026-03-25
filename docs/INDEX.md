@@ -101,8 +101,8 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [DATABASE_SCHEMA.md](../database/DATABASE_SCHEMA.md) | Full table inventory: purpose, Java access, review status |
-| [bim_architecture_viz.html](../database/bim_architecture_viz.html) | Interactive ERD: clickable 4-DB tables, compilation pipeline, BOM tree |
+| [DATABASE_SCHEMA.md](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md) | Full table inventory: purpose, Java access, review status |
+| [bim_architecture_viz.html](https://github.com/red1oon/BIMCompiler/blob/master/database/bim_architecture_viz.html) | Interactive ERD: clickable 4-DB tables, compilation pipeline, BOM tree |
 
 ## Archived
 

@@ -1256,4 +1256,4 @@ Already tracked as untracked file: `migration/V005_add_depends_on.sql`.
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §18-19 (ambient compliance, inference) |
 [BOMBasedCompilation.md](BOMBasedCompilation.md) §3-4 (tack, BUFFER) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates, traceability) |
-[V004_mined_rules.sql](../migration/V004_mined_rules.sql) (seeded rules)*
+[V004_mined_rules.sql](https://github.com/red1oon/BIMCompiler/blob/master/migration/V004_mined_rules.sql) (seeded rules)*

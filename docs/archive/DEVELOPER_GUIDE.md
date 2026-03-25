@@ -139,7 +139,7 @@ DAGCompiler/src/main/java/com/bim/compiler/
 ## The Library Databases
 
 The compiler uses a 3-database split. For complete schema details, table definitions,
-column types, and cross-DB FK map, see [`DATA_MODEL.md`](DATA_MODEL.md) §1-5.
+column types, and cross-DB FK map, see [`DATA_MODEL.md`](../DATA_MODEL.md) §1-5.
 
 | Database | Role | Key Tables |
 |----------|------|------------|
@@ -498,7 +498,7 @@ mvn test -pl BIM_COBOL
 
 > **[1]** BIM COBOL is the construction programming language layer — 38 verbs across 5 tiers:
 > 15 original verbs (geometry + inspection), 8 data handling, 8 P0 synthetic BOM primitives (§18.4),
-> 3 utility verbs (§18.5), 4 Level 1 convenience verbs (§18.6). See [`docs/BIM_COBOL.md`](BIM_COBOL.md)
+> 3 utility verbs (§18.5), 4 Level 1 convenience verbs (§18.6). See [`docs/BIM_COBOL.md`](../BIM_COBOL.md)
 > for the full language specification and verb scoreboard.
 
 ### Spatial fidelity check (SH / DX only — SpatialDigest gate)
@@ -762,7 +762,7 @@ mvn test -pl ORMSandbox
 
 ## Output DB Schema
 
-The compiler writes to SQLite. Each compilation run creates a fresh output DB via `BuildingWriter.initSchema()` (~40 DDL statements). For the full coordinate flow diagram and table column definitions, see [`DATA_MODEL.md`](DATA_MODEL.md) §4.
+The compiler writes to SQLite. Each compilation run creates a fresh output DB via `BuildingWriter.initSchema()` (~40 DDL statements). For the full coordinate flow diagram and table column definitions, see [`DATA_MODEL.md`](../DATA_MODEL.md) §4.
 
 **Browsable template:** `library/output_template.db` is a blank copy of the output schema with an extra `_schema_guide` table documenting every table's purpose and the three-concern lock (WHAT/HOW/WHERE). Open it with `sqlite3` or DB Browser to explore the data model without running the compiler. Regenerate after schema changes with `./scripts/generate_output_template.sh`.
 
@@ -1205,4 +1205,4 @@ See `BOMTreeLoader.load()` (Phase G-1 Step 2) as the canonical working example �
 5. Add a simple BOM recipe (SQL only) and see it appear in output
 6. Read `ConstructionAsERP.md` for the full theory
 7. Read `CurrentState.txt` for known issues and architectural trade-offs
-8. Read [`BIM_COBOL.md`](BIM_COBOL.md) — the construction programming language (12 verbs, 63 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3
+8. Read [`BIM_COBOL.md`](../BIM_COBOL.md) — the construction programming language (12 verbs, 63 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3

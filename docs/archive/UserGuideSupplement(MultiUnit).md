@@ -2,7 +2,7 @@
 
 **Applies to:** BIM Compiler v0.47+
 **Updated:** February 2025
-**Prerequisite:** Read main [USER_GUIDE.md](USER_GUIDE.md) first
+**Prerequisite:** Read main [USER_GUIDE.md](../USER_GUIDE.md) first
 
 ---
 
@@ -349,7 +349,7 @@ Verify spaces have `unitId` set. This requires using the multi-unit compilation 
 
 ## Related Documentation
 
-- [USER_GUIDE.md](USER_GUIDE.md) - Main user guide (single-unit)
+- [USER_GUIDE.md](../USER_GUIDE.md) - Main user guide (single-unit)
 - [witness-system-specification.md](witness-system-specification.md) - Witness claim details
 - [dsl-extension-multi-unit.md](dsl-extension-multi-unit.md) - Technical specification
 

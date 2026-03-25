@@ -1,6 +1,6 @@
 # Construction as ERP
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+> **Foundation:** [BBC](../BOMBasedCompilation.md) · [DATA_MODEL](../DATA_MODEL.md) · [BIM_COBOL](../BIM_COBOL.md) · [TestArchitecture](../TestArchitecture.md) · [ACTION_ROADMAP](../ACTION_ROADMAP.md) · [SourceCodeGuide](../SourceCodeGuide.md)
 
 *How BIM compilation maps to iDempiere C_Order → BOM explosion → spatial resolution*
 
@@ -67,7 +67,7 @@ orientation rules, locator references.
 | Table | iDempiere | Content |
 |-------|-----------|---------|
 | `m_bom` | M_Product + M_BOM | Assembly definition: BOMCategory (WHAT), doc_sub_type (WHICH variant) |
-| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz (parent-relative per tack convention, [BOMBasedCompilation.md §4](BOMBasedCompilation.md)), rotation_rule, locator_ref, allocated_*_mm |
+| `m_bom_line` | M_BOM_Line | Child placement: dx/dy/dz (parent-relative per tack convention, [BOMBasedCompilation.md §4](../BOMBasedCompilation.md)), rotation_rule, locator_ref, allocated_*_mm |
 | `m_attribute` | M_Attribute | Leaf attributes: ports, clearances, UBBL rules |
 | `M_BomCategory` | M_Product_Category | Functional type: RE, LI, BD, KT, FR, ST, SL, L1, L2, GF, RF, PR, HU |
 | `M_Product` | M_Product | Product catalog: intrinsic geometry + Name + M_AttributeSet_ID (§11.38) |
@@ -154,7 +154,7 @@ in the BOM Dimension migration to `m_bom`, `m_bom_line`, `m_attribute`.
 > validation results, and verb audit trail also go to the compile DB.
 > CompleteIt compiles from compile DB → output.db (path editable by user).
 >
-> See [DocAction_SRS.md §1.10](DocAction_SRS.md) for the simplified lifecycle.
+> See [DocAction_SRS.md §1.10](../DocAction_SRS.md) for the simplified lifecycle.
 >
 > **Promote conditions:** New BOMs must declare parent category, qualified name,
 > author/version, and have all child references validated. Without these,
@@ -2268,7 +2268,7 @@ floor, and structural container (PAIR). The line count scales with
 ## 11. Design Decisions — Q&A1 Consolidation (2026-03-02)
 
 > **Compilation methodology:** Single path — C_OrderLine → BOM explosion → elements.
-> See [BOMBasedCompilation.md](BOMBasedCompilation.md) for the full spec.
+> See [BOMBasedCompilation.md](../BOMBasedCompilation.md) for the full spec.
 
 Decisions confirmed through structured Q&A. Each resolves a model ambiguity.
 
@@ -2287,13 +2287,13 @@ The compilation path is now uniform for all buildings:
 4. **BuildingWriter** emits elements with geometry from `component_library.db`
 
 The user creates or modifies C_OrderLines via BOM Drop in the Bonsai Designer
-(see [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §28). The compiler compiles
+(see [BIM_Designer_SRS.md](../BIM_Designer_SRS.md) §28). The compiler compiles
 whatever the order contains. No mode selection, no DocSubType routing.
 
 - **{PREFIX}_BOM.db has no c_orderline** (dropped 2026-03-04 — redundant with M_BOM + M_Product)
 - **output.db c_orderline** = what the compiler produced (compile-time, from BOM explosion)
 - **BOM Drop configurator:** user navigates the BOM tree, swaps products by
-  ProductCategory, adds/removes OrderLines. See [GENERATIVE_HOUSE_SRS.md](GENERATIVE_HOUSE_SRS.md) TC-1..TC-8.
+  ProductCategory, adds/removes OrderLines. See [GENERATIVE_HOUSE_SRS.md](../GENERATIVE_HOUSE_SRS.md) TC-1..TC-8.
 
 ### 11.2 C_OrderLine generation in output.db
 
@@ -3264,4 +3264,4 @@ Filler distribution: `filler.space_width_mm = (parent - SUM(fixed)) / N_fillers`
 - **PREFAB_ARCHITECTURE.md** — 6-level assembly hierarchy + MRP BOM Drop chain
 - **RELATIONAL_PLACEMENT_SPEC.md** — C_OrderLine placement rules
 - **TerminalAnalysis.md** — Terminal forensics + §ERP Model Architecture (discipline hierarchy, verb-to-AttributeSet, Val_Rule, ROUTE as BOM tree)
-- **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — Exception-based ordering (§1), C_Project site-as-BOM (§2), abstract category tree (§3), BOM mining via Approve (§4), nD as queries (§5), order inheritance (§6), rule-pack compliance library (§12)
+- **[ProjectOrderBlueprint.md](../ProjectOrderBlueprint.md)** — Exception-based ordering (§1), C_Project site-as-BOM (§2), abstract category tree (§3), BOM mining via Approve (§4), nD as queries (§5), order inheritance (§6), rule-pack compliance library (§12)

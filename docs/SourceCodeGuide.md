@@ -630,7 +630,7 @@ VERIFIED ✓ (or drift detected ✗)
 | Understand infrastructure analysis | [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) |
 | See the project roadmap | [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md) |
 | Learn YAML pipeline config | [`WorkOrderGuide.md`](WorkOrderGuide.md) |
-| Browse the interactive architecture diagram | [`bim_architecture_viz.html`](bim_architecture_viz.html) |
+| Browse the interactive architecture diagram | [`bim_architecture_viz.html`](https://github.com/red1oon/BIMCompiler/blob/master/database/bim_architecture_viz.html) |
 | Read the Rosetta Stone strategy | [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md) |
 | Understand calibration | [`CALIBRATION_SRS.md`](CALIBRATION_SRS.md) |
 | Learn the Blender bridge protocol | [`BlenderBridge.md`](BlenderBridge.md) |

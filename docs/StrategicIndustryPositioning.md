@@ -617,5 +617,5 @@ They solve design. This solves construction.
 *[`TerminalAnalysis.md`](TerminalAnalysis.md) — forensics + ERP architecture*
 *[`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) — bridge/road/rail domain mapping*
 *[`MANIFESTO.md`](MANIFESTO.md) — ERP world view*
-*[`bim_designer_erd.html`](bim_designer_erd.html) — interactive ERD (4 tabs)*
+*[`bim_designer_erd.html`](https://github.com/red1oon/BIMCompiler/blob/master/database/bim_designer_erd.html) — interactive ERD (4 tabs)*
 *[`BIM_Designer_UserGuide.md`](BIM_Designer_UserGuide.md) — setup + usage guide (v0.4)*
