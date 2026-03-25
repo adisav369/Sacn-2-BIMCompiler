@@ -6,7 +6,7 @@
 </div>
 
 **Version:** 1.1 (2026-03-18)
-**Depends on:** [MANIFESTO.md](MANIFESTO.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md)
+**Depends on:** [MANIFESTO.md](MANIFESTO.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
 
 *iDempiere's `IDocActionInterceptor` / `ModelValidator` architecture applied to
 BIM placement compliance, clash detection, and building code enforcement.*
@@ -481,14 +481,14 @@ existing buildings validated against their original code remain valid.
 
 ## 6. Relationship to Discipline BOM Design
 
-This paper complements `DISC_BOM_DESIGN.md`:
+This paper complements `DISC_VALIDATION_DB_SRS.md`:
 
 | Concern | Paper | What It Defines |
 |---------|-------|----------------|
-| BOM organization | DISC_BOM_DESIGN.md | How disciplines structure the BOM tree |
+| BOM organization | DISC_VALIDATION_DB_SRS.md | How disciplines structure the BOM tree |
 | Placement validation | This paper | How rules constrain what the BOM can contain |
 
-The discipline BOM structure (§2 of DISC_BOM_DESIGN.md) enables validation:
+The discipline BOM structure (§2 of DISC_VALIDATION_DB_SRS.md) enables validation:
 clash detection is inherently cross-discipline — you need discipline BOMs to
 know which elements belong to which trade. Without discipline separation, clash
 detection is a flat scan of all elements against all elements (O(n²)). With
@@ -1844,7 +1844,7 @@ predicate upgrades internally (AABB fallback → FK join) without changing calle
 ---
 
 *References:
-[DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md) (discipline BOM structure) |
+[DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) (discipline BOM structure) |
 [BBC.md](BOMBasedCompilation.md) §1 (C_Order model) |
 [BIM_Designer.md](BIM_Designer.md) §4 (compliance as compilation constraint), §9 (container rules), §11 (BonsaiBIMDesigner) |
 [TestArchitecture.md](TestArchitecture.md) (ProveStage gates) |

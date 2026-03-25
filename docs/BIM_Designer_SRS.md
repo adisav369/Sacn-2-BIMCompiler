@@ -1778,7 +1778,7 @@ buildings, learn an embedding where matched triples are close.
 |---|---|---|---|
 | **Stage 1: Feature vectors** | G-8 | Compute embeddings from existing M_Product columns. Enable "Find Similar" in BOM Chooser. | Yes — no ML, pure feature engineering |
 | **Stage 2: Learned embeddings** | G-11 | Train encoder on Rosetta Stone (IFC, BOM, OrderLine) triples. Enable predictive placement. | No — requires training data + MLP |
-| **Stage 3: Cross-modal retrieval** | G-12 | Joint embedding across all 5 databases. Natural-language queries over the full schema. | No — requires VL-JEPA-style encoder |
+| **Stage 3: Cross-modal retrieval** | G-12 | Joint embedding across all 4 databases. Natural-language queries over the full schema. | No — requires VL-JEPA-style encoder |
 
 ### 25.8 Witness Claims
 

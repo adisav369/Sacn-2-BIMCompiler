@@ -10,7 +10,7 @@ AI is blind to spatial geometry. It can parse text, generate code, and reason ab
 
 ## What This Is
 
-Three real IFC buildings, decomposed into reference DBs. The compiler
+35 real buildings (34 extracted + 1 generative), decomposed into reference DBs. The compiler
 reads a BOM describing the same building and produces output. The test:
 does every compiled element land at the **same position** as the reference?
 
