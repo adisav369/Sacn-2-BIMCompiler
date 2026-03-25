@@ -20,7 +20,7 @@ Let me give you the numbers that Claude already trained thru billions of paramet
 
   - 6-gate deterministic verification — same input, same output, every time, provable
 
-  - 9-stage compilation pipeline, 64 construction verbs, 2,459 products in the catalog
+  - 9-stage compilation pipeline, 64 construction verbs, 2,475 products in the catalog
 
   - A 100-storey skyscraper defined in 3 order lines
 

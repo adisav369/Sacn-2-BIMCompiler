@@ -88,7 +88,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#discvalidationdb-srs-discipline-validation-database" class="md-skip">
+        <a href="#erpdb-srs-discipline-validation-database" class="md-skip">
           Skip to content
         </a>
       
@@ -1556,15 +1556,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-solution-discvalidationdb-third-database" class="md-nav__link">
+  <a href="#2-solution-erpdb-third-database" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Solution — DiscValidation.db (Third Database)
+        2. Solution — ERP.db (Third Database)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Solution — DiscValidation.db (Third Database)">
+    <nav class="md-nav" aria-label="2. Solution — ERP.db (Third Database)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3337,15 +3337,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-solution-discvalidationdb-third-database" class="md-nav__link">
+  <a href="#2-solution-erpdb-third-database" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Solution — DiscValidation.db (Third Database)
+        2. Solution — ERP.db (Third Database)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="2. Solution — DiscValidation.db (Third Database)">
+    <nav class="md-nav" aria-label="2. Solution — ERP.db (Third Database)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3883,7 +3883,7 @@
   
 
 
-<h1 id="discvalidationdb-srs-discipline-validation-database">DiscValidation.db SRS — Discipline Validation Database<a class="headerlink" href="#discvalidationdb-srs-discipline-validation-database" title="Permanent link">&para;</a></h1>
+<h1 id="erpdb-srs-discipline-validation-database">ERP.db SRS — Discipline Validation Database<a class="headerlink" href="#erpdb-srs-discipline-validation-database" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
@@ -3912,14 +3912,14 @@ what connects to what) is NOT product geometry. Mixing them means:</p>
    "where the product goes" (discipline placement)</li>
 </ol>
 <hr />
-<h2 id="2-solution-discvalidationdb-third-database">2. Solution — DiscValidation.db (Third Database)<a class="headerlink" href="#2-solution-discvalidationdb-third-database" title="Permanent link">&para;</a></h2>
+<h2 id="2-solution-erpdb-third-database">2. Solution — ERP.db (Third Database)<a class="headerlink" href="#2-solution-erpdb-third-database" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>component_library.db — WHAT things look like (LOD catalog)
 ├── M_Product (608 products: dimensions, ifc_class)
 ├── component_definitions (23,888 LOD attachments)
 ├── component_geometries (23,901 mesh data)
 └── surface_styles, material_layers
 
-DiscValidation.db — WHERE things go + HOW they connect (discipline metadata)  ← NEW
+ERP.db — WHERE things go + HOW they connect (discipline metadata)
 ├── Discipline schedule:  ad_space_type_mep_bom (186 rows)
 ├── MEP element types:    ad_element_mep (12 rows)
 ├── FP coverage rules:    ad_fp_coverage (4 hazard classes)
@@ -3977,7 +3977,7 @@ validation.db — RULES + VERDICTS (compliance engine)
 </tbody>
 </table>
 <h3 id="22-reference-pointers-no-lod-copies">2.2 Reference Pointers — No LOD Copies<a class="headerlink" href="#22-reference-pointers-no-lod-copies" title="Permanent link">&para;</a></h3>
-<p>DiscValidation.db references component_library.db products by <strong>name</strong>, not
+<p>ERP.db references component_library.db products by <strong>name</strong>, not
 by FK or by copying LOD data:</p>
 <div class="highlight"><pre><span></span><code>ERP.db                          component_library.db
 ┌─────────────────────────┐                ┌──────────────────────┐
