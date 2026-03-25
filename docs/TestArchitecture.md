@@ -877,8 +877,8 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 
 ---
 
-**Sealed:** 2026-03-26 (v36: S84 drop doc_base_type from m_bom)
-**Super-hash:** `3c705504ab44363ac02720b7c0d2f8c062c0c4d5fe8f243d107cc60206751083`
+**Sealed:** 2026-03-26 (v37: S86 PP_Order_Node → W_Verb_Node rename)
+**Super-hash:** `036e58d0ee3c66e99a87a9365b872f6169abb84e74227b88c51eab576fc6e0c3`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

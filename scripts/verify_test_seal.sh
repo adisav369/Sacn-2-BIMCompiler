@@ -26,7 +26,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="3c705504ab44363ac02720b7c0d2f8c062c0c4d5fe8f243d107cc60206751083"
+EXPECTED="036e58d0ee3c66e99a87a9365b872f6169abb84e74227b88c51eab576fc6e0c3"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java
@@ -87,7 +87,7 @@ FILES=(
   BIM_COBOL/src/test/java/com/bim/cobol/verb/BuildSpatialStructureVerbTest.java
   BIM_COBOL/src/test/java/com/bim/cobol/PrimeRuleWitnessTest.java
   ORMSandbox/src/test/java/com/bim/ormsandbox/EmptySpaceTest.java
-  ORMSandbox/src/test/java/com/bim/ormsandbox/PP_Order_NodeTest.java
+  ORMSandbox/src/test/java/com/bim/ormsandbox/W_Verb_NodeTest.java
   ORMSandbox/src/test/java/com/bim/ormsandbox/BuildingInspectorTest.java
   ORMSandbox/src/test/java/com/bim/ormsandbox/OrderLineInterfaceContractTest.java
   TopologyMaker/src/test/java/com/bim/compiler/topologymaker/BasePOTest.java
