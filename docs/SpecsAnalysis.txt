@@ -267,6 +267,11 @@ compiler flows, and whether OrderLine replace (roof swap) is spec'd.
   **Action:** Either (a) add curved-roof surface model to TrimWallsToRoofVerb,
   or (b) accept tent-model approximation and document the limitation.
 
+  **Decision (S81):** Accept tent-model approximation for now. SH's curved
+  roof is an edge case — the tent model uses the AABB peak as ridge height,
+  which gives a reasonable wall trim. Document limitation in BIM_COBOL.md
+  §TRIM verb section. Curved-roof surface model deferred to Phase F.
+
 21. TRIM NOT WIRED IN SH OR DM PIPELINE
 ------------------------------------------
   Ifc4_SampleHouse.bimcobol has only `PLACE BOM SH` — no TRIM line.
@@ -282,6 +287,10 @@ compiler flows, and whether OrderLine replace (roof swap) is spec'd.
   **Action:** Add `TRIM WALLS TO ROOF` to Ifc4_SampleHouse.bimcobol
   and create DemoHouse_2BR.bimcobol with the same. Or implement
   M_AttributeSet_Verb auto-dispatch (Phase F, P4 priority).
+
+  **Decision (S81):** Defer. TRIM is tested standalone (W-TRIM-1..6 GREEN).
+  Wiring into .bimcobol is a code change — belongs in a future session that
+  also creates DemoHouse_2BR.bimcobol. Add to ACTION_ROADMAP.md Phase F.
 
 22. ORDERLINE REPLACE (ROOF SWAP) — SPEC EXISTS, NOT FULLY WIRED
 -------------------------------------------------------------------
@@ -306,6 +315,10 @@ compiler flows, and whether OrderLine replace (roof swap) is spec'd.
   compile → TRIM fires → curtain wall trimmed. This closes the loop
   between §21 (wiring) and §22 (swap scenario).
 
+  **Decision (S81):** Write prompt for end-to-end witness once §21
+  wiring is done. The swap API (swapProduct) works — the gap is
+  TRIM not firing post-swap. Depends on §21 resolution.
+
 23. DSL (.bim) REDUNDANCY WITH YAML
 --------------------------------------
   classify_sh.yaml serves as C_Order/C_OrderLine stand-in (product,
@@ -328,3 +341,11 @@ compiler flows, and whether OrderLine replace (roof swap) is spec'd.
   that YAML doesn't replicate. For generative buildings (DM), DSL is
   redundant. Decision needed: converge on one format or keep both with
   clear roles.
+
+  **Decision (S81):** Keep both with clear roles for now.
+  - YAML = WHAT (C_Order stand-in: products, BOMs, room assignment)
+  - DSL = WHERE for extracted buildings (grid algebra, storey heights,
+    WINDOW/DOOR directives that YAML cannot express)
+  - Generative buildings: DSL is generated from YAML (already the case
+    for DM). DSL retirement deferred — GRID axis algebra has no YAML
+    equivalent yet. Add to ACTION_ROADMAP.md as Phase G (Format Convergence).

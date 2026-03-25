@@ -38,11 +38,13 @@
 
 **Docs site:** https://red1oon.github.io/BIMCompiler/ — 50 specs, mkdocs-material.
 
-**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–Q](docs/AUDIT_S51_FOCUSED.md).
+**Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
 
+**S81** — Docs readability pass 2. BBC.md: "Gospel Principle" → "Compilation Model", bom_category → AD_Org, work_output.db removed, Onboarding Gotchas → WorkOrderGuide pointer, §11 tightened (-58 lines). DATA_MODEL.md: §6-7 cleaned (stale investigation framing removed, migration status consolidated, -101 lines). 3 specs updated (DISC_VALIDATE_SRS, DocAction_SRS, GENERATIVE_HOUSE_SRS): bom_category → AD_Org_ID, work_output.db → compile DB. SpecsAnalysis §20-23 decisions recorded. ACTION_ROADMAP: TRIM-1/2 + FMT-1 added to gap register. CLAUDE.md: 49→44 lines.
+**S80** — Docs readability pass 1. Stale stats (63→64 verbs, 22→19 ALL GREEN, 392→408 tests). BBC header rewritten. MANIFESTO tightened. SystemContract archived. 3 new specs (2D_LAYOUT, PDF_TERRAIN, BONSAI_EXTENSIONS). BOM PRINCIPLE → CLAUDE.md. mkdocs nav restructured.
 **S79** — Bulk discipline migration: TEXT → Discipline enum + AD_Org_ID. W010 migration (FPR→FP normalization). 17 source files: Placement, NodeContext, disciplineStack all use Discipline enum. BomDropper.resolveDiscipline() replaces deriveDiscipline+deriveAD_Org_ID chain. deriveDiscipline() @Deprecated (extraction-only). ERP coherence check: AD_Org_ID=0 CLEAN, m_bom_line CLEAN, IsSummary CLEAN. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S78** — AD_Org_ID FK on discipline columns. W009 migration (AD_Org_ID INTEGER on C_OrderLine). Discipline.java enum gains adOrgId field + fromAD_Org_ID(). BomDropper, OrderMutationService, OrderLineWalker, BuildingWriter, WorkOutputDAO, X_C_OrderLine updated. FPR→FP legacy mapping handled. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S77** — Java routing: DocBaseType → M_Product_Category. 19 source + 12 test files. SQL routing queries changed from `doc_base_type` to `m_product_category_id` (BomDropper, BuildingRegistry, CompilationPipeline, DesignerDAO, DesignerAPIImpl, DataIntegrityTest, PrimeRuleWitnessTest). StructuralBomBuilder now writes `m_product_category_id` on BUILDING BOM INSERT. X_M_BOM accessors `@Deprecated`. Schema snapshot annotated. `mvn compile -q` + `mvn test-compile -q` PASS.

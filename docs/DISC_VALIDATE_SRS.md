@@ -117,27 +117,26 @@ install all conduits in the building top-to-bottom. Exception: risers
 ## 3. M_Product_Category as Discipline Classifier
 
 `M_Product_Category` (the former M_BomCategory, now aligned with iDempiere naming) serves as the shared catalog
-classifier. Discipline codes become new bom_category values:
+classifier. Discipline routing uses `AD_Org_ID` (integer FK to AD_Org), not string codes:
 
-| bom_category | Current Use | New Use |
-|---|---|---|
-| GF, L1, L2, RF, FN, MS, CW | Storey codes | Unchanged |
-| LI, BD, KT, FR, RE | Room/functional types | Unchanged |
-| ST | Buffer space | Unchanged |
-| HU | Half-unit | Unchanged |
-| **ARC** | — | Architectural discipline BOM |
-| **STR** | — | Structural discipline BOM |
-| **PLB** | — | Plumbing discipline BOM |
-| **ELC** | — | Electrical discipline BOM |
-| **FPR** | — | Fire Protection discipline BOM |
-| **ACMV** | — | HVAC/Mechanical discipline BOM |
-| **SP** | — | Sanitary Plumbing discipline BOM |
-| **LPG** | — | LPG discipline BOM |
-| **REB** | — | Reinforcing Bar discipline BOM |
+| AD_Org_ID | Discipline | Drawing Sheet | Legacy bom_category |
+|---|---|---|---|
+| *(per tenant)* | Architectural | A-series | ARC |
+| *(per tenant)* | Structural | S-series | STR |
+| *(per tenant)* | Plumbing | P-series | PLB |
+| *(per tenant)* | Electrical | E-series | ELC |
+| *(per tenant)* | Fire Protection | FP-series | FPR |
+| *(per tenant)* | HVAC/Mechanical | M-series | ACMV |
+| *(per tenant)* | Sanitary Plumbing | P-series | SP |
+| *(per tenant)* | LPG | — | LPG |
+| *(per tenant)* | Reinforcing Bar | S-series (sub) | REB |
 
-The discipline lives on `m_bom.bom_category`, NOT on M_Product. A product is
+Storey codes (GF, L1, L2, RF, FN, MS, CW) and room types (LI, BD, KT, FR, RE)
+remain on `bom_category` as catalog classifiers — they are not disciplines.
+
+The discipline lives on `AD_Org_ID`, NOT on M_Product. A product is
 just a product (pipe, conduit, sprinkler head). Which discipline it belongs to
-is determined by which discipline BOM tree it sits in. Same product can appear
+is determined by which discipline org its BOM tree sits in. Same product can appear
 in multiple discipline BOMs — same screw in 50 BOMs (pure iDempiere pattern).
 
 ---
@@ -189,47 +188,47 @@ building:
       ifc_classes: [IfcWall, IfcDoor, IfcWindow, IfcSlab,
                     IfcFurnishingElement, IfcCovering,
                     IfcRailing, IfcStairFlight, IfcRoof, IfcRampFlight]
-      bom_category: ARC
+      ad_org_id: ARC    # resolved to integer FK at load time
 
     STR:
       ifc_classes: [IfcBeam, IfcMember, IfcColumn, IfcPlate]
-      bom_category: STR
+      ad_org_id: STR
 
     PLB:
       ifc_classes: [IfcPipeSegment, IfcPipeFitting, IfcFlowTerminal, IfcValve]
       filter: { system_type: [Domestic Cold Water, Domestic Hot Water,
                 Sanitary, Waste, Hydronic Supply, Hydronic Return] }
-      bom_category: PLB
+      ad_org_id: PLB
 
     ELC:
       ifc_classes: [IfcLightFixture, IfcElectricAppliance,
                     IfcFlowSegment, IfcFlowTerminal, IfcFlowController]
       filter: { system_type: [Electrical, Telecom, Lightning] }
-      bom_category: ELC
+      ad_org_id: ELC
 
     FPR:
       ifc_classes: [IfcFireSuppressionTerminal, IfcAlarm, IfcSensor,
                     IfcPipeSegment, IfcPipeFitting, IfcValve, IfcFlowController]
       filter: { system_type: [Fire Alarm, Sprinkler, Fire Suppression] }
-      bom_category: FPR
+      ad_org_id: FPR
 
     ACMV:
       ifc_classes: [IfcDuctSegment, IfcDuctFitting, IfcAirTerminal]
-      bom_category: ACMV
+      ad_org_id: ACMV
 
     SP:
       ifc_classes: [IfcPipeSegment, IfcPipeFitting, IfcFlowTerminal, IfcValve]
       filter: { system_type: [Sanitary Waste, Storm Drain, Vent] }
-      bom_category: SP
+      ad_org_id: SP
 
     LPG:
       ifc_classes: [IfcPipeSegment, IfcPipeFitting, IfcValve]
       filter: { system_type: [LPG, Gas] }
-      bom_category: LPG
+      ad_org_id: LPG
 
     REB:
       ifc_classes: [IfcReinforcingBar]
-      bom_category: REB
+      ad_org_id: REB
 ```
 
 ### 5.2 Disambiguation via system_type Filter
@@ -362,7 +361,7 @@ backward compatibility — buildings without `disciplines:` key default to
 single-discipline, no extra BOM level.
 
 **D4: Discipline on BOM, not on Product.**
-`m_bom.bom_category` carries the discipline. `M_Product` is discipline-agnostic.
+`AD_Org_ID` carries the discipline (integer FK to AD_Org — see S78). `M_Product` is discipline-agnostic.
 Same product can appear in multiple discipline BOMs (iDempiere pattern: same
 screw in 50 BOMs).
 
@@ -650,7 +649,7 @@ Elements placed (from BOM pipeline or DocEvent)
       │
       │  Uses: ad_space_type_mep_bom (the schedule)
       │        BOM tree Parent_OrderLine_ID (room containment)
-      │        bom_category on ROOM node (space_type lookup)
+      │        AD_Org_ID on ROOM node (space_type + discipline lookup)
       │
       │  Example: BATHROOM missing EXHAUST_FAN
       │    → WARN: "BATHROOM requires 1 EXHAUST_FAN per IMC 2021 403.3"

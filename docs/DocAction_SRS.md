@@ -1,7 +1,7 @@
 # DocAction SRS — Document Lifecycle Engine
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
-**Version:** 1.4 (2026-03-23, session 61 — §1.9 work_output.db removal, simplified lifecycle)
+**Version:** 1.5 (2026-03-26, session 79 — AD_Org_ID migration, work_output.db cleanup)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
 **Scope:** The `processIt()` orchestration — iDempiere MOrder.processIt() mapped to
 BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
@@ -52,7 +52,7 @@ a stable baseline from preceding disciplines.
 
 **Invalid state handling:** If YAML declares a value other than a valid BOM
 database name or `DocEvent`, processIt() logs `BLOCK: invalid discipline routing`
-and aborts without modifying work_output.db. No partial state.
+and aborts without modifying the compile DB. No partial state.
 
 ```yaml
 # Example: generative house — ARC from BOM, MEP via DocEvent
@@ -106,17 +106,17 @@ MOrder.processIt():
 DocStatus:  DR → IP → CO → AP
 
   DR (Draft)     User has created the order, not yet processed
-  IP (In Progress)  processIt() — normal processing, writes to work_output.db
+  IP (In Progress)  processIt() — normal processing, writes to compile DB
   CO (Complete)     Compiled — written to output.db
   AP (Approved)     New {prefix}_BOM.db created — promoted to catalog
 ```
 
 ### 1.3 IP — processIt() (DR → IP)
 
-Normal order processing. Reads YAML intent, populates work_output.db.
+Normal order processing. Reads YAML intent, populates compile DB.
 
 ```
-processIt(work_output.db):                           DocStatus: DR → IP
+processIt(compile DB):                               DocStatus: DR → IP
   │
   ├── Read W_BuildingConfig (YAML embedded at spawn time)
   │   → AABB, DocType/ST, jurisdiction, discipline routing
@@ -127,7 +127,7 @@ processIt(work_output.db):                           DocStatus: DR → IP
   │   │   │  BOM pipeline handles it (concern #1)
   │   │   │
   │   │   ├── SELECT m_bom tree from {prefix}_BOM.db
-  │   │   │   WHERE bom_category = discipline
+  │   │   │   WHERE AD_Org_ID = discipline
   │   │   │
   │   │   ├── Walk BOM tree → INSERT C_OrderLine per node
   │   │   │   (family_ref, host_type, dx/dy/dz, aabb_*_mm)
@@ -195,7 +195,7 @@ processIt(work_output.db):                           DocStatus: DR → IP
   │       → INSERT W_Validation_Result (tier=1, shared)
   │
   └── DocStatus → IP
-      work_output.db now has full C_OrderLine tree + validation results
+      Compile DB now has full C_OrderLine tree + validation results
       User can edit in BIM Designer (slider, drag, add/remove rooms)
 ```
 
@@ -248,10 +248,10 @@ world coordinates. This is a simple angle sum (2D), not quaternion composition.
 Compile to output.db. The order is now a built building.
 
 ```
-completeIt(work_output.db → output.db):              DocStatus: IP → CO
+completeIt(compile DB → output.db):                  DocStatus: IP → CO
   │
   ├── CompilationPipeline.run() — same 9-stage pipeline
-  │   → BOM walker reads C_OrderLine tree from work_output.db
+  │   → BOM walker reads C_OrderLine tree from compile DB
   │   → Resolves LODs from component_library.db
   │   → Writes elements + spatial + geometry to output.db
   │
@@ -272,7 +272,7 @@ completeIt(work_output.db → output.db):              DocStatus: IP → CO
 Promote to catalog. Creates new {prefix}_BOM.db. Governance gate.
 
 ```
-approveIt(work_output.db → {prefix}_BOM.db):         DocStatus: CO → AP
+approveIt(compile DB → {prefix}_BOM.db):              DocStatus: CO → AP
   │
   ├── Pre-check: all W_Validation_Result = PASS (no BLOCK)
   ├── Pre-check: all dangles resolved (family_ref → M_Product or m_bom)
@@ -297,12 +297,12 @@ approveIt(work_output.db → {prefix}_BOM.db):         DocStatus: CO → AP
 
 | Phase | DocStatus | Database | Tables Written | What |
 |-------|-----------|----------|---------------|------|
-| processIt | DR→IP | work_output.db | C_OrderLine, spatial slots (M_BOM_Line dx/dy/dz), M_AttributeSetInstance, W_Validation_Result | Design decisions + all validation tiers |
+| processIt | DR→IP | compile DB | C_OrderLine, spatial slots (M_BOM_Line dx/dy/dz), M_AttributeSetInstance, W_Validation_Result | Design decisions + all validation tiers |
 | processIt | DR→IP | component_library.db | *(read-only)* | LOD fetch: M_Product → component_definitions → component_geometries |
 | processIt | DR→IP | {prefix}_BOM.db | *(read-only)* | BOM tree source for `{prefix}_BOM` disciplines |
 | processIt | DR→IP | validation.db | *(read-only)* | AD_Val_Rule for `DocEvent` disciplines + shared rules |
 | completeIt | IP→CO | output.db | elements_meta, element_transforms, element_instances, base_geometries, spatial_structure, c_order, c_orderline | Compiled output |
-| completeIt | IP→CO | work_output.db | PP_Order_Node, C_Order.DocStatus | Execution audit + status update |
+| completeIt | IP→CO | compile DB | PP_Order_Node, C_Order.DocStatus | Execution audit + status update |
 | approveIt | CO→AP | NEW {prefix}_BOM.db | m_bom, m_bom_line | Promoted catalog (governance gate, not common) |
 
 **DR → IP → CO is the common path.** Every building goes through process + compile.
@@ -318,16 +318,17 @@ See `DISC_VALIDATE_SRS.md` for full detail:
 - **§10** — Post-placement handlers H1-H6 (connectivity, non-clash, spacing, host, vertical, completeness)
 - **§10.2** — Common vs DocEvent-only handler classification
 
-### 1.7 work_output.db — Tacking + Discipline Store
+### 1.7 Compile DB — Tacking + Discipline Store
 
-work_output.db (W001 schema) stores all temporal, in-progress state:
+The compile DB (BomDropper output) stores all temporal, in-progress state:
 **tacking** (spatial positions) and **discipline assignment** (which trade
 owns each element). Both are editable during IP and frozen at CO.
+(Prior to S61, this role was served by work_output.db; see §1.10.)
 
 | Table | Column | What it stores | Editable during IP |
 |-------|--------|---------------|-------------------|
 | `C_OrderLine` | dx, dy, dz | LBD tack offset in parent | YES — drag/move |
-| `C_OrderLine` | bom_category | Discipline assignment (FP, ELEC, CW...) | YES — reassign |
+| `C_OrderLine` | AD_Org_ID | Discipline assignment (FP, ELEC, CW...) | YES — reassign |
 | `C_OrderLine` | family_ref | Product/BOM reference | YES — swap product |
 | `C_OrderLine` | Parent_OrderLine_ID | Tree hierarchy | YES — reparent |
 | `M_BOM_Line` | dx/dy/dz | Spatial offset (WHERE) | YES — follows OrderLine |
@@ -339,16 +340,16 @@ owns each element). Both are editable during IP and frozen at CO.
 ### 1.8 Discipline Verbs During IP
 
 During IP, discipline assignment is fluid. The user or DocEvent engine can
-invoke these verbs on C_OrderLine.bom_category:
+invoke these verbs on C_OrderLine.AD_Org_ID:
 
 #### REASSIGN — Move element to different discipline
 
 | Field | Value |
 |-------|-------|
 | **Verb** | `REASSIGN` |
-| **Input** | C_OrderLine_ID, target_discipline (bom_category) |
+| **Input** | C_OrderLine_ID, target_discipline (AD_Org_ID) |
 | **Precondition** | Target discipline node exists under same storey. If not, auto-create. |
-| **Writes** | `C_OrderLine.bom_category`, `C_OrderLine.Parent_OrderLine_ID` |
+| **Writes** | `C_OrderLine.AD_Org_ID`, `C_OrderLine.Parent_OrderLine_ID` |
 | **Validation** | Tier 1 re-run on element (new discipline rules). Tier 2 re-run on storey (new pair interactions). |
 | **PP_Order_Node** | verb_ref='REASSIGN', description='pipe_42: CW→SP' |
 
@@ -363,9 +364,9 @@ Before:                          After:
                                        └── pipe_segment_42
 
 SQL:
-  UPDATE C_OrderLine SET bom_category = 'SP',
+  UPDATE C_OrderLine SET AD_Org_ID = 'SP',
     Parent_OrderLine_ID = (SELECT C_OrderLine_ID
-      FROM C_OrderLine WHERE bom_category = 'SP'
+      FROM C_OrderLine WHERE AD_Org_ID = 'SP'
       AND host_type = 'DISCIPLINE' AND storey = 'L1')
   WHERE C_OrderLine_ID = ?;
 
@@ -380,7 +381,7 @@ SQL:
 | **Verb** | `SPLIT` |
 | **Input** | source_discipline (e.g. 'MEP'), split_map (ifc_class → target_discipline) |
 | **Precondition** | Source discipline node exists with mixed elements. |
-| **Writes** | New C_OrderLine discipline nodes (host_type=DISCIPLINE). UPDATE bom_category + Parent_OrderLine_ID per element. |
+| **Writes** | New C_OrderLine discipline nodes (host_type=DISCIPLINE). UPDATE AD_Org_ID + Parent_OrderLine_ID per element. |
 | **Validation** | Full Tier 1+2+3 re-run (discipline landscape changed). |
 | **PP_Order_Node** | verb_ref='SPLIT', description='MEP→CW(338)+SP(189)+FP(312)+ELEC(65)' |
 
@@ -402,11 +403,11 @@ Disambiguation heuristic (DocEvent automates):
 
 SQL per new discipline:
   INSERT INTO C_OrderLine (C_Order_ID, family_ref, host_type,
-    bom_category, Parent_OrderLine_ID, ...)
+    AD_Org_ID, Parent_OrderLine_ID, ...)
   VALUES (?, 'FP_L1', 'DISCIPLINE', 'FP', storey_orderline_id, ...);
 
 SQL per element:
-  UPDATE C_OrderLine SET bom_category = ?,
+  UPDATE C_OrderLine SET AD_Org_ID = ?,
     Parent_OrderLine_ID = new_disc_orderline_id
   WHERE C_OrderLine_ID = ?;
 
@@ -420,7 +421,7 @@ After: source MEP node → IsActive=0 (soft delete, audit trail)
 | **Verb** | `MERGE` |
 | **Input** | source_disciplines[] (e.g. ['SP']), target_discipline (e.g. 'CW') |
 | **Precondition** | All source + target discipline nodes exist under same storey. |
-| **Writes** | UPDATE bom_category + Parent_OrderLine_ID. Source nodes → IsActive=0. |
+| **Writes** | UPDATE AD_Org_ID + Parent_OrderLine_ID. Source nodes → IsActive=0. |
 | **Validation** | Tier 1 re-run (target rules apply). Tier 2 re-run (fewer pairs). |
 | **PP_Order_Node** | verb_ref='MERGE', description='SP→CW (single plumbing contract)' |
 
@@ -428,13 +429,13 @@ After: source MEP node → IsActive=0 (soft delete, audit trail)
 MERGE [SP], CW
 
 SQL:
-  UPDATE C_OrderLine SET bom_category = 'CW',
+  UPDATE C_OrderLine SET AD_Org_ID = 'CW',
     Parent_OrderLine_ID = cw_disc_orderline_id
-  WHERE bom_category = 'SP' AND C_Order_ID = ?
+  WHERE AD_Org_ID = 'SP' AND C_Order_ID = ?
     AND host_type NOT IN ('DISCIPLINE');  -- elements only, not the node
 
   UPDATE C_OrderLine SET IsActive = 0
-  WHERE bom_category = 'SP' AND host_type = 'DISCIPLINE'
+  WHERE AD_Org_ID = 'SP' AND host_type = 'DISCIPLINE'
     AND C_Order_ID = ?;  -- soft delete empty SP node
 
 Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
@@ -514,19 +515,19 @@ ASI update:
 
 ```
 DR:  Discipline routing declared in YAML (or absent)
-     C_OrderLine.bom_category populated by processIt()
+     C_OrderLine.AD_Org_ID populated by processIt()
 
-IP:  bom_category is EDITABLE
+IP:  AD_Org_ID is EDITABLE
      User actions: REASSIGN, SPLIT, MERGE, REPARENT, SWAP
      Each action triggers validation re-run on affected lines
      DocEvent can automate SPLIT (coarse → fine discipline mapping)
 
-CO:  bom_category FROZEN
+CO:  AD_Org_ID FROZEN
      Compiled to output.db with discipline structure intact
      Discipline assignment is part of the compiled building
 
-AP:  bom_category PROMOTED
-     m_bom.bom_category in new {prefix}_BOM.db matches final assignment
+AP:  AD_Org_ID PROMOTED
+     m_bom.AD_Org_ID in new {prefix}_BOM.db matches final assignment
      Discipline structure becomes reusable catalog
 ```
 
@@ -789,9 +790,8 @@ Without these, promote is blocked. The selection list stays organized.
 - 13 doc files referencing work_output.db
 - 7 physical `library/work_*.db` files
 
-**Supersedes:** §1.6 database writes table (work_output.db column), §1.7 work_output.db
-section. These sections describe the old architecture and are retained for historical
-reference but are no longer the active design.
+**Supersedes:** Prior versions of §1.6-§1.9 which referenced work_output.db.
+Those sections have been updated to reflect the post-S61 compile DB architecture.
 
 ---
 
@@ -1161,7 +1161,7 @@ For extracted buildings (Provenance=EXTRACTED):
 ### Phase 5: ConstructionModelSpawner (DocValidate.md §14)
 
 **Deferred** until G-7 (Assembly Builder). Depends on:
-- C_Order / C_OrderLine schema in work_output.db (G-4 DONE)
+- C_Order / C_OrderLine schema in compile DB (G-4 DONE)
 - PP_Order_Node table (not yet created)
 - Full BOM tree walking (BOMWalker exists)
 

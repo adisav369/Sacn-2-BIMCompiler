@@ -24,14 +24,9 @@ Before ending, update PROGRESS.md with:
 - Run space contract check — if `space_contract` FAIL, fix before committing
 
 ### Housekeeping (every session end)
-- If verb/witness count changed → update MEMORY.md canonical line
-- If SCHEMA_QUICKREF.md row counts changed (migration ran) → update counts
-- If a topic file is now obsolete → delete it, remove from MEMORY.md index
-- If a new stable pattern emerged → add to appropriate topic file or MEMORY.md
-- Keep MEMORY.md under 80 lines, CLAUDE.md under 45 lines
-
-## Screenshots
-Visual output is in `~/Pictures/Screenshots/`. Read the most recent PNG there to verify visual state.
+- Changed verb/witness count → update MEMORY.md. Changed schema row counts → update SCHEMA_QUICKREF.md
+- Obsolete topic file → delete + remove from MEMORY.md. New pattern → add to topic file or MEMORY.md
+- Keep MEMORY.md under 80 lines, CLAUDE.md under 45 lines. Screenshots: `~/Pictures/Screenshots/`
 
 ## Standing Rules
 - One bounded task per session

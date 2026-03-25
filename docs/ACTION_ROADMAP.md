@@ -110,6 +110,9 @@ R-PROJ-3 (Session 0) must be fixed before C_Project work.
 | CP-2 | DX MIRROR verb | Structured BOM for mirrored pair | DEFERRED |
 | R22 | I_Element_Connectivity | Extract linking table from IfcRelConnectsElements | TODO |
 | VPA-002 | ROUTE step-uniformity | 533 instances with non-uniform per-leg steps | KNOWN LIMIT |
+| TRIM-1 | Wire TRIM verb in pipeline | Add `TRIM WALLS TO ROOF` to .bimcobol scripts + create DemoHouse_2BR.bimcobol. SpecsAnalysis §21 | DEFERRED |
+| TRIM-2 | End-to-end roof swap + TRIM | BOM Drop SH → swap roof → compile → TRIM fires → curtain wall trimmed. SpecsAnalysis §22. Depends on TRIM-1 | DEFERRED |
+| FMT-1 | DSL/YAML format convergence | Evaluate retiring DSL for generative buildings. YAML already has all data for DM. DSL needed for extracted (GRID algebra). SpecsAnalysis §23 | DEFERRED |
 
 ---
 

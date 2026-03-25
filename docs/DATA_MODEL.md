@@ -12,7 +12,7 @@ No hand-editing. No patching. Code produces data.
 - `BOMBasedCompilation.md` §4 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
-**Updated:** 2026-03-19
+**Updated:** 2026-03-26
 **Principle:** 4-DB split.
 - `component_library.db` = product LOD catalog (M_Product, geometry, orientation)
 - `ERP.db` = discipline metadata (schedules, types, placement rules, alias cascade) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
@@ -297,9 +297,8 @@ Source of truth for product definitions, geometry, orientation, and extraction a
 INSERT OR IGNORE = reused across buildings). `M_Product_Image` links products to geometry.
 See [`WorkOrderGuide.md`](WorkOrderGuide.md) §"Drift Prevention" for enforced guards.
 
-**Discipline metadata (ad_space_type, ad_element_mep, ad_wall_face, placement_rules,
-etc.) is migrating to ERP.db** — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).
-Tables remain here temporarily (Phase 2 pending).
+**Discipline metadata** (ad_space_type, ad_element_mep, ad_wall_face, placement_rules,
+etc.) lives in ERP.db — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).
 
 ### I_Element_Extraction (IFC extraction archive)
 
@@ -406,9 +405,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 
 ---
 
-## 6. AD Data Placement — Towards a Shared ERP.db
-
-> **Status:** Investigation only (S69). No schema changes proposed.
+## 6. AD Data Placement — The 4-DB Architecture
 
 ### 6.1 Current State — Where AD Tables Live
 
@@ -442,145 +439,48 @@ C_DocType is shared system configuration — it defines all document types centr
 written by `IFCtoBOMPipeline` per-building; at compile time, `schema_snapshot_bom.sql` enriches
 the compile DB with additional C_DocType rows.
 
-### 6.3 The ERP.db Concept
+### 6.3 The 4-DB Split
 
 In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
-They live once, centrally — not per-product or per-order. The current `ERP.db`
-already serves this role for most AD data but has a misleading name and incomplete coverage.
-
-**Proposed consolidation** (rename ERP.db → ERP.db or create as superset):
+They live once, centrally — not per-product or per-order. ERP.db serves this role
+(renamed from disc_validation.db in S76).
 
 | Layer | Database | Contains |
 |-------|----------|----------|
-| **ERP shared** | `ERP.db` (was ERP.db) | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata |
+| **ERP shared** | `ERP.db` | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata |
 | **Product catalog** | `component_library.db` | M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry |
 | **Per-building BOM** | `{PREFIX}_BOM.db` | m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy) |
 | **Transactional** | `output.db` | c_order, c_orderline, elements_meta, PP_Order_Node, co_empty_space* |
 
-**What changes:**
-- C_DocType master definitions move to ERP.db (all 6+ rows). BOM databases get a copy at compile time (already happens via schema_snapshot_bom.sql).
-- M_Product_Category: single authoritative copy in ERP.db. Remove from component_library.db (or make it a compile-time copy).
-- M_Product in ERP.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.
-
-**What stays the same:**
-- BOM databases keep their per-building ad_sysconfig (different schema, per-building data)
+**Remaining consolidation targets:**
+- M_Product_Category: single authoritative copy in ERP.db (currently also in component_library.db)
+- M_Product in ERP.db: evaluate whether validation queries can read from component_library.db directly
 - BOM databases keep transitional M_Product copies until BOMWalker migration completes
-- The 4-DB split principle remains — ERP.db is a rename/consolidation, not a new database
 
-### 6.4 Benefits
-
-1. **Single source of truth** for AD tables — no more wondering which DB has the authoritative M_Product_Category
-2. **iDempiere alignment** — AD tables centralised, just like iDempiere's dictionary
-3. **Clearer naming** — "ERP.db" immediately tells a new developer this is shared configuration
-4. **Simpler pipeline** — C_DocType written once to ERP.db, not re-created per building
-
-### 6.5 Risks and Open Questions
-
-- **Migration complexity:** Renaming ERP.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.
-- **Backward compatibility:** Existing BOM databases expect schema_snapshot_bom.sql enrichment at compile time. This mechanism continues regardless.
-- **M_Product consolidation:** Removing the ERP.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.
-
-> **Decision:** No action this session. This section documents the investigation.
-> Implementation would be a separate bounded task with its own migration plan.
+See [MANIFESTO.md](MANIFESTO.md) §Three Concerns for the WHAT/HOW/WHERE rationale behind this split.
 
 ---
 
-## 7. DocBaseType → M_Product_Category Alignment — S70 Findings
+## 7. DocBaseType → M_Product_Category Migration
 
-> **Status:** Analysis complete (S70). MANIFESTO.md corrected. Code + doc propagation pending.
-> **Pre-flight:** `// Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment`
+**Status: Steps 1–7 DONE.** Classification lives on `m_product_category_id` at every BOM level.
+`doc_base_type` and `doc_sub_type` are deprecated (kept for backward compatibility).
+`AD_Org_ID` replaces `bom_category` strings for discipline routing. C_DocType = ONE "Construction Order".
 
-### 7.1 The Problem
+### 7.1 What Was Done
 
-`doc_base_type` and `doc_sub_type` on `m_bom` are redundant with `m_product_category_id` and
-`bom_id`. The BUILDING BOM has `doc_base_type=RE, doc_sub_type=SH` but NULL `m_product_category_id`.
-Child BOMs have `m_product_category_id` set (GF, RF, LIVING) but NULL `doc_base_type`. Both carry
-classification — on different columns at different levels. The correct model: M_Product_Category
-carries classification at every level. C_DocType = ONE "Construction Order" (not per-building-type).
+- S75: M_Product_Category DV018 migration (117 rows), BUILDING BOM backfill
+- S76: disc_validation.db renamed to ERP.db (~100 files)
+- S77: Java routing migrated from doc_base_type to m_product_category_id (19 source + 12 test files)
+- S78: AD_Org_ID FK on m_bom, C_OrderLine (W009 migration)
+- S79: Discipline enum replaces deriveDiscipline() in compile path
 
-### 7.2 Docs Needing Correction
-
-| Doc | What to fix |
-|-----|------------|
-| **BOMBasedCompilation.md** | L44-55: C_DocType.DocBaseType analogy. L297: "DocBaseType on M_Product_Category". L1149-1186: YAML schema refs |
-| **MANIFESTO.md** | L63: C_DocType = "Building type classification" → "Construction Order". L434: "per DocBaseType + DocSubType" |
-| **DATA_MODEL.md** | §1.4: doc_base_type/doc_sub_type on m_bom. §2 C_DocType/m_bom schema. This section (§7) is the correction anchor |
-| **TerminalAnalysis.md** | L661-697: entire "DocBaseType — Real Semantic Work" section. M_Product_Category scoped by doc_type column |
-| **SourceCodeGuide.md** | L292: "DocBaseType=CO" skip logic. L589: C_DocType identity definition |
-| **ProjectOrderBlueprint.md** | CLEAN — no changes needed |
-| **DocAction_SRS.md** | CLEAN — no changes needed |
-| **DISC_VALIDATION_DB_SRS.md** | CLEAN — no changes needed |
-
-### 7.3 Java Files Routing on DocBaseType/DocSubType
-
-**Source files (19) — routing logic that must migrate to M_Product_Category:**
-
-| Module | File | What it does |
-|--------|------|-------------|
-| DAGCompiler | `BomDropper.java` | `findBuildingBom()` WHERE doc_base_type = ? AND doc_sub_type = ? |
-| DAGCompiler | `BuildingRegistry.java` | `loadByDocBaseType()`, JOIN doc_base_type = DocBaseType |
-| DAGCompiler | `CompilationPipeline.java` | Three-key match, ST dispatch, CO dispatch |
-| BIM_COBOL | `ComposeBuildingVerb.java` | COMPOSE BUILDING \<docBaseType\> |
-| ORMSandbox | `MCDocType.java` | `getByDocBaseType()`, switch on docBaseType |
-| ORMSandbox | `X_C_DocType.java` | Column definitions (DocBaseType, DocSubType) |
-| ORMSandbox | `X_M_BOM.java` | doc_base_type column accessor |
-| ORMSandbox | `BomTemplateContract.java` | Template derivation from docSubType → docBaseType |
-| ORMSandbox | `BomTemplateComposer.java` | Three-key match (AABB + DocBaseType + DocSubType) |
-| ORMSandbox | `MBomCategory.java` | docType parameter matching DocBaseType |
-| ORMSandbox | `MBomCategoryLine.java` | docType parameter matching DocBaseType |
-| ORMSandbox | `X_CCampaign.java` | DocBaseType reference |
-| BonsaiBIMDesigner | `DesignerDAO.java` | JOIN doc_base_type = DocBaseType |
-| BonsaiBIMDesigner | `DesignerAPIImpl.java` | `deriveFacilityType()` routing, JOIN |
-| BonsaiBIMDesigner | `StubDataSeeder.java` | Schema creation with DocBaseType |
-| BonsaiBIMDesigner | `WorkOutputDAO.java` | doc_base_type in schema |
-| IFCtoBOM | `IFCtoBOMPipeline.java` | Dispatch on doc_base_type, C_DocType creation |
-| IFCtoBOM | `StructuralBomBuilder.java` | INSERT with doc_base_type |
-| IFCtoBOM | `DisciplineBomBuilder.java` | INSERT with doc_base_type |
-| IFCtoBOM | `ClassificationYaml.java` | Record with docBaseType field |
-| IFCtoBOM | `BomValidator.java` | Validates doc_base_type on BUILDING BOM |
-| BIMBackOffice | `PortfolioDAO.java` | SELECT DocBaseType |
-
-**Test files (12):** PrimeRuleWitnessTest, BuildingRegistryTest, DataIntegrityTest,
-RemoveCompressTest, OrderInheritanceTest, BomDropperOrderIdTest, BomDropCompileTest,
-BomDropConfigureTest, CompileBridgeTest, ASIAuthoringTest, DemoHouseTest, SelectionCascadeTest
-
-### 7.4 M_Product_Category Hierarchy — Current vs Target
-
-**Current (ERP.db, 46 rows):** IFC element classification only (IFC_WALL→STR,
-IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.
-
-**Missing for cascade model (need migration to add):**
-- Top-level: RE (Residential), IN (Infrastructure), CO (Commercial), IP (Industrial Plant)
-- Floor-level: GF, L1, L2, L3, L4, L5, RF, FN, MS
-- Room-level: LI (Living), KT (Kitchen), BD (Bedroom), BT (Bathroom), DN (Dining), FR (Furniture), etc.
-- Infra segments: SUP, DCK, ABT, TRK, ROAD, RAIL
-
-These values already exist as `bom_category` strings on `m_bom` rows in BOM databases — they just
-aren't registered as M_Product_Category rows in ERP.db. Migration: INSERT OR IGNORE
-from the existing bom_category vocabulary.
-
-### 7.5 ERP.db Rename — Touchpoint Count
-
-Renaming `ERP.db` → `ERP.db` affects:
-- Java system property references: `disc.validation.db` (grep needed for exact count)
-- Shell scripts: `run_RosettaStones.sh`, `run_tests.sh`, extraction scripts
-- Python scripts: `RosettaStoneToBOM.py`, `RosettaStoneExtract.py`
-- Doc references across ~10 specs
-- Estimated total touchpoints: 40–60 (bounded task, separate session)
-
-### 7.6 Migration Status
+### 7.2 Remaining Steps
 
 | Step | Task | Status |
 |------|------|--------|
-| 1 | M_Product_Category rows in ERP.db (DV018) | **DONE** — 117 rows (S75) |
-| 2 | Populate `m_product_category_id` on BUILDING BOMs | **DONE** — S75 backfill |
-| 3 | Java routing: doc_base_type → m_product_category_id | **DONE** — S77 (19 source + 12 test files) |
-| 4 | Deprecate doc_base_type/doc_sub_type columns | **DONE** — marked @Deprecated in schema |
-| 5 | Rename disc_validation.db → ERP.db | **DONE** — S76 (~100 files) |
-| 6 | AD_Org_ID FK replacing bom_category string | **DONE** — S78 (W009 migration) |
-| 7 | Retire deriveDiscipline() from compile path | **DONE** — S79 (resolveDiscipline replaces it, extraction-only fallback) |
-| 8 | Drop Parent_Category_ID column | PENDING — prompt 13 |
-| 9 | Drop vestigial TEXT discipline columns | PENDING — Step 6 cleanup |
+| 8 | Drop Parent_Category_ID column | PENDING |
+| 9 | Drop vestigial TEXT discipline columns (bom_category, doc_base_type, doc_sub_type) | PENDING |
 
 ---
 

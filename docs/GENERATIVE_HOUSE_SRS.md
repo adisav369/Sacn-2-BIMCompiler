@@ -124,7 +124,7 @@ Building codes ──encode──→ ERP.db
                                     ▼
 DemoHouse (DM) ──borrow──→ Same products, same BOMs, same rules
   Via Selection Cascade §3.5:
-    bom_category + M_Product_Category + AABB fit
+    AD_Org_ID (Discipline) + M_Product_Category + AABB fit
   No new products created.
   No new geometry invented.
   Every element traces to a real IFC or a building code.
@@ -137,8 +137,8 @@ selected yet), the Designer can **auto-suggest** using the BOM Chooser (§3.5):
 
 ```
 DesignerAPI.suggestRoomContents(buildingId)
-    For each room C_OrderLine with bom_category:
-        1. Query m_bom WHERE bom_category = ? AND m_product_category_id = parent's M_Product_Category
+    For each room C_OrderLine with AD_Org_ID (Discipline):
+        1. Query m_bom WHERE AD_Org_ID = ? AND m_product_category_id = parent's M_Product_Category
         2. Filter by AABB fit (child ≤ room slot)
         3. Rank by §3.5 cascade
         4. Return best-match BOM as suggestion
@@ -631,7 +631,7 @@ for clash detection — that's a small code change to call existing logic.
 | W-DROP-3 | Tree has FLOOR-level children (IsBOM sub-assemblies) | GREEN (S54) |
 | W-DROP-4 | FLOOR_SH_GF_STD contains ROOM sub-assemblies with LEAF children | GREEN (S54) |
 | W-DROP-5 | Non-BOM product (IsBOM=false) returns error | GREEN (S54) |
-| W-DROP-6 | Each node carries bom_category for category-based swap browsing | GREEN (S54) |
+| W-DROP-6 | Each node carries AD_Org_ID (Discipline) for discipline-based swap browsing | GREEN (S54) |
 | W-ASI-AUTO-1 | autoPopulate fills all empty rooms with cascade matches | GREEN (S52b) |
 | W-ASI-AUTO-2 | Auto-populated walls have ASI.length_mm scaled to room width | GREEN (S52b) |
 | W-ASI-AUTO-3 | IsInstanceAttribute=0 products have no ASI after auto-populate | GREEN (S52b) |
