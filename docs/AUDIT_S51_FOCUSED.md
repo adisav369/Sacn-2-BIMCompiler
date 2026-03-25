@@ -2473,3 +2473,31 @@ major themes. Code changes are thorough and consistent — the Discipline enum m
 17 source files without leaving type mismatches. The CO_EmptySpace three-phase retirement was
 textbook. The only weakness is documentation lag: SystemContract.md link cleanup was incomplete,
 and the work_output.db doc propagation from S61 remains undone. No P0 code bugs found.
+
+## Appendix V — S90 Tier 2 INTEGER PK Migration Audit (2026-03-26)
+
+### V.1 Scope
+Phase A+B: add INTEGER PK columns to 5 core iDempiere tables (M_Product_Category, M_Product, m_bom, C_Order, C_DocType) across 4 databases. Schema only, zero Java changes.
+
+### V.2 Deliverables
+8 migration SQL files: DV022, CL003 (M_Product_Category), W014, DV023, CL004 (M_Product), W015 (m_bom + m_bom_line FK), W016 (C_Order), W017 (C_DocType). Row counts verified before/after — all preserved.
+
+### V.3 Architecture Finding: IFCtoBOM Hardcoded DDL
+`IFCtoBOMPipeline.createSchema()` line 469 comment: "The schemaPath parameter is accepted but NOT read." M_Product, m_bom, m_bom_line, C_DocType DDL is hardcoded in Java. BOM.db files are rebuilt from scratch each extraction. Migration SQL cannot be applied directly — `prepare_compile_db()` applies ALTER TABLE + backfill to the temp compile DB instead. **Phase C must update the Java DDL.**
+
+### V.4 Pre-existing Stale Code (3 findings, all fixed)
+
+**V.4.1 schema_snapshot_bom.sql C_OrderLine — stale since S78**
+Missing: `AD_Org_ID INTEGER`, `locator_ref TEXT`, `is_reference_class INTEGER`. BomDropper.insertLine() (line 408) writes all three. The compile DB's C_OrderLine was created from the snapshot, so BomDropper failed with "no such column." SH gate was passing from a cached output DB, not a fresh compile. **Fix:** added 3 columns to snapshot.
+
+**V.4.2 singularity_check — querying dropped column since S84**
+`run_RosettaStones.sh` singularity_check queried `doc_base_type` on m_bom, but W012 (S84) dropped it. Query failed silently (`2>/dev/null`). **Fix:** changed to `m_product_category_id` (the replacement column from S77).
+
+**V.4.3 G6 isolation test — querying dropped table since S74**
+RosettaStoneGateTest.g6_isolation queries `co_empty_space_line` (line 617), but W008 (S74) dropped it from BuildingWriter. Output DB has no such table. **Fix:** added empty stub tables to output DB in script before contract tests run.
+
+### V.5 Design Gap: C_Order/C_OrderLine not persisted in output DB
+BomDropper populates C_Order + C_OrderLine in the temp compile DB. The output DB has the tables (BuildingWriter DDL) but 0 rows — data is discarded with the temp file. BIM Designer needs them to recall/display the construction order. **Phase C must copy C_OrderLine tree from compile DB → output DB.** Already spec'd in ProjectOrderBlueprint.md + BIM_Designer_SRS.
+
+### V.6 Gate
+`mvn compile -q` PASS. SH 7/7 PASS (IFCtoBOM, Compile, Singularity, Contracts G3/G6, Integrity, Fidelity C8/C9).
