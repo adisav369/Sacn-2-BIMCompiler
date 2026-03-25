@@ -27,7 +27,7 @@
     
     
       
-        <title>Quick Start - BIM Intent Compiler</title>
+        <title>Construction Order Guide - BIM Intent Compiler</title>
       
     
     
@@ -122,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Quick Start
+              Construction Order Guide
             
           </span>
         </div>
@@ -287,7 +287,7 @@
   
     
   
-  Compiler
+  Verb Engine
 
         </a>
       </li>
@@ -513,8 +513,6 @@
       
         
       
-        
-      
     
     
     
@@ -620,596 +618,6 @@
   
 
       </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Start
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Start
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-start-for-users" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Start — For Users
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-invention-boundary" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Invention Boundary
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-yaml-fidelity-mantra" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The YAML Fidelity Mantra
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#file-convention" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        File Convention
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="File Convention">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#clean-slate-running-from-scratch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Clean Slate — Running from Scratch
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-v1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema (v1)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema (v1)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#building-required" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        building (required)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#storeys-or-segments-required" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        storeys or segments (required)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#floor_rooms-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        floor_rooms (optional)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#static_children-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        static_children (optional)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composition-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        composition (optional)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-to-add-a-new-building" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to Add a New Building
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How to Add a New Building">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#step-0-ensure-ifc-element-types-are-registered-one-time" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 0 — Ensure IFC element types are registered (one-time)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-1-extract-geometry-from-ifc-python-one-time" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1 — Extract geometry from IFC (Python, one-time)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-2-inspect-the-extracted-data" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2 — Inspect the extracted data
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-3-write-the-classification-yaml-only-invention-step" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3 — Write the classification YAML (only invention step)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-4-write-the-bim-cobol-dsl-script" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4 — Write the BIM COBOL DSL script
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-5-build-the-bom-_bomdb" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5 — Build the BOM (*_BOM.db)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-6-compilation-and-delta-verification" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 6 — Compilation and delta verification
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-7-mine-validation-rules-from-the-rosetta-stone" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 7 — Mine validation rules from the Rosetta Stone
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#step-8-troubleshoot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 8 — Troubleshoot
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-not-to-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What NOT to Do
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#drift-prevention-what-the-pipeline-enforces" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Drift Prevention — What the Pipeline Enforces
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Drift Prevention — What the Pipeline Enforces">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#enforced-guards-fail-pipeline-aborts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enforced Guards (FAIL = pipeline aborts)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#advisory-guards-reported-does-not-block" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Advisory Guards (reported, does not block)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#what-the-pipeline-does-not-validate" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What the Pipeline Does NOT Validate
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#adding-a-new-building-or-facility-pre-flight-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Adding a New Building or Facility — Pre-flight Checklist
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#schema-v3-planned-mep-rules-based-laying" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Schema v3 (planned): MEP Rules-Based Laying
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Schema v3 (planned): MEP Rules-Based Laying">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#the-processit-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The ProcessIt() Pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mep-section-schema-v3" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        mep Section (schema v3)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-rules-drive-placement" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How Rules Drive Placement
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#clearance-via-erp-maths-not-bonsai-geometry" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Clearance via ERP Maths (not Bonsai geometry)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#relationship-to-existing-schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Relationship to Existing Schema
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#terrain-infrastructure-placement-on-terrain" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        §Terrain — Infrastructure Placement on Terrain
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="§Terrain — Infrastructure Placement on Terrain">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#outline-steps-terrain-aware-infrastructure-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Outline Steps: Terrain-Aware Infrastructure Design
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#terrain-data-contract" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Terrain Data Contract
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#further-reading" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Further Reading
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Further Reading">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#architecture-concepts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Architecture &amp; Concepts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#data-model-schema" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Data Model &amp; Schema
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#source-code-development" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Source Code &amp; Development
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#qa-testing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        QA &amp; Testing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#building-specific-analysis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Building-Specific Analysis
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#appendix-adding-new-ifc-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Appendix — Adding New IFC Files
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1447,7 +855,7 @@
   <span class="md-ellipsis">
     
   
-    Compiler
+    Verb Engine
   
 
     
@@ -1463,7 +871,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Compiler
+    Verb Engine
   
 
           </label>
@@ -1652,8 +1060,6 @@
   
     
     
-      
-        
       
         
       
@@ -1861,34 +1267,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../G4_SRS/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    G4 Work Output
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../VIEW_CONTRACTS/" class="md-nav__link">
         
   
@@ -2049,7 +1427,7 @@
   <span class="md-ellipsis">
     
   
-    Validation DB
+    ERP Database
   
 
     
@@ -2473,8 +1851,6 @@
       
         
       
-        
-      
     
     
     
@@ -2535,34 +1911,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Audit Report
   
 
     
@@ -3040,7 +2388,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    Construction Order Guide
   
 
     
@@ -3058,7 +2406,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    Construction Order Guide
   
 
     

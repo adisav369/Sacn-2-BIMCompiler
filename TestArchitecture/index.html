@@ -289,7 +289,7 @@
   
     
   
-  Compiler
+  Verb Engine
 
         </a>
       </li>
@@ -513,8 +513,6 @@
       
         
       
-        
-      
     
     
     
@@ -612,34 +610,6 @@
     
   
     Documentation Index
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../WorkOrderGuide/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Quick Start
   
 
     
@@ -890,7 +860,7 @@
   <span class="md-ellipsis">
     
   
-    Compiler
+    Verb Engine
   
 
     
@@ -906,7 +876,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Compiler
+    Verb Engine
   
 
           </label>
@@ -1969,8 +1939,6 @@
       
         
       
-        
-      
     
     
     
@@ -2163,34 +2131,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../G4_SRS/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    G4 Work Output
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../VIEW_CONTRACTS/" class="md-nav__link">
         
   
@@ -2351,7 +2291,7 @@
   <span class="md-ellipsis">
     
   
-    Validation DB
+    ERP Database
   
 
     
@@ -2775,8 +2715,6 @@
       
         
       
-        
-      
     
     
     
@@ -2837,34 +2775,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../AUDIT_S51_FOCUSED/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Audit Report
   
 
     
@@ -3328,7 +3238,7 @@
   <span class="md-ellipsis">
     
   
-    Quick Start
+    Construction Order Guide
   
 
     
@@ -6113,8 +6023,8 @@ requires a triage pass to suppress false positives so the signal stays clean.</p
 - After intentional changes: re-seal (see below)
 - If BROKEN unexpectedly: <code>bash scripts/verify_test_seal.sh --detail</code></p>
 <hr />
-<p><strong>Sealed:</strong> 2026-03-26 (v35: S79 bulk discipline migration TEXT → Discipline enum)
-<strong>Super-hash:</strong> <code>081db5ad5eb3008bf2e397117f27779214b86fc593d9468b083ac418db0c6aea</code></p>
+<p><strong>Sealed:</strong> 2026-03-26 (v36: S84 drop doc_base_type from m_bom)
+<strong>Super-hash:</strong> <code>3c705504ab44363ac02720b7c0d2f8c062c0c4d5fe8f243d107cc60206751083</code></p>
 <p><strong>S51-AUDIT pending re-seal:</strong> The following hardening changes require a re-seal once applied:
 - <code>assumeTrue</code> → <code>fail()</code> in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
 - <code>assertTrue(true)</code> tautologies removed (F5Integration, Calibration)</p>
