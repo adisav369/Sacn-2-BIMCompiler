@@ -13,7 +13,7 @@
       
       
       
-        <link rel="prev" href="../CORE_SRS/">
+        <link rel="prev" href="../PREFAB_ARCHITECTURE/">
       
       
         <link rel="next" href="../BACK_OFFICE_SRS/">
@@ -349,7 +349,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../CORE_SRS/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -1521,8 +1521,6 @@
       
         
       
-        
-      
     
     
     
@@ -1570,34 +1568,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../CORE_SRS/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Core SRS (4D-7D)
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -3830,7 +3800,7 @@
 <p><strong>Version:</strong> 1.1 | <strong>Date:</strong> 2026-03-20
 <strong>Scope:</strong> Six bounded items, +4 scorecard points (27→31/36) + live 4D/5D DAOs
 <strong>Architecture:</strong> Java DAO backend + thin bridge (ndjson TCP) + light Bonsai panel
-<strong>Companion:</strong> <code>CORE_SRS.md</code> §2 (ReportDAO), <code>StrategicIndustryPositioning.md</code> (scorecard)
+<strong>Companion:</strong> <code>StrategicIndustryPositioning.md</code> (scorecard)
 <strong>IfcOpenShell reference:</strong> Federation addon <code>tandem/</code> — Python PoC proves all 4 capabilities</p>
 <hr />
 <h2 id="architecture-principle">Architecture Principle<a class="headerlink" href="#architecture-principle" title="Permanent link">&para;</a></h2>
@@ -4596,17 +4566,17 @@ Step 8 is independent of everything else.</p>
 <tr>
 <td>Multi-user audit</td>
 <td>Needs AD_User + AD_Session</td>
-<td>Tier 3, CORE_SRS.md</td>
+<td>Tier 3</td>
 </tr>
 <tr>
 <td>PDF report generation</td>
 <td>Needs template engine</td>
-<td>Phase RE (CORE_SRS.md §2)</td>
+<td>Phase RE (ACTION_ROADMAP.md)</td>
 </tr>
 <tr>
 <td>COBie XLSX export</td>
 <td>Needs 19-sheet writer</td>
-<td>Phase RE (CORE_SRS.md §2)</td>
+<td>Phase RE (ACTION_ROADMAP.md)</td>
 </tr>
 </tbody>
 </table>
@@ -4843,7 +4813,7 @@ No live wire action for the UI to query a Gantt schedule.</p>
 <hr />
 <p><em>TIER1_SRS.md v1.1 — 4D-7D + Audit + 3D, 29 witnesses, 242 tests GREEN</em>
 <em>Architecture: Java DAO (solid) + thin bridge (ndjson) + light panel (Python)</em>
-<em>Cross-references: CORE_SRS.md §2, StrategicIndustryPositioning.md, BlenderBridge.md</em>
+<em>Cross-references: StrategicIndustryPositioning.md, BlenderBridge.md</em>
 <em>CIDB rates: Federation addon boq/comprehensive_boq_export.py → M_Product columns</em></p>
 
 
