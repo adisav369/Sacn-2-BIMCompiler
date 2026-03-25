@@ -3724,86 +3724,78 @@ install all conduits in the building top-to-bottom. Exception: risers
 <hr />
 <h2 id="3-m_product_category-as-discipline-classifier">3. M_Product_Category as Discipline Classifier<a class="headerlink" href="#3-m_product_category-as-discipline-classifier" title="Permanent link">&para;</a></h2>
 <p><code>M_Product_Category</code> (the former M_BomCategory, now aligned with iDempiere naming) serves as the shared catalog
-classifier. Discipline codes become new bom_category values:</p>
+classifier. Discipline routing uses <code>AD_Org_ID</code> (integer FK to AD_Org), not string codes:</p>
 <table>
 <thead>
 <tr>
-<th>bom_category</th>
-<th>Current Use</th>
-<th>New Use</th>
+<th>AD_Org_ID</th>
+<th>Discipline</th>
+<th>Drawing Sheet</th>
+<th>Legacy bom_category</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>GF, L1, L2, RF, FN, MS, CW</td>
-<td>Storey codes</td>
-<td>Unchanged</td>
+<td><em>(per tenant)</em></td>
+<td>Architectural</td>
+<td>A-series</td>
+<td>ARC</td>
 </tr>
 <tr>
-<td>LI, BD, KT, FR, RE</td>
-<td>Room/functional types</td>
-<td>Unchanged</td>
+<td><em>(per tenant)</em></td>
+<td>Structural</td>
+<td>S-series</td>
+<td>STR</td>
 </tr>
 <tr>
-<td>ST</td>
-<td>Buffer space</td>
-<td>Unchanged</td>
+<td><em>(per tenant)</em></td>
+<td>Plumbing</td>
+<td>P-series</td>
+<td>PLB</td>
 </tr>
 <tr>
-<td>HU</td>
-<td>Half-unit</td>
-<td>Unchanged</td>
+<td><em>(per tenant)</em></td>
+<td>Electrical</td>
+<td>E-series</td>
+<td>ELC</td>
 </tr>
 <tr>
-<td><strong>ARC</strong></td>
+<td><em>(per tenant)</em></td>
+<td>Fire Protection</td>
+<td>FP-series</td>
+<td>FPR</td>
+</tr>
+<tr>
+<td><em>(per tenant)</em></td>
+<td>HVAC/Mechanical</td>
+<td>M-series</td>
+<td>ACMV</td>
+</tr>
+<tr>
+<td><em>(per tenant)</em></td>
+<td>Sanitary Plumbing</td>
+<td>P-series</td>
+<td>SP</td>
+</tr>
+<tr>
+<td><em>(per tenant)</em></td>
+<td>LPG</td>
 <td>—</td>
-<td>Architectural discipline BOM</td>
+<td>LPG</td>
 </tr>
 <tr>
-<td><strong>STR</strong></td>
-<td>—</td>
-<td>Structural discipline BOM</td>
-</tr>
-<tr>
-<td><strong>PLB</strong></td>
-<td>—</td>
-<td>Plumbing discipline BOM</td>
-</tr>
-<tr>
-<td><strong>ELC</strong></td>
-<td>—</td>
-<td>Electrical discipline BOM</td>
-</tr>
-<tr>
-<td><strong>FPR</strong></td>
-<td>—</td>
-<td>Fire Protection discipline BOM</td>
-</tr>
-<tr>
-<td><strong>ACMV</strong></td>
-<td>—</td>
-<td>HVAC/Mechanical discipline BOM</td>
-</tr>
-<tr>
-<td><strong>SP</strong></td>
-<td>—</td>
-<td>Sanitary Plumbing discipline BOM</td>
-</tr>
-<tr>
-<td><strong>LPG</strong></td>
-<td>—</td>
-<td>LPG discipline BOM</td>
-</tr>
-<tr>
-<td><strong>REB</strong></td>
-<td>—</td>
-<td>Reinforcing Bar discipline BOM</td>
+<td><em>(per tenant)</em></td>
+<td>Reinforcing Bar</td>
+<td>S-series (sub)</td>
+<td>REB</td>
 </tr>
 </tbody>
 </table>
-<p>The discipline lives on <code>m_bom.bom_category</code>, NOT on M_Product. A product is
+<p>Storey codes (GF, L1, L2, RF, FN, MS, CW) and room types (LI, BD, KT, FR, RE)
+remain on <code>bom_category</code> as catalog classifiers — they are not disciplines.</p>
+<p>The discipline lives on <code>AD_Org_ID</code>, NOT on M_Product. A product is
 just a product (pipe, conduit, sprinkler head). Which discipline it belongs to
-is determined by which discipline BOM tree it sits in. Same product can appear
+is determined by which discipline org its BOM tree sits in. Same product can appear
 in multiple discipline BOMs — same screw in 50 BOMs (pure iDempiere pattern).</p>
 <hr />
 <h2 id="4-two-classifiers-on-m_product-independent-dimensions">4. Two Classifiers on M_Product — Independent Dimensions<a class="headerlink" href="#4-two-classifiers-on-m_product-independent-dimensions" title="Permanent link">&para;</a></h2>
@@ -3891,47 +3883,47 @@ file already decided. AttributeSet columns stay NULL during extraction.</p>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcWall</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcDoor</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcWindow</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcSlab</span><span class="p p-Indicator">,</span>
 <span class="w">                    </span><span class="nv">IfcFurnishingElement</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcCovering</span><span class="p p-Indicator">,</span>
 <span class="w">                    </span><span class="nv">IfcRailing</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcStairFlight</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcRoof</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcRampFlight</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ARC</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ARC</span><span class="w">    </span><span class="c1"># resolved to integer FK at load time</span>
 
 <span class="w">    </span><span class="nt">STR</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcBeam</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcMember</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcColumn</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPlate</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">STR</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">STR</span>
 
 <span class="w">    </span><span class="nt">PLB</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Domestic Cold Water</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Domestic Hot Water</span><span class="p p-Indicator">,</span>
 <span class="w">                </span><span class="nv">Sanitary</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Waste</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Hydronic Supply</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Hydronic Return</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PLB</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">PLB</span>
 
 <span class="w">    </span><span class="nt">ELC</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcLightFixture</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcElectricAppliance</span><span class="p p-Indicator">,</span>
 <span class="w">                    </span><span class="nv">IfcFlowSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowController</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Electrical</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Telecom</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Lightning</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ELC</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ELC</span>
 
 <span class="w">    </span><span class="nt">FPR</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcFireSuppressionTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcAlarm</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcSensor</span><span class="p p-Indicator">,</span>
 <span class="w">                    </span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowController</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Fire Alarm</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Sprinkler</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Fire Suppression</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FPR</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FPR</span>
 
 <span class="w">    </span><span class="nt">ACMV</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcDuctSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcDuctFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcAirTerminal</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ACMV</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ACMV</span>
 
 <span class="w">    </span><span class="nt">SP</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcFlowTerminal</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">Sanitary Waste</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Storm Drain</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Vent</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SP</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SP</span>
 
 <span class="w">    </span><span class="nt">LPG</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcPipeSegment</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcPipeFitting</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">IfcValve</span><span class="p p-Indicator">]</span>
 <span class="w">      </span><span class="nt">filter</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> system_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">LPG</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">Gas</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LPG</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">LPG</span>
 
 <span class="w">    </span><span class="nt">REB</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">ifc_classes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">IfcReinforcingBar</span><span class="p p-Indicator">]</span>
-<span class="w">      </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">REB</span>
+<span class="w">      </span><span class="nt">ad_org_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">REB</span>
 </code></pre></div>
 <h3 id="52-disambiguation-via-system_type-filter">5.2 Disambiguation via system_type Filter<a class="headerlink" href="#52-disambiguation-via-system_type-filter" title="Permanent link">&para;</a></h3>
 <p>Some IFC classes (IfcPipeSegment, IfcPipeFitting, IfcValve) appear across
@@ -4074,7 +4066,7 @@ No discipline wrapper for proven single-discipline RosettaStone. Schema v1
 backward compatibility — buildings without <code>disciplines:</code> key default to
 single-discipline, no extra BOM level.</p>
 <p><strong>D4: Discipline on BOM, not on Product.</strong>
-<code>m_bom.bom_category</code> carries the discipline. <code>M_Product</code> is discipline-agnostic.
+<code>AD_Org_ID</code> carries the discipline (integer FK to AD_Org — see S78). <code>M_Product</code> is discipline-agnostic.
 Same product can appear in multiple discipline BOMs (iDempiere pattern: same
 screw in 50 BOMs).</p>
 <p><strong>D5: AttributeSet is for generative mode.</strong>
@@ -4523,7 +4515,7 @@ fire after each placement batch, not per-element.</p>
       │
       │  Uses: ad_space_type_mep_bom (the schedule)
       │        BOM tree Parent_OrderLine_ID (room containment)
-      │        bom_category on ROOM node (space_type lookup)
+      │        AD_Org_ID on ROOM node (space_type + discipline lookup)
       │
       │  Example: BATHROOM missing EXHAUST_FAN
       │    → WARN: &quot;BATHROOM requires 1 EXHAUST_FAN per IMC 2021 403.3&quot;

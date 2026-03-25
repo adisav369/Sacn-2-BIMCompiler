@@ -4023,7 +4023,7 @@ Building codes ──encode──→ ERP.db
                                     ▼
 DemoHouse (DM) ──borrow──→ Same products, same BOMs, same rules
   Via Selection Cascade §3.5:
-    bom_category + M_Product_Category + AABB fit
+    AD_Org_ID (Discipline) + M_Product_Category + AABB fit
   No new products created.
   No new geometry invented.
   Every element traces to a real IFC or a building code.
@@ -4032,8 +4032,8 @@ DemoHouse (DM) ──borrow──→ Same products, same BOMs, same rules
 <p>When a user creates a GENERATIVE building and the rooms are empty (no child BOM
 selected yet), the Designer can <strong>auto-suggest</strong> using the BOM Chooser (§3.5):</p>
 <div class="highlight"><pre><span></span><code>DesignerAPI.suggestRoomContents(buildingId)
-    For each room C_OrderLine with bom_category:
-        1. Query m_bom WHERE bom_category = ? AND m_product_category_id = parent&#39;s M_Product_Category
+    For each room C_OrderLine with AD_Org_ID (Discipline):
+        1. Query m_bom WHERE AD_Org_ID = ? AND m_product_category_id = parent&#39;s M_Product_Category
         2. Filter by AABB fit (child ≤ room slot)
         3. Rank by §3.5 cascade
         4. Return best-match BOM as suggestion
@@ -4779,7 +4779,7 @@ for clash detection — that's a small code change to call existing logic.</p>
 </tr>
 <tr>
 <td>W-DROP-6</td>
-<td>Each node carries bom_category for category-based swap browsing</td>
+<td>Each node carries AD_Org_ID (Discipline) for discipline-based swap browsing</td>
 <td>GREEN (S54)</td>
 </tr>
 <tr>
