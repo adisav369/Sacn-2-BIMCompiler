@@ -261,13 +261,13 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../SystemContract/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
     
   
-  Architecture
+  Specs
 
         </a>
       </li>
@@ -679,8 +679,6 @@
       
         
       
-        
-      
     
     
     
@@ -707,7 +705,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Specs
   
 
     
@@ -723,39 +721,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Specs
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SystemContract/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    System Contract
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -771,7 +741,7 @@
   <span class="md-ellipsis">
     
   
-    BOM Compilation (Master Spec)
+    BOM Compilation (Core Spec)
   
 
     
@@ -2416,8 +2386,6 @@
       
         
       
-        
-      
     
     
     
@@ -2478,34 +2446,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Order Blueprint
   
 
     
@@ -3711,7 +3651,7 @@
 
 <h1 id="data-model-per-building-bom-dictionary-from-rosetta-stones">Data Model — Per-Building BOM Dictionary from Rosetta Stones<a class="headerlink" href="#data-model-per-building-bom-dictionary-from-rosetta-stones" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
 </blockquote>
 <p><strong>This specification governs the creation of <code>{PREFIX}_BOM.db</code> dictionaries.</strong>
 Each building has its own BOM dictionary (<code>SH_BOM.db</code>, <code>DX_BOM.db</code>), reproduced from fresh
@@ -3878,12 +3818,12 @@ See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code><
 <tr>
 <td>doc_base_type</td>
 <td>RE / CO / IN</td>
-<td><strong>Deprecated</strong> — redundant with m_product_category_id (see §7 migration plan)</td>
+<td>Legacy — superseded by m_product_category_id</td>
 </tr>
 <tr>
 <td>doc_sub_type</td>
 <td>SH / DX / BR / RD</td>
-<td><strong>Deprecated</strong> — redundant with building prefix/bom_id (see §7 migration plan)</td>
+<td>Legacy — superseded by building prefix</td>
 </tr>
 <tr>
 <td>m_product_category_id</td>
@@ -3986,7 +3926,7 @@ Compile DBs are auto-cleaned; only <code>{PREFIX}_BOM.db</code> persists.</p>
 <h2 id="2-prefix_bomdb-schema-reference">2. <code>{PREFIX}_BOM.db</code> — Schema Reference<a class="headerlink" href="#2-prefix_bomdb-schema-reference" title="Permanent link">&para;</a></h2>
 <p>Read-only at compile time. Each per-building dictionary contains domain config, BOM hierarchy, and product catalog.</p>
 <h3 id="c_doctype-6-rows-domain-config">C_DocType (6 rows — domain config)<a class="headerlink" href="#c_doctype-6-rows-domain-config" title="Permanent link">&para;</a></h3>
-<p>"Construction Order" — one document type. Classification lives on M_Product_Category, not here. Legacy columns (DocBaseType, DocSubType) exist but are deprecated (see §7 migration plan).</p>
+<p>"Construction Order" — one document type. Classification lives on <a href="../MANIFESTO/#what-m_product_category-classification--ad_org-discipline">M_Product_Category</a>, not here.</p>
 <blockquote>
 <p><strong>RESOLVED (session 30, R27):</strong> IFCtoBOM now writes C_DocType into <code>{PREFIX}_BOM.db</code>
 during extraction. Shell injection removed from <code>run_RosettaStones.sh</code>.
@@ -4015,12 +3955,12 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>DocBaseType</td>
 <td>TEXT</td>
-<td><strong>Deprecated</strong> — RE/CO/IN. Redundant with M_Product_Category (see §7)</td>
+<td>Legacy — superseded by M_Product_Category</td>
 </tr>
 <tr>
 <td>DocSubType</td>
 <td>TEXT</td>
-<td><strong>Deprecated</strong> — SH/DX/TB/TE/ST. Redundant with building prefix (see §7)</td>
+<td>Legacy — superseded by building prefix</td>
 </tr>
 <tr>
 <td>ProjectName</td>
@@ -4065,7 +4005,7 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 </tbody>
 </table>
 <h3 id="m_bom-bom-headers">m_bom (BOM headers)<a class="headerlink" href="#m_bom-bom-headers" title="Permanent link">&para;</a></h3>
-<p>2 selection dimensions: M_Product_Category + SpaceSize (AABB fit). Legacy columns doc_base_type/doc_sub_type exist but are deprecated (see §7).</p>
+<p>2 selection dimensions: <a href="../MANIFESTO/#what-m_product_category-classification--ad_org-discipline">M_Product_Category</a> + SpaceSize (AABB fit).</p>
 <table>
 <thead>
 <tr>
@@ -4103,7 +4043,7 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>doc_sub_type</td>
 <td>TEXT</td>
-<td><strong>Deprecated</strong> — SH/DX/TB/TE. Redundant with bom_id prefix (see §7)</td>
+<td>Legacy — superseded by bom_id prefix</td>
 </tr>
 <tr>
 <td>origin_x, origin_y, origin_z</td>
@@ -4298,8 +4238,8 @@ is expressed by the BOM tree (M_BOM → M_BOM_Line parent-child relationships), 
 the category table. To enforce swap-pool constraints, match <code>m_product_category_id</code> at
 the same BOM level — you never need to traverse a category tree.</p>
 <blockquote>
-<p><strong>Note:</strong> <code>Parent_Category_ID</code> was seeded in DV018 but is <strong>DEPRECATED — to be dropped.</strong>
-It duplicates the BOM tree hierarchy. See §7.6 migration plan.</p>
+<p><strong>Note:</strong> <code>Parent_Category_ID</code> is legacy — the <a href="../MANIFESTO/#what-m_product_category-classification--ad_org-discipline">BOM cascade</a>
+already expresses hierarchy through M_BOM_Line parent-child relationships.</p>
 </blockquote>
 <p>117 rows total (DV018 migration). Representative categories:</p>
 <table>
@@ -4801,7 +4741,7 @@ carries classification at every level. C_DocType = ONE "Construction Order" (not
 <td>L44-55: C_DocType.DocBaseType analogy. L297: "DocBaseType on M_Product_Category". L1149-1186: YAML schema refs</td>
 </tr>
 <tr>
-<td><strong>SystemContract.md</strong></td>
+<td><strong>MANIFESTO.md</strong></td>
 <td>L63: C_DocType = "Building type classification" → "Construction Order". L434: "per DocBaseType + DocSubType"</td>
 </tr>
 <tr>
@@ -5033,7 +4973,7 @@ from the existing bom_category vocabulary.</p>
 </table>
 <hr />
 <p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
-<code>SystemContract.md</code> for the three-concern model (WHAT/HOW/WHERE),
+<code>MANIFESTO.md</code> for the three-concern model (WHAT/HOW/WHERE),
 <code>TheRosettaStoneStrategy.md</code> for verification strategy.</em></p>
 
 

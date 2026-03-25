@@ -259,13 +259,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../SystemContract/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
     
   
-  Architecture
+  Specs
 
         </a>
       </li>
@@ -677,8 +677,6 @@
       
         
       
-        
-      
     
     
     
@@ -702,7 +700,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Specs
   
 
     
@@ -718,39 +716,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Specs
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SystemContract/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    System Contract
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -766,7 +736,7 @@
   <span class="md-ellipsis">
     
   
-    BOM Compilation (Master Spec)
+    BOM Compilation (Core Spec)
   
 
     
@@ -2814,8 +2784,6 @@
       
         
       
-        
-      
     
     
     
@@ -2876,34 +2844,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Order Blueprint
   
 
     
@@ -4507,10 +4447,10 @@
 
 <h1 id="prefab-assembly-architecture">Prefab Assembly Architecture<a class="headerlink" href="#prefab-assembly-architecture" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><em>Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)</em>
-<em>Extends: <code>SystemContract.md</code> (C_Order model), <code>SourceCodeGuide.md</code> (pipeline stages)</em>
+<em>Extends: <code>MANIFESTO.md</code> (C_Order model), <code>SourceCodeGuide.md</code> (pipeline stages)</em>
 <em>Dimension model: <a href="../BOMBasedCompilation/">BBC.md</a> §1 — Category (M_Product_Category) + Owner (M_Product identity) + SpaceSize (AABB)</em></p>
 <blockquote>
 <p><strong>Update (2026-03-06):</strong> Phase G-1 completed. Class renames applied throughout this document:
@@ -4521,7 +4461,7 @@
 - <code>BOMAssemblerAD</code> → deleted (BOM traversal now via <code>BOMWalker</code> + <code>AssemblyStructureVisitor</code>)
 - <code>RelationalResolver</code> → deleted (PlacementLoader now loads from <code>{PREFIX}_BOM.db</code> via <code>loadFromBOM()</code>)
 - <code>ad_room_slot</code> dispatch → deprecated by <code>bom_category</code> on M_BOM
-- <code>ARCHITECTURE.md</code> → archived (use <code>SystemContract.md</code> + <code>SourceCodeGuide.md</code>)</p>
+- <code>ARCHITECTURE.md</code> → archived (use <code>MANIFESTO.md</code> + <code>SourceCodeGuide.md</code>)</p>
 <p>Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
 Core BOM hierarchy content is current. Examples referencing deleted classes have been updated below.</p>
 </blockquote>
@@ -4597,7 +4537,7 @@ You cannot say FLOOR_SH_GF_STD has a Living Room without saying where the Living
 │   host_type=BUILDING             family_ref=BUILDING_SH_STD
 │   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
 │
-├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see SystemContract.md)
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see MANIFESTO.md)
 ├── ROOF_ASSEMBLY  dZ=3000mm         ← roof (pending)
 │
 └── FLOOR_SH_GF_STD  &quot;Ground Floor&quot;    ← floor Orderline
@@ -4624,7 +4564,7 @@ You cannot say FLOOR_SH_GF_STD has a Living Room without saying where the Living
 <div class="highlight"><pre><span></span><code>BUILDING_DX_STD                    ← building unit Orderline
 │   world footprint: 8383 × 17384mm
 │
-├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see SystemContract.md)
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see MANIFESTO.md)
 │
 ├── FLOOR_DX_L1_STD  &quot;Level 1&quot;     ← floor Orderline
 │   │   dZ = 0mm
@@ -6300,7 +6240,7 @@ orientation per floor BOM ID — the same Map pattern as <code>floorZOffsets</co
 <h3 id="86-spacesize-cross-reference">8.6 SpaceSize Cross-reference<a class="headerlink" href="#86-spacesize-cross-reference" title="Permanent link">&para;</a></h3>
 <p>The PhantomLayout is the Empty Storage record for the SpaceSize M_Locator.
 M_Locator = the grid cell (SpaceSize AABB in mm) that bounds the placement position.
-Full SpaceSize AABB spatial model: see <code>SystemContract.md</code>.</p>
+Full SpaceSize AABB spatial model: see <code>MANIFESTO.md</code>.</p>
 <hr />
 <h2 id="9-bomcascaderesolver-architectural-convergence">§9. BOMCascadeResolver — Architectural Convergence<a class="headerlink" href="#9-bomcascaderesolver-architectural-convergence" title="Permanent link">&para;</a></h2>
 <blockquote>

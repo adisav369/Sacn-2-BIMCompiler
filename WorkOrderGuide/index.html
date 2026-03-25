@@ -259,13 +259,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../SystemContract/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
     
   
-  Architecture
+  Specs
 
         </a>
       </li>
@@ -1239,8 +1239,6 @@
       
         
       
-        
-      
     
     
     
@@ -1264,7 +1262,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Specs
   
 
     
@@ -1280,39 +1278,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Specs
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SystemContract/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    System Contract
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -1328,7 +1298,7 @@
   <span class="md-ellipsis">
     
   
-    BOM Compilation (Master Spec)
+    BOM Compilation (Core Spec)
   
 
     
@@ -2505,8 +2475,6 @@
       
         
       
-        
-      
     
     
     
@@ -2567,34 +2535,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Order Blueprint
   
 
     
@@ -4461,8 +4401,48 @@
 
 <h1 id="work-order-guide">Work Order Guide<a class="headerlink" href="#work-order-guide" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><em>Renamed from YAMLGuide.md — the pipeline follows ERP Manufacturing BOM / Work Order patterns, not YAML-specific workflow.</em>
-<strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Key insight:</strong> The classification YAML (<code>classify_*.yaml</code>) is a <strong>human-readable
+stand-in</strong> for ERP entities. Each YAML section maps to an iDempiere table:</p>
+<table>
+<thead>
+<tr>
+<th>YAML Section</th>
+<th>ERP Entity</th>
+<th>What It Defines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>building</code></td>
+<td><a href="../ProjectOrderBlueprint/">C_Order</a></td>
+<td>Which product to build (one order = one building)</td>
+</tr>
+<tr>
+<td><code>storeys</code> / <code>segments</code></td>
+<td><a href="../ProjectOrderBlueprint/">C_OrderLine</a></td>
+<td>BOM explosion levels (floors, segments)</td>
+</tr>
+<tr>
+<td><code>floor_rooms</code></td>
+<td>C_OrderLine + <a href="../MANIFESTO/#m_attributeset-why-product-count-stays-small">M_AttributeSet</a></td>
+<td>Room scope spaces with dimensions</td>
+</tr>
+<tr>
+<td><code>static_children</code></td>
+<td>C_OrderLine (static entries)</td>
+<td>Fixed components (slabs, roof, MEP trunk)</td>
+</tr>
+<tr>
+<td><code>composition</code></td>
+<td><a href="../ProjectOrderBlueprint/">Ref_Order_ID</a> (inheritance)</td>
+<td>Mirror/repeat pattern</td>
+</tr>
+</tbody>
+</table>
+<p>In the production path, these definitions come from the <a href="../BIM_Designer_UserGuide/">BIM Designer</a>
+UI or future <a href="https://wiki.idempiere.org/en/REST_Web_Services">iDempiere REST</a> integration.
+The YAML is the <strong>extraction and onboarding tool</strong> — how buildings enter the system.</p>
 </blockquote>
 <h2 id="quick-start-for-users">Quick Start — For Users<a class="headerlink" href="#quick-start-for-users" title="Permanent link">&para;</a></h2>
 <p>Everything is already built. 34 buildings are onboarded, BOMs are generated, the
@@ -4833,12 +4813,12 @@ products and geometry links (skips if already done), runs IFCtoBOM to produce
 <tr>
 <td><code>doc_sub_type</code></td>
 <td>string</td>
-<td><strong>Deprecated</strong> — redundant with prefix (see DATA_MODEL.md §7). Currently still read by pipeline.</td>
+<td>Legacy — use <code>prefix</code> instead</td>
 </tr>
 <tr>
 <td><code>doc_base_type</code></td>
 <td>string</td>
-<td><strong>Deprecated</strong> — redundant with M_Product_Category (RE/CO/IN). See DATA_MODEL.md §7 migration plan.</td>
+<td>Legacy — use <a href="../MANIFESTO/#the-category-cascade-one-pattern-three-domains">M_Product_Category</a> (RE/CO/IN) instead</td>
 </tr>
 <tr>
 <td><code>name</code></td>
@@ -4868,24 +4848,29 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 <tr>
 <th>Field</th>
 <th>Description</th>
+<th>ERP Mapping</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>code</code></td>
 <td>Short code for BOM ID: <code>{prefix}_{code}_STR</code></td>
+<td>M_Product.Value</td>
 </tr>
 <tr>
 <td><code>bom_category</code></td>
 <td>Category tag on the FLOOR BOM</td>
+<td><a href="../MANIFESTO/#the-category-cascade-one-pattern-three-domains">M_Product_Category</a></td>
 </tr>
 <tr>
 <td><code>role</code></td>
 <td>Role string on the MAKE child in BUILDING BOM</td>
+<td>C_OrderLine.Description</td>
 </tr>
 <tr>
 <td><code>seq</code></td>
 <td>Sequence number for ordering in BUILDING BOM</td>
+<td>C_OrderLine.Line</td>
 </tr>
 </tbody>
 </table>
@@ -5370,7 +5355,7 @@ Existing migration: <code>migration/DV006_infra_bridge_rules.sql</code> (13 rule
 </tbody>
 </table>
 <p>QA architecture: <a href="../TestArchitecture/"><code>TestArchitecture.md</code></a>.
-ERP model context: <a href="../SystemContract/"><code>SystemContract.md</code></a>.</p>
+ERP model context: <a href="SystemContract.md"><code>SystemContract.md</code></a>.</p>
 <h2 id="what-not-to-do">What NOT to Do<a class="headerlink" href="#what-not-to-do" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Do NOT write manual SQL migrations for M_Product_ID — <code>ExtractionPopulator</code> does this</li>
@@ -5752,7 +5737,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 <tbody>
 <tr>
 <td>ERP model (C_Order, BOM, decisions)</td>
-<td><a href="../SystemContract/"><code>SystemContract.md</code></a></td>
+<td><a href="SystemContract.md"><code>SystemContract.md</code></a></td>
 </tr>
 <tr>
 <td>Spatial MRP (construction as ERP II)</td>
@@ -5764,7 +5749,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 </tr>
 <tr>
 <td>BIM as BOM concept</td>
-<td><a href="../SystemContract/"><code>SystemContract.md</code></a> Appendix A</td>
+<td><a href="SystemContract.md"><code>SystemContract.md</code></a> Appendix A</td>
 </tr>
 <tr>
 <td>Conceptual blueprint</td>
@@ -5883,7 +5868,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 <hr />
 <h2 id="appendix-adding-new-ifc-files">Appendix — Adding New IFC Files<a class="headerlink" href="#appendix-adding-new-ifc-files" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p>Most users will never need this. The 34 onboarded buildings and their products
+<p>Most users will never need this. The 35 onboarded buildings and their products
 are already in the repository. This section is for contributors who want to
 extend the system with new IFC source files.</p>
 </blockquote>

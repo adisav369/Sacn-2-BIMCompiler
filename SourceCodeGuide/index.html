@@ -261,13 +261,13 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../SystemContract/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
     
   
-  Architecture
+  Specs
 
         </a>
       </li>
@@ -679,8 +679,6 @@
       
         
       
-        
-      
     
     
     
@@ -707,7 +705,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Specs
   
 
     
@@ -723,39 +721,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Specs
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SystemContract/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    System Contract
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -771,7 +741,7 @@
   <span class="md-ellipsis">
     
   
-    BOM Compilation (Master Spec)
+    BOM Compilation (Core Spec)
   
 
     
@@ -2661,8 +2631,6 @@
       
         
       
-        
-      
     
     
     
@@ -2723,34 +2691,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Order Blueprint
   
 
     
@@ -4201,7 +4141,7 @@
 
 <h1 id="bim-intent-compiler-source-code-guide">BIM Intent Compiler — Source Code Guide<a class="headerlink" href="#bim-intent-compiler-source-code-guide" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a></p>
 </blockquote>
 <p><strong>Version 3.0</strong></p>
 <p><strong>Creator:</strong> Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
@@ -4226,7 +4166,7 @@
 <p><strong>Further reading:</strong>
 - Challenge paper: <code>docs/IntentBIMChallengePaper.pdf</code>
 - Full compilation spec: <code>docs/BOMBasedCompilation.md</code>
-- Construction-as-ERP model: <code>docs/SystemContract.md</code></p>
+- Construction-as-ERP model: <code>docs/MANIFESTO.md</code></p>
 </blockquote>
 <hr />
 <h2 id="1-the-big-picture">§1 — The Big Picture<a class="headerlink" href="#1-the-big-picture" title="Permanent link">&para;</a></h2>
@@ -4272,7 +4212,7 @@
 <h3 id="the-idempiere-connection">The iDempiere Connection<a class="headerlink" href="#the-idempiere-connection" title="Permanent link">&para;</a></h3>
 <p>iDempiere's Manufacturing BOM tables (<code>M_BOM</code>, <code>M_BOM_Line</code>, <code>M_Product</code>, <code>C_DocType</code>, <code>C_Order</code>) already encode the relationships between finished goods, sub-assemblies, and raw materials. A building is just a very large finished good.</p>
 <blockquote>
-<p><strong>Deep dive:</strong> Schema details → <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a> | iDempiere mapping → <a href="../SystemContract/"><code>SystemContract.md</code></a></p>
+<p><strong>Deep dive:</strong> Schema details → <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a> | iDempiere mapping → <a href="../MANIFESTO/"><code>MANIFESTO.md</code></a></p>
 </blockquote>
 <hr />
 <h2 id="2-setting-up-your-workshop">§2 — Setting Up Your Workshop<a class="headerlink" href="#2-setting-up-your-workshop" title="Permanent link">&para;</a></h2>
@@ -5380,7 +5320,7 @@ VERIFIED ✓ (or drift detected ✗)
 </tr>
 <tr>
 <td>See the ERP-to-construction mapping</td>
-<td><a href="../SystemContract/"><code>SystemContract.md</code></a></td>
+<td><a href="../MANIFESTO/"><code>MANIFESTO.md</code></a></td>
 </tr>
 <tr>
 <td>Learn the 4-DB schema in detail</td>

@@ -16,7 +16,7 @@
         <link rel="prev" href="../2D_LAYOUT/">
       
       
-        <link rel="next" href="../ProjectOrderBlueprint/">
+        <link rel="next" href="../AUDIT_S51_FOCUSED/">
       
       
         
@@ -259,13 +259,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../SystemContract/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
     
   
-  Architecture
+  Specs
 
         </a>
       </li>
@@ -677,8 +677,6 @@
       
         
       
-        
-      
     
     
     
@@ -702,7 +700,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Specs
   
 
     
@@ -718,39 +716,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Specs
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SystemContract/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    System Contract
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -766,7 +736,7 @@
   <span class="md-ellipsis">
     
   
-    BOM Compilation (Master Spec)
+    BOM Compilation (Core Spec)
   
 
     
@@ -1945,8 +1915,6 @@
       
         
       
-        
-      
     
     
     
@@ -2128,10 +2096,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-debt" class="md-nav__link">
+  <a href="#known-debt-gap-register" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Known Debt
+        Known Debt &amp; Gap Register
       
     </span>
   </a>
@@ -2164,34 +2132,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Order Blueprint
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -3013,10 +2953,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#known-debt" class="md-nav__link">
+  <a href="#known-debt-gap-register" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Known Debt
+        Known Debt &amp; Gap Register
       
     </span>
   </a>
@@ -3067,7 +3007,7 @@
 
 <h1 id="action-roadmap-bim-intent-compiler">Action Roadmap — BIM Intent Compiler<a class="headerlink" href="#action-roadmap-bim-intent-compiler" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Governing document:</strong> <a href="../SystemContract/">SystemContract.md</a> — entity registry,
+<p><strong>Governing document:</strong> <a href="../MANIFESTO/">MANIFESTO.md</a> — entity registry,
 transaction catalogue, three-concern matrix, gap register.</p>
 <p><strong>Implementation plan:</strong> <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §14</a> —
 Sessions 0, A-E with gates, witnesses, failure criteria.</p>
@@ -3091,7 +3031,7 @@ Sessions 0, A-E with gates, witnesses, failure criteria.</p>
 <tbody>
 <tr>
 <td><strong>Understand the system</strong></td>
-<td><a href="../SystemContract/">SystemContract.md</a> §1-§2 (recursive principle, entity registry)</td>
+<td><a href="../MANIFESTO/">MANIFESTO.md</a> §1-§2 (recursive principle, entity registry)</td>
 </tr>
 <tr>
 <td><strong>Find a spec</strong></td>
@@ -3123,7 +3063,7 @@ Sessions 0, A-E with gates, witnesses, failure criteria.</p>
 </tr>
 <tr>
 <td><strong>Check what's broken</strong></td>
-<td>§Known Debt below + <a href="../SystemContract/">SystemContract.md §10</a> (gap register)</td>
+<td>§Known Debt below + <a href="SystemContract.md">SystemContract.md §10</a> (gap register)</td>
 </tr>
 <tr>
 <td><strong>Run the pipeline</strong></td>
@@ -3131,7 +3071,7 @@ Sessions 0, A-E with gates, witnesses, failure criteria.</p>
 </tr>
 <tr>
 <td><strong>Understand ERP mapping</strong></td>
-<td><a href="../SystemContract/">SystemContract.md</a> (C_Order, three-concern)</td>
+<td><a href="../MANIFESTO/">MANIFESTO.md</a> (C_Order, three-concern)</td>
 </tr>
 <tr>
 <td><strong>See the schema</strong></td>
@@ -3323,64 +3263,81 @@ R-PROJ-3 (Session 0) must be fixed before C_Project work.</p>
 </tbody>
 </table>
 <hr />
-<h2 id="known-debt">Known Debt<a class="headerlink" href="#known-debt" title="Permanent link">&para;</a></h2>
-<p><em>See also <a href="../SystemContract/">SystemContract.md §10</a> for system-level gaps (GAP-SC-1..8).</em></p>
+<h2 id="known-debt-gap-register">Known Debt &amp; Gap Register<a class="headerlink" href="#known-debt-gap-register" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>#</th>
-<th>Item</th>
-<th>Severity</th>
+<th>Area</th>
+<th>What's Missing</th>
 <th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>R-PROJ-3</td>
-<td>C_Order_ID = docTypeId collision — blocks multi-order</td>
-<td><strong>BLOCKING</strong></td>
-<td><strong>DONE</strong> (Session 0, GAP-SC-8 CLOSED)</td>
+<td><strong>GAP-SC-1</strong></td>
+<td>ASI mutation → recompile</td>
+<td>Which verbs re-fire? Transaction flow spec</td>
+<td>HIGH (blocks viewport drag)</td>
 </tr>
 <tr>
-<td>S60-6</td>
-<td>M_Product_Category rename</td>
-<td>HIGH</td>
-<td><strong>DONE</strong> (S68 — all docs + schema renamed)</td>
+<td><strong>GAP-SC-2</strong></td>
+<td>Freehand drawing → BOM</td>
+<td>How viewport geometry becomes a BOM mutation</td>
+<td>MED (blocks freehand mode)</td>
+</tr>
+<tr>
+<td><strong>GAP-SC-3</strong></td>
+<td>Site grid generation</td>
+<td>Subdivide site_aabb into plots using <a href="../PDF_TERRAIN/">terrain</a> topology</td>
+<td>HIGH (blocks C_Project)</td>
+</tr>
+<tr>
+<td><strong>GAP-SC-4</strong></td>
+<td>Rule pack versioning</td>
+<td>Effectivity dates, version precedence. pack_id tagging done (S67c)</td>
+<td>MED (partially addressed)</td>
+</tr>
+<tr>
+<td><strong>GAP-SC-5</strong></td>
+<td>Order inheritance conflict</td>
+<td>Linear chain resolved by depth</td>
+<td><strong>CLOSED</strong> (S68e)</td>
+</tr>
+<tr>
+<td><strong>GAP-SC-6</strong></td>
+<td>Compile-once-copy-many</td>
+<td>Performance optimization for reference class (qty=180)</td>
+<td>MED (blocks C_Project at scale)</td>
+</tr>
+<tr>
+<td><strong>GAP-SC-7</strong></td>
+<td>Output consolidation</td>
+<td>Per-building vs consolidated output.db for C_Project</td>
+<td>MED (blocks C_Project)</td>
+</tr>
+<tr>
+<td><strong>GAP-SC-8</strong></td>
+<td>C_Order_ID collision</td>
+<td>BomDropper parameterized with explicit orderId</td>
+<td><strong>CLOSED</strong> (Session 0)</td>
 </tr>
 <tr>
 <td>CP-2</td>
-<td>DX MIRROR verb + structured BOM</td>
-<td>MED</td>
-<td>DEFERRED — quality-of-proof, not correctness</td>
+<td>DX MIRROR verb</td>
+<td>Structured BOM for mirrored pair</td>
+<td>DEFERRED</td>
 </tr>
 <tr>
 <td>R22</td>
-<td>Extract I_Element_Connectivity</td>
-<td>MED</td>
-<td>TODO — enables future MEP routing</td>
-</tr>
-<tr>
-<td>BBC-001</td>
-<td>CLUSTER expandCluster() entry validation</td>
-<td>LOW</td>
-<td>BACKLOG</td>
-</tr>
-<tr>
-<td>BBC-002</td>
-<td>BomValidator verb fidelity in compliance report</td>
-<td>LOW</td>
-<td>BACKLOG</td>
-</tr>
-<tr>
-<td>R19</td>
-<td>~~Update SystemContract.md dual architecture~~</td>
-<td>DOC</td>
-<td><strong>MOOT</strong> — ConstructionAsERP.md archived (S67)</td>
+<td>I_Element_Connectivity</td>
+<td>Extract linking table from IfcRelConnectsElements</td>
+<td>TODO</td>
 </tr>
 <tr>
 <td>VPA-002</td>
-<td>ROUTE per-leg step-uniformity (533 instances)</td>
-<td>LOW</td>
+<td>ROUTE step-uniformity</td>
+<td>533 instances with non-uniform per-leg steps</td>
 <td>KNOWN LIMIT</td>
 </tr>
 </tbody>

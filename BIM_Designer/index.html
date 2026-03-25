@@ -259,13 +259,13 @@
     
     
       <li class="md-tabs__item">
-        <a href="../SystemContract/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
     
   
-  Architecture
+  Specs
 
         </a>
       </li>
@@ -677,8 +677,6 @@
       
         
       
-        
-      
     
     
     
@@ -702,7 +700,7 @@
   <span class="md-ellipsis">
     
   
-    Architecture
+    Specs
   
 
     
@@ -718,39 +716,11 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Architecture
+    Specs
   
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../SystemContract/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    System Contract
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -766,7 +736,7 @@
   <span class="md-ellipsis">
     
   
-    BOM Compilation (Master Spec)
+    BOM Compilation (Core Spec)
   
 
     
@@ -3650,8 +3620,6 @@
       
         
       
-        
-      
     
     
     
@@ -3712,34 +3680,6 @@
     
   
     Action Roadmap
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Project Order Blueprint
   
 
     
@@ -6179,10 +6119,10 @@
 
 <h1 id="bim-designer-gui-architecture-from-existing-infrastructure">BIM Designer — GUI Architecture from Existing Infrastructure<a class="headerlink" href="#bim-designer-gui-architecture-from-existing-infrastructure" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../SystemContract/">SystemContract</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <p><strong>Version:</strong> 1.1 (2026-03-17)
-<strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a>, <a href="../SystemContract/">SystemContract.md</a>, <a href="../BIM_COBOL/">BIM_COBOL.md</a></p>
+<strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a>, <a href="../MANIFESTO/">MANIFESTO.md</a>, <a href="../BIM_COBOL/">BIM_COBOL.md</a></p>
 <blockquote>
 <p>The compiler already knows how to build. The GUI is a parameter chooser that
 triggers compilation and shows the result. Every concept the designer needs
@@ -6762,7 +6702,7 @@ to GUI chooser panels:</p>
 options from the catalog automatically.</p>
 <hr />
 <h2 id="3-three-concern-lock-gui-safety">3. Three-Concern Lock → GUI Safety<a class="headerlink" href="#3-three-concern-lock-gui-safety" title="Permanent link">&para;</a></h2>
-<p>The three-concern lock (<a href="../SystemContract/">SystemContract.md §4</a>)
+<p>The three-concern lock (<a href="../MANIFESTO/">MANIFESTO.md §4</a>)
 prevents the GUI from corrupting spatial data:</p>
 <table>
 <thead>
@@ -8070,7 +8010,7 @@ Real projects would use the full component_library.db catalog.</p>
 <hr />
 <p><em>Related docs:
 <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a> (compilation method, tack convention) |
-<a href="../DATA_MODEL/">DATA_MODEL.md</a> (4-DB architecture) + <a href="../SystemContract/">SystemContract.md</a> (three-concern) |
+<a href="../DATA_MODEL/">DATA_MODEL.md</a> (4-DB architecture) + <a href="../MANIFESTO/">MANIFESTO.md</a> (three-concern) |
 <a href="../BIM_COBOL/">BIM_COBOL.md</a> (verb language spec) |
 <a href="../DocValidate/">DocValidate.md</a> (validation engine, building codes, jurisdiction) |
 <a href="../SourceCodeGuide/">SourceCodeGuide.md</a> (pipeline, DAO pattern, EntityType) |
@@ -10399,13 +10339,18 @@ Implementation target: G-8 or parallel track.</p>
 <p><em>References:
 <a href="../DocValidate/">DocValidate.md</a> (validation rules, AD_Val_Rule schema) |
 <a href="../BlenderBridge/">BlenderBridge.md</a> (incremental viewport, delta applicator) |
-<a href="../SystemContract/">SystemContract.md</a> (C_Order, iDempiere patterns) |
+<a href="../MANIFESTO/">MANIFESTO.md</a> (C_Order, iDempiere patterns) |
 <a href="../SourceCodeGuide/">SourceCodeGuide.md</a> (pipeline, DAO pattern, EntityType) |
 <a href="../InfrastructureAnalysis/">InfrastructureAnalysis.md</a> (bridge/road/rail domain mapping) |
 <a href="../StrategicIndustryPositioning/">StrategicIndustryPositioning.md</a> (market analysis, paradigm shift) |
 Federation addon: <code>/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/</code></em></p>
 <hr />
 <h2 id="20-html-ui-4d5d6d7d8d-data-driven-not-paint-driven">20. HTML UI — 4D/5D/6D/7D/8D (Data-Driven, Not Paint-Driven)<a class="headerlink" href="#20-html-ui-4d5d6d7d8d-data-driven-not-paint-driven" title="Permanent link">&para;</a></h2>
+<figure style="text-align: center; margin: 16px 0;">
+  <img src="assets/images/HTMLYAML.png" alt="BIM Designer HTML UI — BOM tree, DocAction buttons, discipline breakdown" width="680">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">HTML UI (port 9878). BOM tree, DocAction lifecycle, discipline breakdown — the ERP layer alongside Bonsai's 3D viewport.</figcaption>
+</figure>
+
 <h3 id="201-why-html-not-blender-panels">20.1 Why HTML, Not Blender Panels<a class="headerlink" href="#201-why-html-not-blender-panels" title="Permanent link">&para;</a></h3>
 <p>Bonsai's built-in 4D scheduling (<code>IFC5D</code> sequence module) requires manual task
 creation: the user draws a Gantt chart, links tasks to elements by hand, and

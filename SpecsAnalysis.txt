@@ -243,3 +243,88 @@ and cross-doc inconsistency. Walk: index.md → MANIFESTO → deeper specs.
      Need: rewrite §1.7-1.9 to match post-S61 architecture.
   c. doc_base_type in IFC_ONBOARDING (2 refs, already marked deprecated).
   **Action:** Dedicated doc-cleanup session for these 3 specs.
+
+============================================================
+PART 4 — TRIM Verb + Roof Swap Gap Analysis (2026-03-26)
+============================================================
+Investigating whether TRIM WALLS TO ROOF fires in the SH and DM
+compiler flows, and whether OrderLine replace (roof swap) is spec'd.
+
+20. SH ROOF IS CURVED — DSL SAYS FLAT (MISMATCH)
+----------------------------------------------------
+  dsl_sh.bim declares `ROOF pitch:0deg overhang:600mm` (flat).
+  IFC source: `Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr` (.NOTDEFINED.).
+  ACTUAL: component_library.db product LOD is a curved roof mesh.
+  The library geometry is the truth — the DSL pitch:0deg is wrong or
+  irrelevant since the mesh itself defines the shape.
+
+  **Gap:** TrimWallsToRoofVerb tent model only handles FLAT and PITCHED
+  (linear slope). A curved roof needs a different surface estimation
+  (e.g. arc interpolation from AABB, or sample Z from mesh vertices).
+  Current verb would treat the curved roof AABB as auto-detect pitched
+  (tent model fallback), which is an approximation, not correct for curves.
+
+  **Action:** Either (a) add curved-roof surface model to TrimWallsToRoofVerb,
+  or (b) accept tent-model approximation and document the limitation.
+
+21. TRIM NOT WIRED IN SH OR DM PIPELINE
+------------------------------------------
+  Ifc4_SampleHouse.bimcobol has only `PLACE BOM SH` — no TRIM line.
+  No .bimcobol exists for DemoHouse.
+  TrimWallsToRoofVerb exists and is tested (W-TRIM-1..6) but as
+  standalone — never called from the actual compilation pipeline.
+
+  DemoHouseAnalysis.md §3 Stage 6 says "VerbStage: TRIM WALLS TO ROOF
+  fires here" — but this is aspirational spec, not current state.
+  The .bimcobol script would need `TRIM WALLS TO ROOF` added, or
+  M_AttributeSet_Verb dispatch (BIM_COBOL.md §17.3) must be implemented.
+
+  **Action:** Add `TRIM WALLS TO ROOF` to Ifc4_SampleHouse.bimcobol
+  and create DemoHouse_2BR.bimcobol with the same. Or implement
+  M_AttributeSet_Verb auto-dispatch (Phase F, P4 priority).
+
+22. ORDERLINE REPLACE (ROOF SWAP) — SPEC EXISTS, NOT FULLY WIRED
+-------------------------------------------------------------------
+  BBC.md §Selection describes Radio Group: "Roof type: flat OR pitched
+  — pick one" as an exclusive swap pattern.
+  DemoHouseAnalysis.md §1 documents 3-OrderLine scenario:
+    OL-1: BOM Drop BUILDING_SH_STD (55 elements)
+    OL-2: Swap roof SH_ROOF_STR → FK_DG_STR (-2 flat +42 pitched)
+    OL-3: Add FP sprinklers (per-room)
+  swapProduct() API exists: DesignerAPIImpl.java:1634 →
+    UPDATE C_OrderLine SET family_ref=?, M_Product_ID=? WHERE id=?
+  TestArchitecture.md:1150 shows pseudocode:
+    swapProduct(roofId, "FK_DG_STR") → OrderLine.family_ref updated.
+
+  **Gap:** The swap fires correctly (product replaced on OrderLine),
+  but TRIM does not fire after the swap because it's not wired (see §21).
+  The glass/curtain wall on SH west face (IfcCurtainWall) would need
+  trimming against the swapped pitched/curved roof — this is the exact
+  scenario W-TRIM-5 tests synthetically but never runs end-to-end.
+
+  **Action:** End-to-end witness needed: BOM Drop SH → swap roof →
+  compile → TRIM fires → curtain wall trimmed. This closes the loop
+  between §21 (wiring) and §22 (swap scenario).
+
+23. DSL (.bim) REDUNDANCY WITH YAML
+--------------------------------------
+  classify_sh.yaml serves as C_Order/C_OrderLine stand-in (product,
+  BOM IDs, rooms, AABB, origin). dsl_sh.bim defines GRID, STOREY,
+  ROOF, room bounds, and element placement (WINDOW, DOOR directives).
+
+  Current split:
+    YAML = WHAT (order: which building, which rooms, BOM references)
+    DSL  = WHERE (grid spacing, storey heights, room bounds, openings)
+
+  These overlap: YAML has aabb_mm + origin_m per room (WHERE data),
+  while DSL has GRID+bounds (also WHERE data). For generative buildings
+  (DM), YAML alone has all the data — dsl_dm.bim adds nothing beyond
+  room names that YAML already declares.
+
+  **Question for ActionRoadmap review:** Can DSL be retired in favour
+  of enriched YAML? Or does DSL serve a role that YAML cannot (e.g.
+  GRID axis algebra, parametric room bounds, WINDOW/DOOR directives)?
+  For extracted buildings (SH, FK), the DSL captures IFC-derived layout
+  that YAML doesn't replicate. For generative buildings (DM), DSL is
+  redundant. Decision needed: converge on one format or keep both with
+  clear roles.
