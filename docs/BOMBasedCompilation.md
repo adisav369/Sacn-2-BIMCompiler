@@ -1,11 +1,32 @@
-# BOM-Based Compilation — Construction as Manufacturing
+# BOM-Based Compilation — The Master Spec
 
-> **Foundation:** [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+> *If you can bill it, you can build it. If you can BOM it, you can compile it.*
 
-*If you can bill it, you can build it. If you can BOM it, you can compile it.*
+A [Bill of Materials](https://en.wikipedia.org/wiki/Bill_of_materials) is a
+recipe: one parent product, N child products, each with a quantity. Each child
+can itself be a BOM — a building contains floors, a floor contains rooms, a
+room contains furniture, [recursively](https://wiki.idempiere.org/en/Manufacturing#Bill_of_Materials).
+Each level is atomic and self-contained.
 
-> **Core thesis:** A building is a manufactured product. Its Bill of Materials IS the
-> building. See **[MANIFESTO.md](MANIFESTO.md)** for the full ERP world view.
+This document specifies how that recursive BOM model compiles a building.
+Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
+
+**Quick navigation:**
+
+| Section | What it covers |
+|---------|---------------|
+| [§1 Entity Mapping](#1-idempiere-entity-mapping) | iDempiere tables → BIM Compiler equivalents |
+| [§2 Compilation Model](#2-the-gospel-principle) | How BOM recipes become placed elements |
+| [§3 Compilation Modes](#3-two-compilation-modes) | Extracted (Rosetta Stone) vs Generative |
+| [§4 Tack Convention](#4-tack-convention-the-spatial-handshake) | The dx/dy/dz spatial offset model |
+| [§5 Pipeline](#5-the-9-stage-pipeline) | 9-stage compilation pipeline |
+| [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
+| [§7 Verification](#7-verification-the-rosetta-stone-gate) | 6 mathematical gates |
+| [§9 Data Flywheel](#9-the-data-flywheel-emergent-intelligence) | How 35 buildings teach the compiler |
+| [§10 End State](#10-the-compilation-end-state) | What the compiled output looks like |
+
+**Related specs:**
+[DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 ---
 
@@ -14,15 +35,18 @@
 | Manufacturing concept | Construction equivalent |
 |----------------------|----------------------|
 | **M_Product** (product catalog) | Building element (wall, door, pipe) or assembly (floor, room SET, building). IsBOM=Y → has M_BOM children |
-| **M_Product_Category** | Product classification: ARC, STR, FP, MEP, FURNITURE, etc. Replaces M_BomCategory |
+| **M_Product_Category** | Product classification: ARC, STR, FP, MEP, FURNITURE, etc. |
 | **M_BOM** (bill of materials) | Assembly recipe attached to a product. A product IS a BOM when IsBOM=Y |
 | **M_BOM_Line** (BOM child) | Recipe line: child product + qty + relative offset (dx/dy/dz). NOT a per-instance placement |
 | **C_Order** (work order) | Construction project for a specific building. ONE doc type: "Construction Order" |
 | **C_OrderLine** (order line) | Instance of a product in this project. BOM Drop explodes parent → child lines |
 | **C_DocType** (document type) | "Construction Order" — one only. Classification metadata, NOT a compilation driver |
 | **CO_EmptySpace** (warehouse slot) | Compiler-internal spatial cache — WHERE = M_BOM_Line dx/dy/dz |
-| **PP_Order_Node** (operation) | Verb execution record (audit trail) |
+| **[AD_ChangeLog](https://wiki.idempiere.org/en/AD_ChangeLog)** (audit trail) | Full provenance — every PLACE, DELETE, MOVE, RESIZE logged with before/after state. UNDO/REDO stack |
 | **C_Campaign** (marketing) | Design theme (Bali, Scandinavian, Industrial) |
+| **[C_Project](ProjectOrderBlueprint.md#2-c_project-site-as-bom)** (project) | Site development — groups C_Orders under one project (budget, schedule, milestones) |
+| **[C_Location](https://wiki.idempiere.org/en/C_Location)** (address/coordinates) | Plot location — independent dimension linking site coordinates to C_Order or C_Project |
+| **[M_Locator](https://wiki.idempiere.org/en/M_Locator)** (aisle/lot/bin) | Plots akin to warehousing ALB (Aisle/Lot/Bin) but in [terrain](PDF_TERRAIN.md) context — with [2D layout](2D_LAYOUT.md) capability |
 | **EntityType** (D/U/A) | Dictionary=shipped catalog, User=verb-created, Application=custom |
 
 The BOM hierarchy maps directly to the building hierarchy:
@@ -923,7 +947,7 @@ C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).
 
 ## 6. BIM COBOL — Verb-Driven BOM Mutation
 
-The GUI emits BIM COBOL verbs, never direct SQL. 63 verbs in 5 tiers:
+The GUI emits BIM COBOL verbs, never direct SQL. 64 verbs in 5 tiers:
 
 | Tier | Verbs | Purpose |
 |------|-------|---------|
@@ -1330,8 +1354,20 @@ have the form that `extract.py` actually emits — check extraction output, not 
 
 ---
 
-*Detailed architecture: [`SystemContract.md`](SystemContract.md) |
-BOM dimensions: [`SystemContract.md`](SystemContract.md) Appendix A |
-Assembly hierarchy: [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
+---
+
+## Why the ERP Concept Is Most Powerful
+
+This spec covers the core compilation model — how BOMs become buildings.
+But the ERP paradigm extends far beyond compilation: exception-based ordering,
+order inheritance, rule packs, C_Project site management, and the full
+4D–8D dimension stack.
+
+**Read next:** [**Project Order Blueprint**](ProjectOrderBlueprint.md) — the extended spec
+that shows where the Construction Order goes when applied to real construction projects.
+
+---
+
+*Assembly hierarchy: [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 Terminal ERP model: [`TerminalAnalysis.md`](TerminalAnalysis.md) §ERP Model Architecture |
 Action roadmap: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md)*

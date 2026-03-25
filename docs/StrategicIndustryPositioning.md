@@ -33,7 +33,7 @@ tool can read it.
 in developed markets (UK, Germany, Nordics) driven by government mandates. The
 [global BIM market reaches $15.4B by 2030](https://www.marketsandmarkets.com/Market-Reports/building-information-modeling-market-95037387.html)
 (CAGR 11.3%). The [digital twin market hits $384.8B by 2034](https://www.fortunebusinessinsights.com/digital-twin-market-106246)
-(CAGR 35.4%). All require a BIM-to-ERP bridge that nobody currently provides.
+(CAGR 35.4%). All require a deterministic BIM-to-ERP bridge — spatial MRP with verified placement — that is not yet widely available.
 
 ---
 
@@ -111,7 +111,7 @@ This is the same relationship as CAD vs. CAM in manufacturing: SolidWorks
 designs the part, the G-code compiler produces machine instructions. Nobody
 expects SolidWorks to run the CNC machine.
 
-### Spatial MRP — Our Unique Position
+### Spatial MRP — A Differentiated Approach
 
 **Spatial MRP** = Material Requirements Planning extended with spatial
 intelligence:
@@ -340,7 +340,7 @@ itself after every edit.**
 │  │                                                    │  │
 │  │  IFC → Extract → Classify → BOM → Compile → Prove │  │
 │  │  48,428 elements → 700 BOM lines → C_Order        │  │
-│  │  63 verbs · 196 witnesses · G1-G6 proven           │  │
+│  │  64 verbs · 196 witnesses · G1-G6 proven           │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │                   ERP / PROCUREMENT                     │

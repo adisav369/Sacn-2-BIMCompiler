@@ -3,6 +3,9 @@
 ## PRIME RULE
 **EXTRACT OR COMPILE ONLY.** Query the database. Copy patterns you find. Compute positions via verbs. Never invent.
 
+## BOM PRINCIPLE
+A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
+
 ## Session Startup
 1. Read this file
 2. Read PROGRESS.md §Current State (gate table, what's next)

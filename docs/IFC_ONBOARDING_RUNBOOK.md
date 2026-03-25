@@ -459,6 +459,6 @@ Review and adjust rule IDs before applying. See [WorkOrderGuide.md](WorkOrderGui
 
 > **Further reading:**
 > [WorkOrderGuide.md](WorkOrderGuide.md) — field dictionary, drift guards, what NOT to do |
-> [BIM_COBOL.md](BIM_COBOL.md) — verb catalog (63 verbs) |
+> [BIM_COBOL.md](BIM_COBOL.md) — verb catalog (64 verbs) |
 > [TestArchitecture.md](TestArchitecture.md) — G1-G6 gate definitions |
 > [ACInstituteAnalysis.md](ACInstituteAnalysis.md) — worked example (699 elements, 5 storeys)

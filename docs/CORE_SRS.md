@@ -1,5 +1,5 @@
 # CORE SRS — BIM Intent Compiler Platform
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 | **Date:** 2026-03-19
 **Scope:** Scale research, reporting engine, industry gap closure, moat strategy
@@ -435,7 +435,7 @@ generalises from TE-specific to model-agnostic (accept any `_extracted.db`).
 
 #### Moat 7: Verb Grammar as Knowledge Capture
 
-63 verbs encode construction patterns as executable code. Each verb captures
+64 verbs encode construction patterns as executable code. Each verb captures
 engineering knowledge that took decades to formalise. TILE captures sleeper
 spacing. ROUTE captures pipe runs. CLUSTER captures equipment groups.
 New verbs (ZONE, STACK, BORE, TAPER) capture domain-specific patterns.

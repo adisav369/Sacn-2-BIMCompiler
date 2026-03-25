@@ -1,8 +1,8 @@
 # DocValidate — Construction Validation Engine
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-18)
-**Depends on:** [SystemContract.md](SystemContract.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md)
+**Depends on:** [MANIFESTO.md](MANIFESTO.md), [BIM_Designer.md](BIM_Designer.md) §4/§9, [DISC_BOM_DESIGN.md](DISC_BOM_DESIGN.md)
 
 *iDempiere's `IDocActionInterceptor` / `ModelValidator` architecture applied to
 BIM placement compliance, clash detection, and building code enforcement.*

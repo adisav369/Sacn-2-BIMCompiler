@@ -1,5 +1,5 @@
 # BIM Designer — User Guide
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 (2026-03-23, session 60)
 **Status:** Draft — updated each session as features are built and tested.
@@ -31,7 +31,7 @@ BIM Designer is Item A of the IfcOpenShell Federation Suite. It adds
 - **Reports** — 4D schedule, 5D cost, 6D carbon, 7D facility management (via Back Office)
 
 The addon is a thin Python layer. All logic lives in the Java server.
-**35 Rosetta Stone buildings** prove the pipeline: SH (55), FK (82), IN (699), DX (1099), TE (48,428 elements). 22 ALL GREEN. 392/392 tests GREEN.
+**35 Rosetta Stone buildings** prove the pipeline: SH (55), FK (82), IN (699), DX (1099), TE (48,428 elements). 19 ALL GREEN. 408+ tests GREEN.
 
 ```
 User clicks button in Blender
@@ -131,7 +131,7 @@ User clicks button in Blender
 cd /home/red1/bim-compiler
 mvn compile -q                    # Compile all modules (9 modules)
 mvn test -pl BIMBackOffice        # Back Office tests (5 tests)
-mvn test -pl BonsaiBIMDesigner    # Designer tests (248 tests)
+mvn test -pl BonsaiBIMDesigner    # Designer tests (408 tests)
 ```
 
 ### 3.3 Install the Blender Addon
@@ -582,7 +582,7 @@ Location: `BIMBackOffice/src/main/java/com/bim/backoffice/`
 
 ### 8.4 Test Files
 
-**BonsaiBIMDesigner** (248 tests, 25 test classes):
+**BonsaiBIMDesigner** (408 tests, 42 test classes):
 
 | Test | Witnesses | What |
 |------|-----------|------|
@@ -926,12 +926,12 @@ Full gap analysis: [S60_UI_ALIGNMENT_SPEC.md](archive/S60_UI_ALIGNMENT_SPEC.md) 
 
 ### Beta Readiness Checklist
 
-The engine is proven (392 tests GREEN, 35 Rosetta Stone buildings, 22 ALL GREEN).
-The Work Order path compiles end-to-end (W-WO-1). S60 ERP alignment in progress.
+The engine is proven (408+ tests GREEN, 35 Rosetta Stone buildings, 19 ALL GREEN).
+The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–S79).
 
 | Priority | Task | Status | Effort |
 |----------|------|--------|--------|
-| **1** | **S60 ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | IN PROGRESS | [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) |
+| **1** | **S60 ERP Model Alignment** — compiler walks C_OrderLine, not C_DocType | **DONE** (S60–S79) | [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) |
 | **2** | **Wire 4D-7D tabs to real DAO data** — ScheduleDAO/CostDAO/etc. already exist | NOT DONE | 1 session |
 | **3** | **Migrate federation operators to Java** — clash detection, BOQ, schedule | NOT DONE | Multi-session |
 | **4** | **DemoHouse UAT** — §30.4 end-to-end from either surface | NOT DONE | 1 session |
@@ -954,7 +954,7 @@ The Work Order path compiles end-to-end (W-WO-1). S60 ERP alignment in progress.
 | G-11 | Web UI Frontend (10 tabs) | **DONE** (s56, 21 tests) |
 | G-12 | BOM Drop + Work Order path | **DONE** (s59, W-WO-1 6/6 GREEN) |
 | G-13 | Bidirectional Sync (Bonsai ↔ HTML) | **DONE** (s57, SSE + pollCommands) |
-| G-14 | ERP Model Alignment (C_OrderLine path) | IN PROGRESS (s60) |
+| G-14 | ERP Model Alignment (C_OrderLine path) | **DONE** (S60–S79) |
 | BO-1 | Back Office print configurator | **DONE** (s39d, 5 witnesses) |
 | BO-2 | BIMEyes advisory + EYES integration | **DONE** (s50, 28 proofs) |
 | I-1..4 | Infrastructure Designer | **DONE** (snap, terrain, cut-fill) |

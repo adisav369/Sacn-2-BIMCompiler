@@ -1,5 +1,5 @@
 # BlenderBridge — Thin Pipe Between Compiler and Viewport
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.0 (2026-03-18)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §11-§12, IfcOpenShell Federation addon

@@ -1,6 +1,6 @@
 # Data Model — Per-Building BOM Dictionary from Rosetta Stones
 
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 **This specification governs the creation of `{PREFIX}_BOM.db` dictionaries.**
 Each building has its own BOM dictionary (`SH_BOM.db`, `DX_BOM.db`), reproduced from fresh
@@ -93,8 +93,8 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
 | bom_type | BUILDING | Fixed (abstract root — used for both buildings and infrastructure facilities) |
-| doc_base_type | RE / CO / IN | **Deprecated** — redundant with m_product_category_id (see §7 migration plan) |
-| doc_sub_type | SH / DX / BR / RD | **Deprecated** — redundant with building prefix/bom_id (see §7 migration plan) |
+| doc_base_type | RE / CO / IN | Legacy — superseded by m_product_category_id |
+| doc_sub_type | SH / DX / BR / RD | Legacy — superseded by building prefix |
 | m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification lives here |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
@@ -177,7 +177,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 ### C_DocType (6 rows — domain config)
 
-"Construction Order" — one document type. Classification lives on M_Product_Category, not here. Legacy columns (DocBaseType, DocSubType) exist but are deprecated (see §7 migration plan).
+"Construction Order" — one document type. Classification lives on [M_Product_Category](MANIFESTO.md#what-m_product_category-classification--ad_org-discipline), not here.
 
 > **RESOLVED (session 30, R27):** IFCtoBOM now writes C_DocType into `{PREFIX}_BOM.db`
 > during extraction. Shell injection removed from `run_RosettaStones.sh`.
@@ -188,8 +188,8 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 |--------|------|-------|
 | C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |
 | Name | TEXT | Display name |
-| DocBaseType | TEXT | **Deprecated** — RE/CO/IN. Redundant with M_Product_Category (see §7) |
-| DocSubType | TEXT | **Deprecated** — SH/DX/TB/TE/ST. Redundant with building prefix (see §7) |
+| DocBaseType | TEXT | Legacy — superseded by M_Product_Category |
+| DocSubType | TEXT | Legacy — superseded by building prefix |
 | ProjectName | TEXT | Building instance name |
 | DSLContent | TEXT | DSL template text |
 | OutputDbPath | TEXT | Output DB path |
@@ -201,7 +201,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 ### m_bom (BOM headers)
 
-2 selection dimensions: M_Product_Category + SpaceSize (AABB fit). Legacy columns doc_base_type/doc_sub_type exist but are deprecated (see §7).
+2 selection dimensions: [M_Product_Category](MANIFESTO.md#what-m_product_category-classification--ad_org-discipline) + SpaceSize (AABB fit).
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -210,7 +210,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 | bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
 | doc_base_type | TEXT | **Deprecated** — RE/CO/IN. Redundant with m_product_category_id (see §7) |
-| doc_sub_type | TEXT | **Deprecated** — SH/DX/TB/TE. Redundant with bom_id prefix (see §7) |
+| doc_sub_type | TEXT | Legacy — superseded by bom_id prefix |
 | origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
 | aabb_width_mm, aabb_depth_mm, aabb_height_mm | INTEGER | Envelope dimensions |
 | group_by | TEXT | Grouping key |
@@ -272,8 +272,8 @@ is expressed by the BOM tree (M_BOM → M_BOM_Line parent-child relationships), 
 the category table. To enforce swap-pool constraints, match `m_product_category_id` at
 the same BOM level — you never need to traverse a category tree.
 
-> **Note:** `Parent_Category_ID` was seeded in DV018 but is **DEPRECATED — to be dropped.**
-> It duplicates the BOM tree hierarchy. See §7.6 migration plan.
+> **Note:** `Parent_Category_ID` is legacy — the [BOM cascade](MANIFESTO.md#what-m_product_category-classification--ad_org-discipline)
+> already expresses hierarchy through M_BOM_Line parent-child relationships.
 
 117 rows total (DV018 migration). Representative categories:
 
@@ -503,7 +503,7 @@ carries classification at every level. C_DocType = ONE "Construction Order" (not
 | Doc | What to fix |
 |-----|------------|
 | **BOMBasedCompilation.md** | L44-55: C_DocType.DocBaseType analogy. L297: "DocBaseType on M_Product_Category". L1149-1186: YAML schema refs |
-| **SystemContract.md** | L63: C_DocType = "Building type classification" → "Construction Order". L434: "per DocBaseType + DocSubType" |
+| **MANIFESTO.md** | L63: C_DocType = "Building type classification" → "Construction Order". L434: "per DocBaseType + DocSubType" |
 | **DATA_MODEL.md** | §1.4: doc_base_type/doc_sub_type on m_bom. §2 C_DocType/m_bom schema. This section (§7) is the correction anchor |
 | **TerminalAnalysis.md** | L661-697: entire "DocBaseType — Real Semantic Work" section. M_Product_Category scoped by doc_type column |
 | **SourceCodeGuide.md** | L292: "DocBaseType=CO" skip logic. L589: C_DocType identity definition |
@@ -568,21 +568,22 @@ Renaming `ERP.db` → `ERP.db` affects:
 - Doc references across ~10 specs
 - Estimated total touchpoints: 40–60 (bounded task, separate session)
 
-<!-- Implementing SpecsAnalysis.txt §2 -->
-### 7.6 Migration Plan (follow-up sessions)
+### 7.6 Migration Status
 
-1. **Session N+1:** Add missing M_Product_Category rows to ERP.db (DV018 migration) — **DONE (117 rows)**
-2. **Session N+2:** Populate `m_product_category_id` on BUILDING BOMs (currently NULL where doc_base_type is set)
-3. **Session N+3:** Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)
-4. **Session N+4:** Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)
-5. **Session N+5:** Rename ERP.db → ERP.db + propagate all touchpoints
-6. **Session N+6:** Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map — replacing `bom_category` string proxy (per DISC_VALIDATION_DB_SRS.md §11.6.3)
-7. **Session N+7:** Retire `deriveDiscipline()` from compile path — extraction-only fallback (per DISC_VALIDATION_DB_SRS.md §11.6.3a)
-8. **Session N+8:** Drop `Parent_Category_ID` column from M_Product_Category — unnecessary invention. Hierarchy lives in M_BOM_Line, not in the category table. AD_Org.IsSummary handles discipline grouping (iDempiere-native).
-9. **Each session:** Propagate doc corrections to 1–2 specs from §7.2 list
+| Step | Task | Status |
+|------|------|--------|
+| 1 | M_Product_Category rows in ERP.db (DV018) | **DONE** — 117 rows (S75) |
+| 2 | Populate `m_product_category_id` on BUILDING BOMs | **DONE** — S75 backfill |
+| 3 | Java routing: doc_base_type → m_product_category_id | **DONE** — S77 (19 source + 12 test files) |
+| 4 | Deprecate doc_base_type/doc_sub_type columns | **DONE** — marked @Deprecated in schema |
+| 5 | Rename disc_validation.db → ERP.db | **DONE** — S76 (~100 files) |
+| 6 | AD_Org_ID FK replacing bom_category string | **DONE** — S78 (W009 migration) |
+| 7 | Retire deriveDiscipline() from compile path | **DONE** — S79 (resolveDiscipline replaces it, extraction-only fallback) |
+| 8 | Drop Parent_Category_ID column | PENDING — prompt 13 |
+| 9 | Drop vestigial TEXT discipline columns | PENDING — Step 6 cleanup |
 
 ---
 
 *Authoritative reference. See `BOMBasedCompilation.md` for tack convention and pipeline stages,
-`SystemContract.md` for the three-concern model (WHAT/HOW/WHERE),
+`MANIFESTO.md` for the three-concern model (WHAT/HOW/WHERE),
 `TheRosettaStoneStrategy.md` for verification strategy.*

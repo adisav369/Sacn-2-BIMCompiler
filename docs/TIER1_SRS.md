@@ -1,5 +1,5 @@
 # Tier 1 SRS — 4D, 5D, 6D, 7D, Audit Trail, 3D Native
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 | **Date:** 2026-03-20
 **Scope:** Six bounded items, +4 scorecard points (27→31/36) + live 4D/5D DAOs

@@ -1,5 +1,5 @@
 # BIM Back Office — User Guide
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 2.0 (2026-03-20, session 39d)
 **Module:** `BIMBackOffice` (`com.bim.backoffice`)
@@ -455,4 +455,4 @@ Run: `mvn test -pl BIMBackOffice`
 [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) (Bonsai client guide) |
 [INSTALLER_SPEC.md](INSTALLER_SPEC.md) (installer packaging) |
 [CORE_SRS.md](CORE_SRS.md) (report engine spec) |
-[SystemContract.md](SystemContract.md) (iDempiere mapping)*
+[MANIFESTO.md](MANIFESTO.md) (iDempiere mapping)*

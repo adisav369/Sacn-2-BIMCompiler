@@ -1273,7 +1273,7 @@ Session A provides:
 
 The 5 README commits (0822ce1..bf99c80) slimmed README from ~209 lines to 80 lines. Current state:
 
-- **Stats table accurate:** 35 buildings, 64 verbs, 2,475 products, 392 tests — all match PROGRESS.md
+- **Stats table accurate:** 35 buildings, 64 verbs, 2,475 products, 408+ tests — all match PROGRESS.md
 - **Quick Start works:** clone → compile → run gates → run tests
 - **Docs link correct:** points to https://red1oon.github.io/BIMCompiler/ (verified HTTP 200)
 - **YouTube link present:** walkthrough of Claude pair programming
@@ -1504,7 +1504,7 @@ explicitly deferred per the session prompt and Appendix J §J.3.
 references remained across 44 live docs.
 
 **Action taken (this session):**
-- Replaced all `[ConstructionAsERP](ConstructionAsERP.md)` foundation breadcrumbs → `[SystemContract](SystemContract.md)` (25 files)
+- Replaced all `[ConstructionAsERP](ConstructionAsERP.md)` foundation breadcrumbs → `[MANIFESTO](MANIFESTO.md)` (25 files)
 - Mapped deep section references to correct live targets: §1.1/§1.3/§1.4 → DATA_MODEL.md, §2/§3 → SystemContract.md, §11/Appendix A → BBC.md §1, §D.5 → ProjectOrderBlueprint.md (19 files)
 - Fixed INDEX.md: removed duplicate SystemContract entry from T1, added ConstructionAsERP to Archived table
 - Fixed BIM_COBOL.md: ADHistory.md/METADATA_DRIVEN_ARCHITECTURE.md refs → DocAction_SRS.md

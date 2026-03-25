@@ -1,5 +1,5 @@
 # Calibration SRS — DocEvent Generic vs Terminal Extracted
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-19, session 34 — §3.4 verdict rules, blocking vs advisory, GF exception)
 **Depends on:** [DocAction_SRS.md](DocAction_SRS.md) §1.3, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md)

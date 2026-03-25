@@ -24,9 +24,9 @@ March 2026
 
 Construction is the world's largest industry that still cannot answer a simple question deterministically: *given this building design, what exactly do I need to buy, where does each piece go, and can I prove it?*
 
-Design tools (Revit, ArchiCAD, Bonsai) produce geometry. ERP systems (SAP, Oracle, iDempiere) manage procurement. Between them sits a manual, error-prone gap where quantity surveyors extract Bills of Materials from drawings by hand. This gap costs the industry billions annually in rework, over-ordering, and undetected non-compliance.
+Design tools (Revit, ArchiCAD, Bonsai) produce geometry. ERP systems (SAP, Oracle, iDempiere) manage procurement. Between them sits a manual, error-prone gap where quantity surveyors extract Bills of Materials from drawings by hand. This gap is estimated to cost the industry billions annually in rework, over-ordering, and undetected non-compliance.
 
-The gap persists because design software treats buildings as geometry problems, while ERP treats products as data problems. Nobody has built the bridge — a deterministic compiler that reads one and writes the other.
+The gap persists because design software treats buildings as geometry problems, while ERP treats products as data problems. No widely-adopted open-source tool has built the bridge — a deterministic compiler that reads one and writes the other.
 
 This paper describes a working system that does exactly that.
 
@@ -90,7 +90,7 @@ These numbers are not cherry-picked. DX scores 7/10 because the MIRROR verb (for
 
 Every building mutation passes through a named, auditable verb. We call this **BIM COBOL** — not because it resembles COBOL syntax, but because it serves the same purpose: a domain-expert-readable language where a fire engineer can read `ROUTE SPRINKLERS SPACING 3000mm` and verify compliance without reading Java.
 
-63 verbs are implemented. The five that matter most:
+64 verbs are implemented. The five that matter most:
 
 | Verb | What It Does | Coverage |
 |------|-------------|----------|
@@ -108,7 +108,7 @@ Most BIM tools let users draw geometry directly. This system does the opposite: 
 
 **Architecture:** A TCP server (Java, port 9876) serves a Blender addon (Python) via ndjson protocol. The Blender side is deliberately thin — it renders what the compiler produces. All logic lives in Java. All data lives in SQLite. This is the "Java-smart, Python-dumb" principle (see `docs/BlenderBridge.md`).
 
-**What works today (248/248 tests passing, 25 test classes):**
+**What works today (408/414 tests passing, 42 test classes):**
 
 - **Snap-to-room placement** — user selects a product from the catalog, compiler validates it fits (dimensions, clearance, discipline rules) and places it at the correct tack offset
 - **Assembly builder** — layer-by-layer wall/roof/floor composition with thermal U-value calculation per BS EN ISO 6946. Swap a layer, and the parent AABB and U-value recalculate automatically (see `docs/ASSEMBLY_BUILDER_SRS.md`)
@@ -181,9 +181,9 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 | Component | LOC | Tests | Status |
 |-----------|-----|-------|--------|
 | DAGCompiler (9-stage pipeline) | ~5,000 | 58 tests (G1-G6 gates) | Production-grade for tested buildings |
-| BIM COBOL (verb engine) | ~3,000 | 27 tests | 63 verbs, 196 witnesses |
+| BIM COBOL (verb engine) | ~3,000 | 27 tests | 64 verbs, 196 witnesses |
 | IFCtoBOM (extraction pipeline) | ~3,000 | 10 tests | SH, DX migrated; TE transitioning |
-| BonsaiBIMDesigner (GUI server) | ~8,500 | 248 tests (25 classes) | Design mode functional |
+| BonsaiBIMDesigner (GUI server) | ~8,500 | 408 tests (42 classes) | Design mode functional |
 | BIMBackOffice (ERP reporting) | ~3,000 | 14 tests | Portfolio, 4D-7D, sessions |
 
 **What does not exist yet:**
@@ -232,7 +232,7 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 | `docs/BIM_Designer.md` | GUI architecture, compile-driven editing, generative path |
 | `docs/ASSEMBLY_BUILDER_SRS.md` | Layer-by-layer TACK, U-value calculation, 17 witnesses |
 | `docs/INFRA_DESIGNER_SRS.md` | Terrain snap, alignment model, cut-and-fill, 38 witnesses |
-| `docs/SystemContract.md` | iDempiere mapping, C_Order model, ERP pattern fidelity |
+| `docs/MANIFESTO.md` | iDempiere mapping, C_Order model, ERP pattern fidelity |
 | `docs/DocAction_SRS.md` | Document lifecycle (DR->IP->CO->AP), discipline routing |
 | `docs/DISC_VALIDATION_DB_SRS.md` | Three-database split, alias cascade, IFC version bridging |
 | `docs/CALIBRATION_SRS.md` | Rule prediction vs actual placement, ground truth metrics |

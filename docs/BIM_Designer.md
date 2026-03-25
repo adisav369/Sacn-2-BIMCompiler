@@ -1,8 +1,8 @@
 # BIM Designer — GUI Architecture from Existing Infrastructure
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.1 (2026-03-17)
-**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [SystemContract.md](SystemContract.md), [BIM_COBOL.md](BIM_COBOL.md)
+**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [MANIFESTO.md](MANIFESTO.md), [BIM_COBOL.md](BIM_COBOL.md)
 
 > The compiler already knows how to build. The GUI is a parameter chooser that
 > triggers compilation and shows the result. Every concept the designer needs
@@ -370,7 +370,7 @@ options from the catalog automatically.
 
 ## 3. Three-Concern Lock → GUI Safety
 
-The three-concern lock ([SystemContract.md §4](SystemContract.md))
+The three-concern lock ([MANIFESTO.md §4](MANIFESTO.md))
 prevents the GUI from corrupting spatial data:
 
 | Table | Concern | GUI access |
@@ -1022,7 +1022,7 @@ adapter, not a compiler.
 |-----------|----------|-----|
 | **Compilation** | `CompilationPipeline.run(BuildingEntry)` | Wraps the 9-stage pipeline via `BuildingRegistry.loadById()` → `CompilationPipeline.run()`. Same code path as `run_RosettaStones.sh` |
 | **Building discovery** | `BuildingRegistry.loadActive()` | Reads `C_DocType` from BOM.db — YAML-opaque. Adding a building type = adding BOM data, not code |
-| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 63 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
+| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 64 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
 | **Product catalog** | `component_library.db` via existing `compConn` pattern | Same connection pooling as the pipeline. No new DB access layer |
 | **Output writing** | `WriteStage` → `FederatedModel` schema | Same output.db schema that Bonsai's FederatedDBReader already reads |
 | **Data governance** | `EntityType` guards on PO layer | D (dictionary) = read-only, U (user) = mutable. Same guards as pipeline |
@@ -1312,7 +1312,7 @@ Real projects would use the full component_library.db catalog.
 
 *Related docs:
 [BOMBasedCompilation.md](BOMBasedCompilation.md) (compilation method, tack convention) |
-[DATA_MODEL.md](DATA_MODEL.md) (4-DB architecture) + [SystemContract.md](SystemContract.md) (three-concern) |
+[DATA_MODEL.md](DATA_MODEL.md) (4-DB architecture) + [MANIFESTO.md](MANIFESTO.md) (three-concern) |
 [BIM_COBOL.md](BIM_COBOL.md) (verb language spec) |
 [DocValidate.md](DocValidate.md) (validation engine, building codes, jurisdiction) |
 [SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |
@@ -3033,11 +3033,132 @@ Implementation target: G-8 or parallel track.
 *References:
 [DocValidate.md](DocValidate.md) (validation rules, AD_Val_Rule schema) |
 [BlenderBridge.md](BlenderBridge.md) (incremental viewport, delta applicator) |
-[SystemContract.md](SystemContract.md) (C_Order, iDempiere patterns) |
+[MANIFESTO.md](MANIFESTO.md) (C_Order, iDempiere patterns) |
 [SourceCodeGuide.md](SourceCodeGuide.md) (pipeline, DAO pattern, EntityType) |
 [InfrastructureAnalysis.md](InfrastructureAnalysis.md) (bridge/road/rail domain mapping) |
 [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) (market analysis, paradigm shift) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*
+
+---
+
+## 20. HTML UI — 4D/5D/6D/7D/8D (Data-Driven, Not Paint-Driven)
+
+<figure style="text-align: center; margin: 16px 0;">
+  <img src="assets/images/HTMLYAML.png" alt="BIM Designer HTML UI — BOM tree, DocAction buttons, discipline breakdown" width="680">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">HTML UI (port 9878). BOM tree, DocAction lifecycle, discipline breakdown — the ERP layer alongside Bonsai's 3D viewport.</figcaption>
+</figure>
+
+### 20.1 Why HTML, Not Blender Panels
+
+Bonsai's built-in 4D scheduling (`IFC5D` sequence module) requires manual task
+creation: the user draws a Gantt chart, links tasks to elements by hand, and
+plays an animation. It is **painting** — the schedule exists because the user
+typed it, not because the model implies it.
+
+Our approach is the opposite. The [BOM tree](BOMBasedCompilation.md) already
+encodes construction precedence — footings before columns, columns before beams,
+beams before slabs, MEP after structure. The 4D schedule is a
+[topological sort](https://en.wikipedia.org/wiki/Topological_sorting) of that
+tree. It generates itself. The same compiled [output.db](BOMBasedCompilation.md)
+that powers 3D rendering also powers scheduling, costing, carbon, and facility
+management — as queries, not features.
+
+This belongs in the **HTML UI** (port 9878), not in Blender panels, because:
+
+- **Multi-stakeholder** — the project manager, QS, sustainability officer don't
+  install Blender. They open a browser.
+- **C_Order lifecycle** — [DocAction](DocAction_SRS.md) (Draft → Approve →
+  Complete) is an ERP workflow, not a 3D viewport operation.
+- **Cross-building** — [C_Project](ProjectOrderBlueprint.md#2-c_project-site-as-bom)
+  aggregates 200 buildings on one dashboard. Blender is single-scene.
+- **Real-time update** — HTML reloads from output.db on each compile. No manual
+  re-linking.
+
+### 20.2 4D — Auto-Generated Construction Schedule
+
+**Source:** [output.db](BOMBasedCompilation.md) compiled elements +
+`CONSTRUCTION_SEQUENCE_RULES` (IFC class → phase → predecessors)
+
+| Feature | Implementation |
+|---------|---------------|
+| **Gantt chart** | Auto-generated from BOM precedence. JS library ([Frappe Gantt](https://frappe.io/gantt) or equivalent) |
+| **Phases** | Substructure → Superstructure → MEP Rough-in → Architecture → Finishes → Commissioning |
+| **Duration** | Element quantity × labor productivity rates (CIDB Malaysia 2024) |
+| **Predecessors** | Implicit from BOM tree: parent completes before children start |
+| **Per-storey** | Each storey is a phase group — bottom-up construction sequence |
+| **Animation** | Optional: push phase timestamps to Bonsai timeline via [webui_sync](BONSAI_EXTENSIONS.md) |
+
+**How it differs from Bonsai 4D:**
+
+| | Bonsai IFC5D | BIM Compiler HTML |
+|---|---|---|
+| Task creation | Manual — user creates tasks | **Auto** — BOM tree implies sequence |
+| Precedence | Manual — user links tasks | **Auto** — IFC class → phase → predecessors |
+| Duration | Manual — user enters days | **Calculated** — qty × productivity rate |
+| Cost link | None — separate workflow | **Integrated** — click phase → see 5D breakdown |
+| Multi-building | Single file | **C_Project** — 200 buildings, one Gantt |
+| Data source | IFC file (re-link on change) | **output.db** (regenerates on compile) |
+
+### 20.3 5D — Cost Breakdown (Integrated with 4D)
+
+**Source:** output.db elements × [M_PriceList](https://wiki.idempiere.org/en/M_PriceList)
+rates from component library
+
+| Feature | Implementation |
+|---------|---------------|
+| **3-component cost** | Material + Labour + Equipment per element type |
+| **Rates** | CIDB Malaysia 2024 productivity data (extensible per jurisdiction) |
+| **Grouping** | By discipline, by storey, by phase, by element type |
+| **Phase cost** | Each 4D phase shows its total cost — schedule and budget in one view |
+| **Variance** | Base BOM cost vs exception order cost (thin order delta) |
+| **Export** | Excel, CSV, JSON (iDempiere REST target: Phase H) |
+
+**The ERP insight:** 5D is not a separate tool. It is `SUM(price × qty)` grouped
+by whatever dimension the user wants — phase (4D), discipline (AD_Org), storey,
+element type. One query, many views. This is what [M_PriceList](https://wiki.idempiere.org/en/M_PriceList)
+does in iDempiere for manufacturing — price × BOM explosion = product cost.
+
+### 20.4 6D — Sustainability (Carbon per Phase)
+
+**Source:** output.db elements × carbon map from component library
+
+Each element type has an embodied carbon coefficient (kgCO2e per unit). The 6D
+tab shows carbon by phase, by discipline, by storey — the same grouping as 5D
+but measuring environmental impact instead of cost. See [TIER1_SRS.md](TIER1_SRS.md).
+
+### 20.5 7D — Facility Management (Asset Register)
+
+**Source:** output.db elements × maintenance schedules from component library
+
+COBie-compatible asset register: what's installed, where, when it needs
+maintenance, expected lifecycle. The 7D tab is the building's maintenance manual
+generated from the BOM. See [TIER1_SRS.md](TIER1_SRS.md).
+
+### 20.6 8D — ERP Integration (iDempiere Write-Back)
+
+The 8th dimension is the [BIM Compiler](index.md) itself — the BOM data model
+that makes all other dimensions queryable. The HTML UI manages the
+[C_Order lifecycle](DocAction_SRS.md) and the target is
+[iDempiere REST write-back](https://wiki.idempiere.org/en/REST_Web_Services)
+(Phase H on roadmap): compiled C_Order + C_OrderLine pushed to a live
+iDempiere instance for procurement, invoicing, and project accounting.
+
+### 20.7 HTML Tab Plan
+
+| Tab | Dimension | Data Source | Status |
+|-----|-----------|-------------|--------|
+| BOM Tree | 1D | output.db spatial hierarchy | **Live** (port 9878) |
+| Spatial View | 3D | output.db elements + Bonsai sync | **Live** |
+| Schedule | 4D | output.db + precedence rules | **Spec** (this section) |
+| Cost | 5D | output.db + M_PriceList | **Spec** (this section) |
+| Carbon | 6D | output.db + carbon map | Python POC, Java migration pending |
+| Facility | 7D | output.db + maintenance schedules | Python POC, Java migration pending |
+| ERP | 8D | C_Order → iDempiere REST | Roadmap Phase H |
+| Validation | HOW | AD_Val_Rule results | **Live** |
+| Discipline | WHAT | AD_Org colour-coded breakdown | **Live** |
+| DocAction | Process | DR → IP → CO → AP buttons | **Live** |
+
+---
 
 *Industry sources:
 [Snaptrude AI](https://www.snaptrude.com/blog/announcing-snaptrude-ai) |

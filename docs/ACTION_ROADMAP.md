@@ -1,6 +1,6 @@
 # Action Roadmap — BIM Intent Compiler
 
-> **Governing document:** [SystemContract.md](SystemContract.md) — entity registry,
+> **Governing document:** [MANIFESTO.md](MANIFESTO.md) — entity registry,
 > transaction catalogue, three-concern matrix, gap register.
 >
 > **Implementation plan:** [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md) —
@@ -10,11 +10,11 @@
 
 ---
 
-## Where We Are (S67, 2026-03-24)
+## Where We Are (S79, 2026-03-26)
 
 **Pipeline:** 9 stages. 64 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative).
 **Gates:** 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v31.
-**Tests:** 392 BonsaiBIMDesigner + 5 BackOffice. AddDisciplineTest 4/4.
+**Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice. AddDisciplineTest 4/4.
 **Scorecard:** 31/36 (nearest competitor: 9).
 
 ---
@@ -23,8 +23,8 @@
 
 | I need to... | Go to |
 |--------------|-------|
-| **Understand the system** | [SystemContract.md](SystemContract.md) §1-§2 (recursive principle, entity registry) |
-| **Find a spec** | [INDEX.md](INDEX.md) (53 docs by tier) |
+| **Understand the system** | [MANIFESTO.md](MANIFESTO.md) §1-§2 (recursive principle, entity registry) |
+| **Find a spec** | [INDEX.md](INDEX.md) (52 docs by tier) |
 | **See what's planned** | [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md) (Sessions 0, A-E) |
 | **See what's proven** | [PROGRESS.md](../PROGRESS.md) (gate table, session log) |
 | **Check test architecture** | [TestArchitecture.md](TestArchitecture.md) (gates, witnesses, anti-drift) |
@@ -33,7 +33,7 @@
 | **Onboard a new IFC** | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) (8-step recipe) |
 | **Check what's broken** | §Known Debt below + [SystemContract.md §10](SystemContract.md) (gap register) |
 | **Run the pipeline** | [WorkOrderGuide.md](WorkOrderGuide.md) (step-by-step) |
-| **Understand ERP mapping** | [SystemContract.md](SystemContract.md) (C_Order, three-concern) |
+| **Understand ERP mapping** | [MANIFESTO.md](MANIFESTO.md) (C_Order, three-concern) |
 | **See the schema** | [DATA_MODEL.md](DATA_MODEL.md) + [DATABASE_SCHEMA.md](../database/DATABASE_SCHEMA.md) |
 | **Check the audit trail** | [AUDIT_S51_FOCUSED.md](AUDIT_S51_FOCUSED.md) (Appendix A-I) |
 
@@ -95,20 +95,21 @@ R-PROJ-3 (Session 0) must be fixed before C_Project work.
 
 ---
 
-## Known Debt
+## Known Debt & Gap Register
 
-*See also [SystemContract.md §10](SystemContract.md) for system-level gaps (GAP-SC-1..8).*
-
-| # | Item | Severity | Status |
-|---|------|----------|--------|
-| R-PROJ-3 | C_Order_ID = docTypeId collision — blocks multi-order | **BLOCKING** | Session 0 (Blueprint §14.3) |
-| S60-6 | M_Product_Category rename (formerly M_BomCategory) | HIGH | IN PROGRESS — S68 Tier 1 docs done |
-| CP-2 | DX MIRROR verb + structured BOM | MED | DEFERRED — quality-of-proof, not correctness |
-| R22 | Extract I_Element_Connectivity | MED | TODO — enables future MEP routing |
-| BBC-001 | CLUSTER expandCluster() entry validation | LOW | BACKLOG |
-| BBC-002 | BomValidator verb fidelity in compliance report | LOW | BACKLOG |
-| R19 | ~~Update SystemContract.md dual architecture~~ | DOC | **MOOT** — ConstructionAsERP.md archived (S67) |
-| VPA-002 | ROUTE per-leg step-uniformity (533 instances) | LOW | KNOWN LIMIT |
+| # | Area | What's Missing | Status |
+|---|------|---------------|--------|
+| **GAP-SC-1** | ASI mutation → recompile | Which verbs re-fire? Transaction flow spec | HIGH (blocks viewport drag) |
+| **GAP-SC-2** | Freehand drawing → BOM | How viewport geometry becomes a BOM mutation | MED (blocks freehand mode) |
+| **GAP-SC-3** | Site grid generation | Subdivide site_aabb into plots using [terrain](PDF_TERRAIN.md) topology | HIGH (blocks C_Project) |
+| **GAP-SC-4** | Rule pack versioning | Effectivity dates, version precedence. pack_id tagging done (S67c) | MED (partially addressed) |
+| **GAP-SC-5** | Order inheritance conflict | Linear chain resolved by depth | **CLOSED** (S68e) |
+| **GAP-SC-6** | Compile-once-copy-many | Performance optimization for reference class (qty=180) | MED (blocks C_Project at scale) |
+| **GAP-SC-7** | Output consolidation | Per-building vs consolidated output.db for C_Project | MED (blocks C_Project) |
+| **GAP-SC-8** | C_Order_ID collision | BomDropper parameterized with explicit orderId | **CLOSED** (Session 0) |
+| CP-2 | DX MIRROR verb | Structured BOM for mirrored pair | DEFERRED |
+| R22 | I_Element_Connectivity | Extract linking table from IfcRelConnectsElements | TODO |
+| VPA-002 | ROUTE step-uniformity | 533 instances with non-uniform per-leg steps | KNOWN LIMIT |
 
 ---
 

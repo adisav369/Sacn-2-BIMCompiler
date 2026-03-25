@@ -1,5 +1,5 @@
 # Infrastructure IFC Analysis
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Date:** 2026-03-16 | **Updated:** 2026-03-19 (deep review: file probe, spec gap audit, LOD plan)
 **Source files:** `reference/infrastructure/` (9 IFC4X3_ADD2 files, ~7.5 MB)

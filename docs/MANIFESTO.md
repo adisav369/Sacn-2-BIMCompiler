@@ -8,18 +8,25 @@
 ## The Three Concerns
 
 iDempiere separates documents into header (C_Order) and lines (C_OrderLine),
-with production detail in PP_Order. We inherit the same separation:
+with its BOM spatiality validated against [Validation Rules](DocValidate.md).
+We inherit the same separation:
 
 | Concern | iDempiere | BIM Compiler | Table |
 |---------|-----------|-------------|-------|
-| **WHAT** to build | C_OrderLine | Which products, classified by M_Product_Category | c_orderline |
-| **HOW** to validate | AD_Val_Rule | Compiler compiles freely; rules gate by exception (discipline/jurisdiction) | ad_val_rule |
-| **WHERE** it goes | M_BOM_Line (dx/dy/dz) | Spatial relationships within the BOM itself | m_bom_line |
+| **WHAT** to build | Orders, Categories, Products | Which products, classified by [M_Product_Category](BOMBasedCompilation.md) + [AD_Org](DISC_VALIDATION_DB_SRS.md) | c_orderline |
+| **HOW** to validate | BOMs, AttributeSets, Validation | [Spatial rules propose, regulatory rules gate](DocValidate.md) — by discipline and jurisdiction | ad_val_rule |
+| **WHERE** it lands | Output.db for [4D–8D](ProjectOrderBlueprint.md) | Compiled placements + ASIs — the single source of truth downstream | output.db |
 
 These three concerns are **never merged**. A change to WHAT (swap a product)
-does not require changes to HOW (rules stay the same) or WHERE (spatial offsets
-stay the same). This is the architectural invariant that makes exception-based
+does not require changes to HOW (rules are independent — swap jurisdiction
+without touching products) or WHERE (compiled output recalculates automatically). This is the architectural invariant that makes exception-based
 ordering possible: override one concern, inherit the others.
+
+**The downstream payoff:** output.db with its ASIs (per-instance attributes) is
+what every downstream dimension reads — [4D scheduling](ProjectOrderBlueprint.md#51-4d-schedule-topological-sort-of-bom-tree),
+[5D cost](ProjectOrderBlueprint.md#52-5d-cost-inherent-in-the-data-model),
+[6D carbon](TIER1_SRS.md), [7D facility management](TIER1_SRS.md), and
+8D ERP integration. One compiled output, seven queries.
 
 ### WHAT: M_Product_Category (Classification) + AD_Org (Discipline)
 
@@ -27,7 +34,12 @@ The WHAT concern has two orthogonal axes — **what kind of thing** and **who is
 
 **M_Product_Category — Product classification (WHAT kind of thing).**
 The same entity iDempiere uses to group products into swap pools. Categories
-form a cascade — each level of the building hierarchy has its own category:
+form a [BOM](https://en.wikipedia.org/wiki/Bill_of_materials) cascade — a
+[Bill of Materials](https://wiki.idempiere.org/en/Manufacturing#Bill_of_Materials)
+is a recipe: one parent product, N child products, each with a quantity. The magic
+is that each child can itself be a BOM — a building contains floors, a floor
+contains rooms, a room contains furniture, recursively. Each level is atomic
+and self-contained:
 
 ```
 Level       M_Product_Category    Examples
@@ -135,7 +147,7 @@ into a three-dimensional building.
 
 Manufacturing solved procurement, scheduling, cost control, and quality decades
 ago. Construction never had a Bill of Materials. This project provides one.
-Everything else follows.
+The rest follows from that foundation.
 
 ---
 
@@ -417,15 +429,15 @@ applied to buildings. 200 houses, 6 lines of exceptions each.
 
 ## Why This Matters
 
-**For construction:** The industry loses billions annually to the gap between
+**For construction:** The industry reportedly loses billions annually to the gap between
 design tools (geometry) and ERP tools (data). This compiler bridges that gap
 deterministically. Given a building design, it answers: what do I need to buy,
 where does each piece go, and can I prove it?
 
 **For iDempiere:** The manufacturing module, proven over two decades on discrete
 products, turns out to handle the world's largest product — a building — with
-minimal extension. This validates the iDempiere architecture at a scale its
-creators never anticipated.
+minimal extension. This extends the iDempiere architecture to building scale — a validation
+of the original design that its scope never anticipated.
 
 **For the project:** Every decision traces to an iDempiere pattern. When we face
 a design question, we ask: *how does iDempiere handle this for manufacturing?*
@@ -440,7 +452,7 @@ The answer is almost always directly applicable:
 
 **The test:** 35 real buildings compiled. 48,428 elements in the largest.
 6 verification gates. 19 buildings ALL GREEN. Not a prototype — a working
-compiler with mathematical proof at every step.
+compiler with witness verification at every step.
 
 ---
 
@@ -449,7 +461,7 @@ compiler with mathematical proof at every step.
 After this manifesto:
 
 1. **[BBC.md](BOMBasedCompilation.md) §1** — the entity mapping table and technical detail
-2. **[SystemContract.md](SystemContract.md)** — entity registry, three-concern matrix, gap register
+2. **[MANIFESTO.md](MANIFESTO.md)** — entity registry, three-concern matrix, gap register
 3. **[DATA_MODEL.md](DATA_MODEL.md)** — schema, 4-DB architecture
 4. **[TestArchitecture.md](TestArchitecture.md)** — verification gates, tamper seal
 5. **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — what's next (exception ordering, inheritance, C_Project)

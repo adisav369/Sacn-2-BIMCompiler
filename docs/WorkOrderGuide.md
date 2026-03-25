@@ -1,6 +1,20 @@
 # Work Order Guide
-> *Renamed from YAMLGuide.md — the pipeline follows ERP Manufacturing BOM / Work Order patterns, not YAML-specific workflow.*
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+
+> **Key insight:** The classification YAML (`classify_*.yaml`) is a **human-readable
+> stand-in** for ERP entities. Each YAML section maps to an iDempiere table:
+>
+> | YAML Section | ERP Entity | What It Defines |
+> |---|---|---|
+> | `building` | [C_Order](ProjectOrderBlueprint.md) | Which product to build (one order = one building) |
+> | `storeys` / `segments` | [C_OrderLine](ProjectOrderBlueprint.md) | BOM explosion levels (floors, segments) |
+> | `floor_rooms` | C_OrderLine + [M_AttributeSet](MANIFESTO.md#m_attributeset-why-product-count-stays-small) | Room scope spaces with dimensions |
+> | `static_children` | C_OrderLine (static entries) | Fixed components (slabs, roof, MEP trunk) |
+> | `composition` | [Ref_Order_ID](ProjectOrderBlueprint.md) (inheritance) | Mirror/repeat pattern |
+>
+> In the production path, these definitions come from the [BIM Designer](BIM_Designer_UserGuide.md)
+> UI or future [iDempiere REST](https://wiki.idempiere.org/en/REST_Web_Services) integration.
+> The YAML is the **extraction and onboarding tool** — how buildings enter the system.
 
 ## Quick Start — For Users
 
@@ -179,8 +193,8 @@ mvn exec:java -pl IFCtoBOM \
 | `building_type` | string | Must match reference DB name: `{building_type}_extracted.db` |
 | `prefix` | string | Short code (SH, DX, TE). Used for BOM DB name: `{prefix}_BOM.db` |
 | `building_bom_id` | string | Root BOM ID (e.g., `BUILDING_SH_STD`) |
-| `doc_sub_type` | string | **Deprecated** — redundant with prefix (see DATA_MODEL.md §7). Currently still read by pipeline. |
-| `doc_base_type` | string | **Deprecated** — redundant with M_Product_Category (RE/CO/IN). See DATA_MODEL.md §7 migration plan. |
+| `doc_sub_type` | string | Legacy — use `prefix` instead |
+| `doc_base_type` | string | Legacy — use [M_Product_Category](MANIFESTO.md#the-category-cascade-one-pattern-three-domains) (RE/CO/IN) instead |
 | `name` | string | Human-readable building name |
 | `dsl_file` | string | BIM COBOL script filename (e.g., `dsl_sh.bim`) |
 
@@ -200,12 +214,12 @@ storeys:
   Roof:         { code: ROOF, bom_category: RF, role: ROOF, seq: 1020 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `code` | Short code for BOM ID: `{prefix}_{code}_STR` |
-| `bom_category` | Category tag on the FLOOR BOM |
-| `role` | Role string on the MAKE child in BUILDING BOM |
-| `seq` | Sequence number for ordering in BUILDING BOM |
+| Field | Description | ERP Mapping |
+|-------|-------------|-------------|
+| `code` | Short code for BOM ID: `{prefix}_{code}_STR` | M_Product.Value |
+| `bom_category` | Category tag on the FLOOR BOM | [M_Product_Category](MANIFESTO.md#the-category-cascade-one-pattern-three-domains) |
+| `role` | Role string on the MAKE child in BUILDING BOM | C_OrderLine.Description |
+| `seq` | Sequence number for ordering in BUILDING BOM | C_OrderLine.Line |
 
 **Key rules:**
 - Every storey name in the reference DB must have a matching key here. Unmapped storeys are silently dropped (with a warning).
@@ -817,7 +831,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 |-------|----------|
 | Source code walkthrough | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
 | DAO, ORM, build instructions | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
-| BIM COBOL verbs (63 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
+| BIM COBOL verbs (64 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Prefab architecture | [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 | Validation rules | [`DocValidate.md`](DocValidate.md) |
 
@@ -841,7 +855,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 
 ## Appendix — Adding New IFC Files
 
-> Most users will never need this. The 34 onboarded buildings and their products
+> Most users will never need this. The 35 onboarded buildings and their products
 > are already in the repository. This section is for contributors who want to
 > extend the system with new IFC source files.
 

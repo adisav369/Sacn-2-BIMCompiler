@@ -1,6 +1,6 @@
 # Project Order Blueprint
 
-> **Foundation:** [SystemContract](SystemContract.md) · [BBC](BOMBasedCompilation.md) · [BIM_Designer_SRS](BIM_Designer_SRS.md)
+> **Foundation:** [MANIFESTO](MANIFESTO.md) · [BBC](BOMBasedCompilation.md) · [BIM_Designer_SRS](BIM_Designer_SRS.md)
 
 ## Executive Brief
 
@@ -15,7 +15,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.
 
 | Achieved | Evidence |
 |----------|---------|
-| 35 buildings compiled (34 extracted from IFC + 1 generative) | Rosetta Stone gate tests, 22 ALL GREEN |
+| 35 buildings compiled (34 extracted from IFC + 1 generative) | Rosetta Stone gate tests, 19 ALL GREEN |
 | 6-gate verification (count, volume, digest, tamper, provenance, isolation) | RosettaStoneGateTest — deterministic, reproducible |
 | 9-stage pipeline, 64 verbs, 2,459 products | Full BOM library with 4D/5D/6D on real data |
 | 48,428-element Terminal complex compiled | Largest known BOM-based BIM compilation |

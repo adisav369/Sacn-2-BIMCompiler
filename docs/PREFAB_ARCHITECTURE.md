@@ -1,8 +1,8 @@
 # Prefab Assembly Architecture
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
-*Extends: `SystemContract.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
+*Extends: `MANIFESTO.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
 *Dimension model: [BBC.md](BOMBasedCompilation.md) §1 — Category (M_Product_Category) + Owner (M_Product identity) + SpaceSize (AABB)*
 
 > **Update (2026-03-06):** Phase G-1 completed. Class renames applied throughout this document:
@@ -13,7 +13,7 @@
 > - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
 > - `RelationalResolver` → deleted (PlacementLoader now loads from `{PREFIX}_BOM.db` via `loadFromBOM()`)
 > - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
-> - `ARCHITECTURE.md` → archived (use `SystemContract.md` + `SourceCodeGuide.md`)
+> - `ARCHITECTURE.md` → archived (use `MANIFESTO.md` + `SourceCodeGuide.md`)
 >
 > Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
 > Core BOM hierarchy content is current. Examples referencing deleted classes have been updated below.
@@ -102,7 +102,7 @@ BUILDING_SH_STD                       ← building unit C_OrderLine
 │   host_type=BUILDING             family_ref=BUILDING_SH_STD
 │   world footprint: 4645 × 5800mm (aggregated from ad_room_boundary)
 │
-├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see SystemContract.md)
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see MANIFESTO.md)
 ├── ROOF_ASSEMBLY  dZ=3000mm         ← roof (pending)
 │
 └── FLOOR_SH_GF_STD  "Ground Floor"    ← floor Orderline
@@ -132,7 +132,7 @@ BUILDING_SH_STD                       ← building unit C_OrderLine
 BUILDING_DX_STD                    ← building unit Orderline
 │   world footprint: 8383 × 17384mm
 │
-├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see SystemContract.md)
+├── FLOOR_SLAB_GF  dZ=0              ← ground slab (pending — see MANIFESTO.md)
 │
 ├── FLOOR_DX_L1_STD  "Level 1"     ← floor Orderline
 │   │   dZ = 0mm
@@ -1413,7 +1413,7 @@ orientation per floor BOM ID — the same Map pattern as `floorZOffsets`.
 
 The PhantomLayout is the Empty Storage record for the SpaceSize M_Locator.
 M_Locator = the grid cell (SpaceSize AABB in mm) that bounds the placement position.
-Full SpaceSize AABB spatial model: see `SystemContract.md`.
+Full SpaceSize AABB spatial model: see `MANIFESTO.md`.
 
 ---
 

@@ -9,7 +9,6 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [MANIFESTO.md](MANIFESTO.md) | **READ FIRST:** The ERP world view — why construction is manufacturing, iDempiere pattern, three concerns |
-| [SystemContract.md](SystemContract.md) | GOVERNING DOC: entity registry, transaction catalogue, three-concern matrix, allocation model, gap register |
 | [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) | FRONTIER: §1-§14 future features, §2.1 CTFL test plan, §2.2 site layout, §14 implementation sessions |
 
 ## T1 Foundation — Master References
@@ -18,7 +17,7 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, gospel |
 | [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 4-DB architecture |
-| [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 63 verbs, TILE/CLUSTER/ROUTE/FRAME |
+| [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 64 verbs, TILE/CLUSTER/ROUTE/FRAME |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix |
 | [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
@@ -70,6 +69,14 @@ Single-page entry point. All active docs by tier.
 | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) | Market positioning, 4 moats, IFC scorecard |
 | [BIM_Compiler_Market_Impact_Report.pdf](BIM_Compiler_Market_Impact_Report.pdf) | Market impact: USD 10B BIM market, MY mandate, go-to-market timeline, risk assessment |
 
+## Companion Projects — Spatial Extensions
+
+| Doc | What |
+|-----|------|
+| [BONSAI_EXTENSIONS.md](BONSAI_EXTENSIONS.md) | **Federation Addon**: nD platform (4D–8D), NLP queries, Color Studio, River IoT, HTML UI |
+| [PDF_TERRAIN.md](PDF_TERRAIN.md) | Survey to 3D terrain: PDF → elevation points → IFC. Site topology for plot placement |
+| [2D_LAYOUT.md](2D_LAYOUT.md) | Architectural drawings from compiled BOM: floor plans, elevations, sections as SVG |
+
 ## Operational — Reference
 
 | Doc | What |
@@ -100,5 +107,6 @@ Superseded docs live in `docs/archive/`. Key archived docs:
 |-----|---------------|
 | `DEVELOPER_GUIDE.md` | [SourceCodeGuide.md](SourceCodeGuide.md) (DAO patterns merged) |
 | `BIMasBOMConcept.md` | [BBC.md](BOMBasedCompilation.md) §1 (dimension model merged) |
-| `ConstructionAsERP.md` | [SystemContract.md](SystemContract.md) §2 (entity registry) + [BBC.md](BOMBasedCompilation.md) §1 (iDempiere mapping) + [DATA_MODEL.md](DATA_MODEL.md) §1 (4-DB) |
+| `MANIFESTO.md` | Content distributed: entity registry → [DATA_MODEL.md](DATA_MODEL.md), three concerns → [MANIFESTO.md](MANIFESTO.md), gaps → [ACTION_ROADMAP.md](ACTION_ROADMAP.md) |
+| `ConstructionAsERP.md` | [MANIFESTO.md](MANIFESTO.md) §2 (entity registry) + [BBC.md](BOMBasedCompilation.md) §1 (iDempiere mapping) + [DATA_MODEL.md](DATA_MODEL.md) §1 (4-DB) |
 | `VerbPatternArchitecture.md` | [BIM_COBOL.md](BIM_COBOL.md) §19 (verb detection, formats, results merged) |

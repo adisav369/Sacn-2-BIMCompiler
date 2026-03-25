@@ -43,6 +43,16 @@ markdown_extensions:
   - toc:
       permalink: true
 
+extra:
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX  # Replace with your GA4 Measurement ID from https://analytics.google.com/
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/red1oon/BIMCompiler
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/red1oon/
+
 nav:
   # ─── "I just found this project" ────────────────────────
   - Start Here:
@@ -53,9 +63,8 @@ nav:
       #- Current State: ../PROGRESS.md  # outside docs_dir — link from landing page instead
 
   # ─── "I want to understand the system" ──────────────────
-  - Architecture:
-      - System Contract: SystemContract.md
-      - BOM Compilation (Master Spec): BOMBasedCompilation.md
+  - Specs:
+      - BOM Compilation (Core Spec): BOMBasedCompilation.md
       - Data Model: DATA_MODEL.md
       - Rosetta Stone Strategy: TheRosettaStoneStrategy.md
       - Source Code Guide: SourceCodeGuide.md
@@ -94,10 +103,15 @@ nav:
       - Back Office SRS: BACK_OFFICE_SRS.md
       - Infrastructure Designer: INFRA_DESIGNER_SRS.md
 
+  # ─── DOMAIN: Spatial Extensions ────────────────────────
+  - Extensions:
+      - Federation Addon (nD Platform): BONSAI_EXTENSIONS.md
+      - PDF Terrain (Survey → 3D): PDF_TERRAIN.md
+      - 2D Layout (BOM → Drawings): 2D_LAYOUT.md
+
   # ─── DOMAIN: The Frontier ──────────────────────────────
   - Roadmap:
       - Action Roadmap: ACTION_ROADMAP.md
-      - Project Order Blueprint: ProjectOrderBlueprint.md
       - Audit Report: AUDIT_S51_FOCUSED.md
       - Strategic Positioning: StrategicIndustryPositioning.md
       - BIM-ERP Paper: BIMERPPaper.md

@@ -1,5 +1,5 @@
 # BIM Intent Compiler — Systems Installer Guide
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [SystemContract](SystemContract.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Audience:** Systems administrators, DevOps engineers, and developers setting up the full BIM Compiler platform from source.
 
@@ -378,7 +378,7 @@ A typical development setup runs 4 services:
 ./scripts/run_tests.sh cobol    # BIM_COBOL (verb witnesses)
 ```
 
-### 7.3 BonsaiBIMDesigner (248 tests)
+### 7.3 BonsaiBIMDesigner (408 tests)
 
 ```bash
 mvn test -pl BonsaiBIMDesigner 2>&1 | tail -5
