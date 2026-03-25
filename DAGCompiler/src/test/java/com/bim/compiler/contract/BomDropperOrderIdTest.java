@@ -103,8 +103,7 @@ public class BomDropperOrderIdTest {
                     entity_type TEXT DEFAULT 'D',
                     aabb_width_mm INTEGER DEFAULT 0,
                     aabb_depth_mm INTEGER DEFAULT 0,
-                    aabb_height_mm INTEGER DEFAULT 0,
-                    doc_base_type TEXT DEFAULT NULL
+                    aabb_height_mm INTEGER DEFAULT 0
                 )
             """);
 
@@ -183,9 +182,9 @@ public class BomDropperOrderIdTest {
             // BUILDING BOM for RE/SH
             stmt.execute("""
                 INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, m_product_category_id,
-                    doc_base_type, doc_sub_type, is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                    doc_sub_type, is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                 VALUES ('SH_BUILDING', 'SH Building', 'BUILDING', 'BUILDING', 'LI',
-                    'RE', 'SH', 1, 10000, 8000, 6000)
+                    'SH', 1, 10000, 8000, 6000)
             """);
 
             // Two leaf products as children

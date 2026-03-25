@@ -187,10 +187,10 @@ public class StructuralBomBuilder {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
                 (bom_id, bom_name, bom_type, group_by, entity_type,
-                 doc_sub_type, doc_base_type, m_product_category_id,
+                 doc_sub_type, m_product_category_id,
                  aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                  origin_x, origin_y, origin_z, is_active)
-                VALUES (?, ?, ?, ?, 'D', ?, ?, ?,
+                VALUES (?, ?, ?, ?, 'D', ?, ?,
                         ?, ?, ?,
                         ?, ?, ?, 1)
                 """;
@@ -200,14 +200,13 @@ public class StructuralBomBuilder {
             stmt.setString(3, bomType);
             stmt.setString(4, groupBy);
             stmt.setString(5, docSubType);
-            stmt.setString(6, docBaseType);
-            stmt.setString(7, docBaseType);  // m_product_category_id = docBaseType (RE/CO/IN)
-            stmt.setDouble(8, aabbW);
-            stmt.setDouble(9, aabbD);
-            stmt.setDouble(10, aabbH);
-            stmt.setDouble(11, originX);
-            stmt.setDouble(12, originY);
-            stmt.setDouble(13, originZ);
+            stmt.setString(6, docBaseType);  // m_product_category_id = docBaseType (RE/CO/IN)
+            stmt.setDouble(7, aabbW);
+            stmt.setDouble(8, aabbD);
+            stmt.setDouble(9, aabbH);
+            stmt.setDouble(10, originX);
+            stmt.setDouble(11, originY);
+            stmt.setDouble(12, originZ);
             stmt.executeUpdate();
         }
     }

@@ -68,7 +68,6 @@ public class StubDataSeeder {
                         bom_level        INTEGER DEFAULT 0,
                         bom_type         TEXT,
                         m_product_category_id TEXT,
-                        doc_base_type    TEXT,
                         doc_sub_type     TEXT,
                         seq_no           INTEGER DEFAULT 10,
                         origin_x         REAL DEFAULT 0,
@@ -163,62 +162,62 @@ public class StubDataSeeder {
             // SH — BUILDING level BOM
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('BUILDING_SH', 'Sample House', 'BUILDING', NULL,
-                        'RE', 'SH', 'building', 10,
+                        'SH', 'building', 10,
                         10000, 6000, 6000)
                     """);
 
             // SH — FLOOR level BOMs
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('FLOOR_SH_GF', 'Ground Floor', 'FLOOR', NULL,
-                        'RE', 'SH', 'storey', 10,
+                        'SH', 'storey', 10,
                         10000, 6000, 3000)
                     """);
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('FLOOR_SH_FF', 'First Floor', 'FLOOR', NULL,
-                        'RE', 'SH', 'storey', 20,
+                        'SH', 'storey', 20,
                         10000, 6000, 3000)
                     """);
 
             // SH — ROOM level BOMs with categories
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_LI', 'Living Room', 'ROOM', 'LIVING',
-                        'RE', 'SH', 'room', 10,
+                        'SH', 'room', 10,
                         5000, 4000, 3000)
                     """);
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_KT', 'Kitchen', 'ROOM', 'KITCHEN',
-                        'RE', 'SH', 'room', 20,
+                        'SH', 'room', 20,
                         3500, 2500, 3000)
                     """);
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_BD', 'Bedroom', 'ROOM', 'BEDROOM',
-                        'RE', 'SH', 'room', 30,
+                        'SH', 'room', 30,
                         3100, 3100, 3000)
                     """);
             s.execute("""
                     INSERT INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id,
-                        doc_base_type, doc_sub_type, group_by, seq_no,
+                        doc_sub_type, group_by, seq_no,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                     VALUES ('ROOM_SH_BT', 'Bathroom', 'ROOM', 'BATHROOM',
-                        'RE', 'SH', 'room', 40,
+                        'SH', 'room', 40,
                         1500, 2400, 3000)
                     """);
         }

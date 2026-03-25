@@ -26,7 +26,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="081db5ad5eb3008bf2e397117f27779214b86fc593d9468b083ac418db0c6aea"
+EXPECTED="3c705504ab44363ac02720b7c0d2f8c062c0c4d5fe8f243d107cc60206751083"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java

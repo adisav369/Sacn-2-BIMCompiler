@@ -46,11 +46,11 @@ Sources: DISC_VALIDATION_DB_SRS.md §10-11, DATA_MODEL.md §2+§7,
   Once AD_Org_ID exists on m_bom, bom_category becomes derived display or drops entirely.
   Migration table: DISC_VALIDATION_DB_SRS.md §11.6.3 (8 table.column replacements).
 
-6. DocBaseType — REDUNDANT (confirmed) — DONE (S77: Java routing migrated to M_Product_Category)
+6. DocBaseType — DROPPED (S84: W012 migration). DocSubType stays (STRUCTURAL).
 ----------------------------------------
   DocBaseType = singular 'Construction'. Classification lives on M_Product_Category,
-  not on C_DocType. Legacy columns (DocBaseType, DocSubType) deprecated per DATA_MODEL.md §7.
-  Migration: remove after M_Product_Category fully adopted on all BOM databases.
+  not on C_DocType. doc_base_type column dropped from m_bom (W012 migration, S84).
+  doc_sub_type is STRUCTURAL — variant scoping (SH/DX/FK/TE). Stays on m_bom.
 
 7. ProductCategory.java vs M_Product_Category TABLE — DONE (S79: deriveDiscipline @Deprecated, extraction-only)
 -----------------------------------------------------
@@ -83,7 +83,7 @@ Sources: DISC_VALIDATION_DB_SRS.md §10-11, DATA_MODEL.md §2+§7,
   3. Populate AD_Org_ID from existing bom_category/discipline strings (CASE mapping) — DONE (S78: W009 backfill)
   4. Retire deriveDiscipline() from compile path (extraction-only fallback) — DONE (S79: resolveDiscipline replaces it)
   5. Drop bom_category string columns (or keep as derived display)
-  6. Drop deprecated DocBaseType/DocSubType columns
+  6. Drop doc_base_type (DONE S84, W012). doc_sub_type is structural — stays.
   7. Drop Parent_Category_ID column — DECIDED: unnecessary (iDempiere flat, BOM tree = cascade)
 
 ============================================================

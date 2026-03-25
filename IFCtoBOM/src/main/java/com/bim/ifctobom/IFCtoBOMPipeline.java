@@ -524,7 +524,6 @@ public class IFCtoBOMPipeline {
                     bom_level         TEXT DEFAULT 'SET',
                     bom_type          TEXT NOT NULL,
                     m_product_category_id TEXT,
-                    doc_base_type     TEXT,
                     doc_sub_type      TEXT,
                     seq_no            INTEGER DEFAULT 10,
                     origin_x          REAL DEFAULT 0.0,

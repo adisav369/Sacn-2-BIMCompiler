@@ -51,6 +51,7 @@ Single-page entry point. All active docs by tier.
 | [TerminalAnalysis.md](TerminalAnalysis.md) | 48K-element TE, verb factorization, guardrails |
 | [FZKHausAnalysis.md](FZKHausAnalysis.md) | FK (FZK Haus) 82-element residential |
 | [ACInstituteAnalysis.md](ACInstituteAnalysis.md) | IN (AC Institute) 699-element institutional |
+| [DemoHouseAnalysis.md](DemoHouseAnalysis.md) | DM guardrails: 3-OrderLine compilation, SH base + FK roof + FP discipline |
 | [InfrastructureAnalysis.md](InfrastructureAnalysis.md) | Infrastructure IFC4X3, FACILITY/SEGMENT mapping |
 | [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) | M1/M4/M5/M6/M12 distributions (V004 seed data) |
 
@@ -61,6 +62,7 @@ Single-page entry point. All active docs by tier.
 | [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) | BIM Designer GUI user guide |
 | [BackOfficeUserGuide.md](BackOfficeUserGuide.md) | BackOffice user guide |
 | [USER_GUIDE.md](USER_GUIDE.md) | General user guide |
+| [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) | Full platform setup for sysadmins and developers |
 
 ## Standalone — Market / Academic
 
@@ -69,6 +71,7 @@ Single-page entry point. All active docs by tier.
 | [BIMERPPaper.md](BIMERPPaper.md) | Academic paper: BIM as ERP |
 | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) | Market positioning, 4 moats, IFC scorecard |
 | [BIM_Compiler_Market_Impact_Report.pdf](BIM_Compiler_Market_Impact_Report.pdf) | Market impact: USD 10B BIM market, MY mandate, go-to-market timeline, risk assessment |
+| [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) | Why real buildings are ground truth: deterministic proofs, no AI in gates |
 
 ## Companion Projects — Spatial Extensions
 
@@ -91,6 +94,8 @@ Single-page entry point. All active docs by tier.
 | [VIEW_CONTRACTS.md](VIEW_CONTRACTS.md) | Data access layer, 6 SQL views |
 | [BIM_Designer.md](BIM_Designer.md) | GUI, ASI, 4-action persistence, Design Mode |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment procedures |
+| [AUDIT_S51_FOCUSED.md](AUDIT_S51_FOCUSED.md) | S30–S50 audit: geometry, migrations, test integrity, security, API |
+| [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) | iDempiere _ID/Name/Value column convention impact study |
 | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline, template generator |
 
 ## Database — Schema & ERDs (`database/`)

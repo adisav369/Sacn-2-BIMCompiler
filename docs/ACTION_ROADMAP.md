@@ -101,7 +101,7 @@ From [SpecsAnalysis.txt](SpecsAnalysis.txt) §10 and [ID_NAME_VALUE_STUDY.md](ID
 | 3. Backfill AD_Org_ID from bom_category | Data migration | **DONE** (S78: W009) |
 | 4. Retire deriveDiscipline() from compile | Extraction-only fallback | **DONE** (S79) |
 | 5. Drop bom_category string columns | Schema cleanup | PENDING |
-| 6. Drop DocBaseType/DocSubType columns | Schema cleanup | PENDING |
+| 6. Drop doc_base_type (DONE). doc_sub_type is structural — stays. | W012 migration (S84) | **DONE** (S84) |
 | 7. Drop Parent_Category_ID | Flat M_Product_Category (iDempiere standard) | DECIDED, PENDING |
 | 8. Tier 1: Name/Value on INTEGER PK tables | 43 tables, 5 migrations | **DONE** (S83) |
 | 9. Tier 2: TEXT→INTEGER PK on core tables | M_Product, m_bom, c_order, C_DocType | NOT STARTED (high risk) |

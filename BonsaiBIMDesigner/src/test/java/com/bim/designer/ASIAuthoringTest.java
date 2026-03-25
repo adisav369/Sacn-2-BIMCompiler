@@ -343,7 +343,7 @@ class ASIAuthoringTest {
             s.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom (
                     bom_id TEXT PRIMARY KEY, bom_name TEXT, bom_type TEXT,
-                    m_product_category_id TEXT, doc_base_type TEXT, doc_sub_type TEXT,
+                    m_product_category_id TEXT, doc_sub_type TEXT,
                     group_by TEXT DEFAULT 'default', seq_no INTEGER DEFAULT 10,
                     aabb_width_mm INTEGER DEFAULT 0, aabb_depth_mm INTEGER DEFAULT 0,
                     aabb_height_mm INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1,

@@ -215,8 +215,7 @@ public class OrderInheritanceTest {
                     entity_type TEXT DEFAULT 'D',
                     aabb_width_mm INTEGER DEFAULT 0,
                     aabb_depth_mm INTEGER DEFAULT 0,
-                    aabb_height_mm INTEGER DEFAULT 0,
-                    doc_base_type TEXT DEFAULT NULL
+                    aabb_height_mm INTEGER DEFAULT 0
                 )
             """);
 
@@ -303,9 +302,9 @@ public class OrderInheritanceTest {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("""
                 INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, m_product_category_id,
-                    doc_base_type, doc_sub_type, is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
+                    doc_sub_type, is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                 VALUES ('DX_BUILDING', 'DX Building', 'BUILDING', 'BUILDING', 'RE',
-                    'RE', 'DX', 1, 12000, 10000, 8000)
+                    'DX', 1, 12000, 10000, 8000)
             """);
 
             stmt.execute("""
