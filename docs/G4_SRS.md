@@ -83,9 +83,9 @@ DesignerAPIImpl.createNew(request)
 │      │   │   │ host_type    = derive from BOM level:                     │
 │      │   │   │                depth 0 → BUILDING                         │
 │      │   │   │                depth 1 → FLOOR                            │
-│      │   │   │                depth 2 → DISCIPLINE or ROOM (bom_category)│
+│      │   │   │                depth 2 → DISCIPLINE or ROOM (m_product_category_id)│
 │      │   │   │                depth 3+ → LEAF                            │
-│      │   │   │ bom_category = m_bom.bom_category                         │
+│      │   │   │ m_product_category_id = m_bom.m_product_category_id       │
 │      │   │   │ dx/dy/dz     = m_bom_line.dx, .dy, .dz (LBD, BBC.md §4)  │
 │      │   │   │ aabb_*_mm    = m_bom.aabb_width/depth/height              │
 │      │   │   │ Qty          = m_bom_line.qty (factored count)            │

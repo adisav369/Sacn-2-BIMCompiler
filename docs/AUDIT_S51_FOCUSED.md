@@ -2337,3 +2337,139 @@ block the Java implementation.
 2. **DiffVerbService** — records DIFF PP_Order_Node, fires CalloutEngine
 3. **CalloutEngine** — evaluates AD_Rule chain in dependency order
 4. **DiffVerbTest** — witness W-DIFF-1 (record diff + verify callout fires AABB recalc)
+
+---
+
+## Appendix U — S80 Watchdog: Post-S73–S80 Audit (2026-03-26)
+
+### U.1 — Scope
+
+| Item | Value |
+|------|-------|
+| Sessions audited | S73–S80 (8 sessions) |
+| Commits since last watchdog (Appendix T, S72) | 18 commits (67b10fc..37c9cc5) |
+| Themes | CO_EmptySpace retirement, disc_validation.db→ERP.db rename, TEXT discipline→Discipline enum + AD_Org_ID FK, M_Product_Category hierarchy, docs readability |
+| Compilation | `mvn compile -q` CLEAN, `mvn test-compile -q` CLEAN |
+
+### U.2 — Code Audit Findings
+
+**U.2.1 — CO_EmptySpace retirement (S73–S74): CLEAN**
+
+Three-phase approach correctly executed: docs first (S73), deprecation (S73), removal (S74).
+4 PO classes deleted, DDL removed from BuildingWriter, W008 migration drops tables.
+Pipeline rewritten to in-memory `RoomSlot` from M_BOM_Line dx/dy/dz.
+
+**Gap:** No targeted unit tests for the rewritten `SpatialStructureBuilder.computeRoomSlots()` or
+`populateRoomContainment()`. End-to-end coverage exists via RosettaStoneGateTest but the new
+intermediate logic is untested in isolation.
+
+**U.2.2 — disc_validation.db → ERP.db rename (S76): CLEAN**
+
+Thorough bulk rename: 19+ source, 12+ test, ~50 migration comments. Zero stale references
+in Java/shell/Python. Existing migration SQL comments were modified (disc_validation→ERP.db)
+which technically violates append-only, but changes are **comment-only** — no DDL/DML affected.
+
+**U.2.3 — Discipline enum + AD_Org_ID (S78–S79): WELL-EXECUTED**
+
+`Discipline.java` enum with `adOrgId` field. All consumer sites migrated from `String` to enum.
+INSERT parameter counts verified consistent (BomDropper 18→19, OrderMutationService, BuildingWriter).
+FPR→FP normalization via W010 migration. `deriveDiscipline()` retained as `@Deprecated` for
+extraction fallback — appropriate.
+
+**U.2.4 — M_Product_Category hierarchy (S75): CLEAN**
+
+DV018 seeds 71 categories. DV020 drops Parent_Category_ID. Sequencing dependency is correct
+(DV018 runs before DV020 by name order).
+
+**U.2.5 — Drift risk: BuildSpatialStructureVerb still uses doc_sub_type (LOW)**
+
+`BuildSpatialStructureVerb.computeRoomSlots()` queries `m_bom WHERE doc_sub_type = ?` despite
+S77 migrating routing to `m_product_category_id`. Not a bug (column still exists, data intact)
+but inconsistent with the deprecation direction. Track for next cleanup session.
+
+**U.2.6 — @Deprecated inventory (17 annotations)**
+
+| Item | Status |
+|------|--------|
+| `VerifyPlacementVerb` (entire class) | Deprecated, retained for gate compat. Track for removal. |
+| `BomDropper.deriveDiscipline()` + `deriveAD_Org_ID()` | Intentional extraction fallback. Keep. |
+| `X_M_BOM.getDocBaseType()` etc. | Backward compat during migration. Keep until doc_base_type column dropped. |
+| `X_WmEmptyStorageLine` + `M_WmEmptyStorageLine` | `forRemoval=true`. **Ready to delete.** |
+| `SpatialDiff`, `ProductCategory`, `PlacementProver` | Legacy DAGCompiler classes. Cleanup candidates. |
+
+### U.3 — Documentation Audit Findings
+
+**U.3.1 — SystemContract.md broken links (HIGH)**
+
+SystemContract.md was correctly moved to `docs/archive/`. BBC.md and DATA_MODEL.md links updated.
+However, **6 live docs still link to the deleted path:**
+
+| Doc | Broken links |
+|-----|-------------|
+| `WorkOrderGuide.md` | 3 links |
+| `ProjectOrderBlueprint.md` | 2 links |
+| `StrategicIndustryPositioning.md` | 1 link |
+| `CORE_SRS.md` | 1 link |
+| `ACTION_ROADMAP.md` | 1 link |
+
+**Fix:** Repoint to `archive/SystemContract.md` or replace with MANIFESTO.md as appropriate.
+
+**U.3.2 — work_output.db references (MEDIUM)**
+
+40+ docs still reference work_output.db as live architecture despite S61 removal. Java source
+is clean (only comments/test code remain — 20 hits). Doc propagation was never done.
+
+**U.3.3 — SCHEMA_QUICKREF.md stale (MEDIUM)**
+
+`context/SCHEMA_QUICKREF.md` still shows `M_BomCategory` (23 rows), `M_BomCategoryLine` (25 rows),
+and old `DocSubType` on C_DocType. Needs update to current schema.
+
+**U.3.4 — DISC_VALIDATION_DB_SRS.md title (LOW) — CLOSED (S81)**
+
+Title already reads "ERP.db SRS". No action needed.
+
+**U.3.5 — Product count discrepancy (LOW)**
+
+2,475 products in most docs vs 2,459 in ProjectOrderBlueprint.md and GENERATIVE_HOUSE_SRS.md.
+Predates S73–S80 but still uncorrected.
+
+**U.3.6 — BBC.md PP_Order_Node inconsistency (LOW)**
+
+Section 1 mapping table says AD_ChangeLog for audit trail. Section 5 stage 6 still says
+PP_Order_Node. Minor inconsistency within the same spec.
+
+### U.4 — Migration Audit
+
+All new migrations are append-only and correctly sequenced:
+
+| Migration | Type | Impact |
+|-----------|------|--------|
+| DV018 | INSERT (seed categories) | Additive |
+| DV019 | CREATE + copy (bad_rule tables) | Additive |
+| DV020 | DDL (drop Parent_Category_ID) | Breaking for old code |
+| W007 | CREATE TABLE (AD_Rule) | New feature |
+| W008 | DROP TABLE (co_empty_space) | Breaking for old output.db readers |
+| W009 | ALTER + backfill (AD_Org_ID) | Additive |
+| W010 | UPDATE (FPR→FP) | Data normalization |
+
+### U.5 — Action Items
+
+| Priority | Item | Scope |
+|----------|------|-------|
+| **HIGH** | Fix 6 broken SystemContract.md links | Bounded doc task |
+| **MEDIUM** | Propagate work_output.db removal across 40+ docs | Bounded doc task |
+| **MEDIUM** | Update SCHEMA_QUICKREF.md to current schema | Single file |
+| ~~LOW~~ | ~~Rename DISC_VALIDATION_DB_SRS.md title~~ | **CLOSED** (S81 — already fixed) |
+| **LOW** | Align product count (2,459 vs 2,475) | Verify + update 2 docs |
+| **LOW** | Align BBC.md §5 stage 6 PP_Order_Node → AD_ChangeLog | Single line |
+| **LOW** | Delete `X_WmEmptyStorageLine` + `M_WmEmptyStorageLine` (forRemoval=true) | 2 files |
+| **TRACK** | BuildSpatialStructureVerb doc_sub_type drift | Next cleanup session |
+| **TRACK** | Unit tests for SpatialStructureBuilder.computeRoomSlots() | When SpatialStructure changes next |
+
+### U.6 — Overall Assessment
+
+**Grade: B+.** The S73–S80 arc represents disciplined, multi-session refactoring across three
+major themes. Code changes are thorough and consistent — the Discipline enum migration touched
+17 source files without leaving type mismatches. The CO_EmptySpace three-phase retirement was
+textbook. The only weakness is documentation lag: SystemContract.md link cleanup was incomplete,
+and the work_output.db doc propagation from S61 remains undone. No P0 code bugs found.

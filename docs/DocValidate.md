@@ -1812,7 +1812,7 @@ Non-Disturbance analysis: `G4_SRS.md` §6.
 > **If a validation check uses AABB arithmetic, that is evidence of a missing
 > extraction column. Fix the schema, do not add geometry code.**
 
-Every AD_Val_Rule check must be expressible as a SQL query over the 5-database
+Every AD_Val_Rule check must be expressible as a SQL query over the 4-database
 schema. The extraction pipeline (`ifc_geometry_extractor.py` + `ExtractionPopulator`)
 is responsible for pre-digesting ALL IFC relationships the rules need into
 relational columns. If a rule implementation falls back to computing distances

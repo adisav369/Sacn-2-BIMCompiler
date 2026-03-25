@@ -249,7 +249,7 @@ is a bounded task that Claude Code completes in one session (see
 The Inference Engine (BIM_Designer_SRS §14) evaluates validation rules in
 dependency order using Kahn's topological sort, produces proof trees with
 AD_Val_Rule citations, and SKIPs downstream rules when upstream premises fail.
-This is Datalog-style deduction over the 5-database schema — not AI, not
+This is Datalog-style deduction over the 4-database schema — not AI, not
 heuristics, but deterministic symbolic reasoning. No visual BIM tool has a
 formal proof chain from design decision to regulation citation. The Approve
 gate requires all-rules-pass before Promote — a governance pattern borrowed

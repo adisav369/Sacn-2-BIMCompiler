@@ -814,7 +814,7 @@ premises (BOM data, AD_Val_Rule, spatial relationships), derive conclusions
 > proof traceback) implemented as a lightweight rule engine within the existing
 > Java pipeline. Not an external AI system — deterministic, offline, auditable.
 > Inspired by AlphaGeometry's Deductive Database (DDAR) architecture but
-> purpose-built for BIM/ERP rule composition over the 5-database schema.
+> purpose-built for BIM/ERP rule composition over the 4-database schema.
 
 ### 14.2 Core Capabilities
 
@@ -853,7 +853,7 @@ The inference engine evolves it in three stages:
 ### 14.4 Implementation — Datalog-Style Rules Over SQL
 
 The spatial predicates and validation rules are expressed as Datalog-style
-Horn clauses evaluated over the 5-database SQL schema. This matches the
+Horn clauses evaluated over the 4-database SQL schema. This matches the
 Schema-Not-Geometry principle (BBC.md §2): every predicate is a SQL query,
 not geometry code.
 
@@ -1668,7 +1668,7 @@ The BIM compiler already operates in a JEPA-compatible pattern:
 | JEPA Concept | BIM Compiler Equivalent | Where |
 |---|---|---|
 | **Predict in embedding space** | Compile from intent (BOM), not geometry | BBC.md §2, verb grammar |
-| **Joint embedding** | Bridge IFC geometry + BOM semantics + ERP data + building code | 5-database schema |
+| **Joint embedding** | Bridge IFC geometry + BOM semantics + ERP data + building code | 4-database schema |
 | **Selective decoding** | Defer to concrete IFC only at final compile step | Tack-fix pipeline, deferred resolution |
 | **Target embedding prediction** | Given partial design, predict next likely component | InferenceEngine forward-chaining (§14.2) |
 
@@ -1743,7 +1743,7 @@ The embedding predictor is **advisory only** — it suggests, the symbolic
 engine validates. A suggested component still must pass all AD_Val_Rule
 checks before placement is accepted.
 
-### 25.5 Joint Embedding Across the 5-Database Schema
+### 25.5 Joint Embedding Across the 4-Database Schema
 
 VL-JEPA bridges vision and language modalities. The BIM compiler bridges
 five data modalities. A shared embedding space enables cross-modal queries:

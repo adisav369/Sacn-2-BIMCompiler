@@ -98,7 +98,7 @@ The `library/` directory contains all SQLite databases. These ship with the repo
 sqlite3 library/SH_BOM.db ".tables"
 
 # Check BOM hierarchy
-sqlite3 library/SH_BOM.db "SELECT bom_type, name, bom_category FROM m_bom"
+sqlite3 library/SH_BOM.db "SELECT bom_type, name, m_product_category_id FROM m_bom"
 
 # Check product catalog
 sqlite3 library/component_library.db "SELECT COUNT(*) FROM M_Product"

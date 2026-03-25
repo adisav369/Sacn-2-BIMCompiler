@@ -184,13 +184,13 @@ the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 (MBOM.beforeSave / MBOMLine.beforeSave), not documentation.
 
 **Schema-Not-Geometry rule:** Every validation check and spatial query must be
-expressible as a SQL query over the 5-database schema. If a check requires AABB
+expressible as a SQL query over the 4-database schema. If a check requires AABB
 arithmetic (centreline distance, centroid offset, proximity search), ask: does
 the IFC schema have a relationship (`IfcRelVoidsElement`, `IfcRelConnectsPathElements`,
 `IfcRelContainedInSpatialStructure`) that could be extracted as a column instead?
 If yes, that is a missing extraction column — fix the schema, do not add geometry
 code. LLMs are blind to spatial geometry but capable at schema mapping. The
-5-database architecture is a semantic firewall: extraction pre-digests IFC
+4-database architecture is a semantic firewall: extraction pre-digests IFC
 relationships into relational keys, validation queries those keys.
 Exception: ERP-maths (e.g., M12 pipe clearance via `centreline_distance - radius_a
 - radius_b`) is legitimate when the arithmetic on product dimensions IS the correct

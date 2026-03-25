@@ -145,7 +145,7 @@ SELECT bl.bom_id, p.name, p.product_type,
        bl.qty, p.carbon_kg_per_unit,
        (bl.qty * p.carbon_kg_per_unit) AS total_carbon,
        p.recyclability, p.eol_strategy,
-       bom.bom_category AS discipline
+       bom.m_product_category_id AS discipline
 FROM m_bom_line bl
 JOIN m_bom bom ON bl.m_bom_id = bom.m_bom_id
 JOIN M_Product p ON bl.m_product_id = p.m_product_id
@@ -300,7 +300,7 @@ public class FacilityMgmtDAO {
 **SQL pattern (maintenanceSchedule):**
 
 ```sql
-SELECT bl.bom_id, p.name, bom.bom_category AS discipline,
+SELECT bl.bom_id, p.name, bom.m_product_category_id AS discipline,
        parent_bom.name AS location,
        p.maintenance_interval_months, p.lifespan_years,
        COUNT(*) AS qty_in_building
@@ -310,7 +310,7 @@ JOIN M_Product p ON bl.m_product_id = p.m_product_id
 LEFT JOIN m_bom parent_bom ON bom.parent_bom_id = parent_bom.m_bom_id
 WHERE bom.building_id = ?
   AND p.maintenance_interval_months > 0
-GROUP BY p.m_product_id, bom.bom_category
+GROUP BY p.m_product_id, bom.m_product_category_id
 ORDER BY p.maintenance_interval_months ASC;
 ```
 
