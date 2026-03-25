@@ -790,7 +790,7 @@ Independent of both layers: doors in walls, perimeter closure, roof coverage. Ca
 
 **Action:** Wire EYES proofs as Layer 3 sanity gate. VerbFactorizer delegates to BIMEyes ShapeClassifier (S60-S3) — single source of truth for shape classification across IFCtoBOM and EYES modules.
 
-**Validation-as-ordering (future):** [ProjectOrderBlueprint.md §13](ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) defines how validation rules evolve from checking to proposing. Gap 4 source #5 (authority_data.db) becomes not just a constraint checker but a **suggestion engine** — rules propose OrderLines, architect curates. This changes the relationship between validation and compilation: rules don't just gate the output, they help author the input. First case: FP discipline via ad_fp_trigger + ad_space_type_mep_bom.
+**Validation-as-ordering (future):** [ProjectOrderBlueprint.md §13](ProjectOrderBlueprint.md#13-rule-driven-discipline-validation-as-ordering) defines how validation rules evolve from checking to proposing. Gap 4 source #5 (authority_data.db) becomes not just a constraint checker but a **suggestion engine** — rules propose OrderLines, architect curates. This changes the relationship between validation and compilation: rules don't just gate the output, they help author the input. First case: FP discipline via ad_fp_trigger + ad_space_type_mep_bom.
 
 See also: [TestArchitecture.md §Corrected Understanding](TestArchitecture.md#corrected-understanding-rosetta-stone-gates-prove-relational-round-trip).
 
