@@ -1257,10 +1257,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#76-migration-plan-follow-up-sessions" class="md-nav__link">
+  <a href="#76-migration-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7.6 Migration Plan (follow-up sessions)
+        7.6 Migration Status
       
     </span>
   </a>
@@ -3674,10 +3674,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#76-migration-plan-follow-up-sessions" class="md-nav__link">
+  <a href="#76-migration-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7.6 Migration Plan (follow-up sessions)
+        7.6 Migration Status
       
     </span>
   </a>
@@ -4974,19 +4974,63 @@ from the existing bom_category vocabulary.</p>
 - Python scripts: <code>RosettaStoneToBOM.py</code>, <code>RosettaStoneExtract.py</code>
 - Doc references across ~10 specs
 - Estimated total touchpoints: 40–60 (bounded task, separate session)</p>
-<!-- Implementing SpecsAnalysis.txt §2 -->
-<h3 id="76-migration-plan-follow-up-sessions">7.6 Migration Plan (follow-up sessions)<a class="headerlink" href="#76-migration-plan-follow-up-sessions" title="Permanent link">&para;</a></h3>
-<ol>
-<li><strong>Session N+1:</strong> Add missing M_Product_Category rows to ERP.db (DV018 migration) — <strong>DONE (117 rows)</strong></li>
-<li><strong>Session N+2:</strong> Populate <code>m_product_category_id</code> on BUILDING BOMs (currently NULL where doc_base_type is set)</li>
-<li><strong>Session N+3:</strong> Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)</li>
-<li><strong>Session N+4:</strong> Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)</li>
-<li><strong>Session N+5:</strong> Rename ERP.db → ERP.db + propagate all touchpoints</li>
-<li><strong>Session N+6:</strong> Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map — replacing <code>bom_category</code> string proxy (per DISC_VALIDATION_DB_SRS.md §11.6.3)</li>
-<li><strong>Session N+7:</strong> Retire <code>deriveDiscipline()</code> from compile path — extraction-only fallback (per DISC_VALIDATION_DB_SRS.md §11.6.3a)</li>
-<li><strong>Session N+8:</strong> Drop <code>Parent_Category_ID</code> column from M_Product_Category — unnecessary invention. Hierarchy lives in M_BOM_Line, not in the category table. AD_Org.IsSummary handles discipline grouping (iDempiere-native).</li>
-<li><strong>Each session:</strong> Propagate doc corrections to 1–2 specs from §7.2 list</li>
-</ol>
+<h3 id="76-migration-status">7.6 Migration Status<a class="headerlink" href="#76-migration-status" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Task</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>M_Product_Category rows in ERP.db (DV018)</td>
+<td><strong>DONE</strong> — 117 rows (S75)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Populate <code>m_product_category_id</code> on BUILDING BOMs</td>
+<td><strong>DONE</strong> — S75 backfill</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Java routing: doc_base_type → m_product_category_id</td>
+<td><strong>DONE</strong> — S77 (19 source + 12 test files)</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Deprecate doc_base_type/doc_sub_type columns</td>
+<td><strong>DONE</strong> — marked @Deprecated in schema</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Rename disc_validation.db → ERP.db</td>
+<td><strong>DONE</strong> — S76 (~100 files)</td>
+</tr>
+<tr>
+<td>6</td>
+<td>AD_Org_ID FK replacing bom_category string</td>
+<td><strong>DONE</strong> — S78 (W009 migration)</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Retire deriveDiscipline() from compile path</td>
+<td><strong>DONE</strong> — S79 (resolveDiscipline replaces it, extraction-only fallback)</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Drop Parent_Category_ID column</td>
+<td>PENDING — prompt 13</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Drop vestigial TEXT discipline columns</td>
+<td>PENDING — Step 6 cleanup</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
 <code>SystemContract.md</code> for the three-concern model (WHAT/HOW/WHERE),
