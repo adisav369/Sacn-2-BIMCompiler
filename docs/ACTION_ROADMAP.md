@@ -2,7 +2,7 @@
 
 > **Governing documents:** [MANIFESTO.md](MANIFESTO.md) (ERP world view) ·
 > [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md) (session plan) ·
-> [SpecsAnalysis.txt](SpecsAnalysis.txt) (gap analysis)
+> [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) (iDempiere conformance)
 
 ---
 
@@ -51,8 +51,8 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 
 | Item | What | Blocker | Ref |
 |------|------|---------|-----|
-| TRIM-1 | Wire `TRIM WALLS TO ROOF` in pipeline. Add to `.bimcobol` + create DemoHouse_2BR.bimcobol | — | [SpecsAnalysis §21](SpecsAnalysis.txt), [BIM_COBOL.md §TRIM](BIM_COBOL.md) |
-| TRIM-2 | End-to-end witness: BOM Drop SH → swap roof → TRIM fires → curtain wall trimmed | TRIM-1 | [SpecsAnalysis §22](SpecsAnalysis.txt), [BBC.md §Selection](BOMBasedCompilation.md) |
+| TRIM-1 | Wire `TRIM WALLS TO ROOF` in pipeline. Add to `.bimcobol` + create DemoHouse_2BR.bimcobol | — | [BIM_COBOL.md §TRIM](BIM_COBOL.md) |
+| TRIM-2 | End-to-end witness: BOM Drop SH → swap roof → TRIM fires → curtain wall trimmed | TRIM-1 | [BBC.md §Selection](BOMBasedCompilation.md) |
 | CP-2 | DX MIRROR verb (85 axis mismatches) | Large effort | [DuplexAnalysis.md](DuplexAnalysis.md), [TestArchitecture.md](TestArchitecture.md) |
 
 ---
@@ -61,7 +61,7 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 
 | Item | What | Ref |
 |------|------|-----|
-| FMT-1 | Evaluate retiring DSL for generative buildings. GRID axis algebra must port to YAML first | SpecsAnalysis §23 |
+| FMT-1 | Evaluate retiring DSL for generative buildings. GRID axis algebra must port to YAML first | — |
 
 ---
 
@@ -72,7 +72,7 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 | GAP-SC-3 | Site grid generation — subdivide site_aabb into plots using [terrain](PDF_TERRAIN.md) topology | C_Project |
 | GAP-SC-6 | Compile-once-copy-many — reference class performance (qty=180) | C_Project at scale |
 | GAP-SC-7 | Output consolidation — per-building vs consolidated output.db | C_Project |
-| ENT-1 | ModelValidator alignment (processIt → beforeSave/afterSave hooks) | Enterprise multi-user | SpecsAnalysis §15 |
+| ENT-1 | ModelValidator alignment (processIt → beforeSave/afterSave hooks) | Enterprise multi-user |
 | ENT-2 | Federated Model spatial DB (93% memory reduction on 93K elements) | Enterprise scale |
 
 ---
@@ -92,7 +92,7 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 
 ## Schema Migration Backlog
 
-From [SpecsAnalysis.txt](SpecsAnalysis.txt) §10 and [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md):
+From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md):
 
 | Step | What | Status |
 |------|------|--------|
