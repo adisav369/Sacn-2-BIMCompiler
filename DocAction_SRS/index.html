@@ -4492,7 +4492,7 @@ YAML.FP absent          →  No FP in this building. Nothing fires for FP.
   │   │   │   → component_geometries (mesh via geometry_hash)
   │   │   │   → INSERT M_AttributeSetInstance (width, depth, height, material)
   │   │   │
-  │   │   └── INSERT PP_Order_Node (verb execution record)
+  │   │   └── INSERT W_Verb_Node (verb execution record)
   │   │
   │   └── IF value = DocEvent:
   │       │  DocEvent engine handles it (concern #2)
@@ -4600,7 +4600,7 @@ disciplines retain their state.</p>
 C_OrderLine count — if already populated, it skips that discipline. This handles
 the partial-success case: fix the blocked discipline's seed data, re-run, and
 only the remaining disciplines execute.</p>
-<p><strong>Audit trail:</strong> Every processIt() invocation writes to <code>PP_Order_Node</code>:
+<p><strong>Audit trail:</strong> Every processIt() invocation writes to <code>W_Verb_Node</code>:
 - <code>verb_ref = 'PROCESS_IT'</code>
 - <code>description = 'FP: 45 placed, ELEC: BLOCK (RULE_NOT_FOUND)'</code>
 - <code>node_status = 'COMPLETE' | 'PARTIAL' | 'BLOCKED'</code></p>
@@ -4645,7 +4645,7 @@ world coordinates. This is a simple angle sum (2D), not quaternion composition.<
   │   → Resolves LODs from component_library.db
   │   → Writes elements + spatial + geometry to output.db
   │
-  ├── INSERT PP_Order_Node records (execution audit trail)
+  ├── INSERT W_Verb_Node records (execution audit trail)
   │   → One row per verb invocation
   │
   ├── ProveStage (Stage 9) gate
@@ -4729,7 +4729,7 @@ world coordinates. This is a simple angle sum (2D), not quaternion composition.<
 <td>completeIt</td>
 <td>IP→CO</td>
 <td>compile DB</td>
-<td>PP_Order_Node, C_Order.DocStatus</td>
+<td>W_Verb_Node, C_Order.DocStatus</td>
 <td>Execution audit + status update</td>
 </tr>
 <tr>
@@ -4815,7 +4815,7 @@ owns each element). Both are editable during IP and frozen at CO.
 <td>Recomputed on change</td>
 </tr>
 <tr>
-<td><code>PP_Order_Node</code></td>
+<td><code>W_Verb_Node</code></td>
 <td>verb_ref</td>
 <td>Verb execution</td>
 <td>Written at CO</td>
@@ -4855,7 +4855,7 @@ invoke these verbs on C_OrderLine.AD_Org_ID:</p>
 <td>Tier 1 re-run on element (new discipline rules). Tier 2 re-run on storey (new pair interactions).</td>
 </tr>
 <tr>
-<td><strong>PP_Order_Node</strong></td>
+<td><strong>W_Verb_Node</strong></td>
 <td>verb_ref='REASSIGN', description='pipe_42: CW→SP'</td>
 </tr>
 </tbody>
@@ -4909,7 +4909,7 @@ SQL:
 <td>Full Tier 1+2+3 re-run (discipline landscape changed).</td>
 </tr>
 <tr>
-<td><strong>PP_Order_Node</strong></td>
+<td><strong>W_Verb_Node</strong></td>
 <td>verb_ref='SPLIT', description='MEP→CW(338)+SP(189)+FP(312)+ELEC(65)'</td>
 </tr>
 </tbody>
@@ -4971,7 +4971,7 @@ After: source MEP node → IsActive=0 (soft delete, audit trail)
 <td>Tier 1 re-run (target rules apply). Tier 2 re-run (fewer pairs).</td>
 </tr>
 <tr>
-<td><strong>PP_Order_Node</strong></td>
+<td><strong>W_Verb_Node</strong></td>
 <td>verb_ref='MERGE', description='SP→CW (single plumbing contract)'</td>
 </tr>
 </tbody>
@@ -5021,7 +5021,7 @@ Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
 <td>Tier 1 on BOTH old and new parent (spacing recalc). Tier 3 re-check (vertical continuity may break).</td>
 </tr>
 <tr>
-<td><strong>PP_Order_Node</strong></td>
+<td><strong>W_Verb_Node</strong></td>
 <td>verb_ref='REPARENT', description='sprinkler_23: GF→L1'</td>
 </tr>
 </tbody>
@@ -5077,7 +5077,7 @@ SQL:
 <td>Tier 1 re-run (same spacing rules, different product dims/attachment).</td>
 </tr>
 <tr>
-<td><strong>PP_Order_Node</strong></td>
+<td><strong>W_Verb_Node</strong></td>
 <td>verb_ref='SWAP', description='sprinkler: pendant→upright'</td>
 </tr>
 </tbody>
@@ -5624,20 +5624,20 @@ in New York. These verbs are the engine; standards are the data.</p>
 </tbody>
 </table>
 <p><strong>The relationship:</strong> Placement verbs create positions (dx/dy/dz on C_OrderLine).
-Joining verbs define HOW two elements connect (recorded on PP_Order_Node).
+Joining verbs define HOW two elements connect (recorded on W_Verb_Node).
 Validation verbs check compliance (results in W_Validation_Result).</p>
 <p>All three verb categories are <strong>jurisdiction-independent</strong>. A <code>TILE</code> in MY
 is the same <code>TILE</code> in US — different <code>step_mm</code> (from AD_Val_Rule), same engine.
 A <code>FIT</code> is the same mechanical action everywhere — different clearance tolerance
 (from AD_Val_Rule_Param), same verb.</p>
-<p><strong>PP_Order_Node records joining verbs:</strong></p>
+<p><strong>W_Verb_Node records joining verbs:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- Example: sprinkler head attached to branch pipe</span>
-<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">PP_Order_Node</span><span class="w"> </span><span class="p">(</span><span class="n">C_Order_ID</span><span class="p">,</span><span class="w"> </span><span class="n">C_OrderLine_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">SeqNo</span><span class="p">,</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">W_Verb_Node</span><span class="w"> </span><span class="p">(</span><span class="n">C_Order_ID</span><span class="p">,</span><span class="w"> </span><span class="n">C_OrderLine_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">SeqNo</span><span class="p">,</span>
 <span class="w">    </span><span class="n">verb_ref</span><span class="p">,</span><span class="w"> </span><span class="n">co_emptyspaceline_id</span><span class="p">,</span><span class="w"> </span><span class="n">DocStatus</span><span class="p">)</span>
 <span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="o">?</span><span class="p">,</span><span class="w"> </span><span class="n">sprinkler_orderline_id</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ATTACH sprinkler to branch_pipe_01&#39;</span><span class="p">,</span>
 <span class="w">    </span><span class="mi">70</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ATTACH&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">slot_id</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DR&#39;</span><span class="p">);</span>
 
-<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">PP_Order_NodeProduct</span><span class="w"> </span><span class="p">(</span><span class="n">PP_Order_Node_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="p">,</span><span class="w"> </span><span class="n">ValueType</span><span class="p">)</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">W_Verb_NodeProduct</span><span class="w"> </span><span class="p">(</span><span class="n">W_Verb_Node_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="p">,</span><span class="w"> </span><span class="n">ValueType</span><span class="p">)</span>
 <span class="k">VALUES</span>
 <span class="w">    </span><span class="p">(</span><span class="o">?</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;host_element&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;branch_pipe_01&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TEXT&#39;</span><span class="p">),</span>
 <span class="w">    </span><span class="p">(</span><span class="o">?</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;attachment_face&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TOP&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TEXT&#39;</span><span class="p">),</span><span class="w">          </span><span class="c1">-- from component_definitions</span>
@@ -5761,7 +5761,7 @@ rename before each CompleteIt to version their builds (e.g. <code>output/demo_v2
 <td>Validation results</td>
 </tr>
 <tr>
-<td>PP_Order_Node</td>
+<td>W_Verb_Node</td>
 <td>Compile DB</td>
 <td>Verb audit trail</td>
 </tr>
@@ -6512,7 +6512,7 @@ Tier 3: fires on building compile or manual trigger (&lt; 500ms)
 <h3 id="phase-5-constructionmodelspawner-docvalidatemd-14">Phase 5: ConstructionModelSpawner (DocValidate.md §14)<a class="headerlink" href="#phase-5-constructionmodelspawner-docvalidatemd-14" title="Permanent link">&para;</a></h3>
 <p><strong>Deferred</strong> until G-7 (Assembly Builder). Depends on:
 - C_Order / C_OrderLine schema in compile DB (G-4 DONE)
-- PP_Order_Node table (not yet created)
+- W_Verb_Node table (not yet created)
 - Full BOM tree walking (BOMWalker exists)</p>
 <hr />
 <h2 id="9-traceability-matrix">9. Traceability Matrix<a class="headerlink" href="#9-traceability-matrix" title="Permanent link">&para;</a></h2>

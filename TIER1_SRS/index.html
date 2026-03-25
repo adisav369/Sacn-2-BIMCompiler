@@ -4043,7 +4043,7 @@ a maintenance schedule from product attributes.</p>
 - <code>lifespan_years</code> — expected replacement age</p>
 <p>No new tables needed. The maintenance schedule is a <strong>computed view</strong> over
 the BOM — not a stored work order. Work orders are the ERP system's job
-(iDempiere PP_Order). We provide the data to generate them.</p>
+(iDempiere C_Order). We provide the data to generate them.</p>
 <p><strong>Seed data</strong> (V010b, same migration as §1):</p>
 <div class="highlight"><pre><span></span><code><span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">maintenance_interval_months</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="n">lifespan_years</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">15</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">product_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;mechanical&#39;</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">&#39;%AHU%&#39;</span><span class="p">;</span>
@@ -4550,7 +4550,7 @@ Step 8 is independent of everything else.</p>
 <tbody>
 <tr>
 <td>Work order CRUD</td>
-<td>ERP system's job (iDempiere PP_Order)</td>
+<td>ERP system's job (iDempiere C_Order)</td>
 <td><code>DocAction_SRS.md</code> §1</td>
 </tr>
 <tr>
@@ -4636,7 +4636,7 @@ logging.</strong> The ERP/FM systems consume our data. We don't replicate them.<
 <hr />
 <h2 id="5-4d-construction-schedule-cidb-sequence-rules">§5 — 4D Construction Schedule (CIDB sequence rules)<a class="headerlink" href="#5-4d-construction-schedule-cidb-sequence-rules" title="Permanent link">&para;</a></h2>
 <h3 id="51-problem">§5.1 Problem<a class="headerlink" href="#51-problem" title="Permanent link">&para;</a></h3>
-<p>4D scheduling was offline — PP_Order_Node verb ordering in the compiler pipeline.
+<p>4D scheduling was offline — W_Verb_Node verb ordering in the compiler pipeline.
 No live wire action for the UI to query a Gantt schedule.</p>
 <h3 id="52-schema-migration-v012">§5.2 Schema (migration V012)<a class="headerlink" href="#52-schema-migration-v012" title="Permanent link">&para;</a></h3>
 <p>New columns on M_Product in component_library.db:</p>

@@ -5997,8 +5997,8 @@ requires a triage pass to suppress false positives so the signal stays clean.</p
 - After intentional changes: re-seal (see below)
 - If BROKEN unexpectedly: <code>bash scripts/verify_test_seal.sh --detail</code></p>
 <hr />
-<p><strong>Sealed:</strong> 2026-03-26 (v36: S84 drop doc_base_type from m_bom)
-<strong>Super-hash:</strong> <code>3c705504ab44363ac02720b7c0d2f8c062c0c4d5fe8f243d107cc60206751083</code></p>
+<p><strong>Sealed:</strong> 2026-03-26 (v37: S86 PP_Order_Node → W_Verb_Node rename)
+<strong>Super-hash:</strong> <code>036e58d0ee3c66e99a87a9365b872f6169abb84e74227b88c51eab576fc6e0c3</code></p>
 <p><strong>S51-AUDIT pending re-seal:</strong> The following hardening changes require a re-seal once applied:
 - <code>assumeTrue</code> → <code>fail()</code> in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
 - <code>assertTrue(true)</code> tautologies removed (F5Integration, Calibration)</p>
@@ -6067,7 +6067,7 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 </code></pre></div>
 <h3 id="ormsandbox-topologymaker-tests-6-files">ORMSandbox + TopologyMaker Tests (6 files)<a class="headerlink" href="#ormsandbox-topologymaker-tests-6-files" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>181e34fa  EmptySpaceTest.java
-0d2a3c77  PP_Order_NodeTest.java
+0d2a3c77  W_Verb_NodeTest.java
 1a0321a3  BuildingInspectorTest.java
 20ead299  OrderLineInterfaceContractTest.java
 50f65541  BasePOTest.java
@@ -6685,7 +6685,7 @@ structural defense.</p>
 <h3 id="why-verbs-cant-cheat">Why Verbs Can't Cheat<a class="headerlink" href="#why-verbs-cant-cheat" title="Permanent link">&para;</a></h3>
 <p>Each BIM COBOL verb:
 1. <strong>Validates</strong> inputs before touching the database
-2. <strong>Logs</strong> to PP_Order_Node (audit trail — who did what, when)
+2. <strong>Logs</strong> to W_Verb_Node (audit trail — who did what, when)
 3. <strong>Respects</strong> EntityType guards (D records are read-only)
 4. <strong>Uses</strong> PO classes (beforeSave() hooks enforce invariants)
 5. <strong>Is testable</strong> — each verb has a witness test</p>

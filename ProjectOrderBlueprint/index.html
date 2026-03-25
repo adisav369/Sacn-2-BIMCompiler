@@ -3714,7 +3714,7 @@ from the BOM recipe's offset rules.</p>
 <p><strong>ERP precedent:</strong> This is the manufacturing distinction between
 <strong>discrete</strong> and <strong>repetitive</strong> production. Discrete: one work order per
 unit (100 work orders). Repetitive: one work order with qty=100, produced
-on a line. iDempiere supports both via <code>PP_Order.QtyOrdered</code>. The
+on a line. iDempiere supports both via <code>C_OrderLine.QtyOrdered</code>. The
 reference class pattern applies the same principle to BOM explosion.</p>
 <p><strong>Indexed exceptions</strong> use <code>locator_ref</code> with an array index suffix
 (<code>[47]</code>). The index is the ordinal position in the parent's child sequence.
@@ -4265,7 +4265,7 @@ patterns — contributed by everyone who compiles a building.</p>
 <p><strong>Status:</strong> Future — design specification only.</p>
 </blockquote>
 <p>The order already carries WHAT (C_OrderLine), WHERE (M_BOM_Line dx/dy/dz),
-and HOW (PP_Order_Node). The remaining dimensions are columns, not systems.</p>
+and HOW (W_Verb_Node). The remaining dimensions are columns, not systems.</p>
 <h3 id="51-4d-schedule-topological-sort-of-bom-tree">5.1 4D Schedule — Topological Sort of BOM Tree<a class="headerlink" href="#51-4d-schedule-topological-sort-of-bom-tree" title="Permanent link">&para;</a></h3>
 <p>The BOM tree encodes construction dependency: you can't build Floor 2
 before Floor 1. A parent must exist before its children can be placed.</p>
@@ -4292,7 +4292,7 @@ existing data.</p>
   (Room A and Room B on the same floor)
 - <strong>Milestone:</strong> Any BOM node can be flagged as a milestone. Completion
   = all children compiled and gates passed
-- <strong>Duration:</strong> Verb execution time estimates on PP_Order_Node. TILE a
+- <strong>Duration:</strong> Verb execution time estimates on W_Verb_Node. TILE a
   floor takes X hours. ROUTE plumbing takes Y hours. Sum up the branch</p>
 <h3 id="52-5d-cost-inherent-in-the-data-model">5.2 5D Cost — Inherent in the Data Model<a class="headerlink" href="#52-5d-cost-inherent-in-the-data-model" title="Permanent link">&para;</a></h3>
 <p>Each C_OrderLine references an M_Product. M_Product has a price.
@@ -4432,7 +4432,7 @@ DX_PREMIUM_SOLAR (parent = DX_PREMIUM)
 DX_BOTH (parent = DX_SOLAR AND DX_PREMIUM)
   → IMPOSSIBLE: Ref_Order_ID is scalar FK      ← structurally prevented
 </code></pre></div>
-<p><strong>iDempiere precedent:</strong> PP_Order_BOM uses <code>SeqNo</code> for ordering within
+<p><strong>iDempiere precedent:</strong> C_OrderLine uses <code>SeqNo</code> for ordering within
 a single parent. M_PriceList_Version uses <code>ValidFrom</code> — latest wins.
 Both assume a linear resolution path, not a DAG. We follow the same
 assumption.</p>
@@ -4448,7 +4448,7 @@ the cycle path.</p>
 <h3 id="64-ordering-within-a-single-chain-level">6.4 Ordering Within a Single Chain Level<a class="headerlink" href="#64-ordering-within-a-single-chain-level" title="Permanent link">&para;</a></h3>
 <p>When a single order carries multiple exception lines, they are applied
 in <code>C_OrderLine.Line</code> order (iDempiere's standard line numbering,
-analogous to <code>PP_Order_BOM.SeqNo</code>). If two lines in the same order
+analogous to <code>C_OrderLine.SeqNo</code>). If two lines in the same order
 target the same <code>locator_ref</code>, the higher <code>Line</code> number wins —
 consistent with "last writer wins" within a document.</p>
 <p><strong>Validation:</strong> At order entry time, warn if two lines in the same
@@ -4607,7 +4607,7 @@ It is a <strong>spatial mutation with cascading consequences</strong>.</p>
 <tr>
 <td><strong>DiffVerb</strong></td>
 <td>Spatial mutations from user gestures</td>
-<td>PP_Order_Node (verb_type=DIFF)</td>
+<td>W_Verb_Node (verb_type=DIFF)</td>
 <td>Replayable operation with delta parameters</td>
 </tr>
 <tr>
@@ -4626,18 +4626,18 @@ re-validated. The gas line must reroute.</p>
 <h3 id="92-diffverb-captured-gesture-as-replayable-operation">9.2 DiffVerb — Captured Gesture as Replayable Operation<a class="headerlink" href="#92-diffverb-captured-gesture-as-replayable-operation" title="Permanent link">&para;</a></h3>
 <p>When the user drags an element in the viewport, the gesture produces a
 <strong>DiffVerb</strong> — a new verb type alongside TILE, ARRAY, ROUTE, CLUSTER.</p>
-<div class="highlight"><pre><span></span><code>PP_Order_Node:
+<div class="highlight"><pre><span></span><code>W_Verb_Node:
     verb_type    = &#39;DIFF&#39;
     locator_ref  = &#39;L1.Living.FP_Mantel&#39;
 
-PP_Order_NodeProduct (parameters):
+W_Verb_NodeProduct (parameters):
     delta_dx     = -300    (mm, parent-relative)
     delta_dy     = 0
     delta_dz     = 0
     source       = &#39;viewport_drag&#39;   (provenance: user gesture)
 </code></pre></div>
 <p>The DiffVerb is:
-- <strong>Stored</strong> as a PP_Order_Node row — same table as all other verbs
+- <strong>Stored</strong> as a W_Verb_Node row — same table as all other verbs
 - <strong>Replayable</strong> — apply the same DiffVerb to the same base BOM and get
   the same result. Determinism is preserved
 - <strong>Composable</strong> — multiple DiffVerbs on the same order stack additively.
@@ -4811,8 +4811,8 @@ library is only as trustworthy as its provenance. AD_ChangeLog provides:</p>
 full audit trail. Disputes are resolved by reading the log, not by
 arguing about intent.</p>
 <h3 id="104-diffverb-audit-trail">10.4 DiffVerb Audit Trail<a class="headerlink" href="#104-diffverb-audit-trail" title="Permanent link">&para;</a></h3>
-<p>Every viewport gesture (§9) is a DiffVerb recorded in PP_Order_Node.
-AD_ChangeLog records the creation of each PP_Order_Node row. Together
+<p>Every viewport gesture (§9) is a DiffVerb recorded in W_Verb_Node.
+AD_ChangeLog records the creation of each W_Verb_Node row. Together
 they provide a complete edit history:</p>
 <div class="highlight"><pre><span></span><code>Session replay:
   10:14:03  DIFF  FP_Mantel dx -300mm         (user drag)
@@ -5537,7 +5537,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.</p>
 </tr>
 <tr>
 <td><strong>§9</strong> DiffVerb + Callout</td>
-<td>DiffVerbService records DIFF PP_Order_Node. W007 AD_Rule table (3 seed rules). CalloutEngine fires in topo-sort order. DiffVerbTest 5/5.</td>
+<td>DiffVerbService records DIFF W_Verb_Node. W007 AD_Rule table (3 seed rules). CalloutEngine fires in topo-sort order. DiffVerbTest 5/5.</td>
 <td><strong>Session F DONE</strong> (S72). Viewport gesture capture pending (Bonsai addon)</td>
 <td></td>
 </tr>
@@ -5596,7 +5596,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.</p>
 <p><strong>ERP infrastructure (all tested, GREEN):</strong>
 - DocAction state machine (DR→IP→AP→CO→VO) with MOrder transitions
 - AD_ChangeLog (ChangelogDAO) — full audit trail
-- PP_Order_Node — verb execution audit with parameters
+- W_Verb_Node — verb execution audit with parameters
 - M_BOM_Line dx/dy/dz — spatial relationships (WHERE concern in BOM itself)
 - M_AttributeSetInstance — per-instance customization (partial)
 - Three-concern separation enforced by OrderLineInterfaceContractTest (W-LOCK-1..6)</p>

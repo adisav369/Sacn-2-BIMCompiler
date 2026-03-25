@@ -4234,7 +4234,7 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
                 elements_meta + elements_rtree (world AABB)
                 c_orderline (WHAT)
                 co_empty_space_line (WHERE)
-                PP_Order_Node (HOW)
+                W_Verb_Node (HOW)
 </code></pre></div>
 <h3 id="key-tables">Key Tables<a class="headerlink" href="#key-tables" title="Permanent link">&para;</a></h3>
 <table>
@@ -4270,7 +4270,7 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 <td>Spatial resolution per BOM line</td>
 </tr>
 <tr>
-<td>PP_Order_Node</td>
+<td>W_Verb_Node</td>
 <td>Verb execution audit trail</td>
 </tr>
 <tr>
@@ -4433,7 +4433,7 @@ They live once, centrally — not per-product or per-order. ERP.db serves this r
 <tr>
 <td><strong>Transactional</strong></td>
 <td><code>output.db</code></td>
-<td>c_order, c_orderline, elements_meta, PP_Order_Node, co_empty_space*</td>
+<td>c_order, c_orderline, elements_meta, W_Verb_Node, co_empty_space*</td>
 </tr>
 </tbody>
 </table>

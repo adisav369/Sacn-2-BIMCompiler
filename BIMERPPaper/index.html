@@ -3108,7 +3108,7 @@ ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | 
 </tr>
 </tbody>
 </table>
-<p>Each verb produces a typed <code>VerbResult</code> — success/failure, witness proof, and payload. No anonymous SQL. No silent geometry mutations. Full audit trail via PP_Order_Node, iDempiere's production order pattern (see <code>docs/BIM_COBOL.md</code>).</p>
+<p>Each verb produces a typed <code>VerbResult</code> — success/failure, witness proof, and payload. No anonymous SQL. No silent geometry mutations. Full audit trail via W_Verb_Node, iDempiere's production order pattern (see <code>docs/BIM_COBOL.md</code>).</p>
 <h2 id="6-the-bim-designer-compilation-as-user-interface">6. The BIM Designer: Compilation as User Interface<a class="headerlink" href="#6-the-bim-designer-compilation-as-user-interface" title="Permanent link">&para;</a></h2>
 <p>Most BIM tools let users draw geometry directly. This system does the opposite: the user chooses parameters, and the compiler builds.</p>
 <p><strong>Architecture:</strong> A TCP server (Java, port 9876) serves a Blender addon (Python) via ndjson protocol. The Blender side is deliberately thin — it renders what the compiler produces. All logic lives in Java. All data lives in SQLite. This is the "Java-smart, Python-dumb" principle (see <code>docs/BlenderBridge.md</code>).</p>
@@ -3165,7 +3165,7 @@ ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | 
 <li><strong>Balanced scorecard</strong> — 4 perspectives (Financial, Client, Process, Learning) x 3+ KPIs</li>
 <li><strong>Audit trail</strong> — ChangelogDAO logs every PLACE/DELETE/MOVE/RESIZE with old/new values, supports undo. Mirrors iDempiere's AD_ChangeLog</li>
 </ul>
-<p><strong>ERP pattern fidelity:</strong> This is not a BIM tool pretending to be ERP. The data model <em>is</em> ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. PP_Order_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see <code>docs/DATA_MODEL.md</code> §1).</p>
+<p><strong>ERP pattern fidelity:</strong> This is not a BIM tool pretending to be ERP. The data model <em>is</em> ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. W_Verb_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see <code>docs/DATA_MODEL.md</code> §1).</p>
 <p><strong>What's not here yet:</strong> Role-based access control (AD_Role). PDF/CSV export. Report execution queue (AD_Process). Multi-currency cost rates. COBie MVD schema validation. These are roadmap items — the ERP patterns they follow are well-understood from two decades of iDempiere, but the construction-specific implementation is not yet written.</p>
 <h2 id="8-standards-compliance-and-inter-discipline-coordination">8. Standards, Compliance, and Inter-Discipline Coordination<a class="headerlink" href="#8-standards-compliance-and-inter-discipline-coordination" title="Permanent link">&para;</a></h2>
 <p>Construction compliance is not optional. Buildings must meet fire codes, structural standards, accessibility requirements, and energy regulations — and these differ by jurisdiction.</p>

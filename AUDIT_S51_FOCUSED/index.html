@@ -4111,10 +4111,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#o4-pp_order_node-manufacturing-execution" class="md-nav__link">
+  <a href="#o4-w_verb_node-manufacturing-execution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        O.4 — PP_Order_Node Manufacturing Execution
+        O.4 — W_Verb_Node Manufacturing Execution
       
     </span>
   </a>
@@ -6958,7 +6958,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <tr>
 <td>§4.2 Scale 2 (Building)</td>
 <td>✓ DONE (all 3)</td>
-<td>Confirmed — C_OrderLine, PP_Order_Node, CO_EmptySpaceLine all implemented</td>
+<td>Confirmed — C_OrderLine, W_Verb_Node, CO_EmptySpaceLine all implemented</td>
 <td><strong>YES</strong></td>
 </tr>
 <tr>
@@ -7826,7 +7826,7 @@ open housekeeping from Appendix J §J.7.</p>
 </ul>
 <h2 id="appendix-o-s67-erp-fidelity-audit-isbom-and-idempiere-paradigm-drift-check-2026-03-24">Appendix O — S67 ERP Fidelity Audit: IsBOM and iDempiere Paradigm Drift Check (2026-03-24)<a class="headerlink" href="#appendix-o-s67-erp-fidelity-audit-isbom-and-idempiere-paradigm-drift-check-2026-03-24" title="Permanent link">&para;</a></h2>
 <p><strong>Scope:</strong> Deep audit of whether Java source maintains the iDempiere ERP pattern
-(M_Product-centric, IsBOM detection, BOM explosion, PP_Order_Node manufacturing
+(M_Product-centric, IsBOM detection, BOM explosion, W_Verb_Node manufacturing
 execution, C_OrderLine product reference, leaf-to-geometry resolution, EntityType guards).</p>
 <p><strong>Verdict:</strong> The codebase is <strong>clean</strong>. No paradigm drift found. The iDempiere manufacturing
 pattern is faithfully maintained with one intentional, well-documented mapping
@@ -7951,11 +7951,11 @@ separates them: <code>MProduct.getAssembly()</code> for sub-assemblies, <code>MP
 <p><strong>Drift risk: NONE.</strong> Both engines are consistent. Test witnesses confirm:
 W-BOM-EB-1 (SH=55 leaves, 3 sub-assemblies), W-BOM-EB-2 (DX=1099 leaves, 5 sub-assemblies).</p>
 <hr />
-<h3 id="o4-pp_order_node-manufacturing-execution">O.4 — PP_Order_Node Manufacturing Execution<a class="headerlink" href="#o4-pp_order_node-manufacturing-execution" title="Permanent link">&para;</a></h3>
+<h3 id="o4-w_verb_node-manufacturing-execution">O.4 — W_Verb_Node Manufacturing Execution<a class="headerlink" href="#o4-w_verb_node-manufacturing-execution" title="Permanent link">&para;</a></h3>
 <p><strong>Finding: CORRECT — direct iDempiere manufacturing execution mapping.</strong></p>
-<p><strong>X_PP_Order_Node.java:9</strong> states:</p>
+<p><strong>X_W_Verb_Node.java:9</strong> states:</p>
 <blockquote>
-<p>"iDempiere Manufacturing: PP_Order_Node = one production operation step.
+<p>"iDempiere Manufacturing: W_Verb_Node = one production operation step.
 BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)."</p>
 </blockquote>
 <table>
@@ -7968,12 +7968,12 @@ BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)."<
 </thead>
 <tbody>
 <tr>
-<td>PP_Order_Node_ID</td>
-<td>PP_Order_Node_ID</td>
+<td>W_Verb_Node_ID</td>
+<td>W_Verb_Node_ID</td>
 <td>Primary key</td>
 </tr>
 <tr>
-<td>PP_Order_ID → C_Order</td>
+<td>C_Order_ID</td>
 <td>C_Order_ID</td>
 <td>FK to construction order</td>
 </tr>
@@ -8014,15 +8014,15 @@ BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)."<
 </tr>
 </tbody>
 </table>
-<p><strong>Three-concern separation enforced (X_PP_Order_Node.java:12-16):</strong>
+<p><strong>Three-concern separation enforced (X_W_Verb_Node.java:12-16):</strong>
 - WHAT = C_OrderLine
-- HOW = PP_Order_Node (this class)
+- HOW = W_Verb_Node (this class)
 - WHERE = CO_EmptySpaceLine (S_Resource)</p>
 <p><strong>DocStatus state machine:</strong> DR (Draft) → IP (In Progress) → CO (Completed) | VO (Voided).
 Matches iDempiere MOrder.processIt() lifecycle exactly.</p>
-<p><strong>Child parameters:</strong> PP_Order_NodeProduct stores structured verb parameters
-(Name/Value/ValueType per node). Matches iDempiere's PP_Order_Node parameter pattern.</p>
-<p><strong>Test witnesses:</strong> W-PP-1 through W-PP-5 (PP_Order_NodeTest.java) cover PO lifecycle,
+<p><strong>Child parameters:</strong> W_Verb_NodeProduct stores structured verb parameters
+(Name/Value/ValueType per node). Matches iDempiere's W_Verb_Node parameter pattern.</p>
+<p><strong>Test witnesses:</strong> W-PP-1 through W-PP-5 (W_Verb_NodeTest.java) cover PO lifecycle,
 SeqNo ordering, parameter children, DocStatus CHECK constraint, unique parameter names.</p>
 <p><strong>Drift risk: NONE.</strong> The mapping is clean and well-documented.</p>
 <hr />
@@ -8161,7 +8161,7 @@ Cannot be bypassed without GodMode.txt on disk.</p>
 <td><strong>No</strong> — faithful pattern</td>
 </tr>
 <tr>
-<td>PP_Order_Node</td>
+<td>W_Verb_Node</td>
 <td>Manufacturing execution step</td>
 <td>Verb execution record, same DocStatus lifecycle</td>
 <td><strong>No</strong> — direct mapping</td>
@@ -8260,7 +8260,7 @@ linear: root → child → grandchild → ... → leaf.</p>
 <tr>
 <td>Chain walking</td>
 <td>Walk Ref_Order_ID root-first, collect exceptions</td>
-<td>PP_Order_BOM parent walk</td>
+<td>C_OrderLine parent walk</td>
 </tr>
 <tr>
 <td>Depth wins</td>
@@ -8270,7 +8270,7 @@ linear: root → child → grandchild → ... → leaf.</p>
 <tr>
 <td>Same-order ordering</td>
 <td>C_OrderLine.Line (higher number wins)</td>
-<td>PP_Order_BOM.SeqNo</td>
+<td>C_OrderLine.SeqNo</td>
 </tr>
 <tr>
 <td>Sibling merge</td>
@@ -8299,7 +8299,7 @@ explicitly. Three lines, fully auditable. No hidden merge semantics.</p>
 </thead>
 <tbody>
 <tr>
-<td><strong>SeqNo</strong> (PP_Order_BOM)</td>
+<td><strong>SeqNo</strong> (C_OrderLine)</td>
 <td>Sequence determines processing order within a parent</td>
 <td>Used for same-order line ordering (§6.4)</td>
 </tr>
@@ -8696,12 +8696,12 @@ overrides within a reference class) and C_Project multi-order grouping (§2).</p
 <td>OrderInheritanceTest 6/6 (S68e)</td>
 </tr>
 <tr>
-<td>PP_Order_Node table</td>
+<td>W_Verb_Node table</td>
 <td><strong>EXISTS</strong></td>
-<td>W001 migration, M_PP_Order_Node PO class</td>
+<td>W001 migration, M_W_Verb_Node PO class</td>
 </tr>
 <tr>
-<td>PP_Order_NodeProduct table</td>
+<td>W_Verb_NodeProduct table</td>
 <td><strong>EXISTS</strong></td>
 <td>Structured params (Name/Value/ValueType)</td>
 </tr>
@@ -8714,12 +8714,12 @@ overrides within a reference class) and C_Project multi-order grouping (§2).</p
 </table>
 <p><strong>Verdict: §1 prerequisite MET. DiffVerb is implementable now.</strong></p>
 <h3 id="t2-what-diff-verb_type-should-record">T.2 — What DIFF Verb_Type Should Record<a class="headerlink" href="#t2-what-diff-verb_type-should-record" title="Permanent link">&para;</a></h3>
-<p>Per §9.2, a DiffVerb is a PP_Order_Node row with <code>verb_ref = 'DIFF'</code> and delta
-parameters in PP_Order_NodeProduct child rows:</p>
+<p>Per §9.2, a DiffVerb is a W_Verb_Node row with <code>verb_ref = 'DIFF'</code> and delta
+parameters in W_Verb_NodeProduct child rows:</p>
 <table>
 <thead>
 <tr>
-<th>PP_Order_NodeProduct.Name</th>
+<th>W_Verb_NodeProduct.Name</th>
 <th>Example Value</th>
 <th>Purpose</th>
 </tr>
@@ -8819,7 +8819,7 @@ needed, just re-run RollupAabbVerb logic on the parent room.</p>
 </thead>
 <tbody>
 <tr>
-<td>PP_Order_Node + PP_Order_NodeProduct</td>
+<td>W_Verb_Node + W_Verb_NodeProduct</td>
 <td>✓</td>
 <td>W001 schema, PO classes exist</td>
 </tr>
@@ -8863,7 +8863,7 @@ block the Java implementation.</p>
 <h3 id="t6-implementation-scope">T.6 — Implementation Scope<a class="headerlink" href="#t6-implementation-scope" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>W007 migration</strong> — <code>AD_Rule</code> table + <code>DIFF</code> action in bim_changelog CHECK constraint</li>
-<li><strong>DiffVerbService</strong> — records DIFF PP_Order_Node, fires CalloutEngine</li>
+<li><strong>DiffVerbService</strong> — records DIFF W_Verb_Node, fires CalloutEngine</li>
 <li><strong>CalloutEngine</strong> — evaluates AD_Rule chain in dependency order</li>
 <li><strong>DiffVerbTest</strong> — witness W-DIFF-1 (record diff + verify callout fires AABB recalc)</li>
 </ol>
@@ -8997,9 +8997,9 @@ and old <code>DocSubType</code> on C_DocType. Needs update to current schema.</p
 <p><strong>U.3.5 — Product count discrepancy (LOW)</strong></p>
 <p>2,475 products in most docs vs 2,459 in ProjectOrderBlueprint.md and GENERATIVE_HOUSE_SRS.md.
 Predates S73–S80 but still uncorrected.</p>
-<p><strong>U.3.6 — BBC.md PP_Order_Node inconsistency (LOW)</strong></p>
+<p><strong>U.3.6 — BBC.md W_Verb_Node inconsistency (LOW)</strong></p>
 <p>Section 1 mapping table says AD_ChangeLog for audit trail. Section 5 stage 6 still says
-PP_Order_Node. Minor inconsistency within the same spec.</p>
+W_Verb_Node. Minor inconsistency within the same spec.</p>
 <h3 id="u4-migration-audit">U.4 — Migration Audit<a class="headerlink" href="#u4-migration-audit" title="Permanent link">&para;</a></h3>
 <p>All new migrations are append-only and correctly sequenced:</p>
 <table>
@@ -9085,7 +9085,7 @@ PP_Order_Node. Minor inconsistency within the same spec.</p>
 </tr>
 <tr>
 <td><strong>LOW</strong></td>
-<td>Align BBC.md §5 stage 6 PP_Order_Node → AD_ChangeLog</td>
+<td>Align BBC.md §5 stage 6 W_Verb_Node → AD_ChangeLog</td>
 <td>Single line</td>
 </tr>
 <tr>

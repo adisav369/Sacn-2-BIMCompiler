@@ -4364,15 +4364,15 @@ Define BOM lines   M_BOM_Line          Floor × 2 → rooms → sets → items  
 Define attributes  M_Attribute         Ports, clearances, UBBL rules           m_attribute
 Raise work order   C_Order             BIM (building declaration)              C_Order (Construction Order)
 BOM Drop           C_OrderLine         Room dispatch → placement instances     C_OrderLine (Construction Order Details)
-Define workflow    PP_Order_Workflow    Verb script (TILE, ARRAY, ROUTE...)     PP_Order_Node (same name — verb invocations)
-Define operations  PP_Order_Node       Verb parameters per step                PP_Order_NodeProduct (same name — structured params)
+Define workflow    W_Verb_Node          Verb script (TILE, ARRAY, ROUTE...)     W_Verb_Node (verb invocations)
+Define operations  W_Verb_Node       Verb parameters per step                W_Verb_NodeProduct (same name — structured params)
 User edits lines   Edit C_OrderLine    Remove piano, swap set, add chair       UPDATE/INSERT C_OrderLine
-User edits verbs   Edit PP_Order_Node  Change spacing, cover, grid dims        UPDATE PP_Order_NodeProduct
+User edits verbs   Edit W_Verb_Node  Change spacing, cover, grid dims        UPDATE W_Verb_NodeProduct
 MRP Execution      MRP Run             mvn test (compile)                      VerbStage + BOMWalker
 </code></pre></div>
 <blockquote>
 <p><strong>Note (2026-03-04):</strong> Verb tables use iDempiere Manufacturing names directly:
-<code>PP_Order_Node</code> (verb invocation = production operation) and <code>PP_Order_NodeProduct</code>
+<code>W_Verb_Node</code> (verb invocation = production operation) and <code>W_Verb_NodeProduct</code>
 (structured parameters per verb). No custom names — BIM semantics in column comments only.
 Each verb invocation has per-line doc_status lifecycle (DR→IP→CO→VO).
 See <code>docs/BIM_COBOL.md</code> §15.6 for full schema. See <code>docs/DocAction_SRS.md</code> §1 for iDempiere parallel.</p>
@@ -4380,7 +4380,7 @@ See <code>docs/BIM_COBOL.md</code> §15.6 for full schema. See <code>docs/DocAct
 <p><strong>The compilation model:</strong>
 - <strong>BIM</strong> = the C_Order (Construction Order). Scoped by <code>C_BPartner</code>.
 - <strong>BIMLine</strong> = C_OrderLine (Construction Order Detail). Each line is an <strong>order topic</strong> — WHAT elements this building needs.
-- <strong>Verb Line</strong> = PP_Order_Node (Production Operation). Each line is a <strong>production step</strong> — HOW to place elements.
+- <strong>Verb Line</strong> = W_Verb_Node (Production Operation). Each line is a <strong>production step</strong> — HOW to place elements.
 - <strong>M_BOM</strong> (<code>m_bom</code>) = the product + assembly merged. Carries <code>BOMCategory</code> (WHAT) and <code>C_BPartner</code> (WHO).
 - <strong>M_BOM_Line</strong> (<code>m_bom_line</code>) = child placement. Carries SpaceSize (HOW MUCH: AABB in mm).
 - <strong>M_Attribute</strong> (<code>m_attribute</code>) = product-level attributes on leaf items (ports, UBBL clearances).</p>
@@ -4393,8 +4393,8 @@ compiling. The compiler reads the final schedule — it does not care what edits
 <blockquote>
 <p><strong>C_OrderLine separation (2026-03-04):</strong> The current c_orderline mixes order topics
 (WHAT: element_ref, ifc_class, discipline) with placement instructions (HOW: position_rule,
-host_type, host_ref). The PP_Order_Node model separates these: order topics stay in
-c_orderline; placement moves to <code>PP_Order_Node</code> + <code>PP_Order_NodeProduct</code>.
+host_type, host_ref). The W_Verb_Node model separates these: order topics stay in
+c_orderline; placement moves to <code>W_Verb_Node</code> + <code>W_Verb_NodeProduct</code>.
 WHERE concern lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
 co_empty_space_line is a compiler-internal cache, not architectural. BomCategory is unaffected — still drives template
 composition via Sequence priority. See <code>BBC.md</code> §1 for migration phases.

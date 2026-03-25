@@ -2013,10 +2013,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#153-pp_order_node-history-undo" class="md-nav__link">
+  <a href="#153-w_verb_node-history-undo" class="md-nav__link">
     <span class="md-ellipsis">
       
-        15.3 PP_Order_Node (History / Undo)
+        15.3 W_Verb_Node (History / Undo)
       
     </span>
   </a>
@@ -2549,10 +2549,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1719-python-addon-hardening-s40-review" class="md-nav__link">
+  <a href="#1721-python-addon-hardening-s40-review" class="md-nav__link">
     <span class="md-ellipsis">
       
-        17.19 Python Addon Hardening (S40 Review)
+        17.21 Python Addon Hardening (S40 Review)
       
     </span>
   </a>
@@ -5116,10 +5116,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#153-pp_order_node-history-undo" class="md-nav__link">
+  <a href="#153-w_verb_node-history-undo" class="md-nav__link">
     <span class="md-ellipsis">
       
-        15.3 PP_Order_Node (History / Undo)
+        15.3 W_Verb_Node (History / Undo)
       
     </span>
   </a>
@@ -5652,10 +5652,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1719-python-addon-hardening-s40-review" class="md-nav__link">
+  <a href="#1721-python-addon-hardening-s40-review" class="md-nav__link">
     <span class="md-ellipsis">
       
-        17.19 Python Addon Hardening (S40 Review)
+        17.21 Python Addon Hardening (S40 Review)
       
     </span>
   </a>
@@ -6418,7 +6418,7 @@ never see assembler.</p>
 </table>
 <p><strong>Layered composition:</strong> L1 convenience verbs call P0 primitives. L2
 (floor-level) will call L1. The GUI always targets the highest available verb
-tier. Each verb produces an audit trail via PP_Order_Node.</p>
+tier. Each verb produces an audit trail via W_Verb_Node.</p>
 <p><strong>Verb chaining</strong> (BIM_COBOL.md §18.11) — the output payload of one verb
 feeds as input to the next. This is how the GUI builds a building
 interactively:</p>
@@ -6599,9 +6599,9 @@ prevents the GUI from corrupting spatial data:</p>
 <td>Read-only — no position setters exist</td>
 </tr>
 <tr>
-<td><strong>PP_Order_Node</strong></td>
+<td><strong>W_Verb_Node</strong></td>
 <td>HOW (verb keyword, COBOL source, parameters)</td>
-<td>GUI edits verb params via PP_Order_NodeProduct</td>
+<td>GUI edits verb params via W_Verb_NodeProduct</td>
 </tr>
 <tr>
 <td><strong>M_BOM_Line dx/dy/dz</strong></td>
@@ -6614,7 +6614,7 @@ prevents the GUI from corrupting spatial data:</p>
 construction. The GUI cannot directly place elements — it must go through
 verbs, which the compiler executes. This architectural guard prevents
 flat-data shortcuts.</p>
-<p><strong>PP_Order_NodeProduct</strong> holds structured parameters (origin_x, grid_nx,
+<p><strong>W_Verb_NodeProduct</strong> holds structured parameters (origin_x, grid_nx,
 spacing_mm) as form-editable name/value pairs. The Bonsai addon reads these
 and presents them as sliders and spinners. The user edits params; the compiler
 resolves geometry.</p>
@@ -7580,7 +7580,7 @@ caching. Rides on Federation's existing Full Load — adds the fast path.</p>
 </tr>
 <tr>
 <td><strong>Verb audit trail</strong></td>
-<td>PP_Order_Node records every action</td>
+<td>W_Verb_Node records every action</td>
 <td>Full undo history, no mystery state</td>
 </tr>
 <tr>
@@ -7906,7 +7906,7 @@ Real projects would use the full component_library.db catalog.</p>
      match our ndjson/TCP architecture.
 
      Kept below: UX scenario (condensed), enabling framework data models
-     (Selection Cascade, PP_Order_Node, IncrementalCompiler — future reference).
+     (Selection Cascade, W_Verb_Node, IncrementalCompiler — future reference).
      Validation schema removed (canonical version now in DocValidate §3.1
      + migration/V001_validation_schema.sql). -->
 
@@ -7955,7 +7955,7 @@ Real projects would use the full component_library.db catalog.</p>
 <tr>
 <td>Undo</td>
 <td>Ctrl+Z last action only</td>
-<td>Full timeline via PP_Order_Node, any point restorable</td>
+<td>Full timeline via W_Verb_Node, any point restorable</td>
 </tr>
 <tr>
 <td>Clash detection</td>
@@ -7985,7 +7985,7 @@ The experience isn't just faster — it's <strong>compounding</strong>.</p>
 <h3 id="152-incremental-compiler-stage-mask">15.2 Incremental Compiler (Stage Mask)<a class="headerlink" href="#152-incremental-compiler-stage-mask" title="Permanent link">&para;</a></h3>
 <p>80% of edits affect only Stage 5-8. Recompiling from Stage 5 = 2 seconds vs 30 seconds full.
 Stage mask maps <code>ChangeType → which stages to rerun</code>. Checkpoints save state between stages.</p>
-<h3 id="153-pp_order_node-history-undo">15.3 PP_Order_Node (History / Undo)<a class="headerlink" href="#153-pp_order_node-history-undo" title="Permanent link">&para;</a></h3>
+<h3 id="153-w_verb_node-history-undo">15.3 W_Verb_Node (History / Undo)<a class="headerlink" href="#153-w_verb_node-history-undo" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">pp_order_node</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">pp_order_node_id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
 <span class="w">    </span><span class="n">pp_order_id</span><span class="w">      </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">     </span><span class="c1">-- which building</span>
@@ -9476,7 +9476,7 @@ geometry; it configures the database.</p>
 <tr>
 <td>Reorder children</td>
 <td>UPDATE C_OrderLine.Line (sequence)</td>
-<td>Construction order changes (PP_Order_Node)</td>
+<td>Construction order changes (W_Verb_Node)</td>
 </tr>
 <tr>
 <td>Delete line</td>
@@ -9550,7 +9550,7 @@ because edits are relational (FK updates), not geometric (mesh transforms).</p>
 <li>Variant version list UI (future — read output.db history)</li>
 <li>Multi-building scenes (one design session = one building)</li>
 </ul>
-<h3 id="1719-python-addon-hardening-s40-review">17.19 Python Addon Hardening (S40 Review)<a class="headerlink" href="#1719-python-addon-hardening-s40-review" title="Permanent link">&para;</a></h3>
+<h3 id="1721-python-addon-hardening-s40-review">17.21 Python Addon Hardening (S40 Review)<a class="headerlink" href="#1721-python-addon-hardening-s40-review" title="Permanent link">&para;</a></h3>
 <p>Seven fixes applied from front-end code review against BACK_OFFICE_SRS + TIER1_SRS:</p>
 <table>
 <thead>

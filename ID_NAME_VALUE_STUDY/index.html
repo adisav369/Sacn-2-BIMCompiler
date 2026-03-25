@@ -3943,19 +3943,19 @@ Date: 2026-03-26</p>
 </thead>
 <tbody>
 <tr>
-<td>PP_Order_Node</td>
+<td>W_Verb_Node</td>
 <td>Yes (INTEGER)</td>
 <td>Yes</td>
 <td>No</td>
-<td>PP_Order_Node_ID</td>
+<td>W_Verb_Node_ID</td>
 <td>INTEGER</td>
 </tr>
 <tr>
-<td>PP_Order_NodeProduct</td>
+<td>W_Verb_NodeProduct</td>
 <td>Yes (INTEGER)</td>
 <td>Yes</td>
 <td>Yes</td>
-<td>PP_Order_NodeProduct_ID</td>
+<td>W_Verb_NodeProduct_ID</td>
 <td>INTEGER ✓</td>
 </tr>
 <tr>
@@ -4129,7 +4129,7 @@ Date: 2026-03-26</p>
 </tbody>
 </table>
 <p><strong>Notes:</strong>
-- <code>PP_Order_NodeProduct</code> is fully conformant (_ID INTEGER, Name, Value) ✓
+- <code>W_Verb_NodeProduct</code> is fully conformant (_ID INTEGER, Name, Value) ✓
 - <code>c_order</code> uses <code>C_Order_ID TEXT</code> — divergent from iDempiere <code>C_Order_ID INTEGER</code></p>
 <h3 id="15-validation-db-libraryvalidationdb">1.5 Validation DB (<code>library/validation.db</code>)<a class="headerlink" href="#15-validation-db-libraryvalidationdb" title="Permanent link">&para;</a></h3>
 <table>
@@ -4254,7 +4254,7 @@ Date: 2026-03-26</p>
 <td><strong>c_order</strong></td>
 <td>Output</td>
 <td><code>C_Order_ID TEXT</code></td>
-<td>c_orderline.C_Order_ID, PP_Order_Node.C_Order_ID, co_empty_space.c_order_id</td>
+<td>c_orderline.C_Order_ID, W_Verb_Node.C_Order_ID, co_empty_space.c_order_id</td>
 <td>19</td>
 </tr>
 <tr>
@@ -4460,7 +4460,7 @@ Date: 2026-03-26</p>
 <p>Almost no tables have <code>Value</code> as a SearchKey. Only 3 conform:
 - <code>AD_Org</code> ✓
 - <code>M_AttributeInstance</code> ✓ (though this is attribute value, not SearchKey)
-- <code>PP_Order_NodeProduct</code> ✓</p>
+- <code>W_Verb_NodeProduct</code> ✓</p>
 <p><strong>Assessment:</strong> Adding Value/SearchKey to all tables is the largest gap. Most tables use the TEXT PK itself as the business identifier (e.g., <code>bom_id = 'SH-BUILDING'</code>), making the PK serve double duty as both surrogate and SearchKey.</p>
 <h3 id="33-java-po-classes-that-would-need-changes">3.3 Java PO Classes That Would Need Changes<a class="headerlink" href="#33-java-po-classes-that-would-need-changes" title="Permanent link">&para;</a></h3>
 <p>No formal iDempiere-style PO (Persistent Object) classes exist. The project uses:
@@ -4476,7 +4476,7 @@ Date: 2026-03-26</p>
   - <code>StairWriter.java</code> / <code>StairLibraryMapper.java</code> — element_instances, base_geometries
   - <code>SpatialStructureBuilder.java</code> — spatial_structure, rel_contained_in_space
   - <code>IDempiereExporter.java</code> — idempiere_product_map, idempiere_bom_map</p>
-<p>The iDempiere-named tables (<code>M_Product</code>, <code>m_bom</code>, <code>m_bom_line</code>, <code>C_Order</code>, <code>C_OrderLine</code>, <code>C_DocType</code>, <code>M_AttributeSet*</code>, <code>PP_Order_Node*</code>) are the ones that would be migrated. The <code>ad_*</code> and output tables use their own convention.</p>
+<p>The iDempiere-named tables (<code>M_Product</code>, <code>m_bom</code>, <code>m_bom_line</code>, <code>C_Order</code>, <code>C_OrderLine</code>, <code>C_DocType</code>, <code>M_AttributeSet*</code>, <code>W_Verb_Node*</code>) are the ones that would be migrated. The <code>ad_*</code> and output tables use their own convention.</p>
 <h3 id="34-migrations-needed">3.4 Migrations Needed<a class="headerlink" href="#34-migrations-needed" title="Permanent link">&para;</a></h3>
 <p>If TEXT PKs were converted to INTEGER <code>_ID</code> + <code>Value TEXT</code> SearchKey:</p>
 <table>
@@ -4566,7 +4566,7 @@ Date: 2026-03-26</p>
 - <code>component_definitions.type_id INTEGER → component_types.id INTEGER</code> ✓ (correct)
 - <code>placement_rules.component_id INTEGER → component_definitions.id INTEGER</code> ✓ (correct)</p>
 <p><strong>In Output DB:</strong>
-- <code>PP_Order_Node.C_Order_ID TEXT → c_order.C_Order_ID TEXT</code>
+- <code>W_Verb_Node.C_Order_ID TEXT → c_order.C_Order_ID TEXT</code>
 - <code>co_empty_space_line.co_emptyspace_id INTEGER → co_empty_space.co_emptyspace_id INTEGER</code> ✓
 - <code>element_instances.geometry_hash TEXT → base_geometries.geometry_hash TEXT</code>
 - <code>element_transforms.guid TEXT → elements_meta.guid TEXT</code>
@@ -4575,7 +4575,7 @@ Date: 2026-03-26</p>
 - <code>system_edges.system_id TEXT → mep_systems.system_id TEXT</code>
 - <code>system_edges.from_node_id TEXT → system_nodes.node_id TEXT</code>
 - <code>system_edges.to_node_id TEXT → system_nodes.node_id TEXT</code>
-- <code>PP_Order_NodeProduct.PP_Order_Node_ID INTEGER → PP_Order_Node.PP_Order_Node_ID INTEGER</code> ✓</p>
+- <code>W_Verb_NodeProduct.W_Verb_Node_ID INTEGER → W_Verb_Node.W_Verb_Node_ID INTEGER</code> ✓</p>
 <h3 id="42-cross-db-implicit-joins-no-declared-fk">4.2 Cross-DB Implicit Joins (No Declared FK)<a class="headerlink" href="#42-cross-db-implicit-joins-no-declared-fk" title="Permanent link">&para;</a></h3>
 <p>These are joined via shared TEXT keys across databases at runtime:
 - <code>m_bom_line.child_product_id TEXT</code> → <code>M_Product.product_id TEXT</code> (BOM → CL/ERP)
@@ -4604,7 +4604,7 @@ Date: 2026-03-26</p>
 </tr>
 <tr>
 <td><strong>Tables fully conformant (_ID + Name + Value)</strong></td>
-<td>4 (AD_Org, M_AttributeInstance, PP_Order_NodeProduct, AD_Val_Rule_Param)</td>
+<td>4 (AD_Org, M_AttributeInstance, W_Verb_NodeProduct, AD_Val_Rule_Param)</td>
 </tr>
 <tr>
 <td><strong>Tables with INTEGER PK but missing Name/Value</strong></td>
