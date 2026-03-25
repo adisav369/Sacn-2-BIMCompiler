@@ -42,6 +42,114 @@ three concerns, same separation as iDempiere.
 
 ---
 
+<!-- Implementing SpecsAnalysis.txt §14 — spatial + regulatory symbiosis -->
+
+## 0. Two Kinds of Rules — Why This Changes Everything
+
+### The Problem
+
+Every BIM tool on the market validates geometry — does the wall intersect the
+duct? Is the clearance sufficient? But **none** compose *spatial knowledge*
+(what engineers actually do in practice) with *regulatory knowledge* (what the
+law requires). In the current industry:
+
+- Spatial knowledge lives in the engineer's head, learned over decades
+- Regulatory knowledge lives in code books, checked by separate consultants
+- The two are reconciled manually, late in the project, at enormous cost
+- When codes change (annual cycle), the entire check is repeated from scratch
+
+These are separate tools, separate consultants, separate workflows. The gap
+between "where things go" and "what the law allows" is where billions of
+dollars in rework originate.
+
+### Our Solution — Two Rule Databases That Compose at Compile Time
+
+This compiler maintains **two kinds of rules** that work in symbiosis:
+
+| Rule Source | Origin | Stored In | Role | Three Concerns |
+|-------------|--------|-----------|------|----------------|
+| **Spatial rules** | Mined from 35 real buildings | `ad_space_type`, `ad_element_mep`, `ad_space_dim`, `placement_rules` in [ERP.db](DISC_VALIDATION_DB_SRS.md) | **Propose** placements | **WHERE** it goes |
+| **Regulatory rules** | From standards bodies (UBBL, NFPA 13, IRC, BCA) | `AD_Val_Rule` with jurisdiction scope + `pack_id` + `valid_from/to` | **Validate** placements | **HOW** it's allowed |
+
+**Spatial rules propose. Regulatory rules validate.** One compiler, two
+knowledge bases. The compiler compiles freely (WHAT), spatial rules guide
+WHERE, regulatory rules gate HOW — the [Three Concerns](MANIFESTO.md#the-three-concerns)
+in action.
+
+### The iDempiere Parallel — Configure-to-Order Applied to Compliance
+
+This is the same pattern iDempiere uses for manufacturing orders:
+
+```
+iDempiere Manufacturing:
+  BOM Configurator  → proposes a product mix (spatial knowledge)
+  C_Tax             → validates tax liability by jurisdiction (regulatory knowledge)
+  One proposes, one constrains. Neither knows about the other.
+
+BIM Compiler:
+  Spatial rules     → propose placement from observed patterns (35 buildings)
+  AD_Val_Rule       → gate placement by jurisdiction code (UBBL, NFPA 13, IRC)
+  One proposes, one constrains. Neither knows about the other.
+```
+
+The BOM template (spatial rules) proposes a compliant layout. The order
+(regulatory rules) constrains by jurisdiction. Exception-based validation —
+rules gate by exception, not by prescription. A placement is valid unless a
+rule says otherwise, just as an invoice line is tax-exempt unless a tax rule
+applies.
+
+### The Crowd-Puller — Same Building, Different Jurisdictions
+
+A firm in Kuala Lumpur designs a residential building. The spatial rules
+(mined from Malaysian buildings) propose sprinkler placement, room dimensions,
+corridor widths. The regulatory rules (UBBL 2012) validate against Malaysian
+building code.
+
+**Same building plan exported to Sydney** gets BCA/NCC 2022 rules. Same
+compiler, same spatial knowledge, different regulatory pack. Same building
+plan exported to Houston gets IRC 2021 + NFPA 13. Like switching tax
+jurisdictions in iDempiere — the engine is identical, only the rule data
+changes.
+
+```
+DocValidate.activate("MY")  → AD_Val_Rule WHERE jurisdiction = 'MY'
+DocValidate.activate("AU")  → AD_Val_Rule WHERE jurisdiction = 'AU'
+DocValidate.activate("US")  → AD_Val_Rule WHERE jurisdiction = 'US'
+Same building. Same spatial rules. Different regulatory packs.
+```
+
+No competing product offers this. Revit validates geometry but has no
+jurisdiction-scoped rule engine. Solibri checks codes but has no spatial
+knowledge base. Navisworks detects clashes but neither proposes nor validates
+by jurisdiction. This symbiosis — spatial proposes, regulatory validates,
+jurisdiction selects — is unique to an ERP-native architecture.
+
+### How the Two Rule Types Interact
+
+```
+EXTRACTION (IFC → BOM)
+  ↓
+SPATIAL RULES (mined from extracted buildings)
+  "Rooms of this type typically have 1 sprinkler at this spacing"
+  "Light fixtures in corridors are spaced 3000mm on-centre"
+  "Column grid for this building type is 8400 × 8400mm"
+  ↓
+COMPILER PROPOSES PLACEMENT (using spatial knowledge)
+  ↓
+REGULATORY RULES (from standards bodies, jurisdiction-scoped)
+  "NFPA 13 requires sprinkler coverage ≥ 3000mm for Light Hazard"
+  "UBBL 2012 s33(1) requires bedroom ≥ 9.2m²"
+  "NCC 2022 requires ceiling height ≥ 2400mm"
+  ↓
+VALIDATOR GATES PLACEMENT (pass / warn / block)
+  ↓
+RESULT: Compliant building, provably correct for its jurisdiction
+```
+
+→ [MANIFESTO.md §Why This Matters](MANIFESTO.md#why-this-matters) · [ProjectOrderBlueprint.md §13](ProjectOrderBlueprint.md#13-rule-driven-discipline--validation-as-ordering) · [§7 Rule Mining](#7-rule-mining-from-terminal--the-non-disturbance-principle) · [§11 World Standards](#11-world-construction-standards--ad_val_rule-seed-data)
+
+---
+
 ## 1. iDempiere Validation Patterns — What They Teach
 
 ### 1.1 Three Validation Layers in iDempiere
@@ -164,21 +272,26 @@ Minimum distance between elements of different types. Neither compliance
 
 ---
 
-## 3. Validation Rule Database — The Fourth DB
+## 3. Validation Rule Database — ERP.db
 
-Current architecture: 3 databases, 3 concerns.
+Current architecture: 3 databases, 3 concerns. Since S76, validation rules
+live in **ERP.db** alongside discipline metadata — there is no separate fourth DB.
+ERP.db serves both "discipline metadata" and "validation rules" roles, mirroring
+iDempiere's Application Dictionary where AD_Val_Rule sits next to AD_Column.
 
 | DB | Concern | Analogy |
 |----|---------|---------|
-| component_library.db | Product images (meshes, materials) | File server |
+| component_library.db | Product geometry (meshes, materials) | File server |
 | `{PREFIX}_BOM.db` | Assembly recipes (what to build) | Product master |
 | output.db | Compiled result (where things go) | Transaction |
-| **validation.db** | **Rules (what's allowed)** | **Tax table / AD_Val_Rule** |
+| **ERP.db** | **Discipline metadata + validation rules (what's allowed)** | **Application Dictionary (AD_Val_Rule + AD tables)** |
 
-The validation DB is the fourth concern: **what's allowed**. It doesn't create
-placements, it constrains them. Maintained separately from the BOM catalog and
-the compiled output. Updated when codes change (annual code cycles), without
-touching the BOM or recompiling existing buildings.
+ERP.db holds both spatial rules (ad_space_type, placement_rules, ad_element_mep)
+and regulatory rules (AD_Val_Rule, AD_Val_Rule_Param, AD_Clash_Rule). It doesn't
+create placements, it constrains them. Updated when codes change (annual code
+cycles), without touching the BOM or recompiling existing buildings.
+See [DISC_VALIDATION_DB_SRS.md §2](DISC_VALIDATION_DB_SRS.md#2-solution--discvalidationdb-third-database)
+for the full table inventory.
 
 ### 3.1 Proposed Tables
 
@@ -538,10 +651,39 @@ observe the distributions, encode the boundaries as AD_Val_Rule parameters.
 
 ---
 
+### 7.5 Rule Provenance Chain — From Building to Verdict
+
+<!-- Implementing SpecsAnalysis.txt §14 — rule lifecycle cross-links -->
+
+Every validation rule traces through five stages. Each stage is documented
+in a specific spec section:
+
+```
+EXTRACTION → MINING → ENCODING → VALIDATION → EXCEPTION
+    ↓            ↓         ↓           ↓            ↓
+IFC→BOM     DocValidate  DV_*_rules  Placement     AD_Val_Rule
+ pipeline    §7.1-§7.4   migration   Validator      _Exception
+                                      §15.1          §15.3
+```
+
+| Stage | What Happens | Spec Reference |
+|-------|-------------|----------------|
+| **1. EXTRACTION** | IFC file → BOM database. Real building becomes queryable data | [BBC.md §3](BOMBasedCompilation.md) (pipeline), [WorkOrderGuide.md §5-6](WorkOrderGuide.md) (extract config) |
+| **2. MINING** | Query extracted data for spatial patterns (spacing, clearance, sizing) | [§7.1-§7.4](#7-rule-mining-from-terminal--the-non-disturbance-principle) (Terminal as oracle), [§15.4-§15.5](#154-rosetta-stone-rule-mining-pipeline) (RuleMiner + mining table) |
+| **3. ENCODING** | Mined patterns → AD_Val_Rule + AD_Val_Rule_Param SQL rows in ERP.db | [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) (AD dictionary), migration/DV_*.sql |
+| **4. VALIDATION** | PlacementValidator fires rules against BOM lines (3-tier cascade) | [§13](#13-rule-application-order--the-three-tier-cascade) (cascade), [§15.1](#151-placementvalidator--the-validation-engine) (engine spec) |
+| **5. EXCEPTION** | Non-Disturbance protocol: known deviations documented, rules stay active | [§7.2-§7.3](#72-non-disturbance-test) (protocol), [§15.3](#153-ad_val_rule_exception--non-disturbance-protocol) (exception DAO) |
+
+**Regulatory rules** (UBBL, NFPA 13, IRC) enter at stage 3 directly — they
+are authored from standards documents, not mined. **Spatial rules** flow
+through all five stages. Both converge at stage 4 (validation).
+
+---
+
 ## 8. Implementation Sequence
 
-### Phase 1: Mine Terminal + Seed validation.db
-1. Create `validation.db` with schema from §3.1
+### Phase 1: Mine Terminal + Seed ERP.db
+1. Create validation tables in ERP.db with schema from §3.1
 2. Run rule mining queries (§7.4) against Terminal extracted data
 3. Encode measured patterns as AD_Val_Rule + AD_Val_Rule_Param rows
 4. Seed AD_Clash_Rule with basic hard clashes (MEP through STR)
@@ -735,7 +877,7 @@ can produce a compliant generative building:
 
 | Prerequisite | Status | Where |
 |-------------|--------|-------|
-| AD_Val_Rule schema + UBBL seed data | **Planned** | validation.db (§3.1 + §9.2) |
+| AD_Val_Rule schema + UBBL seed data | **Planned** | ERP.db (§3.1 + §9.2) |
 | PlacementValidator (ModelValidator pattern) | **Planned** | §9.4 pseudo-code |
 | M_Product catalog (doors, windows, fixtures) | **Partial** — assembly stubs exist | component_library.db |
 | TB-LKTN DSL template (generative reference) | **DONE** | phase27-tb-lktn/DSL_DICTIONARY.md |
@@ -810,37 +952,77 @@ engine, different data — like starting different OSGi bundles.
 ### 11.2 Residential Room Minimums — Cross-Jurisdiction Comparison
 
 Compiled from world standards research. Each row becomes AD_Val_Rule +
-AD_Val_Rule_Param entries in validation.db.
+AD_Val_Rule_Param entries in ERP.db.
 
 **Room Area Minimums (m²):**
 
-| Room | MY (UBBL 2012) | US (IRC 2021) | UK (NDSS 2015) | AU (NCC 2022) | SG (BCA) | EU (varies) |
-|------|---------------|---------------|----------------|---------------|----------|-------------|
-| Habitable room (any) | — | 6.5 (70 sq ft) | — | — | — | 7-9 (varies) |
-| Single bedroom | 9.2 | 6.5 | 7.5 | — | — | 7 (FR), 9 (IT) |
-| Double bedroom | 9.2 | 6.5 | 11.5 | — | — | 9-14 (varies) |
-| Living room | 12.0 | 6.5 | — | — | — | — |
-| Kitchen | 4.5 | exempt | — | — | — | — |
-| Bathroom | 1.5 | — | — | — | — | — |
+| Room | MY (UBBL 2012) | US (IRC 2021) | UK (NDSS 2015) | AU (NCC 2022) | SG (BCA) | IN (NBC 2016) | JP (BSA) | CN (GB 50096) | EU (varies) |
+|------|---------------|---------------|----------------|---------------|----------|---------------|----------|---------------|-------------|
+| Habitable room (any) | — | 6.5 (70 sq ft) | — | — | — | 9.5 | — | — | 7-9 (varies) |
+| Single bedroom | 9.2 | 6.5 | 7.5 | — | — | 9.5 | — | 5.0 | 7 (FR), 9 (IT) |
+| Double bedroom | 9.2 | 6.5 | 11.5 | — | — | 9.5 | — | 10.0 | 9-14 (varies) |
+| Living room | 12.0 | 6.5 | — | — | — | 9.5 | — | 12.0 | — |
+| Kitchen | 4.5 | exempt | — | — | — | 5.0 | — | 4.0 | — |
+| Bathroom | 1.5 | — | — | — | — | 1.8 | — | 2.5 | — |
 
 **Minimum Dimensions (mm):**
 
-| Parameter | MY (UBBL) | US (IRC) | UK (NDSS) | AU (NCC) | SG (BCA) |
-|-----------|-----------|----------|-----------|----------|----------|
-| Bedroom min dim | 3000 | 2134 (7 ft) | 2150 | — | — |
-| Ceiling height (habitable) | 2600 | 2134 (7 ft) | 2300 | 2400 | 2400 |
-| Ceiling height (bathroom) | — | 2032 (6'8") | — | 2100 | — |
-| Corridor width | 900 | 914 (3 ft) | 900 | 1000 | 1200 |
-| Door clear opening | 750 | 813 (32") | 750 | 820 | 850 |
+| Parameter | MY (UBBL) | US (IRC) | UK (NDSS) | AU (NCC) | SG (BCA) | IN (NBC) | JP (BSA) | CN (GB 50096) |
+|-----------|-----------|----------|-----------|----------|----------|----------|----------|---------------|
+| Bedroom min dim | 3000 | 2134 (7 ft) | 2150 | — | — | 2400 | — | 2400 |
+| Ceiling height (habitable) | 2600 | 2134 (7 ft) | 2300 | 2400 | 2400 | 2750 | 2100 | 2800 |
+| Ceiling height (bathroom) | — | 2032 (6'8") | — | 2100 | — | 2200 | 2100 | 2400 |
+| Corridor width | 900 | 914 (3 ft) | 900 | 1000 | 1200 | 1000 | 780 | 1100 |
+| Door clear opening | 750 | 813 (32") | 750 | 820 | 850 | 900 | 750 | 900 |
 
 **Fire and Safety:**
 
-| Parameter | MY (UBBL) | US (IBC/IRC) | UK (Part B) | AU (NCC) |
-|-----------|-----------|-------------|-------------|----------|
-| Sprinkler spacing (LH) | per SS CP 52 | 4600mm (NFPA 13) | BS 9251 | AS 2118.1 |
-| Fire wall between units | 2-hour | 1-hour (IRC) | 1-hour (Part B) | FRL 60/60/60 |
-| Egress door width | 850mm | 813mm (32") | 850mm | 850mm |
-| Secondary stair (height) | — | — | 18m (2024 amend) | — |
+| Parameter | MY (UBBL) | US (IBC/IRC) | UK (Part B) | AU (NCC) | IN (NBC) | JP (BSA) | CN (GB 50016) |
+|-----------|-----------|-------------|-------------|----------|----------|----------|---------------|
+| Sprinkler spacing (LH) | per SS CP 52 | 4600mm (NFPA 13) | BS 9251 | AS 2118.1 | IS 15105 | per FDMA | GB 50084 |
+| Fire wall between units | 2-hour | 1-hour (IRC) | 1-hour (Part B) | FRL 60/60/60 | 2-hour | 1-hour | 2-hour |
+| Egress door width | 850mm | 813mm (32") | 850mm | 850mm | 1000mm | 800mm | 900mm |
+| Secondary stair (height) | — | — | 18m (2024 amend) | — | 15m (NBC) | 31m | 33m (11 storeys) |
+
+**Accessibility:**
+
+| Parameter | MY (UBBL) | US (ADA/ICC A117.1) | UK (Part M/BS 8300) | AU (AS 1428) | IN (NBC Ch.11) | JP (HBFL) | CN (GB 50763) |
+|-----------|-----------|--------------------|--------------------|-------------|----------------|-----------|---------------|
+| Wheelchair turning radius | 1500mm | 1525mm (60") | 1500mm | 1540mm | 1500mm | 1400mm | 1500mm |
+| Accessible door width | 900mm | 815mm (32") | 800mm | 850mm | 900mm | 800mm | 900mm |
+| Ramp gradient (max) | 1:12 | 1:12 | 1:12 (Part M) | 1:14 | 1:12 | 1:12 | 1:12 |
+
+**Energy Efficiency:**
+
+| Parameter | Standard | Scope |
+|-----------|----------|-------|
+| MY | MS 1525:2019 (ETTV ≤ 50 W/m²) | Non-residential envelope |
+| US | ASHRAE 90.1 / IECC 2021 | Envelope + HVAC + lighting |
+| UK | Part L 2021 (SAP rating) | Fabric-first, u-value limits |
+| AU | NCC Section J (NatHERS) | Star rating, DTS pathway |
+| IN | ECBC 2017 (BEE star rating) | Commercial, voluntary residential |
+| JP | Act on Rational Use of Energy | ZEB targets by 2030 |
+| CN | GB 50189 / GB 55015 | Mandatory for all new buildings |
+
+**Acoustic:**
+
+| Parameter | Standard | Residential limit |
+|-----------|----------|-------------------|
+| MY | MS 1525 (guideline) | — |
+| US | IBC §1207 (STC/IIC ≥ 50) | Party wall/floor |
+| UK | Part E (Rw ≥ 45 dB airborne, Lnw ≤ 62 dB impact) | Between dwellings |
+| AU | NCC F5/Vol 1 (Rw + Ctr ≥ 50) | Between units |
+| IN | NBC Part 8 (guideline) | — |
+| JP | JIS A 1419 (D-class rating) | Between dwellings |
+| CN | GB 50118 (≤ 45 dB daytime) | Environmental noise |
+
+> **Note:** India (NBC 2016 / IS 16700), Japan (Building Standards Act / HBFL),
+> and China (GB 50096 / GB 50016) represent the world's three largest
+> construction markets by volume. Accessibility (DDA/ADA), energy efficiency,
+> and acoustic rules are **future seed data** — not blocking current work, but
+> essential for the github.io site to demonstrate comprehensive jurisdiction
+> coverage. Each row above maps to a future AD_Val_Rule + AD_Val_Rule_Param
+> INSERT in ERP.db.
 
 ### 11.3 AD_Val_Rule Seed — Multi-Jurisdiction
 
@@ -902,6 +1084,56 @@ INSERT INTO AD_Val_Rule_Param VALUES
 (5011, 501, 'min_height_mm','2400', 'NUM'),
 (5021, 502, 'min_width_mm', '1200', 'NUM'),
 (5031, 503, 'min_width_mm', '850',  'NUM');
+
+-- India NBC 2016
+INSERT INTO AD_Val_Rule VALUES
+(601, 'IN_HABITABLE_MIN_AREA',   'COMPLIANCE', 'ARC', 'NBC 2016 Part 3',  'IN', 1),
+(602, 'IN_KITCHEN_MIN_AREA',     'COMPLIANCE', 'ARC', 'NBC 2016 Part 3',  'IN', 1),
+(603, 'IN_CEILING_MIN_HEIGHT',   'COMPLIANCE', 'ARC', 'NBC 2016 Part 3',  'IN', 1),
+(604, 'IN_DOOR_MIN_WIDTH',       'COMPLIANCE', 'ARC', 'NBC 2016 Part 3',  'IN', 1),
+(605, 'IN_CORRIDOR_MIN_WIDTH',   'COMPLIANCE', 'ARC', 'NBC 2016 Part 3',  'IN', 1);
+
+INSERT INTO AD_Val_Rule_Param VALUES
+(6011, 601, 'min_area_m2',  '9.5',  'NUM'),
+(6021, 602, 'min_area_m2',  '5.0',  'NUM'),
+(6022, 602, 'bom_category', 'KITCHEN', 'TEXT'),
+(6031, 603, 'min_height_mm','2750', 'NUM'),
+(6041, 604, 'min_width_mm', '900',  'NUM'),
+(6051, 605, 'min_width_mm', '1000', 'NUM');
+
+-- Japan Building Standards Act (BSA)
+INSERT INTO AD_Val_Rule VALUES
+(701, 'JP_CEILING_HABITABLE',   'COMPLIANCE', 'ARC', 'BSA Art.21',       'JP', 1),
+(702, 'JP_CEILING_SERVICE',     'COMPLIANCE', 'ARC', 'BSA Art.21',       'JP', 1),
+(703, 'JP_CORRIDOR_MIN_WIDTH',  'COMPLIANCE', 'ARC', 'BSA Art.119',      'JP', 1),
+(704, 'JP_DOOR_MIN_WIDTH',      'COMPLIANCE', 'ARC', 'BSA Art.126',      'JP', 1);
+
+INSERT INTO AD_Val_Rule_Param VALUES
+(7011, 701, 'min_height_mm','2100', 'NUM'),
+(7021, 702, 'min_height_mm','2100', 'NUM'),
+(7022, 702, 'bom_category', 'BATHROOM,CORRIDOR', 'TEXT'),
+(7031, 703, 'min_width_mm', '780',  'NUM'),
+(7041, 704, 'min_width_mm', '750',  'NUM');
+
+-- China GB 50096-2011 (Residential)
+INSERT INTO AD_Val_Rule VALUES
+(801, 'CN_BEDROOM_MIN_AREA',    'COMPLIANCE', 'ARC', 'GB 50096 s5.2',   'CN', 1),
+(802, 'CN_LIVING_MIN_AREA',     'COMPLIANCE', 'ARC', 'GB 50096 s5.2',   'CN', 1),
+(803, 'CN_KITCHEN_MIN_AREA',    'COMPLIANCE', 'ARC', 'GB 50096 s5.2',   'CN', 1),
+(804, 'CN_CEILING_MIN_HEIGHT',  'COMPLIANCE', 'ARC', 'GB 50096 s5.5',   'CN', 1),
+(805, 'CN_DOOR_MIN_WIDTH',      'COMPLIANCE', 'ARC', 'GB 50096',        'CN', 1),
+(806, 'CN_CORRIDOR_MIN_WIDTH',  'COMPLIANCE', 'ARC', 'GB 50096',        'CN', 1);
+
+INSERT INTO AD_Val_Rule_Param VALUES
+(8011, 801, 'min_area_m2',  '5.0',  'NUM'),   -- single bedroom minimum
+(8012, 801, 'bom_category', 'BEDROOM', 'TEXT'),
+(8021, 802, 'min_area_m2',  '12.0', 'NUM'),
+(8022, 802, 'bom_category', 'LIVING', 'TEXT'),
+(8031, 803, 'min_area_m2',  '4.0',  'NUM'),
+(8032, 803, 'bom_category', 'KITCHEN', 'TEXT'),
+(8041, 804, 'min_height_mm','2800', 'NUM'),
+(8051, 805, 'min_width_mm', '900',  'NUM'),
+(8061, 806, 'min_width_mm', '1100', 'NUM');
 ```
 
 ### 11.4 How Jurisdiction Activation Works
@@ -1374,7 +1606,7 @@ public class PlacementValidator {
 ```
 Input:
   bomConn   → {PREFIX}_BOM.db (m_bom, m_bom_line — spatial arrangement)
-  valConn   → validation.db (AD_Val_Rule, AD_Clash_Rule — rule data)
+  valConn   → ERP.db (AD_Val_Rule, AD_Clash_Rule — rule data)
   jurisdiction → "MY", "US", "UK", "AU", "SG", "INTL"
   mode      → ACTIVE / READONLY / DISABLED
 
@@ -1526,7 +1758,7 @@ Rule violation found on Rosetta Stone:
  * 2. Cross-discipline: clearances, penetrations, clash zones
  * 3. Cross-storey: vertical continuity, riser alignment
  *
- * <p>Output: SQL INSERT statements for validation.db
+ * <p>Output: SQL INSERT statements for ERP.db
  * These are CANDIDATES until they pass Non-Disturbance (§7.2).
  */
 public class RuleMiner {

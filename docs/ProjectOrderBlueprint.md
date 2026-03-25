@@ -808,6 +808,40 @@ for ERP consultants. A 30-second demo — "click BOM Drop, see building
 appear in Bonsai, swap a door, recompile" — is the killer pitch. Two
 familiar faces, one unfamiliar connection between them.
 
+### 8.5 Enterprise Scaling — ModelValidator + Federated Spatial DB
+
+<!-- Implementing SpecsAnalysis.txt §15 — processIt() vs ModelValidator -->
+
+Current `processIt()` dispatch is correct for batch compilation — the
+compiler processes one building at a time, one discipline at a time, in
+a deterministic pipeline. For enterprise deployment (multi-user, real-time
+collaborative BIM editing), two companion features become necessary:
+
+**ModelValidator alignment.** iDempiere's `ModelValidator` fires
+`beforeSave`/`afterSave` hooks on every PO change — this is the pattern
+for interactive, event-driven validation. When the BIM Designer supports
+multi-user concurrent editing, each spatial mutation (drag wall, move
+sprinkler) must fire validation rules in real-time. Align `processIt()`
+dispatch with ModelValidator's event model: register validators via
+ComponentFactory (OSGi pattern), fire on MBOMLine save, return
+PASS/WARN/BLOCK synchronously. The batch pipeline continues to use
+`processIt()` for full-building compilation; ModelValidator handles the
+interactive per-element path.
+
+**Federated Spatial DB.** The current in-memory approach handles TE's
+48,428 elements, but multi-building federation (200 houses under one
+C_Project) cannot hold all buildings in memory simultaneously. The
+Federated Model Spatial DB addon (93% memory reduction on 93K elements,
+[StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) line 238)
+partitions spatial data by building × floor × discipline, loading only
+the active partition. This is the same principle as iDempiere's
+org-partitioned data — AD_Org scopes which records are visible in a
+given context.
+
+These two features are companions for enterprise deployment: ModelValidator
+for real-time validation, Federated Spatial DB for multi-project scale.
+Neither blocks the current single-building batch pipeline.
+
 ---
 
 ## 9. DiffVerb and Callout — Reactive Spatial Editing

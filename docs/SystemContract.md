@@ -299,9 +299,20 @@ Rules do not invent — they **block or propose**.
 | M_LocatorType | PlotType | STANDARD/CORNER/PREMIUM/INFRA/GREEN |
 | M_Locator.capacity | Plot.frontage × depth | Buildable area |
 | M_PutAwayStrategy | SitePlacementStrategy | Which building goes where |
-| M_InOut | Compilation batch | Placing buildings on plots |
-| M_InOutLine | One building on one plot | C_Order FK → Plot |
-| M_InOutLineMA | Plot attribution | Variant, exceptions, terrain Z |
+| **C_ProjectLine** | **Plot assignment** | **One plot = one C_ProjectLine, FK to C_Order** |
+| M_InOut | Material delivery batch | Goods receipt for construction materials to site |
+| M_InOutLine | Individual material receipt | 100 panels delivered, 50 bags cement received |
+| M_InOutLineMA | Lot/attribute tracking | Batch number, inspection date, material cert |
+
+<!-- Implementing SpecsAnalysis.txt §13 — M_InOut = materials movement -->
+
+> **Clarification (S79):** M_InOut is iDempiere's goods receipt/shipment — it
+> tracks **materials movement**, not site allocation. Plot placement uses
+> `C_ProjectLine` (one plot = one line under C_Project, FK to the building's
+> C_Order). M_InOut enters the picture under 4D scheduling: when materials
+> arrive on site, M_InOut records the delivery batch; M_InOutLine records each
+> material item; M_InOutLineMA tracks lot numbers and inspection certificates.
+> → [ProjectOrderBlueprint.md §5.1](ProjectOrderBlueprint.md#51-4d-schedule--topological-sort-of-bom-tree)
 
 ### 6.2 Plot as Locator — ABL Addressing
 
