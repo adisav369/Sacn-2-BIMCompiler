@@ -411,7 +411,7 @@ Four concentric defence layers:
                                          └────────┬─────────┘
                       ┌───────────────────────────┼──────────────┐
                       ▼                           ▼              ▼
-               {PREFIX}_BOM.db          component_library.db   work_output.db
+               {PREFIX}_BOM.db          component_library.db   output.db
 ```
 
 ### DAOs

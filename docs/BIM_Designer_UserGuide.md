@@ -96,22 +96,21 @@ User clicks button in Blender
 │  │ (800 prods)  │ │ (recipes)    │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 │  ┌──────────────┐                                       │
-│  │ work_output  │  ← Design Mode + audit trail          │
-│  │ .db          │    (C_Order, W_Variant, bim_changelog) │
+│  │ output.db    │  ← Compile DB + audit trail             │
+│  │              │    (C_Order, bim_changelog)             │
 │  └──────────────┘                                       │
 └──────────────────────────────────────────────────────────┘
 ```
 
-### Six Databases
+### Four Databases
 
 | DB | What | Size |
 |----|------|------|
 | `component_library.db` | Product catalog (800 products, meshes, materials, thermal properties) | ~500 MB |
 | `{PREFIX}_BOM.db` | Assembly recipes per building (BOM hierarchy, tack offsets, verb patterns) | ~10 MB |
 | `ERP.db` | Validation rules (63 rules: residential + infrastructure bridge/road/rail) | ~100 KB |
-| `output_*.db` | Compiled result (elements, R-tree index, QTO, spatial structure) | varies |
-| `work_output.db` | Design Mode persistence (C_Order, C_OrderLine, W_Variant, bim_changelog) | per-building |
-| `AD_PrintFormat` | Print configurator (in work_output.db — which output tables to include) | per-building |
+| `output.db` | Compile DB: compiled result + design persistence (C_Order, C_OrderLine, bim_changelog, R-tree, QTO) | per-building |
+| `AD_PrintFormat` | Print configurator (in output.db — which output tables to include) | per-building |
 
 ---
 
@@ -331,7 +330,7 @@ The **Flywheel Advisory Panel** surfaces findings from the Data Flywheel
 
 | Action | Wire protocol | What it does |
 |--------|--------------|-------------|
-| Save | `save` | Stores current bboxes to `work_output.db` as a new variant (C_Order + C_OrderLine + W_Variant). Cheap, frequent. |
+| Save | `save` | Stores current bboxes to `output.db` (compile DB) as C_Order + C_OrderLine. Persists to .blend file. Cheap, frequent. |
 | Recall | `recall` | Restores a previous variant. Non-destructive — originals never overwritten. |
 | List Variants | `listVariants` | Shows all saved variants (most recent first) with label and line count. |
 | Approve | `approve` | Compliance gate — validates all rooms, checks dangles, transitions master C_Order IP → AP. |
@@ -547,7 +546,7 @@ Location: `BonsaiBIMDesigner/src/main/python/bonsai_bim_designer/`
 | `DesignerAPIImpl.java` | Implementation: orchestrates DAOs + validators + reports |
 | `InferenceEngine.java` | Dependency-ordered rule evaluation, topological sort, proof tree |
 | `DesignerDAO.java` | BOM.db + M_Product queries (building types, categories, browse) |
-| `WorkOutputDAO.java` | work_output.db persistence (save/recall/listVariants) |
+| `WorkOutputDAO.java` | output.db (compile DB) persistence (save/recall/listVariants) |
 | `AssemblyAPI.java` | Assembly builder interface (G-7) |
 | `PlacementValidator.java` | Interface (dual-mode: building + infrastructure) |
 | `PlacementValidatorImpl.java` | Implementation (reads ERP.db, FacilityType routing) |
@@ -578,7 +577,7 @@ Location: `BIMBackOffice/src/main/java/com/bim/backoffice/`
 | `library/validation.db` | 32 rules, 6 occupancy classes | migration/V001 + V002 |
 | `library/DM_BOM.db` | DemoHouse BOM (25 lines) | DemoHouseTest / agent |
 | `library/component_library.db` | Product catalog (608 products) | ExtractionPopulator + agent |
-| `work_output_{building}.db` | Design persistence (per-building) | WorkOutputDAO.initSchema() |
+| `output.db` | Compile DB + design persistence (per-building) | WorkOutputDAO.initSchema() |
 
 ### 8.4 Test Files
 
@@ -721,7 +720,7 @@ grids, product choosers). S55 concluded: **Web UI for data/control, Bonsai for v
 │         │ dispatch to DesignerServer + scanLibrary/pollCommands   │
 │         │                                                        │
 │         ├──→ BOM Drop: bomDrop → C_Order + C_OrderLine tree      │
-│         ├──→ Save:     prepareIt → validate, persist work_output │
+│         ├──→ Save:     prepareIt → validate, persist output.db   │
 │         ├──→ Approve:  compliance gate IP→AP                     │
 │         ├──→ Complete:  completeIt → compile → output.db         │
 │         ├──→ Compile:   compile → output.db + push COMPLETE      │
@@ -756,7 +755,7 @@ grids, product choosers). S55 concluded: **Web UI for data/control, Bonsai for v
 | Step | Button | Action | What happens |
 |------|--------|--------|-------------|
 | 1 | **BOM Drop** | `bomDrop` | Pick template → explode BOM → C_Order + C_OrderLine tree. Tree renders in left pane. |
-| 2 | **Save** | `save` | Persist bboxes + variant label to work_output.db. Status: IP (In Progress). |
+| 2 | **Save** | `save` | Persist bboxes to output.db (compile DB) + .blend file. Status: IP (In Progress). |
 | 3 | **Approve** | `approve` | Compliance validation gate. Shows blockers/dangles. Status: IP→AP. |
 | 4 | **Complete** | `prepareIt` + `completeIt` | Validate → compile → output.db. Status: CO. Push to Bonsai. |
 | 5 | **Promote** | `promote` | Write M_BOM entries to BOM.db. Governance gate (requires AP). |
@@ -944,7 +943,7 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 | G-1 | BonsaiBIMDesigner module | **DONE** (s15, 14 tests) |
 | G-2 | DocValidate + DemoHouse | **DONE** (s16, 43 tests) |
 | G-3 | Design Mode + bbox renderer | **DONE** (s17, 44 tests) |
-| G-4 | work_output.db Save/Recall | **DONE** (s26, 57 tests) |
+| G-4 | output.db Save/Recall | **DONE** (s26, 57 tests) |
 | G-5 | BOM Chooser + Place + Inference | **DONE** (s27, 87 tests) |
 | G-6 | Compile Bridge (real pipeline) | **DONE** (s29) |
 | G-7 | Assembly Builder (MAKE path) | **DONE** (s35, 16 witnesses) |
@@ -965,7 +964,7 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 [BIM_Designer.md](BIM_Designer.md) (full spec) |
 [BackOfficeUserGuide.md](BackOfficeUserGuide.md) (multi-project ERP guide) |
 [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) (Back Office SRS) |
-[G4_SRS.md](G4_SRS.md) (work_output.db) |
+[G4_SRS.md](G4_SRS.md) (output.db, compile DB) |
 [ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md) (G-7 assembly) |
 [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) (infrastructure) |
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements) |

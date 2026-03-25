@@ -361,7 +361,7 @@ Connection compConn;   // component_library.db — LOD catalog
 Connection discConn;   // ERP.db   — discipline metadata
 Connection valConn;    // validation.db         — compliance rules
 Connection bomConn;    // {prefix}_BOM.db       — building BOM
-Connection workConn;   // work_output.db        — design workspace
+Connection outConn;    // output.db              — compile output
 Connection teConn;     // TE reference DB       — Terminal oracle (tests only)
 ```
 
@@ -905,5 +905,5 @@ is independently committable, each step gated by existing Rosetta Stone tests.
 [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9 (5-table LOD chain) |
 [DocAction_SRS.md](DocAction_SRS.md) §1.3 (processIt DocEvent) |
 [CALIBRATION_SRS.md](CALIBRATION_SRS.md) (DocEvent vs Terminal) |
-[G4_SRS.md](G4_SRS.md) §2 (work_output.db pattern) |
+[G4_SRS.md](G4_SRS.md) §2 (output.db pattern) |
 [AUDIT_S51_FOCUSED.md](AUDIT_S51_FOCUSED.md) Appendix F (database reality check)*

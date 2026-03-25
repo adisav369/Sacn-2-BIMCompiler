@@ -620,7 +620,7 @@ The BIM Designer follows the same pattern:
 ```
 User action:                         Engine response:
 ─────────────                        ─────────────────
-Define space (room AABB)         →   C_OrderLine created in work_output.db
+Define space (room AABB)         →   C_OrderLine created in output.db
 Set MEP = true in YAML           →   Discipline flags on building config
 Click "Compile It" (ProcessIt)   →   ConstructionModelSpawner + PlacementValidator
                                      → AD_Val_Rule fires per discipline
@@ -703,7 +703,7 @@ See `docs/TE_MINING_RESULTS.md` §M12 for full results.
 This means clearance checking works:
 - At **compile time** (Rosetta Stone verification)
 - At **design time** (BIM Designer ambient compliance — no Blender needed)
-- At **batch time** (SQL reports against work_output.db)
+- At **batch time** (SQL reports against output.db)
 
 When Bonsai viewport is available (Phase G-8 BlenderBridge), the same
 check can optionally use mesh-level precision — but the ERP-maths version
@@ -716,7 +716,7 @@ is the default, always-available baseline.
 | v1 (current) | building, storeys, floor_rooms, static_children | — |
 | v2 (TE) | disciplines section (ifc_class → bom_category map) | v1 |
 | v2+ (infra) | `segments:` alias for `storeys:`, M_Product_Category=IN, infrastructure discipline map | v2. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3 |
-| **v3 (planned)** | **mep section (rules-based MEP auto-population)** | v2 + AD_Val_Rule + work_output.db |
+| **v3 (planned)** | **mep section (rules-based MEP auto-population)** | v2 + AD_Val_Rule + output.db |
 
 ---
 
@@ -782,7 +782,7 @@ Step 8: ADJUST OFFSETS (engineering controls)
 Step 9: CO SAVE (incremental)
   On save: wireframe bboxes → actual geometry in output DB
   Shape updates incrementally as each element resolves
-  work_output.db stores design state for recall
+  output.db stores compile state; design state saved in .blend file
 ```
 
 ### Terrain Data Contract

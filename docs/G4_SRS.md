@@ -1,4 +1,4 @@
-# G-4 SRS — work_output.db + Validation Engine
+# G-4 SRS — Compile DB (output.db) + Validation Engine
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
@@ -10,8 +10,8 @@
 ## 1. Scope
 
 G-4 delivers:
-1. **work_output.db** — self-contained design workspace (DDL: `migration/W001_work_output_schema.sql`)
-2. **ConstructionModelSpawner** — populates work_output.db from BOM templates
+1. **output.db** — self-contained compile DB (DDL: `migration/W001_work_output_schema.sql`)
+2. **ConstructionModelSpawner** — populates output.db from BOM templates
 3. **WorkOutputDAO** — Save/Recall/listVariants persistence
 4. **Wire protocol** — already dispatched (save/recall/listVariants/promote in DesignerServer)
 5. **Test specs** — unit + integration for all new code
@@ -47,9 +47,9 @@ DesignerAPIImpl.createNew(request)
 │      → Deterministic site → storey → room partitioning
 │      → Returns List<DesignBBox> (draft bboxes)
 │
-├── 3. ConstructionModelSpawner.spawn(workConn, bomConn, compConn, ...)  ← NEW
+├── 3. ConstructionModelSpawner.spawn(compileConn, bomConn, compConn, ...)  ← NEW
 │      │
-│      ├── 3a. CREATE work_output.db (apply W001 migration)
+│      ├── 3a. CREATE output.db (apply W001 migration)
 │      │       → Execute W001_work_output_schema.sql DDL
 │      │       → Verify 12 tables created via pragma table_list
 │      │
@@ -163,7 +163,7 @@ DesignerAPIImpl.createNew(request)
 │      │       │
 │      │       │ Open valConn → validation.db (read-only)
 │      │       │ For each C_OrderLine:
-│      │       │   Tier 1: validateLine(workConn, valConn, line, jurisdiction)
+│      │       │   Tier 1: validateLine(compileConn, valConn, line, jurisdiction)
 │      │       │   → INSERT W_Validation_Result (tier=1, result=PASS/WARN/BLOCK)
 │      │       │   → UPDATE C_OrderLine.validation_status
 │      │       │
@@ -203,7 +203,7 @@ DesignerServer.dispatch("save")
 ▼
 DesignerAPIImpl.save(buildingId, bboxes, variantLabel)
 │
-├── 1. Open work_output.db connection
+├── 1. Open output.db connection
 │
 ├── 2. Complete current sub-work-order (if one is active IP)
 │      → SET DocStatus = 'CO' on active sub-C_Order
@@ -322,7 +322,7 @@ Python: "Promoted! 12 BOM entries created."
 | P-CREATE-2 | C_OrderLine count matches BOM template | Walk m_bom tree, count nodes = C_OrderLine count |
 | P-CREATE-3 | W_BuildingConfig has embedded YAML | yaml_content IS NOT NULL AND length > 0 |
 | P-CREATE-4 | W_Variant v0 exists and is_active=1 | Exactly 1 W_Variant row with is_active=1 |
-| P-CREATE-5 | All 12 work_output.db tables exist | `pragma table_list` count = 12 |
+| P-CREATE-5 | All 12 output.db tables exist | `pragma table_list` count = 12 |
 | P-CREATE-6 | Validation ran in READONLY | W_Validation_Result rows exist, none with result='BLOCK' |
 
 **Save postconditions:**
@@ -471,13 +471,13 @@ All actions are ndjson over TCP (port 9876). Already dispatched in DesignerServe
 {"action":"save", "buildingId":"MyHouse",
  "bboxes":[{"bomId":"LIVING_SET","minX":2.2,...}],
  "variantLabel":"wide-rooms",
- "workOutputDbPath":"output/MyHouse_work.db"}
+ "outputDbPath":"output/MyHouse.db"}
 ```
 
 **New response fields on `createNew`:**
 ```json
 {"success":true, "bboxes":[...],
- "workOutputDbPath":"output/MyHouse_work.db",
+ "outputDbPath":"output/MyHouse.db",
  "orderLineCount":15, "esLineCount":8,
  "asiCount":12, "ppNodeCount":5,
  "validationSummary":"12 PASS, 3 WARN, 0 BLOCK"}
@@ -503,7 +503,7 @@ class WorkOutputDAOTest {
     }
 
     @Test void save_createsSubOrderAndVariant() {
-        // Given: work_output.db with master C_Order + 5 C_OrderLine rows
+        // Given: output.db with master C_Order + 5 C_OrderLine rows
         // When:  save("wide-rooms", currentBboxes)
         // Then:  new sub-C_Order created (Parent_Order_ID = master, DocStatus='CO')
         //        sub-order has 5 C_OrderLine rows (copied, not shared)
@@ -547,7 +547,7 @@ class ConstructionModelSpawnerTest {
 
     @Test void spawn_createsOrderFromBom() {
         // Given: DM_BOM.db with BUILDING_DM_STD (3 floors, 6 rooms)
-        // When:  spawn(workConn, bomConn, compConn, "BUILDING_DM_STD", "MY")
+        // When:  spawn(compileConn, bomConn, compConn, "BUILDING_DM_STD", "MY")
         // Then:  1 C_Order (DocStatus='DR')
         //
         // Derive expected counts from BOM template at test time:
@@ -586,7 +586,7 @@ class ConstructionModelSpawnerTest {
 class SaveRecallIntegrationTest {
 
     @Test void saveAndRecall_roundTrips() {
-        // Given: spawned work_output.db (master C_Order)
+        // Given: spawned output.db (master C_Order)
         // When:  modify C_OrderLine dx, save("v1") → sub-order-1 (CO)
         //        modify again, save("v2") → sub-order-2 (CO)
         //        recall("v1") → sub-order-3 (DR, copied from sub-order-1)
@@ -597,7 +597,7 @@ class SaveRecallIntegrationTest {
     }
 
     @Test void promote_createsBomEntries() {
-        // Given: spawned + saved work_output.db
+        // Given: spawned + saved output.db
         // When:  promote(owner="red1", complianceRef="UBBL")
         // Then:  {PREFIX}_BOM.db has new m_bom rows with entity_type='U'
         //        m_bom_line rows match C_OrderLine state
@@ -605,7 +605,7 @@ class SaveRecallIntegrationTest {
     }
 
     @Test void approve_setsDocStatusAP() {
-        // Given: spawned + saved work_output.db (DocStatus = 'IP')
+        // Given: spawned + saved output.db (DocStatus = 'IP')
         //        all validation rules PASS, no dangles
         // When:  approve(buildingId)
         // Then:  C_Order.DocStatus = 'AP'
@@ -622,7 +622,7 @@ class SaveRecallIntegrationTest {
     }
 
     @Test void promote_requiresApproved() {
-        // Given: work_output.db with DocStatus = 'IP' (not approved)
+        // Given: output.db with DocStatus = 'IP' (not approved)
         // When:  promote(...)
         // Then:  PromoteResponse.success = false
         //        PromoteResponse.error = "not approved"
@@ -637,9 +637,9 @@ class SaveRecallIntegrationTest {
 }
 ```
 
-### 5.4 Tack Convention Tests — work_output.db
+### 5.4 Tack Convention Tests — output.db (compile DB)
 
-C_OrderLine.dx/dy/dz in work_output.db must use LBD convention (BBC.md §4),
+C_OrderLine.dx/dy/dz in output.db must use LBD convention (BBC.md §4),
 consistent with m_bom_line in {PREFIX}_BOM.db. The spawner copies from BOM
 templates, so LBD convention should propagate — but this must be tested.
 
@@ -647,7 +647,7 @@ templates, so LBD convention should propagate — but this must be tested.
 class WorkOutputTackTest {
 
     @Test void spawnedOrderLines_useLbdConvention() {
-        // Given: spawned work_output.db from DM BOM
+        // Given: spawned output.db from DM BOM
         // When:  read C_OrderLine dx/dy/dz for all LEAF lines
         // Then:  all dx >= 0, dy >= 0, dz >= 0  (LBD = child within parent)
         //        dx + allocated_width_mm/1000 <= host AABB width * 1.01
@@ -655,7 +655,7 @@ class WorkOutputTackTest {
     }
 
     @Test void promote_preservesTackConvention() {
-        // Given: spawned + saved work_output.db, user moved a bbox
+        // Given: spawned + saved output.db, user moved a bbox
         // When:  promote to {PREFIX}_BOM.db
         // Then:  promoted m_bom_line.dx/dy/dz matches C_OrderLine.dx/dy/dz
         //        all promoted offsets pass W-TACK-1 check
@@ -670,7 +670,7 @@ class WorkOutputTackTest {
 class WorkOutputWireTest {
 
     @Test void save_overTcp_returnsVariantId() {
-        // Given: running DesignerServer + spawned work_output.db
+        // Given: running DesignerServer + spawned output.db
         // When:  send {"action":"save","buildingId":"MyHouse","bboxes":[...],"variantLabel":"v1"}
         // Then:  response has success=true, variantId != null
     }
@@ -867,7 +867,7 @@ grid pitch formula) — both addressable as data changes, no schema changes need
 | 1 | `migration/W001_work_output_schema.sql` | DDL (DONE) | — |
 | 2 | `TACK_FIX_SPEC.md` changes | FIX-1/2/3 (DONE as spec) | — |
 | 3 | `WorkOutputDAO.java` (NEW) | create/save/recall/listVariants | step 1 |
-| 4 | `ConstructionModelSpawner.java` (NEW) | spawn() — walk BOM, populate work_output.db | steps 1, 3 |
+| 4 | `ConstructionModelSpawner.java` (NEW) | spawn() — walk BOM, populate output.db | steps 1, 3 |
 | 5 | `DesignerAPIImpl.java` | Wire save/recall/listVariants/promote to DAO | steps 3, 4 |
 | 6 | `DesignerServer.java` | Already dispatched — just needs impl connected | step 5 |
 | 7 | Tests | Unit + integration + wire | steps 3-6 |

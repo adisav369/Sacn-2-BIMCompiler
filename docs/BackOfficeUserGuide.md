@@ -381,9 +381,9 @@ Supports:
 │  │ (800 prods)  │ │ (per bldg)  │ │                          │ │
 │  └──────────────┘ └──────────────┘ └──────────────────────────┘ │
 │  ┌──────────────┐ ┌──────────────┐                              │
-│  │ work_output  │ │ output_*.db  │                              │
-│  │ .db (design) │ │ (compiled)   │                              │
-│  └──────────────┘ └──────────────┘                              │
+│  │ output.db   │                                                │
+│  │ (compiled)  │                                                │
+│  └──────────────┘                                               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -432,9 +432,8 @@ DX (Duplex), TE (Terminal), DM (DemoHouse), BR (Bridge), RD (Road), RL (Rail).
 |----------|-------------------|----------------|
 | `{PREFIX}_BOM.db` | Portfolio scan, report source, cost/carbon rollup | Active project BOM |
 | `component_library.db` | Product costs, carbon per unit, lifespan data | Product browsing |
-| `work_output.db` | Audit trail, multi-user session state | Save/recall/variants |
+| `output.db` | Compiled geometry, placement results | Compile output |
 | `ERP.db` | Compliance matrix, rule queries | Placement validation |
-| `output_*.db` | Print configurator source | Viewport rendering |
 
 ---
 

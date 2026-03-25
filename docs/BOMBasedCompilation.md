@@ -607,7 +607,7 @@ the new room dimensions. The compiler resolves `effective = ASI ?? catalog` and
 produces the correctly-sized output. Zero new code — just data on the OrderLine.
 
 *Full ASI field resolution matrix: BIM_Designer.md §8.*
-*Schema: W001_work_output_schema.sql (M_AttributeSetInstance, M_AttributeInstance).*
+*Schema: output.db (M_AttributeSetInstance, M_AttributeInstance).*
 *Generative application: GENERATIVE_ROOM_SRS.md §6.*
 
 ### 3.6 The Rosetta Stone — Launch Booster

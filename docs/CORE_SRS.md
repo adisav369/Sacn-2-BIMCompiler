@@ -119,9 +119,9 @@ database and emits structured data (JSON/CSV/XML).
 │  │ geometries   │ │ m_bom_line   │ │ placement_rules  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 │  ┌──────────────┐ ┌──────────────┐                      │
-│  │ validation   │ │ work_output  │                      │
-│  │ AD_Val_Rule  │ │ C_Order      │                      │
-│  │ AD_Val_Param │ │ W_Variant    │                      │
+│  │ validation   │ │ output.db    │                      │
+│  │ AD_Val_Rule  │ │ (compile DB) │                      │
+│  │ AD_Val_Param │ │              │                      │
 │  └──────────────┘ └──────────────┘                      │
 │                                                         │
 │  REPORT DAO LAYER (Java)                                │
@@ -563,7 +563,7 @@ CREATE TABLE IF NOT EXISTS AD_Report_Config (
 | {PREFIX}_BOM.db | Per-building compiled BOM | Stable (4 buildings) |
 | validation.db | AD_Val_Rule + params | Growing (63 rules, 132 params) |
 | ERP.db | Discipline metadata (split from component_lib) | Phase 2 in progress |
-| work_output.db | Designer save/recall/promote | Stable (G4 schema) |
+| output.db | Compile output (geometry, placements) | Stable (G4 schema) |
 
 ---
 

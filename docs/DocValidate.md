@@ -1366,7 +1366,7 @@ Tier 2 cascade (per floor, after all discipline BOMs complete):
 ```
 
 **Firing point:** `DocAction.prepareIt()` equivalent — before the floor's
-BOM is "completed" (committed to work_output.db).
+BOM is "completed" (committed to output.db).
 
 **The STR beam envelope scenario:** AABB intersection between a beam and a
 pipe route may flag a HARD clash. But the real geometry may have web holes
@@ -1459,7 +1459,7 @@ defaults — they don't build from scratch. This is the iDempiere pattern:
 ```
 User action: "Create New" → selects building product + jurisdiction + AABB
 
-Engine spawns (in work_output.db):
+Engine spawns (in output.db):
 
 1. C_Order
    ├── M_Product_Category = RE/CO/IN (from building product)
@@ -1645,7 +1645,7 @@ Output:
 /**
  * Spawns the iDempiere construction model when user creates a new building.
  * Populates C_Order, C_OrderLine, spatial slots (from M_BOM_Line dx/dy/dz),
- * default ASI, and PP_Order_Node into work_output.db.
+ * default ASI, and PP_Order_Node into output.db (compile DB).
  *
  * <p>iDempiere analogue: MOrder.prepareIt() + MInOut.createFrom().
  * The engine creates default records; the user alters in BIM Designer.
@@ -1659,7 +1659,7 @@ public class ConstructionModelSpawner {
     /**
      * Spawn full construction model from compiled BOM.
      *
-     * @param workConn     writable connection to work_output.db
+     * @param workConn     writable connection to output.db (compile DB)
      * @param bomConn      read-only connection to {PREFIX}_BOM.db
      * @param compConn     read-only connection to component_library.db
      * @param buildingBomId root BOM (e.g., "BUILDING_SH_STD")

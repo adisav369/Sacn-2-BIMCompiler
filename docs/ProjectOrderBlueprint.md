@@ -1587,7 +1587,7 @@ Only the last order survives.
 - Reads `ad_space_type_mep_bom` for each ROOM in order → creates PROPOSED C_OrderLine per MEP product
 - `proposal_status` column on C_OrderLine (W004 migration). Values: PROPOSED, ACCEPTED
 - `Discipline` column on C_OrderLine (W003 migration, applied in initSchema)
-- bom_child_id = NULL on work_output path (rule-driven, not BOM-derived)
+- bom_child_id = NULL on compile path (rule-driven, not BOM-derived)
 - **Gate:** DM 5/5, SH 7/7, FK 7/7. AddDisciplineTest 4/4. BomDropTest 6/6. BomDropConfigureTest 6/6
 - **Witness:** W-DM-TC5-1 extended: ELEC 15 lines / 4 rooms, FP 4 lines / 4 rooms on SH
 

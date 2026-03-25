@@ -691,7 +691,7 @@ computes spacing from rules, so it needs the compliance check.
 | H5 | *(vertical check)* | `AD_Val_Rule WHERE rule_type='CONTINUITY'` |
 | H6 | *(schedule audit)* | `ad_space_type_mep_bom` |
 
-All handlers write to `W_Validation_Result` in work_output.db. The ambient
+All handlers write to `W_Validation_Result` in output.db. The ambient
 compliance strip in BIM Designer reads these results to show live status.
 Handlers that auto-fix also update `C_OrderLine.dx/dy/dz` (nudge/snap).
 

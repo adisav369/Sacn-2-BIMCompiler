@@ -27,7 +27,7 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [BIM_Designer_SRS.md](BIM_Designer_SRS.md) | UX requirements (50 numbered), user journeys, state machine |
-| [G4_SRS.md](G4_SRS.md) | work_output.db, master-detail DocStatus, AP gate |
+| [G4_SRS.md](G4_SRS.md) | output.db (compile DB), master-detail DocStatus, AP gate |
 | [DocAction_SRS.md](DocAction_SRS.md) | processIt() lifecycle (DR→IP→CO→AP), discipline routing |
 | [DocValidate.md](DocValidate.md) | **Spatial + regulatory rule symbiosis** (§0), AD_Val_Rule, 3-tier validation, jurisdiction packs (9 countries), mining pipeline |
 | [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) | Multi-discipline BOM tree, LOD resolution, handlers H1-H6 |

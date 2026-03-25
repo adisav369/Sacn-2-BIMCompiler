@@ -112,7 +112,7 @@ Most BIM tools let users draw geometry directly. This system does the opposite: 
 
 - **Snap-to-room placement** — user selects a product from the catalog, compiler validates it fits (dimensions, clearance, discipline rules) and places it at the correct tack offset
 - **Assembly builder** — layer-by-layer wall/roof/floor composition with thermal U-value calculation per BS EN ISO 6946. Swap a layer, and the parent AABB and U-value recalculate automatically (see `docs/ASSEMBLY_BUILDER_SRS.md`)
-- **Variant save/recall** — every design state is a C_Order snapshot in work_output.db. Compare variants side-by-side. Undo via changelog replay
+- **Variant save/recall** — every design state is a C_Order snapshot in output.db (compile DB). Compare variants side-by-side. Undo via changelog replay. Save persists to .blend file
 - **Infrastructure terrain snap** — four modes (ON_SURFACE, ABOVE, BELOW, PIER) on real survey data (689 points, 294m x 229m, 20m elevation band). Cut-and-fill volumetrics with grading strategy. Alignment model for road/rail curvature (see `docs/INFRA_DESIGNER_SRS.md`)
 - **Product catalog** with deterministic similarity ranking — no AI, no embeddings, just feature vectors over known attributes
 - **Jurisdiction-scoped validation** — rules per building code (currently MY/UBBL, 30 rules), enforced at placement time via AD_Val_Rule, iDempiere's validation rule pattern

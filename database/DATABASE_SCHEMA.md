@@ -130,17 +130,16 @@ One per building (SH, DX, TE, BR, RD, RL, IN, DM). Built by IFCtoBOM pipeline. R
 
 ---
 
-## 4. output.db / work_output.db — Compilation & Design Output
+## 4. output.db — Compilation Output
 
 Written fresh each compile. Schema created from `output_template.db`.
 
-### Design State (work_output.db)
+### Compile State (output.db)
 
 | Table | Purpose | Key Java Access |
 |-------|---------|-----------------|
-| **C_Order** | Order header: WHAT building to build (doc_status lifecycle DR→IP→CO→AP) | WorkOutputDAO (R/W) |
-| **C_OrderLine** | Per-element placement (product, qty, x/y/z position) | WorkOutputDAO.save/recall (R/W) |
-| **W_Variant** | Design snapshots (cheap saves, many per session) | WorkOutputDAO.listVariants (R/W) |
+| **C_Order** | Order header: WHAT building to build (doc_status lifecycle DR→IP→CO→AP) | CompileDAO (R/W) |
+| **C_OrderLine** | Per-element placement (product, qty, x/y/z position) | CompileDAO (R/W) |
 | **PP_Order_Node** | HOW: verb invocation audit trail (verb_name, params, results) | VerbNodePersister (W), M_PP_Order_Node (R) |
 | **bim_changelog** | WHO changed WHAT: action, entity, old→new, user, timestamp | ChangelogDAO (R/W) |
 

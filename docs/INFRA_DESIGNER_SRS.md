@@ -116,7 +116,7 @@ provenance discriminator works and V011 backfills from it.
 - `run_RosettaStones.sh`: Fidelity ORDER BY extended from 3 to 9 columns
   (pos + max + dims). Fixes tie-breaking for infra elements with identical positions.
 - `ReportDAO.java`: Interface for 4D schedule, 5D cost, 6D carbon, 7D assets, KPI.
-  Reads from split DBs (BOM + component_library + validation + work_output).
+  Reads from split DBs (BOM + component_library + validation + output).
 
 ---
 
@@ -480,7 +480,7 @@ as building design, but terrain-aware:
    → MeshBinder.bind() loads real geometry from component_geometries
    → Full LOD material applied from extraction (33 infra products)
    → Shape updates incrementally in output DB
-   → work_output.db stores design state for variant recall
+   → output.db (compile DB) stores design state for variant recall
 
 8. Incremental update
    → User modifies one element → only that bbox re-resolves

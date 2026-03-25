@@ -89,7 +89,7 @@ tutorial video, no configuration file editing.
 |----|------------|-------------------|----------|----------|
 | UX-F-22 | **Search-first.** BOM Chooser opens with cursor in search box. Typing filters instantly. Category tree is secondary. | Search box auto-focused on open. Results appear within 100ms of typing pause (debounce 150ms). Empty state shows top-level categories. | P1 | §17.18.1 |
 | UX-F-23 | **Fit status per item.** Each search result shows FITS/TIGHT/TOO WIDE badge relative to the focused room's AABB. | Badge colours: green=FITS (>100mm clearance), yellow=TIGHT (<100mm), red=TOO WIDE/DEEP/TALL. Items NOT hidden when they don't fit — just badged. | P1 | §17.18.3 |
-| UX-F-24 | **Place action.** Selecting an item and clicking "Place" creates a C_OrderLine referencing that product, positioned at its tack point inside the focused room. | Bbox appears at tack position. OrderLine inserted in work_output.db. Undo removes bbox + OrderLine. | P1 | §17.18.4 |
+| UX-F-24 | **Place action.** Selecting an item and clicking "Place" creates a C_OrderLine referencing that product, positioned at its tack point inside the focused room. | Bbox appears at tack position. OrderLine inserted in output.db. Undo removes bbox + OrderLine. | P1 | §17.18.4 |
 | UX-F-25 | **Set vs individual.** User can place a full set (parent + children) or cherry-pick individual items from a set. | "Place Set" creates parent + child OrderLines. "Pick Individual" shows set's leaves with individual Place buttons. | P2 | §17.18.5 |
 
 ### 2.6 Multi-View Sync
@@ -97,7 +97,7 @@ tutorial video, no configuration file editing.
 | ID | Requirement | Acceptance Criteria | Priority | Spec Ref |
 |----|------------|-------------------|----------|----------|
 | UX-F-26 | **BBox ↔ ORDER View sync.** Editing a dimension in the ORDER View (tabular) updates the corresponding bbox in the viewport, and vice versa. | Change in either view reflected in the other within 200ms (sync timer). No manual refresh needed. | P1 | §17.11, §18.3 |
-| UX-F-27 | **Three views, one truth.** BBox Design, ORDER View, and BOM Outliner all read/write the same C_OrderLine + ASI data in work_output.db. | Concurrent edits from any view produce consistent state. No race conditions: sync timer serialises updates. | P1 | §17.19, §18.3 |
+| UX-F-27 | **Three views, one truth.** BBox Design, ORDER View, and BOM Outliner all read/write the same C_OrderLine + ASI data in output.db (compile DB). | Concurrent edits from any view produce consistent state. No race conditions: sync timer serialises updates. | P1 | §17.19, §18.3 |
 | UX-F-28 | **Undo across views.** Ctrl+Z undoes the last operation regardless of which view triggered it. | Blender undo stack tracks scene property changes. Undo after ORDER View edit restores bbox state. Undo after bbox drag restores ORDER View value. | P1 | §17.9 |
 
 ---
@@ -116,7 +116,7 @@ stated scale or the UX falls apart — slow tools teach users not to iterate.
 | UX-N-03 | Section focus (click room card) | < 50ms | Any | GPU colour change, slider panel swap | P0 |
 | UX-N-04 | Slider drag (visual preview) | 0ms (local) | Any | GPU bbox resize, no server call | P0 |
 | UX-N-05 | Snap validation (on slider release) | < 300ms | 20 rooms, 6 jurisdictions | PlacementValidator batch, cached rules | P0 |
-| UX-N-06 | Save to work_output.db | < 500ms | 50 OrderLines + ASI | SQLite batch INSERT in transaction | P0 |
+| UX-N-06 | Save to output.db | < 500ms | 50 OrderLines + ASI | SQLite batch INSERT in transaction | P0 |
 | UX-N-07 | BOM Chooser search | < 100ms | 24K products | SQL LIKE + AABB pre-filter, paginated | P1 |
 | UX-N-08 | Recall version | < 500ms | 50 OrderLines | COPY rows between sub-orders | P1 |
 | UX-N-09 | Full compile (SH-scale) | < 3s | 55 elements | Existing pipeline, no scope limiting | P1 |
@@ -318,7 +318,7 @@ Step  Action                              System Response                       
 ### 5.5 Journey 5: Promote to BOM — Graduation (P1)
 
 **Persona:** Architect who has finalised a design and wants it as a reusable template.
-**Goal:** Promote a design from work_output.db into the BOM catalog.
+**Goal:** Promote a design from output.db into the BOM catalog.
 **Pre-condition:** Building fully designed, all compliance PASS, no dangles.
 
 ```
@@ -960,9 +960,9 @@ PlaceItemResponse(success, orderLineId, bbox, error)
 
 **Sequence:**
 1. Look up product from M_Product (DAO.getProduct) → widthMm, depthMm, heightMm
-2. Look up room bbox from scene bboxes (passed in request or from work_output.db)
+2. Look up room bbox from scene bboxes (passed in request or from output.db)
 3. Compute placement: `itemMinX = roomMinX + offsetX`, etc.
-4. INSERT C_OrderLine in work_output.db via WorkOutputDAO.placeItem()
+4. INSERT C_OrderLine in output.db via compile DB DAO.placeItem()
 5. Return new DesignBBox for the placed item
 
 ### 15.3 Witness Claims
@@ -1005,7 +1005,7 @@ LayoutResponse(success, bboxes, roomCount, error)
 ```
 
 **addRoom sequence:**
-1. Parse current bboxes from work_output.db (or scene state)
+1. Parse current bboxes from output.db (or scene state)
 2. Increment room count for the category
 3. Recalculate via RoomLayoutGenerator (re-pack proportional widths)
 4. Return all updated bboxes (all rooms shift to accommodate)
@@ -1148,7 +1148,7 @@ ApproveResponse(success, status, rulesPassed, rulesTotal, dangles, blockers, err
 ```
 
 **Sequence:**
-1. Load all bboxes from work_output.db via recall(latest variant)
+1. Load all bboxes from output.db via recall(latest compile)
 2. Run PlacementValidator on each ROOM bbox (ACTIVE mode, not READONLY)
 3. Check for dangles: C_OrderLines referencing products not in M_Product
 4. If all PASS and no dangles → master C_Order DocStatus: IP → AP
@@ -1368,19 +1368,19 @@ resources across multiple designers.**
 | `component_library.db` | **Shared** (all users) | Read-only during design | Extraction pipeline (offline) |
 | `validation.db` | **Shared** (all jurisdictions) | Read-only | Migration SQL (admin) |
 | `{PREFIX}_BOM.db` | **Shared** (curated templates) | Read-only during design | **Promote gate** (governance-controlled) |
-| `work_output_{building}.db` | **Per-building** | Read-write per session | Save/Recall/placeItem |
+| `output.db` | **Per-building** (compile DB) | Read-write per session | Save/Recall/placeItem |
 | `PlacementValidator` state | **Per-session** | In-memory | setJurisdiction per user |
 
 This is the iDempiere pattern:
 - `M_Product` = shared catalog (component_library.db)
 - `AD_Val_Rule` = shared validation (validation.db)
 - `M_BOM` = shared recipes (BOM.db)
-- `C_Order` = per-user work orders (work_output.db)
+- `C_Order` = per-user work orders (output.db)
 
 ### 21.3 Session Isolation (Stage 1 — Current)
 
 The current implementation uses `ConcurrentHashMap<String, Connection>` for
-per-building work_output.db connections. This is sufficient for single-user
+per-building output.db connections. This is sufficient for single-user
 but needs extension for multi-user:
 
 **Stage 1 (current):** Single user. One PlacementValidator, one jurisdiction.
@@ -1402,7 +1402,7 @@ pattern.
 |-----------|-------------|--------|
 | browseItems, listBuildings, listCategories | **Concurrent** — read-only on shared DBs | Safe (SQLite WAL mode) |
 | snap, setJurisdiction | **Per-session** — reads shared rules, no writes | Safe (validator cached in session) |
-| save, recall, placeItem | **Per-building** — writes to work_output.db | Safe (SQLite transaction per save, one writer per building) |
+| save, recall, placeItem | **Per-building** — writes to output.db | Safe (SQLite transaction per save, one writer per building) |
 | approve, promote | **Serialised** — writes to shared BOM.db | Needs mutex on BOM.db writes (Promote is rare, governance-gated) |
 | compile | **Per-building** — reads BOM.db, writes output.db | Safe (output.db is per-building) |
 
@@ -1427,7 +1427,7 @@ promote
 ```
 
 Both users work on the same building (`House_1`), each saving their own
-variants. The server serialises writes to the same work_output.db. Promote
+variants. The server serialises writes to the same output.db. Promote
 is a governance gate — only one user (with role) can execute it.
 
 ### 21.6 Witness Claims
@@ -1490,7 +1490,7 @@ For generative buildings (Create New → design → compile), the sequence is:
 ```
 1. createNew → bboxes (in-memory, no DB)
 2. User edits: addRoom, placeItem, resize, snap
-3. save → work_output.db (C_Order + C_OrderLine)
+3. save → output.db (C_Order + C_OrderLine)
 4. approve → InferenceEngine validates, all PASS → AP
 5. promote → writes m_bom + m_bom_line to {PREFIX}_BOM.db   ← G-10
 6. compile → CompilationPipeline reads BOM.db → output.db   ← THIS
@@ -1500,17 +1500,17 @@ For generative buildings (Create New → design → compile), the sequence is:
 Steps 5 and 7 are stubs. Step 6 is the compile bridge (this section).
 The generative path needs Promote (step 5) to produce a BOM.db that
 the compiler can read. For beta, we can short-circuit: compile directly
-from work_output.db C_OrderLine data without requiring full Promote.
+from output.db C_OrderLine data without requiring full Promote.
 
 ### 22.5 Short-Circuit Compile (Beta Path)
 
-For beta, skip Promote. Compile directly from work_output.db:
+For beta, skip Promote. Compile directly from output.db:
 
 ```java
-// Beta compile: read C_OrderLine from work_output.db,
+// Beta compile: read C_OrderLine from output.db,
 // build temporary m_bom/m_bom_line in memory,
 // feed to CompilationPipeline.
-WorkOutputDAO woDao = getWorkOutputDAO(buildingId);
+CompileDAO compileDao = getCompileDAO(buildingId);
 List<DesignBBox> bboxes = woDao.recall(latestVariantId);
 // Convert bboxes to m_bom_line format
 // Run pipeline
@@ -1543,7 +1543,7 @@ This lets users see 3D geometry without the full Promote governance flow.
 | W-COMPILE-3 | compile() returns spatialDigest matching G3-DIGEST format (SHA-256) | Tamper seal | PASS |
 | W-COMPILE-4 | compile() for SH completes in < 3s (549ms actual) | UX-N-09 | PASS |
 | W-COMPILE-5 | compile() with unknown buildingId returns failure | Error handling | PASS |
-| W-COMPILE-BETA-1 | Short-circuit compile from work_output.db produces geometry | Beta path | SPEC ONLY |
+| W-COMPILE-BETA-1 | Short-circuit compile from output.db produces geometry | Beta path | SPEC ONLY |
 
 ---
 
@@ -1753,7 +1753,7 @@ five data modalities. A shared embedding space enables cross-modal queries:
 | "What BOM line corresponds to this IFC element?" | IFC ↔ BOM | R4/R5 gap resolution |
 | "Which products meet this jurisdiction's rules?" | Product catalog ↔ AD_Val_Rule | Compliance-filtered browse |
 | "What did similar designs use here?" | Design history ↔ Product catalog | Predictive placement |
-| "Which ERP order matches this design intent?" | work_output.db ↔ BOM.db | Promote verification |
+| "Which ERP order matches this design intent?" | output.db ↔ BOM.db | Promote verification |
 
 Stage 1 uses deterministic feature vectors. Stage 2 trains a lightweight
 encoder (MLP or shallow transformer) on the cross-modal alignment task:
@@ -2375,7 +2375,7 @@ intercepts writes and records old→new values automatically.
 | Add room | `x_m_bom` | (all columns) | change_type=INSERT |
 | Remove room | `x_m_bom` | (all columns) | change_type=DELETE, old values preserved |
 | Jurisdiction switch | `x_m_bom` | `jurisdiction` | old: "MY" → new: "SG" |
-| Save/CO | `work_output` | `DocStatus` | old: "DR" → new: "CO" |
+| Save/CO | `output` | `DocStatus` | old: "DR" → new: "CO" |
 | Chain move | `element_placement` | `pos_x, pos_y, pos_z` × N items | Same undo_sequence for all |
 
 #### 26.14.3 Undo Levels
@@ -2595,7 +2595,7 @@ record ListAdvisoriesResponse(boolean success,
 ## 28. BOM Drop — Template-First Building Design
 
 > **Foundation:** [GENERATIVE_HOUSE_SRS.md](GENERATIVE_HOUSE_SRS.md) §2.1 (BOM Drop) · [BBC.md §3.5.1](BOMBasedCompilation.md) (ASI) · [BBC.md §3.5](BOMBasedCompilation.md) (Selection Cascade)
-> **Schema:** `ASI_001_attribute_set_instance.sql` · `W001_work_output_schema.sql`
+> **Schema:** `ASI_001_attribute_set_instance.sql` · output.db schema (compile DB)
 
 *Date: 2026-03-22. Session: S52b. Replaces: room-by-room cascade (§28 v1).*
 
@@ -2681,7 +2681,7 @@ construction completeness if they create from scratch (fallback path).
 │                                                     │
 │  1. Render tree (BOM Outliner)                      │
 │  2. Accept user edits (swap/add/remove/ASI)         │
-│  3. Write changes to C_OrderLine in work_output.db  │
+│  3. Write changes to C_OrderLine in output.db        │
 │  4. Call engine: bomDrop() / compile()              │
 │                                                     │
 │  NEVER: walks BOMs, resolves products, computes     │
@@ -2707,7 +2707,7 @@ construction completeness if they create from scratch (fallback path).
 
 **The pattern is identical to compilation today:**
 
-1. GUI makes changes → writes to work_output.db (C_OrderLine mutations)
+1. GUI makes changes → writes to output.db (C_OrderLine mutations)
 2. GUI calls engine (bomDrop or compile)
 3. Engine reads the saved state, does all the heavy lifting, returns result
 4. GUI renders the result
@@ -3536,7 +3536,7 @@ This is the DocEvent path — validation rules ARE the placement engine.
 *References:
 [BIM_Designer.md](BIM_Designer.md) (architecture, §17 Design Mode, §18 UI Strategy) |
 [BIM_Designer_UserGuide.md §13](BIM_Designer_UserGuide.md) (Web UI spec — tab layout, tech stack) |
-[G4_SRS.md](G4_SRS.md) (work_output.db, Save/Recall/Promote sequences) |
+[G4_SRS.md](G4_SRS.md) (output.db, Save/Recall/Promote sequences) |
 [DocValidate.md](DocValidate.md) §15 (PlacementValidator, AD_Val_Rule) |
 [TestArchitecture.md](TestArchitecture.md) (traceability matrix, witness convention) |
 [BIM_COBOL.md](BIM_COBOL.md) §20 (spatial predicate verbs) |

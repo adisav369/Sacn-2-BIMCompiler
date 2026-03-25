@@ -489,7 +489,7 @@ are waste.
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
 | §4.0 LBD offsets | dx = child.minX - parent.minX (never centroid) | BomValidator | W-TACK-1 | IMPLEMENTED (advisory → FAIL after TACK-FIX) |
-| §4.0 extends to work_output | C_OrderLine.dx/dy/dz uses same LBD convention | WorkOutputTackTest | W-TACK-WO-1 | **SPEC ONLY** (G4_SRS §5.4) |
+| §4.0 extends to output.db | C_OrderLine.dx/dy/dz uses same LBD convention | WorkOutputTackTest | W-TACK-WO-1 | **SPEC ONLY** (G4_SRS §5.4) |
 | §4.1 World coord reconstruction | element_LBD = origin + Σ(tack_from[i]) | PlacementCollectorVisitorTest | SB-2 | PASS |
 | §4.1 Origin convention | Only BUILDING BOM has non-zero origin | BOMChainMathTest | — | PASS (R16 fix verified) |
 | §4.2 BUFFER invariant | parent.width = SUM(children.allocated_width) | BomValidator | W-BUFFER-1 | IMPLEMENTED (advisory) |
@@ -509,9 +509,9 @@ are waste.
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
 | §3.2 ESLine tack_from | ESLine.tack_from = m_bom_line.dx/dy/dz | — | W-ESLINE-TACK-1 | **PENDING** |
-| §3.2 extends to work_output | Spatial slot tack_from = C_OrderLine.dx/dy/dz (compiler-internal: co_empty_space_line) | — | — | **PENDING** |
+| §3.2 extends to output.db | Spatial slot tack_from = C_OrderLine.dx/dy/dz (compiler-internal: co_empty_space_line) | — | — | **PENDING** |
 
-### G4_SRS — work_output.db
+### G4_SRS — output.db (compile DB)
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
@@ -586,7 +586,7 @@ are waste.
 | §22.3 | compile() spatialDigest is SHA-256 (64 hex) | CompileBridgeTest | W-COMPILE-3 | PASS |
 | §22.3 | compile() SH-scale < 3s | CompileBridgeTest | W-COMPILE-4 | PASS (549ms) |
 | §22.3 | compile() unknown building → failure | CompileBridgeTest | W-COMPILE-5 | PASS |
-| §22.5 | Short-circuit compile from work_output.db | — | W-COMPILE-BETA-1 | **SPEC ONLY** |
+| §22.5 | Short-circuit compile from output.db | — | W-COMPILE-BETA-1 | **SPEC ONLY** |
 
 ### BIM_Designer_SRS §27 — Flywheel Advisory Panel (FL-2/FL-5)
 

@@ -16,7 +16,7 @@ ASI pattern is the generative customization layer. Same BOM recipe, different pe
 - Compiler reads effective dimensions, never invents geometry
 
 **Current state (S52):**
-- Schema exists: M_AttributeSetInstance + M_AttributeInstance tables (W001_work_output_schema.sql)
+- Schema exists: M_AttributeSetInstance + M_AttributeInstance tables (output.db)
 - FK wired: C_OrderLine.M_AttributeSetInstance_ID
 - ChangeSet.ASI enum value triggers recompile
 - BIM_Designer.md §8 documents field resolution matrix

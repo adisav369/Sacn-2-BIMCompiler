@@ -440,13 +440,13 @@ public class AssemblyDAO {
 
 ### 5.2 AssemblyWriteDAO (new)
 
-Writes assembly templates to work_output.db (per-instance) or to a new BOM
+Writes assembly templates to output.db (per-instance) or to a new BOM
 file (reusable template).
 
 ```java
 /**
  * Write DAO for assembly templates.
- * Per-instance: writes to work_output.db C_OrderLine.
+ * Per-instance: writes to output.db C_OrderLine.
  * Reusable: writes to {PREFIX}_BOM.db m_bom + m_bom_line (via Promote path).
  *
  * // Implementing ASSEMBLY_BUILDER_SRS.md §5.2 — Witness: W-ASM-WRITE-1
@@ -637,7 +637,7 @@ BonsaiBIMDesigner/src/main/java/com/bim/designer/
 ├── api/DesignerAPIImpl.java          (wire to service)
 ├── assembly/AssemblyBuilderService.java  (NEW — orchestration)
 ├── assembly/AssemblyDAO.java             (NEW — read component_library.db)
-├── assembly/AssemblyWriteDAO.java        (NEW — write work_output.db)
+├── assembly/AssemblyWriteDAO.java        (NEW — write output.db)
 ├── assembly/UValueCalculator.java        (NEW — stateless calc)
 
 BonsaiBIMDesigner/src/test/java/com/bim/designer/

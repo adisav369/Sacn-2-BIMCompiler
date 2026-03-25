@@ -18,8 +18,8 @@
                                                           │
                           ┌───────────────────────────────┼───────────────┐
                           ▼                               ▼               ▼
-                   {PREFIX}_BOM.db              component_library.db   work_output.db
-                   (per-building BOM)           (product catalog)      (design state)
+                   {PREFIX}_BOM.db              component_library.db   output.db
+                   (per-building BOM)           (product catalog)      (compile output)
 ```
 
 **BIMBackOffice** = ERP back-end logic layer (iDempiere pattern).

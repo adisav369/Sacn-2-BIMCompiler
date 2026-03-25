@@ -1876,7 +1876,7 @@ scene property.
 > specific building being designed, and ASI captures "this bedroom is 4500mm
 > wide instead of the default 3100mm." This separation keeps the BOM clean
 > (only curated, validated designs) while allowing free experimentation in the
-> Order layer. The `work_output.db` is self-contained — it carries YAML,
+> Order layer. The `output.db` (compile DB) is self-contained — it carries YAML,
 > Order, and ASI definitions inside it during init, so backend tools (reports,
 > SQL queries, admin dashboards) can read the design without needing Blender.
 
@@ -1899,7 +1899,7 @@ DESIGN LAYER (user's work):
   All Design Mode edits live here.
 
 OUTPUT LAYER (committed result):
-  work_output.db          Compiled spatial DB from templates + overrides
+  output.db               Compiled spatial DB from templates + overrides
   Federation loads and renders this.
 ```
 
@@ -1907,15 +1907,13 @@ OUTPUT LAYER (committed result):
 
 | Action | Writes to | Frequency | Deliberation |
 |--------|-----------|-----------|-------------|
-| **Save** | `work_output.db` (sub-C_Order CO + W_Variant pointer) | Frequent — one click | Low — creates immutable version |
-| **Recall** | `work_output.db` (new sub-C_Order DR, copied from target) | As needed — pick from list | Low — non-destructive, previous versions stay CO |
-| **Approve** | `work_output.db` (master C_Order IP → AP) | Before promote — explicit action | Medium — compliance + tack + dangle gate |
+| **Save** | `.blend` file (design state) | Frequent — one click | Low — Blender native save |
+| **Recall** | `.blend` file (reopen previous) | As needed — pick from list | Low — non-destructive |
+| **Approve** | `output.db` (master C_Order IP → AP) | Before promote — explicit action | Medium — compliance + tack + dangle gate |
 | **Promote to BOM** | `{PREFIX}_BOM.db` (new m_bom + m_bom_line) | Rare — deliberate action + confirmation | High — requires AP, governance gate |
 
-**Save** creates a sub-work-order (CO) under the master C_Order. The sub-order's
-C_OrderLine rows ARE the version data — no JSON blob duplication. Each save is
-a proper iDempiere document: queryable, reportable, auditable. W_Variant is a
-lightweight pointer (label + metadata) to the sub-order. The BOM is not touched.
+**Save** is a native Blender `.blend` save — the design state lives in the
+.blend file. Compilation writes to `output.db`. The BOM is not touched.
 
 **Recall** copies a previous sub-order's state into a fresh sub-order (DR).
 Previous sub-orders stay CO (immutable). No data destruction — the iDempiere
@@ -2043,7 +2041,7 @@ record VariantInfo(
 
 ```python
 class BIM_OT_designer_save(Operator):
-    """Save current design to work_output.db (OrderLine + ASI)."""
+    """Save current design to .blend file (OrderLine + ASI compiled to output.db)."""
     bl_idname = "bim.designer_save"
     bl_options = {'REGISTER', 'UNDO'}
 
@@ -2106,10 +2104,10 @@ is immediately reflected in the BBox viewport, and vice versa.
 REAL MODE (Federation as-is, Designer invisible)
     │
     ├── DESIGN MODE (visual BBox)     ← spatial editing
-    │       writes to: OrderLine + ASI in work_output.db
+    │       writes to: OrderLine + ASI in output.db
     │
     ├── ORDER VIEW (tabular)          ← structured editing
-    │       writes to: same OrderLine + ASI in work_output.db
+    │       writes to: same OrderLine + ASI in output.db
     │       shows: dangles, compliance, naming, ASI values
     │
     ├── SAVE (frequent)               ← sub-work-order creation
@@ -2128,7 +2126,7 @@ REAL MODE (Federation as-is, Designer invisible)
     │       EXCLUSIVE gate for BOM creation
     │
     └── PROMOTE TO BOM (rare)         ← governance gate
-            reads: AP'd OrderLine + ASI from work_output.db
+            reads: AP'd OrderLine + ASI from output.db
             writes: m_bom + m_bom_line in {PREFIX}_BOM.db
             requires: AP status, metadata, owner sign-off
             transitions: master C_Order AP → CO (frozen)
@@ -2539,7 +2537,7 @@ Building                              BUILDING_SH_STD
                                               └── IfcPlate (33,324× via TILE)
 ```
 
-**Data source:** `work_output.db` → `C_OrderLine` tree via `Parent_OrderLine_ID`.
+**Data source:** `output.db` → `C_OrderLine` tree via `Parent_OrderLine_ID`.
 The tree is fetched from DesignerServer (wire protocol: `listOrderLines` action).
 NOT from IFC spatial structure — from the BOM relational model.
 
@@ -2580,7 +2578,7 @@ Two options:
 **Relationship to existing views:**
 
 ```
-                work_output.db (C_OrderLine tree)
+                output.db (C_OrderLine tree)
                         │
          ┌──────────────┼──────────────┐
          ▼              ▼              ▼
@@ -2610,7 +2608,7 @@ because edits are relational (FK updates), not geometric (mesh transforms).
 
 ### 17.20 What Is NOT in Scope (This Phase)
 
-- Full Save/Recall/Promote implementation (§17.10 defines interfaces; DDL: `migration/W001_work_output_schema.sql`; SRS: `docs/G4_SRS.md`)
+- Full Save/Recall/Promote implementation (§17.10 defines interfaces; SRS: `docs/G4_SRS.md`)
 - ORDER View panel implementation (§17.11 defines layout only)
 - Snap action server endpoint (§17.13 defines wire format only)
 - BOM Chooser UI and browseItems endpoint (§17.18 defines spec only)
@@ -2619,7 +2617,7 @@ because edits are relational (FK updates), not geometric (mesh transforms).
 - Viewport click-to-select bboxes (future — start with panel chooser)
 - Room drag/resize in viewport (future — start with slider controls)
 - Dangles view implementation (future — query component_library.db)
-- Variant version list UI (future — read work_output.db history)
+- Variant version list UI (future — read output.db history)
 - Multi-building scenes (one design session = one building)
 
 ### 17.19 Python Addon Hardening (S40 Review)
@@ -2719,7 +2717,7 @@ Every interaction must feel instant:
 | createNew → bboxes | < 200ms | Java RoomLayoutGenerator, no DB writes |
 | BOM Chooser search | < 100ms | SQL LIKE + AABB pre-filter, paginated |
 | Snap validation | < 300ms | PlacementValidator batch check |
-| Save to work_output.db | < 500ms | SQLite batch INSERT |
+| Save to output.db | < 500ms | SQLite batch INSERT |
 | Mode toggle (Design ↔ Real) | < 50ms | Shader color swap only |
 
 The compilation model makes this possible — we are rearranging metadata

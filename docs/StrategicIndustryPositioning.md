@@ -401,7 +401,7 @@ BIM INTENT COMPILER:
     component_library.db (500 MB, shared across ALL projects)
     {PREFIX}_BOM.db (10 MB, curated BOM templates)
   Compiled output:
-    work_output.db (50 MB, always regenerable, disposable)
+    output.db (50 MB, always regenerable, disposable)
 ```
 
 | Layer | What it stores | Size |
@@ -462,7 +462,7 @@ The ERP foundation enables clean data governance:
 
 | Action | Frequency | Writes to | Deliberation |
 |--------|-----------|-----------|-------------|
-| **Save** | Frequent | work_output.db (OrderLine + ASI) | Low — just persist |
+| **Save** | Frequent | .blend file (Blender native) | Low — just persist |
 | **Recall** | As needed | Nothing (reads previous variant) | None — browse |
 | **Promote to BOM** | Rare | {PREFIX}_BOM.db (new m_bom) | High — governance gate |
 

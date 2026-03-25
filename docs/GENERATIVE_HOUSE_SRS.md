@@ -35,7 +35,7 @@ not a code problem.
 User: "Create 2BR house with pitched roof and sprinklers"
          │
          ▼
-C_Order created in work_output.db
+C_Order created in output.db (compile DB)
          │
          ▼
 C_OrderLine: M_Product_ID = BUILDING_SH_STD
@@ -61,7 +61,7 @@ Add C_OrderLine: FP sprinkler product
          ▼
 User reviews in Designer UI (BOM tree navigator = BOM Outliner G-9)
     Can further swap, add, remove, adjust ASI
-    All edits are C_OrderLine modifications in work_output.db
+    All edits are C_OrderLine modifications in output.db (compile DB)
          │
          ▼
 BuildingCompiler.compile() — processes the order
@@ -216,7 +216,7 @@ The BIM Designer lets users create C_OrderLines visually:
 |---|---|---|
 | **Who creates OrderLines** | YAML auto-creates | User browses + clicks |
 | **BOM Drop** | Not needed (Instant Drop) | Interactive tree navigation |
-| **Where decisions live** | C_OrderLine in work_output.db | Same |
+| **Where decisions live** | C_OrderLine in output.db (compile DB) | Same |
 | **Compilation** | Same compiler, same gates | Same |
 
 ## 6. AttributeSetInstance — Per-Instance Customization
@@ -260,7 +260,7 @@ TC-2 through TC-7 use BOM Drop to swap/add/remove.
 ### TC-1: Instant Drop — "Give me SH"
 
 ```
-C_Order in work_output.db
+C_Order in output.db (compile DB)
 C_OrderLine: M_Product_ID = BUILDING_SH_STD
 (no BOM Drop, no ASI overrides — Instant Drop)
 
@@ -820,7 +820,7 @@ The fingerprint test verifies TRIM fired and CW panels are correctly bounded.
 The fingerprint test follows the correct design lifecycle:
 
 ```
-work_output.db (design workspace)
+output.db (compile DB — design workspace)
     ├─ bomDrop() → C_OrderLine tree created
     ├─ swapProduct() → C_OrderLine.family_ref updated
     └─ design complete

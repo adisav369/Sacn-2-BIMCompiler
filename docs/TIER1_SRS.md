@@ -44,11 +44,11 @@
 │  │ DAO Layer (SQL against existing databases)      │    │
 │  │   SustainabilityDAO → component_library.db      │    │
 │  │   FacilityMgmtDAO  → component_library.db       │    │
-│  │   ChangelogDAO     → work_output.db             │    │
+│  │   ChangelogDAO     → output.db                   │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                         │
 │  databases: component_library.db  {P}_BOM.db            │
-│             work_output.db        ERP.db     │
+│             output.db              ERP.db     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -378,17 +378,17 @@ product cost × lifespan, not a separate FM system.
 
 Scorecard CR/Audit=1\* (spec only). The Federation addon's
 `asset_history` table tracks asset changes. We need the same pattern on
-the work_output.db side: every `save()` logs what changed, enabling
+the output.db side: every `save()` logs what changed, enabling
 undo and multi-user conflict detection.
 
 ### §3.2 Schema — migration V011_changelog.sql
 
-New table in **work_output.db** (not component_library.db — changelog
+New table in **output.db** (not component_library.db — changelog
 tracks design edits, not catalog changes):
 
 ```sql
 -- V011_changelog.sql
--- Audit trail for design changes in work_output.db
+-- Audit trail for design changes in output.db
 -- APPEND-ONLY: never modify this migration after first run
 -- Implementing TIER1_SRS.md §3.2 — Witness: W-AUDIT-DDL-1
 
@@ -421,7 +421,7 @@ CREATE INDEX IF NOT EXISTS idx_changelog_entity
 // Implementing TIER1_SRS.md §3.3 — Witness: W-AUDIT-DAO-1
 public class ChangelogDAO {
 
-    private final Connection workConn;  // work_output.db
+    private final Connection outputConn;  // output.db
 
     // ── Record types ────────────────────────────────────
     record ChangeEntry(long changelogId, String buildingId,
@@ -622,7 +622,7 @@ GPU-accelerated viewport used by 3D artists. Blender IS the viewer.
 | 2 | V010b seed data | 30 min | Step 1 | ≥ 10 products with carbon + interval data |
 | 3 | SustainabilityDAO + test | 1.5 hrs | Step 2 | W-6D-CARBON-1..3 GREEN |
 | 4 | FacilityMgmtDAO + test | 1.5 hrs | Step 2 | W-7D-FM-1..4 GREEN |
-| 5 | V011 changelog migration | 10 min | — | bim_changelog table in work_output.db |
+| 5 | V011 changelog migration | 10 min | — | bim_changelog table in output.db |
 | 6 | ChangelogDAO + interceptor + test | 2 hrs | Step 5 | W-AUDIT-DAO-1..3, W-AUDIT-INTERCEPT-1 GREEN |
 | 7 | Wire actions (3 new) | 1 hr | Steps 3,4,6 | W-6D-CARBON-4, W-7D-FM-5, W-AUDIT-WIRE-1 GREEN |
 | 8 | 3D visual proof | 30 min | — | W-3D-VIS-1..3 (screenshot) |

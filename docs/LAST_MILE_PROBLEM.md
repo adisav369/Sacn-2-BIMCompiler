@@ -513,8 +513,8 @@ elements resolve per-instance geometry from library via GUID chain.
 ---
 
 ## Gap 8: Database Separation Drift — Non-Drift Audit (session 21)
-<!-- @Traces BBC.md §2.1 — IFC→BOM stage (5-split DB architecture) -->
-<!-- @Traces DATA_MODEL.md §1 — DB separation (library/BOM/output/validation/work_output) -->
+<!-- @Traces BBC.md §2.1 — IFC→BOM stage (4-split DB architecture) -->
+<!-- @Traces DATA_MODEL.md §1 — DB separation (library/BOM/output/ERP) -->
 
 **Audit date:** 2026-03-18. Four spec claims checked against reality.
 
