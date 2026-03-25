@@ -1648,8 +1648,10 @@ within 300ms of Snap.
 
 ---
 
-## 25. Embedding-Assisted Inference — JEPA-Inspired Architecture
+## 25. Embedding-Assisted Inference (Stage 2-3 — Not ERP-Aligned)
 
+> **Status:** SPEC ONLY. AI/ML inference layer, not iDempiere-aligned. Deferred.
+>
 > **Inspiration:** Yann LeCun's VL-JEPA (Joint Embedding Predictive Architecture
 > for Vision-Language, 2026). Core insight: predict in **embedding space**, not
 > in raw data space. Learn abstract representations; match and retrieve via
