@@ -2,6 +2,10 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md)
 
+<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e0f2f1, #e0f7fa, #e0f2f1); border-left: 4px solid #00695c; border-right: 4px solid #00695c;">
+<b>Where to start reading.</b> Entry points, DAO patterns, the 9-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.
+</div>
+
 **Version 3.0**
 
 **Creator:** Redhuan D. Oon <red1org@gmail.com>

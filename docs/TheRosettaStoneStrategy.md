@@ -1,5 +1,9 @@
 # The Rosetta Stone Strategy
 
+<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fff8e1, #fff3e0, #fff8e1); border-left: 4px solid #e65100; border-right: 4px solid #e65100;">
+<b>35 real buildings, recompiled from their BOMs.</b> If every element lands at the same coordinates as the original, the grammar is certified. No tolerance tuning, no heuristics — pure coordinate equality is the only proof that matters.
+</div>
+
 ## Why This Exists
 
 AI is blind to spatial geometry. It can parse text, generate code, and reason about logic — but it cannot see that a wall must sit on a slab, that a door must be inside a wall, or that two columns must not occupy the same space. No amount of prompt engineering fixes this: spatial correctness is a mathematical problem, not a language problem. The Rosetta Stone strategy exists to solve it deterministically — real buildings become ground truth, and every compiled output is proven against that truth with pure arithmetic. No heuristics. No tolerance tuning. No AI in the proof gates — those are pure arithmetic. If the coordinates match, the grammar is certified.

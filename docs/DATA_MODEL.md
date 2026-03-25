@@ -2,6 +2,10 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
+<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e8eaf6, #ede7f6, #e8eaf6); border-left: 4px solid #5c6bc0; border-right: 4px solid #5c6bc0;">
+<b>4 databases, 120+ tables, zero ambiguity.</b> Every element traces from a library product through a BOM recipe to a placed instance. The split is deliberate — catalog, rules, recipe, and output never share a database, so each concern scales independently.
+</div>
+
 **This specification governs the creation of `{PREFIX}_BOM.db` dictionaries.**
 Each building has its own BOM dictionary (`SH_BOM.db`, `DX_BOM.db`), reproduced from fresh
 by the IFCtoBOM Java pipeline: `./scripts/run_RosettaStones.sh classify_sh.yaml`.

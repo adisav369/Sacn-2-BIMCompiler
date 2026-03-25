@@ -2,6 +2,10 @@
 
 > *If you can bill it, you can build it. If you can BOM it, you can compile it.*
 
+<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e3f2fd, #e8eaf6, #e3f2fd); border-left: 4px solid #1565c0; border-right: 4px solid #1565c0;">
+<b>Domain-agnostic by design.</b> This compiler operates on abstract BOM recipes — parent products with child products, quantities, and spatial offsets. Construction is one instance. The same 9-stage pipeline compiles houses, terminals, bridges, roads, and railways. Only the product library and the ~30-line YAML mapping change. The domain-specific vocabulary (ROOM, FLOOR, SPRINKLER) lives in <a href="BIM_COBOL.md">BIM COBOL</a> — a DSL layer on top, not inside the compiler.
+</div>
+
 A [Bill of Materials](https://en.wikipedia.org/wiki/Bill_of_materials) is a
 recipe: one parent product, N child products, each with a quantity. Each child
 can itself be a BOM — a building contains floors, a floor contains rooms, a

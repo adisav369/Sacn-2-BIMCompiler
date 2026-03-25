@@ -2,6 +2,10 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
+<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e8f5e9, #f1f8e9, #e8f5e9); border-left: 4px solid #2e7d32; border-right: 4px solid #2e7d32;">
+<b>6 mathematical gates. Not sampled — proven.</b> If a building compiles, every element is accounted for: count, position, volume, digest, and parent-child integrity. The proof is arithmetic, not assertion. No AI in the gates.
+</div>
+
 ## Anti-Drift Policy (read first)
 
 **These rules override all other instructions. No exceptions.**
