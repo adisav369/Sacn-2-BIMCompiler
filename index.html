@@ -2903,11 +2903,6 @@
 
 <h1 id="bim-intent-compiler">BIM Intent Compiler<a class="headerlink" href="#bim-intent-compiler" title="Permanent link">&para;</a></h1>
 <h2 id="construction-is-manufacturing-a-building-is-its-bill-of-materials">Construction is manufacturing. A building IS its Bill of Materials.<a class="headerlink" href="#construction-is-manufacturing-a-building-is-its-bill-of-materials" title="Permanent link">&para;</a></h2>
-<figure style="float: right; margin: -12px 0 8px 20px; max-width: 360px; text-align: center;">
-  <img src="assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded" width="280">
-  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Compiled in Blender/Bonsai. Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP).</figcaption>
-</figure>
-
 <p>A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an <a href="MANIFESTO/">ERP system</a> explodes a manufacturing BOM into work orders, that can then be further edited in <a href="https://bonsaibim.org/">Bonsai</a> (Blender BIM).</p>
 <p>The <a href="TheRosettaStoneStrategy/">Rosetta Stone strategy</a> takes 35 real buildings and recompiles them after their <a href="BOMBasedCompilation/">BOMs</a> (Bill of Materials), converted from their flat <a href="https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/">IFC</a> format — if every element lands at the same coordinates as the original, the grammar is certified. Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic. The same 9-stage pipeline compiles a 55-element house and a 48,428-element airport terminal. <a href="TestArchitecture/">6 mathematical gates</a> prove every output correct — not sampled, proven. </p>
 <p>Thereupon, we test it on generic <a href="ProjectOrderBlueprint/">Construction Orders</a> to validate the <a href="BIM_COBOL/">vocabulary</a> — 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) generating geometry from <a href="DATA_MODEL/">2,475 products</a> in the library.</p>
@@ -2920,6 +2915,11 @@
 <div style="clear: right;"></div>
 
 <hr />
+<figure style="float: right; margin: -8px 0 8px 20px; max-width: 280px; text-align: center;">
+  <img src="assets/images/GeneralTall.png" alt="Multi-storey building compiled from BOM — 6 disciplines colour-coded" width="280">
+  <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">Compiled in Blender/Bonsai. Colour = discipline (STR, ARC, ELEC, FP, ACMV, SP).</figcaption>
+</figure>
+
 <div class="grid cards">
 <ul>
 <li>
