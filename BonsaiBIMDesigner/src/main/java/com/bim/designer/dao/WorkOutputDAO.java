@@ -96,6 +96,15 @@ public class WorkOutputDAO {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_orderline_proposal ON C_OrderLine(proposal_status)");
         } catch (SQLException ignored) {}
+        // W009: Add AD_Org_ID to C_OrderLine (DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5)
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE C_OrderLine ADD COLUMN AD_Org_ID INTEGER");
+        } catch (SQLException e) {
+            if (!e.getMessage().contains("duplicate column")) throw e;
+        }
+        try (Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_orderline_ad_org_id ON C_OrderLine(AD_Org_ID)");
+        } catch (SQLException ignored) {}
     }
 
     /**

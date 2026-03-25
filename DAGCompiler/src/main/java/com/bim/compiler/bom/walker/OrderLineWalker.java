@@ -216,7 +216,7 @@ public class OrderLineWalker {
     // ── Data access ──────────────────────────────────────────────────────────
 
     private OrderLineRow findRoot(String orderId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, AD_Org_ID, "
                    + "Qty, locator_ref, is_reference_class "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID IS NULL "
                    + "AND IsActive = 1 ORDER BY Line LIMIT 1";
@@ -230,7 +230,7 @@ public class OrderLineWalker {
     }
 
     private List<OrderLineRow> findChildren(String orderId, int parentLineId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, AD_Org_ID, "
                    + "Qty, locator_ref, is_reference_class "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID = ? "
                    + "AND IsActive = 1 ORDER BY Line";
@@ -254,6 +254,7 @@ public class OrderLineWalker {
                 rs.getString("host_type"),
                 rs.getInt("bom_child_id"),
                 rs.getString("Discipline"),
+                rs.getInt("AD_Org_ID"),
                 rs.getInt("Qty"),
                 rs.getString("locator_ref"),
                 rs.getInt("is_reference_class") == 1);
@@ -265,6 +266,6 @@ public class OrderLineWalker {
     }
 
     private record OrderLineRow(int lineId, String familyRef, String hostType, int bomChildId,
-                                    String discipline, int qty, String locatorRef,
+                                    String discipline, int adOrgId, int qty, String locatorRef,
                                     boolean isReferenceClass) {}
 }

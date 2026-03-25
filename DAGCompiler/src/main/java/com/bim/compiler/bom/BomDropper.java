@@ -1,6 +1,7 @@
 package com.bim.compiler.bom;
 
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
+import com.bim.compiler.topology.Discipline;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
 
@@ -397,13 +398,15 @@ public class BomDropper {
                                    double widthMm, double depthMm, double heightMm,
                                    int qty, String locatorRef, boolean isReferenceClass)
             throws SQLException {
+        // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5 — Witness: W-DV-DISC-ORG
         String discipline = deriveDiscipline(productCategory);
+        int adOrgId = deriveAD_Org_ID(discipline);
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                    + " m_product_category_id, bom_child_id, dx, dy, dz, "
-                   + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, Qty, "
+                   + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, AD_Org_ID, Qty, "
                    + " locator_ref, is_reference_class) "
-                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, orderId);
             if (parentLineId != null) ps.setInt(2, parentLineId);
@@ -422,9 +425,10 @@ public class BomDropper {
             ps.setDouble(13, heightMm);
             ps.setString(14, familyRef);  // M_Product_ID = family_ref
             ps.setString(15, discipline);
-            ps.setInt(16, qty);
-            ps.setString(17, locatorRef);
-            ps.setInt(18, isReferenceClass ? 1 : 0);
+            ps.setInt(16, adOrgId);
+            ps.setInt(17, qty);
+            ps.setString(18, locatorRef);
+            ps.setInt(19, isReferenceClass ? 1 : 0);
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
@@ -453,5 +457,16 @@ public class BomDropper {
             case "MEP", "ELEC", "PLB", "ACMV" -> productCategory;
             default -> "ARC";
         };
+    }
+
+    /**
+     * Resolve TEXT discipline code → AD_Org_ID via Discipline enum.
+     * Handles legacy "FPR" → FP mapping (W003 artifact).
+     * Falls back to 0 (Shared/*) for unknown codes.
+     */
+    static int deriveAD_Org_ID(String discipline) {
+        if ("FPR".equals(discipline)) discipline = "FP";  // W003 legacy
+        Discipline d = Discipline.fromString(discipline);
+        return d != null ? d.getAD_Org_ID() : 0;
     }
 }

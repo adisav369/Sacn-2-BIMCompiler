@@ -1,5 +1,6 @@
 package com.bim.designer.api;
 
+import com.bim.compiler.topology.Discipline;
 import com.bim.designer.dao.MEPBOMQuery;
 import com.bim.designer.dao.MEPBOMQuery.MEPRequirement;
 import com.bim.designer.dao.WorkOutputDAO;
@@ -214,10 +215,12 @@ public class OrderMutationService {
             }
         }
 
+        // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5 — Witness: W-DV-DISC-ORG
+        int adOrgId = resolveAD_Org_ID(discipline);
         String sql = "INSERT INTO C_OrderLine "
                 + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
-                + " m_product_category_id, M_Product_ID, Discipline, Qty, proposal_status) "
-                + "VALUES (?, ?, ?, ?, 'LEAF', ?, ?, ?, ?, 'PROPOSED')";
+                + " m_product_category_id, M_Product_ID, Discipline, AD_Org_ID, Qty, proposal_status) "
+                + "VALUES (?, ?, ?, ?, 'LEAF', ?, ?, ?, ?, ?, 'PROPOSED')";
         try (PreparedStatement ps = woConn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, orderId);
             ps.setInt(2, parentLineId);
@@ -226,12 +229,20 @@ public class OrderMutationService {
             ps.setString(5, roomCategory);        // m_product_category_id from parent room
             ps.setString(6, mepProductId);        // M_Product_ID
             ps.setString(7, discipline);          // FP, ELEC, SP, ACMV
-            ps.setInt(8, qty);
+            ps.setInt(8, adOrgId);
+            ps.setInt(9, qty);
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 return keys.next() ? keys.getInt(1) : 0;
             }
         }
+    }
+
+    /** Resolve TEXT discipline code → AD_Org_ID via Discipline enum. Handles legacy FPR→FP. */
+    private static int resolveAD_Org_ID(String discipline) {
+        if ("FPR".equals(discipline)) discipline = "FP";  // W003 legacy
+        Discipline d = Discipline.fromString(discipline);
+        return d != null ? d.getAD_Org_ID() : 0;
     }
 }

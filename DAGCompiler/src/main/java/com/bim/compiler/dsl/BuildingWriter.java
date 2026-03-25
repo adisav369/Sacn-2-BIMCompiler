@@ -366,6 +366,7 @@ public class BuildingWriter {
                     Name             TEXT NOT NULL,       -- element instance name (was: element_ref)
                     IfcClass         TEXT NOT NULL,       -- IFC entity type (was: ifc_class)
                     Discipline       TEXT DEFAULT 'ARC',  -- ARC|STR|MEP|FURN (was: discipline)
+                    AD_Org_ID        INTEGER,             -- FK to AD_Org (ERP.db) — integer discipline
                     M_Product_ID     TEXT,                -- FK to M_Product (was: family_ref)
                     IsActive         INTEGER DEFAULT 1,   -- (was: is_active)
                     UNIQUE(C_Order_ID, Storey, Name)

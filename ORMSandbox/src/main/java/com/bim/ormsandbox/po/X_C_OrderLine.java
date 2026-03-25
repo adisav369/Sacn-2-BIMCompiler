@@ -31,6 +31,7 @@ import java.sql.Connection;
  *   Name             TEXT NOT NULL       -- element instance identifier
  *   IfcClass         TEXT NOT NULL       -- IFC entity type
  *   Discipline       TEXT DEFAULT 'ARC'  -- ARC|STR|MEP|FURN|ELE|PLB|FPR
+ *   AD_Org_ID        INTEGER             -- FK to AD_Org (ERP.db) — integer discipline
  *   M_Product_ID     TEXT                -- FK to M_Product (assembly family)
  *   IsActive         INTEGER DEFAULT 1
  * </pre>
@@ -49,6 +50,7 @@ public class X_C_OrderLine extends BasePO {
     public static final String COLUMNNAME_Name               = "Name";
     public static final String COLUMNNAME_IfcClass           = "IfcClass";
     public static final String COLUMNNAME_Discipline         = "Discipline";
+    public static final String COLUMNNAME_AD_Org_ID          = "AD_Org_ID";
     public static final String COLUMNNAME_M_Product_ID       = "M_Product_ID";
     public static final String COLUMNNAME_IsActive           = "IsActive";
     // ── NO placement columns (host_type, host_ref, position_rule, etc.) ──
@@ -70,6 +72,7 @@ public class X_C_OrderLine extends BasePO {
     public String getName()              { return get_ValueAsString(COLUMNNAME_Name); }
     public String getIfcClass()          { return get_ValueAsString(COLUMNNAME_IfcClass); }
     public String getDiscipline()        { return get_ValueAsString(COLUMNNAME_Discipline); }
+    public int    getAD_Org_ID()         { return get_ValueAsInt(COLUMNNAME_AD_Org_ID); }
     public String getMProductId()        { return get_ValueAsString(COLUMNNAME_M_Product_ID); }
     public boolean isActive()            { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
 
@@ -80,6 +83,7 @@ public class X_C_OrderLine extends BasePO {
     public void setName(String v)            { set_Value(COLUMNNAME_Name, v); }
     public void setIfcClass(String v)        { set_Value(COLUMNNAME_IfcClass, v); }
     public void setDiscipline(String v)      { set_Value(COLUMNNAME_Discipline, v); }
+    public void setAD_Org_ID(int v)          { set_Value(COLUMNNAME_AD_Org_ID, v); }
     public void setMProductId(String v)      { set_Value(COLUMNNAME_M_Product_ID, v); }
     public void setIsActive(boolean v)       { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
 }
