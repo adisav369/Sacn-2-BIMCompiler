@@ -3665,7 +3665,7 @@ identifies the editing session, <code>user_id</code> identifies the author. Two 
 editing the same BOM line produce two changelog entries — the system detects
 the conflict at save time by comparing timestamps.</p>
 <p><strong>Current status:</strong> ChangelogDAO is fully implemented and tested (TIER1_SRS.md §3).
-The <code>bim_changelog</code> table lives in the per-building work_output database. Wire protocol supports
+The <code>bim_changelog</code> table lives in the per-building output database (output.db). Wire protocol supports
 <code>changelog</code> (query history) and <code>undoChanges</code> (revert N steps). Not yet
 integrated into BOM databases — the audit trail currently covers design
 edits in the viewport session.

@@ -2601,10 +2601,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#six-databases" class="md-nav__link">
+  <a href="#four-databases" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Six Databases
+        Four Databases
       
     </span>
   </a>
@@ -3542,10 +3542,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#six-databases" class="md-nav__link">
+  <a href="#four-databases" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Six Databases
+        Four Databases
       
     </span>
   </a>
@@ -4359,12 +4359,12 @@ databases. The Bonsai client calls back-office APIs via the BlenderBridge.</p>
 │  │ (800 prods)  │ │ (recipes)    │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 │  ┌──────────────┐                                       │
-│  │ work_output  │  ← Design Mode + audit trail          │
-│  │ .db          │    (C_Order, W_Variant, bim_changelog) │
+│  │ output.db    │  ← Compile DB + audit trail             │
+│  │              │    (C_Order, bim_changelog)             │
 │  └──────────────┘                                       │
 └──────────────────────────────────────────────────────────┘
 </code></pre></div>
-<h3 id="six-databases">Six Databases<a class="headerlink" href="#six-databases" title="Permanent link">&para;</a></h3>
+<h3 id="four-databases">Four Databases<a class="headerlink" href="#four-databases" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -4390,18 +4390,13 @@ databases. The Bonsai client calls back-office APIs via the BlenderBridge.</p>
 <td>~100 KB</td>
 </tr>
 <tr>
-<td><code>output_*.db</code></td>
-<td>Compiled result (elements, R-tree index, QTO, spatial structure)</td>
-<td>varies</td>
-</tr>
-<tr>
-<td><code>work_output.db</code></td>
-<td>Design Mode persistence (C_Order, C_OrderLine, W_Variant, bim_changelog)</td>
+<td><code>output.db</code></td>
+<td>Compile DB: compiled result + design persistence (C_Order, C_OrderLine, bim_changelog, R-tree, QTO)</td>
 <td>per-building</td>
 </tr>
 <tr>
 <td><code>AD_PrintFormat</code></td>
-<td>Print configurator (in work_output.db — which output tables to include)</td>
+<td>Print configurator (in output.db — which output tables to include)</td>
 <td>per-building</td>
 </tr>
 </tbody>
@@ -4787,7 +4782,7 @@ floor, and building. The user edits layout in this mode, then saves variants.</p
 <tr>
 <td>Save</td>
 <td><code>save</code></td>
-<td>Stores current bboxes to <code>work_output.db</code> as a new variant (C_Order + C_OrderLine + W_Variant). Cheap, frequent.</td>
+<td>Stores current bboxes to <code>output.db</code> (compile DB) as C_Order + C_OrderLine. Persists to .blend file. Cheap, frequent.</td>
 </tr>
 <tr>
 <td>Recall</td>
@@ -5323,7 +5318,7 @@ Total: 25 BOM lines, 19 leaf elements
 </tr>
 <tr>
 <td><code>WorkOutputDAO.java</code></td>
-<td>work_output.db persistence (save/recall/listVariants)</td>
+<td>output.db (compile DB) persistence (save/recall/listVariants)</td>
 </tr>
 <tr>
 <td><code>AssemblyAPI.java</code></td>
@@ -5418,8 +5413,8 @@ Total: 25 BOM lines, 19 leaf elements
 <td>ExtractionPopulator + agent</td>
 </tr>
 <tr>
-<td><code>work_output_{building}.db</code></td>
-<td>Design persistence (per-building)</td>
+<td><code>output.db</code></td>
+<td>Compile DB + design persistence (per-building)</td>
 <td>WorkOutputDAO.initSchema()</td>
 </tr>
 </tbody>
@@ -5722,7 +5717,7 @@ grids, product choosers). S55 concluded: <strong>Web UI for data/control, Bonsai
 │         │ dispatch to DesignerServer + scanLibrary/pollCommands   │
 │         │                                                        │
 │         ├──→ BOM Drop: bomDrop → C_Order + C_OrderLine tree      │
-│         ├──→ Save:     prepareIt → validate, persist work_output │
+│         ├──→ Save:     prepareIt → validate, persist output.db   │
 │         ├──→ Approve:  compliance gate IP→AP                     │
 │         ├──→ Complete:  completeIt → compile → output.db         │
 │         ├──→ Compile:   compile → output.db + push COMPLETE      │
@@ -5830,7 +5825,7 @@ grids, product choosers). S55 concluded: <strong>Web UI for data/control, Bonsai
 <td>2</td>
 <td><strong>Save</strong></td>
 <td><code>save</code></td>
-<td>Persist bboxes + variant label to work_output.db. Status: IP (In Progress).</td>
+<td>Persist bboxes to output.db (compile DB) + .blend file. Status: IP (In Progress).</td>
 </tr>
 <tr>
 <td>3</td>
@@ -6213,7 +6208,7 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 </tr>
 <tr>
 <td>G-4</td>
-<td>work_output.db Save/Recall</td>
+<td>output.db Save/Recall</td>
 <td><strong>DONE</strong> (s26, 57 tests)</td>
 </tr>
 <tr>
@@ -6288,7 +6283,7 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 <a href="../BIM_Designer/">BIM_Designer.md</a> (full spec) |
 <a href="../BackOfficeUserGuide/">BackOfficeUserGuide.md</a> (multi-project ERP guide) |
 <a href="../BACK_OFFICE_SRS/">BACK_OFFICE_SRS.md</a> (Back Office SRS) |
-<a href="../G4_SRS/">G4_SRS.md</a> (work_output.db) |
+<a href="../G4_SRS/">G4_SRS.md</a> (output.db, compile DB) |
 <a href="../ASSEMBLY_BUILDER_SRS/">ASSEMBLY_BUILDER_SRS.md</a> (G-7 assembly) |
 <a href="../INFRA_DESIGNER_SRS/">INFRA_DESIGNER_SRS.md</a> (infrastructure) |
 <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> (UX requirements) |

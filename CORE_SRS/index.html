@@ -4059,9 +4059,9 @@ database and emits structured data (JSON/CSV/XML).</p>
 │  │ geometries   │ │ m_bom_line   │ │ placement_rules  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
 │  ┌──────────────┐ ┌──────────────┐                      │
-│  │ validation   │ │ work_output  │                      │
-│  │ AD_Val_Rule  │ │ C_Order      │                      │
-│  │ AD_Val_Param │ │ W_Variant    │                      │
+│  │ validation   │ │ output.db    │                      │
+│  │ AD_Val_Rule  │ │ (compile DB) │                      │
+│  │ AD_Val_Param │ │              │                      │
 │  └──────────────┘ └──────────────┘                      │
 │                                                         │
 │  REPORT DAO LAYER (Java)                                │
@@ -4921,8 +4921,8 @@ Verb:     // Implementing BBC.md §3.2 — Witness: W-CAL-RULES-EXIST
 <td>Phase 2 in progress</td>
 </tr>
 <tr>
-<td>work_output.db</td>
-<td>Designer save/recall/promote</td>
+<td>output.db</td>
+<td>Compile output (geometry, placements)</td>
 <td>Stable (G4 schema)</td>
 </tr>
 </tbody>

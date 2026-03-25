@@ -4185,11 +4185,11 @@ calculator; AD_Val_Rule integration comes with G-9/G-10 governance.</p>
 <span class="p">}</span>
 </code></pre></div>
 <h3 id="52-assemblywritedao-new">5.2 AssemblyWriteDAO (new)<a class="headerlink" href="#52-assemblywritedao-new" title="Permanent link">&para;</a></h3>
-<p>Writes assembly templates to work_output.db (per-instance) or to a new BOM
+<p>Writes assembly templates to output.db (per-instance) or to a new BOM
 file (reusable template).</p>
 <div class="highlight"><pre><span></span><code><span class="cm">/**</span>
 <span class="cm"> * Write DAO for assembly templates.</span>
-<span class="cm"> * Per-instance: writes to work_output.db C_OrderLine.</span>
+<span class="cm"> * Per-instance: writes to output.db C_OrderLine.</span>
 <span class="cm"> * Reusable: writes to {PREFIX}_BOM.db m_bom + m_bom_line (via Promote path).</span>
 <span class="cm"> *</span>
 <span class="cm"> * // Implementing ASSEMBLY_BUILDER_SRS.md §5.2 — Witness: W-ASM-WRITE-1</span>
@@ -4581,7 +4581,7 @@ All existing 136/136 must remain GREEN.</p>
 ├── api/DesignerAPIImpl.java          (wire to service)
 ├── assembly/AssemblyBuilderService.java  (NEW — orchestration)
 ├── assembly/AssemblyDAO.java             (NEW — read component_library.db)
-├── assembly/AssemblyWriteDAO.java        (NEW — write work_output.db)
+├── assembly/AssemblyWriteDAO.java        (NEW — write output.db)
 ├── assembly/UValueCalculator.java        (NEW — stateless calc)
 
 BonsaiBIMDesigner/src/test/java/com/bim/designer/

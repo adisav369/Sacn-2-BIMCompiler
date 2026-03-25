@@ -4361,13 +4361,13 @@ and promoted m_bom rows distinguishes the two origins. See <code>G4_SRS.md</code
 the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 (MBOM.beforeSave / MBOMLine.beforeSave), not documentation.</p>
 <p><strong>Schema-Not-Geometry rule:</strong> Every validation check and spatial query must be
-expressible as a SQL query over the 5-database schema. If a check requires AABB
+expressible as a SQL query over the 4-database schema. If a check requires AABB
 arithmetic (centreline distance, centroid offset, proximity search), ask: does
 the IFC schema have a relationship (<code>IfcRelVoidsElement</code>, <code>IfcRelConnectsPathElements</code>,
 <code>IfcRelContainedInSpatialStructure</code>) that could be extracted as a column instead?
 If yes, that is a missing extraction column — fix the schema, do not add geometry
 code. LLMs are blind to spatial geometry but capable at schema mapping. The
-5-database architecture is a semantic firewall: extraction pre-digests IFC
+4-database architecture is a semantic firewall: extraction pre-digests IFC
 relationships into relational keys, validation queries those keys.
 Exception: ERP-maths (e.g., M12 pipe clearance via <code>centreline_distance - radius_a
 - radius_b</code>) is legitimate when the arithmetic on product dimensions IS the correct
@@ -4900,7 +4900,7 @@ C_OrderLine. The user (or auto-suggest) creates ASI overrides to stretch walls t
 the new room dimensions. The compiler resolves <code>effective = ASI ?? catalog</code> and
 produces the correctly-sized output. Zero new code — just data on the OrderLine.</p>
 <p><em>Full ASI field resolution matrix: BIM_Designer.md §8.</em>
-<em>Schema: W001_work_output_schema.sql (M_AttributeSetInstance, M_AttributeInstance).</em>
+<em>Schema: output.db (M_AttributeSetInstance, M_AttributeInstance).</em>
 <em>Generative application: GENERATIVE_ROOM_SRS.md §6.</em></p>
 <h3 id="36-the-rosetta-stone-launch-booster">3.6 The Rosetta Stone — Launch Booster<a class="headerlink" href="#36-the-rosetta-stone-launch-booster" title="Permanent link">&para;</a></h3>
 <p>The Rosetta Stone exercise (SH/DX/TE) proves the pipeline is <strong>lossless</strong>:

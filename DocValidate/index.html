@@ -6618,7 +6618,7 @@ document completion.</p>
       → PASS / WARN / BLOCK / ALLOW_IF
 </code></pre></div>
 <p><strong>Firing point:</strong> <code>DocAction.prepareIt()</code> equivalent — before the floor's
-BOM is "completed" (committed to work_output.db).</p>
+BOM is "completed" (committed to output.db).</p>
 <p><strong>The STR beam envelope scenario:</strong> AABB intersection between a beam and a
 pipe route may flag a HARD clash. But the real geometry may have web holes
 for MEP penetration. Resolution:</p>
@@ -6688,7 +6688,7 @@ defaults — they don't build from scratch. This is the iDempiere pattern:
 <h3 id="142-what-gets-spawned">14.2 What Gets Spawned<a class="headerlink" href="#142-what-gets-spawned" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>User action: &quot;Create New&quot; → selects building product + jurisdiction + AABB
 
-Engine spawns (in work_output.db):
+Engine spawns (in output.db):
 
 1. C_Order
    ├── M_Product_Category = RE/CO/IN (from building product)
@@ -6962,7 +6962,7 @@ Output:
 <div class="highlight"><pre><span></span><code><span class="cm">/**</span>
 <span class="cm"> * Spawns the iDempiere construction model when user creates a new building.</span>
 <span class="cm"> * Populates C_Order, C_OrderLine, spatial slots (from M_BOM_Line dx/dy/dz),</span>
-<span class="cm"> * default ASI, and PP_Order_Node into work_output.db.</span>
+<span class="cm"> * default ASI, and PP_Order_Node into output.db (compile DB).</span>
 <span class="cm"> *</span>
 <span class="cm"> * &lt;p&gt;iDempiere analogue: MOrder.prepareIt() + MInOut.createFrom().</span>
 <span class="cm"> * The engine creates default records; the user alters in BIM Designer.</span>
@@ -6976,7 +6976,7 @@ Output:
 <span class="w">    </span><span class="cm">/**</span>
 <span class="cm">     * Spawn full construction model from compiled BOM.</span>
 <span class="cm">     *</span>
-<span class="cm">     * @param workConn     writable connection to work_output.db</span>
+<span class="cm">     * @param workConn     writable connection to output.db (compile DB)</span>
 <span class="cm">     * @param bomConn      read-only connection to {PREFIX}_BOM.db</span>
 <span class="cm">     * @param compConn     read-only connection to component_library.db</span>
 <span class="cm">     * @param buildingBomId root BOM (e.g., &quot;BUILDING_SH_STD&quot;)</span>
@@ -7245,7 +7245,7 @@ Non-Disturbance analysis: <code>G4_SRS.md</code> §6.</p>
 <p><strong>If a validation check uses AABB arithmetic, that is evidence of a missing
 extraction column. Fix the schema, do not add geometry code.</strong></p>
 </blockquote>
-<p>Every AD_Val_Rule check must be expressible as a SQL query over the 5-database
+<p>Every AD_Val_Rule check must be expressible as a SQL query over the 4-database
 schema. The extraction pipeline (<code>ifc_geometry_extractor.py</code> + <code>ExtractionPopulator</code>)
 is responsible for pre-digesting ALL IFC relationships the rules need into
 relational columns. If a rule implementation falls back to computing distances

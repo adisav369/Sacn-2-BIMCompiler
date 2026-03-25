@@ -8801,7 +8801,7 @@ applies to buildings: the BOM is the proven recipe catalog, the Order is the
 specific building being designed, and ASI captures "this bedroom is 4500mm
 wide instead of the default 3100mm." This separation keeps the BOM clean
 (only curated, validated designs) while allowing free experimentation in the
-Order layer. The <code>work_output.db</code> is self-contained — it carries YAML,
+Order layer. The <code>output.db</code> (compile DB) is self-contained — it carries YAML,
 Order, and ASI definitions inside it during init, so backend tools (reports,
 SQL queries, admin dashboards) can read the design without needing Blender.</p>
 </blockquote>
@@ -8821,7 +8821,7 @@ DESIGN LAYER (user&#39;s work):
   All Design Mode edits live here.
 
 OUTPUT LAYER (committed result):
-  work_output.db          Compiled spatial DB from templates + overrides
+  output.db               Compiled spatial DB from templates + overrides
   Federation loads and renders this.
 </code></pre></div>
 <h4 id="17102-three-actions-increasing-deliberation">17.10.2 Three Actions — Increasing Deliberation<a class="headerlink" href="#17102-three-actions-increasing-deliberation" title="Permanent link">&para;</a></h4>
@@ -8837,19 +8837,19 @@ OUTPUT LAYER (committed result):
 <tbody>
 <tr>
 <td><strong>Save</strong></td>
-<td><code>work_output.db</code> (sub-C_Order CO + W_Variant pointer)</td>
+<td><code>.blend</code> file (design state)</td>
 <td>Frequent — one click</td>
-<td>Low — creates immutable version</td>
+<td>Low — Blender native save</td>
 </tr>
 <tr>
 <td><strong>Recall</strong></td>
-<td><code>work_output.db</code> (new sub-C_Order DR, copied from target)</td>
+<td><code>.blend</code> file (reopen previous)</td>
 <td>As needed — pick from list</td>
-<td>Low — non-destructive, previous versions stay CO</td>
+<td>Low — non-destructive</td>
 </tr>
 <tr>
 <td><strong>Approve</strong></td>
-<td><code>work_output.db</code> (master C_Order IP → AP)</td>
+<td><code>output.db</code> (master C_Order IP → AP)</td>
 <td>Before promote — explicit action</td>
 <td>Medium — compliance + tack + dangle gate</td>
 </tr>
@@ -8861,10 +8861,8 @@ OUTPUT LAYER (committed result):
 </tr>
 </tbody>
 </table>
-<p><strong>Save</strong> creates a sub-work-order (CO) under the master C_Order. The sub-order's
-C_OrderLine rows ARE the version data — no JSON blob duplication. Each save is
-a proper iDempiere document: queryable, reportable, auditable. W_Variant is a
-lightweight pointer (label + metadata) to the sub-order. The BOM is not touched.</p>
+<p><strong>Save</strong> is a native Blender <code>.blend</code> save — the design state lives in the
+.blend file. Compilation writes to <code>output.db</code>. The BOM is not touched.</p>
 <p><strong>Recall</strong> copies a previous sub-order's state into a fresh sub-order (DR).
 Previous sub-orders stay CO (immutable). No data destruction — the iDempiere
 reversal pattern: void the old, create the new. Full audit trail.</p>
@@ -9026,7 +9024,7 @@ Same principle as the anti-drift guards: <strong>never pass NULL forward silentl
 </code></pre></div>
 <p><strong>Python side:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">BIM_OT_designer_save</span><span class="p">(</span><span class="n">Operator</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save current design to work_output.db (OrderLine + ASI).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save current design to .blend file (OrderLine + ASI compiled to output.db).&quot;&quot;&quot;</span>
     <span class="n">bl_idname</span> <span class="o">=</span> <span class="s2">&quot;bim.designer_save&quot;</span>
     <span class="n">bl_options</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;REGISTER&#39;</span><span class="p">,</span> <span class="s1">&#39;UNDO&#39;</span><span class="p">}</span>
 
@@ -9079,10 +9077,10 @@ is immediately reflected in the BBox viewport, and vice versa.</p>
 <div class="highlight"><pre><span></span><code>REAL MODE (Federation as-is, Designer invisible)
     │
     ├── DESIGN MODE (visual BBox)     ← spatial editing
-    │       writes to: OrderLine + ASI in work_output.db
+    │       writes to: OrderLine + ASI in output.db
     │
     ├── ORDER VIEW (tabular)          ← structured editing
-    │       writes to: same OrderLine + ASI in work_output.db
+    │       writes to: same OrderLine + ASI in output.db
     │       shows: dangles, compliance, naming, ASI values
     │
     ├── SAVE (frequent)               ← sub-work-order creation
@@ -9101,7 +9099,7 @@ is immediately reflected in the BBox viewport, and vice versa.</p>
     │       EXCLUSIVE gate for BOM creation
     │
     └── PROMOTE TO BOM (rare)         ← governance gate
-            reads: AP&#39;d OrderLine + ASI from work_output.db
+            reads: AP&#39;d OrderLine + ASI from output.db
             writes: m_bom + m_bom_line in {PREFIX}_BOM.db
             requires: AP status, metadata, owner sign-off
             transitions: master C_Order AP → CO (frozen)
@@ -9566,7 +9564,7 @@ Building                              BUILDING_SH_STD
                                           └── ROOF_SET
                                               └── IfcPlate (33,324× via TILE)
 </code></pre></div>
-<p><strong>Data source:</strong> <code>work_output.db</code> → <code>C_OrderLine</code> tree via <code>Parent_OrderLine_ID</code>.
+<p><strong>Data source:</strong> <code>output.db</code> → <code>C_OrderLine</code> tree via <code>Parent_OrderLine_ID</code>.
 The tree is fetched from DesignerServer (wire protocol: <code>listOrderLines</code> action).
 NOT from IFC spatial structure — from the BOM relational model.</p>
 <p><strong>Why this matters (Schema-Not-Geometry principle):</strong>
@@ -9636,7 +9634,7 @@ Two options:</p>
 </li>
 </ol>
 <p><strong>Relationship to existing views:</strong></p>
-<div class="highlight"><pre><span></span><code>                work_output.db (C_OrderLine tree)
+<div class="highlight"><pre><span></span><code>                output.db (C_OrderLine tree)
                         │
          ┌──────────────┼──────────────┐
          ▼              ▼              ▼
@@ -9660,7 +9658,7 @@ lens. Both coexist. The BOM Outliner is the preferred editor for BIM Designer
 because edits are relational (FK updates), not geometric (mesh transforms).</p>
 <h3 id="1720-what-is-not-in-scope-this-phase">17.20 What Is NOT in Scope (This Phase)<a class="headerlink" href="#1720-what-is-not-in-scope-this-phase" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Full Save/Recall/Promote implementation (§17.10 defines interfaces; DDL: <code>migration/W001_work_output_schema.sql</code>; SRS: <code>docs/G4_SRS.md</code>)</li>
+<li>Full Save/Recall/Promote implementation (§17.10 defines interfaces; SRS: <code>docs/G4_SRS.md</code>)</li>
 <li>ORDER View panel implementation (§17.11 defines layout only)</li>
 <li>Snap action server endpoint (§17.13 defines wire format only)</li>
 <li>BOM Chooser UI and browseItems endpoint (§17.18 defines spec only)</li>
@@ -9669,7 +9667,7 @@ because edits are relational (FK updates), not geometric (mesh transforms).</p>
 <li>Viewport click-to-select bboxes (future — start with panel chooser)</li>
 <li>Room drag/resize in viewport (future — start with slider controls)</li>
 <li>Dangles view implementation (future — query component_library.db)</li>
-<li>Variant version list UI (future — read work_output.db history)</li>
+<li>Variant version list UI (future — read output.db history)</li>
 <li>Multi-building scenes (one design session = one building)</li>
 </ul>
 <h3 id="1719-python-addon-hardening-s40-review">17.19 Python Addon Hardening (S40 Review)<a class="headerlink" href="#1719-python-addon-hardening-s40-review" title="Permanent link">&para;</a></h3>
@@ -9835,7 +9833,7 @@ cards with a "Why?" tooltip explaining the recommendation.</p>
 <td>PlacementValidator batch check</td>
 </tr>
 <tr>
-<td>Save to work_output.db</td>
+<td>Save to output.db</td>
 <td>&lt; 500ms</td>
 <td>SQLite batch INSERT</td>
 </tr>

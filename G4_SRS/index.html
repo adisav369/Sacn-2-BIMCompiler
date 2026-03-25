@@ -88,7 +88,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#g-4-srs-work_outputdb-validation-engine" class="md-skip">
+        <a href="#g-4-srs-compile-db-outputdb-validation-engine" class="md-skip">
           Skip to content
         </a>
       
@@ -1531,10 +1531,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#54-tack-convention-tests-work_outputdb" class="md-nav__link">
+  <a href="#54-tack-convention-tests-outputdb-compile-db" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5.4 Tack Convention Tests — work_output.db
+        5.4 Tack Convention Tests — output.db (compile DB)
       
     </span>
   </a>
@@ -3260,10 +3260,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#54-tack-convention-tests-work_outputdb" class="md-nav__link">
+  <a href="#54-tack-convention-tests-outputdb-compile-db" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5.4 Tack Convention Tests — work_output.db
+        5.4 Tack Convention Tests — output.db (compile DB)
       
     </span>
   </a>
@@ -3417,7 +3417,7 @@
   
 
 
-<h1 id="g-4-srs-work_outputdb-validation-engine">G-4 SRS — work_output.db + Validation Engine<a class="headerlink" href="#g-4-srs-work_outputdb-validation-engine" title="Permanent link">&para;</a></h1>
+<h1 id="g-4-srs-compile-db-outputdb-validation-engine">G-4 SRS — Compile DB (output.db) + Validation Engine<a class="headerlink" href="#g-4-srs-compile-db-outputdb-validation-engine" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
@@ -3427,8 +3427,8 @@
 <hr />
 <h2 id="1-scope">1. Scope<a class="headerlink" href="#1-scope" title="Permanent link">&para;</a></h2>
 <p>G-4 delivers:
-1. <strong>work_output.db</strong> — self-contained design workspace (DDL: <code>migration/W001_work_output_schema.sql</code>)
-2. <strong>ConstructionModelSpawner</strong> — populates work_output.db from BOM templates
+1. <strong>output.db</strong> — self-contained compile DB (DDL: <code>migration/W001_work_output_schema.sql</code>)
+2. <strong>ConstructionModelSpawner</strong> — populates output.db from BOM templates
 3. <strong>WorkOutputDAO</strong> — Save/Recall/listVariants persistence
 4. <strong>Wire protocol</strong> — already dispatched (save/recall/listVariants/promote in DesignerServer)
 5. <strong>Test specs</strong> — unit + integration for all new code</p>
@@ -3458,9 +3458,9 @@ DesignerAPIImpl.createNew(request)
 │      → Deterministic site → storey → room partitioning
 │      → Returns List&lt;DesignBBox&gt; (draft bboxes)
 │
-├── 3. ConstructionModelSpawner.spawn(workConn, bomConn, compConn, ...)  ← NEW
+├── 3. ConstructionModelSpawner.spawn(compileConn, bomConn, compConn, ...)  ← NEW
 │      │
-│      ├── 3a. CREATE work_output.db (apply W001 migration)
+│      ├── 3a. CREATE output.db (apply W001 migration)
 │      │       → Execute W001_work_output_schema.sql DDL
 │      │       → Verify 12 tables created via pragma table_list
 │      │
@@ -3494,9 +3494,9 @@ DesignerAPIImpl.createNew(request)
 │      │   │   │ host_type    = derive from BOM level:                     │
 │      │   │   │                depth 0 → BUILDING                         │
 │      │   │   │                depth 1 → FLOOR                            │
-│      │   │   │                depth 2 → DISCIPLINE or ROOM (bom_category)│
+│      │   │   │                depth 2 → DISCIPLINE or ROOM (m_product_category_id)│
 │      │   │   │                depth 3+ → LEAF                            │
-│      │   │   │ bom_category = m_bom.bom_category                         │
+│      │   │   │ m_product_category_id = m_bom.m_product_category_id       │
 │      │   │   │ dx/dy/dz     = m_bom_line.dx, .dy, .dz (LBD, BBC.md §4)  │
 │      │   │   │ aabb_*_mm    = m_bom.aabb_width/depth/height              │
 │      │   │   │ Qty          = m_bom_line.qty (factored count)            │
@@ -3574,7 +3574,7 @@ DesignerAPIImpl.createNew(request)
 │      │       │
 │      │       │ Open valConn → validation.db (read-only)
 │      │       │ For each C_OrderLine:
-│      │       │   Tier 1: validateLine(workConn, valConn, line, jurisdiction)
+│      │       │   Tier 1: validateLine(compileConn, valConn, line, jurisdiction)
 │      │       │   → INSERT W_Validation_Result (tier=1, result=PASS/WARN/BLOCK)
 │      │       │   → UPDATE C_OrderLine.validation_status
 │      │       │
@@ -3611,7 +3611,7 @@ DesignerServer.dispatch(&quot;save&quot;)
 ▼
 DesignerAPIImpl.save(buildingId, bboxes, variantLabel)
 │
-├── 1. Open work_output.db connection
+├── 1. Open output.db connection
 │
 ├── 2. Complete current sub-work-order (if one is active IP)
 │      → SET DocStatus = &#39;CO&#39; on active sub-C_Order
@@ -3744,7 +3744,7 @@ Python: &quot;Promoted! 12 BOM entries created.&quot;
 </tr>
 <tr>
 <td>P-CREATE-5</td>
-<td>All 12 work_output.db tables exist</td>
+<td>All 12 output.db tables exist</td>
 <td><code>pragma table_list</code> count = 12</td>
 </tr>
 <tr>
@@ -4074,11 +4074,11 @@ Sub-work-order lifecycle:
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;action&quot;</span><span class="p">:</span><span class="s2">&quot;save&quot;</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;buildingId&quot;</span><span class="p">:</span><span class="s2">&quot;MyHouse&quot;</span><span class="p">,</span>
 <span class="w"> </span><span class="nt">&quot;bboxes&quot;</span><span class="p">:[{</span><span class="nt">&quot;bomId&quot;</span><span class="p">:</span><span class="s2">&quot;LIVING_SET&quot;</span><span class="p">,</span><span class="nt">&quot;minX&quot;</span><span class="p">:</span><span class="mf">2.2</span><span class="p">,</span><span class="err">...</span><span class="p">}],</span>
 <span class="w"> </span><span class="nt">&quot;variantLabel&quot;</span><span class="p">:</span><span class="s2">&quot;wide-rooms&quot;</span><span class="p">,</span>
-<span class="w"> </span><span class="nt">&quot;workOutputDbPath&quot;</span><span class="p">:</span><span class="s2">&quot;output/MyHouse_work.db&quot;</span><span class="p">}</span>
+<span class="w"> </span><span class="nt">&quot;outputDbPath&quot;</span><span class="p">:</span><span class="s2">&quot;output/MyHouse.db&quot;</span><span class="p">}</span>
 </code></pre></div></p>
 <p><strong>New response fields on <code>createNew</code>:</strong>
 <div class="highlight"><pre><span></span><code><span class="p">{</span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;bboxes&quot;</span><span class="p">:[</span><span class="err">...</span><span class="p">],</span>
-<span class="w"> </span><span class="nt">&quot;workOutputDbPath&quot;</span><span class="p">:</span><span class="s2">&quot;output/MyHouse_work.db&quot;</span><span class="p">,</span>
+<span class="w"> </span><span class="nt">&quot;outputDbPath&quot;</span><span class="p">:</span><span class="s2">&quot;output/MyHouse.db&quot;</span><span class="p">,</span>
 <span class="w"> </span><span class="nt">&quot;orderLineCount&quot;</span><span class="p">:</span><span class="mi">15</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;esLineCount&quot;</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span>
 <span class="w"> </span><span class="nt">&quot;asiCount&quot;</span><span class="p">:</span><span class="mi">12</span><span class="p">,</span><span class="w"> </span><span class="nt">&quot;ppNodeCount&quot;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
 <span class="w"> </span><span class="nt">&quot;validationSummary&quot;</span><span class="p">:</span><span class="s2">&quot;12 PASS, 3 WARN, 0 BLOCK&quot;</span><span class="p">}</span>
@@ -4099,7 +4099,7 @@ Sub-work-order lifecycle:
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">save_createsSubOrderAndVariant</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: work_output.db with master C_Order + 5 C_OrderLine rows</span>
+<span class="w">        </span><span class="c1">// Given: output.db with master C_Order + 5 C_OrderLine rows</span>
 <span class="w">        </span><span class="c1">// When:  save(&quot;wide-rooms&quot;, currentBboxes)</span>
 <span class="w">        </span><span class="c1">// Then:  new sub-C_Order created (Parent_Order_ID = master, DocStatus=&#39;CO&#39;)</span>
 <span class="w">        </span><span class="c1">//        sub-order has 5 C_OrderLine rows (copied, not shared)</span>
@@ -4140,7 +4140,7 @@ Sub-work-order lifecycle:
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">spawn_createsOrderFromBom</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <span class="w">        </span><span class="c1">// Given: DM_BOM.db with BUILDING_DM_STD (3 floors, 6 rooms)</span>
-<span class="w">        </span><span class="c1">// When:  spawn(workConn, bomConn, compConn, &quot;BUILDING_DM_STD&quot;, &quot;MY&quot;)</span>
+<span class="w">        </span><span class="c1">// When:  spawn(compileConn, bomConn, compConn, &quot;BUILDING_DM_STD&quot;, &quot;MY&quot;)</span>
 <span class="w">        </span><span class="c1">// Then:  1 C_Order (DocStatus=&#39;DR&#39;)</span>
 <span class="w">        </span><span class="c1">//</span>
 <span class="w">        </span><span class="c1">// Derive expected counts from BOM template at test time:</span>
@@ -4176,7 +4176,7 @@ Sub-work-order lifecycle:
 <div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">SaveRecallIntegrationTest</span><span class="w"> </span><span class="p">{</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">saveAndRecall_roundTrips</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: spawned work_output.db (master C_Order)</span>
+<span class="w">        </span><span class="c1">// Given: spawned output.db (master C_Order)</span>
 <span class="w">        </span><span class="c1">// When:  modify C_OrderLine dx, save(&quot;v1&quot;) → sub-order-1 (CO)</span>
 <span class="w">        </span><span class="c1">//        modify again, save(&quot;v2&quot;) → sub-order-2 (CO)</span>
 <span class="w">        </span><span class="c1">//        recall(&quot;v1&quot;) → sub-order-3 (DR, copied from sub-order-1)</span>
@@ -4187,7 +4187,7 @@ Sub-work-order lifecycle:
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_createsBomEntries</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: spawned + saved work_output.db</span>
+<span class="w">        </span><span class="c1">// Given: spawned + saved output.db</span>
 <span class="w">        </span><span class="c1">// When:  promote(owner=&quot;red1&quot;, complianceRef=&quot;UBBL&quot;)</span>
 <span class="w">        </span><span class="c1">// Then:  {PREFIX}_BOM.db has new m_bom rows with entity_type=&#39;U&#39;</span>
 <span class="w">        </span><span class="c1">//        m_bom_line rows match C_OrderLine state</span>
@@ -4195,7 +4195,7 @@ Sub-work-order lifecycle:
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">approve_setsDocStatusAP</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: spawned + saved work_output.db (DocStatus = &#39;IP&#39;)</span>
+<span class="w">        </span><span class="c1">// Given: spawned + saved output.db (DocStatus = &#39;IP&#39;)</span>
 <span class="w">        </span><span class="c1">//        all validation rules PASS, no dangles</span>
 <span class="w">        </span><span class="c1">// When:  approve(buildingId)</span>
 <span class="w">        </span><span class="c1">// Then:  C_Order.DocStatus = &#39;AP&#39;</span>
@@ -4212,7 +4212,7 @@ Sub-work-order lifecycle:
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_requiresApproved</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: work_output.db with DocStatus = &#39;IP&#39; (not approved)</span>
+<span class="w">        </span><span class="c1">// Given: output.db with DocStatus = &#39;IP&#39; (not approved)</span>
 <span class="w">        </span><span class="c1">// When:  promote(...)</span>
 <span class="w">        </span><span class="c1">// Then:  PromoteResponse.success = false</span>
 <span class="w">        </span><span class="c1">//        PromoteResponse.error = &quot;not approved&quot;</span>
@@ -4226,14 +4226,14 @@ Sub-work-order lifecycle:
 <span class="w">    </span><span class="p">}</span>
 <span class="p">}</span>
 </code></pre></div>
-<h3 id="54-tack-convention-tests-work_outputdb">5.4 Tack Convention Tests — work_output.db<a class="headerlink" href="#54-tack-convention-tests-work_outputdb" title="Permanent link">&para;</a></h3>
-<p>C_OrderLine.dx/dy/dz in work_output.db must use LBD convention (BBC.md §4),
+<h3 id="54-tack-convention-tests-outputdb-compile-db">5.4 Tack Convention Tests — output.db (compile DB)<a class="headerlink" href="#54-tack-convention-tests-outputdb-compile-db" title="Permanent link">&para;</a></h3>
+<p>C_OrderLine.dx/dy/dz in output.db must use LBD convention (BBC.md §4),
 consistent with m_bom_line in {PREFIX}_BOM.db. The spawner copies from BOM
 templates, so LBD convention should propagate — but this must be tested.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">WorkOutputTackTest</span><span class="w"> </span><span class="p">{</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">spawnedOrderLines_useLbdConvention</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: spawned work_output.db from DM BOM</span>
+<span class="w">        </span><span class="c1">// Given: spawned output.db from DM BOM</span>
 <span class="w">        </span><span class="c1">// When:  read C_OrderLine dx/dy/dz for all LEAF lines</span>
 <span class="w">        </span><span class="c1">// Then:  all dx &gt;= 0, dy &gt;= 0, dz &gt;= 0  (LBD = child within parent)</span>
 <span class="w">        </span><span class="c1">//        dx + allocated_width_mm/1000 &lt;= host AABB width * 1.01</span>
@@ -4241,7 +4241,7 @@ templates, so LBD convention should propagate — but this must be tested.</p>
 <span class="w">    </span><span class="p">}</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">promote_preservesTackConvention</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: spawned + saved work_output.db, user moved a bbox</span>
+<span class="w">        </span><span class="c1">// Given: spawned + saved output.db, user moved a bbox</span>
 <span class="w">        </span><span class="c1">// When:  promote to {PREFIX}_BOM.db</span>
 <span class="w">        </span><span class="c1">// Then:  promoted m_bom_line.dx/dy/dz matches C_OrderLine.dx/dy/dz</span>
 <span class="w">        </span><span class="c1">//        all promoted offsets pass W-TACK-1 check</span>
@@ -4253,7 +4253,7 @@ templates, so LBD convention should propagate — but this must be tested.</p>
 <div class="highlight"><pre><span></span><code><span class="kd">class</span> <span class="nc">WorkOutputWireTest</span><span class="w"> </span><span class="p">{</span>
 
 <span class="w">    </span><span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">save_overTcp_returnsVariantId</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// Given: running DesignerServer + spawned work_output.db</span>
+<span class="w">        </span><span class="c1">// Given: running DesignerServer + spawned output.db</span>
 <span class="w">        </span><span class="c1">// When:  send {&quot;action&quot;:&quot;save&quot;,&quot;buildingId&quot;:&quot;MyHouse&quot;,&quot;bboxes&quot;:[...],&quot;variantLabel&quot;:&quot;v1&quot;}</span>
 <span class="w">        </span><span class="c1">// Then:  response has success=true, variantId != null</span>
 <span class="w">    </span><span class="p">}</span>
@@ -4507,7 +4507,7 @@ grid pitch formula) — both addressable as data changes, no schema changes need
 <tr>
 <td>4</td>
 <td><code>ConstructionModelSpawner.java</code> (NEW)</td>
-<td>spawn() — walk BOM, populate work_output.db</td>
+<td>spawn() — walk BOM, populate output.db</td>
 <td>steps 1, 3</td>
 </tr>
 <tr>

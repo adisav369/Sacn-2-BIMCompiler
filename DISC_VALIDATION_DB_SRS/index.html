@@ -4580,7 +4580,7 @@ Handler cascade H1-H6  → ERP.db (connectors, schedules) + validation.db (rules
 <span class="n">Connection</span><span class="w"> </span><span class="n">discConn</span><span class="p">;</span><span class="w">   </span><span class="c1">// ERP.db   — discipline metadata</span>
 <span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="p">;</span><span class="w">    </span><span class="c1">// validation.db         — compliance rules</span>
 <span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="p">;</span><span class="w">    </span><span class="c1">// {prefix}_BOM.db       — building BOM</span>
-<span class="n">Connection</span><span class="w"> </span><span class="n">workConn</span><span class="p">;</span><span class="w">   </span><span class="c1">// work_output.db        — design workspace</span>
+<span class="n">Connection</span><span class="w"> </span><span class="n">outConn</span><span class="p">;</span><span class="w">    </span><span class="c1">// output.db              — compile output</span>
 <span class="n">Connection</span><span class="w"> </span><span class="n">teConn</span><span class="p">;</span><span class="w">     </span><span class="c1">// TE reference DB       — Terminal oracle (tests only)</span>
 </code></pre></div>
 <hr />
@@ -5478,7 +5478,7 @@ is independently committable, each step gated by existing Rosetta Stone tests.</
 <a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9 (5-table LOD chain) |
 <a href="../DocAction_SRS/">DocAction_SRS.md</a> §1.3 (processIt DocEvent) |
 <a href="../CALIBRATION_SRS/">CALIBRATION_SRS.md</a> (DocEvent vs Terminal) |
-<a href="../G4_SRS/">G4_SRS.md</a> §2 (work_output.db pattern) |
+<a href="../G4_SRS/">G4_SRS.md</a> §2 (output.db pattern) |
 <a href="../AUDIT_S51_FOCUSED/">AUDIT_S51_FOCUSED.md</a> Appendix F (database reality check)</em></p>
 
 

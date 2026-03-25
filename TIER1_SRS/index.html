@@ -3957,11 +3957,11 @@ in <code>DesignerServer.java</code>. Each new capability = 1 DAO + 1 wire action
 │  │ DAO Layer (SQL against existing databases)      │    │
 │  │   SustainabilityDAO → component_library.db      │    │
 │  │   FacilityMgmtDAO  → component_library.db       │    │
-│  │   ChangelogDAO     → work_output.db             │    │
+│  │   ChangelogDAO     → output.db                   │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                         │
 │  databases: component_library.db  {P}_BOM.db            │
-│             work_output.db        ERP.db     │
+│             output.db              ERP.db     │
 └─────────────────────────────────────────────────────────┘
 </code></pre></div>
 <hr />
@@ -4076,7 +4076,7 @@ already in component_library.db. Example:</p>
 <span class="w">       </span><span class="n">bl</span><span class="p">.</span><span class="n">qty</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">carbon_kg_per_unit</span><span class="p">,</span>
 <span class="w">       </span><span class="p">(</span><span class="n">bl</span><span class="p">.</span><span class="n">qty</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">carbon_kg_per_unit</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">total_carbon</span><span class="p">,</span>
 <span class="w">       </span><span class="n">p</span><span class="p">.</span><span class="n">recyclability</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">eol_strategy</span><span class="p">,</span>
-<span class="w">       </span><span class="n">bom</span><span class="p">.</span><span class="n">bom_category</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">discipline</span>
+<span class="w">       </span><span class="n">bom</span><span class="p">.</span><span class="n">m_product_category_id</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">discipline</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">m_bom_line</span><span class="w"> </span><span class="n">bl</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="n">bom</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">bl</span><span class="p">.</span><span class="n">m_bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">m_bom_id</span>
 <span class="k">JOIN</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">bl</span><span class="p">.</span><span class="n">m_product_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">m_product_id</span>
@@ -4233,7 +4233,7 @@ the BOM — not a stored work order. Work orders are the ERP system's job
 <span class="p">}</span>
 </code></pre></div>
 <p><strong>SQL pattern (maintenanceSchedule):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">bl</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">bom_category</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">bl</span><span class="p">.</span><span class="n">bom_id</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">m_product_category_id</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span>
 <span class="w">       </span><span class="n">parent_bom</span><span class="p">.</span><span class="n">name</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="k">location</span><span class="p">,</span>
 <span class="w">       </span><span class="n">p</span><span class="p">.</span><span class="n">maintenance_interval_months</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">lifespan_years</span><span class="p">,</span>
 <span class="w">       </span><span class="k">COUNT</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">qty_in_building</span>
@@ -4243,7 +4243,7 @@ the BOM — not a stored work order. Work orders are the ERP system's job
 <span class="k">LEFT</span><span class="w"> </span><span class="k">JOIN</span><span class="w"> </span><span class="n">m_bom</span><span class="w"> </span><span class="n">parent_bom</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">parent_bom_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">parent_bom</span><span class="p">.</span><span class="n">m_bom_id</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">building_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">?</span>
 <span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">maintenance_interval_months</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span>
-<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">m_product_id</span><span class="p">,</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">bom_category</span>
+<span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">m_product_id</span><span class="p">,</span><span class="w"> </span><span class="n">bom</span><span class="p">.</span><span class="n">m_product_category_id</span>
 <span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">maintenance_interval_months</span><span class="w"> </span><span class="k">ASC</span><span class="p">;</span>
 </code></pre></div>
 <p><strong>Annual maintenance events</strong> = SUM(12 / interval_months × qty) across items.</p>
@@ -4325,13 +4325,13 @@ product cost × lifespan, not a separate FM system.</p>
 <h3 id="31-problem">§3.1 Problem<a class="headerlink" href="#31-problem" title="Permanent link">&para;</a></h3>
 <p>Scorecard CR/Audit=1* (spec only). The Federation addon's
 <code>asset_history</code> table tracks asset changes. We need the same pattern on
-the work_output.db side: every <code>save()</code> logs what changed, enabling
+the output.db side: every <code>save()</code> logs what changed, enabling
 undo and multi-user conflict detection.</p>
 <h3 id="32-schema-migration-v011_changelogsql">§3.2 Schema — migration V011_changelog.sql<a class="headerlink" href="#32-schema-migration-v011_changelogsql" title="Permanent link">&para;</a></h3>
-<p>New table in <strong>work_output.db</strong> (not component_library.db — changelog
+<p>New table in <strong>output.db</strong> (not component_library.db — changelog
 tracks design edits, not catalog changes):</p>
 <div class="highlight"><pre><span></span><code><span class="c1">-- V011_changelog.sql</span>
-<span class="c1">-- Audit trail for design changes in work_output.db</span>
+<span class="c1">-- Audit trail for design changes in output.db</span>
 <span class="c1">-- APPEND-ONLY: never modify this migration after first run</span>
 <span class="c1">-- Implementing TIER1_SRS.md §3.2 — Witness: W-AUDIT-DDL-1</span>
 
@@ -4361,7 +4361,7 @@ tracks design edits, not catalog changes):</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// Implementing TIER1_SRS.md §3.3 — Witness: W-AUDIT-DAO-1</span>
 <span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ChangelogDAO</span><span class="w"> </span><span class="p">{</span>
 
-<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">workConn</span><span class="p">;</span><span class="w">  </span><span class="c1">// work_output.db</span>
+<span class="w">    </span><span class="kd">private</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">Connection</span><span class="w"> </span><span class="n">outputConn</span><span class="p">;</span><span class="w">  </span><span class="c1">// output.db</span>
 
 <span class="w">    </span><span class="c1">// ── Record types ────────────────────────────────────</span>
 <span class="w">    </span><span class="kd">record</span> <span class="nc">ChangeEntry</span><span class="p">(</span><span class="kt">long</span><span class="w"> </span><span class="n">changelogId</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">,</span>
@@ -4621,7 +4621,7 @@ GPU-accelerated viewport used by 3D artists. Blender IS the viewer.</p>
 <td>V011 changelog migration</td>
 <td>10 min</td>
 <td>—</td>
-<td>bim_changelog table in work_output.db</td>
+<td>bim_changelog table in output.db</td>
 </tr>
 <tr>
 <td>6</td>

@@ -3899,7 +3899,7 @@ not a code problem.</p>
 <div class="highlight"><pre><span></span><code>User: &quot;Create 2BR house with pitched roof and sprinklers&quot;
          │
          ▼
-C_Order created in work_output.db
+C_Order created in output.db (compile DB)
          │
          ▼
 C_OrderLine: M_Product_ID = BUILDING_SH_STD
@@ -3925,7 +3925,7 @@ Add C_OrderLine: FP sprinkler product
          ▼
 User reviews in Designer UI (BOM tree navigator = BOM Outliner G-9)
     Can further swap, add, remove, adjust ASI
-    All edits are C_OrderLine modifications in work_output.db
+    All edits are C_OrderLine modifications in output.db (compile DB)
          │
          ▼
 BuildingCompiler.compile() — processes the order
@@ -4179,7 +4179,7 @@ Compile explodes the tree → 55 elements.</p>
 </tr>
 <tr>
 <td><strong>Where decisions live</strong></td>
-<td>C_OrderLine in work_output.db</td>
+<td>C_OrderLine in output.db (compile DB)</td>
 <td>Same</td>
 </tr>
 <tr>
@@ -4225,7 +4225,7 @@ C_Order → C_OrderLine (references BOM product) → optional BOM Drop → compi
 TC-1 and TC-8 use Instant Drop (no modifications).
 TC-2 through TC-7 use BOM Drop to swap/add/remove.</p>
 <h3 id="tc-1-instant-drop-give-me-sh">TC-1: Instant Drop — "Give me SH"<a class="headerlink" href="#tc-1-instant-drop-give-me-sh" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>C_Order in work_output.db
+<div class="highlight"><pre><span></span><code>C_Order in output.db (compile DB)
 C_OrderLine: M_Product_ID = BUILDING_SH_STD
 (no BOM Drop, no ASI overrides — Instant Drop)
 
@@ -5180,7 +5180,7 @@ estimates roof surface Z via tent model. Walls exceeding roof surface are flagge
 The fingerprint test verifies TRIM fired and CW panels are correctly bounded.</p>
 <h3 id="116-work-output-lifecycle">11.6 Work Output Lifecycle<a class="headerlink" href="#116-work-output-lifecycle" title="Permanent link">&para;</a></h3>
 <p>The fingerprint test follows the correct design lifecycle:</p>
-<div class="highlight"><pre><span></span><code>work_output.db (design workspace)
+<div class="highlight"><pre><span></span><code>output.db (compile DB — design workspace)
     ├─ bomDrop() → C_OrderLine tree created
     ├─ swapProduct() → C_OrderLine.family_ref updated
     └─ design complete

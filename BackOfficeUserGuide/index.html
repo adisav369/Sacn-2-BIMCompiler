@@ -3993,9 +3993,9 @@ print/export — like a report template.</p>
 │  │ (800 prods)  │ │ (per bldg)  │ │                          │ │
 │  └──────────────┘ └──────────────┘ └──────────────────────────┘ │
 │  ┌──────────────┐ ┌──────────────┐                              │
-│  │ work_output  │ │ output_*.db  │                              │
-│  │ .db (design) │ │ (compiled)   │                              │
-│  └──────────────┘ └──────────────┘                              │
+│  │ output.db   │                                                │
+│  │ (compiled)  │                                                │
+│  └──────────────┘                                               │
 └─────────────────────────────────────────────────────────────────┘
 </code></pre></div>
 <hr />
@@ -4130,19 +4130,14 @@ DX (Duplex), TE (Terminal), DM (DemoHouse), BR (Bridge), RD (Road), RL (Rail).</
 <td>Product browsing</td>
 </tr>
 <tr>
-<td><code>work_output.db</code></td>
-<td>Audit trail, multi-user session state</td>
-<td>Save/recall/variants</td>
+<td><code>output.db</code></td>
+<td>Compiled geometry, placement results</td>
+<td>Compile output</td>
 </tr>
 <tr>
 <td><code>ERP.db</code></td>
 <td>Compliance matrix, rule queries</td>
 <td>Placement validation</td>
-</tr>
-<tr>
-<td><code>output_*.db</code></td>
-<td>Print configurator source</td>
-<td>Viewport rendering</td>
 </tr>
 </tbody>
 </table>

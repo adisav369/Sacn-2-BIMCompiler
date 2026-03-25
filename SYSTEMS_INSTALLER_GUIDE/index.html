@@ -4104,7 +4104,7 @@ BonsaiBIMDesigner → GUI server, validation, assembly
 sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span class="s2">&quot;.tables&quot;</span>
 
 <span class="c1"># Check BOM hierarchy</span>
-sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span class="s2">&quot;SELECT bom_type, name, bom_category FROM m_bom&quot;</span>
+sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span class="s2">&quot;SELECT bom_type, name, m_product_category_id FROM m_bom&quot;</span>
 
 <span class="c1"># Check product catalog</span>
 sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM M_Product&quot;</span>

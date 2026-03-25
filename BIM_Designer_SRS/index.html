@@ -2566,10 +2566,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#255-joint-embedding-across-the-5-database-schema" class="md-nav__link">
+  <a href="#255-joint-embedding-across-the-4-database-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        25.5 Joint Embedding Across the 5-Database Schema
+        25.5 Joint Embedding Across the 4-Database Schema
       
     </span>
   </a>
@@ -6538,10 +6538,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#255-joint-embedding-across-the-5-database-schema" class="md-nav__link">
+  <a href="#255-joint-embedding-across-the-4-database-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        25.5 Joint Embedding Across the 5-Database Schema
+        25.5 Joint Embedding Across the 4-Database Schema
       
     </span>
   </a>
@@ -7915,7 +7915,7 @@ tutorial video, no configuration file editing.</p>
 <tr>
 <td>UX-F-24</td>
 <td><strong>Place action.</strong> Selecting an item and clicking "Place" creates a C_OrderLine referencing that product, positioned at its tack point inside the focused room.</td>
-<td>Bbox appears at tack position. OrderLine inserted in work_output.db. Undo removes bbox + OrderLine.</td>
+<td>Bbox appears at tack position. OrderLine inserted in output.db. Undo removes bbox + OrderLine.</td>
 <td>P1</td>
 <td>§17.18.4</td>
 </tr>
@@ -7949,7 +7949,7 @@ tutorial video, no configuration file editing.</p>
 </tr>
 <tr>
 <td>UX-F-27</td>
-<td><strong>Three views, one truth.</strong> BBox Design, ORDER View, and BOM Outliner all read/write the same C_OrderLine + ASI data in work_output.db.</td>
+<td><strong>Three views, one truth.</strong> BBox Design, ORDER View, and BOM Outliner all read/write the same C_OrderLine + ASI data in output.db (compile DB).</td>
 <td>Concurrent edits from any view produce consistent state. No race conditions: sync timer serialises updates.</td>
 <td>P1</td>
 <td>§17.19, §18.3</td>
@@ -8022,7 +8022,7 @@ stated scale or the UX falls apart — slow tools teach users not to iterate.</p
 </tr>
 <tr>
 <td>UX-N-06</td>
-<td>Save to work_output.db</td>
+<td>Save to output.db</td>
 <td>&lt; 500ms</td>
 <td>50 OrderLines + ASI</td>
 <td>SQLite batch INSERT in transaction</td>
@@ -8349,7 +8349,7 @@ exception, a blank screen, or a "something went wrong" without actionable next s
 <p><strong>Acceptance:</strong> Search → preview → place in &lt; 30 seconds.</p>
 <h3 id="55-journey-5-promote-to-bom-graduation-p1">5.5 Journey 5: Promote to BOM — Graduation (P1)<a class="headerlink" href="#55-journey-5-promote-to-bom-graduation-p1" title="Permanent link">&para;</a></h3>
 <p><strong>Persona:</strong> Architect who has finalised a design and wants it as a reusable template.
-<strong>Goal:</strong> Promote a design from work_output.db into the BOM catalog.
+<strong>Goal:</strong> Promote a design from output.db into the BOM catalog.
 <strong>Pre-condition:</strong> Building fully designed, all compliance PASS, no dangles.</p>
 <div class="highlight"><pre><span></span><code>Step  Action                              System Response                        Verify
 ─────────────────────────────────────────────────────────────────────────────────────────
@@ -9458,7 +9458,7 @@ pattern of symbolic deduction (Horn clause reasoning, forward-chaining,
 proof traceback) implemented as a lightweight rule engine within the existing
 Java pipeline. Not an external AI system — deterministic, offline, auditable.
 Inspired by AlphaGeometry's Deductive Database (DDAR) architecture but
-purpose-built for BIM/ERP rule composition over the 5-database schema.</p>
+purpose-built for BIM/ERP rule composition over the 4-database schema.</p>
 </blockquote>
 <h3 id="142-core-capabilities">14.2 Core Capabilities<a class="headerlink" href="#142-core-capabilities" title="Permanent link">&para;</a></h3>
 <table>
@@ -9524,7 +9524,7 @@ The inference engine evolves it in three stages:</p>
 - Failed proof tree serialised to W_Validation_Result for audit trail</p>
 <h3 id="144-implementation-datalog-style-rules-over-sql">14.4 Implementation — Datalog-Style Rules Over SQL<a class="headerlink" href="#144-implementation-datalog-style-rules-over-sql" title="Permanent link">&para;</a></h3>
 <p>The spatial predicates and validation rules are expressed as Datalog-style
-Horn clauses evaluated over the 5-database SQL schema. This matches the
+Horn clauses evaluated over the 4-database SQL schema. This matches the
 Schema-Not-Geometry principle (BBC.md §2): every predicate is a SQL query,
 not geometry code.</p>
 <div class="highlight"><pre><span></span><code>% Rule M3: bedroom minimum width (jurisdiction-parameterised)
@@ -9707,9 +9707,9 @@ PlaceItemResponse(success, orderLineId, bbox, error)
 </code></pre></div>
 <p><strong>Sequence:</strong>
 1. Look up product from M_Product (DAO.getProduct) → widthMm, depthMm, heightMm
-2. Look up room bbox from scene bboxes (passed in request or from work_output.db)
+2. Look up room bbox from scene bboxes (passed in request or from output.db)
 3. Compute placement: <code>itemMinX = roomMinX + offsetX</code>, etc.
-4. INSERT C_OrderLine in work_output.db via WorkOutputDAO.placeItem()
+4. INSERT C_OrderLine in output.db via compile DB DAO.placeItem()
 5. Return new DesignBBox for the placed item</p>
 <h3 id="153-witness-claims">15.3 Witness Claims<a class="headerlink" href="#153-witness-claims" title="Permanent link">&para;</a></h3>
 <table>
@@ -9763,7 +9763,7 @@ PlaceItemResponse(success, orderLineId, bbox, error)
 LayoutResponse(success, bboxes, roomCount, error)
 </code></pre></div>
 <p><strong>addRoom sequence:</strong>
-1. Parse current bboxes from work_output.db (or scene state)
+1. Parse current bboxes from output.db (or scene state)
 2. Increment room count for the category
 3. Recalculate via RoomLayoutGenerator (re-pack proportional widths)
 4. Return all updated bboxes (all rooms shift to accommodate)</p>
@@ -9938,7 +9938,7 @@ JurisdictionResponse(success, jurisdiction, ruleCount, verdicts, error)
 ApproveResponse(success, status, rulesPassed, rulesTotal, dangles, blockers, error)
 </code></pre></div></p>
 <p><strong>Sequence:</strong>
-1. Load all bboxes from work_output.db via recall(latest variant)
+1. Load all bboxes from output.db via recall(latest compile)
 2. Run PlacementValidator on each ROOM bbox (ACTIVE mode, not READONLY)
 3. Check for dangles: C_OrderLines referencing products not in M_Product
 4. If all PASS and no dangles → master C_Order DocStatus: IP → AP
@@ -10278,8 +10278,8 @@ resources across multiple designers.</strong></p>
 <td><strong>Promote gate</strong> (governance-controlled)</td>
 </tr>
 <tr>
-<td><code>work_output_{building}.db</code></td>
-<td><strong>Per-building</strong></td>
+<td><code>output.db</code></td>
+<td><strong>Per-building</strong> (compile DB)</td>
 <td>Read-write per session</td>
 <td>Save/Recall/placeItem</td>
 </tr>
@@ -10295,10 +10295,10 @@ resources across multiple designers.</strong></p>
 - <code>M_Product</code> = shared catalog (component_library.db)
 - <code>AD_Val_Rule</code> = shared validation (validation.db)
 - <code>M_BOM</code> = shared recipes (BOM.db)
-- <code>C_Order</code> = per-user work orders (work_output.db)</p>
+- <code>C_Order</code> = per-user work orders (output.db)</p>
 <h3 id="213-session-isolation-stage-1-current">21.3 Session Isolation (Stage 1 — Current)<a class="headerlink" href="#213-session-isolation-stage-1-current" title="Permanent link">&para;</a></h3>
 <p>The current implementation uses <code>ConcurrentHashMap&lt;String, Connection&gt;</code> for
-per-building work_output.db connections. This is sufficient for single-user
+per-building output.db connections. This is sufficient for single-user
 but needs extension for multi-user:</p>
 <p><strong>Stage 1 (current):</strong> Single user. One PlacementValidator, one jurisdiction.
 All methods share state. Functional for development and demo.</p>
@@ -10332,7 +10332,7 @@ pattern.</p>
 </tr>
 <tr>
 <td>save, recall, placeItem</td>
-<td><strong>Per-building</strong> — writes to work_output.db</td>
+<td><strong>Per-building</strong> — writes to output.db</td>
 <td>Safe (SQLite transaction per save, one writer per building)</td>
 </tr>
 <tr>
@@ -10365,7 +10365,7 @@ promote
   → House_1 enters shared BOM catalog
 </code></pre></div>
 <p>Both users work on the same building (<code>House_1</code>), each saving their own
-variants. The server serialises writes to the same work_output.db. Promote
+variants. The server serialises writes to the same output.db. Promote
 is a governance gate — only one user (with role) can execute it.</p>
 <h3 id="216-witness-claims">21.6 Witness Claims<a class="headerlink" href="#216-witness-claims" title="Permanent link">&para;</a></h3>
 <table>
@@ -10435,7 +10435,7 @@ buildings in the Blender viewport.</p>
 <p>For generative buildings (Create New → design → compile), the sequence is:</p>
 <div class="highlight"><pre><span></span><code>1. createNew → bboxes (in-memory, no DB)
 2. User edits: addRoom, placeItem, resize, snap
-3. save → work_output.db (C_Order + C_OrderLine)
+3. save → output.db (C_Order + C_OrderLine)
 4. approve → InferenceEngine validates, all PASS → AP
 5. promote → writes m_bom + m_bom_line to {PREFIX}_BOM.db   ← G-10
 6. compile → CompilationPipeline reads BOM.db → output.db   ← THIS
@@ -10444,13 +10444,13 @@ buildings in the Blender viewport.</p>
 <p>Steps 5 and 7 are stubs. Step 6 is the compile bridge (this section).
 The generative path needs Promote (step 5) to produce a BOM.db that
 the compiler can read. For beta, we can short-circuit: compile directly
-from work_output.db C_OrderLine data without requiring full Promote.</p>
+from output.db C_OrderLine data without requiring full Promote.</p>
 <h3 id="225-short-circuit-compile-beta-path">22.5 Short-Circuit Compile (Beta Path)<a class="headerlink" href="#225-short-circuit-compile-beta-path" title="Permanent link">&para;</a></h3>
-<p>For beta, skip Promote. Compile directly from work_output.db:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// Beta compile: read C_OrderLine from work_output.db,</span>
+<p>For beta, skip Promote. Compile directly from output.db:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Beta compile: read C_OrderLine from output.db,</span>
 <span class="c1">// build temporary m_bom/m_bom_line in memory,</span>
 <span class="c1">// feed to CompilationPipeline.</span>
-<span class="n">WorkOutputDAO</span><span class="w"> </span><span class="n">woDao</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getWorkOutputDAO</span><span class="p">(</span><span class="n">buildingId</span><span class="p">);</span>
+<span class="n">CompileDAO</span><span class="w"> </span><span class="n">compileDao</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getCompileDAO</span><span class="p">(</span><span class="n">buildingId</span><span class="p">);</span>
 <span class="n">List</span><span class="o">&lt;</span><span class="n">DesignBBox</span><span class="o">&gt;</span><span class="w"> </span><span class="n">bboxes</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">woDao</span><span class="p">.</span><span class="na">recall</span><span class="p">(</span><span class="n">latestVariantId</span><span class="p">);</span>
 <span class="c1">// Convert bboxes to m_bom_line format</span>
 <span class="c1">// Run pipeline</span>
@@ -10512,7 +10512,7 @@ from work_output.db C_OrderLine data without requiring full Promote.</p>
 </tr>
 <tr>
 <td>W-COMPILE-BETA-1</td>
-<td>Short-circuit compile from work_output.db produces geometry</td>
+<td>Short-circuit compile from output.db produces geometry</td>
 <td>Beta path</td>
 <td>SPEC ONLY</td>
 </tr>
@@ -10755,7 +10755,7 @@ embeddings are the suggestion engine.</p>
 <tr>
 <td><strong>Joint embedding</strong></td>
 <td>Bridge IFC geometry + BOM semantics + ERP data + building code</td>
-<td>5-database schema</td>
+<td>4-database schema</td>
 </tr>
 <tr>
 <td><strong>Selective decoding</strong></td>
@@ -10866,7 +10866,7 @@ to the BIM Designer, this becomes <strong>predictive component suggestion</stron
 <p>The embedding predictor is <strong>advisory only</strong> — it suggests, the symbolic
 engine validates. A suggested component still must pass all AD_Val_Rule
 checks before placement is accepted.</p>
-<h3 id="255-joint-embedding-across-the-5-database-schema">25.5 Joint Embedding Across the 5-Database Schema<a class="headerlink" href="#255-joint-embedding-across-the-5-database-schema" title="Permanent link">&para;</a></h3>
+<h3 id="255-joint-embedding-across-the-4-database-schema">25.5 Joint Embedding Across the 4-Database Schema<a class="headerlink" href="#255-joint-embedding-across-the-4-database-schema" title="Permanent link">&para;</a></h3>
 <p>VL-JEPA bridges vision and language modalities. The BIM compiler bridges
 five data modalities. A shared embedding space enables cross-modal queries:</p>
 <table>
@@ -10895,7 +10895,7 @@ five data modalities. A shared embedding space enables cross-modal queries:</p>
 </tr>
 <tr>
 <td>"Which ERP order matches this design intent?"</td>
-<td>work_output.db ↔ BOM.db</td>
+<td>output.db ↔ BOM.db</td>
 <td>Promote verification</td>
 </tr>
 </tbody>
@@ -12135,7 +12135,7 @@ intercepts writes and records old→new values automatically.</p>
 </tr>
 <tr>
 <td>Save/CO</td>
-<td><code>work_output</code></td>
+<td><code>output</code></td>
 <td><code>DocStatus</code></td>
 <td>old: "DR" → new: "CO"</td>
 </tr>
@@ -12536,7 +12536,7 @@ User clicks &quot;Apply&quot; on SUGGESTION
 <h2 id="28-bom-drop-template-first-building-design">28. BOM Drop — Template-First Building Design<a class="headerlink" href="#28-bom-drop-template-first-building-design" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../GENERATIVE_HOUSE_SRS/">GENERATIVE_HOUSE_SRS.md</a> §2.1 (BOM Drop) · <a href="../BOMBasedCompilation/">BBC.md §3.5.1</a> (ASI) · <a href="../BOMBasedCompilation/">BBC.md §3.5</a> (Selection Cascade)
-<strong>Schema:</strong> <code>ASI_001_attribute_set_instance.sql</code> · <code>W001_work_output_schema.sql</code></p>
+<strong>Schema:</strong> <code>ASI_001_attribute_set_instance.sql</code> · output.db schema (compile DB)</p>
 </blockquote>
 <p><em>Date: 2026-03-22. Session: S52b. Replaces: room-by-room cascade (§28 v1).</em></p>
 <h3 id="281-paradigm-template-bom-drop-asi">28.1 Paradigm — Template + BOM Drop + ASI<a class="headerlink" href="#281-paradigm-template-bom-drop-asi" title="Permanent link">&para;</a></h3>
@@ -12675,7 +12675,7 @@ construction completeness if they create from scratch (fallback path).</p>
 │                                                     │
 │  1. Render tree (BOM Outliner)                      │
 │  2. Accept user edits (swap/add/remove/ASI)         │
-│  3. Write changes to C_OrderLine in work_output.db  │
+│  3. Write changes to C_OrderLine in output.db        │
 │  4. Call engine: bomDrop() / compile()              │
 │                                                     │
 │  NEVER: walks BOMs, resolves products, computes     │
@@ -12700,7 +12700,7 @@ construction completeness if they create from scratch (fallback path).</p>
 </code></pre></div>
 <p><strong>The pattern is identical to compilation today:</strong></p>
 <ol>
-<li>GUI makes changes → writes to work_output.db (C_OrderLine mutations)</li>
+<li>GUI makes changes → writes to output.db (C_OrderLine mutations)</li>
 <li>GUI calls engine (bomDrop or compile)</li>
 <li>Engine reads the saved state, does all the heavy lifting, returns result</li>
 <li>GUI renders the result</li>
@@ -14335,7 +14335,7 @@ This is the DocEvent path — validation rules ARE the placement engine.</p>
 <p><em>References:
 <a href="../BIM_Designer/">BIM_Designer.md</a> (architecture, §17 Design Mode, §18 UI Strategy) |
 <a href="../BIM_Designer_UserGuide/">BIM_Designer_UserGuide.md §13</a> (Web UI spec — tab layout, tech stack) |
-<a href="../G4_SRS/">G4_SRS.md</a> (work_output.db, Save/Recall/Promote sequences) |
+<a href="../G4_SRS/">G4_SRS.md</a> (output.db, Save/Recall/Promote sequences) |
 <a href="../DocValidate/">DocValidate.md</a> §15 (PlacementValidator, AD_Val_Rule) |
 <a href="../TestArchitecture/">TestArchitecture.md</a> (traceability matrix, witness convention) |
 <a href="../BIM_COBOL/">BIM_COBOL.md</a> §20 (spatial predicate verbs) |
