@@ -4218,7 +4218,7 @@ databases. The Bonsai client calls back-office APIs via the BlenderBridge.</p>
 │  │  browseItems, placeItem, bomDrop, listOrderLines,    │
 │  │  approve, promote, costBreakdown, schedule, ...)     │
 │  │                                                      │
-│  │  PlacementValidator ←── disc_validation.db (63 rules)│
+│  │  PlacementValidator ←── ERP.db (63 rules)│
 │  │  BomValidator ←── 9 checks + verb fidelity           │
 │  │  AssemblyBuilder ←── thermal U-value calculation     │
 │  └─────────────────────────┬────────────────────────────┘
@@ -4231,7 +4231,7 @@ databases. The Bonsai client calls back-office APIs via the BlenderBridge.</p>
 │                                                          │
 │  Databases:                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐ │
-│  │ component_   │ │ {PREFIX}_    │ │ disc_validation  │ │
+│  │ component_   │ │ {PREFIX}_    │ │ ERP  │ │
 │  │ library.db   │ │ BOM.db       │ │ .db (63 rules)   │ │
 │  │ (800 prods)  │ │ (recipes)    │ │                  │ │
 │  └──────────────┘ └──────────────┘ └──────────────────┘ │
@@ -4262,7 +4262,7 @@ databases. The Bonsai client calls back-office APIs via the BlenderBridge.</p>
 <td>~10 MB</td>
 </tr>
 <tr>
-<td><code>disc_validation.db</code></td>
+<td><code>ERP.db</code></td>
 <td>Validation rules (63 rules: residential + infrastructure bridge/road/rail)</td>
 <td>~100 KB</td>
 </tr>
@@ -4805,7 +4805,7 @@ resize the room to accommodate them.</p>
 </table>
 <hr />
 <h2 id="6-validation-rules">6. Validation Rules<a class="headerlink" href="#6-validation-rules" title="Permanent link">&para;</a></h2>
-<p>The system validates placements against building codes from <code>disc_validation.db</code>.
+<p>The system validates placements against building codes from <code>ERP.db</code>.
 Rules are <strong>data, not code</strong> — adding a jurisdiction = SQL INSERTs.</p>
 <h3 id="61-supported-jurisdictions">6.1 Supported Jurisdictions<a class="headerlink" href="#61-supported-jurisdictions" title="Permanent link">&para;</a></h3>
 <table>
@@ -5212,7 +5212,7 @@ Total: 25 BOM lines, 19 leaf elements
 </tr>
 <tr>
 <td><code>PlacementValidatorImpl.java</code></td>
-<td>Implementation (reads disc_validation.db, FacilityType routing)</td>
+<td>Implementation (reads ERP.db, FacilityType routing)</td>
 </tr>
 <tr>
 <td><code>JsonProtocol.java</code></td>

@@ -3871,7 +3871,7 @@ BonsaiBIMDesigner → GUI server, validation, assembly
 <td>Master product catalog: 608 products, 23.9K geometries, thermal properties</td>
 </tr>
 <tr>
-<td><code>disc_validation.db</code></td>
+<td><code>ERP.db</code></td>
 <td>~1 MB</td>
 <td>Discipline validation rules, IFC class mapping, MEP metadata (20 tables)</td>
 </tr>
@@ -3987,7 +3987,7 @@ sqlite3<span class="w"> </span>library/SH_BOM.db<span class="w"> </span><span cl
 sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM M_Product&quot;</span>
 
 <span class="c1"># Check validation rules</span>
-sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM AD_Val_Rule&quot;</span>
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="s2">&quot;SELECT COUNT(*) FROM AD_Val_Rule&quot;</span>
 </code></pre></div>
 <hr />
 <h2 id="4-running-the-servers">4. Running the Servers<a class="headerlink" href="#4-running-the-servers" title="Permanent link">&para;</a></h2>
@@ -4023,7 +4023,7 @@ pip<span class="w"> </span>install<span class="w"> </span>datasette
 <p><strong>Launch:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="nb">source</span><span class="w"> </span>.venv/bin/activate
 datasette<span class="w"> </span>library/component_library.db<span class="w"> </span><span class="se">\</span>
-<span class="w">          </span>library/disc_validation.db<span class="w"> </span><span class="se">\</span>
+<span class="w">          </span>library/ERP.db<span class="w"> </span><span class="se">\</span>
 <span class="w">          </span>library/SH_BOM.db<span class="w"> </span>library/DX_BOM.db<span class="w"> </span>library/TE_BOM.db<span class="w"> </span><span class="se">\</span>
 <span class="w">          </span>library/BR_BOM.db<span class="w"> </span>library/RD_BOM.db<span class="w"> </span>library/RL_BOM.db<span class="w"> </span><span class="se">\</span>
 <span class="w">          </span>--port<span class="w"> </span><span class="m">8001</span><span class="w"> </span>--host<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span><span class="se">\</span>
@@ -4035,7 +4035,7 @@ datasette<span class="w"> </span>library/component_library.db<span class="w"> </
 - SQL console: <code>http://localhost:8001/component_library?sql=SELECT+COUNT(*)+FROM+M_Product</code>
 - JSON API: append <code>.json</code> to any URL for machine-readable output</p>
 <p><strong>Datasette reads SQLite files live</strong> — no restart needed after migrations or recompiles.
-Changes to <code>component_library.db</code>, <code>disc_validation.db</code>, or <code>*_BOM.db</code> are visible immediately.</p>
+Changes to <code>component_library.db</code>, <code>ERP.db</code>, or <code>*_BOM.db</code> are visible immediately.</p>
 <h3 id="44-all-servers-typical-setup">4.4 All Servers (typical setup)<a class="headerlink" href="#44-all-servers-typical-setup" title="Permanent link">&para;</a></h3>
 <p>Run in separate terminals or background:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Terminal 1: Designer (for Blender)</span>
@@ -4199,7 +4199,7 @@ See <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> for the full wire pro
 ┌─────────────────┐                    ┌──────────────────────┐
 │  federation.db  │                    │  library/*.db        │
 │  (IFC spatial)  │                    │  component_library   │
-└─────────────────┘                    │  disc_validation     │
+└─────────────────┘                    │  ERP     │
                                        │  *_BOM.db files      │
   http://localhost:8001                └──────────────────────┘
 ┌─────────────────┐                               │
@@ -4289,7 +4289,7 @@ curl<span class="w"> </span>-k<span class="w"> </span>https://your-server/api/he
 </tbody>
 </table>
 <p><strong>Running a migration:</strong></p>
-<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV007_infra_road_rules.sql
+<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV007_infra_road_rules.sql
 </code></pre></div>
 <hr />
 <h2 id="10-directory-structure">10. Directory Structure<a class="headerlink" href="#10-directory-structure" title="Permanent link">&para;</a></h2>
@@ -4454,7 +4454,7 @@ immediately.</p>
 <td>All 21 tables with row counts and schema</td>
 </tr>
 <tr>
-<td><code>http://localhost:8001/disc_validation</code></td>
+<td><code>http://localhost:8001/ERP</code></td>
 <td>All 21 discipline metadata tables</td>
 </tr>
 <tr>
@@ -4500,7 +4500,7 @@ sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </sp
 <h2 id="15-database-schema-reference">15. Database Schema Reference<a class="headerlink" href="#15-database-schema-reference" title="Permanent link">&para;</a></h2>
 <p>Full table inventory with purpose, Java access patterns, and review status:
 <strong><a href="../database/DATABASE_SCHEMA.md"><code>database/DATABASE_SCHEMA.md</code></a></strong></p>
-<p>Quick summary: component_library.db (21 tables), disc_validation.db (20 tables),
+<p>Quick summary: component_library.db (21 tables), ERP.db (20 tables),
 {PREFIX}_BOM.db (6 tables per building), output.db (written fresh each compile).</p>
 <hr />
 <h2 id="16-docker-what-to-containerize">16. Docker — What to Containerize<a class="headerlink" href="#16-docker-what-to-containerize" title="Permanent link">&para;</a></h2>
@@ -4556,7 +4556,7 @@ sqlite3<span class="w"> </span>library/component_library.db<span class="w"> </sp
          ┌───────────▼───────────┐
          │  /data/library/       │  ← bind-mounted volume
          │  component_library.db │
-         │  disc_validation.db   │
+         │  ERP.db   │
          │  *_BOM.db files       │
          └───────────────────────┘
 </code></pre></div>
@@ -4580,7 +4580,7 @@ docker-compose<span class="w"> </span>logs<span class="w"> </span>-f<span class=
 <h3 id="updating-databases-in-docker">Updating databases in Docker<a class="headerlink" href="#updating-databases-in-docker" title="Permanent link">&para;</a></h3>
 <p>The <code>library/</code> directory is bind-mounted, so database updates are live:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Run a migration against the mounted volume</span>
-sqlite3<span class="w"> </span>./library/disc_validation.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV008_infra_rail_rules.sql
+sqlite3<span class="w"> </span>./library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV008_infra_rail_rules.sql
 
 <span class="c1"># Recompile a building (output goes to same library/)</span>
 ./scripts/run_RosettaStones.sh<span class="w"> </span>classify_sh.yaml

@@ -12293,7 +12293,7 @@ user can act on them, not just read log files.</p>
 <div class="highlight"><pre><span></span><code>IFC onboarding (IFCtoBOMPipeline)
   → DimensionRangeValidator.validate()
   → BuildingProfileValidator.validate()
-  → Writes to W_Validation_Advisory table in disc_validation.db
+  → Writes to W_Validation_Advisory table in ERP.db
 
 BIM Designer loads building
   → listAdvisories(buildingId)
@@ -12346,7 +12346,7 @@ User clicks &quot;Apply&quot; on SUGGESTION
 <ul>
 <li><strong>Java:</strong> DesignerAPIImpl +1 method (<code>listAdvisories</code>), DesignerServer +1 dispatch case</li>
 <li><strong>Python:</strong> client.py +1 verb (<code>list_advisories</code>), panel.py +1 section (<code>_draw_advisory_panel</code>)</li>
-<li><strong>Schema:</strong> DV012 migration creates <code>W_Validation_Advisory</code> table in disc_validation.db</li>
+<li><strong>Schema:</strong> DV012 migration creates <code>W_Validation_Advisory</code> table in ERP.db</li>
 <li><strong>No new validation logic on Python side</strong> — all intelligence stays in Java</li>
 <li><strong>Backward compatible:</strong> advisory panel is additive, existing panels unchanged</li>
 <li><strong>Write-side:</strong> DimensionRangeValidator and BuildingProfileValidator gain <code>writeAdvisories(Connection discConn, Report report)</code> methods, called from IFCtoBOMPipeline after <code>validate()</code></li>
@@ -13984,7 +13984,7 @@ exercise the full BOM Drop → configure → validate → compile → promote fl
 </table>
 <h4 id="3065-lookup-chain-how-fp-discipline-gets-added">30.6.5 Lookup Chain — How FP Discipline Gets Added<a class="headerlink" href="#3065-lookup-chain-how-fp-discipline-gets-added" title="Permanent link">&para;</a></h4>
 <p>Current data path for fire protection:
-<div class="highlight"><pre><span></span><code>ad_space_type_mep_bom (disc_validation.db)
+<div class="highlight"><pre><span></span><code>ad_space_type_mep_bom (ERP.db)
   → WHERE discipline = &#39;FPR&#39; AND space_type = &#39;BEDROOM&#39;
   → Returns: element_type = &#39;SPRINKLER&#39;, qty_per_room = 1, ifc_class = &#39;IfcFireSuppressionTerminal&#39;
 
@@ -14054,20 +14054,21 @@ The BOM Drop explodes the structural BOM only — FP elements come from
 <li>Promote → m_bom entries written, order frozen</li>
 </ol>
 <h3 id="307-m_product_category-hierarchical-product-catalog-s61-spec">30.7 M_Product_Category — Hierarchical Product Catalog (S61 spec)<a class="headerlink" href="#307-m_product_category-hierarchical-product-catalog-s61-spec" title="Permanent link">&para;</a></h3>
+<!-- Implementing SpecsAnalysis.txt §3 -->
 <blockquote>
-<p><strong>iDempiere parallel:</strong> <code>M_Product_Category</code> with self-referencing <code>Parent_Category_ID</code>,
-same tree pattern as <code>AD_Org</code>. User browses by category to find products when
-creating or swapping an OrderLine.</p>
+<p><strong>iDempiere parallel:</strong> <code>M_Product_Category</code> — flat product classification.
+User browses by category to find products when creating or swapping an OrderLine.
+The cascade (building→floor→room→leaf) is expressed by the BOM tree (M_BOM → M_BOM_Line),
+not by a category tree. Categories stay flat per iDempiere standard.</p>
 </blockquote>
 <h4 id="3071-schema">30.7.1 Schema<a class="headerlink" href="#3071-schema" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="c1">-- component_library.db</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product_Category</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">M_Product_Category_ID</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
-<span class="w">    </span><span class="n">Parent_Category_ID</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">          </span><span class="c1">-- self-reference (NULL = root)</span>
+<span class="w">    </span><span class="n">Parent_Category_ID</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">          </span><span class="c1">-- **DEPRECATED — to be dropped (see DATA_MODEL.md §7.6)**</span>
 <span class="w">    </span><span class="n">Name</span><span class="w">                   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">Description</span><span class="w">            </span><span class="nb">TEXT</span><span class="p">,</span>
-<span class="w">    </span><span class="n">IsActive</span><span class="w">               </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">Parent_Category_ID</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">M_Product_Category</span><span class="p">(</span><span class="n">M_Product_Category_ID</span><span class="p">)</span>
+<span class="w">    </span><span class="n">IsActive</span><span class="w">               </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span>
 <span class="p">);</span>
 
 <span class="c1">-- Add FK column to existing M_Product</span>
@@ -14117,6 +14118,16 @@ SH/FK (architectural). The hierarchy is EXTRACTED, not invented.</p>
 </code></pre></div>
 <p>Level 1 = discipline (<code>m_bom.bom_category</code>). Level 2 = IFC class grouping.
 Level 3 = product type (exterior/interior, fixture subtype).</p>
+<p><strong>RE (room-driven) cascade</strong> — expressed by the BOM tree, not by category hierarchy:</p>
+<div class="highlight"><pre><span></span><code>M_BOM &quot;SH&quot; (M_Product_Category=RE)
+  └─ M_BOM_Line → M_BOM &quot;GF&quot; (M_Product_Category=GF)
+       └─ M_BOM_Line → M_BOM &quot;LIVING&quot; (M_Product_Category=LIVING)
+            ├─ M_BOM_Line → SOFA_001 (leaf, M_Product_Category=IFC_FURNISHING)
+            └─ M_BOM_Line → TABLE_001 (leaf, M_Product_Category=IFC_FURNISHING)
+</code></pre></div>
+<p>RE cascade is room-driven (swap pools at room level), CO cascade is
+discipline-driven (ARC, STR, FP sub-trees). Both expressed by BOM tree.
+M_Product_Category at each node is a flat tag, not a tree node.</p>
 <h4 id="3073-population-strategy">30.7.3 Population Strategy<a class="headerlink" href="#3073-population-strategy" title="Permanent link">&para;</a></h4>
 <p>Categories are derived from extraction data, not invented:</p>
 <ol>

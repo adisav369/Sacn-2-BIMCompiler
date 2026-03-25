@@ -4072,7 +4072,7 @@
 <td>Read-only (external tool output)</td>
 </tr>
 <tr>
-<td><code>disc_validation.db</code></td>
+<td><code>ERP.db</code></td>
 <td>The <strong>recipe book</strong></td>
 <td>Discipline metadata: schedules, types, placement rules, alias cascade</td>
 <td>Read-only (migration-seeded)</td>
@@ -4831,7 +4831,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 <tr>
 <td>10</td>
 <td>Apply mined rules: <code>./scripts/apply_mined_rules.sh</code></td>
-<td>Updates <code>disc_validation.db</code> ad_val_rule</td>
+<td>Updates <code>ERP.db</code> ad_val_rule</td>
 </tr>
 </tbody>
 </table>
@@ -4863,7 +4863,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 <tbody>
 <tr>
 <td><code>tools/extract.py</code></td>
-<td>IFC extraction (LOD + Rosetta) — reads <code>ad_ifc_class_map</code> from <code>disc_validation.db</code></td>
+<td>IFC extraction (LOD + Rosetta) — reads <code>ad_ifc_class_map</code> from <code>ERP.db</code></td>
 </tr>
 <tr>
 <td><code>scripts/run_tests.sh</code></td>
@@ -4891,7 +4891,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </tr>
 <tr>
 <td><code>scripts/apply_mined_rules.sh</code></td>
-<td>Uncomment + apply all DV_*_rules.sql to disc_validation.db</td>
+<td>Uncomment + apply all DV_*_rules.sql to ERP.db</td>
 </tr>
 </tbody>
 </table>
@@ -5058,7 +5058,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </tr>
 <tr>
 <td>Discipline validation</td>
-<td><code>library/disc_validation.db</code></td>
+<td><code>library/ERP.db</code></td>
 <td>Phase 2 CalibrationDAO, IFC class map</td>
 </tr>
 <tr>
@@ -5078,7 +5078,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 <div class="highlight"><pre><span></span><code>IFC File (.ifc)
     │ IfcOpenShell (tools/extract.py)
     ▼
-component_library.db                    disc_validation.db
+component_library.db                    ERP.db
   ├─ component_geometries (mesh blobs)    ├─ ad_ifc_class_map (46 rows)
   ├─ I_Geometry_Map (element→geom)        ├─ AD_Val_Rule (placement rules)
   ├─ M_Product (catalog)                  └─ ad_space_type_mep_bom

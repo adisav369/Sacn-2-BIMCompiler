@@ -7708,7 +7708,7 @@ MEP (CURRENT — IMPLICIT)
 <h4 id="route-sprinklers-w-cobol-912">ROUTE SPRINKLERS (W-COBOL-9..12)<a class="headerlink" href="#route-sprinklers-w-cobol-912" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code>ROUTE SPRINKLERS &lt;building_type&gt; &lt;storey&gt; &lt;room_name&gt; [SPACING &lt;mm&gt;] [HAZARD &lt;class&gt;]
 </code></pre></div>
-<p>First MEP routing verb. Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single statement. Read-only against component_library.db (<code>ad_room_boundary</code> for room AABB) and disc_validation.db (<code>ad_fp_coverage</code> for hazard class rules) (LIGHT: max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m).</p>
+<p>First MEP routing verb. Computes sprinkler head grid + pipe routing + NFPA compliance proof from a single statement. Read-only against component_library.db (<code>ad_room_boundary</code> for room AABB) and ERP.db (<code>ad_fp_coverage</code> for hazard class rules) (LIGHT: max_coverage=18.6m², max_spacing=4.6m, wall_distance=2.3m).</p>
 <p><strong>Key classes:</strong>
 - <code>SprinklerGrid</code> — pure geometry: grid generation within rectangular AABB, spacing/2 offset, center fallback for narrow rooms
 - <code>PipeRouter</code> — pure geometry: main line at riserX running along Y, per-head branch pipes, PipeSpec/PipeRoutingResult

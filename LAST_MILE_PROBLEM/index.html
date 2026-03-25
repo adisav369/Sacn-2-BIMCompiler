@@ -4000,7 +4000,7 @@ All diagnosed from log output without visual inspection (BIMLogger FINE-level pr
 <tr>
 <td><code>component_library.db</code></td>
 <td>1+2</td>
-<td>Geometry meshes, orientation. M_Product reads now from <code>disc_validation.db</code> (S65); geometry remains in component_library.db</td>
+<td>Geometry meshes, orientation. M_Product reads now from <code>ERP.db</code> (S65); geometry remains in component_library.db</td>
 </tr>
 <tr>
 <td>Reference extraction DB</td>
@@ -4448,10 +4448,10 @@ elements resolve per-instance geometry from library via GUID chain.</p>
 <h3 id="81-prefix_bomdb-is-it-purely-bom-relationships">8.1 <code>{PREFIX}_BOM.db</code> — Is it purely BOM relationships?<a class="headerlink" href="#81-prefix_bomdb-is-it-purely-bom-relationships" title="Permanent link">&para;</a></h3>
 <p><strong>CLEAN.</strong> Tables: <code>m_bom</code>, <code>m_bom_line</code>, <code>M_Product</code>, <code>ad_sysconfig</code> (+ <code>C_DocType</code> in DM_BOM.db).
 No extraction data, no geometry BLOBs, no config tables.</p>
-<p><strong>Known debt (updated S65):</strong> M_Product authoritative reads now come from <code>disc_validation.db</code>
-(ProductRegistrar dual-writes to both BOM and disc_validation.db; BOMWalker reads from
-disc_validation.db via compConn). BOM-side M_Product is retained for assembly stubs.
-Target: remove BOM-side M_Product when all consumers use disc_validation.db.</p>
+<p><strong>Known debt (updated S65):</strong> M_Product authoritative reads now come from <code>ERP.db</code>
+(ProductRegistrar dual-writes to both BOM and ERP.db; BOMWalker reads from
+ERP.db via compConn). BOM-side M_Product is retained for assembly stubs.
+Target: remove BOM-side M_Product when all consumers use ERP.db.</p>
 <h3 id="82-component_librarydb-is-it-just-lods-orientation-ifc-metadata">8.2 <code>component_library.db</code> — Is it just LODs + orientation + IFC metadata?<a class="headerlink" href="#82-component_librarydb-is-it-just-lods-orientation-ifc-metadata" title="Permanent link">&para;</a></h3>
 <p><strong>THREE VIOLATIONS:</strong></p>
 <table>

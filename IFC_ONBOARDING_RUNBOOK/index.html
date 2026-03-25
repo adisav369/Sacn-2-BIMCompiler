@@ -3309,11 +3309,11 @@ python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;
 <span class="s2">&quot;</span>
 
 <span class="c1"># Compare with registered types</span>
-sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span><span class="se">\</span>
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class&quot;</span>
 </code></pre></div>
 <p><strong>If types are missing</strong>, register them (no code change):</p>
-<div class="highlight"><pre><span></span><code><span class="c1">-- In library/disc_validation.db</span>
+<div class="highlight"><pre><span></span><code><span class="c1">-- In library/ERP.db</span>
 <span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_ifc_class_map</span>
 <span class="w">    </span><span class="p">(</span><span class="n">ifc_class</span><span class="p">,</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">category</span><span class="p">,</span><span class="w"> </span><span class="n">attachment_face</span><span class="p">,</span><span class="w"> </span><span class="n">ifc_schema</span><span class="p">,</span><span class="w"> </span><span class="k">domain</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">)</span>
 <span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IfcNewType&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;ARC&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NEW_CATEGORY&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;BOTTOM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IFC4&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;BUILDING&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Description&#39;</span><span class="p">);</span>

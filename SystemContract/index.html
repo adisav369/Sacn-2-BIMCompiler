@@ -3573,7 +3573,7 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <h2 id="2-entity-registry">2. Entity Registry<a class="headerlink" href="#2-entity-registry" title="Permanent link">&para;</a></h2>
 <p>Every table in the system serves one of five roles. No table serves two roles.</p>
 <h3 id="21-dictionary-ad-system-configuration">2.1 Dictionary (AD) — System Configuration<a class="headerlink" href="#21-dictionary-ad-system-configuration" title="Permanent link">&para;</a></h3>
-<p><strong>Database:</strong> {PREFIX}_BOM.db, disc_validation.db
+<p><strong>Database:</strong> {PREFIX}_BOM.db, ERP.db
 <strong>Lifecycle:</strong> Static. Changed by migration SQL only. Never by runtime code.
 <strong>iDempiere equivalent:</strong> AD_Table, AD_Column, AD_Val_Rule, AD_Process.</p>
 <table>
@@ -3643,7 +3643,7 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 </tbody>
 </table>
 <h3 id="22-master-data-m-product-catalog-bom-recipes">2.2 Master Data (M) — Product Catalog &amp; BOM Recipes<a class="headerlink" href="#22-master-data-m-product-catalog-bom-recipes" title="Permanent link">&para;</a></h3>
-<p><strong>Database:</strong> {PREFIX}_BOM.db, component_library.db, disc_validation.db
+<p><strong>Database:</strong> {PREFIX}_BOM.db, component_library.db, ERP.db
 <strong>Lifecycle:</strong> Grows with each building onboarded. Changed by IFCtoBOM extraction or manual migration.
 <strong>iDempiere equivalent:</strong> M_Product, M_BOM, M_BOM_Line.</p>
 <table>
@@ -4675,8 +4675,8 @@ Each gap must be closed with an SRS before code is written.</p>
 <tr>
 <td><strong>GAP-SC-5</strong></td>
 <td>Order inheritance conflict</td>
-<td><strong>SPEC COMPLETE</strong> — Single-parent FK prevents sibling DAG; linear chain resolved by depth (deepest wins). See ProjectOrderBlueprint.md §6.3</td>
-<td>LOW (unblocks Session E)</td>
+<td>Single-parent FK prevents sibling DAG; linear chain resolved by depth (deepest wins). See ProjectOrderBlueprint.md §6.3. InheritanceResolver + OrderInheritanceTest 6/6.</td>
+<td><strong>CLOSED</strong> (Session E, S68e, 2026-03-25)</td>
 </tr>
 <tr>
 <td><strong>GAP-SC-6</strong></td>

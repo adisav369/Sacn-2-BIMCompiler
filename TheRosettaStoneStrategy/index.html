@@ -848,6 +848,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#why-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-this-is" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2803,6 +2814,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#why-this-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why This Exists
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-this-is" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2961,6 +2983,8 @@
 
 
 <h1 id="the-rosetta-stone-strategy">The Rosetta Stone Strategy<a class="headerlink" href="#the-rosetta-stone-strategy" title="Permanent link">&para;</a></h1>
+<h2 id="why-this-exists">Why This Exists<a class="headerlink" href="#why-this-exists" title="Permanent link">&para;</a></h2>
+<p>AI is blind to spatial geometry. It can parse text, generate code, and reason about logic — but it cannot see that a wall must sit on a slab, that a door must be inside a wall, or that two columns must not occupy the same space. No amount of prompt engineering fixes this: spatial correctness is a mathematical problem, not a language problem. The Rosetta Stone strategy exists to solve it deterministically — real buildings become ground truth, and every compiled output is proven against that truth with pure arithmetic. No heuristics. No tolerance tuning. No AI. If the coordinates match, the grammar is certified.</p>
 <h2 id="what-this-is">What This Is<a class="headerlink" href="#what-this-is" title="Permanent link">&para;</a></h2>
 <p>Three real IFC buildings, decomposed into reference DBs. The compiler
 reads a BOM describing the same building and produces output. The test:
@@ -2968,7 +2992,7 @@ does every compiled element land at the <strong>same position</strong> as the re
 <p>Not the same dimensions. The same COORDINATES. Position in 3D space.
 A wall at (5.0, 0.0, 0.0) sized 4000x150x2700 must match a reference
 wall at (5.0, 0.0, 0.0) sized 4000x150x2700. Same place. Same size.</p>
-<p>The reference DB has every answer. Read it. Match it.</p>
+<p>The reference DB has every answer. Read it. Match it. Not through cheating or copying — which AI often does via hallucination or drifting. The output must go through the compilation process.</p>
 <hr />
 <h2 id="stones">Stones<a class="headerlink" href="#stones" title="Permanent link">&para;</a></h2>
 <table>
@@ -3157,7 +3181,7 @@ is a <strong>proven word</strong>. A composed building is a <strong>sentence</st
 </tr>
 <tr>
 <td><strong>Rule-driven</strong> (FP/ELEC/ACMV)</td>
-<td>disc_validation.db AD tables</td>
+<td>ERP.db AD tables</td>
 <td>Product exists, placement satisfies spatial rule, spacing correct</td>
 </tr>
 <tr>
@@ -3182,13 +3206,13 @@ is a <strong>proven word</strong>. A composed building is a <strong>sentence</st
 <hr />
 <h2 id="compiled-construction-vs-revit">Compiled Construction vs Revit<a class="headerlink" href="#compiled-construction-vs-revit" title="Permanent link">&para;</a></h2>
 <p>Revit is a canvas — click, place, adjust, repeat. Every element is a manual act.
-This project is a compiler — write intent, the compiler produces geometry.</p>
+This project is a compiler — write intent, the compiler produces geometry that has a language of its own. We first defined it as VERBS in <a href="../BIM_COBOL/">BIM COBOL</a>.</p>
 <table>
 <thead>
 <tr>
 <th></th>
 <th>Revit (authoring)</th>
-<th>BIM COBOL (compiling)</th>
+<th><a href="../BIM_COBOL/">BIM COBOL</a> (compiling)</th>
 </tr>
 </thead>
 <tbody>

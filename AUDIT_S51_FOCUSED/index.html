@@ -7516,7 +7516,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <h2 id="appendix-f-application-dictionary-audit-s62-2026-03-23">Appendix F — Application Dictionary Audit (S62, 2026-03-23)<a class="headerlink" href="#appendix-f-application-dictionary-audit-s62-2026-03-23" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>Scope:</strong> Cross-check <a href="../DISC_VALIDATION_DB_SRS/#10-open-question--application-dictionary-database-s62">DISC_VALIDATION_DB_SRS.md §10</a> against actual database state.
-<strong>Method:</strong> Direct SQLite queries on <code>library/component_library.db</code> and <code>library/disc_validation.db</code>.</p>
+<strong>Method:</strong> Direct SQLite queries on <code>library/component_library.db</code> and <code>library/ERP.db</code>.</p>
 </blockquote>
 <h3 id="10-spec-assessment">§10 Spec Assessment<a class="headerlink" href="#10-spec-assessment" title="Permanent link">&para;</a></h3>
 <p>DISC_VALIDATION_DB_SRS.md §10 is <strong>well-structured</strong> — correct problem identification (M_Product is master data mixed with geometry), 3 clear options, decision criteria, AD_Org discipline pattern, and 6 investigation tasks. The spec is sufficient as a design document for the next implementation session.</p>
@@ -7541,7 +7541,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <td>2,475</td>
 </tr>
 <tr>
-<td><code>disc_validation.db</code></td>
+<td><code>ERP.db</code></td>
 <td>25</td>
 <td>0</td>
 <td>20</td>
@@ -7667,7 +7667,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <p>§10 says "M_Product and all AD tables" need to move. The actual scope is larger:</p>
 <ul>
 <li><strong>66 ad_ tables</strong> in component_library.db (§10 says 34)</li>
-<li><strong>15 duplicated</strong> with disc_validation.db (§10 doesn't mention this)</li>
+<li><strong>15 duplicated</strong> with ERP.db (§10 doesn't mention this)</li>
 <li><strong>3 dead tables</strong> (ad_bom, ad_bom_child, ad_product_dim) that should be dropped first</li>
 <li><strong>4 bad_ tables</strong> (bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param) — undocumented prefix</li>
 </ul>
@@ -7678,7 +7678,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <li><strong>Resolve duplicates</strong> — decide which database is authoritative for the 15 shared tables. Java code audit (investigation task #1) will reveal which connection each reader uses.</li>
 <li><strong>Document bad_ prefix</strong> — bad_discipline_priority et al. are undocumented. Are these BIM Designer rules? If so, they belong with the AD Dictionary, not geometry.</li>
 <li><strong>§10 Option A is the right answer.</strong> component_library.db should be geometry-only (~7 tables: component_definitions, component_geometries, surface_styles, material_layers, I_Geometry_Map, M_Product_Image, component_types). Everything else moves to an AD Dictionary database. The 66→7 table reduction makes the geometry DB maintainable.</li>
-<li><strong>Sequence:</strong> Drop dead → remove duplicates from CL → move remaining AD tables → rename disc_validation.db to ad_dictionary.db (or keep name). Each step is independently committable.</li>
+<li><strong>Sequence:</strong> Drop dead → remove duplicates from CL → move remaining AD tables → rename ERP.db to ad_dictionary.db (or keep name). Each step is independently committable.</li>
 </ol>
 <h3 id="11-investigation-report-audit-s64-commit-a19a025">§11 Investigation Report Audit (S64, commit <code>a19a025</code>)<a class="headerlink" href="#11-investigation-report-audit-s64-commit-a19a025" title="Permanent link">&para;</a></h3>
 <blockquote>
@@ -7788,7 +7788,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 </tr>
 <tr>
 <td>Document bad_ prefix</td>
-<td>§11.6.1 — bad_ tables listed for move to disc_validation.db</td>
+<td>§11.6.1 — bad_ tables listed for move to ERP.db</td>
 </tr>
 <tr>
 <td>Option A is correct</td>
@@ -7809,7 +7809,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <h3 id="steps-02-implementation-audit-s64-commit-28ce019">Steps 0–2 Implementation Audit (S64, commit <code>28ce019</code>)<a class="headerlink" href="#steps-02-implementation-audit-s64-commit-28ce019" title="Permanent link">&para;</a></h3>
 <blockquote>
 <p><strong>Scope:</strong> DV013 (AD_Org), DV014 (dual columns), CL001 (dead table drop script), DiscValidationDBTest 24/24 GREEN.
-<strong>Method:</strong> Direct SQLite queries on disc_validation.db + migration file review + Java enum cross-check.</p>
+<strong>Method:</strong> Direct SQLite queries on ERP.db + migration file review + Java enum cross-check.</p>
 </blockquote>
 <p><strong>1. DV013 — AD_Org Table (16 rows)</strong></p>
 <table>
@@ -7935,7 +7935,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 </table>
 <h3 id="step-3-implementation-audit-s65-2026-03-24">Step 3 Implementation Audit (S65, 2026-03-24)<a class="headerlink" href="#step-3-implementation-audit-s65-2026-03-24" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><strong>Scope:</strong> DV015 (M_Product + M_Product_Category copy to disc_validation.db), 13 Java files changed, DiscValidationDBTest 27/27 GREEN.
+<p><strong>Scope:</strong> DV015 (M_Product + M_Product_Category copy to ERP.db), 13 Java files changed, DiscValidationDBTest 27/27 GREEN.
 <strong>Method:</strong> Pre-flight SH/FK 7/7 baseline → migration → Java changes → post-flight SH/FK 7/7 + DiscValidationDBTest 27/27.</p>
 </blockquote>
 <p><strong>1. DV015 Migration</strong></p>
@@ -7989,32 +7989,32 @@ single-check validator classes. Currently testable only as monolith.</p>
 <tbody>
 <tr>
 <td>PlacementLoader (2 sites)</td>
-<td>compConn URL → disc_validation.db</td>
+<td>compConn URL → ERP.db</td>
 <td>LOW — compConn used only for BOMWalker/OrderLineWalker M_Product reads</td>
 </tr>
 <tr>
 <td>BuildingWriter (1 site)</td>
-<td>compConn URL → disc_validation.db</td>
+<td>compConn URL → ERP.db</td>
 <td>LOW — compConn used only for BOMWalker assembly pass</td>
 </tr>
 <tr>
 <td>BOMWalker.forDefaultDb()</td>
-<td>URL → disc_validation.db</td>
+<td>URL → ERP.db</td>
 <td>LOW — static factory, rarely used</td>
 </tr>
 <tr>
 <td>PlaceBomVerb, WalkThruVerb, EnBlocVerb</td>
-<td>compConn URL → disc_validation.db</td>
+<td>compConn URL → ERP.db</td>
 <td>LOW — each creates compConn only for BOMWalker M_Product reads</td>
 </tr>
 <tr>
 <td>BackOfficeServer</td>
-<td>compLibConn URL → disc_validation.db</td>
+<td>compLibConn URL → ERP.db</td>
 <td><strong>MED</strong> — single connection serves all 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt). All DAOs query M_Product only via this connection.</td>
 </tr>
 <tr>
 <td>DesignerAPIImpl</td>
-<td>compLibConn URL → disc_validation.db</td>
+<td>compLibConn URL → ERP.db</td>
 <td><strong>MED</strong> — lazy-init connection for 6D/7D queries. Same pattern as BackOfficeServer.</td>
 </tr>
 <tr>
@@ -8080,15 +8080,15 @@ single-check validator classes. Currently testable only as monolith.</p>
 </table>
 <p><strong>4. New Witness Claims (DV015)</strong></p>
 <ul>
-<li>W-DV-DB-PRODUCT: M_Product &gt;= 2,475 rows in disc_validation.db</li>
-<li>W-DV-DB-PRODUCT: M_Product_Category &gt;= 46 rows in disc_validation.db</li>
+<li>W-DV-DB-PRODUCT: M_Product &gt;= 2,475 rows in ERP.db</li>
+<li>W-DV-DB-PRODUCT: M_Product_Category &gt;= 46 rows in ERP.db</li>
 <li>W-DV-DB-PRODUCT: M_PRODUCT_VERSION = DV015 in AD_SysConfig</li>
 </ul>
 <p><strong>5. Concerns</strong></p>
 <ol>
 <li><strong>Dual-write complexity.</strong> ProductRegistrar.ensureProductCatalog now writes to both compConn and discConn. This is transitional — Step 6 (drop M_Product from component_library.db) will eliminate the compConn write. Until then, both copies must stay in sync.</li>
-<li><strong>BackOffice DAOs parameter name.</strong> The parameter is still named <code>compLibConn</code> but now points to disc_validation.db. Not a bug — the DAO doesn't care about the connection source, only the table schema. Renaming to <code>productConn</code> is cosmetic and deferred.</li>
-<li><strong>DesignerDAO reads from bomConn.</strong> DesignerDAO.listProducts/countProducts/categoryCounts read M_Product from the BOM DB copy, not component_library.db or disc_validation.db. These are unaffected. The BOM DB copy is populated by IFCtoBOM (dead code per R7 but still runs).</li>
+<li><strong>BackOffice DAOs parameter name.</strong> The parameter is still named <code>compLibConn</code> but now points to ERP.db. Not a bug — the DAO doesn't care about the connection source, only the table schema. Renaming to <code>productConn</code> is cosmetic and deferred.</li>
+<li><strong>DesignerDAO reads from bomConn.</strong> DesignerDAO.listProducts/countProducts/categoryCounts read M_Product from the BOM DB copy, not component_library.db or ERP.db. These are unaffected. The BOM DB copy is populated by IFCtoBOM (dead code per R7 but still runs).</li>
 </ol>
 <table>
 <thead>
@@ -8104,7 +8104,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 </tr>
 <tr>
 <td>13-file Java change</td>
-<td><strong>CORRECT</strong> — all M_Product reads now from disc_validation.db</td>
+<td><strong>CORRECT</strong> — all M_Product reads now from ERP.db</td>
 </tr>
 <tr>
 <td>ProductRegistrar dual-write</td>
@@ -8139,12 +8139,12 @@ single-check validator classes. Currently testable only as monolith.</p>
 </thead>
 <tbody>
 <tr>
-<td>disc_validation.db M_Product = 2,475</td>
+<td>ERP.db M_Product = 2,475</td>
 <td><code>SELECT COUNT(*) FROM M_Product</code> = 2475</td>
 <td><strong>CONFIRMED</strong></td>
 </tr>
 <tr>
-<td>disc_validation.db M_Product_Category = 46</td>
+<td>ERP.db M_Product_Category = 46</td>
 <td><code>SELECT COUNT(*) FROM M_Product_Category</code> = 46</td>
 <td><strong>CONFIRMED</strong></td>
 </tr>
@@ -8159,7 +8159,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <td><strong>CONFIRMED</strong></td>
 </tr>
 <tr>
-<td>disc_validation.db table count</td>
+<td>ERP.db table count</td>
 <td>28 tables (was 25 pre-Step 3: +M_Product, +M_Product_Category, +sqlite_sequence)</td>
 <td><strong>CONFIRMED</strong></td>
 </tr>
@@ -8378,9 +8378,9 @@ single-check validator classes. Currently testable only as monolith.</p>
 </thead>
 <tbody>
 <tr>
-<td>S65 disc_validation.db as M_Product source</td>
+<td>S65 ERP.db as M_Product source</td>
 <td>Gap 8 §8.1 (line 521-526)</td>
-<td>"M_Product is a transitional copy" is stale — ProductRegistrar dual-writes, BOMWalker reads from disc_validation.db</td>
+<td>"M_Product is a transitional copy" is stale — ProductRegistrar dual-writes, BOMWalker reads from ERP.db</td>
 </tr>
 <tr>
 <td>G3-DIGEST 1015-element precision issue</td>
@@ -8390,7 +8390,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <tr>
 <td>Gap 4 source table update</td>
 <td>Line 224</td>
-<td>component_library.db listed for "Product catalog" — after S65, authoritative M_Product reads come from disc_validation.db</td>
+<td>component_library.db listed for "Product catalog" — after S65, authoritative M_Product reads come from ERP.db</td>
 </tr>
 <tr>
 <td>R27 completion in Mantra</td>
@@ -8427,8 +8427,8 @@ single-check validator classes. Currently testable only as monolith.</p>
 - Update R27 in Mantra as DONE
 - Assign R-number to G3-DIGEST 1015-element precision finding</p>
 <p><strong>Content updates (20 min):</strong>
-- Update Gap 8 §8.1 for S65 disc_validation.db migration
-- Update Gap 4 source table for disc_validation.db
+- Update Gap 8 §8.1 for S65 ERP.db migration
+- Update Gap 4 source table for ERP.db
 - Update Geometric Fingerprint witnesses: W-EQUIV → W-MULTISET
 - Add Gap 10 cross-reference or track in LAST_MILE
 - Note Layer 2 spec-vs-implementation gap explicitly</p>
@@ -9819,7 +9819,7 @@ A leaf item is an M_BOM with no M_BOM_Line children."</p>
 <tr>
 <td>Leaf product catalog</td>
 <td>M_Product</td>
-<td>component_library.db → disc_validation.db</td>
+<td>component_library.db → ERP.db</td>
 <td>Dimensions, geometry_hash</td>
 </tr>
 <tr>

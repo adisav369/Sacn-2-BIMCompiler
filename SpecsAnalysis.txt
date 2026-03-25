@@ -1,0 +1,209 @@
+SpecsAnalysis — M_Product_Category + AD_Org Reconciliation
+============================================================
+Date: 2026-03-25
+Sources: DISC_VALIDATION_DB_SRS.md §10-11, DATA_MODEL.md §2+§7,
+         BIM_Designer_SRS.md §30.7, DISC_VALIDATE_SRS.md §3-4,
+         MANIFESTO.md §Category Population, TerminalAnalysis.md §M_Product_Category
+
+1. TWO ORTHOGONAL AXES (confirmed)
+-----------------------------------
+  AD_Org             = WHO owns (discipline: ARC, STR, FP, ELEC, ACMV, CW, SP, LPG, REB, * shared)
+  M_Product_Category = WHAT type (taxonomy: sprinkler head, pipe segment, wall)
+
+  Link: M_Product_Category.AD_Org_ID → AD_Org (each category knows its owning discipline)
+  Source: DISC_VALIDATION_DB_SRS.md line 471-473, 794-798
+
+2. AD_Org FOR HIERARCHY (confirmed — iDempiere native)
+-------------------------------------------------------
+  iDempiere's AD_Org supports hierarchy natively via IsSummary flag + AD_OrgInfo.
+  A parent "MEP" org can summarize FP+ELEC+ACMV+CW+SP+LPG as peers.
+  RE structural frame → AD_Org = '*' (shared); RE furniture/finishes → AD_Org = 'ARC'.
+  AD_Org table already spec'd with IsSummary (DISC_VALIDATION_DB_SRS.md line 726).
+  No parent MEP row seeded yet — to be added when hierarchy is implemented.
+
+3. Parent_Category_ID — UNNECESSARY, TO BE DROPPED
+----------------------------------------------------
+  Standard iDempiere M_Product_Category is FLAT (no parent FK).
+  BIM_Designer_SRS.md §30.7.1 added Parent_Category_ID as a custom self-reference.
+  DECISION (2026-03-25): DROP Parent_Category_ID. Reasons:
+  - iDempiere M_Product_Category is flat. That is the religion.
+  - The cascade (RE→GF→LIVING→leaf) is already expressed by M_BOM_Line parent-child.
+  - Swap-pool constraint = match m_product_category_id at the same BOM level.
+  - AD_Org.IsSummary handles discipline grouping (MEP→FP+ELEC+...) natively.
+  - Parent_Category_ID duplicates the BOM tree at the category level.
+  Migration: DATA_MODEL.md §7.6 session N+8 — drop column.
+
+4. M_Product_Category COLUMNS (iDempiere standard)
+----------------------------------------------------
+  Required: M_Product_Category_ID, Name, Value, IsActive
+  Project addition: AD_Org_ID (FK to AD_Org)
+  Questionable: Parent_Category_ID (see §3 above — may drop in favour of AD_Org hierarchy)
+  Gap: DATA_MODEL.md §2 omits Parent_Category_ID from schema. If kept, must be added.
+
+5. bom_category → AD_Org REPLACEMENT (confirmed)
+--------------------------------------------------
+  "bom_category is a string proxy for AD_Org" — DISC_VALIDATION_DB_SRS.md line 789-792.
+  Once AD_Org_ID exists on m_bom, bom_category becomes derived display or drops entirely.
+  Migration table: DISC_VALIDATION_DB_SRS.md §11.6.3 (8 table.column replacements).
+
+6. DocBaseType — REDUNDANT (confirmed)
+----------------------------------------
+  DocBaseType = singular 'Construction'. Classification lives on M_Product_Category,
+  not on C_DocType. Legacy columns (DocBaseType, DocSubType) deprecated per DATA_MODEL.md §7.
+  Migration: remove after M_Product_Category fully adopted on all BOM databases.
+
+7. ProductCategory.java vs M_Product_Category TABLE
+-----------------------------------------------------
+  ProductCategory.java = Java class with deriveDiscipline(ifcClass) — LEGACY inference.
+  M_Product_Category   = database table — DATA-DRIVEN taxonomy.
+  They are related but different. The Java class is marked for retirement when AD_Org
+  is implemented (DISC_VALIDATION_DB_SRS.md line 774-786). Post-AD_Org, deriveDiscipline()
+  becomes extraction-only fallback, never called in the compile path.
+
+8. TE (Terminal) CLASSIFICATION — RESOLVED
+--------------------------------------------
+  TE is M_Product_Category = CO (Commercial), with discipline-driven L2 cascade
+  (ARC, STR, FP, ACMV, ELEC, CW, SP, LPG). Confirmed by TerminalAnalysis.md line 39.
+  MANIFESTO.md updated 2026-03-25 to move TE from "(unclassified)" to CO.
+
+9. UNRECONCILED GAPS
+---------------------
+  a. DATA_MODEL.md §2 — UPDATED: flat table, Parent_Category_ID marked DEPRECATED.
+  b. DATA_MODEL.md §7.6 migration plan — predates DISC_VALIDATION_DB_SRS §11 AD_Org study.
+     Needs update to reference AD_Org migration path.
+  c. BIM_Designer_SRS.md §30.7.2 — only shows CO (discipline-driven) cascade tree.
+     RE (room-driven) cascade absent. Needs RE tree or cross-reference.
+  d. AD_Org seed data — no parent "MEP" summary org yet. Add when hierarchy implemented.
+  e. 22 RE buildings — floor-level categories only, no room categories. Re-extraction needed.
+
+10. RECOMMENDED MIGRATION SEQUENCE
+------------------------------------
+  1. Seed AD_Org with parent summary rows (MEP, ALL) if grouped hierarchy needed
+  2. Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map
+  3. Populate AD_Org_ID from existing bom_category/discipline strings (CASE mapping)
+  4. Retire deriveDiscipline() from compile path (extraction-only fallback)
+  5. Drop bom_category string columns (or keep as derived display)
+  6. Drop deprecated DocBaseType/DocSubType columns
+  7. Drop Parent_Category_ID column — DECIDED: unnecessary (iDempiere flat, BOM tree = cascade)
+
+============================================================
+PART 2 — ERP Blind Spot Audit (2026-03-25, Watchdog)
+============================================================
+Cross-spec audit for iDempiere patterns that are stretched, misapplied,
+or under-documented. Reviewed with project owner (iDempiere co-founder).
+
+11. C_DocType CARDINALITY — NO ISSUE (auditor error)
+------------------------------------------------------
+  Auditor mistakenly identified RE_SH, CO_TE etc. as C_DocType rows.
+  They are M_Product_Category values. MANIFESTO is correct: ONE C_DocType
+  = "Construction Order". Classification lives on M_Product_Category.
+  No action needed.
+
+12. C_Campaign AS DESIGN THEME — CONFIRMED VALID
+--------------------------------------------------
+  iDempiere C_Campaign is marketing promotions. Project reuses it for
+  architectural design themes (Bali, Scandinavian, Industrial).
+  Owner confirms: close enough — it's a grouping entity for variant
+  classification that is orthogonal to product category and discipline.
+  C_Campaign drives which BOM variant is offered to the buyer.
+  No action needed — usage is an acceptable iDempiere analogy.
+
+13. M_InOut — 4D SCHEDULING (materials movement)
+--------------------------------------------------
+  M_InOut is NOT site allocation. It belongs under 4D scheduling as
+  materials movement — receipt of materials to site, delivery of
+  prefab panels, concrete pours. iDempiere M_InOut = goods receipt/shipment.
+
+  Current spec placement: SystemContract.md §6 maps M_InOut to "compilation
+  batch / placing buildings on plots." This is WRONG. Plot placement is
+  C_ProjectLine (one plot = one C_ProjectLine, FK to C_Order).
+
+  M_InOut enters the picture when physical materials arrive on site:
+  - M_InOut = delivery batch (truck arrives with wall panels)
+  - M_InOutLine = individual material receipt (100 panels received)
+  - M_InOutLineMA = lot/attribute tracking (batch number, inspection date)
+
+  **Action:** Correct SystemContract.md §6 M_InOut mapping. Move to 4D
+  scheduling context under ProjectOrderBlueprint.md §5.1. Plot placement
+  stays under C_Project → C_ProjectLine.
+
+  See also: ProjectOrderBlueprint.md §5.1 (4D = topological sort of BOM tree).
+  M_InOut adds the physical logistics dimension — when materials actually
+  arrive vs when the BOM sequence says they're needed.
+
+14. AD_Val_Rule — TWO TYPES OF RULES (spatial + regulatory)
+-------------------------------------------------------------
+  Rules come from two sources that are SYMBIOTIC, not competing:
+
+  a. SPATIAL (mined from buildings):
+     Placement rules learned from real extracted buildings. Dimensions per
+     (ifc_class × storey). These encode "what buildings actually look like" —
+     empirical patterns from 35 real buildings. Stored in ad_space_type,
+     ad_element_mep, ad_space_dim, placement_rules tables.
+     → Already documented in DISC_VALIDATION_DB_SRS.md §10-11.
+
+  b. REGULATORY (from standards bodies):
+     Building codes: UBBL (Malaysia), NFPA 13 (fire), IBC (US), BCA (Australia).
+     These encode "what the law requires" — sprinkler spacing, fire door
+     frequency, emergency light proximity to exits.
+     → Stored in ad_val_rule with jurisdiction scope (pack_id, valid_from/to).
+     → Partially documented in DocValidate.md, ad_code_requirement table.
+
+  The two are SYMBIOTIC:
+  - Spatial rules say: "rooms of this type typically have 1 sprinkler."
+  - Regulatory rules say: "NFPA 13 requires sprinkler coverage ≥ 3000mm."
+  - Together: spatial rules propose placement, regulatory rules validate it.
+  - Compiler places per spatial rules, AD_Val_Rule gates per regulatory rules.
+  - This IS the Three Concerns: spatial = WHERE, regulatory = HOW.
+
+  **Action:** This is a CROWD PULLER for the github.io site. Create a
+  dedicated spec (or major section in DocValidate.md) documenting:
+  - The two rule sources and their symbiotic relationship
+  - How spatial rules are mined (extraction pipeline → ad_space_type/dim)
+  - How regulatory rules are authored (standards → ad_val_rule + pack_id)
+  - How they compose at compile time (spatial proposes, regulatory validates)
+  - Rule provenance: every rule traces to either a building (extraction)
+    or a standards clause (authority_id + clause_ref on ad_val_rule)
+  - Cross-links from MANIFESTO §HOW, DocValidate.md, DISC_VALIDATION_DB_SRS.md
+  - Prominent link from github.io landing page (INDEX.md)
+
+  **Prompt task:** Write prompts/15_rule_provenance_spec.md for this.
+
+15. processIt() vs ModelValidator — ENTERPRISE SCALING
+-------------------------------------------------------
+  iDempiere's ModelValidator hooks (beforeSave, afterSave, docValidate)
+  power the Process Engine for interactive ERP. The BIM compiler uses
+  custom processIt() dispatch because it's a batch compiler, not an
+  interactive system — there's no UI event loop driving ModelValidator.
+
+  Owner confirms: this is CORRECT for current scope. Wire ModelValidator
+  pattern later when the system scales to enterprise (multi-user, real-time
+  validation, interactive BOM editing in the designer).
+
+  **Note for enterprise scaling:**
+  - ModelValidator alignment becomes necessary when BIM Designer supports
+    real-time collaborative editing (multi-user, conflict detection)
+  - At that scale, also relevant: Federated Model Spatial DB addon
+    (93% memory reduction on 93K elements — StrategicIndustryPositioning.md
+    line 238). The current in-memory approach handles TE's 48K elements but
+    won't scale to multi-building federation without spatial DB partitioning.
+  - These two (ModelValidator + FederatedModel) are companion features for
+    enterprise deployment, not needed for the current compiler pipeline.
+
+  **Action:** Add note to ProjectOrderBlueprint.md §14 (roadmap) under
+  "Enterprise Scaling" heading.
+
+16. REMAINING FUTURE GAPS (noted, not blocking)
+-------------------------------------------------
+  These are real gaps but belong to future feature work:
+
+  a. M_PriceList versioning (currency, CIDB cost breakdown, tax) → 5D feature
+  b. C_Project depth (budget control, phases, milestones) → C_Project feature
+  c. AD_PrintFormat role (rendering vs filtering vs expansion) → BIM Designer UI
+  d. M_AttributeSet for continuous dimensions (pipe length) → ASI feature
+  e. AD_ChangeLog scope (viewport vs BOM mutations) → undo/redo feature
+  f. Effectivity model (pack_id schema, resolution algorithm) → GAP-SC-4
+  g. Multi-currency / AD_Client → out of scope for single-jurisdiction
+
+  No action now. These are logged in SystemContract.md §10 gap register
+  or ProjectOrderBlueprint.md roadmap as appropriate.

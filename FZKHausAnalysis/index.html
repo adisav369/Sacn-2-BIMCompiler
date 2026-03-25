@@ -2425,10 +2425,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#0a-register-ifc-element-types-in-disc_validationdb" class="md-nav__link">
+  <a href="#0a-register-ifc-element-types-in-erpdb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        0a. Register IFC element types in disc_validation.db
+        0a. Register IFC element types in ERP.db
       
     </span>
   </a>
@@ -3420,10 +3420,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#0a-register-ifc-element-types-in-disc_validationdb" class="md-nav__link">
+  <a href="#0a-register-ifc-element-types-in-erpdb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        0a. Register IFC element types in disc_validation.db
+        0a. Register IFC element types in ERP.db
       
     </span>
   </a>
@@ -4362,13 +4362,13 @@ Canonical references: <code>docs/SourceCodeGuide.md</code> §Chapter 4 (Steps 1�
                S8 update docs
 </code></pre></div>
 <h3 id="step-0-seed-databases-before-extraction">Step 0 — Seed databases (BEFORE extraction)<a class="headerlink" href="#step-0-seed-databases-before-extraction" title="Permanent link">&para;</a></h3>
-<p><strong>Both</strong> <code>disc_validation.db</code> and <code>component_library.db</code> must be seeded before
+<p><strong>Both</strong> <code>ERP.db</code> and <code>component_library.db</code> must be seeded before
 <code>extract.py</code> runs. <code>extract.py</code> reads <code>ad_ifc_class_map</code> at startup to decide
 which IFC classes to extract — unregistered types are <strong>silently skipped</strong>.
 Classification tables (<code>ad_material_thermal</code>, <code>ad_wall_type</code>, <code>ad_beam_type</code>)
 must also exist before the pipeline creates products.</p>
 <p>Spec: <code>docs/SourceCodeGuide.md</code> §Step 1 (IFC Class Authority Table), <code>docs/DISC_VALIDATION_DB_SRS.md</code> §5.2</p>
-<h4 id="0a-register-ifc-element-types-in-disc_validationdb">0a. Register IFC element types in disc_validation.db<a class="headerlink" href="#0a-register-ifc-element-types-in-disc_validationdb" title="Permanent link">&para;</a></h4>
+<h4 id="0a-register-ifc-element-types-in-erpdb">0a. Register IFC element types in ERP.db<a class="headerlink" href="#0a-register-ifc-element-types-in-erpdb" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code><span class="c1"># 0a-i. List IFC types in the file</span>
 python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;</span>
 <span class="s2">import ifcopenshell</span>
@@ -4379,11 +4379,11 @@ python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;
 <span class="s2">&quot;</span>
 
 <span class="c1"># 0a-ii. Compare with registered types</span>
-sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span><span class="se">\</span>
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span><span class="s2">&quot;SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class&quot;</span>
 
 <span class="c1"># 0a-iii. Add missing types (example: IfcMember for timber rafters)</span>
-sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span><span class="s2">&quot;</span>
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="s2">&quot;</span>
 <span class="s2">INSERT OR IGNORE INTO ad_ifc_class_map</span>
 <span class="s2">    (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)</span>
 <span class="s2">VALUES</span>

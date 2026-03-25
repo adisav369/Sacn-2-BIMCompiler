@@ -5583,14 +5583,14 @@ are waste.</p>
 </tr>
 <tr>
 <td>§6 Phase 1</td>
-<td>No geometry in disc_validation.db</td>
+<td>No geometry in ERP.db</td>
 <td>DiscValidationDBTest</td>
 <td>W-DV-DB-ND</td>
 <td>PASS</td>
 </tr>
 <tr>
 <td>§6 Phase 2</td>
-<td>CalibrationDAO reads from disc_validation.db</td>
+<td>CalibrationDAO reads from ERP.db</td>
 <td>DiscValidationDBTest</td>
 <td>W-DV-DB-DUAL-READ</td>
 <td>PASS</td>
@@ -5639,7 +5639,7 @@ are waste.</p>
 <tr>
 <td>SPEC ONLY</td>
 <td>24</td>
-<td>Spec written, test spec defined, code not yet written. +2 disc_validation Phase 2b/3.</td>
+<td>Spec written, test spec defined, code not yet written. +2 ERP Phase 2b/3.</td>
 </tr>
 <tr>
 <td>PENDING</td>
@@ -5990,8 +5990,8 @@ requires a triage pass to suppress false positives so the signal stays clean.</p
 - After intentional changes: re-seal (see below)
 - If BROKEN unexpectedly: <code>bash scripts/verify_test_seal.sh --detail</code></p>
 <hr />
-<p><strong>Sealed:</strong> 2026-03-25 (v33: S74 Phase 3 — remove CO_EmptySpaceLine, pipeline migrated to M_BOM_Line RoomSlot)
-<strong>Super-hash:</strong> <code>d9c257f315e3bcd5d5fb1d28aa2cedbf81b43904c8a384fdfe15c8b74894e8db</code></p>
+<p><strong>Sealed:</strong> 2026-03-25 (v34: S77 Java routing DocBaseType → M_Product_Category)
+<strong>Super-hash:</strong> <code>1f44f324715e0d716c71593e8c64e180d9285401fec00ac4988a3b3a711150dd</code></p>
 <p><strong>S51-AUDIT pending re-seal:</strong> The following hardening changes require a re-seal once applied:
 - <code>assumeTrue</code> → <code>fail()</code> in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
 - <code>assertTrue(true)</code> tautologies removed (F5Integration, Calibration)</p>

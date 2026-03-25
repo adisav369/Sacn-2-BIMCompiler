@@ -959,10 +959,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#m_product_category-flat-classification-aligned-with-idempiere-naming" class="md-nav__link">
+  <a href="#m_product_category-flat-classification-idempiere-standard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        M_Product_Category (flat classification — aligned with iDempiere naming)
+        M_Product_Category (flat classification — iDempiere standard)
       
     </span>
   </a>
@@ -3225,10 +3225,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#m_product_category-flat-classification-aligned-with-idempiere-naming" class="md-nav__link">
+  <a href="#m_product_category-flat-classification-idempiere-standard" class="md-nav__link">
     <span class="md-ellipsis">
       
-        M_Product_Category (flat classification — aligned with iDempiere naming)
+        M_Product_Category (flat classification — iDempiere standard)
       
     </span>
   </a>
@@ -3541,14 +3541,14 @@ No hand-editing. No patching. Code produces data.</p>
 <p><strong>Updated:</strong> 2026-03-19
 <strong>Principle:</strong> 4-DB split.
 - <code>component_library.db</code> = product LOD catalog (M_Product, geometry, orientation)
-- <code>disc_validation.db</code> = discipline metadata (schedules, types, placement rules, alias cascade) — see <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>
+- <code>ERP.db</code> = discipline metadata (schedules, types, placement rules, alias cascade) — see <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>
 - <code>{PREFIX}_BOM.db</code> = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz)
 - <code>output.db</code> = transactional (fresh each compile)</p>
 <p>At compile time, <code>run_RosettaStones.sh</code> creates <code>library/_SH_compile.db</code> (or <code>_DX_compile.db</code>) — a temp copy of <code>{PREFIX}_BOM.db</code> enriched with shared schema + C_DocType. Java reads via <code>-Dbom.db=library/_SH_compile.db</code>. <strong>Note:</strong> M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.</p>
 <p><strong>Note:</strong> Discipline metadata migration complete (session 41). All discipline tables
 (ad_space_type, ad_element_mep, ad_wall_face, placement_rules, etc.) now live exclusively
-in disc_validation.db. Java code (MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO)
-reads from disc_validation.db. component_library.db reduced from 81→21 tables (LOD catalog only).
+in ERP.db. Java code (MEPAD, MEPBOMResolver, ManifestResolver, CalibrationDAO)
+reads from ERP.db. component_library.db reduced from 81→21 tables (LOD catalog only).
 See DISC_VALIDATION_DB_SRS.md §6.</p>
 <hr />
 <h2 id="1-extraction-pipeline-i_element_extraction-m_bom-m_bom_line">1. Extraction Pipeline — I_Element_Extraction → m_bom + m_bom_line<a class="headerlink" href="#1-extraction-pipeline-i_element_extraction-m_bom-m_bom_line" title="Permanent link">&para;</a></h2>
@@ -4107,118 +4107,67 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 </tr>
 </tbody>
 </table>
-<h3 id="m_product_category-flat-classification-aligned-with-idempiere-naming">M_Product_Category (flat classification — aligned with iDempiere naming)<a class="headerlink" href="#m_product_category-flat-classification-aligned-with-idempiere-naming" title="Permanent link">&para;</a></h3>
+<!-- Implementing SpecsAnalysis.txt §1 -->
+<h3 id="m_product_category-flat-classification-idempiere-standard">M_Product_Category (flat classification — iDempiere standard)<a class="headerlink" href="#m_product_category-flat-classification-idempiere-standard" title="Permanent link">&para;</a></h3>
+<p><strong>M_Product_Category is FLAT.</strong> No parent FK. No tree. This follows iDempiere standard
+where M_Product_Category is a simple grouping tag. The building→floor→room→leaf cascade
+is expressed by the BOM tree (M_BOM → M_BOM_Line parent-child relationships), not by
+the category table. To enforce swap-pool constraints, match <code>m_product_category_id</code> at
+the same BOM level — you never need to traverse a category tree.</p>
+<blockquote>
+<p><strong>Note:</strong> <code>Parent_Category_ID</code> was seeded in DV018 but is <strong>DEPRECATED — to be dropped.</strong>
+It duplicates the BOM tree hierarchy. See §7.6 migration plan.</p>
+</blockquote>
+<p>117 rows total (DV018 migration). Representative categories:</p>
 <table>
 <thead>
 <tr>
+<th>Level</th>
 <th>M_Product_Category_ID</th>
 <th>Name</th>
-<th>Purpose</th>
+<th>Example Buildings</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>RE</td>
-<td>Residential Template</td>
-<td>Standard residential decomposition</td>
+<td>Top-level</td>
+<td>RE, CO, IN, IP</td>
+<td>Residential, Commercial, Infrastructure, Industrial Plant</td>
+<td>SH, DX, TE, BR</td>
 </tr>
 <tr>
-<td>GF</td>
-<td>Ground Floor</td>
-<td>Habitable body</td>
+<td>Floor</td>
+<td>GF, L1, L2, L3, RF, FN, MS</td>
+<td>Ground Floor, Level 1–3, Roof, Foundation, Misc</td>
+<td>All buildings</td>
 </tr>
 <tr>
-<td>L1</td>
-<td>Level 1</td>
-<td>Ground floor assembly</td>
+<td>Room (RE)</td>
+<td>LIVING, KITCHEN, BEDROOM, BATHROOM, DINING, MASTER, CORRIDOR</td>
+<td>Room types — swap pool at room level</td>
+<td>SH, DM, DX, FK, AC</td>
 </tr>
 <tr>
-<td>L2</td>
-<td>Level 2</td>
-<td>Upper floor assembly</td>
+<td>Discipline (CO)</td>
+<td>ARC, STR, FP, ELEC, ACMV, CW, SP, LPG</td>
+<td>Discipline types — swap pool at discipline level</td>
+<td>TE, WA, WL, WT</td>
 </tr>
 <tr>
-<td>RF</td>
-<td>Roof</td>
-<td>Roof assemblies</td>
+<td>Infra segment</td>
+<td>SUP, DCK, ABT, TRK, ROAD, RAIL, GEO</td>
+<td>Segment types</td>
+<td>BR, RD, RL</td>
 </tr>
 <tr>
-<td>SL</td>
-<td>Slab</td>
-<td>Floor slab assemblies</td>
-</tr>
-<tr>
-<td>LI</td>
-<td>Living</td>
-<td>Living room settings</td>
-</tr>
-<tr>
-<td>BD</td>
-<td>Bedroom</td>
-<td>Bedroom settings</td>
-</tr>
-<tr>
-<td>KT</td>
-<td>Kitchen</td>
-<td>Kitchen settings</td>
-</tr>
-<tr>
-<td>BT</td>
-<td>Bathroom</td>
-<td>Bathroom/toilet settings</td>
-</tr>
-<tr>
-<td>DN</td>
-<td>Dining</td>
-<td>Dining settings</td>
-</tr>
-<tr>
-<td>FR</td>
-<td>Furniture</td>
-<td>Leaf furniture items</td>
-</tr>
-<tr>
-<td>WL</td>
-<td>Wall</td>
-<td>Wall assemblies</td>
-</tr>
-<tr>
-<td>PH</td>
-<td>Porch</td>
-<td>Porch modules</td>
-</tr>
-<tr>
-<td>PR</td>
-<td>Pair</td>
-<td>Duplex pair container</td>
-</tr>
-<tr>
-<td>HU</td>
-<td>Half-Unit</td>
-<td>Duplex half-unit</td>
-</tr>
-<tr>
-<td>MP</td>
-<td>MEP</td>
-<td>MEP trunk/service group</td>
-</tr>
-<tr>
-<td>CW</td>
-<td>Curtain Wall</td>
-<td>Curtain wall structure</td>
-</tr>
-<tr>
-<td>FN</td>
-<td>Foundation</td>
-<td>Foundation/transfer structure</td>
-</tr>
-<tr>
-<td>MS</td>
-<td>Miscellaneous</td>
-<td>Stair, railing, misc</td>
+<td>Structural</td>
+<td>PAIR, HALF_UNIT, SLAB, PORCH</td>
+<td>Assembly containers</td>
+<td>DX</td>
 </tr>
 </tbody>
 </table>
+<p>Full list: <code>migration/DV018_product_category_cascade.sql</code></p>
 <hr />
 <h2 id="3-component_librarydb-product-lod-catalog-geometry">3. component_library.db — Product LOD Catalog + Geometry<a class="headerlink" href="#3-component_librarydb-product-lod-catalog-geometry" title="Permanent link">&para;</a></h2>
 <p>Source of truth for product definitions, geometry, orientation, and extraction archive.
@@ -4226,7 +4175,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 INSERT OR IGNORE = reused across buildings). <code>M_Product_Image</code> links products to geometry.
 See <a href="../WorkOrderGuide/"><code>WorkOrderGuide.md</code></a> §"Drift Prevention" for enforced guards.</p>
 <p><strong>Discipline metadata (ad_space_type, ad_element_mep, ad_wall_face, placement_rules,
-etc.) is migrating to disc_validation.db</strong> — see <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>.
+etc.) is migrating to ERP.db</strong> — see <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>.
 Tables remain here temporarily (Phase 2 pending).</p>
 <h3 id="i_element_extraction-ifc-extraction-archive">I_Element_Extraction (IFC extraction archive)<a class="headerlink" href="#i_element_extraction-ifc-extraction-archive" title="Permanent link">&para;</a></h3>
 <p>The source of truth for extracted building element positions.
@@ -4503,7 +4452,7 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 <thead>
 <tr>
 <th>Table</th>
-<th style="text-align: center;">disc_validation.db</th>
+<th style="text-align: center;">ERP.db</th>
 <th style="text-align: center;">component_library.db</th>
 <th style="text-align: center;">{PREFIX}_BOM.db</th>
 <th>Purpose</th>
@@ -4571,12 +4520,12 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 <h3 id="62-duplication-analysis">6.2 Duplication Analysis<a class="headerlink" href="#62-duplication-analysis" title="Permanent link">&para;</a></h3>
 <p><strong>M_Product</strong> is the most duplicated table:
 - <strong>component_library.db</strong> is the master catalog (created by <code>ProductRegistrar.ensureProductCatalog()</code>)
-- <strong>disc_validation.db</strong> has a near-identical copy (2,477 vs 2,475) used for validation queries
+- <strong>ERP.db</strong> has a near-identical copy (2,477 vs 2,475) used for validation queries
 - <strong>{PREFIX}_BOM.db</strong> has small transitional copies for BOMWalker compatibility (target: remove)</p>
-<p><strong>M_Product_Category</strong> exists in both disc_validation.db and component_library.db with
+<p><strong>M_Product_Category</strong> exists in both ERP.db and component_library.db with
 identical IFC class mappings. Only one authoritative copy is needed.</p>
 <p><strong>AD_SysConfig</strong> is NOT truly duplicated — different schemas serve different purposes:
-- disc_validation.db: <code>Name/Value</code> pairs tracking schema migration versions (DV001–DV015)
+- ERP.db: <code>Name/Value</code> pairs tracking schema migration versions (DV001–DV015)
 - BOM databases: <code>config_key/config_value</code> pairs tracking per-building integrity hashes</p>
 <p><strong>C_DocType</strong> lives only in BOM databases (1 row each, e.g., RE_SH, RE_DX). In iDempiere,
 C_DocType is shared system configuration — it defines all document types centrally. Currently
@@ -4584,9 +4533,9 @@ written by <code>IFCtoBOMPipeline</code> per-building; at compile time, <code>sc
 the compile DB with additional C_DocType rows.</p>
 <h3 id="63-the-erpdb-concept">6.3 The ERP.db Concept<a class="headerlink" href="#63-the-erpdb-concept" title="Permanent link">&para;</a></h3>
 <p>In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
-They live once, centrally — not per-product or per-order. The current <code>disc_validation.db</code>
+They live once, centrally — not per-product or per-order. The current <code>ERP.db</code>
 already serves this role for most AD data but has a misleading name and incomplete coverage.</p>
-<p><strong>Proposed consolidation</strong> (rename disc_validation.db → ERP.db or create as superset):</p>
+<p><strong>Proposed consolidation</strong> (rename ERP.db → ERP.db or create as superset):</p>
 <table>
 <thead>
 <tr>
@@ -4598,7 +4547,7 @@ already serves this role for most AD data but has a misleading name and incomple
 <tbody>
 <tr>
 <td><strong>ERP shared</strong></td>
-<td><code>ERP.db</code> (was disc_validation.db)</td>
+<td><code>ERP.db</code> (was ERP.db)</td>
 <td>AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata</td>
 </tr>
 <tr>
@@ -4621,7 +4570,7 @@ already serves this role for most AD data but has a misleading name and incomple
 <p><strong>What changes:</strong>
 - C_DocType master definitions move to ERP.db (all 6+ rows). BOM databases get a copy at compile time (already happens via schema_snapshot_bom.sql).
 - M_Product_Category: single authoritative copy in ERP.db. Remove from component_library.db (or make it a compile-time copy).
-- M_Product in disc_validation.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.</p>
+- M_Product in ERP.db: evaluate whether validation queries can read from component_library.db directly, eliminating the copy.</p>
 <p><strong>What stays the same:</strong>
 - BOM databases keep their per-building ad_sysconfig (different schema, per-building data)
 - BOM databases keep transitional M_Product copies until BOMWalker migration completes
@@ -4635,9 +4584,9 @@ already serves this role for most AD data but has a misleading name and incomple
 </ol>
 <h3 id="65-risks-and-open-questions">6.5 Risks and Open Questions<a class="headerlink" href="#65-risks-and-open-questions" title="Permanent link">&para;</a></h3>
 <ul>
-<li><strong>Migration complexity:</strong> Renaming disc_validation.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.</li>
+<li><strong>Migration complexity:</strong> Renaming ERP.db affects every script that references it (Java properties, shell scripts, SQL paths). Needs careful grep + rename pass.</li>
 <li><strong>Backward compatibility:</strong> Existing BOM databases expect schema_snapshot_bom.sql enrichment at compile time. This mechanism continues regardless.</li>
-<li><strong>M_Product consolidation:</strong> Removing the disc_validation.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.</li>
+<li><strong>M_Product consolidation:</strong> Removing the ERP.db copy requires verifying all validation queries can use component_library.db. Some validation SQL may JOIN with AD_Org or ad_val_rule in the same DB connection — cross-DB JOINs in SQLite require ATTACH.</li>
 </ul>
 <blockquote>
 <p><strong>Decision:</strong> No action this session. This section documents the investigation.
@@ -4825,7 +4774,7 @@ carries classification at every level. C_DocType = ONE "Construction Order" (not
 RemoveCompressTest, OrderInheritanceTest, BomDropperOrderIdTest, BomDropCompileTest,
 BomDropConfigureTest, CompileBridgeTest, ASIAuthoringTest, DemoHouseTest, SelectionCascadeTest</p>
 <h3 id="74-m_product_category-hierarchy-current-vs-target">7.4 M_Product_Category Hierarchy — Current vs Target<a class="headerlink" href="#74-m_product_category-hierarchy-current-vs-target" title="Permanent link">&para;</a></h3>
-<p><strong>Current (disc_validation.db, 46 rows):</strong> IFC element classification only (IFC_WALL→STR,
+<p><strong>Current (ERP.db, 46 rows):</strong> IFC element classification only (IFC_WALL→STR,
 IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.</p>
 <p><strong>Missing for cascade model (need migration to add):</strong>
 - Top-level: RE (Residential), IN (Infrastructure), CO (Commercial), IP (Industrial Plant)
@@ -4833,22 +4782,26 @@ IFC_DOOR→ARC, etc.) + 4 parent groups (STR, MEP, ARC, ASM) + assembly types.</
 - Room-level: LI (Living), KT (Kitchen), BD (Bedroom), BT (Bathroom), DN (Dining), FR (Furniture), etc.
 - Infra segments: SUP, DCK, ABT, TRK, ROAD, RAIL</p>
 <p>These values already exist as <code>bom_category</code> strings on <code>m_bom</code> rows in BOM databases — they just
-aren't registered as M_Product_Category rows in disc_validation.db. Migration: INSERT OR IGNORE
+aren't registered as M_Product_Category rows in ERP.db. Migration: INSERT OR IGNORE
 from the existing bom_category vocabulary.</p>
 <h3 id="75-erpdb-rename-touchpoint-count">7.5 ERP.db Rename — Touchpoint Count<a class="headerlink" href="#75-erpdb-rename-touchpoint-count" title="Permanent link">&para;</a></h3>
-<p>Renaming <code>disc_validation.db</code> → <code>ERP.db</code> affects:
+<p>Renaming <code>ERP.db</code> → <code>ERP.db</code> affects:
 - Java system property references: <code>disc.validation.db</code> (grep needed for exact count)
 - Shell scripts: <code>run_RosettaStones.sh</code>, <code>run_tests.sh</code>, extraction scripts
 - Python scripts: <code>RosettaStoneToBOM.py</code>, <code>RosettaStoneExtract.py</code>
 - Doc references across ~10 specs
 - Estimated total touchpoints: 40–60 (bounded task, separate session)</p>
+<!-- Implementing SpecsAnalysis.txt §2 -->
 <h3 id="76-migration-plan-follow-up-sessions">7.6 Migration Plan (follow-up sessions)<a class="headerlink" href="#76-migration-plan-follow-up-sessions" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Session N+1:</strong> Add missing M_Product_Category rows to disc_validation.db (DV018 migration)</li>
+<li><strong>Session N+1:</strong> Add missing M_Product_Category rows to ERP.db (DV018 migration) — <strong>DONE (117 rows)</strong></li>
 <li><strong>Session N+2:</strong> Populate <code>m_product_category_id</code> on BUILDING BOMs (currently NULL where doc_base_type is set)</li>
 <li><strong>Session N+3:</strong> Migrate Java routing from doc_base_type → m_product_category_id (BomDropper, BuildingRegistry, CompilationPipeline first)</li>
 <li><strong>Session N+4:</strong> Remove doc_base_type/doc_sub_type columns from m_bom schema (or mark deprecated)</li>
-<li><strong>Session N+5:</strong> Rename disc_validation.db → ERP.db + propagate all touchpoints</li>
+<li><strong>Session N+5:</strong> Rename ERP.db → ERP.db + propagate all touchpoints</li>
+<li><strong>Session N+6:</strong> Add AD_Org_ID FK to m_bom, C_OrderLine, component_types, ad_ifc_class_map — replacing <code>bom_category</code> string proxy (per DISC_VALIDATION_DB_SRS.md §11.6.3)</li>
+<li><strong>Session N+7:</strong> Retire <code>deriveDiscipline()</code> from compile path — extraction-only fallback (per DISC_VALIDATION_DB_SRS.md §11.6.3a)</li>
+<li><strong>Session N+8:</strong> Drop <code>Parent_Category_ID</code> column from M_Product_Category — unnecessary invention. Hierarchy lives in M_BOM_Line, not in the category table. AD_Org.IsSummary handles discipline grouping (iDempiere-native).</li>
 <li><strong>Each session:</strong> Propagate doc corrections to 1–2 specs from §7.2 list</li>
 </ol>
 <hr />

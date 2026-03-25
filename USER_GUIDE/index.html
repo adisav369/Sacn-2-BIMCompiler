@@ -5306,7 +5306,7 @@ Example: <code>0.000,0.502,0.753,0.100</code> = blue glass, 10% opaque.</p>
 <h3 id="dimension-range-validation-dv010">Dimension Range Validation (DV010)<a class="headerlink" href="#dimension-range-validation-dv010" title="Permanent link">&para;</a></h3>
 <p>When onboarding a new IFC file, the pipeline checks every extracted element's
 dimensions (W, D, H) against typical ranges mined from 20 real buildings
-(415 rules, 25 IFC classes, stored in <code>disc_validation.db</code>).</p>
+(415 rules, 25 IFC classes, stored in <code>ERP.db</code>).</p>
 <p>The check runs automatically as a pre-flight in the IFC-to-BOM pipeline:</p>
 <div class="highlight"><pre><span></span><code>IFC → extract.py → ExtractionPopulator → DimensionRangeValidator → BOM builders
 </code></pre></div>

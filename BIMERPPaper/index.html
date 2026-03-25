@@ -3183,7 +3183,7 @@ ADempiere (2006) | iDempiere (2010) | Author, <em>Open Source ERP</em> (2010) | 
 <p><strong>Jurisdiction scoping via AD_Val_Rule:</strong> Currently Malaysian UBBL (30 rules). The target is 200+ rules across 6 jurisdictions (SG, UK, AU, US, EU, HK). Each jurisdiction is a set of AD_Val_Rule rows with threshold parameters — not a code branch. The architecture is proven; the rule population is the work ahead.</p>
 </li>
 <li>
-<p><strong>IFC version bridging:</strong> A 4-tier alias cascade in disc_validation.db resolves IFC2x3's generic classes (IfcFlowTerminal) to IFC4's specific classes (IfcOutlet) — 84 alias rows covering 85% of MEP element names. New IFC types are added via INSERT into <code>ad_ifc_class_map</code> (46 rows), not code changes (see <code>docs/DISC_VALIDATION_DB_SRS.md</code>).</p>
+<p><strong>IFC version bridging:</strong> A 4-tier alias cascade in ERP.db resolves IFC2x3's generic classes (IfcFlowTerminal) to IFC4's specific classes (IfcOutlet) — 84 alias rows covering 85% of MEP element names. New IFC types are added via INSERT into <code>ad_ifc_class_map</code> (46 rows), not code changes (see <code>docs/DISC_VALIDATION_DB_SRS.md</code>).</p>
 </li>
 <li>
 <p><strong>Calibration against real buildings:</strong> CalibrationDAO compares rule predictions (what the validator <em>thinks</em> should be placed) against actual engineer decisions extracted from the Terminal model (what <em>was</em> placed). This grounds the rules in professional practice, not just regulatory text (see <code>docs/CALIBRATION_SRS.md</code>).</p>

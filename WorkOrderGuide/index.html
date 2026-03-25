@@ -4837,14 +4837,14 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 <h2 id="how-to-add-a-new-building">How to Add a New Building<a class="headerlink" href="#how-to-add-a-new-building" title="Permanent link">&para;</a></h2>
 <h3 id="step-0-ensure-ifc-element-types-are-registered-one-time">Step 0 — Ensure IFC element types are registered (one-time)<a class="headerlink" href="#step-0-ensure-ifc-element-types-are-registered-one-time" title="Permanent link">&para;</a></h3>
 <p><code>extract.py</code> reads its list of supported IFC classes from the authority table
-<code>ad_ifc_class_map</code> in <code>library/disc_validation.db</code>. If the new IFC file contains
+<code>ad_ifc_class_map</code> in <code>library/ERP.db</code>. If the new IFC file contains
 element types not in that table, they will be <strong>silently skipped</strong>.</p>
 <p>Check coverage:
 <div class="highlight"><pre><span></span><code><span class="c1"># List IFC types in the file</span>
 python3<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import ifcopenshell; f=ifcopenshell.open(&#39;source.ifc&#39;); print(sorted(set(e.is_a() for e in f.by_type(&#39;IfcElement&#39;))))&quot;</span>
 
 <span class="c1"># Compare with registered types</span>
-sqlite3<span class="w"> </span>library/disc_validation.db<span class="w"> </span><span class="s2">&quot;SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class&quot;</span>
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class="s2">&quot;SELECT ifc_class FROM ad_ifc_class_map WHERE is_active=1 ORDER BY ifc_class&quot;</span>
 </code></pre></div></p>
 <p>Add missing types:
 <div class="highlight"><pre><span></span><code><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">ad_ifc_class_map</span>
