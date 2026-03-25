@@ -80,7 +80,7 @@ public class VerbRegistry {
     }
 
     /**
-     * Static factory that registers all 74 built-in verbs.
+     * Static factory that registers all 75 built-in verbs.
      */
     public static VerbRegistry createDefault() {
         VerbRegistry reg = new VerbRegistry();
@@ -170,6 +170,9 @@ public class VerbRegistry {
         // Phase J: surface verbs
         reg.register(new AlongVerb());
         reg.register(new CornerVerb());
+        // Phase F: post-compilation quality verbs (BIM_COBOL.md §17)
+        // TRIM-1: Wire TrimWallsToRoofVerb — ACTION_ROADMAP Phase F
+        reg.register(new TrimWallsToRoofVerb());
         // HELLO WORLD — permanent dual-path proof
         reg.register(new HelloWorldVerb());
         return reg;

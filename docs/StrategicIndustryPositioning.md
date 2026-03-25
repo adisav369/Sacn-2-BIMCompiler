@@ -340,7 +340,7 @@ itself after every edit.**
 │  │                                                    │  │
 │  │  IFC → Extract → Classify → BOM → Compile → Prove │  │
 │  │  48,428 elements → 700 BOM lines → C_Order        │  │
-│  │  64 verbs · 196 witnesses · G1-G6 proven           │  │
+│  │  75 verbs · 202 witnesses · G1-G6 proven           │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │                   ERP / PROCUREMENT                     │

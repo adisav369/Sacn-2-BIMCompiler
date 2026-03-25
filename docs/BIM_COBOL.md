@@ -3,13 +3,13 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 <div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fce4ec, #f3e5f5, #fce4ec); border-left: 4px solid #ad1457; border-right: 4px solid #ad1457;">
-<b>64 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.
+<b>75 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.
 </div>
 
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **64 verbs implemented, 196 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
+**Status:** ACTIVE — **75 verbs implemented, 202 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
 **Supplements:** MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (W_Verb_Node lineage)
@@ -119,7 +119,7 @@ These are all *high-level construction verbs* that currently require manual auth
 
 ### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **64 verbs implemented, 196 witnesses:**
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **75 verbs implemented, 202 witnesses:**
 
 | # | Verb | Layer | Witnesses | What it proves |
 |---|---|---|---|---|
@@ -150,6 +150,7 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 54 | `FILL BUFFERS IN BOM` | H2 | W-H2-7..9 | Interstitial filler computation |
 | 55 | `REGISTER BUILDING` | H2 | W-H2-10..12 | c_order creation (DocStatus=IP) |
 | 56 | `COMPLETE BUILDING` | H2 | W-H2-13..15 | c_order promotion (IP→CO) |
+| 57 | `TRIM WALLS TO ROOF` | §17 | W-TRIM-1..6 | Wall-roof clip: tent model, flat/pitched, 50mm tolerance |
 | — | *VerbRegistry + ScriptRunner* | infra | W-41..44 | Dispatch + script execution |
 | — | *F5IntegrationTest* | infra | W-F5-1..200 | **End-to-end cross-verb integration (30 verbs, 36 lines, 0 failures)** |
 
@@ -1783,11 +1784,19 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 
 ---
 
-## 17. Post-Compilation Quality Verbs (Proposed)
+## 17. Post-Compilation Quality Verbs
 
-> **Status:** Not implemented. These are candidate verbs for post-compilation geometry reconciliation (wall-roof trim, furniture clash, missing elements). Not ERP-aligned — these are BIM geometry operations. Implementation deferred to Phase F.
+> **Status:** Partially implemented. First verb wired: TRIM WALLS TO ROOF (Phase F). Remaining candidates deferred.
 
-Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, TRIM WALLS TO ROOF PROFILE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.
+### 17.1 Implemented
+
+| Keyword | Args | What it does | Witnesses |
+|---------|------|-------------|-----------|
+| `TRIM WALLS TO ROOF` | `pitch:N` (optional, degrees; default: auto-detect) | Clip wall heights to roof surface profile. Tent model estimates roof Z at each wall centroid. Walls exceeding roof surface by >50mm flagged for trimming. Flat roofs (dz<0.1m) → surface=maxZ, no trim. | W-TRIM-1 through W-TRIM-6 |
+
+### 17.2 Proposed (Not Yet Implemented)
+
+Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.
 
 ---
 
@@ -3458,7 +3467,7 @@ DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.
 
 ---
 
-*BIM COBOL v0.14 — 64 verbs, 13 spatial predicates, 196 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
+*BIM COBOL v0.15 — 75 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
 *48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*

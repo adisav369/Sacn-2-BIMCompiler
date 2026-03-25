@@ -18,7 +18,7 @@
 | G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
 | G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
 
-**Pipeline:** 9 stages. 64 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
+**Pipeline:** 9 stages. 75 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 5/5. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
@@ -43,6 +43,20 @@
 
 ## Session Log (recent first)
 
+**S89-trim1** — Wire TRIM WALLS TO ROOF: VerbRegistry (74→75), SH + DM .bimcobol, BIM_COBOL.md §17. Stale verb count sweep (64→75 across 13 files). 6 witnesses pass.
+**S88-study** — validation.db merge study. Name collision blocker (ad_val_rule in both DBs, incompatible schemas). Decision: DO NOT MERGE. Architecture is 5-DB (4+1), not 4.
+**S88-links** — mkdocs link fixes. 130→0 build warnings. Tracked docs already fixed by prior sessions; archive docs local-only.
+**S87-ctfl** — CTFL spec review. 3 stale fixes (RosettaStone count, 5→4 DB, DISC_BOM_DESIGN→DISC_VALIDATION_DB_SRS). validation.db finding spawned S88-study.
+**S86-ddl** — Remove doc_base_type from output.db DDL. PP_Order_Node → W_Verb_Node rename.
+**S86-watchdog** — SpecsAnalysis blanked (processed). ACTION_ROADMAP refs repointed. WorkOrderGuide links to GitHub URLs.
+**S85-headlines** — Callout boxes on 9 major specs + BBC.
+**S85-cleanup** — Archive CORE_SRS.md. BIM_Designer_SRS §25 labelled deferred.
+**S84-cleanup** — Drop doc_base_type from m_bom (W012 migration, 14 files). doc_sub_type stays (STRUCTURAL — variant scoping SH/DX/FK).
+**S83-watchdog** — Roadmap rewrite, nav cleanup, doc count fix.
+**S83-tier1** — Name/Value columns on INTEGER PK tables (5 migrations, 43 tables). iDempiere Tier 1 conformance.
+**S82-cleanup** — work_output.db doc propagation (26 files, ~90 refs).
+**S82** — Doc review: 5→4 DB, SQL bom_category→m_product_category_id, AUDIT §U.3.4 CLOSED.
+**S81-upkeep** — Broken links + stale refs: SystemContract→MANIFESTO, DiscValidation→ERP, counts.
 **S81** — Docs readability pass 2. BBC.md: "Gospel Principle" → "Compilation Model", bom_category → AD_Org, work_output.db removed, Onboarding Gotchas → WorkOrderGuide pointer, §11 tightened (-58 lines). DATA_MODEL.md: §6-7 cleaned (stale investigation framing removed, migration status consolidated, -101 lines). 3 specs updated (DISC_VALIDATE_SRS, DocAction_SRS, GENERATIVE_HOUSE_SRS): bom_category → AD_Org_ID, work_output.db → compile DB. SpecsAnalysis §20-23 decisions recorded. ACTION_ROADMAP: TRIM-1/2 + FMT-1 added to gap register. CLAUDE.md: 49→44 lines.
 **S80** — Docs readability pass 1. Stale stats (63→64 verbs, 22→19 ALL GREEN, 392→408 tests). BBC header rewritten. MANIFESTO tightened. SystemContract archived. 3 new specs (2D_LAYOUT, PDF_TERRAIN, BONSAI_EXTENSIONS). BOM PRINCIPLE → CLAUDE.md. mkdocs nav restructured.
 **S79** — Bulk discipline migration: TEXT → Discipline enum + AD_Org_ID. W010 migration (FPR→FP normalization). 17 source files: Placement, NodeContext, disciplineStack all use Discipline enum. BomDropper.resolveDiscipline() replaces deriveDiscipline+deriveAD_Org_ID chain. deriveDiscipline() @Deprecated (extraction-only). ERP coherence check: AD_Org_ID=0 CLEAN, m_bom_line CLEAN, IsSummary CLEAN. `mvn compile -q` + `mvn test-compile -q` PASS.
@@ -55,16 +69,6 @@
 **S72** — Session F: DiffVerb + Callout (§9). W007 migration (AD_Rule callout table). DiffVerbService (records DIFF W_Verb_Node + delta params). CalloutEngine (topo-sort rule evaluation). DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
 **S68e** — Session E: Order inheritance. DV017 applied all DBs. W006 migration (Ref_Order_ID). InheritanceResolver (chain walk + exception collect). BomDropper.dropWithInheritance. OrderInheritanceTest 6/6. MANIFESTO.md reorder + category triage.
 **S68b** — Session D: Remove + Compress mutations. W005 migration (locator_ref + is_reference_class). BomDropper exception-order support. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
-**S68** — M_BomCategory → M_Product_Category rename. DV017 migration. 14 docs + 28 Java files + schema_snapshot. [AUDIT Appendix P](docs/AUDIT_S51_FOCUSED.md).
-**S67w** — Watchdog: ConstructionAsERP purge (80+ refs, 44 docs). MANIFESTO.md. IsBOM audit (no drift). [AUDIT Appendix N+O](docs/AUDIT_S51_FOCUSED.md).
-**S67c** — Session C: Rule pack framing. DV016 pack_id migration. MY=13, US=17 proposals. RulePackTest 6/6. [AUDIT Appendix M](docs/AUDIT_S51_FOCUSED.md).
-**S67b** — Session B: OrderLineMutation engine. 3 implementations. OrderLineMutationTest 8/8. [AUDIT Appendix L](docs/AUDIT_S51_FOCUSED.md).
-**S67** — ELEC onboarding + Session A + watchdog + SystemContract.md + Rosetta Dictionary + mkdocs site. [AUDIT Appendix I](docs/AUDIT_S51_FOCUSED.md).
-**S66** — Task 4A (discipline wiring) + CP-1 (TE per-element verified). [ACTION_ROADMAP.md](docs/ACTION_ROADMAP.md).
-**S65** — DV015 M_Product migration. [AUDIT §Step 3](docs/AUDIT_S51_FOCUSED.md#step-3-implementation-audit-s65-2026-03-24).
-**S64** — AD Dictionary Steps 0–2. [DISC_VALIDATION_DB_SRS.md §11](docs/DISC_VALIDATION_DB_SRS.md#11-investigation-report--application-dictionary-database-placement-s64).
-**S60** — ERP Model Alignment (BomDropper + OrderLineWalker). [archive/S60_ERP_ALIGNMENT.md](docs/archive/S60_ERP_ALIGNMENT.md).
-**S59** — Work Order path + HTML↔Bonsai sync. WorkOrderCompileTest 6/6.
-**S58** — Gate debt cleanup + DM generative path + 9 buildings full pipeline.
-**S57** — 1D Order Configurator. 34/34 compiled.
+*S64–S68 — AD Dictionary Steps 0–5, ERP alignment Sessions A–F, DV015–DV017. [AUDIT Appendix I–T](docs/AUDIT_S51_FOCUSED.md).*
+*S57–S60 — 1D Order Configurator, gate debt, DM generative, ERP alignment. 34/34 compiled.*
 *Earlier: S39–S56 — ASI, WALK-THRU, focused audit, BIMEyes, 6D/7D, Web UI, BOM Drop.*

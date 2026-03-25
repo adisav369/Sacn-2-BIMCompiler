@@ -1,0 +1,15 @@
+-- DemoHouse 2BR — BIM COBOL Production Recipe
+-- Building: DM (DemoHouse, generative)
+-- DocSubType: DM
+
+-- ── STRUCTURAL CHECKS ──
+
+CHECK BOM DM
+
+-- ── PLACE ──
+
+PLACE BOM DM
+
+-- ── POST-COMPILATION ──
+
+TRIM WALLS TO ROOF

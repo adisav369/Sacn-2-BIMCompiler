@@ -24,7 +24,7 @@ Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
 | [§3 Compilation Modes](#3-two-compilation-modes) | Extracted (Rosetta Stone) vs Generative |
 | [§4 Tack Convention](#4-tack-convention-the-spatial-handshake) | The dx/dy/dz spatial offset model |
 | [§5 Pipeline](#5-the-9-stage-pipeline) | 9-stage compilation pipeline |
-| [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
+| [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 75 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
 | [§7 Verification](#7-verification-the-rosetta-stone-gate) | 6 mathematical gates |
 | [§9 Data Flywheel](#9-the-data-flywheel-emergent-intelligence) | How 35 buildings teach the compiler |
 | [§10 End State](#10-the-compilation-end-state) | What the compiled output looks like |
@@ -951,7 +951,7 @@ C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).
 
 ## 6. BIM COBOL — Verb-Driven BOM Mutation
 
-The GUI emits BIM COBOL verbs, never direct SQL. 64 verbs in 5 tiers:
+The GUI emits BIM COBOL verbs, never direct SQL. 75 verbs in 5 tiers:
 
 | Tier | Verbs | Purpose |
 |------|-------|---------|

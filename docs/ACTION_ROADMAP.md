@@ -6,9 +6,9 @@
 
 ---
 
-## Where We Are (S83, 2026-03-26)
+## Where We Are (S88, 2026-03-26)
 
-**Pipeline:** 9 stages. 64 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative).
+**Pipeline:** 9 stages. 75 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative).
 **Gates:** 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v6.
 **Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice.
 **iDempiere conformance:** Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 pending (TEXT→INTEGER PK).
@@ -129,6 +129,7 @@ From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VA
 | S58-S60 | s58-s60 | 34 buildings, ERP alignment, [C_OrderLine](ProjectOrderBlueprint.md), construction orders |
 | S64-S79 | s64-s79 | [AD Dictionary](DISC_VALIDATION_DB_SRS.md) Steps 0-6, Discipline enum, AD_Org_ID FK |
 | S80-S83 | s80-s83 | Docs readability, stale ref cleanup, [Name/Value Tier 1](ID_NAME_VALUE_STUDY.md) |
+| S84-S88 | s84-s88 | Schema cleanup (W012 doc_base_type), callout boxes, CTFL review, mkdocs warnings, validation.db study |
 
 ---
 

@@ -4,3 +4,6 @@
 
 -- PLACE BOM: emit all BOM elements to output.db
 PLACE BOM SH
+
+-- POST-COMPILATION: clip walls to roof surface (SH = flat roof, 0 trims expected)
+TRIM WALLS TO ROOF

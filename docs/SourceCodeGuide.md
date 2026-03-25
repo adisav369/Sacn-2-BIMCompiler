@@ -332,7 +332,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 
 Core interfaces: `Verb<T>` (execute → `VerbResult<T>`), `VerbContext` (3 connections: bom/component/output), `VerbRegistry` (longest-prefix dispatch).
 
-5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 64 verbs, 196 witnesses.
+5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 75 verbs, 202 witnesses.
 
 > **Full verb catalog, grammar, witnesses:** [`BIM_COBOL.md`](BIM_COBOL.md) §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)
 
@@ -527,7 +527,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 | Class | Role |
 |-------|------|
 | `Verb<T>` | Interface: keyword + execute → VerbResult |
-| `VerbRegistry` | Longest-prefix dispatch (64 verbs) |
+| `VerbRegistry` | Longest-prefix dispatch (75 verbs) |
 | `VerbContext` | 3 connections: bom/component/output |
 
 ### Java — ORM

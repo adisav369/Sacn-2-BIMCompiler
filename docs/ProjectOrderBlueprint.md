@@ -17,7 +17,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.
 |----------|---------|
 | 35 buildings compiled (34 extracted from IFC + 1 generative) | Rosetta Stone gate tests, 19 ALL GREEN |
 | 6-gate verification (count, volume, digest, tamper, provenance, isolation) | RosettaStoneGateTest — deterministic, reproducible |
-| 9-stage pipeline, 64 verbs, 2,475 products | Full BOM library with 4D/5D/6D on real data |
+| 9-stage pipeline, 75 verbs, 2,475 products | Full BOM library with 4D/5D/6D on real data |
 | 48,428-element Terminal complex compiled | Largest known BOM-based BIM compilation |
 | BOM Drop + product swap + compile in BIM Designer | bomDrop(SH) + swapProduct(roof) + compile = 95 elements, gates pass |
 | HTML UI (10 tabs) + Bonsai 3D viewport, bidirectional sync | DocAction buttons: Draft → Approve → Complete → Promote |

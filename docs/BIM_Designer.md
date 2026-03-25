@@ -1022,7 +1022,7 @@ adapter, not a compiler.
 |-----------|----------|-----|
 | **Compilation** | `CompilationPipeline.run(BuildingEntry)` | Wraps the 9-stage pipeline via `BuildingRegistry.loadById()` → `CompilationPipeline.run()`. Same code path as `run_RosettaStones.sh` |
 | **Building discovery** | `BuildingRegistry.loadActive()` | Reads `C_DocType` from BOM.db — YAML-opaque. Adding a building type = adding BOM data, not code |
-| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 64 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
+| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 75 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
 | **Product catalog** | `component_library.db` via existing `compConn` pattern | Same connection pooling as the pipeline. No new DB access layer |
 | **Output writing** | `WriteStage` → `FederatedModel` schema | Same output.db schema that Bonsai's FederatedDBReader already reads |
 | **Data governance** | `EntityType` guards on PO layer | D (dictionary) = read-only, U (user) = mutable. Same guards as pipeline |

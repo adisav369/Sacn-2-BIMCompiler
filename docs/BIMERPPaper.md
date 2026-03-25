@@ -90,7 +90,7 @@ These numbers are not cherry-picked. DX scores 7/10 because the MIRROR verb (for
 
 Every building mutation passes through a named, auditable verb. We call this **BIM COBOL** — not because it resembles COBOL syntax, but because it serves the same purpose: a domain-expert-readable language where a fire engineer can read `ROUTE SPRINKLERS SPACING 3000mm` and verify compliance without reading Java.
 
-64 verbs are implemented. The five that matter most:
+75 verbs are implemented. The five that matter most:
 
 | Verb | What It Does | Coverage |
 |------|-------------|----------|
@@ -181,7 +181,7 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 | Component | LOC | Tests | Status |
 |-----------|-----|-------|--------|
 | DAGCompiler (9-stage pipeline) | ~5,000 | 58 tests (G1-G6 gates) | Production-grade for tested buildings |
-| BIM COBOL (verb engine) | ~3,000 | 27 tests | 64 verbs, 196 witnesses |
+| BIM COBOL (verb engine) | ~3,000 | 27 tests | 75 verbs, 202 witnesses |
 | IFCtoBOM (extraction pipeline) | ~3,000 | 10 tests | SH, DX migrated; TE transitioning |
 | BonsaiBIMDesigner (GUI server) | ~8,500 | 408 tests (42 classes) | Design mode functional |
 | BIMBackOffice (ERP reporting) | ~3,000 | 14 tests | Portfolio, 4D-7D, sessions |

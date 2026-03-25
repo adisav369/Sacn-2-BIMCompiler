@@ -835,7 +835,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 |-------|----------|
 | Source code walkthrough | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
 | DAO, ORM, build instructions | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
-| BIM COBOL verbs (64 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
+| BIM COBOL verbs (75 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Prefab architecture | [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 | Validation rules | [`DocValidate.md`](DocValidate.md) |
 
