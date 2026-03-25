@@ -3567,12 +3567,12 @@ creators never anticipated.</p>
 a design question, we ask: <em>how does iDempiere handle this for manufacturing?</em>
 The answer is almost always directly applicable:</p>
 <ul>
-<li><strong><a href="../ProjectOrderBlueprint/#1-exception-based-ordering--configure-to-order-for-buildings">Exception-based ordering</a></strong> is iDempiere's Configure-to-Order. 200 houses, 6 lines of exceptions each — not 200 × 1099 elements. The BOM template is the product; the order is just the delta.</li>
+<li><strong><a href="../ProjectOrderBlueprint/#1-exception-based-ordering-configure-to-order-for-buildings">Exception-based ordering</a></strong> is iDempiere's Configure-to-Order. 200 houses, 6 lines of exceptions each — not 200 × 1099 elements. The BOM template is the product; the order is just the delta.</li>
 <li><strong><a href="../DocValidate/">Two kinds of rules</a></strong> work in symbiosis: <em>spatial rules</em> mined from 35 real buildings tell the compiler where things go; <em>regulatory rules</em> (UBBL, NFPA 13, IBC) tell it what the law requires. Spatial proposes, regulatory validates — the Three Concerns in action.</li>
-<li><strong><a href="../ProjectOrderBlueprint/#51-4d-schedule--topological-sort-of-bom-tree">4D scheduling</a></strong> is a topological sort of the BOM tree. No Primavera needed. Material logistics follow via M_InOut — iDempiere's goods receipt applied to construction deliveries.</li>
-<li><strong><a href="../ProjectOrderBlueprint/#52-5d-cost--inherent-in-the-data-model">5D cost</a></strong> is inherent in the data model. Every M_Product has a price. The cost of a building is <code>SUM(price × qty)</code> — a query, not a feature.</li>
-<li><strong><a href="../ProjectOrderBlueprint/#1-exception-based-ordering--configure-to-order-for-buildings">Design themes</a></strong> are C_Campaign — Bali, Scandinavian, Industrial. Marketing drives variant selection, orthogonal to product category and discipline.</li>
-<li><strong><a href="../ProjectOrderBlueprint/#2-c_project--site-as-bom">Site developments</a></strong> are C_Project. 200 houses under one project, each a C_Order on a plot. The same entity that manages a manufacturing program manages a construction site.</li>
+<li><strong><a href="../ProjectOrderBlueprint/#51-4d-schedule-topological-sort-of-bom-tree">4D scheduling</a></strong> is a topological sort of the BOM tree. No Primavera needed. Material logistics follow via M_InOut — iDempiere's goods receipt applied to construction deliveries.</li>
+<li><strong><a href="../ProjectOrderBlueprint/#52-5d-cost-inherent-in-the-data-model">5D cost</a></strong> is inherent in the data model. Every M_Product has a price. The cost of a building is <code>SUM(price × qty)</code> — a query, not a feature.</li>
+<li><strong><a href="../ProjectOrderBlueprint/#1-exception-based-ordering-configure-to-order-for-buildings">Design themes</a></strong> are C_Campaign — Bali, Scandinavian, Industrial. Marketing drives variant selection, orthogonal to product category and discipline.</li>
+<li><strong><a href="../ProjectOrderBlueprint/#2-c_project-site-as-bom">Site developments</a></strong> are C_Project. 200 houses under one project, each a C_Order on a plot. The same entity that manages a manufacturing program manages a construction site.</li>
 </ul>
 <p><strong>The test:</strong> 35 real buildings compiled. 48,428 elements in the largest.
 6 verification gates. 19 buildings ALL GREEN. Not a prototype — a working
