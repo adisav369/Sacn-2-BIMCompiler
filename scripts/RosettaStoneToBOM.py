@@ -766,10 +766,12 @@ def populate_reference(conn):
              aabb_width_mm, aabb_depth_mm, aabb_height_mm, doc_type, doc_sub_type)
             VALUES (?,?,?,?,?,?,?,?,?,?,?)""", row)
     for row in M_PRODUCT_CATEGORY:
+        # Parent_Category_ID dropped (DV020) — skip index 3 from tuple
+        r = (row[0], row[1], row[2], row[4], row[5], row[6])
         c.execute("""INSERT INTO M_Product_Category
-            (M_Product_Category_ID, Name, Description, Parent_Category_ID,
+            (M_Product_Category_ID, Name, Description,
              IFC_Class, SeqNo, IsActive)
-            VALUES (?,?,?,?,?,?,?)""", row)
+            VALUES (?,?,?,?,?,?)""", r)
     for row in C_BPARTNER:
         c.execute("""INSERT INTO C_BPartner
             (C_BPartner_ID, Value, Name, Description, IsActive)

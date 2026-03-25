@@ -9,27 +9,20 @@ import java.util.List;
 /**
  * Model layer for {@code M_Product_Category}.
  *
- * <p>Provides query methods for the IFC classification tree.
- * Tree structure: discipline parents (STR/MEP/ARC/ASM) → IFC class leaves.
+ * // Implementing SpecsAnalysis.txt §3 — drop Parent_Category_ID
+ * <p>Provides query methods for the FLAT IFC classification table.
+ * Categories are flat tags (STR, MEP, ARC, ASM, IFC_WALL, etc.).
+ * Hierarchy lives in M_BOM_Line, not in this table.
  */
 public class M_M_Product_Category extends X_M_Product_Category {
 
     public M_M_Product_Category(Connection conn) { super(conn); }
 
-    /** Root categories (disciplines) — Parent_Category_ID IS NULL. */
-    public static List<M_M_Product_Category> getRoots(Connection conn)
+    /** Discipline categories (no IFC class — grouping tags like STR, MEP, ARC, ASM). */
+    public static List<M_M_Product_Category> getDisciplines(Connection conn)
             throws SQLException {
         return new ModelQuery<>(conn, M_M_Product_Category::new, Table_Name)
-            .where(COLUMNNAME_Parent_Category_ID + " IS NULL")
-            .orderBy(COLUMNNAME_SeqNo)
-            .list();
-    }
-
-    /** Children of a parent category, ordered by SeqNo. */
-    public static List<M_M_Product_Category> getChildren(Connection conn, String parentId)
-            throws SQLException {
-        return new ModelQuery<>(conn, M_M_Product_Category::new, Table_Name)
-            .where(COLUMNNAME_Parent_Category_ID + " = ?", parentId)
+            .where(COLUMNNAME_IFC_Class + " IS NULL")
             .orderBy(COLUMNNAME_SeqNo)
             .list();
     }
@@ -48,7 +41,7 @@ public class M_M_Product_Category extends X_M_Product_Category {
             throws SQLException {
         return new ModelQuery<>(conn, M_M_Product_Category::new, Table_Name)
             .where(COLUMNNAME_IFC_Class + " IS NOT NULL")
-            .orderBy(COLUMNNAME_Parent_Category_ID + ", " + COLUMNNAME_SeqNo)
+            .orderBy(COLUMNNAME_SeqNo)
             .list();
     }
 }

@@ -1088,11 +1088,9 @@ CREATE TABLE M_Product_Category (
     M_Product_Category_ID TEXT PRIMARY KEY,
     Name                  TEXT NOT NULL,
     Description           TEXT,
-    Parent_Category_ID    TEXT,
     IFC_Class             TEXT,              -- IFC4 class name (leaf nodes only)
     SeqNo                 INTEGER DEFAULT 10,
-    IsActive              INTEGER DEFAULT 1,
-    FOREIGN KEY (Parent_Category_ID) REFERENCES M_Product_Category(M_Product_Category_ID)
+    IsActive              INTEGER DEFAULT 1
 );
 CREATE TABLE _migration_log (
     migration_name TEXT PRIMARY KEY,

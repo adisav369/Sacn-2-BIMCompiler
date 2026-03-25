@@ -85,3 +85,125 @@ Sources: DISC_VALIDATION_DB_SRS.md §10-11, DATA_MODEL.md §2+§7,
   5. Drop bom_category string columns (or keep as derived display)
   6. Drop deprecated DocBaseType/DocSubType columns
   7. Drop Parent_Category_ID column — DECIDED: unnecessary (iDempiere flat, BOM tree = cascade)
+
+============================================================
+PART 2 — ERP Blind Spot Audit (2026-03-25, Watchdog)
+============================================================
+Cross-spec audit for iDempiere patterns that are stretched, misapplied,
+or under-documented. Reviewed with project owner (iDempiere co-founder).
+
+11. C_DocType CARDINALITY — NO ISSUE (auditor error)
+------------------------------------------------------
+  Auditor mistakenly identified RE_SH, CO_TE etc. as C_DocType rows.
+  They are M_Product_Category values. MANIFESTO is correct: ONE C_DocType
+  = "Construction Order". Classification lives on M_Product_Category.
+  No action needed.
+
+12. C_Campaign AS DESIGN THEME — CONFIRMED VALID
+--------------------------------------------------
+  iDempiere C_Campaign is marketing promotions. Project reuses it for
+  architectural design themes (Bali, Scandinavian, Industrial).
+  Owner confirms: close enough — it's a grouping entity for variant
+  classification that is orthogonal to product category and discipline.
+  C_Campaign drives which BOM variant is offered to the buyer.
+  No action needed — usage is an acceptable iDempiere analogy.
+
+13. M_InOut — 4D SCHEDULING (materials movement)
+--------------------------------------------------
+  M_InOut is NOT site allocation. It belongs under 4D scheduling as
+  materials movement — receipt of materials to site, delivery of
+  prefab panels, concrete pours. iDempiere M_InOut = goods receipt/shipment.
+
+  Current spec placement: SystemContract.md §6 maps M_InOut to "compilation
+  batch / placing buildings on plots." This is WRONG. Plot placement is
+  C_ProjectLine (one plot = one C_ProjectLine, FK to C_Order).
+
+  M_InOut enters the picture when physical materials arrive on site:
+  - M_InOut = delivery batch (truck arrives with wall panels)
+  - M_InOutLine = individual material receipt (100 panels received)
+  - M_InOutLineMA = lot/attribute tracking (batch number, inspection date)
+
+  **Action:** Correct SystemContract.md §6 M_InOut mapping. Move to 4D
+  scheduling context under ProjectOrderBlueprint.md §5.1. Plot placement
+  stays under C_Project → C_ProjectLine.
+
+  See also: ProjectOrderBlueprint.md §5.1 (4D = topological sort of BOM tree).
+  M_InOut adds the physical logistics dimension — when materials actually
+  arrive vs when the BOM sequence says they're needed.
+
+14. AD_Val_Rule — TWO TYPES OF RULES (spatial + regulatory)
+-------------------------------------------------------------
+  Rules come from two sources that are SYMBIOTIC, not competing:
+
+  a. SPATIAL (mined from buildings):
+     Placement rules learned from real extracted buildings. Dimensions per
+     (ifc_class × storey). These encode "what buildings actually look like" —
+     empirical patterns from 35 real buildings. Stored in ad_space_type,
+     ad_element_mep, ad_space_dim, placement_rules tables.
+     → Already documented in DISC_VALIDATION_DB_SRS.md §10-11.
+
+  b. REGULATORY (from standards bodies):
+     Building codes: UBBL (Malaysia), NFPA 13 (fire), IBC (US), BCA (Australia).
+     These encode "what the law requires" — sprinkler spacing, fire door
+     frequency, emergency light proximity to exits.
+     → Stored in ad_val_rule with jurisdiction scope (pack_id, valid_from/to).
+     → Partially documented in DocValidate.md, ad_code_requirement table.
+
+  The two are SYMBIOTIC:
+  - Spatial rules say: "rooms of this type typically have 1 sprinkler."
+  - Regulatory rules say: "NFPA 13 requires sprinkler coverage ≥ 3000mm."
+  - Together: spatial rules propose placement, regulatory rules validate it.
+  - Compiler places per spatial rules, AD_Val_Rule gates per regulatory rules.
+  - This IS the Three Concerns: spatial = WHERE, regulatory = HOW.
+
+  **Action:** This is a CROWD PULLER for the github.io site. Create a
+  dedicated spec (or major section in DocValidate.md) documenting:
+  - The two rule sources and their symbiotic relationship
+  - How spatial rules are mined (extraction pipeline → ad_space_type/dim)
+  - How regulatory rules are authored (standards → ad_val_rule + pack_id)
+  - How they compose at compile time (spatial proposes, regulatory validates)
+  - Rule provenance: every rule traces to either a building (extraction)
+    or a standards clause (authority_id + clause_ref on ad_val_rule)
+  - Cross-links from MANIFESTO §HOW, DocValidate.md, DISC_VALIDATION_DB_SRS.md
+  - Prominent link from github.io landing page (INDEX.md)
+
+  **Prompt task:** Write prompts/15_rule_provenance_spec.md for this.
+
+15. processIt() vs ModelValidator — ENTERPRISE SCALING
+-------------------------------------------------------
+  iDempiere's ModelValidator hooks (beforeSave, afterSave, docValidate)
+  power the Process Engine for interactive ERP. The BIM compiler uses
+  custom processIt() dispatch because it's a batch compiler, not an
+  interactive system — there's no UI event loop driving ModelValidator.
+
+  Owner confirms: this is CORRECT for current scope. Wire ModelValidator
+  pattern later when the system scales to enterprise (multi-user, real-time
+  validation, interactive BOM editing in the designer).
+
+  **Note for enterprise scaling:**
+  - ModelValidator alignment becomes necessary when BIM Designer supports
+    real-time collaborative editing (multi-user, conflict detection)
+  - At that scale, also relevant: Federated Model Spatial DB addon
+    (93% memory reduction on 93K elements — StrategicIndustryPositioning.md
+    line 238). The current in-memory approach handles TE's 48K elements but
+    won't scale to multi-building federation without spatial DB partitioning.
+  - These two (ModelValidator + FederatedModel) are companion features for
+    enterprise deployment, not needed for the current compiler pipeline.
+
+  **Action:** Add note to ProjectOrderBlueprint.md §14 (roadmap) under
+  "Enterprise Scaling" heading.
+
+16. REMAINING FUTURE GAPS (noted, not blocking)
+-------------------------------------------------
+  These are real gaps but belong to future feature work:
+
+  a. M_PriceList versioning (currency, CIDB cost breakdown, tax) → 5D feature
+  b. C_Project depth (budget control, phases, milestones) → C_Project feature
+  c. AD_PrintFormat role (rendering vs filtering vs expansion) → BIM Designer UI
+  d. M_AttributeSet for continuous dimensions (pipe length) → ASI feature
+  e. AD_ChangeLog scope (viewport vs BOM mutations) → undo/redo feature
+  f. Effectivity model (pack_id schema, resolution algorithm) → GAP-SC-4
+  g. Multi-currency / AD_Client → out of scope for single-jurisdiction
+
+  No action now. These are logged in SystemContract.md §10 gap register
+  or ProjectOrderBlueprint.md roadmap as appropriate.
