@@ -17,7 +17,7 @@ CREATE TABLE M_Product_Category (
     Name              TEXT NOT NULL,
     Description       TEXT,
     IsActive          INTEGER DEFAULT 1
-, C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL
+, C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, M_Product_Category_ID_int INTEGER, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL
     CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')), doc_sub_type TEXT DEFAULT NULL);
 CREATE TABLE ad_building_storey (
     building_type  TEXT NOT NULL,     -- 'Ifc2x3_Duplex', 'Ifc4_SampleHouse', 'SJTII_Terminal'
@@ -166,7 +166,10 @@ CREATE TABLE ad_space_adjacency (
     PRIMARY KEY (space_type_a, space_type_b)
 );
 CREATE TABLE IF NOT EXISTS "M_Product" (
-        product_id        TEXT PRIMARY KEY,    -- 'DOOR_D1', 'UNIT_2BR_A', 'FIXTURE_TOILET'
+        M_Product_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id        TEXT NOT NULL,       -- old TEXT PK preserved (Tier 2 migration)
+        Value             TEXT,                -- iDempiere SearchKey (= product_id)
+        Name              TEXT,                -- iDempiere Name (= product_id initially)
         product_type      TEXT NOT NULL,       -- DOOR, WINDOW, UNIT, FIXTURE, FURNITURE
 
         -- Bounding box (LEGO brick size)
@@ -1074,7 +1077,7 @@ CREATE TABLE IF NOT EXISTS "m_bom_line" (
     allocated_depth_mm  INTEGER DEFAULT 0,
     allocated_height_mm INTEGER DEFAULT 0,
 
-    component_type      TEXT NOT NULL DEFAULT 'MAKE', storey         TEXT, element_ref    TEXT, ordinal        INTEGER DEFAULT 0, orientation    TEXT, material_name  TEXT, material_rgba  TEXT, entity_type TEXT DEFAULT 'D',
+    component_type      TEXT NOT NULL DEFAULT 'MAKE', storey         TEXT, element_ref    TEXT, ordinal        INTEGER DEFAULT 0, orientation    TEXT, material_name  TEXT, material_rgba  TEXT, entity_type TEXT DEFAULT 'D', M_BOM_ID INTEGER,
 
     FOREIGN KEY (bom_id) REFERENCES m_bom(bom_id)
 );
@@ -1090,7 +1093,9 @@ CREATE TABLE M_Product_Category (
     Description           TEXT,
     IFC_Class             TEXT,              -- IFC4 class name (leaf nodes only)
     SeqNo                 INTEGER DEFAULT 10,
-    IsActive              INTEGER DEFAULT 1
+    IsActive              INTEGER DEFAULT 1,
+    Value                 TEXT,              -- iDempiere SearchKey (Tier 2)
+    M_Product_Category_ID_int INTEGER        -- INTEGER surrogate (Tier 2)
 );
 CREATE TABLE _migration_log (
     migration_name TEXT PRIMARY KEY,
@@ -1113,7 +1118,9 @@ CREATE TABLE AD_User (
     entity_type     TEXT DEFAULT 'D'
 );
 CREATE TABLE IF NOT EXISTS "m_bom" (
-    bom_id            TEXT PRIMARY KEY,
+    M_BOM_ID          INTEGER PRIMARY KEY AUTOINCREMENT,
+    bom_id            TEXT NOT NULL,        -- old TEXT PK preserved (Tier 2 migration)
+    Value             TEXT,                 -- iDempiere SearchKey (= bom_id)
     bom_name          TEXT NOT NULL,
     description       TEXT,
     target_ifc_class  TEXT DEFAULT 'IfcElementAssembly',
@@ -1154,7 +1161,9 @@ CREATE TABLE IF NOT EXISTS "C_DocType" (
     AabbDepthMm    REAL,
     AabbHeightMm   REAL,
     C_Campaign_ID  TEXT REFERENCES C_Campaign(C_Campaign_ID),
-    SalesRep_ID    INTEGER REFERENCES AD_User(AD_User_ID)
+    SalesRep_ID    INTEGER REFERENCES AD_User(AD_User_ID),
+    Value          TEXT,                   -- iDempiere SearchKey (Tier 2)
+    C_DocType_ID_int INTEGER               -- INTEGER surrogate (Tier 2)
 );
 CREATE INDEX idx_threshold_check
     ON ad_check_threshold(check_id, occupancy_group, storey_type)
@@ -1183,7 +1192,9 @@ CREATE TABLE IF NOT EXISTS C_Order (
     OccupancyClass    TEXT,
     IsActive          INTEGER NOT NULL DEFAULT 1,
     created           TEXT NOT NULL DEFAULT (datetime('now')),
-    updated           TEXT NOT NULL DEFAULT (datetime('now'))
+    updated           TEXT NOT NULL DEFAULT (datetime('now')),
+    Value             TEXT,                -- iDempiere SearchKey (Tier 2)
+    C_Order_ID_int    INTEGER              -- INTEGER surrogate (Tier 2)
 );
 CREATE TABLE IF NOT EXISTS C_OrderLine (
     C_OrderLine_ID    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1202,7 +1213,10 @@ CREATE TABLE IF NOT EXISTS C_OrderLine (
     aabb_height_mm    REAL,
     M_Product_ID      TEXT,
     Discipline        TEXT DEFAULT 'ARC',
+    AD_Org_ID         INTEGER,
     Qty               INTEGER NOT NULL DEFAULT 1,
+    locator_ref       TEXT,
+    is_reference_class INTEGER DEFAULT 0,
     IsActive          INTEGER NOT NULL DEFAULT 1,
     created           TEXT NOT NULL DEFAULT (datetime('now')),
     updated           TEXT NOT NULL DEFAULT (datetime('now'))
@@ -1210,3 +1224,8 @@ CREATE TABLE IF NOT EXISTS C_OrderLine (
 CREATE INDEX IF NOT EXISTS idx_orderline_order ON C_OrderLine(C_Order_ID);
 CREATE INDEX IF NOT EXISTS idx_orderline_parent ON C_OrderLine(Parent_OrderLine_ID);
 CREATE INDEX IF NOT EXISTS idx_orderline_family ON C_OrderLine(family_ref);
+-- Tier 2: UNIQUE indexes for dual-key lookup (INTEGER PK tables)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_m_product_product_id ON M_Product(product_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_m_product_value ON M_Product(Value);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_m_bom_bom_id ON m_bom(bom_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_m_bom_value ON m_bom(Value);

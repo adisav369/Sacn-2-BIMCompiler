@@ -43,6 +43,7 @@
 
 ## Session Log (recent first)
 
+**S90-tier2** — Tier 2: INTEGER PK on 5 core tables (Phase A+B, schema only). 8 migration SQL files. ERP.db + CL applied directly; BOM.db via prepare_compile_db ALTER TABLE (IFCtoBOM Java DDL is hardcoded). 3 pre-existing fixes: snapshot C_OrderLine stale (S78), singularity doc_base_type (S84), G6 co_empty_space stub (S74). `mvn compile -q` PASS + SH 7/7 PASS.
 **S89-trim1** — Wire TRIM WALLS TO ROOF: VerbRegistry (74→75), SH + DM .bimcobol, BIM_COBOL.md §17. Stale verb count sweep (64→75 across 13 files). 6 witnesses pass.
 **S88-study** — validation.db merge study. Name collision blocker (ad_val_rule in both DBs, incompatible schemas). Decision: DO NOT MERGE. Architecture is 5-DB (4+1), not 4.
 **S88-links** — mkdocs link fixes. 130→0 build warnings. Tracked docs already fixed by prior sessions; archive docs local-only.

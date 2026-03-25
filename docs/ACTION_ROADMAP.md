@@ -86,7 +86,7 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 | GAP-SC-4 | Rule pack versioning | Effectivity dates, version precedence. pack_id done (S67c) | MED (partially addressed) |
 | R22 | I_Element_Connectivity | Extract linking table from IfcRelConnectsElements | TODO |
 | VPA-002 | ROUTE step-uniformity | 533 instances with non-uniform per-leg steps | KNOWN LIMIT |
-| IDV-1 | iDempiere _ID/Name/Value | Tier 2: TEXT→INTEGER PK on core tables (M_Product, m_bom, c_order) | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
+| IDV-1 | iDempiere _ID/Name/Value | Tier 2 Phase A+B DONE (S90). Phase C: Java migration pending | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
 
 ---
 
@@ -104,7 +104,7 @@ From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VA
 | 6. Drop doc_base_type (DONE). doc_sub_type is structural — stays. | W012 migration (S84) | **DONE** (S84) |
 | 7. Drop Parent_Category_ID | Flat M_Product_Category (iDempiere standard) | DECIDED, PENDING |
 | 8. Tier 1: Name/Value on INTEGER PK tables | 43 tables, 5 migrations | **DONE** (S83) |
-| 9. Tier 2: TEXT→INTEGER PK on core tables | M_Product, m_bom, c_order, C_DocType | NOT STARTED (high risk) |
+| 9. Tier 2: TEXT→INTEGER PK on core tables | M_Product, m_bom, c_order, C_DocType, M_Product_Category | **Phase A+B DONE** (S90). Phase C pending (Java reads/writes) |
 
 ---
 

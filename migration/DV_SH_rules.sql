@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SH: Sample House (Ifc4_SampleHouse)
 -- Source: DAGCompiler/lib/output/ifc4_samplehouse.db
--- Generated: 2026-03-24 21:14
+-- Generated: 2026-03-26 07:27
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -28,9 +28,9 @@
 
 -- ifc_class             discipline  cnt
 -- --------------------  ----------  ---
--- IfcMember             STR         20 
+-- IfcMember             CW          20 
 -- IfcFurnishingElement  ARC         14 
--- IfcPlate              STR         6  
+-- IfcPlate              CW          6  
 -- IfcWall               STR         5  
 -- IfcWindow             ARC         4  
 -- IfcCovering           ARC         3  
