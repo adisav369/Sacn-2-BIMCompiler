@@ -1,7 +1,7 @@
 package com.bim.cobol;
 
-import com.bim.ormsandbox.po.M_PP_Order_Node;
-import com.bim.ormsandbox.po.M_PP_Order_NodeProduct;
+import com.bim.ormsandbox.po.M_W_Verb_Node;
+import com.bim.ormsandbox.po.M_W_Verb_NodeProduct;
 import org.junit.jupiter.api.*;
 
 import java.sql.Connection;
@@ -15,11 +15,11 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Witness tests for VerbNodePersister — verb results → PP_Order_Node round-trip.
+ * Witness tests for VerbNodePersister — verb results → W_Verb_Node round-trip.
  *
  * <p>Uses in-memory SQLite — no file dependency.
  */
-@DisplayName("VerbNodePersister — Verb Result to PP_Order_Node")
+@DisplayName("VerbNodePersister — Verb Result to W_Verb_Node")
 class VerbNodePersisterTest {
 
     private Connection conn;
@@ -31,8 +31,8 @@ class VerbNodePersisterTest {
             s.execute("CREATE TABLE c_order (C_Order_ID TEXT PRIMARY KEY)");
             s.execute("INSERT INTO c_order VALUES ('TEST_BUILDING')");
             s.execute("""
-                CREATE TABLE PP_Order_Node (
-                    PP_Order_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                CREATE TABLE W_Verb_Node (
+                    W_Verb_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
                     C_Order_ID        TEXT NOT NULL REFERENCES c_order(C_Order_ID),
                     SeqNo             INTEGER NOT NULL DEFAULT 10,
                     Name              TEXT NOT NULL,
@@ -49,15 +49,15 @@ class VerbNodePersisterTest {
                 )
             """);
             s.execute("""
-                CREATE TABLE PP_Order_NodeProduct (
-                    PP_Order_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PP_Order_Node_ID         INTEGER NOT NULL
-                        REFERENCES PP_Order_Node(PP_Order_Node_ID),
+                CREATE TABLE W_Verb_NodeProduct (
+                    W_Verb_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    W_Verb_Node_ID         INTEGER NOT NULL
+                        REFERENCES W_Verb_Node(W_Verb_Node_ID),
                     Name                     TEXT NOT NULL,
                     Value                    TEXT NOT NULL,
                     ValueType                TEXT DEFAULT 'TEXT'
                         CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
-                    UNIQUE(PP_Order_Node_ID, Name)
+                    UNIQUE(W_Verb_Node_ID, Name)
                 )
             """);
         }
@@ -69,7 +69,7 @@ class VerbNodePersisterTest {
     }
 
     @Test
-    @DisplayName("W-COBOL-57: persist() writes PP_Order_Node rows from ScriptReport")
+    @DisplayName("W-COBOL-57: persist() writes W_Verb_Node rows from ScriptReport")
     void persistScriptReport() throws SQLException {
         // Simulate a 3-line script execution
         VerbResult<String> r1 = VerbResult.ok("CHECK BOM", "BOM valid: 5 lines", "ok");
@@ -86,10 +86,10 @@ class VerbNodePersisterTest {
 
         VerbNodePersister persister = new VerbNodePersister(conn, "TEST_BUILDING");
         int count = persister.persist(lines, report);
-        assertEquals(3, count, "3 verb lines → 3 PP_Order_Node rows");
+        assertEquals(3, count, "3 verb lines → 3 W_Verb_Node rows");
 
         // Verify read-back
-        List<M_PP_Order_Node> nodes = M_PP_Order_Node.getByOrder(conn, "TEST_BUILDING");
+        List<M_W_Verb_Node> nodes = M_W_Verb_Node.getByOrder(conn, "TEST_BUILDING");
         assertEquals(3, nodes.size());
 
         // Sorted by SeqNo: 10, 20, 30
@@ -130,13 +130,13 @@ class VerbNodePersisterTest {
         assertTrue(nodeId > 0);
 
         // Read back node
-        M_PP_Order_Node node = M_PP_Order_Node.get(conn, nodeId);
+        M_W_Verb_Node node = M_W_Verb_Node.get(conn, nodeId);
         assertNotNull(node);
         assertEquals("TILE SURFACE", node.getName());
         assertEquals("CO", node.getDocStatus());
 
         // Read back params (sorted by Name)
-        List<M_PP_Order_NodeProduct> nodeParams = M_PP_Order_NodeProduct.getByNode(conn, nodeId);
+        List<M_W_Verb_NodeProduct> nodeParams = M_W_Verb_NodeProduct.getByNode(conn, nodeId);
         assertEquals(8, nodeParams.size());
 
         // Sorted alphabetically: GRID_NX, GRID_NY, ORIGIN_X, ORIGIN_Y, ORIGIN_Z, STEP_X_MM, STEP_Y_MM, SURFACE_NAME
@@ -192,7 +192,7 @@ class VerbNodePersisterTest {
         int nodeId = persister.persistOne(10, line, result, params);
 
         // Read back and verify
-        M_PP_Order_Node node = M_PP_Order_Node.get(conn, nodeId);
+        M_W_Verb_Node node = M_W_Verb_Node.get(conn, nodeId);
         assertNotNull(node);
         assertEquals("TILE SURFACE", node.getName());
         assertEquals("CO", node.getDocStatus());
@@ -200,7 +200,7 @@ class VerbNodePersisterTest {
                 "TILE 3×4 = 12 elements should be captured");
 
         // Verify params
-        List<M_PP_Order_NodeProduct> nodeParams = M_PP_Order_NodeProduct.getByNode(conn, nodeId);
+        List<M_W_Verb_NodeProduct> nodeParams = M_W_Verb_NodeProduct.getByNode(conn, nodeId);
         assertEquals(5, nodeParams.size());
         assertEquals("GRID_NX", nodeParams.get(0).getName());
         assertEquals(3, nodeParams.get(0).getValueAsInt());

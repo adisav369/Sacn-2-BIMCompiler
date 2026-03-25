@@ -149,7 +149,7 @@ DIFF OUTPUT "terminal_klia.db" SINCE "2026-03-18T01:00:00"
   → DiffPayload: {added: [], modified: ["guid_1234"], removed: []}
 ```
 
-This makes delta computation auditable via PP_Order_Node, same as any
+This makes delta computation auditable via W_Verb_Node, same as any
 other verb execution.
 
 ### 3.3 BlenderBridge API — ~10 Verbs

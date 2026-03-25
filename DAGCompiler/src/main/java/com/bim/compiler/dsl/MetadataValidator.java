@@ -164,8 +164,8 @@ public class MetadataValidator implements CompilerStage {
 
     private void checkNoRoomLevelAbsoluteFurniture(Connection conn, String buildingType, List<String> errors) throws SQLException {
         // §11.9: position_rule, host_type DROPPED from c_orderline.
-        // This validation moves to PP_Order_Node when placement data is migrated there.
-        // Phase F: Re-implement against PP_Order_Node.
+        // This validation moves to W_Verb_Node when placement data is migrated there.
+        // Phase F: Re-implement against W_Verb_Node.
     }
 
     private void checkFamilyRefMandatory(Connection conn, String buildingType, List<String> errors) throws SQLException {

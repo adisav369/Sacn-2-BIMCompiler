@@ -23,7 +23,7 @@ public interface VerbExecutor {
      * Execute verb lines against the given connections.
      *
      * @param bomConn    read-only connection to BOM.db (design authority)
-     * @param outputConn read-write connection to output.db (PP_Order_Node target)
+     * @param outputConn read-write connection to output.db (W_Verb_Node target)
      * @param buildingId the building being compiled
      * @param verbLines  non-comment, non-blank verb lines (already parsed by VerbStage)
      * @return execution report
@@ -36,7 +36,7 @@ public interface VerbExecutor {
      *
      * @param passCount  number of verbs that passed
      * @param failCount  number of verbs that failed
-     * @param totalNodes number of PP_Order_Node rows created
+     * @param totalNodes number of W_Verb_Node rows created
      * @param details    per-verb one-liner summaries (for logging)
      */
     record ExecutionReport(int passCount, int failCount, int totalNodes,

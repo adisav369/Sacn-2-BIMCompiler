@@ -1128,7 +1128,6 @@ public class WorkOutputDAO {
                 w_buildingconfig_id   INTEGER PRIMARY KEY,
                 building_id           TEXT NOT NULL UNIQUE,
                 yaml_content          TEXT NOT NULL,
-                doc_base_type         TEXT NOT NULL,
                 doc_sub_type          TEXT NOT NULL,
                 jurisdiction          TEXT NOT NULL DEFAULT 'MY',
                 aabb_width_mm         REAL NOT NULL,

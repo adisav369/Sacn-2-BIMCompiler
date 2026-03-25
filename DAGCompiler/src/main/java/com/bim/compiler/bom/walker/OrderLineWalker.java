@@ -182,7 +182,7 @@ public class OrderLineWalker {
      * dz[i] = i * (parentHeight / qty). This is the simplest linear distribution —
      * floors stacked vertically, units arrayed along a corridor.
      *
-     * <p>iDempiere parallel: PP_Order.QtyOrdered — N units from one recipe.
+     * <p>iDempiere parallel: C_OrderLine.QtyOrdered — N units from one recipe.
      * Each instance gets the same BOM (child tree), different spatial position.
      */
     // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-REFCLASS-1

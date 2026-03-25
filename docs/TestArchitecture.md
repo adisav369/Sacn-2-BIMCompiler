@@ -955,7 +955,7 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 ### ORMSandbox + TopologyMaker Tests (6 files)
 ```
 181e34fa  EmptySpaceTest.java
-0d2a3c77  PP_Order_NodeTest.java
+0d2a3c77  W_Verb_NodeTest.java
 1a0321a3  BuildingInspectorTest.java
 20ead299  OrderLineInterfaceContractTest.java
 50f65541  BasePOTest.java
@@ -1213,7 +1213,7 @@ try (PreparedStatement ps = conn.prepareStatement(
 
 Each BIM COBOL verb:
 1. **Validates** inputs before touching the database
-2. **Logs** to PP_Order_Node (audit trail — who did what, when)
+2. **Logs** to W_Verb_Node (audit trail — who did what, when)
 3. **Respects** EntityType guards (D records are read-only)
 4. **Uses** PO classes (beforeSave() hooks enforce invariants)
 5. **Is testable** — each verb has a witness test

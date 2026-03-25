@@ -304,7 +304,7 @@ print/export — like a report template.
 | SUMMARY | building_summary | Yes |
 | SPATIAL | elements_meta, element_instances, spatial_structure | elements_meta only |
 | QUANTITY | simple_qto, area_by_storey, area_by_type, room_areas | simple_qto, area_by_storey |
-| ORDER | c_order, c_orderline, PP_Order_Node | c_order, c_orderline |
+| ORDER | c_order, c_orderline, W_Verb_Node | c_order, c_orderline |
 | GEOMETRY | base_geometries, surface_styles, material_layers | No |
 
 ### Workflow
@@ -453,5 +453,5 @@ Run: `mvn test -pl BIMBackOffice`
 [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) (SRS) |
 [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) (Bonsai client guide) |
 [INSTALLER_SPEC.md](INSTALLER_SPEC.md) (installer packaging) |
-[CORE_SRS.md](CORE_SRS.md) (report engine spec) |
+[ACTION_ROADMAP.md](ACTION_ROADMAP.md) (report engine roadmap) |
 [MANIFESTO.md](MANIFESTO.md) (iDempiere mapping)*

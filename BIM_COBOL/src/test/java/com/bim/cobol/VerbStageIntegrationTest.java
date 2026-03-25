@@ -1,8 +1,8 @@
 package com.bim.cobol;
 
 import com.bim.compiler.dsl.VerbExecutor;
-import com.bim.ormsandbox.po.M_PP_Order_Node;
-import com.bim.ormsandbox.po.M_PP_Order_NodeProduct;
+import com.bim.ormsandbox.po.M_W_Verb_Node;
+import com.bim.ormsandbox.po.M_W_Verb_NodeProduct;
 import org.junit.jupiter.api.*;
 
 import java.sql.Connection;
@@ -15,7 +15,7 @@ import java.util.ServiceLoader;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Integration test: VerbExecutor SPI → ScriptRunner → PP_Order_Node persistence.
+ * Integration test: VerbExecutor SPI → ScriptRunner → W_Verb_Node persistence.
  *
  * <p>Proves the full chain that VerbStage will use at runtime:
  * ServiceLoader discovers BimCobolVerbExecutor, executes verbs, persists results.
@@ -34,8 +34,8 @@ class VerbStageIntegrationTest {
             s.execute("CREATE TABLE c_order (C_Order_ID TEXT PRIMARY KEY)");
             s.execute("INSERT INTO c_order VALUES ('TEST_BUILDING')");
             s.execute("""
-                CREATE TABLE PP_Order_Node (
-                    PP_Order_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                CREATE TABLE W_Verb_Node (
+                    W_Verb_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
                     C_Order_ID        TEXT NOT NULL REFERENCES c_order(C_Order_ID),
                     SeqNo             INTEGER NOT NULL DEFAULT 10,
                     Name              TEXT NOT NULL,
@@ -52,15 +52,15 @@ class VerbStageIntegrationTest {
                 )
             """);
             s.execute("""
-                CREATE TABLE PP_Order_NodeProduct (
-                    PP_Order_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PP_Order_Node_ID         INTEGER NOT NULL
-                        REFERENCES PP_Order_Node(PP_Order_Node_ID),
+                CREATE TABLE W_Verb_NodeProduct (
+                    W_Verb_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    W_Verb_Node_ID         INTEGER NOT NULL
+                        REFERENCES W_Verb_Node(W_Verb_Node_ID),
                     Name                     TEXT NOT NULL,
                     Value                    TEXT NOT NULL,
                     ValueType                TEXT DEFAULT 'TEXT'
                         CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
-                    UNIQUE(PP_Order_Node_ID, Name)
+                    UNIQUE(W_Verb_Node_ID, Name)
                 )
             """);
         }
@@ -81,7 +81,7 @@ class VerbStageIntegrationTest {
     }
 
     @Test
-    @DisplayName("W-COBOL-62: Full chain: SPI execute → PP_Order_Node rows created")
+    @DisplayName("W-COBOL-62: Full chain: SPI execute → W_Verb_Node rows created")
     void fullChainExecution() throws Exception {
         VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
                 .findFirst().orElseThrow();
@@ -99,25 +99,25 @@ class VerbStageIntegrationTest {
         assertEquals(3, report.passCount(), "All 3 verbs must pass");
         assertEquals(0, report.failCount());
         assertTrue(report.allPass());
-        assertEquals(3, report.totalNodes(), "3 verb lines → 3 PP_Order_Node rows");
+        assertEquals(3, report.totalNodes(), "3 verb lines → 3 W_Verb_Node rows");
         assertEquals(3, report.details().size());
 
-        // Verify PP_Order_Node rows in DB
-        List<M_PP_Order_Node> nodes = M_PP_Order_Node.getByOrder(outputConn, "TEST_BUILDING");
+        // Verify W_Verb_Node rows in DB
+        List<M_W_Verb_Node> nodes = M_W_Verb_Node.getByOrder(outputConn, "TEST_BUILDING");
         assertEquals(3, nodes.size());
         assertEquals(10, nodes.get(0).getSeqNo());
         assertEquals(20, nodes.get(1).getSeqNo());
         assertEquals(30, nodes.get(2).getSeqNo());
 
         // TILE SURFACE should have element_count = 12 (3×4)
-        M_PP_Order_Node tileNode = nodes.get(0);
+        M_W_Verb_Node tileNode = nodes.get(0);
         assertEquals("TILE SURFACE", tileNode.getName());
         assertEquals("CO", tileNode.getDocStatus());
         assertTrue(tileNode.getElementCount() > 0 || tileNode.getLastResult().contains("12"),
                 "TILE 3×4 should capture 12 elements");
 
         // ARRAY should have element_count = 20 (floor((3000-80)/150)+1 = 20)
-        M_PP_Order_Node arrayNode = nodes.get(1);
+        M_W_Verb_Node arrayNode = nodes.get(1);
         assertEquals("ARRAY", arrayNode.getName());
         assertEquals("CO", arrayNode.getDocStatus());
     }
@@ -140,7 +140,7 @@ class VerbStageIntegrationTest {
         assertEquals(1, report.failCount());
         assertFalse(report.allPass());
 
-        List<M_PP_Order_Node> nodes = M_PP_Order_Node.getByOrder(outputConn, "TEST_BUILDING");
+        List<M_W_Verb_Node> nodes = M_W_Verb_Node.getByOrder(outputConn, "TEST_BUILDING");
         assertEquals(2, nodes.size());
         assertEquals("CO", nodes.get(0).getDocStatus()); // TILE pass → CO
         assertEquals("VO", nodes.get(1).getDocStatus()); // unknown → VO

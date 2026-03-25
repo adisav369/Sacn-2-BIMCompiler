@@ -938,7 +938,7 @@ its own half-width — the formula becomes context-dependent. LBD offsets are al
 | 3 | **Compile** | Produces `BuildingSpec` from BOM hierarchy |
 | 4 | **Template** | ST-mode: walks M_Product_Category_Line slots |
 | 5 | **Write** | Emits SQLite output DB |
-| 6 | **Verb** | BIM COBOL script hook → PP_Order_Node audit trail |
+| 6 | **Verb** | BIM COBOL script hook → W_Verb_Node audit trail |
 | 7 | **Digest** | Per-element SHA256 spatial fingerprint |
 | 8 | **Geometry** | Mesh integrity validation |
 | 9 | **Prove** | Mathematical placement proofs |

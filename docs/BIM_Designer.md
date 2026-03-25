@@ -245,7 +245,7 @@ never see assembler.
 
 **Layered composition:** L1 convenience verbs call P0 primitives. L2
 (floor-level) will call L1. The GUI always targets the highest available verb
-tier. Each verb produces an audit trail via PP_Order_Node.
+tier. Each verb produces an audit trail via W_Verb_Node.
 
 **Verb chaining** (BIM_COBOL.md §18.11) — the output payload of one verb
 feeds as input to the next. This is how the GUI builds a building
@@ -376,7 +376,7 @@ prevents the GUI from corrupting spatial data:
 | Table | Concern | GUI access |
 |-------|---------|------------|
 | **C_OrderLine** | WHAT (building type, discipline, element ref) | Read-only — no position setters exist |
-| **PP_Order_Node** | HOW (verb keyword, COBOL source, parameters) | GUI edits verb params via PP_Order_NodeProduct |
+| **W_Verb_Node** | HOW (verb keyword, COBOL source, parameters) | GUI edits verb params via W_Verb_NodeProduct |
 | **M_BOM_Line dx/dy/dz** | WHERE (spatial relationships within BOM) | Read-only — compiler writes, GUI reads |
 
 The Java PO interface for C_OrderLine has **no position setters** by
@@ -384,7 +384,7 @@ construction. The GUI cannot directly place elements — it must go through
 verbs, which the compiler executes. This architectural guard prevents
 flat-data shortcuts.
 
-**PP_Order_NodeProduct** holds structured parameters (origin_x, grid_nx,
+**W_Verb_NodeProduct** holds structured parameters (origin_x, grid_nx,
 spacing_mm) as form-editable name/value pairs. The Bonsai addon reads these
 and presents them as sliders and spinners. The user edits params; the compiler
 resolves geometry.
@@ -1146,7 +1146,7 @@ The Java compiler is a **deterministic manufacturing engine**. It guarantees:
 | **Repeatability** | Same BOM + library → same output, always | Undo = recompile from last known-good BOM |
 | **Compliance gating** | DocValidate fires before output.db | Designer cannot produce illegal geometry |
 | **BOM cascade** | BUILDING→FLOOR→ROOM→LEAF automatic | One slider change ripples correctly through entire tree |
-| **Verb audit trail** | PP_Order_Node records every action | Full undo history, no mystery state |
+| **Verb audit trail** | W_Verb_Node records every action | Full undo history, no mystery state |
 | **Multi-scale** | SH (55) to TE (48K) same pipeline | Works for a cottage or an airport |
 | **ERP integration** | C_Order/C_OrderLine/M_BOM_Line dx/dy/dz | Costing, scheduling, procurement ready from day 1 |
 
@@ -1329,7 +1329,7 @@ Real projects would use the full component_library.db catalog.
      match our ndjson/TCP architecture.
 
      Kept below: UX scenario (condensed), enabling framework data models
-     (Selection Cascade, PP_Order_Node, IncrementalCompiler — future reference).
+     (Selection Cascade, W_Verb_Node, IncrementalCompiler — future reference).
      Validation schema removed (canonical version now in DocValidate §3.1
      + migration/V001_validation_schema.sql). -->
 
@@ -1347,7 +1347,7 @@ Real projects would use the full component_library.db catalog.
 | Learning curve | 200 hours to proficiency | 3 minutes to first building |
 | Knowledge retention | Next project starts from scratch | System learned 347 patterns from last project |
 | Compliance proof | Manual 20-page report, 6 weeks review | Machine-generated witness.json, 3 days approval |
-| Undo | Ctrl+Z last action only | Full timeline via PP_Order_Node, any point restorable |
+| Undo | Ctrl+Z last action only | Full timeline via W_Verb_Node, any point restorable |
 | Clash detection | Reactive (1500 clashes found after design) | Proactive (compiler routes around constraints) |
 
 **Compounding effect:** Every building teaches the system. Every user makes it smarter.
@@ -1377,7 +1377,7 @@ LIMIT 1;
 80% of edits affect only Stage 5-8. Recompiling from Stage 5 = 2 seconds vs 30 seconds full.
 Stage mask maps `ChangeType → which stages to rerun`. Checkpoints save state between stages.
 
-### 15.3 PP_Order_Node (History / Undo)
+### 15.3 W_Verb_Node (History / Undo)
 ```sql
 CREATE TABLE pp_order_node (
     pp_order_node_id INTEGER PRIMARY KEY,
@@ -2554,7 +2554,7 @@ geometry; it configures the database.
 |---|---|---|
 | Drag SET to different FLOOR | UPDATE C_OrderLine.Parent_OrderLine_ID | Bboxes re-render under new parent |
 | Change family_ref (product swap) | UPDATE C_OrderLine.family_ref | Bbox resizes to new product AABB |
-| Reorder children | UPDATE C_OrderLine.Line (sequence) | Construction order changes (PP_Order_Node) |
+| Reorder children | UPDATE C_OrderLine.Line (sequence) | Construction order changes (W_Verb_Node) |
 | Delete line | UPDATE C_OrderLine.IsActive = 0 | Bbox disappears (soft delete, not hard) |
 | Add line (from BOM Chooser) | INSERT C_OrderLine | New bbox appears at tack position |
 | Edit ASI value (e.g., width_mm) | UPDATE M_AttributeInstance.Value | Bbox resizes to new dimension |
@@ -2620,7 +2620,7 @@ because edits are relational (FK updates), not geometric (mesh transforms).
 - Variant version list UI (future — read output.db history)
 - Multi-building scenes (one design session = one building)
 
-### 17.19 Python Addon Hardening (S40 Review)
+### 17.21 Python Addon Hardening (S40 Review)
 
 Seven fixes applied from front-end code review against BACK_OFFICE_SRS + TIER1_SRS:
 

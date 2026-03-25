@@ -96,7 +96,6 @@ nav:
 
   # ─── DOMAIN: Enterprise (ERP + nD) ─────────────────────
   - Enterprise:
-      - Core SRS (4D-7D): CORE_SRS.md
       - Tier 1 (6D Carbon, 7D FM): TIER1_SRS.md
       - Back Office SRS: BACK_OFFICE_SRS.md
       - Infrastructure Designer: INFRA_DESIGNER_SRS.md

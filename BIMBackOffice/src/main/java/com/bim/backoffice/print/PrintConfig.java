@@ -176,8 +176,8 @@ public class PrintConfig {
             case "simple_qto", "area_by_storey", "area_by_type",
                  "room_areas" -> "QUANTITY";
             case "base_geometries", "surface_styles", "material_layers" -> "GEOMETRY";
-            case "c_order", "c_orderline", "PP_Order_Node",
-                 "PP_Order_NodeProduct" -> "ORDER";
+            case "c_order", "c_orderline", "W_Verb_Node",
+                 "W_Verb_NodeProduct" -> "ORDER";
             case "building_summary" -> "SUMMARY";
             default -> "OTHER";
         };

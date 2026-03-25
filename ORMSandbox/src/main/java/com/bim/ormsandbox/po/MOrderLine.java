@@ -12,7 +12,7 @@ import java.util.List;
  * <p>Adds factory methods for building-level lookups. All queries use
  * WHAT-only columns. No placement or material column access.
  *
- * <p>FIRST PRINCIPLE (§11.9): Placement → PP_Order_Node. Material → M_Product.
+ * <p>FIRST PRINCIPLE (§11.9): Placement → W_Verb_Node. Material → M_Product.
  */
 public class MOrderLine extends X_C_OrderLine {
 
@@ -48,6 +48,6 @@ public class MOrderLine extends X_C_OrderLine {
     }
 
     // ── getFloorRules REMOVED — used host_type filter (placement column) ──
-    // Floor rules are a PP_Order_Node concern, not c_orderline.
+    // Floor rules are a W_Verb_Node concern, not c_orderline.
     // ── Nullable getters REMOVED — placement/material data not on this PO ──
 }

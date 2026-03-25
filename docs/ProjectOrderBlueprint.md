@@ -166,7 +166,7 @@ Three lines for a 100-storey skyscraper with one custom floor.
 **ERP precedent:** This is the manufacturing distinction between
 **discrete** and **repetitive** production. Discrete: one work order per
 unit (100 work orders). Repetitive: one work order with qty=100, produced
-on a line. iDempiere supports both via `PP_Order.QtyOrdered`. The
+on a line. iDempiere supports both via `C_OrderLine.QtyOrdered`. The
 reference class pattern applies the same principle to BOM explosion.
 
 **Indexed exceptions** use `locator_ref` with an array index suffix
@@ -485,7 +485,7 @@ patterns — contributed by everyone who compiles a building.
 > **Status:** Future — design specification only.
 
 The order already carries WHAT (C_OrderLine), WHERE (M_BOM_Line dx/dy/dz),
-and HOW (PP_Order_Node). The remaining dimensions are columns, not systems.
+and HOW (W_Verb_Node). The remaining dimensions are columns, not systems.
 
 ### 5.1 4D Schedule — Topological Sort of BOM Tree
 
@@ -518,7 +518,7 @@ SELECT seq, depth, name FROM bom_walk ORDER BY seq;
   (Room A and Room B on the same floor)
 - **Milestone:** Any BOM node can be flagged as a milestone. Completion
   = all children compiled and gates passed
-- **Duration:** Verb execution time estimates on PP_Order_Node. TILE a
+- **Duration:** Verb execution time estimates on W_Verb_Node. TILE a
   floor takes X hours. ROUTE plumbing takes Y hours. Sum up the branch
 
 ### 5.2 5D Cost — Inherent in the Data Model
@@ -697,7 +697,7 @@ DX_BOTH (parent = DX_SOLAR AND DX_PREMIUM)
   → IMPOSSIBLE: Ref_Order_ID is scalar FK      ← structurally prevented
 ```
 
-**iDempiere precedent:** PP_Order_BOM uses `SeqNo` for ordering within
+**iDempiere precedent:** C_OrderLine uses `SeqNo` for ordering within
 a single parent. M_PriceList_Version uses `ValidFrom` — latest wins.
 Both assume a linear resolution path, not a DAG. We follow the same
 assumption.
@@ -717,7 +717,7 @@ the cycle path.
 
 When a single order carries multiple exception lines, they are applied
 in `C_OrderLine.Line` order (iDempiere's standard line numbering,
-analogous to `PP_Order_BOM.SeqNo`). If two lines in the same order
+analogous to `C_OrderLine.SeqNo`). If two lines in the same order
 target the same `locator_ref`, the higher `Line` number wins —
 consistent with "last writer wins" within a document.
 
@@ -858,7 +858,7 @@ It is a **spatial mutation with cascading consequences**.
 | Layer | What it captures | iDempiere parallel | Persistence |
 |-------|-----------------|-------------------|-------------|
 | **ASI** | Static attribute overrides (colour, material, finish) | M_AttributeSetInstance | Name/value pairs on C_OrderLine |
-| **DiffVerb** | Spatial mutations from user gestures | PP_Order_Node (verb_type=DIFF) | Replayable operation with delta parameters |
+| **DiffVerb** | Spatial mutations from user gestures | W_Verb_Node (verb_type=DIFF) | Replayable operation with delta parameters |
 | **Callout** | Cascading consequences of a change | AD_Rule / AD_Column.Callout | Rule rows that fire on field change |
 
 **ASI** is sufficient for: "this door is oak instead of pine."
@@ -873,11 +873,11 @@ When the user drags an element in the viewport, the gesture produces a
 **DiffVerb** — a new verb type alongside TILE, ARRAY, ROUTE, CLUSTER.
 
 ```
-PP_Order_Node:
+W_Verb_Node:
     verb_type    = 'DIFF'
     locator_ref  = 'L1.Living.FP_Mantel'
 
-PP_Order_NodeProduct (parameters):
+W_Verb_NodeProduct (parameters):
     delta_dx     = -300    (mm, parent-relative)
     delta_dy     = 0
     delta_dz     = 0
@@ -885,7 +885,7 @@ PP_Order_NodeProduct (parameters):
 ```
 
 The DiffVerb is:
-- **Stored** as a PP_Order_Node row — same table as all other verbs
+- **Stored** as a W_Verb_Node row — same table as all other verbs
 - **Replayable** — apply the same DiffVerb to the same base BOM and get
   the same result. Determinism is preserved
 - **Composable** — multiple DiffVerbs on the same order stack additively.
@@ -1027,8 +1027,8 @@ arguing about intent.
 
 ### 10.4 DiffVerb Audit Trail
 
-Every viewport gesture (§9) is a DiffVerb recorded in PP_Order_Node.
-AD_ChangeLog records the creation of each PP_Order_Node row. Together
+Every viewport gesture (§9) is a DiffVerb recorded in W_Verb_Node.
+AD_ChangeLog records the creation of each W_Verb_Node row. Together
 they provide a complete edit history:
 
 ```
@@ -1515,7 +1515,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 | **§6** Order inheritance | No Ref_Order_ID column on C_Order. | Schema addition. Exception stacking logic needed |
 | **§7** FOSS ecosystem | Architecture supports it. No packaging or contribution flow. | Strategic, not code |
 | **§8** Forward friction | 34 buildings compiled. IFC dialect coverage growing. | Operational, not code |
-| **§9** DiffVerb + Callout | DiffVerbService records DIFF PP_Order_Node. W007 AD_Rule table (3 seed rules). CalloutEngine fires in topo-sort order. DiffVerbTest 5/5. | **Session F DONE** (S72). Viewport gesture capture pending (Bonsai addon) |
+| **§9** DiffVerb + Callout | DiffVerbService records DIFF W_Verb_Node. W007 AD_Rule table (3 seed rules). CalloutEngine fires in topo-sort order. DiffVerbTest 5/5. | **Session F DONE** (S72). Viewport gesture capture pending (Bonsai addon) |
 | **§10** AD_ChangeLog | ChangelogDAO fully implemented. SAVE/PLACE/MOVE/RESIZE/DELETE/PROMOTE/UNDO. | ✓ DONE |
 | **§11** 8th D — ERP as BI | All data in SQLite. Queries work. Federation addon shows breakdown. | ✓ Working today — it's queries, not features |
 | **§12** Callout rule library | AD_Val_Rule (63 rows). ad_fp_trigger (12). ad_code_requirement (23). InferenceEngine exists. | Rules validate. Transition to propose (§13) is the gap |
@@ -1554,7 +1554,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 **ERP infrastructure (all tested, GREEN):**
 - DocAction state machine (DR→IP→AP→CO→VO) with MOrder transitions
 - AD_ChangeLog (ChangelogDAO) — full audit trail
-- PP_Order_Node — verb execution audit with parameters
+- W_Verb_Node — verb execution audit with parameters
 - M_BOM_Line dx/dy/dz — spatial relationships (WHERE concern in BOM itself)
 - M_AttributeSetInstance — per-instance customization (partial)
 - Three-concern separation enforced by OrderLineInterfaceContractTest (W-LOCK-1..6)

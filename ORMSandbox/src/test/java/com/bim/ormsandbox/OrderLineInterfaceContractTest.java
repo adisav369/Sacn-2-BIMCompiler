@@ -33,7 +33,7 @@ class OrderLineInterfaceContractTest {
 
     /**
      * Placement methods (get or set) that must NOT exist on X_C_OrderLine.
-     * These belong in PP_Order_Node + PP_Order_NodeProduct.
+     * These belong in W_Verb_Node + W_Verb_NodeProduct.
      */
     private static final Set<String> FORBIDDEN_METHODS_HOW = Set.of(
         "getHostType", "setHostType",
@@ -88,7 +88,7 @@ class OrderLineInterfaceContractTest {
     );
 
     @Test
-    @DisplayName("W-LOCK-1: No placement methods on X_C_OrderLine (HOW → PP_Order_Node)")
+    @DisplayName("W-LOCK-1: No placement methods on X_C_OrderLine (HOW → W_Verb_Node)")
     void noPlacementMethods() {
         Set<String> methods = publicMethodNames();
         List<String> violations = FORBIDDEN_METHODS_HOW.stream()
@@ -96,7 +96,7 @@ class OrderLineInterfaceContractTest {
             .sorted()
             .collect(Collectors.toList());
         assertTrue(violations.isEmpty(),
-            "X_C_OrderLine must NOT have placement methods (these belong in PP_Order_Node): "
+            "X_C_OrderLine must NOT have placement methods (these belong in W_Verb_Node): "
             + violations + " — see §11.9 three-concern separation");
     }
 
@@ -159,7 +159,7 @@ class OrderLineInterfaceContractTest {
         assertEquals(REQUIRED_SETTERS_WHAT.size(), setterCount,
             "X_C_OrderLine setter count must equal WHAT-only column count ("
             + REQUIRED_SETTERS_WHAT.size() + "). "
-            + "If you need more setters, you are adding placement data — use PP_Order_Node instead.");
+            + "If you need more setters, you are adding placement data — use W_Verb_Node instead.");
     }
 
     private Set<String> publicMethodNames() {

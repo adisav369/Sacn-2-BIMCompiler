@@ -532,7 +532,7 @@ Elements placed (from BOM pipeline or DocEvent)
   │   │    → Auto-insert connecting pipe/conduit segments (ROUTE verb)
   │   │    → Or flag WARN: "sprinkler_23 unreachable from riser"
   │   │
-  │   └── Writes: PP_Order_Node (verb_ref='CONNECT FITTINGS')
+  │   └── Writes: W_Verb_Node (verb_ref='CONNECT FITTINGS')
   │               W_Validation_Result (tier=1, CONNECTIVITY check)
   │
   ├── H2: NON-CLASH handler

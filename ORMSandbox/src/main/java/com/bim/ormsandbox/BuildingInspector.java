@@ -409,7 +409,7 @@ public class BuildingInspector {
         System.out.printf("  F: SKIP — c_orderline dropped from BOM.db (§11.9). Re-implement via M_Product.%n");
         Map<String, Integer> mismatched = new LinkedHashMap<>();
         // §11.9: host_ref DROPPED from c_orderline. ROOM_Level_* regression pattern
-        // check requires PP_Order_Node migration. Skipped for now.
+        // check requires W_Verb_Node migration. Skipped for now.
         if (mismatched.isEmpty()) {
             System.out.printf("[OK]   Discipline check: no non-FURN rules with FURN_ M_Product_ID%n");
             return 0;

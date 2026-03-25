@@ -4,7 +4,7 @@
 **Version:** 1.1 | **Date:** 2026-03-20
 **Scope:** Six bounded items, +4 scorecard points (27→31/36) + live 4D/5D DAOs
 **Architecture:** Java DAO backend + thin bridge (ndjson TCP) + light Bonsai panel
-**Companion:** `CORE_SRS.md` §2 (ReportDAO), `StrategicIndustryPositioning.md` (scorecard)
+**Companion:** `StrategicIndustryPositioning.md` (scorecard)
 **IfcOpenShell reference:** Federation addon `tandem/` — Python PoC proves all 4 capabilities
 
 ---
@@ -221,7 +221,7 @@ Uses the same `M_Product` columns from V010:
 
 No new tables needed. The maintenance schedule is a **computed view** over
 the BOM — not a stored work order. Work orders are the ERP system's job
-(iDempiere PP_Order). We provide the data to generate them.
+(iDempiere C_Order). We provide the data to generate them.
 
 **Seed data** (V010b, same migration as §1):
 
@@ -640,12 +640,12 @@ Step 8 is independent of everything else.
 
 | Out of Scope | Why | Where Instead |
 |-------------|-----|---------------|
-| Work order CRUD | ERP system's job (iDempiere PP_Order) | `DocAction_SRS.md` §1 |
+| Work order CRUD | ERP system's job (iDempiere C_Order) | `DocAction_SRS.md` §1 |
 | Technician assignment | FM system's job | Federation addon PoC |
 | Sensor/IoT monitoring | Requires live infra, not compile-time | Federation addon PoC |
-| Multi-user audit | Needs AD_User + AD_Session | Tier 3, CORE_SRS.md |
-| PDF report generation | Needs template engine | Phase RE (CORE_SRS.md §2) |
-| COBie XLSX export | Needs 19-sheet writer | Phase RE (CORE_SRS.md §2) |
+| Multi-user audit | Needs AD_User + AD_Session | Tier 3 |
+| PDF report generation | Needs template engine | Phase RE (ACTION_ROADMAP.md) |
+| COBie XLSX export | Needs 19-sheet writer | Phase RE (ACTION_ROADMAP.md) |
 
 The boundary is clear: **we add product attributes + rollup queries + audit
 logging.** The ERP/FM systems consume our data. We don't replicate them.
@@ -672,7 +672,7 @@ logging.** The ERP/FM systems consume our data. We don't replicate them.
 
 ### §5.1 Problem
 
-4D scheduling was offline — PP_Order_Node verb ordering in the compiler pipeline.
+4D scheduling was offline — W_Verb_Node verb ordering in the compiler pipeline.
 No live wire action for the UI to query a Gantt schedule.
 
 ### §5.2 Schema (migration V012)
@@ -758,5 +758,5 @@ The same DAO serves both UI and back-office:
 
 *TIER1_SRS.md v1.1 — 4D-7D + Audit + 3D, 29 witnesses, 242 tests GREEN*
 *Architecture: Java DAO (solid) + thin bridge (ndjson) + light panel (Python)*
-*Cross-references: CORE_SRS.md §2, StrategicIndustryPositioning.md, BlenderBridge.md*
+*Cross-references: StrategicIndustryPositioning.md, BlenderBridge.md*
 *CIDB rates: Federation addon boq/comprehensive_boq_export.py → M_Product columns*

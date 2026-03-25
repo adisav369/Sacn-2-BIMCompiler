@@ -19,7 +19,7 @@ import java.util.List;
  * provides UNIT/FLOOR/SET hierarchy context (tracked via onSubAssembly events).
  *
  * <p>Phase D: MAKE events will drive the BomAnchor cascade directly from
- * the tree via VerbStage / PP_Order_Node.
+ * the tree via VerbStage / W_Verb_Node.
  *
  * @see PlacementLoader
  */

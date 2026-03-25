@@ -620,7 +620,7 @@ The user adjusts offsets until the design meets code — validator checks each r
 
 **Next steps:**
 1. Landscaping + Plumbing Rosetta Stones (classify_ls.yaml, classify_pl.yaml)
-2. Larger infra models for TILE/ROUTE verb discovery (CORE_SRS §1 Scale Research)
+2. Larger infra models for TILE/ROUTE verb discovery (ACTION_ROADMAP Scale Research)
 3. Wire TerrainSnap into Designer snap() loop — compute Z per bbox during validation
 4. N4 (IfcMapConversion subtraction) — deferred until real-world infra project needs it
 

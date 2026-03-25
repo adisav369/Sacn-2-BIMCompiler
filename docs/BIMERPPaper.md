@@ -100,7 +100,7 @@ Every building mutation passes through a named, auditable verb. We call this **B
 | FRAME | Places structural members with LBD alignment | Columns, beams, bracing |
 | ARRAY | Lays a 1D linear sequence | Fence posts, bollards, sleepers |
 
-Each verb produces a typed `VerbResult` — success/failure, witness proof, and payload. No anonymous SQL. No silent geometry mutations. Full audit trail via PP_Order_Node, iDempiere's production order pattern (see `docs/BIM_COBOL.md`).
+Each verb produces a typed `VerbResult` — success/failure, witness proof, and payload. No anonymous SQL. No silent geometry mutations. Full audit trail via W_Verb_Node, iDempiere's production order pattern (see `docs/BIM_COBOL.md`).
 
 ## 6. The BIM Designer: Compilation as User Interface
 
@@ -143,7 +143,7 @@ The Back Office module (BIMBackOffice, ~3,000 LOC Java, separate HTTP server on 
 - **Balanced scorecard** — 4 perspectives (Financial, Client, Process, Learning) x 3+ KPIs
 - **Audit trail** — ChangelogDAO logs every PLACE/DELETE/MOVE/RESIZE with old/new values, supports undo. Mirrors iDempiere's AD_ChangeLog
 
-**ERP pattern fidelity:** This is not a BIM tool pretending to be ERP. The data model *is* ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. PP_Order_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see `docs/DATA_MODEL.md` §1).
+**ERP pattern fidelity:** This is not a BIM tool pretending to be ERP. The data model *is* ERP. C_DocType routes building types. DocStatus governs lifecycle. AD_Val_Rule scopes validation by jurisdiction. W_Verb_Node records verb execution. AD_PrintFormat configures output selection. Every table name, every column convention, every lifecycle state comes from iDempiere's dictionary (see `docs/DATA_MODEL.md` §1).
 
 **What's not here yet:** Role-based access control (AD_Role). PDF/CSV export. Report execution queue (AD_Process). Multi-currency cost rates. COBie MVD schema validation. These are roadmap items — the ERP patterns they follow are well-understood from two decades of iDempiere, but the construction-specific implementation is not yet written.
 
@@ -238,7 +238,7 @@ Claude Code (Anthropic's AI coding assistant) served as pair-programming partner
 | `docs/CALIBRATION_SRS.md` | Rule prediction vs actual placement, ground truth metrics |
 | `docs/TerminalAnalysis.md` | 48K-element analysis, verb factorisation, discipline coverage |
 | `docs/InfrastructureAnalysis.md` | Bridge/road/rail compilation, domain-agnostic proof |
-| `docs/CORE_SRS.md` | Scale targets, report engine, compliance roadmap, strategic moats |
+| `docs/archive/CORE_SRS.md` | (Archived) Scale targets, report engine — superseded by ACTION_ROADMAP + StrategicIndustryPositioning |
 | `docs/StrategicIndustryPositioning.md` | IFC scorecard (31/36), competitive analysis, 4 moats |
 | `docs/ACTION_ROADMAP.md` | Phase gates G-1 through G-13, critical path items |
 | `docs/TIER1_SRS.md` | 4D-7D reporting, audit trail, 3D native |

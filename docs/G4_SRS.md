@@ -134,7 +134,7 @@ DesignerAPIImpl.createNew(request)
 │      │   │
 │      │   └── COUNTS tracked: orderLineCount, esLineCount, asiCount
 │      │
-│      ├── 3e. INSERT PP_Order_Node (default routing from M_Product_Category)
+│      ├── 3e. INSERT W_Verb_Node (default routing from M_Product_Category)
 │      │       │
 │      │       │ SELECT routing template by M_Product_Category:
 │      │       │
@@ -497,7 +497,7 @@ class WorkOutputDAOTest {
         // When:  WorkOutputDAO.create(path)
         // Then:  9 tables exist (W_BuildingConfig, C_Order, C_OrderLine,
         //        M_AttributeSetInstance, M_AttributeInstance, co_empty_space,
-        //        co_empty_space_line (compiler-internal), PP_Order_Node, PP_Order_NodeProduct,
+        //        co_empty_space_line (compiler-internal), W_Verb_Node, W_Verb_NodeProduct,
         //        W_Variant, W_Validation_Result, AD_SysConfig)
         //        AD_SysConfig.SCHEMA_VERSION = 'W001'
     }

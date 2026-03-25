@@ -968,7 +968,7 @@ The Work Order path compiles end-to-end (W-WO-1). ERP alignment complete (S60–
 [ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md) (G-7 assembly) |
 [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) (infrastructure) |
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (UX requirements) |
-[CORE_SRS.md](CORE_SRS.md) (scale research, report engine, compliance) |
+[ACTION_ROADMAP.md](ACTION_ROADMAP.md) (scale research, report engine, compliance) |
 [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) (ERP model alignment) |
 [S60_UI_ALIGNMENT_SPEC.md](archive/S60_UI_ALIGNMENT_SPEC.md) (UI + federation gap analysis) |
 Federation addon: `/home/red1/IfcOpenShell/src/bonsai/bonsai/bim/module/federation/`*

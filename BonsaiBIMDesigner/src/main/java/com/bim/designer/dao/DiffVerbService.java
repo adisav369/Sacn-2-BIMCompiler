@@ -2,8 +2,8 @@ package com.bim.designer.dao;
 
 import com.bim.backoffice.dao.ChangelogDAO;
 import com.bim.orm.BIMLogger;
-import com.bim.ormsandbox.po.M_PP_Order_Node;
-import com.bim.ormsandbox.po.M_PP_Order_NodeProduct;
+import com.bim.ormsandbox.po.M_W_Verb_Node;
+import com.bim.ormsandbox.po.M_W_Verb_NodeProduct;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -11,11 +11,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Records a DiffVerb — a spatial mutation captured as a replayable PP_Order_Node.
+ * Records a DiffVerb — a spatial mutation captured as a replayable W_Verb_Node.
  *
  * <p>iDempiere parallel: when a user drags an element in the viewport, the
- * gesture is recorded as a PP_Order_Node (verb_ref='DIFF') with delta parameters
- * in PP_Order_NodeProduct. The CalloutEngine then fires any matching AD_Rule chain.
+ * gesture is recorded as a W_Verb_Node (verb_ref='DIFF') with delta parameters
+ * in W_Verb_NodeProduct. The CalloutEngine then fires any matching AD_Rule chain.
  *
  * <p>DiffVerb is NOT a BIM_COBOL compilation verb (TILE, ROUTE, etc.).
  * It is a design-time mutation that lives alongside WorkOutputDAO.
@@ -54,7 +54,7 @@ public class DiffVerbService {
     /**
      * Result of recording a DiffVerb + firing callouts.
      *
-     * @param nodeId        PP_Order_Node_ID of the recorded diff
+     * @param nodeId        W_Verb_Node_ID of the recorded diff
      * @param locatorRef    which element was moved
      * @param calloutsFired number of callout rules that fired
      * @param calloutResults detailed results from CalloutEngine
@@ -67,8 +67,8 @@ public class DiffVerbService {
      * Record a spatial diff and fire the callout chain.
      *
      * <ol>
-     *   <li>Create PP_Order_Node row with verb_ref='DIFF'</li>
-     *   <li>Create PP_Order_NodeProduct rows for delta/old/source params</li>
+     *   <li>Create W_Verb_Node row with verb_ref='DIFF'</li>
+     *   <li>Create W_Verb_NodeProduct rows for delta/old/source params</li>
      *   <li>Log to bim_changelog as MOVE action</li>
      *   <li>Fire CalloutEngine for each changed axis (dx/dy/dz)</li>
      * </ol>
@@ -79,8 +79,8 @@ public class DiffVerbService {
         // 1. Find next SeqNo for this building's verb nodes
         int nextSeqNo = getNextSeqNo(params.buildingId());
 
-        // 2. Create PP_Order_Node
-        M_PP_Order_Node node = new M_PP_Order_Node(conn);
+        // 2. Create W_Verb_Node
+        M_W_Verb_Node node = new M_W_Verb_Node(conn);
         node.setC_Order_ID(params.buildingId());
         node.setSeqNo(nextSeqNo);
         node.setName(VERB_REF);
@@ -89,9 +89,9 @@ public class DiffVerbService {
         node.setDocStatus("CO");
         node.save();
 
-        int nodeId = node.getPP_Order_Node_ID();
+        int nodeId = node.getW_Verb_Node_ID();
 
-        // 3. Create PP_Order_NodeProduct rows for structured params
+        // 3. Create W_Verb_NodeProduct rows for structured params
         Map<String, String> paramMap = Map.of(
                 "locator_ref", params.locatorRef(),
                 "delta_dx", String.valueOf(params.deltaDx()),
@@ -104,8 +104,8 @@ public class DiffVerbService {
         );
 
         for (Map.Entry<String, String> entry : paramMap.entrySet()) {
-            M_PP_Order_NodeProduct param = new M_PP_Order_NodeProduct(conn);
-            param.setPP_Order_Node_ID(nodeId);
+            M_W_Verb_NodeProduct param = new M_W_Verb_NodeProduct(conn);
+            param.setW_Verb_Node_ID(nodeId);
             param.setName(entry.getKey());
             param.setValue(entry.getValue());
             param.setValueType(inferType(entry.getValue()));
@@ -149,7 +149,7 @@ public class DiffVerbService {
     // ── Internals ────────────────────────────────────────────────────
 
     private int getNextSeqNo(String buildingId) throws SQLException {
-        List<M_PP_Order_Node> existing = M_PP_Order_Node.getByOrder(conn, buildingId);
+        List<M_W_Verb_Node> existing = M_W_Verb_Node.getByOrder(conn, buildingId);
         if (existing.isEmpty()) return 10;
         return existing.get(existing.size() - 1).getSeqNo() + 10;
     }

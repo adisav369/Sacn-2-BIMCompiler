@@ -120,7 +120,7 @@ intelligence:
 |--|----------------|-----------------|-------------------------------|
 | **Answers** | What materials, when? | What does it look like? | What materials, **where**, how connected? |
 | **Input** | BOM + demand forecast | Architect's sketch | IFC extraction (51K elements) |
-| **Output** | Purchase orders | 3D model + renders | C_Order + C_OrderLine + PP_Order_Node |
+| **Output** | Purchase orders | 3D model + renders | C_Order + C_OrderLine + W_Verb_Node |
 | **Verification** | MRP explosion audit | Visual review | Rosetta Stone gate (G1-G6 proof) |
 | **Compression** | BOM explosion | None | 51K elements → 700 BOM lines (73x) |
 
@@ -348,7 +348,7 @@ itself after every edit.**
 │  │              iDempiere ERP                        │  │
 │  │  C_Order → C_OrderLine → Purchase Orders          │  │
 │  │  M_Product → M_AttributeSetInstance               │  │
-│  │  PP_Order_Node → Manufacturing Instructions       │  │
+│  │  W_Verb_Node → Manufacturing Instructions       │  │
 │  └───────────────────────────────────────────────────┘  │
 │                                                         │
 └─────────────────────────────────────────────────────────┘

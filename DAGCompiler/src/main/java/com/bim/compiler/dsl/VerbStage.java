@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * <p>SPI pattern breaks circular dependency: DAGCompiler defines
  * {@link VerbExecutor}, BIM_COBOL provides the implementation
  * ({@code BimCobolVerbExecutor}). When BIM_COBOL is on the classpath,
- * verbs execute and results persist to PP_Order_Node. When absent,
+ * verbs execute and results persist to W_Verb_Node. When absent,
  * VerbStage falls back to log-only mode.
  */
 public class VerbStage implements CompilerStage {
@@ -74,7 +74,7 @@ public class VerbStage implements CompilerStage {
 
             outputConn.commit();
 
-            System.out.printf("[VERB] %s — %d pass, %d fail, %d PP_Order_Node rows%n",
+            System.out.printf("[VERB] %s — %d pass, %d fail, %d W_Verb_Node rows%n",
                     report.allPass() ? "PASS" : "FAIL",
                     report.passCount(), report.failCount(), report.totalNodes());
 

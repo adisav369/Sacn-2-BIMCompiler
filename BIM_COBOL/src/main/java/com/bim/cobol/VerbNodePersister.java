@@ -1,7 +1,7 @@
 package com.bim.cobol;
 
-import com.bim.ormsandbox.po.M_PP_Order_Node;
-import com.bim.ormsandbox.po.M_PP_Order_NodeProduct;
+import com.bim.ormsandbox.po.M_W_Verb_Node;
+import com.bim.ormsandbox.po.M_W_Verb_NodeProduct;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -9,11 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Persists BIM COBOL verb results to PP_Order_Node + PP_Order_NodeProduct rows.
+ * Persists BIM COBOL verb results to W_Verb_Node + W_Verb_NodeProduct rows.
  *
- * <p>FIRST PRINCIPLE (§11.9): PP_Order_Node = HOW. Each verb invocation becomes
- * one PP_Order_Node row (the operation), and its structured parameters become
- * PP_Order_NodeProduct child rows (the material/parameter inputs).
+ * <p>FIRST PRINCIPLE (§11.9): W_Verb_Node = HOW. Each verb invocation becomes
+ * one W_Verb_Node row (the operation), and its structured parameters become
+ * W_Verb_NodeProduct child rows (the material/parameter inputs).
  *
  * <p>Typical flow:
  * <pre>
@@ -40,7 +40,7 @@ public class VerbNodePersister {
      *
      * @param scriptLines the raw verb lines (in execution order, comments stripped)
      * @param report      the ScriptRunner report containing per-line VerbResults
-     * @return number of PP_Order_Node rows created
+     * @return number of W_Verb_Node rows created
      */
     public int persist(List<String> scriptLines, ScriptRunner.ScriptReport report)
             throws SQLException {
@@ -52,7 +52,7 @@ public class VerbNodePersister {
             VerbResult<?> result = results.get(i);
             String line = i < scriptLines.size() ? scriptLines.get(i) : result.verb();
 
-            M_PP_Order_Node node = new M_PP_Order_Node(conn);
+            M_W_Verb_Node node = new M_W_Verb_Node(conn);
             node.setC_Order_ID(buildingId);
             node.setSeqNo(seqNo);
             node.setName(result.verb());
@@ -75,11 +75,11 @@ public class VerbNodePersister {
      * @param line   the raw verb line
      * @param result the verb execution result
      * @param params structured parameters as name→value pairs (nullable)
-     * @return the PP_Order_Node_ID of the created row
+     * @return the W_Verb_Node_ID of the created row
      */
     public int persistOne(int seqNo, String line, VerbResult<?> result,
                           Map<String, String> params) throws SQLException {
-        M_PP_Order_Node node = new M_PP_Order_Node(conn);
+        M_W_Verb_Node node = new M_W_Verb_Node(conn);
         node.setC_Order_ID(buildingId);
         node.setSeqNo(seqNo);
         node.setName(result.verb());
@@ -89,12 +89,12 @@ public class VerbNodePersister {
         node.setElementCount(extractElementCount(result));
         node.save();
 
-        int nodeId = node.getPP_Order_Node_ID();
+        int nodeId = node.getW_Verb_Node_ID();
 
         if (params != null) {
             for (Map.Entry<String, String> entry : params.entrySet()) {
-                M_PP_Order_NodeProduct param = new M_PP_Order_NodeProduct(conn);
-                param.setPP_Order_Node_ID(nodeId);
+                M_W_Verb_NodeProduct param = new M_W_Verb_NodeProduct(conn);
+                param.setW_Verb_Node_ID(nodeId);
                 param.setName(entry.getKey());
                 param.setValue(entry.getValue());
                 param.setValueType(inferType(entry.getValue()));

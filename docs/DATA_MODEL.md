@@ -379,7 +379,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
                 elements_meta + elements_rtree (world AABB)
                 c_orderline (WHAT)
                 co_empty_space_line (WHERE)
-                PP_Order_Node (HOW)
+                W_Verb_Node (HOW)
 ```
 
 ### Key Tables
@@ -392,7 +392,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | elements_rtree | Spatial index (world AABB) |
 | co_empty_space | Construction space header |
 | co_empty_space_line | Spatial resolution per BOM line |
-| PP_Order_Node | Verb execution audit trail |
+| W_Verb_Node | Verb execution audit trail |
 | base_geometries | Geometry meshes (copied from component_library) |
 | element_instances | Element → geometry mapping |
 
@@ -454,7 +454,7 @@ They live once, centrally — not per-product or per-order. ERP.db serves this r
 | **ERP shared** | `ERP.db` | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule, all ad_* discipline metadata |
 | **Product catalog** | `component_library.db` | M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry |
 | **Per-building BOM** | `{PREFIX}_BOM.db` | m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy) |
-| **Transactional** | `output.db` | c_order, c_orderline, elements_meta, PP_Order_Node, co_empty_space* |
+| **Transactional** | `output.db` | c_order, c_orderline, elements_meta, W_Verb_Node, co_empty_space* |
 
 **Remaining consolidation targets:**
 - M_Product_Category: single authoritative copy in ERP.db (currently also in component_library.db)

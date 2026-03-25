@@ -162,8 +162,8 @@ Our 4-DB split uses a mix of conventions. Most tables use **TEXT primary keys** 
 
 | Table | Has _ID | Has Name | Has Value | Current PK | PK Type |
 |-------|---------|----------|-----------|------------|---------|
-| PP_Order_Node | Yes (INTEGER) | Yes | No | PP_Order_Node_ID | INTEGER |
-| PP_Order_NodeProduct | Yes (INTEGER) | Yes | Yes | PP_Order_NodeProduct_ID | INTEGER ✓ |
+| W_Verb_Node | Yes (INTEGER) | Yes | No | W_Verb_Node_ID | INTEGER |
+| W_Verb_NodeProduct | Yes (INTEGER) | Yes | Yes | W_Verb_NodeProduct_ID | INTEGER ✓ |
 | c_order | No | Yes | No | C_Order_ID (TEXT) | TEXT |
 | c_orderline | Yes (INTEGER) | Yes | No | C_OrderLine_ID | INTEGER |
 | co_empty_space | Yes (INTEGER) | No | No | co_emptyspace_id | INTEGER |
@@ -187,7 +187,7 @@ Our 4-DB split uses a mix of conventions. Most tables use **TEXT primary keys** 
 | _schema_guide | No | No | No | (table_name) | TEXT |
 
 **Notes:**
-- `PP_Order_NodeProduct` is fully conformant (_ID INTEGER, Name, Value) ✓
+- `W_Verb_NodeProduct` is fully conformant (_ID INTEGER, Name, Value) ✓
 - `c_order` uses `C_Order_ID TEXT` — divergent from iDempiere `C_Order_ID INTEGER`
 
 ### 1.5 Validation DB (`library/validation.db`)
@@ -220,7 +220,7 @@ These tables use TEXT as PK — the most divergent from iDempiere convention:
 |-------|----|-----------|---------------|-----------------|
 | **M_Product** | BOM, ERP, CL | `product_id TEXT` | m_bom_line.child_product_id, c_orderline.M_Product_ID, etc. | 29 |
 | **m_bom** | BOM | `bom_id TEXT` | m_bom_line.bom_id, m_bom_line_ma.bom_id | 37 |
-| **c_order** | Output | `C_Order_ID TEXT` | c_orderline.C_Order_ID, PP_Order_Node.C_Order_ID, co_empty_space.c_order_id | 19 |
+| **c_order** | Output | `C_Order_ID TEXT` | c_orderline.C_Order_ID, W_Verb_Node.C_Order_ID, co_empty_space.c_order_id | 19 |
 | **C_DocType** | BOM | `C_DocType_ID TEXT` | c_order.C_DocType_ID | 14 |
 
 ### Medium (referenced but fewer dependents)
@@ -282,7 +282,7 @@ Tables with INTEGER PK but no `Name`:
 Almost no tables have `Value` as a SearchKey. Only 3 conform:
 - `AD_Org` ✓
 - `M_AttributeInstance` ✓ (though this is attribute value, not SearchKey)
-- `PP_Order_NodeProduct` ✓
+- `W_Verb_NodeProduct` ✓
 
 **Assessment:** Adding Value/SearchKey to all tables is the largest gap. Most tables use the TEXT PK itself as the business identifier (e.g., `bom_id = 'SH-BUILDING'`), making the PK serve double duty as both surrogate and SearchKey.
 
@@ -302,7 +302,7 @@ No formal iDempiere-style PO (Persistent Object) classes exist. The project uses
   - `SpatialStructureBuilder.java` — spatial_structure, rel_contained_in_space
   - `IDempiereExporter.java` — idempiere_product_map, idempiere_bom_map
 
-The iDempiere-named tables (`M_Product`, `m_bom`, `m_bom_line`, `C_Order`, `C_OrderLine`, `C_DocType`, `M_AttributeSet*`, `PP_Order_Node*`) are the ones that would be migrated. The `ad_*` and output tables use their own convention.
+The iDempiere-named tables (`M_Product`, `m_bom`, `m_bom_line`, `C_Order`, `C_OrderLine`, `C_DocType`, `M_AttributeSet*`, `W_Verb_Node*`) are the ones that would be migrated. The `ad_*` and output tables use their own convention.
 
 ### 3.4 Migrations Needed
 
@@ -368,7 +368,7 @@ These REFERENCES clauses join on TEXT columns rather than INTEGER _ID:
 - `placement_rules.component_id INTEGER → component_definitions.id INTEGER` ✓ (correct)
 
 **In Output DB:**
-- `PP_Order_Node.C_Order_ID TEXT → c_order.C_Order_ID TEXT`
+- `W_Verb_Node.C_Order_ID TEXT → c_order.C_Order_ID TEXT`
 - `co_empty_space_line.co_emptyspace_id INTEGER → co_empty_space.co_emptyspace_id INTEGER` ✓
 - `element_instances.geometry_hash TEXT → base_geometries.geometry_hash TEXT`
 - `element_transforms.guid TEXT → elements_meta.guid TEXT`
@@ -377,7 +377,7 @@ These REFERENCES clauses join on TEXT columns rather than INTEGER _ID:
 - `system_edges.system_id TEXT → mep_systems.system_id TEXT`
 - `system_edges.from_node_id TEXT → system_nodes.node_id TEXT`
 - `system_edges.to_node_id TEXT → system_nodes.node_id TEXT`
-- `PP_Order_NodeProduct.PP_Order_Node_ID INTEGER → PP_Order_Node.PP_Order_Node_ID INTEGER` ✓
+- `W_Verb_NodeProduct.W_Verb_Node_ID INTEGER → W_Verb_Node.W_Verb_Node_ID INTEGER` ✓
 
 ### 4.2 Cross-DB Implicit Joins (No Declared FK)
 
@@ -398,7 +398,7 @@ These are joined via shared TEXT keys across databases at runtime:
 |--------|-------|
 | **Tables across all DBs** | ~120 unique (deduplicated across shared schemas) |
 | **Tables with TEXT PK (non-integer)** | ~70 |
-| **Tables fully conformant (_ID + Name + Value)** | 4 (AD_Org, M_AttributeInstance, PP_Order_NodeProduct, AD_Val_Rule_Param) |
+| **Tables fully conformant (_ID + Name + Value)** | 4 (AD_Org, M_AttributeInstance, W_Verb_NodeProduct, AD_Val_Rule_Param) |
 | **Tables with INTEGER PK but missing Name/Value** | ~30 |
 | **TEXT-to-TEXT FK references** | ~40 |
 | **Java files with INSERT statements** | ~20 |

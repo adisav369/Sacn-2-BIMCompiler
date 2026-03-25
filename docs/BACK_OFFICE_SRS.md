@@ -67,7 +67,7 @@ AD_PrintFormatItem (format_id FK, table_name, sequence, is_active, display_name)
 | SUMMARY | building_summary | Yes |
 | SPATIAL | elements_meta, element_instances, spatial_structure | elements_meta only |
 | QUANTITY | simple_qto, area_by_storey, area_by_type, room_areas | simple_qto, area_by_storey |
-| ORDER | c_order, c_orderline, PP_Order_Node | c_order, c_orderline |
+| ORDER | c_order, c_orderline, W_Verb_Node | c_order, c_orderline |
 | GEOMETRY | base_geometries, surface_styles, material_layers | No |
 | OTHER | remaining tables | No |
 
@@ -93,7 +93,7 @@ These DAOs moved from `com.bim.designer.dao` → `com.bim.backoffice.dao`:
 |-----|---------|-------------------|
 | ReportDAO | Interface: 8 methods, 11 record types | AD_Process parameter signatures |
 | CostDAO | 5D: BOM cost rollup (material + labor + equipment) | M_CostDetail |
-| ScheduleDAO | 4D: Construction sequence as Gantt tasks | PP_Order workflow |
+| ScheduleDAO | 4D: Construction sequence as Gantt tasks | W_Verb_Node workflow |
 | SustainabilityDAO | 6D: Embodied carbon per product × qty | M_Product extended |
 | FacilityMgmtDAO | 7D: Asset register + maintenance scheduling | COBie handover |
 | PortfolioDAO | Cross-project: portfolio, Kanban, balanced scorecard | Multi-org rollup |

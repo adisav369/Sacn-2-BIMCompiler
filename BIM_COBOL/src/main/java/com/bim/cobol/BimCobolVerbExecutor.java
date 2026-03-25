@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * SPI implementation: executes BIM COBOL verbs and persists results to PP_Order_Node.
+ * SPI implementation: executes BIM COBOL verbs and persists results to W_Verb_Node.
  *
  * <p>Discovered by {@link java.util.ServiceLoader} when BIM_COBOL is on the classpath.
  * Called by {@code VerbStage} in the DAGCompiler pipeline.
@@ -16,7 +16,7 @@ import java.util.List;
  * <ol>
  *   <li>Create ScriptRunner with all 12 built-in verbs</li>
  *   <li>Execute each line via VerbRegistry dispatch</li>
- *   <li>Persist results to PP_Order_Node + PP_Order_NodeProduct via VerbNodePersister</li>
+ *   <li>Persist results to W_Verb_Node + W_Verb_NodeProduct via VerbNodePersister</li>
  *   <li>Return ExecutionReport for pipeline logging</li>
  * </ol>
  */
@@ -36,7 +36,7 @@ public class BimCobolVerbExecutor implements VerbExecutor {
         VerbContext ctx = VerbContext.withOutput(bomConn, null, outputConn);
         ScriptRunner.ScriptReport report = runner.run(ctx, script);
 
-        // 3. Persist to PP_Order_Node
+        // 3. Persist to W_Verb_Node
         VerbNodePersister persister = new VerbNodePersister(outputConn, buildingId);
         int nodeCount = persister.persist(verbLines, report);
 

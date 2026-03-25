@@ -5,8 +5,8 @@ import com.bim.designer.dao.CalloutEngine;
 import com.bim.designer.dao.DiffVerbService;
 import com.bim.designer.dao.DiffVerbService.DiffParams;
 import com.bim.designer.dao.DiffVerbService.DiffResult;
-import com.bim.ormsandbox.po.M_PP_Order_Node;
-import com.bim.ormsandbox.po.M_PP_Order_NodeProduct;
+import com.bim.ormsandbox.po.M_W_Verb_Node;
+import com.bim.ormsandbox.po.M_W_Verb_NodeProduct;
 
 import org.junit.jupiter.api.*;
 
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * DiffVerb + Callout integration tests.
  *
  * <p>Proves the §9 reactive spatial editing path:
- * record DIFF → PP_Order_Node + PP_Order_NodeProduct → bim_changelog MOVE →
+ * record DIFF → W_Verb_Node + W_Verb_NodeProduct → bim_changelog MOVE →
  * CalloutEngine fires AD_Rule chain → room AABB recalc triggered.
  *
  * <p>All tests use in-memory SQLite — no filesystem dependency.
@@ -50,11 +50,11 @@ class DiffVerbTest {
         if (conn != null) conn.close();
     }
 
-    // ── W-DIFF-1: Record a DIFF verb and verify PP_Order_Node ─────────────
+    // ── W-DIFF-1: Record a DIFF verb and verify W_Verb_Node ─────────────
 
     /**
-     * W-DIFF-1: Move fireplace 300mm left → PP_Order_Node with Name='DIFF',
-     * PP_Order_NodeProduct rows with delta_dx=-300, and bim_changelog MOVE entry.
+     * W-DIFF-1: Move fireplace 300mm left → W_Verb_Node with Name='DIFF',
+     * W_Verb_NodeProduct rows with delta_dx=-300, and bim_changelog MOVE entry.
      */
     @Test
     @Order(1)
@@ -68,13 +68,13 @@ class DiffVerbTest {
 
         DiffResult result = diffService.recordDiff(params);
 
-        // Verify PP_Order_Node created
-        assertTrue(result.nodeId() > 0, "PP_Order_Node_ID should be positive");
+        // Verify W_Verb_Node created
+        assertTrue(result.nodeId() > 0, "W_Verb_Node_ID should be positive");
         assertEquals("L1.Living.FP_Mantel", result.locatorRef());
 
-        // Load and verify PP_Order_Node
-        M_PP_Order_Node node = M_PP_Order_Node.get(conn, result.nodeId());
-        assertNotNull(node, "PP_Order_Node should exist");
+        // Load and verify W_Verb_Node
+        M_W_Verb_Node node = M_W_Verb_Node.get(conn, result.nodeId());
+        assertNotNull(node, "W_Verb_Node should exist");
         assertEquals(BUILDING_ID, node.getC_Order_ID());
         assertEquals("DIFF", node.getName());
         assertEquals("CO", node.getDocStatus());
@@ -85,17 +85,17 @@ class DiffVerbTest {
     }
 
     /**
-     * W-DIFF-2: PP_Order_NodeProduct rows carry structured delta parameters.
+     * W-DIFF-2: W_Verb_NodeProduct rows carry structured delta parameters.
      */
     @Test
     @Order(2)
     void w_diff_2_nodeProductParamsRecorded() throws SQLException {
         // Node from W-DIFF-1
-        List<M_PP_Order_Node> nodes = M_PP_Order_Node.getByOrder(conn, BUILDING_ID);
+        List<M_W_Verb_Node> nodes = M_W_Verb_Node.getByOrder(conn, BUILDING_ID);
         assertFalse(nodes.isEmpty(), "Should have at least one node");
 
-        int nodeId = nodes.get(0).getPP_Order_Node_ID();
-        List<M_PP_Order_NodeProduct> params = M_PP_Order_NodeProduct.getByNode(conn, nodeId);
+        int nodeId = nodes.get(0).getW_Verb_Node_ID();
+        List<M_W_Verb_NodeProduct> params = M_W_Verb_NodeProduct.getByNode(conn, nodeId);
 
         // Should have 8 params: locator_ref, delta_dx/dy/dz, old_x/y/z, source
         assertEquals(8, params.size(), "Should have 8 structured parameters");
@@ -181,9 +181,9 @@ class DiffVerbTest {
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
-    private void assertParamValue(List<M_PP_Order_NodeProduct> params,
+    private void assertParamValue(List<M_W_Verb_NodeProduct> params,
                                   String name, String expectedValue) {
-        M_PP_Order_NodeProduct param = params.stream()
+        M_W_Verb_NodeProduct param = params.stream()
                 .filter(p -> name.equals(p.getName()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Missing param: " + name));
@@ -193,7 +193,7 @@ class DiffVerbTest {
 
     /**
      * Create minimal schema for DiffVerb testing: C_Order, C_OrderLine,
-     * PP_Order_Node, PP_Order_NodeProduct, bim_changelog, AD_Rule.
+     * W_Verb_Node, W_Verb_NodeProduct, bim_changelog, AD_Rule.
      */
     private static void initTestSchema(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
@@ -231,10 +231,10 @@ class DiffVerbTest {
                 )
                 """);
 
-            // PP_Order_Node
+            // W_Verb_Node
             stmt.execute("""
-                CREATE TABLE IF NOT EXISTS PP_Order_Node (
-                    PP_Order_Node_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                CREATE TABLE IF NOT EXISTS W_Verb_Node (
+                    W_Verb_Node_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     C_Order_ID TEXT NOT NULL REFERENCES C_Order(C_Order_ID),
                     C_OrderLine_ID INTEGER REFERENCES C_OrderLine(C_OrderLine_ID),
                     Name TEXT NOT NULL,
@@ -251,20 +251,20 @@ class DiffVerbTest {
                 )
                 """);
 
-            // PP_Order_NodeProduct
+            // W_Verb_NodeProduct
             stmt.execute("""
-                CREATE TABLE IF NOT EXISTS PP_Order_NodeProduct (
-                    PP_Order_NodeProduct_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PP_Order_Node_ID INTEGER NOT NULL REFERENCES PP_Order_Node(PP_Order_Node_ID),
+                CREATE TABLE IF NOT EXISTS W_Verb_NodeProduct (
+                    W_Verb_NodeProduct_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    W_Verb_Node_ID INTEGER NOT NULL REFERENCES W_Verb_Node(W_Verb_Node_ID),
                     Name TEXT NOT NULL,
                     Value TEXT NOT NULL,
                     ValueType TEXT DEFAULT 'NUM'
                         CHECK(ValueType IN ('NUM','TEXT','BOOL')),
-                    UNIQUE(PP_Order_Node_ID, Name)
+                    UNIQUE(W_Verb_Node_ID, Name)
                 )
                 """);
 
-            stmt.execute("CREATE INDEX IF NOT EXISTS idx_ppnode_order ON PP_Order_Node(C_Order_ID)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_verb_node_order ON W_Verb_Node(C_Order_ID)");
         }
 
         // bim_changelog via ChangelogDAO

@@ -50,25 +50,9 @@ three concerns, same separation as iDempiere.
 
 ## 0. Two Kinds of Rules — Why This Changes Everything
 
-### The Problem
+### Two Rule Databases That Compose at Compile Time
 
-Every BIM tool on the market validates geometry — does the wall intersect the
-duct? Is the clearance sufficient? But **none** compose *spatial knowledge*
-(what engineers actually do in practice) with *regulatory knowledge* (what the
-law requires). In the current industry:
-
-- Spatial knowledge lives in the engineer's head, learned over decades
-- Regulatory knowledge lives in code books, checked by separate consultants
-- The two are reconciled manually, late in the project, at enormous cost
-- When codes change (annual cycle), the entire check is repeated from scratch
-
-These are separate tools, separate consultants, separate workflows. The gap
-between "where things go" and "what the law allows" is where billions of
-dollars in rework originate.
-
-### Our Solution — Two Rule Databases That Compose at Compile Time
-
-This compiler maintains **two kinds of rules** that work in symbiosis:
+The industry separates spatial knowledge (engineer's head) from regulatory knowledge (code books), reconciled manually at enormous cost. This compiler maintains **two kinds of rules** in symbiosis:
 
 | Rule Source | Origin | Stored In | Role | Three Concerns |
 |-------------|--------|-----------|------|----------------|
@@ -80,63 +64,18 @@ knowledge bases. The compiler compiles freely (WHAT), spatial rules guide
 WHERE, regulatory rules gate HOW — the [Three Concerns](MANIFESTO.md#the-three-concerns)
 in action.
 
-### The iDempiere Parallel — Configure-to-Order Applied to Compliance
+### iDempiere Parallel — Configure-to-Order Applied to Compliance
 
-This is the same pattern iDempiere uses for manufacturing orders:
+Same pattern as iDempiere C_Tax: spatial rules propose (like BOM Configurator), regulatory rules constrain by jurisdiction (like C_Tax by territory). Exception-based — a placement is valid unless a rule says otherwise.
 
-```
-iDempiere Manufacturing:
-  BOM Configurator  → proposes a product mix (spatial knowledge)
-  C_Tax             → validates tax liability by jurisdiction (regulatory knowledge)
-  One proposes, one constrains. Neither knows about the other.
+**Same building, different jurisdictions:** Switch `AD_Val_Rule WHERE jurisdiction = 'MY'` to `'AU'` or `'US'`. Same spatial knowledge, different regulatory pack — like switching tax jurisdictions in iDempiere.
 
-BIM Compiler:
-  Spatial rules     → propose placement from observed patterns (35 buildings)
-  AD_Val_Rule       → gate placement by jurisdiction code (UBBL, NFPA 13, IRC)
-  One proposes, one constrains. Neither knows about the other.
-```
-
-The BOM template (spatial rules) proposes a compliant layout. The order
-(regulatory rules) constrains by jurisdiction. Exception-based validation —
-rules gate by exception, not by prescription. A placement is valid unless a
-rule says otherwise, just as an invoice line is tax-exempt unless a tax rule
-applies.
-
-### The Crowd-Puller — Same Building, Different Jurisdictions
-
-A firm in Kuala Lumpur designs a residential building. The spatial rules
-(mined from Malaysian buildings) propose sprinkler placement, room dimensions,
-corridor widths. The regulatory rules (UBBL 2012) validate against Malaysian
-building code.
-
-**Same building plan exported to Sydney** gets BCA/NCC 2022 rules. Same
-compiler, same spatial knowledge, different regulatory pack. Same building
-plan exported to Houston gets IRC 2021 + NFPA 13. Like switching tax
-jurisdictions in iDempiere — the engine is identical, only the rule data
-changes.
-
-```
-DocValidate.activate("MY")  → AD_Val_Rule WHERE jurisdiction = 'MY'
-DocValidate.activate("AU")  → AD_Val_Rule WHERE jurisdiction = 'AU'
-DocValidate.activate("US")  → AD_Val_Rule WHERE jurisdiction = 'US'
-Same building. Same spatial rules. Different regulatory packs.
-```
-
-No competing product offers this. Revit validates geometry but has no
-jurisdiction-scoped rule engine. Solibri checks codes but has no spatial
-knowledge base. Navisworks detects clashes but neither proposes nor validates
-by jurisdiction. This symbiosis — spatial proposes, regulatory validates,
-jurisdiction selects — is unique to an ERP-native architecture.
-
-### How the Two Rule Types Interact
+### How They Interact
 
 ```
 EXTRACTION (IFC → BOM)
   ↓
-SPATIAL RULES (mined from extracted buildings)
-  "Rooms of this type typically have 1 sprinkler at this spacing"
-  "Light fixtures in corridors are spaced 3000mm on-centre"
-  "Column grid for this building type is 8400 × 8400mm"
+SPATIAL RULES (mined from 35 buildings)
   ↓
 COMPILER PROPOSES PLACEMENT (using spatial knowledge)
   ↓
@@ -1217,7 +1156,7 @@ has the same constraint physically.
 
 | Element Type | Discipline | Vertical Constraint | iDempiere Analogue |
 |-------------|-----------|--------------------|--------------------|
-| MEP risers | CW/SP/FP/LPG | X,Y fixed across storeys; only Z changes | PP_Order_Node sequence (operation depends on prior) |
+| MEP risers | CW/SP/FP/LPG | X,Y fixed across storeys; only Z changes | W_Verb_Node sequence (operation depends on prior) |
 | Stairs | ARC | Flight connects floor-to-floor; X,Y within stairwell envelope | M_BOM with sub-BOMs per flight (stringer, treads, landing) |
 | Lifts/elevators | ARC/ELEC | Shaft perfectly vertical; X,Y identical all storeys | M_Product with IsInstance=1 (shaft height varies) |
 | Chutes | ARC | Garbage/laundry chute; X,Y fixed | Same as lift shaft |
@@ -1454,7 +1393,7 @@ shows live status from all three tiers.
 
 When a user starts a new building in BIM Designer, the engine auto-populates
 the iDempiere construction model: C_Order, C_OrderLine, spatial relationships
-(from M_BOM_Line dx/dy/dz), default M_AttributeSetInstance, and PP_Order_Node. The user then ALTERS these
+(from M_BOM_Line dx/dy/dz), default M_AttributeSetInstance, and W_Verb_Node. The user then ALTERS these
 defaults — they don't build from scratch. This is the iDempiere pattern:
 `MOrder.prepareIt()` creates default lines, the user modifies before completing.
 
@@ -1486,7 +1425,7 @@ Engine spawns (in output.db):
    ├── customer-facing defaults (finish=DEFAULT, config=STANDARD)
    └── user can alter: change material, adjust dimensions, pick variant
 
-5. PP_Order_Node (assembly sequence — default routing)
+5. W_Verb_Node (assembly sequence — default routing)
    ├── STR first (structural frame)
    ├── ARC second (architectural envelope)
    ├── MEP third (FP, ACMV, ELEC, CW, SP, LPG)
@@ -1507,26 +1446,26 @@ iDempiere MOrder.prepareIt():              BIM CreateNew:
 7. completeIt() → final validation         7. Promote → Tier 2+3 validation
 ```
 
-**The engine assists, the user decides.** Default PP_Order says "build STR
+**The engine assists, the user decides.** Default C_Order says "build STR
 first, then ARC, then MEP." The user can say "I'm doing prefab — MEP is
 pre-installed in wall panels, so MEP goes WITH ARC, not after." The engine
-adjusts the PP_Order_Node sequence. Same as iDempiere where a user can
+adjusts the W_Verb_Node sequence. Same as iDempiere where a user can
 reorder manufacturing operations.
 
-### 14.4 PP_Order_Node — Assembly Routing for Construction
+### 14.4 W_Verb_Node — Assembly Routing for Construction
 
-In iDempiere Manufacturing, PP_Order_Node defines the sequence of operations
+In iDempiere Manufacturing, W_Verb_Node defines the sequence of operations
 to produce a product. For construction:
 
 ```sql
-CREATE TABLE PP_Order_Node (
+CREATE TABLE W_Verb_Node (
     pp_order_node_id  INTEGER PRIMARY KEY,
     c_order_id        INTEGER NOT NULL REFERENCES C_Order,
     name              TEXT NOT NULL,           -- 'Foundation', 'Frame', 'Envelope'
     sequence          INTEGER NOT NULL,        -- execution order
     discipline        TEXT,                    -- 'STR', 'ARC', 'FP', etc.
     duration_days     INTEGER,                -- estimated duration
-    depends_on        INTEGER REFERENCES PP_Order_Node, -- predecessor
+    depends_on        INTEGER REFERENCES W_Verb_Node, -- predecessor
     status            TEXT DEFAULT 'PENDING',  -- PENDING/ACTIVE/COMPLETE
     description       TEXT
 );
@@ -1649,7 +1588,7 @@ Output:
 /**
  * Spawns the iDempiere construction model when user creates a new building.
  * Populates C_Order, C_OrderLine, spatial slots (from M_BOM_Line dx/dy/dz),
- * default ASI, and PP_Order_Node into output.db (compile DB).
+ * default ASI, and W_Verb_Node into output.db (compile DB).
  *
  * <p>iDempiere analogue: MOrder.prepareIt() + MInOut.createFrom().
  * The engine creates default records; the user alters in BIM Designer.
@@ -1688,7 +1627,7 @@ public class ConstructionModelSpawner {
      → Spatial slot from M_BOM_Line dx/dy/dz (compiler-internal: co_empty_space_line caches slot)
      → Create default M_AttributeSetInstance (from M_Product.M_AttributeSet_ID)
 
-3. Create PP_Order_Node (default routing from M_Product_Category template)
+3. Create W_Verb_Node (default routing from M_Product_Category template)
    → RE: Foundation → Frame → Envelope → MEP → Finishes
    → CO: Substructure → Superstructure → Envelope → MEP Risers → MEP Horizontal → Finishes
 

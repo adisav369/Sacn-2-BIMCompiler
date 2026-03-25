@@ -140,7 +140,7 @@ Written fresh each compile. Schema created from `output_template.db`.
 |-------|---------|-----------------|
 | **C_Order** | Order header: WHAT building to build (doc_status lifecycle DR→IP→CO→AP) | CompileDAO (R/W) |
 | **C_OrderLine** | Per-element placement (product, qty, x/y/z position) | CompileDAO (R/W) |
-| **PP_Order_Node** | HOW: verb invocation audit trail (verb_name, params, results) | VerbNodePersister (W), M_PP_Order_Node (R) |
+| **W_Verb_Node** | HOW: verb invocation audit trail (verb_name, params, results) | VerbNodePersister (W), M_W_Verb_Node (R) |
 | **bim_changelog** | WHO changed WHAT: action, entity, old→new, user, timestamp | ChangelogDAO (R/W) |
 
 ### Compiled Output (output.db)

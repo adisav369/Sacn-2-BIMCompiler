@@ -371,7 +371,7 @@ public class BuildingWriter {
                     M_Product_ID     TEXT,                -- FK to M_Product (was: family_ref)
                     IsActive         INTEGER DEFAULT 1,   -- (was: is_active)
                     UNIQUE(C_Order_ID, Storey, Name)
-                    -- §11.9 DROPPED → PP_Order_Node: host_type, host_ref, position_rule,
+                    -- §11.9 DROPPED → W_Verb_Node: host_type, host_ref, position_rule,
                     --   position_value, position_value_2, position_value_3, height_mm, orientation
                     -- §11.9 DROPPED → M_Product: width_mm, height_extent_mm, depth_mm,
                     --   geometry_hash, material_name, material_rgba
@@ -379,11 +379,11 @@ public class BuildingWriter {
             """);
 
             // ── PRODUCTION layer (HOW) — iDempiere Manufacturing ──
-            // PP_Order_Node: one verb invocation per row
-            // PP_Order_NodeProduct: structured parameters per verb
+            // W_Verb_Node: one verb invocation per row
+            // W_Verb_NodeProduct: structured parameters per verb
             stmt.execute("""
-                CREATE TABLE PP_Order_Node (
-                    PP_Order_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                CREATE TABLE W_Verb_Node (
+                    W_Verb_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
                     C_Order_ID        TEXT NOT NULL REFERENCES c_order(C_Order_ID),
                     SeqNo             INTEGER NOT NULL DEFAULT 10,
                     Name              TEXT NOT NULL,
@@ -401,15 +401,15 @@ public class BuildingWriter {
             """);
 
             stmt.execute("""
-                CREATE TABLE PP_Order_NodeProduct (
-                    PP_Order_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PP_Order_Node_ID         INTEGER NOT NULL
-                        REFERENCES PP_Order_Node(PP_Order_Node_ID),
+                CREATE TABLE W_Verb_NodeProduct (
+                    W_Verb_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    W_Verb_Node_ID         INTEGER NOT NULL
+                        REFERENCES W_Verb_Node(W_Verb_Node_ID),
                     Name                     TEXT NOT NULL,
                     Value                    TEXT NOT NULL,
                     ValueType                TEXT DEFAULT 'TEXT'
                         CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
-                    UNIQUE(PP_Order_Node_ID, Name)
+                    UNIQUE(W_Verb_Node_ID, Name)
                 )
             """);
         }

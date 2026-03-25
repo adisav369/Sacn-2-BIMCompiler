@@ -341,7 +341,7 @@ public class PlacementProver {
      * Load element rules from c_orderline.
      *
      * <p>§11.9: host_type, host_ref, position_rule DROPPED from c_orderline.
-     * ElementRule fields for placement data are null until PP_Order_Node migration.
+     * ElementRule fields for placement data are null until W_Verb_Node migration.
      */
     private static List<RelationalData.ElementRule> loadElementRules(
             Connection lib, String buildingName) throws SQLException {

@@ -60,8 +60,8 @@ public class OutputTemplateGenerator {
                 ('_schema_guide',   NULL, 'Documentation table — describes output schema purpose and three-concern lock'),
                 ('c_order',         NULL, 'WHAT: Transactional order header — one per compiled building, created from C_DocType'),
                 ('c_orderline',     NULL, 'WHAT: Order lines — one per placed element, generated from BOM explosion'),
-                ('PP_Order_Node',   NULL, 'HOW: Production verb invocations — one per BIM COBOL verb execution'),
-                ('PP_Order_NodeProduct', NULL, 'HOW: Structured parameters for each verb invocation'),
+                ('W_Verb_Node',   NULL, 'HOW: Production verb invocations — one per BIM COBOL verb execution'),
+                ('W_Verb_NodeProduct', NULL, 'HOW: Structured parameters for each verb invocation'),
                 -- Core geometry tables
                 ('elements_meta',   NULL, 'Core element catalog — guid, discipline, ifc_class, storey, material'),
                 ('elements_rtree',  NULL, 'R-tree spatial index — AABB per element (minX,maxX,minY,maxY,minZ,maxZ)'),

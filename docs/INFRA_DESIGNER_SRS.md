@@ -3,7 +3,7 @@
 
 **Version:** 2.0 | **Date:** 2026-03-20
 **Scope:** Designer UX for infrastructure (bridge/road/rail/tunnel) + terrain-following placement
-**Companion:** `CORE_SRS.md` §3.1, `InfrastructureAnalysis.md` §8 (terrain model)
+**Companion:** `StrategicIndustryPositioning.md` (gap matrix), `InfrastructureAnalysis.md` §8 (terrain model)
 **Session:** S37 — terrain-following placement PoC proven on real 689-point survey data
 
 ---
@@ -708,7 +708,7 @@ VerbDetector cascade for all infrastructure.
 | Document | Covers |
 |----------|--------|
 | `InfrastructureAnalysis.md` | IFC4X3 file inventory, entity census, verb mapping |
-| `CORE_SRS.md §3.1` | Gap matrix, Moat 5 (Infrastructure First-Mover) |
+| `StrategicIndustryPositioning.md` | Gap matrix, Moat 5 (Infrastructure First-Mover) |
 | `DISC_VALIDATION_DB_SRS.md` | validation.db schema, 30 infra rules |
 | `BIM_Designer.md §17` | snap(), jurisdiction, Design Mode |
 | `BlenderBridge.md` | Java-smart/Python-dumb pipe protocol |

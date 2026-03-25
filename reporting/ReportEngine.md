@@ -241,7 +241,7 @@ private static void writeNewSheet(XSSFWorkbook wb, Connection conn)
 ## Future Directions
 
 - **SH/DX output analysis:** Once compiled, add clash detection sheets for SH and DX output DBs
-- **4D scheduling:** Time-based construction sequence from PP_Order_Node
+- **4D scheduling:** Time-based construction sequence from W_Verb_Node
 - **5D costing:** RM cost columns on compiled BOM elements via simple_qto
 - **Federation report:** Cross-model coordination (IFC4 federation via DAO verbs, not IfcOpenShell)
 - **Phase B Terminal compilation:** When Terminal is compiled, add output-vs-extracted comparison sheet

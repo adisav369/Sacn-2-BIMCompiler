@@ -140,7 +140,7 @@ processIt(compile DB):                               DocStatus: DR → IP
   │   │   │   → component_geometries (mesh via geometry_hash)
   │   │   │   → INSERT M_AttributeSetInstance (width, depth, height, material)
   │   │   │
-  │   │   └── INSERT PP_Order_Node (verb execution record)
+  │   │   └── INSERT W_Verb_Node (verb execution record)
   │   │
   │   └── IF value = DocEvent:
   │       │  DocEvent engine handles it (concern #2)
@@ -218,7 +218,7 @@ C_OrderLine count — if already populated, it skips that discipline. This handl
 the partial-success case: fix the blocked discipline's seed data, re-run, and
 only the remaining disciplines execute.
 
-**Audit trail:** Every processIt() invocation writes to `PP_Order_Node`:
+**Audit trail:** Every processIt() invocation writes to `W_Verb_Node`:
 - `verb_ref = 'PROCESS_IT'`
 - `description = 'FP: 45 placed, ELEC: BLOCK (RULE_NOT_FOUND)'`
 - `node_status = 'COMPLETE' | 'PARTIAL' | 'BLOCKED'`
@@ -255,7 +255,7 @@ completeIt(compile DB → output.db):                  DocStatus: IP → CO
   │   → Resolves LODs from component_library.db
   │   → Writes elements + spatial + geometry to output.db
   │
-  ├── INSERT PP_Order_Node records (execution audit trail)
+  ├── INSERT W_Verb_Node records (execution audit trail)
   │   → One row per verb invocation
   │
   ├── ProveStage (Stage 9) gate
@@ -302,7 +302,7 @@ approveIt(compile DB → {prefix}_BOM.db):              DocStatus: CO → AP
 | processIt | DR→IP | {prefix}_BOM.db | *(read-only)* | BOM tree source for `{prefix}_BOM` disciplines |
 | processIt | DR→IP | validation.db | *(read-only)* | AD_Val_Rule for `DocEvent` disciplines + shared rules |
 | completeIt | IP→CO | output.db | elements_meta, element_transforms, element_instances, base_geometries, spatial_structure, c_order, c_orderline | Compiled output |
-| completeIt | IP→CO | compile DB | PP_Order_Node, C_Order.DocStatus | Execution audit + status update |
+| completeIt | IP→CO | compile DB | W_Verb_Node, C_Order.DocStatus | Execution audit + status update |
 | approveIt | CO→AP | NEW {prefix}_BOM.db | m_bom, m_bom_line | Promoted catalog (governance gate, not common) |
 
 **DR → IP → CO is the common path.** Every building goes through process + compile.
@@ -335,7 +335,7 @@ owns each element). Both are editable during IP and frozen at CO.
 | `M_BOM_Line` | aabb_*_mm | Slot AABB capacity | YES — resize |
 | `M_AttributeSetInstance` | width/depth/height | Instance sizing | YES — slider |
 | `W_Validation_Result` | result | Tier 1/2/3 pass/warn/block | Recomputed on change |
-| `PP_Order_Node` | verb_ref | Verb execution | Written at CO |
+| `W_Verb_Node` | verb_ref | Verb execution | Written at CO |
 
 ### 1.8 Discipline Verbs During IP
 
@@ -351,7 +351,7 @@ invoke these verbs on C_OrderLine.AD_Org_ID:
 | **Precondition** | Target discipline node exists under same storey. If not, auto-create. |
 | **Writes** | `C_OrderLine.AD_Org_ID`, `C_OrderLine.Parent_OrderLine_ID` |
 | **Validation** | Tier 1 re-run on element (new discipline rules). Tier 2 re-run on storey (new pair interactions). |
-| **PP_Order_Node** | verb_ref='REASSIGN', description='pipe_42: CW→SP' |
+| **W_Verb_Node** | verb_ref='REASSIGN', description='pipe_42: CW→SP' |
 
 ```
 REASSIGN pipe_segment_42, SP
@@ -383,7 +383,7 @@ SQL:
 | **Precondition** | Source discipline node exists with mixed elements. |
 | **Writes** | New C_OrderLine discipline nodes (host_type=DISCIPLINE). UPDATE AD_Org_ID + Parent_OrderLine_ID per element. |
 | **Validation** | Full Tier 1+2+3 re-run (discipline landscape changed). |
-| **PP_Order_Node** | verb_ref='SPLIT', description='MEP→CW(338)+SP(189)+FP(312)+ELEC(65)' |
+| **W_Verb_Node** | verb_ref='SPLIT', description='MEP→CW(338)+SP(189)+FP(312)+ELEC(65)' |
 
 ```
 SPLIT MEP, {
@@ -423,7 +423,7 @@ After: source MEP node → IsActive=0 (soft delete, audit trail)
 | **Precondition** | All source + target discipline nodes exist under same storey. |
 | **Writes** | UPDATE AD_Org_ID + Parent_OrderLine_ID. Source nodes → IsActive=0. |
 | **Validation** | Tier 1 re-run (target rules apply). Tier 2 re-run (fewer pairs). |
-| **PP_Order_Node** | verb_ref='MERGE', description='SP→CW (single plumbing contract)' |
+| **W_Verb_Node** | verb_ref='MERGE', description='SP→CW (single plumbing contract)' |
 
 ```
 MERGE [SP], CW
@@ -451,7 +451,7 @@ Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
 | **Precondition** | Target parent exists. Same discipline (use REASSIGN to change discipline). |
 | **Writes** | `C_OrderLine.Parent_OrderLine_ID`, `C_OrderLine.dz` (recomputed). Spatial slot cache updated. |
 | **Validation** | Tier 1 on BOTH old and new parent (spacing recalc). Tier 3 re-check (vertical continuity may break). |
-| **PP_Order_Node** | verb_ref='REPARENT', description='sprinkler_23: GF→L1' |
+| **W_Verb_Node** | verb_ref='REPARENT', description='sprinkler_23: GF→L1' |
 
 ```
 REPARENT sprinkler_23, FP_L1
@@ -482,7 +482,7 @@ SQL:
 | **Writes** | `C_OrderLine.family_ref`. New `M_AttributeSetInstance` (dimensions from new product). |
 | **Reads** | component_library.db: M_Product → component_definitions → component_geometries (new LOD). |
 | **Validation** | Tier 1 re-run (same spacing rules, different product dims/attachment). |
-| **PP_Order_Node** | verb_ref='SWAP', description='sprinkler: pendant→upright' |
+| **W_Verb_Node** | verb_ref='SWAP', description='sprinkler: pendant→upright' |
 
 ```
 SWAP sprinkler_23, sprinkler_head_upright
@@ -669,7 +669,7 @@ in New York. These verbs are the engine; standards are the data.
 | `CONNECT FITTINGS` | Port-budget fitting connectivity | LIVE |
 
 **The relationship:** Placement verbs create positions (dx/dy/dz on C_OrderLine).
-Joining verbs define HOW two elements connect (recorded on PP_Order_Node).
+Joining verbs define HOW two elements connect (recorded on W_Verb_Node).
 Validation verbs check compliance (results in W_Validation_Result).
 
 All three verb categories are **jurisdiction-independent**. A `TILE` in MY
@@ -677,16 +677,16 @@ is the same `TILE` in US — different `step_mm` (from AD_Val_Rule), same engine
 A `FIT` is the same mechanical action everywhere — different clearance tolerance
 (from AD_Val_Rule_Param), same verb.
 
-**PP_Order_Node records joining verbs:**
+**W_Verb_Node records joining verbs:**
 
 ```sql
 -- Example: sprinkler head attached to branch pipe
-INSERT INTO PP_Order_Node (C_Order_ID, C_OrderLine_ID, Name, SeqNo,
+INSERT INTO W_Verb_Node (C_Order_ID, C_OrderLine_ID, Name, SeqNo,
     verb_ref, co_emptyspaceline_id, DocStatus)
 VALUES (?, sprinkler_orderline_id, 'ATTACH sprinkler to branch_pipe_01',
     70, 'ATTACH', slot_id, 'DR');
 
-INSERT INTO PP_Order_NodeProduct (PP_Order_Node_ID, Name, Value, ValueType)
+INSERT INTO W_Verb_NodeProduct (W_Verb_Node_ID, Name, Value, ValueType)
 VALUES
     (?, 'host_element', 'branch_pipe_01', 'TEXT'),
     (?, 'attachment_face', 'TOP', 'TEXT'),          -- from component_definitions
@@ -769,7 +769,7 @@ rename before each CompleteIt to version their builds (e.g. `output/demo_v2.db`)
 | M_AttributeSetInstance | Compile DB | ASI overrides per C_OrderLine |
 | co_empty_space_line | Compile DB | Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz) |
 | W_Validation_Result | Compile DB | Validation results |
-| PP_Order_Node | Compile DB | Verb audit trail |
+| W_Verb_Node | Compile DB | Verb audit trail |
 | W_Variant | **Removed** | No variants — BOM is read-only, no edit history |
 | W_BuildingConfig | **Removed** | YAML config lives in C_DocType.DSLContent |
 
@@ -1162,7 +1162,7 @@ For extracted buildings (Provenance=EXTRACTED):
 
 **Deferred** until G-7 (Assembly Builder). Depends on:
 - C_Order / C_OrderLine schema in compile DB (G-4 DONE)
-- PP_Order_Node table (not yet created)
+- W_Verb_Node table (not yet created)
 - Full BOM tree walking (BOMWalker exists)
 
 ---

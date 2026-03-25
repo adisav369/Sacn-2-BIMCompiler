@@ -12,7 +12,7 @@
 **Status:** ACTIVE — **64 verbs implemented, 196 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
-**Supplements:** MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (PP_Order_Node lineage)
+**Supplements:** MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (W_Verb_Node lineage)
 
 ---
 
@@ -596,7 +596,7 @@ Only 2,123 elements (furniture, proxies, misc) need flat coordinate storage.
 **The c_orderline table shrinks from 51,092 to ~2,200 formulas + flat entries.**
 
 > **Terminal BOM reduction:** 58× smaller recipe (51K rows → ~2.9K). Verb invocations stored as
-> `PP_Order_Node` rows (PP_Order_Node model, §15.6). Full Terminal measurement data and
+> `W_Verb_Node` rows (W_Verb_Node model, §15.6). Full Terminal measurement data and
 > phase roadmap (TE-1..TE-8) in [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md)
 > §Terminal Recomposition.
 
@@ -654,7 +654,7 @@ Construction joining verbs are **universal across all jurisdictions** — a pipe
 fits into a fitting the same way everywhere. Standards differ on thresholds
 (clearance, torque, cover depth), but the mechanical actions are shared.
 
-These verbs record HOW two elements connect. They write to `PP_Order_Node`
+These verbs record HOW two elements connect. They write to `W_Verb_Node`
 (execution audit) and reference `ad_assembly_connector` (port metadata in
 component_library.db) for connection compatibility.
 
@@ -742,14 +742,14 @@ CLAMP element TO support WITH clamp_type
 | EMBED | *(future: ad_rebar_cover)* | cover_mm, splice_length_mm |
 | CLAMP | *(future: ad_support_type)* | clamp_type, max_diameter_mm |
 
-**PP_Order_Node records every joining action:**
+**W_Verb_Node records every joining action:**
 
 ```sql
-INSERT INTO PP_Order_Node (C_Order_ID, C_OrderLine_ID, Name,
+INSERT INTO W_Verb_Node (C_Order_ID, C_OrderLine_ID, Name,
     SeqNo, verb_ref, DocStatus)
 VALUES (?, ?, 'ATTACH sprinkler_23 TO branch_pipe_01', 70, 'ATTACH', 'DR');
 
-INSERT INTO PP_Order_NodeProduct (PP_Order_Node_ID, Name, Value, ValueType)
+INSERT INTO W_Verb_NodeProduct (W_Verb_Node_ID, Name, Value, ValueType)
 VALUES
     (?, 'host_element', 'branch_pipe_01', 'TEXT'),
     (?, 'attachment_face', 'TOP', 'TEXT'),
@@ -1348,22 +1348,7 @@ Recent papers couple ChatGPT with Grasshopper/Vectorworks to translate natural l
 
 ### 13.6 Comparative Analysis
 
-| Capability | BERA | Dynamo | IDS | Bonsai | Revit | **BIM COBOL** |
-|---|---|---|---|---|---|---|
-| Forward compilation (intent → geometry) | no | partial | no | no | no | **yes** |
-| Compliance at compile time | no (post-hoc) | no | no (post-hoc) | no | no | **yes** |
-| BOM output (procurement) | no | no | no | no | partial | **yes** |
-| Witness proofs (machine-readable) | no | no | no | no | no | **yes** |
-| Domain-expert readable source | partial | no | no | no | no | **yes** |
-| Deterministic (same input → same output) | yes | yes | yes | yes | yes | **yes** |
-| MEP routing from intent | no | manual | no | no | manual | **yes** |
-| Parametric 2D tiling (TILE) | no | no | no | 1D only | 1D only | **2D grid** |
-| Formula-driven placement (95.8%) | no | manual | no | no | no | **yes** |
-| Offline / local execution | yes | yes | yes | yes | **no** | **yes** |
-
-**The gap is real.** No existing system compiles construction intent into the three simultaneous artefacts (IFC geometry + procurement BOM + compliance witnesses) from a domain-readable source. BERA came closest on rule-checking. Grasshopper came closest on parametric generation. But the three-artefact compilation from auditable source — that does not exist.
-
-This positions BIM COBOL as a novel contribution, publishable as *"BIM COBOL: A Domain-Specific Language for Compiled Construction"* in venues such as *Automation in Construction* (Elsevier) or a buildingSMART International Summit.
+**The gap:** No existing system compiles construction intent into three simultaneous artefacts (IFC geometry + procurement BOM + compliance witnesses) from a domain-readable source. BERA came closest on rule-checking, Grasshopper on parametric generation. The detailed competitive matrix is in §14.1.
 
 ---
 
@@ -1562,10 +1547,10 @@ Stage 8: GeometryStage       — mesh integrity verification
 Stage 9: ProveStage          — mathematical placement proofs
 ```
 
-#### Verb Storage — PP_Order_Node Model (Design Decision 2026-03-04)
+#### Verb Storage — W_Verb_Node Model (Design Decision 2026-03-04)
 
 Verb invocations are stored as structured rows, following the iDempiere Manufacturing
-`PP_Order_Node` + `PP_Order_NodeProduct` pattern. This replaces the earlier inline
+`W_Verb_Node` + `W_Verb_NodeProduct` pattern. This replaces the earlier inline
 `c_order.verb_script` TEXT column proposal.
 
 **Rationale:** Multi-user GUI editing, per-verb lifecycle tracking (DR→IP→CO→VO),
@@ -1573,11 +1558,11 @@ queryable parameters, Bonsai form-based verb editing, and familiar iDempiere ERP
 See `docs/DocAction_SRS.md` §1 for the iDempiere parallel.
 
 ```sql
--- iDempiere Manufacturing: PP_Order_Node = one production operation step
+-- iDempiere Manufacturing: W_Verb_Node = one production operation step
 -- BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)
 -- Lives in output.db (transaction data, not {PREFIX}_BOM.db dictionary)
-CREATE TABLE PP_Order_Node (
-    PP_Order_Node_ID       INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE W_Verb_Node (
+    W_Verb_Node_ID       INTEGER PRIMARY KEY AUTOINCREMENT,
     C_Order_ID             TEXT NOT NULL REFERENCES c_order(building_id),  -- BIM: which building
     SeqNo                  INTEGER NOT NULL DEFAULT 10,   -- iDempiere: execution order
     Name                   TEXT NOT NULL,                  -- BIM: verb_keyword (TILE SURFACE, ARRAY...)
@@ -1593,29 +1578,29 @@ CREATE TABLE PP_Order_Node (
     Updated                TEXT DEFAULT (datetime('now'))
 );
 
--- iDempiere Manufacturing: PP_Order_NodeProduct = material consumed/produced per operation
+-- iDempiere Manufacturing: W_Verb_NodeProduct = material consumed/produced per operation
 -- BIM semantics: structured parameters per verb (ORIGIN_X, GRID_NX, SPACING_MM...)
-CREATE TABLE PP_Order_NodeProduct (
-    PP_Order_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-    PP_Order_Node_ID         INTEGER NOT NULL REFERENCES PP_Order_Node(PP_Order_Node_ID),
+CREATE TABLE W_Verb_NodeProduct (
+    W_Verb_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+    W_Verb_Node_ID         INTEGER NOT NULL REFERENCES W_Verb_Node(W_Verb_Node_ID),
     Name                     TEXT NOT NULL,    -- BIM: param_name (SURFACE_NAME, ORIGIN_X, GRID_NX...)
     Value                    TEXT NOT NULL,    -- BIM: param_value
     ValueType                TEXT DEFAULT 'TEXT'
         CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
-    UNIQUE(PP_Order_Node_ID, Name)
+    UNIQUE(W_Verb_Node_ID, Name)
 );
 ```
 
 **Example — Terminal roof tiling stored as verb lines:**
 
-| PP_Order_Node_ID | C_Order_ID | SeqNo | Name (verb) | Description (COBOL source) | DocStatus |
+| W_Verb_Node_ID | C_Order_ID | SeqNo | Name (verb) | Description (COBOL source) | DocStatus |
 |---|---|---|---|---|---|
 | 1 | SJTII_Terminal | 10 | TILE SURFACE | ROOF_DECK_Z19_WEST WITH PLATE... GRID 15 294 STEP 495 150 | DR |
 | 2 | SJTII_Terminal | 20 | TILE SURFACE | ROOF_DECK_Z19_CENTRAL WITH PLATE... GRID 14 174 STEP 495 150 | DR |
 | 3 | SJTII_Terminal | 30 | ARRAY | SLAB_TE_GF_001 WITH REBAR_T16 LENGTH 6000 SPACING 150 COVER 40 | DR |
 | 4 | SJTII_Terminal | 40 | ROUTE SPRINKLERS | SJTII_Terminal "Departure Hall" SPACING 3000 | DR |
 
-**Corresponding PP_Order_NodeProduct rows for PP_Order_Node_ID=1:**
+**Corresponding W_Verb_NodeProduct rows for W_Verb_Node_ID=1:**
 
 | Name (param) | Value | ValueType |
 |---|---|---|
@@ -1630,11 +1615,11 @@ CREATE TABLE PP_Order_NodeProduct (
 | STEP_DY_MM | 150 | REAL |
 
 The `Description` column holds the human-readable text (what ScriptRunner parses). The
-`PP_Order_NodeProduct` rows hold the same data in structured form (what the GUI edits).
+`W_Verb_NodeProduct` rows hold the same data in structured form (what the GUI edits).
 Both stay in sync — the text is the COBOL source; the params are the form fields.
 
 **VerbStage execution:**
-1. Read `PP_Order_Node` WHERE C_Order_ID = ? AND IsActive = 1 ORDER BY SeqNo
+1. Read `W_Verb_Node` WHERE C_Order_ID = ? AND IsActive = 1 ORDER BY SeqNo
 2. For each line: dispatch to VerbRegistry by `verb_keyword`
 3. Each verb reads `ad_space_type_mep_bom` for the room's space_type
 4. Each verb emits IFC elements into output.db
@@ -1650,8 +1635,8 @@ This replaces `placeMEPSprinklers()`, `placeHVAC()`, `placeElectrical()`, `mepBo
 The Java PO/DAO class has no position setters — the compiler enforces this structurally.
 Schema enforces shape. Interface enforces access. Javadoc enforces intent.
 
-The PP_Order_Node model completes the **split** of the overloaded c_orderline table.
-Placement moves to `PP_Order_Node` + `PP_Order_NodeProduct` (HOW).
+The W_Verb_Node model completes the **split** of the overloaded c_orderline table.
+Placement moves to `W_Verb_Node` + `W_Verb_NodeProduct` (HOW).
 Spatial containers stay in `co_empty_space_line` (WHERE).
 
 **What stays in c_orderline (order topics):**
@@ -1659,7 +1644,7 @@ Spatial containers stay in `co_empty_space_line` (WHERE).
 
 **What migrates to verb params (production detail):**
 - host_type, host_ref, position_rule, position_value ×3, height_mm, orientation
-- These become structured `PP_Order_NodeProduct` rows (ORIGIN_X, GRID_NX, SPACING_MM, etc.)
+- These become structured `W_Verb_NodeProduct` rows (ORIGIN_X, GRID_NX, SPACING_MM, etc.)
 
 **What's already in M_Product (material attributes):**
 - width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash
@@ -1675,7 +1660,7 @@ Spatial containers stay in `co_empty_space_line` (WHERE).
 = priority). Verbs attach downstream at the ESLine level, not at category level.
 
 **RelationalResolver → VerbStage:** The deprecated resolver reads c_orderline's
-placement columns. VerbStage reads `PP_Order_Node` by seq_no instead.
+placement columns. VerbStage reads `W_Verb_Node` by seq_no instead.
 The deprecation path (NORM-3a Phase D→E) aligns with this migration.
 
 **Migration phases** (non-breaking, coexistence):
@@ -1688,13 +1673,13 @@ Full analysis: `BBC.md` §1.
 > **Phase 1 — CURRENT:** Create verb tables in {PREFIX}_BOM.db (DDL above). Additive, no breakage.
 > c_orderline becomes WHAT-only — Java PO class has no placement setters.
 >
-> **Phase 2:** VerbStage fallback logic: PP_Order_Node rows present → VerbRegistry dispatch;
+> **Phase 2:** VerbStage fallback logic: W_Verb_Node rows present → VerbRegistry dispatch;
 > absent → RelationalResolver fallback (deprecated path).
 >
 > **Phase 3:** Drop placement columns from c_orderline. Remove RelationalResolver.
 > Migrate SH/DX extracted data to verb recipes.
 >
-> **RESOLVED:** `PP_Order_Node.co_emptyspace_line_id` is the primary
+> **RESOLVED:** `W_Verb_Node.co_emptyspace_line_id` is the primary
 > production→space link. ESLine.c_orderline_id (NORM-0b) superseded — drop in Phase 3.
 
 ---
@@ -1798,233 +1783,11 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 
 ---
 
-## 17. Proposed Construction Quality Verbs — Post-Compilation Geometric Operations
+## 17. Post-Compilation Quality Verbs (Proposed)
 
-*Added v0.10 — proposed for next session. These verbs address visual defects observed in SH/DX output: wall-roof intersection, furniture clash, missing elements (piano, door), window geometry.*
+> **Status:** Not implemented. These are candidate verbs for post-compilation geometry reconciliation (wall-roof trim, furniture clash, missing elements). Not ERP-aligned — these are BIM geometry operations. Implementation deferred to Phase F.
 
-### 17.1 The Problem: No Post-Emission Geometry Operations
-
-The current pipeline places elements and writes them. There is no stage that reconciles geometric conflicts between independently-placed elements. Walls don't know about roofs. Furniture doesn't know about other furniture. This produces visual defects that are not data errors but **missing construction operations**.
-
-### 17.2 Level 1 — Witness Verbs (Check Only, No Mutation)
-
-These verbs query the output DB and report defects. They can be implemented immediately as read-only checks against `elements_meta` + `elements_rtree`.
-
-```bimcobol
-CHECK CLASH FURNITURE IN ROOM "living"
-  -- Detects overlapping furniture bounding boxes within a room
-  -- Reports: element pairs, overlap volume, severity
-  -- Source: elements_rtree AABB intersection query
-
-CHECK VISIBILITY DOORS
-  -- Flags doors with zero-extent AABB or no geometry_hash
-  -- Reports: door GUID, dimensions, parent wall
-  -- Source: elements_meta WHERE ifc_class='IfcDoor' + base_geometries JOIN
-
-CHECK VISIBILITY WINDOWS
-  -- Flags windows with degenerate geometry or missing LOD_Object
-  -- Reports: window GUID, geometry_hash present/absent
-  -- Source: element_instances LEFT JOIN base_geometries
-
-CHECK CONTAINMENT WINDOWS IN WALLS
-  -- Verifies each window AABB intersects exactly one wall AABB
-  -- Reports: orphaned windows, windows intersecting zero or >1 walls
-  -- Source: elements_rtree spatial join (window ∩ wall)
-
-VERIFY ROOF COVERAGE
-  -- Checks all wall tops are below roof drip line at their XY position
-  -- Reports: walls protruding above roof surface, gap distance
-  -- Source: elements_rtree WHERE ifc_class LIKE 'IfcWall%' vs 'IfcRoof%'
-
-CHECK GEOMETRY BINDING
-  -- Flags elements where element_instances.geometry_hash has no base_geometries row
-  -- These are GEN-BOX fallbacks — the "big box" symptom
-  -- Reports: element GUID, expected product, missing geometry_hash
-  -- Source: element_instances LEFT JOIN base_geometries WHERE vertices IS NULL
-```
-
-**Implementation:** Each verb is a SQL query + result formatter. No geometry engine needed. Can be witnesses (W-QUALITY-1..6) with GREEN/RED gate.
-
-### 17.3 Level 2 — Construction Verbs (Geometric Mutation)
-
-These verbs modify geometry in the output DB. They require a geometry engine (mesh boolean or half-plane clip).
-
-```bimcobol
-TRIM WALLS TO ROOF PROFILE
-  -- Boolean subtract: for each wall whose maxZ exceeds roof surface at (wall.X, wall.Y),
-  -- clip wall vertices to roof plane. Roof = set of planar faces; wall = extruded rectangle.
-  -- This is the single highest-value geometric verb for pitched-roof buildings.
-  -- Affects: SH (gable roof), any building with non-flat roof
-  -- Implementation: half-plane clip per roof face (simpler than full boolean)
-
-CUT OPENINGS FOR DOORS IN WALLS
-  -- Boolean subtract: wall geometry minus door void
-  -- Currently doors are placed as separate elements — the wall behind them is solid
-  -- This verb removes wall material where doors exist
-  -- Implementation: rectangular hole punch (axis-aligned, simpler than arbitrary boolean)
-
-EXTEND WALLS TO SLAB ABOVE
-  -- Extends wall maxZ to meet underside of slab/floor above
-  -- Closes gap between wall top and next floor plate
-  -- Implementation: adjust wall vertex Z values (no boolean needed)
-```
-
-**Implementation:** Requires vertex manipulation on `base_geometries` BLOB data. `TRIM WALLS TO ROOF` is the priority — it addresses the most visible SH defect.
-
-### 17.4 Level 3 — Reconciliation Verbs (Cross-Element Coordination)
-
-These compose Level 1 + Level 2 verbs into multi-step operations.
-
-```bimcobol
-SEAL ENVELOPE
-  -- Sequence: EXTEND WALLS TO SLAB ABOVE, then TRIM WALLS TO ROOF PROFILE
-  -- Result: all walls meet adjacent horizontal surfaces with no gaps or protrusions
-
-RESOLVE CLASHES BY PRIORITY
-  -- Sequence: CHECK CLASH, then for each overlap:
-  --   higher-priority element (structural > furniture) keeps position
-  --   lower-priority element adjusts or is flagged for manual review
-  -- Uses: M_Product_Category hierarchy (STR > ARC > MEP > FURN)
-
-VALIDATE ASSEMBLY COMPLETENESS
-  -- For each element_assembly: verify all required components are present
-  -- Stair assembly must have: flight + landing + railing
-  -- Door assembly must have: leaf + frame
-  -- Reports: incomplete assemblies, missing component roles
-```
-
-### 17.5 Diagnostic: Singular vs Exploded Output Comparison
-
-To diagnose whether defects originate from extraction data or BOM explosion, the pipeline should support producing two variant outputs per building:
-
-| Suffix | Mode | BOM data source | Compilation |
-|--------|------|-----------------|-------------|
-| `_s` | Instant Drop | Flat EXTRACTED BOMs (EXT_SH/EXT_DX, all BUY) | 1 OrderLine, no modifications — hello-world POC |
-| `_e` | BOM Drop | Structured UNIT BOMs (UNIT → FLOOR → SET → BUY) | Walks hierarchy with per-level tacking — production target |
-
-**Comparison method:**
-```sql
--- Elements in reference but missing in compiled (dropped by pipeline)
-SELECT r.guid, r.ifc_class FROM ref.elements_meta r
-  LEFT JOIN compiled.elements_meta c ON r.guid = c.guid
-  WHERE c.guid IS NULL;
-
--- Elements in compiled but not in reference (invented by pipeline)
-SELECT c.guid, c.ifc_class FROM compiled.elements_meta c
-  LEFT JOIN ref.elements_meta r ON c.guid = r.guid
-  WHERE r.guid IS NULL;
-
--- Position drift between reference and compiled
-SELECT r.guid, r.ifc_class,
-  ABS(r.minX - c.minX) + ABS(r.minY - c.minY) + ABS(r.minZ - c.minZ) as drift_mm
-FROM ref.elements_rtree r JOIN compiled.elements_rtree c ON r.id = c.id
-WHERE drift_mm > 1.0
-ORDER BY drift_mm DESC;
-```
-
-**A defect appearing in both `_s` and `_e`** = extraction/geometry data problem.
-**A defect appearing only in `_e`** = BOM walk or assembly structure problem.
-**A defect appearing only in `_s`** = reference DB has it but compiler drops it.
-
-### 17.6 Implementation Priority
-
-| Priority | Verb | Effort | Impact | Blocks |
-|----------|------|--------|--------|--------|
-| P0 | `_s` / `_e` diagnostic outputs | LOW | HIGH | Nothing — diagnostic only |
-| P1 | CHECK GEOMETRY BINDING | LOW | HIGH | Identifies all GEN-BOX fallbacks (piano, door, staircase) |
-| P2 | CHECK CLASH FURNITURE | LOW | MEDIUM | Witness for furniture arrangement quality |
-| P3 | VERIFY ROOF COVERAGE | LOW | MEDIUM | Witness for wall-roof intersection |
-| P4 | TRIM WALLS TO ROOF PROFILE | HIGH | HIGH | Requires mesh vertex manipulation |
-| P5 | SEAL ENVELOPE | HIGH | HIGH | Composes P4 + wall extension |
-
-### 17.7 M_AttributeSet as BOM-Level Verb Dispatch — Design Plan
-
-*Added v0.10 — future feature. M_AttributeSet becomes the link between product type classification and automatic verb dispatch.*
-
-#### The Idea
-
-Today M_AttributeSet classifies products by instance variability: a `BIM_Wall` product has instance-specific length/height (IsInstanceAttribute=1), while a `BIM_Component` is identical everywhere (=0). But the attribute set also implies **construction verbs**: every wall needs trimming to the roof profile. Every pipe needs fittings at junctions. Every slab might need openings cut for MEP penetrations. The product type *is* the construction recipe.
-
-#### Current State
-
-```
-M_AttributeSet ({PREFIX}_BOM.db, 5 rows)
-  BIM_Wall      → 10 products (Wall types)
-  BIM_Slab      → 8 products  (Floor slab types)
-  BIM_Pipe      → 9 products  (MEP pipe types)
-  BIM_Conduit   → 1 product   (Electrical conduit)
-  BIM_Component → 62 products (Discrete items — no instance variation)
-```
-
-M_Product.M_AttributeSet_ID is already an FK. Every product knows its type. But the pipeline never reads M_AttributeSet to decide what to DO with a product after placement.
-
-#### Proposed Extension
-
-**Step 1: M_AttributeSet_Verb junction table ({PREFIX}_BOM.db)**
-
-```sql
-CREATE TABLE M_AttributeSet_Verb (
-    M_AttributeSet_ID  TEXT NOT NULL REFERENCES M_AttributeSet(M_AttributeSet_ID),
-    verb_keyword       TEXT NOT NULL,  -- VerbRegistry keyword: "TRIM WALLS TO ROOF PROFILE"
-    SeqNo              INTEGER NOT NULL DEFAULT 10,  -- execution order within the set
-    condition_sql      TEXT,  -- optional SQL predicate (e.g. "roof_type != 'FLAT'")
-    is_active          INTEGER DEFAULT 1,
-    PRIMARY KEY (M_AttributeSet_ID, verb_keyword)
-);
-```
-
-**Seed data:**
-
-| M_AttributeSet_ID | verb_keyword | SeqNo | condition_sql |
-|----|----|----|---|
-| BIM_Wall | EXTEND WALLS TO SLAB ABOVE | 10 | NULL |
-| BIM_Wall | TRIM WALLS TO ROOF PROFILE | 20 | roof_type != 'FLAT' |
-| BIM_Wall | CUT OPENINGS FOR DOORS IN WALLS | 30 | NULL |
-| BIM_Slab | CUT OPENINGS FOR MEP PENETRATIONS | 10 | NULL |
-| BIM_Pipe | CONNECT FITTINGS | 10 | NULL |
-| BIM_Pipe | ROUTE SPRINKLERS | 20 | discipline = 'FIRE' |
-| BIM_Conduit | WIRE LIGHTING | 10 | NULL |
-
-**Step 2: VerbStage reads M_AttributeSet_Verb**
-
-After element placement, VerbStage queries which attribute sets are present in the building's BOM:
-
-```java
-// Collect distinct M_AttributeSet_IDs from placed elements
-SELECT DISTINCT p.M_AttributeSet_ID
-FROM elements_meta em
-JOIN M_Product p ON em.product_id = p.product_id
-WHERE p.M_AttributeSet_ID IS NOT NULL;
-
-// For each attribute set, look up associated verbs
-SELECT verb_keyword, condition_sql
-FROM M_AttributeSet_Verb
-WHERE M_AttributeSet_ID = ? AND is_active = 1
-ORDER BY SeqNo;
-
-// Dispatch each verb via VerbRegistry
-```
-
-**Step 3: Per-building verb scripts become automatic**
-
-Instead of hand-writing `.bimcobol` scripts per building, VerbStage generates the verb sequence from the BOM content. A building with walls and a pitched roof automatically gets TRIM + CUT. A building with only slabs and MEP gets penetration cutting. The construction recipe follows from WHAT is placed, not from a script that must be maintained separately.
-
-#### What This Enables
-
-The `.bimcobol` script remains for **overrides** and **custom sequences**. But the default pipeline is: "look at what products are placed → look up their construction verbs → execute in SeqNo order." This is the iDempiere Manufacturing pattern: PP_Order_BOM drives PP_Order_Node. Here, M_AttributeSet_Verb drives automatic PP_Order_Node generation.
-
-**Versatile fine construction** = new verbs can be added to any attribute set at any time. Adding a `FLASH WALL-ROOF JUNCTION` verb to `BIM_Wall` instantly applies it to all 10 wall products in all buildings. No code change, no per-building script edit.
-
-#### Dependencies
-
-- §17.3 Level 2 verbs must exist first (TRIM, CUT, EXTEND need geometry engines)
-- VerbStage SPI integration already works (BIM_COBOL provides VerbExecutor)
-- PP_Order_Node persistence already works (VerbNodePersister)
-- M_Product.M_AttributeSet_ID FK already populated
-
-#### Priority
-
-Phase F (BIM COBOL v1.0). After TRIM WALLS TO ROOF PROFILE (P4) is implemented as a standalone verb, wire it through M_AttributeSet_Verb for automatic dispatch.
+Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, TRIM WALLS TO ROOF PROFILE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.
 
 ---
 
@@ -2102,9 +1865,9 @@ PP_Product_BOM                  →    m_bom (the recipe)
 PP_Product_BOM_Line             →    m_bom_line (each component)
 PP_Product_BOM_Line.QtyBOM      →    m_bom_line.sequence (repeat count)
 PP_Product_BOM_Line.ComponentType →  m_bom_line.component_type (BUY/MAKE/PHANTOM)
-PP_Order                        →    C_Order (the work order — "build this building")
-PP_Order_BOM                    →    C_OrderLine (copy of recipe for this specific build)
-PP_Order_Node                   →    PP_Order_Node (operations — verb invocations)
+C_Order                         →    C_Order (the work order — "build this building")
+C_OrderLine                     →    C_OrderLine (copy of recipe for this specific build)
+W_Verb_Node                   →    W_Verb_Node (operations — verb invocations)
 M_Product                       →    M_Product (the item being made or consumed)
 M_Warehouse / M_Locator        →    M_BOM_Line dx/dy/dz (spatial relationships — WHERE things go)
 ```
@@ -2118,7 +1881,7 @@ These three extensions — tack, rotation, envelope — are what turn a manufact
 
 **What this means for the language:**
 - BOM primitive verbs are the **PP_Product_BOM_Line** operations: CREATE, ADD, SET, REMOVE
-- Convenience verbs are the **PP_Order** operations: COMPOSE (= create work order from recipe)
+- Convenience verbs are the **C_Order** operations: COMPOSE (= create work order from recipe)
 - Template verbs are the **AD_Table/AD_Column** operations: DEFINE, ADD RULE (= extend the dictionary)
 
 The ERP Manufacturing module has been proven in production for 20+ years. BIM COBOL inherits that stability. The spatial extensions (tack, rotation, envelope) are the only novel additions — and they are already proven by the SH/DX Rosetta Stones.
@@ -2983,10 +2746,9 @@ The iDempiere Manufacturing module provides further constructs to draw from:
 |---|---|---|
 | PP_Product_BOM | `CREATE BOM` | Designed (§18.4) |
 | PP_Product_BOM_Line | `ADD LINE` | Designed (§18.4) |
-| PP_Order (work order) | `COMPOSE BUILDING` (creates from template) | Designed (§18.8) |
-| PP_Order_BOM (order-specific copy) | `CLONE BOM` (deep copy for modification) | **Implemented** |
-| PP_Order_Node (operation) | PP_Order_Node (verb invocation audit) | **Implemented** |
-| PP_Order_Workflow (operation sequence) | Verb chaining (§18.11) | Designed |
+| C_Order (work order) | `COMPOSE BUILDING` (creates from template) | Designed (§18.8) |
+| C_OrderLine (order-specific copy) | `CLONE BOM` (deep copy for modification) | **Implemented** |
+| W_Verb_Node (verb invocation) | W_Verb_Node (verb invocation audit) | **Implemented** |
 | PP_Cost_Collector (cost accumulation) | `AGGREGATE BOM BY component_type` | **Implemented** |
 | M_Forecast (demand planning) | `PARTITION AABB` (spatial demand) | Designed (§18.5) |
 | QM_Specification (quality check) | `VALIDATE AABB` / CHECK verbs | Designed |
@@ -3257,7 +3019,7 @@ Large federated IFC models (50K+ elements) exhibit patterns that small residenti
 
 **5. Parametric regularity with exceptions.** 91% of Terminal sprinkler X-spacing is 3.0m — but 9% isn't (obstructed zones, special hazard areas). The ROUTE verb handles the 91%. The 9% are flat-placed exceptions stored as individual m_bom_line rows. The analysis verbs must separate regular from irregular — this is the factorisation problem.
 
-**6. Cross-discipline coordination zones.** Some spatial zones require elements from 4+ disciplines: a ceiling void has ducts (ACMV), pipes (MEP), sprinklers (FP), cable trays (ELEC), and lighting (ELEC) all in the same 500mm vertical space. The BOM must group these into coordination zones for clash detection (CHECK CLASH, §17.2) and construction sequencing (PP_Order_Node).
+**6. Cross-discipline coordination zones.** Some spatial zones require elements from 4+ disciplines: a ceiling void has ducts (ACMV), pipes (MEP), sprinklers (FP), cable trays (ELEC), and lighting (ELEC) all in the same 500mm vertical space. The BOM must group these into coordination zones for clash detection (CHECK CLASH, §17.2) and construction sequencing (W_Verb_Node).
 
 These patterns are invariant across institutional buildings — airports, hospitals, schools, factories. The analysis verbs designed for Terminal will apply directly to the next institutional Rosetta Stone without modification.
 
@@ -3345,7 +3107,7 @@ PlacementCollectorVisitor expands them back to positions at compile time.
 |-----------|---------------|---------|
 | verb_ref | AttributeSetInstance | Formula parameters |
 | qty | M_BOM_Line.qty | Production quantity |
-| dx/dy/dz | PP_Order_Node position | Pattern origin |
+| dx/dy/dz | W_Verb_Node position | Pattern origin |
 | AD_Val_Rule | AD_Val_Rule | Compliance constraints |
 
 ### Non-Disturbance Principle

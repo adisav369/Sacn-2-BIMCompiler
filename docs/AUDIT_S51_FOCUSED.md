@@ -1198,7 +1198,7 @@ ISTQB test design techniques applied to ProjectOrderBlueprint.md §2. Full test 
 
 | Section | Status Shown | Actual Status | Accurate? |
 |---------|-------------|--------------|-----------|
-| §4.2 Scale 2 (Building) | ✓ DONE (all 3) | Confirmed — C_OrderLine, PP_Order_Node, CO_EmptySpaceLine all implemented | **YES** |
+| §4.2 Scale 2 (Building) | ✓ DONE (all 3) | Confirmed — C_OrderLine, W_Verb_Node, CO_EmptySpaceLine all implemented | **YES** |
 | §4.3 Scale 3 (Room) | ✓ DONE (all 3) | Confirmed — M_BOM_Line, Verb, tack offset all implemented | **YES** |
 | §4.1 Scale 1 (Site) | NOT IMPL (all 3) | Confirmed — C_ProjectLine, SitePlacementStrategy, Plot locator not implemented | **YES** |
 | §4.4 Mutations WHAT | PARTIAL | Session A delivered addDiscipline() + PROPOSED status. OrderLineMutation interface (HOW) and locator_ref (WHERE) still NOT IMPL. | **YES** |
@@ -1626,7 +1626,7 @@ Shall I draft the Session D coder prompt now?
 ## Appendix O — S67 ERP Fidelity Audit: IsBOM and iDempiere Paradigm Drift Check (2026-03-24)
 
 **Scope:** Deep audit of whether Java source maintains the iDempiere ERP pattern
-(M_Product-centric, IsBOM detection, BOM explosion, PP_Order_Node manufacturing
+(M_Product-centric, IsBOM detection, BOM explosion, W_Verb_Node manufacturing
 execution, C_OrderLine product reference, leaf-to-geometry resolution, EntityType guards).
 
 **Verdict:** The codebase is **clean**. No paradigm drift found. The iDempiere manufacturing
@@ -1728,18 +1728,18 @@ W-BOM-EB-1 (SH=55 leaves, 3 sub-assemblies), W-BOM-EB-2 (DX=1099 leaves, 5 sub-a
 
 ---
 
-### O.4 — PP_Order_Node Manufacturing Execution
+### O.4 — W_Verb_Node Manufacturing Execution
 
 **Finding: CORRECT — direct iDempiere manufacturing execution mapping.**
 
-**X_PP_Order_Node.java:9** states:
-> "iDempiere Manufacturing: PP_Order_Node = one production operation step.
+**X_W_Verb_Node.java:9** states:
+> "iDempiere Manufacturing: W_Verb_Node = one production operation step.
 > BIM semantics: one verb invocation (TILE SURFACE, ARRAY, ROUTE SPRINKLERS...)."
 
 | iDempiere field | BIM Compiler field | Mapping |
 |-----------------|-------------------|---------|
-| PP_Order_Node_ID | PP_Order_Node_ID | Primary key |
-| PP_Order_ID → C_Order | C_Order_ID | FK to construction order |
+| W_Verb_Node_ID | W_Verb_Node_ID | Primary key |
+| C_Order_ID | C_Order_ID | FK to construction order |
 | SeqNo | SeqNo | Execution sequence (verb determinism) |
 | Name (operation) | Name | Verb name (TILE, ARRAY, ROUTE) |
 | S_Resource_ID | S_Resource_ID | Spatial workstation (CO_EmptySpace) |
@@ -1748,18 +1748,18 @@ W-BOM-EB-1 (SH=55 leaves, 3 sub-assemblies), W-BOM-EB-2 (DX=1099 leaves, 5 sub-a
 | — | last_result | JSON result payload (BIM extension) |
 | — | element_count | Elements produced per verb |
 
-**Three-concern separation enforced (X_PP_Order_Node.java:12-16):**
+**Three-concern separation enforced (X_W_Verb_Node.java:12-16):**
 - WHAT = C_OrderLine
-- HOW = PP_Order_Node (this class)
+- HOW = W_Verb_Node (this class)
 - WHERE = CO_EmptySpaceLine (S_Resource)
 
 **DocStatus state machine:** DR (Draft) → IP (In Progress) → CO (Completed) | VO (Voided).
 Matches iDempiere MOrder.processIt() lifecycle exactly.
 
-**Child parameters:** PP_Order_NodeProduct stores structured verb parameters
-(Name/Value/ValueType per node). Matches iDempiere's PP_Order_Node parameter pattern.
+**Child parameters:** W_Verb_NodeProduct stores structured verb parameters
+(Name/Value/ValueType per node). Matches iDempiere's W_Verb_Node parameter pattern.
 
-**Test witnesses:** W-PP-1 through W-PP-5 (PP_Order_NodeTest.java) cover PO lifecycle,
+**Test witnesses:** W-PP-1 through W-PP-5 (W_Verb_NodeTest.java) cover PO lifecycle,
 SeqNo ordering, parameter children, DocStatus CHECK constraint, unique parameter names.
 
 **Drift risk: NONE.** The mapping is clean and well-documented.
@@ -1879,7 +1879,7 @@ Cannot be bypassed without GodMode.txt on disk.
 | IsBOM detection | Boolean column on M_Product | Structural: MBOM.load() returns true | **No** — semantically identical |
 | M_Product / M_BOM | Separate tables | m_bom merges both; M_Product still exists for leaves | **No** — intentional, documented |
 | BOM explosion | PP_Product_BOM → walk children | BomDropper + BOMWalker structural recursion | **No** — faithful pattern |
-| PP_Order_Node | Manufacturing execution step | Verb execution record, same DocStatus lifecycle | **No** — direct mapping |
+| W_Verb_Node | Manufacturing execution step | Verb execution record, same DocStatus lifecycle | **No** — direct mapping |
 | C_OrderLine → M_Product | FK reference | M_Product_ID column, structural guard (W-LOCK tests) | **No** — locked by CI |
 | Leaf → geometry | M_Product → BOM component | M_Product_ID → M_Product_Image → component_geometries | **No** — clean lookup |
 | EntityType guards | AD EntityType on table | D/U/A + GodMode bypass + ORM hooks | **No** — three-tier protection |
@@ -1972,9 +1972,9 @@ linear: root → child → grandchild → ... → leaf.
 
 | Rule | Mechanism | iDempiere Precedent |
 |------|-----------|-------------------|
-| Chain walking | Walk Ref_Order_ID root-first, collect exceptions | PP_Order_BOM parent walk |
+| Chain walking | Walk Ref_Order_ID root-first, collect exceptions | C_OrderLine parent walk |
 | Depth wins | Deeper order overrides shallower at same locator_ref | M_PriceList_Version (latest ValidFrom wins) |
-| Same-order ordering | C_OrderLine.Line (higher number wins) | PP_Order_BOM.SeqNo |
+| Same-order ordering | C_OrderLine.Line (higher number wins) | C_OrderLine.SeqNo |
 | Sibling merge | Structurally prevented (scalar FK) — user authors combined order manually | Single-parent constraint in iDempiere C_Order |
 | Cycle detection | Track visited IDs during walk; error on repeat | Standard FK cycle guard |
 
@@ -1988,7 +1988,7 @@ Both candidate iDempiere patterns were evaluated:
 
 | Pattern | iDempiere Usage | Applicability |
 |---------|----------------|---------------|
-| **SeqNo** (PP_Order_BOM) | Sequence determines processing order within a parent | Used for same-order line ordering (§6.4) |
+| **SeqNo** (C_OrderLine) | Sequence determines processing order within a parent | Used for same-order line ordering (§6.4) |
 | **ValidFrom** (M_PriceList_Version) | Latest effective date wins | Conceptual parallel for depth-wins rule (deepest = "latest" in the chain) |
 
 Neither pattern assumes DAG resolution — both operate on linear sequences.
@@ -2254,18 +2254,18 @@ overrides within a reference class) and C_Project multi-order grouping (§2).
 | §1 Exception-based ordering | **DONE** | Sessions A–E complete (S67–S68e) |
 | §1.1 Four mutations (Replace, Add, Remove, Compress) | **DONE** | RemoveCompressTest 5/5, OrderLineMutationTest 8/8 |
 | §6 Order inheritance | **DONE** | OrderInheritanceTest 6/6 (S68e) |
-| PP_Order_Node table | **EXISTS** | W001 migration, M_PP_Order_Node PO class |
-| PP_Order_NodeProduct table | **EXISTS** | Structured params (Name/Value/ValueType) |
+| W_Verb_Node table | **EXISTS** | W001 migration, M_W_Verb_Node PO class |
+| W_Verb_NodeProduct table | **EXISTS** | Structured params (Name/Value/ValueType) |
 | bim_changelog (AD_ChangeLog) | **EXISTS** | ChangelogDAO — MOVE/RESIZE detection already built |
 
 **Verdict: §1 prerequisite MET. DiffVerb is implementable now.**
 
 ### T.2 — What DIFF Verb_Type Should Record
 
-Per §9.2, a DiffVerb is a PP_Order_Node row with `verb_ref = 'DIFF'` and delta
-parameters in PP_Order_NodeProduct child rows:
+Per §9.2, a DiffVerb is a W_Verb_Node row with `verb_ref = 'DIFF'` and delta
+parameters in W_Verb_NodeProduct child rows:
 
-| PP_Order_NodeProduct.Name | Example Value | Purpose |
+| W_Verb_NodeProduct.Name | Example Value | Purpose |
 |---|---|---|
 | `locator_ref` | `L1.Living.FP_Mantel` | Which element moved |
 | `delta_dx` | `-300` | X displacement in mm (parent-relative) |
@@ -2316,7 +2316,7 @@ needed, just re-run RollupAabbVerb logic on the parent room.
 
 | Dependency | Available? | Notes |
 |---|---|---|
-| PP_Order_Node + PP_Order_NodeProduct | ✓ | W001 schema, PO classes exist |
+| W_Verb_Node + W_Verb_NodeProduct | ✓ | W001 schema, PO classes exist |
 | VerbNodePersister.persistOne() | ✓ | Already supports structured params |
 | ChangelogDAO (MOVE/RESIZE detection) | ✓ | logSave() diffs old/new bboxes |
 | InferenceEngine (topo sort pattern) | ✓ | Kahn's algorithm for rule dependency order |
@@ -2334,7 +2334,7 @@ block the Java implementation.
 ### T.6 — Implementation Scope
 
 1. **W007 migration** — `AD_Rule` table + `DIFF` action in bim_changelog CHECK constraint
-2. **DiffVerbService** — records DIFF PP_Order_Node, fires CalloutEngine
+2. **DiffVerbService** — records DIFF W_Verb_Node, fires CalloutEngine
 3. **CalloutEngine** — evaluates AD_Rule chain in dependency order
 4. **DiffVerbTest** — witness W-DIFF-1 (record diff + verify callout fires AABB recalc)
 
@@ -2433,10 +2433,10 @@ Title already reads "ERP.db SRS". No action needed.
 2,475 products in most docs vs 2,459 in ProjectOrderBlueprint.md and GENERATIVE_HOUSE_SRS.md.
 Predates S73–S80 but still uncorrected.
 
-**U.3.6 — BBC.md PP_Order_Node inconsistency (LOW)**
+**U.3.6 — BBC.md W_Verb_Node inconsistency (LOW)**
 
 Section 1 mapping table says AD_ChangeLog for audit trail. Section 5 stage 6 still says
-PP_Order_Node. Minor inconsistency within the same spec.
+W_Verb_Node. Minor inconsistency within the same spec.
 
 ### U.4 — Migration Audit
 
@@ -2461,7 +2461,7 @@ All new migrations are append-only and correctly sequenced:
 | **MEDIUM** | Update SCHEMA_QUICKREF.md to current schema | Single file |
 | ~~LOW~~ | ~~Rename DISC_VALIDATION_DB_SRS.md title~~ | **CLOSED** (S81 — already fixed) |
 | **LOW** | Align product count (2,459 vs 2,475) | Verify + update 2 docs |
-| **LOW** | Align BBC.md §5 stage 6 PP_Order_Node → AD_ChangeLog | Single line |
+| **LOW** | Align BBC.md §5 stage 6 W_Verb_Node → AD_ChangeLog | Single line |
 | **LOW** | Delete `X_WmEmptyStorageLine` + `M_WmEmptyStorageLine` (forRemoval=true) | 2 files |
 | **TRACK** | BuildSpatialStructureVerb doc_sub_type drift | Next cleanup session |
 | **TRACK** | Unit tests for SpatialStructureBuilder.computeRoomSlots() | When SpatialStructure changes next |

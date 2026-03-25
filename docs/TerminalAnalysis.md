@@ -718,16 +718,16 @@ the formula handles position, not the attribute set.
 ### TILE — Pattern as Verb Parameter, Not AttributeSet
 
 TILE is BOMQty — the M_Product leaf spreads over an AABB with its orientation.
-The pattern (grid formula) lives on PP_Order_NodeProduct, not M_AttributeSet:
+The pattern (grid formula) lives on W_Verb_NodeProduct, not M_AttributeSet:
 
 ```
 C_OrderLine (WHAT):   M_Product = ROOF_DECK_PANEL_SET, qty = 4,410
-PP_Order_Node (HOW):  Verb = TILE SURFACE
-  PP_Order_NodeProduct: origin, grid_cols=15, grid_rows=294, step_x=495, step_y=150
+W_Verb_Node (HOW):  Verb = TILE SURFACE
+  W_Verb_NodeProduct: origin, grid_cols=15, grid_rows=294, step_x=495, step_y=150
 M_BOM_Line dx/dy/dz (WHERE): AABB = 7,425 × 44,100 mm (the filled envelope)
 ```
 
-Changing the grid (16×294 instead of 15×294) changes only PP_Order_NodeProduct.
+Changing the grid (16×294 instead of 15×294) changes only W_Verb_NodeProduct.
 The same PLATE_500x150x106 product appears in different TILE patterns across
 different roof bays. Clean separation: verb owns the formula, BOM owns the qty.
 
@@ -818,7 +818,7 @@ C_OrderLine (tab — one per storey-discipline BOM):
     Line 20.10: ARC_TE_GF   qty=1     ← Architecture
     Line 20.20: STR_TE_GF   qty=1     ← Structure
     Line 20.30: FP_TE_GF    qty=1     ← Fire Protection
-      → PP_Order_Node: ROUTE SPRINKLERS "FP_MAIN_GF_01"
+      → W_Verb_Node: ROUTE SPRINKLERS "FP_MAIN_GF_01"
         path_nodes, pipe_product, branch_spacing...
     Line 20.40: ACMV_TE_GF  qty=1
     Line 20.50: ELEC_TE_GF  qty=1
@@ -826,7 +826,7 @@ C_OrderLine (tab — one per storey-discipline BOM):
     Line 20.70: SP_TE_GF    qty=1
     Line 20.80: LPG_TE_GF   qty=1
   Line 70: FLOOR_TE_RF      qty=1     ← Roof
-    → PP_Order_Node: TILE SURFACE (grid formula per bay)
+    → W_Verb_Node: TILE SURFACE (grid formula per bay)
 ```
 
 The three-way separation governs the entire architecture:
@@ -835,7 +835,7 @@ The three-way separation governs the entire architecture:
 |---------|-----------|----------------|
 | **WHAT** to build | C_OrderLine | Which M_Product/M_BOM, qty |
 | **WHERE** it goes | M_BOM_Line dx/dy/dz | Spatial relationships (tack offsets) |
-| **HOW** to build | PP_Order_Node | Verb parameters (grid, path, method) |
+| **HOW** to build | W_Verb_Node | Verb parameters (grid, path, method) |
 
 The 7-storey × 8-discipline grid produces ~40-50 C_OrderLines — a normal
 iDempiere sales order size. The user sees storeys as order lines, disciplines
@@ -857,27 +857,27 @@ L0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
     │  │  └─ L3: FRAME verb → columns at grid, beams spanning
     │  ├─ L2: FP_TE_GF (DISCIPLINE, bom_category=FP)
     │  │  C_OrderLine #20.30
-    │  │  PP_Order_Node: ROUTE SPRINKLERS
+    │  │  W_Verb_Node: ROUTE SPRINKLERS
     │  │  Val_Rule: ad_fp_coverage (spacing, sizing, method)
     │  │  └─ L3: BOM tree of runs/branches/heads
     │  │     M_AttributeSetInstance per segment (varying lengths)
     │  ├─ L2: ACMV_TE_GF (DISCIPLINE, bom_category=ACMV)
-    │  │  PP_Order_Node: ROUTE DUCTS
+    │  │  W_Verb_Node: ROUTE DUCTS
     │  │  Val_Rule: ad_acmv_sizing (ACH, duct sizing)
     │  │  └─ L3: duct runs + air terminals
     │  ├─ L2: ELEC_TE_GF (DISCIPLINE, bom_category=ELEC)
-    │  │  PP_Order_Node: WIRE LIGHTING
+    │  │  W_Verb_Node: WIRE LIGHTING
     │  │  Val_Rule: ad_space_type_mep (receptacle count)
     │  │  └─ L3: ceiling grid + circuits
     │  └─ L2: CW/SP/LPG_TE_GF
-    │     PP_Order_Node: ROUTE (per system)
+    │     W_Verb_Node: ROUTE (per system)
     │     └─ L3: pipe runs + terminals
     ├─ L1: FLOOR_TE_L01 ... FLOOR_TE_L04
     │  (same discipline structure per storey)
     └─ L1: FLOOR_TE_RF (FLOOR, bom_category=RF)
        C_OrderLine #70
        ├─ L2: ARC_TE_RF (DISCIPLINE, bom_category=ARC)
-       │  PP_Order_Node: TILE SURFACE (per bay)
+       │  W_Verb_Node: TILE SURFACE (per bay)
        │  └─ L3: 33K panels from ~20 TILE formulas
        │     BOMQty = grid_cols × grid_rows per formula
        └─ L2: [other disciplines at roof level]
