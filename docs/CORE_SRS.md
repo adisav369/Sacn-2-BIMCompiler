@@ -629,7 +629,7 @@ CREATE TABLE IF NOT EXISTS AD_Report_Config (
 | `BIM_Designer.md` | UI specification (all presentation-layer details) |
 | `StrategicIndustryPositioning.md` | Market analysis, competitive matrix, moat thesis |
 | `BOMBasedCompilation.md` | Master spec: tack, walker, verb grammar, pipeline |
-| `SystemContract.md` | iDempiere table mapping, C_Order model |
+| `MANIFESTO.md` | iDempiere table mapping, C_Order model |
 | `DocValidate.md` | Validation architecture, AD_Val_Rule |
 | `InfrastructureAnalysis.md` | Infrastructure IFC4X3, segment mapping |
 | `CALIBRATION_SRS.md` | Extraction oracle vs rule prediction |

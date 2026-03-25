@@ -10,10 +10,10 @@
 
 ---
 
-## Where We Are (S79, 2026-03-26)
+## Where We Are (S81, 2026-03-26)
 
 **Pipeline:** 9 stages. 64 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative).
-**Gates:** 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v31.
+**Gates:** 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v35.
 **Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice. AddDisciplineTest 4/4.
 **Scorecard:** 31/36 (nearest competitor: 9).
 
@@ -31,7 +31,7 @@
 | **Verify a building** | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) (Tiers 1-4) |
 | **Navigate the code** | [SourceCodeGuide.md](SourceCodeGuide.md) (entry points, DAOs) |
 | **Onboard a new IFC** | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) (8-step recipe) |
-| **Check what's broken** | §Known Debt below + [SystemContract.md §10](SystemContract.md) (gap register) |
+| **Check what's broken** | §Known Debt below + [MANIFESTO.md](MANIFESTO.md) (gap register) |
 | **Run the pipeline** | [WorkOrderGuide.md](WorkOrderGuide.md) (step-by-step) |
 | **Understand ERP mapping** | [MANIFESTO.md](MANIFESTO.md) (C_Order, three-concern) |
 | **See the schema** | [DATA_MODEL.md](DATA_MODEL.md) + [DATABASE_SCHEMA.md](../database/DATABASE_SCHEMA.md) |

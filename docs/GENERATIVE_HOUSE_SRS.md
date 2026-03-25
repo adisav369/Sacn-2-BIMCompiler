@@ -113,7 +113,7 @@ Duplex (DX) ──extract──→ component_library.db (78 M_Products)
 FZKHaus (FK) ──extract──→ component_library.db (81 M_Products)
 30 other IFCs ──extract──→ component_library.db (1777 more M_Products)
                                     │
-                                    │  2,459 products total
+                                    │  2,475 products total
                                     │  All with geometry, orientation, IFC class
                                     ▼
 Building codes ──encode──→ ERP.db
@@ -434,7 +434,7 @@ becomes necessary only when the user wants to design from scratch — "3 bedroom
 house type. At that point, the topology maker generates the room layout, and the
 cascade + rules fill it exactly as TC-1 through TC-8 describe.
 
-The Rosetta Stones provide the vocabulary (2,459 products, 7 house types). The
+The Rosetta Stones provide the vocabulary (2,475 products, 7 house types). The
 OrderLine + ASI + validation rules provide the grammar. That is sufficient for a
 production-ready generative system. The topology maker is the creative writing course
 — useful but not required to form valid sentences.

@@ -17,7 +17,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.
 |----------|---------|
 | 35 buildings compiled (34 extracted from IFC + 1 generative) | Rosetta Stone gate tests, 19 ALL GREEN |
 | 6-gate verification (count, volume, digest, tamper, provenance, isolation) | RosettaStoneGateTest — deterministic, reproducible |
-| 9-stage pipeline, 64 verbs, 2,459 products | Full BOM library with 4D/5D/6D on real data |
+| 9-stage pipeline, 64 verbs, 2,475 products | Full BOM library with 4D/5D/6D on real data |
 | 48,428-element Terminal complex compiled | Largest known BOM-based BIM compilation |
 | BOM Drop + product swap + compile in BIM Designer | bomDrop(SH) + swapProduct(roof) + compile = 95 elements, gates pass |
 | HTML UI (10 tabs) + Bonsai 3D viewport, bidirectional sync | DocAction buttons: Draft → Approve → Complete → Promote |
@@ -393,7 +393,7 @@ Terrace 0 (Z ≈ 28-38m)  ═══ Street 1 ═══  [S][S][S][S][S][S][S][S]
 M_BOM_Line (room offsets) → same tack convention, different scale. The spatial
 relationship lives in the BOM itself at both levels without new infrastructure.
 
-See [SystemContract.md §6](SystemContract.md) for the full allocation model.
+See [MANIFESTO.md](MANIFESTO.md) §Three Concerns for the allocation model.
 
 ---
 
@@ -1647,6 +1647,6 @@ Only the last order survives.
 | BBC.md §3.3-3.5 | Defines Instant Drop, BOM Drop, Selection Cascade — the foundation | Add forward reference to this §14 |
 | ACTION_ROADMAP.md Task 4 | Previous home of this plan — now a pointer here | Slim to pointer |
 | LAST_MILE_PROBLEM.md §Layer 2 | Generative buildings use same pipeline — no special test | Reference only |
-| SystemContract.md | ERP patterns (DocAction, three-concern separation) | Reference only |
+| MANIFESTO.md | ERP patterns (DocAction, three-concern separation) | Reference only |
 | DemoHouseAnalysis.md §6 | FP readiness assessment for DemoHouse | Data inventory for Session A |
 | GENERATIVE_HOUSE_SRS.md §10.4 | TC-5 session plan | Superseded by this §14 |

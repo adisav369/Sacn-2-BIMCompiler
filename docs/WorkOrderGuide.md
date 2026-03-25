@@ -526,7 +526,7 @@ Existing migration: `migration/DV006_infra_bridge_rules.sql` (13 rules, 29 param
 | Delta count mismatch | Composition pairing issue | Check mirror `position` matches party wall center |
 
 QA architecture: [`TestArchitecture.md`](TestArchitecture.md).
-ERP model context: [`SystemContract.md`](SystemContract.md).
+ERP model context: [`MANIFESTO.md`](MANIFESTO.md).
 
 ## What NOT to Do
 
@@ -809,10 +809,10 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 
 | Topic | Document |
 |-------|----------|
-| ERP model (C_Order, BOM, decisions) | [`SystemContract.md`](SystemContract.md) |
+| ERP model (C_Order, BOM, decisions) | [`MANIFESTO.md`](MANIFESTO.md) |
 | Spatial MRP (construction as ERP II) | [`ConstructionAsERPII.txt`](ConstructionAsERPII.txt) |
 | BOM compilation, tack §4 | [`BOMBasedCompilation.md`](BOMBasedCompilation.md) |
-| BIM as BOM concept | [`SystemContract.md`](SystemContract.md) Appendix A |
+| BIM as BOM concept | [`MANIFESTO.md`](MANIFESTO.md) §The Pattern |
 | Conceptual blueprint | [`CONCEPTUAL BLUEPRINT.txt`](CONCEPTUAL%20BLUEPRINT.txt) |
 | Rosetta Stone strategy | [`TheRosettaStoneStrategy.md`](TheRosettaStoneStrategy.md) |
 | BIM Designer vision | [`BIM_Designer.md`](BIM_Designer.md) |

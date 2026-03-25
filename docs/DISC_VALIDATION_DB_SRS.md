@@ -1,4 +1,4 @@
-# DiscValidation.db SRS — Discipline Validation Database
+# ERP.db SRS — Discipline Validation Database
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 **Version:** 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
@@ -33,7 +33,7 @@ what connects to what) is NOT product geometry. Mixing them means:
 
 ---
 
-## 2. Solution — DiscValidation.db (Third Database)
+## 2. Solution — ERP.db (Third Database)
 
 ```
 component_library.db — WHAT things look like (LOD catalog)
@@ -42,7 +42,7 @@ component_library.db — WHAT things look like (LOD catalog)
 ├── component_geometries (23,901 mesh data)
 └── surface_styles, material_layers
 
-DiscValidation.db — WHERE things go + HOW they connect (discipline metadata)  ← NEW
+ERP.db — WHERE things go + HOW they connect (discipline metadata)
 ├── Discipline schedule:  ad_space_type_mep_bom (186 rows)
 ├── MEP element types:    ad_element_mep (12 rows)
 ├── FP coverage rules:    ad_fp_coverage (4 hazard classes)
@@ -75,7 +75,7 @@ validation.db — RULES + VERDICTS (compliance engine)
 
 ### 2.2 Reference Pointers — No LOD Copies
 
-DiscValidation.db references component_library.db products by **name**, not
+ERP.db references component_library.db products by **name**, not
 by FK or by copying LOD data:
 
 ```

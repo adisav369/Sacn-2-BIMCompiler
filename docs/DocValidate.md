@@ -290,7 +290,7 @@ ERP.db holds both spatial rules (ad_space_type, placement_rules, ad_element_mep)
 and regulatory rules (AD_Val_Rule, AD_Val_Rule_Param, AD_Clash_Rule). It doesn't
 create placements, it constrains them. Updated when codes change (annual code
 cycles), without touching the BOM or recompiling existing buildings.
-See [DISC_VALIDATION_DB_SRS.md §2](DISC_VALIDATION_DB_SRS.md#2-solution--discvalidationdb-third-database)
+See [DISC_VALIDATION_DB_SRS.md §2](DISC_VALIDATION_DB_SRS.md#2-solution--erpdb-third-database)
 for the full table inventory.
 
 ### 3.1 Proposed Tables
