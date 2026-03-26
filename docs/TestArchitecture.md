@@ -21,371 +21,48 @@
 
 ---
 
-## Problem Statement
-
-Deep QA audit (2026-03-11) found that tests verify **consistency with themselves**,
-not **correctness against external truth**. The compiler can produce wrong output
-and all gates stay green because tests check counts, not content.
-
-This document defines the fixes, grouped by severity.
-
----
-
-## CRITICAL Fixes (C1–C13)
-
-### C1. Golden Digest Verification — PARTIAL
-
-**Problem:** `BOMDigestVerifyTest` and `HelloWorldVerbTest` assert digests are
-"not null" — never compared to a known-good value.
-
-**Fix (Phase 3, 2026-03-11):**
-1. BOMDigestVerifyTest: EXT_SH/EXT_DX → BUILDING BOM tree walk via `computeFromBOMTree()`.
-   Reconstructs world coords from MAKE offsets + BUY centroids. 5/5 tests PASS.
-2. Golden digests confirmed stable: SH=496022db, DX=4dd805b3.
-3. **Remaining:** Store digests as constants and assert `assertEquals` (not just "not null").
-4. **Remaining:** HelloWorldVerbTest golden digest comparison.
-
-**Files:**
-- `DAGCompiler/.../contract/BOMDigestVerifyTest.java` — DONE (tree walk)
-- `DAGCompiler/.../validation/SpatialDigest.java` — DONE (computeFromBOMTree added)
-- `BIM_COBOL/.../HelloWorldVerbTest.java` — lines 156-165 (pending)
-
----
-
-### C2. Content Spot-Check Assertions
-
-**Problem:** `F5IntegrationTest` and `PlaceBomVerbTest` write to output.db then
-read back row counts. Never check if the data is correct.
-
-**Fix:**
-1. After compilation, spot-check 5 elements per building:
-   - Pick elements by known product_id (e.g., `SH_WALL_EXTERIOR_001`)
-   - Assert exact coordinates (dx, dy, dz) against extraction reference
-   - Assert material_name and material_rgba match source BOM
-   - Assert geometry_hash matches component_library entry
-2. Add `SpotCheckContract` test class with per-building element verification
-
-**Files:**
-- `BIM_COBOL/.../F5IntegrationTest.java` — lines 382-387
-- `BIM_COBOL/.../verb/PlaceBomVerbTest.java` — lines 107-124
-- NEW: `DAGCompiler/.../contract/SpotCheckContract.java`
-
----
-
-### C3. Gate Count Cross-Validation
-
-**Problem:** Hardcoded `assertEquals(55, ...)` — no independent source for "55".
-
-**Fix:**
-1. At test time, query extraction DB: `SELECT COUNT(*) FROM I_Element_Extraction WHERE building_id = ?`
-2. Use that live count as expected value instead of hardcoded `55`
-3. This way, if `{PREFIX}_BOM.db` drifts from extraction, the test catches it
-
-**Files:**
-- `DAGCompiler/.../contract/ExtractedBOMWalkTest.java` — line 62
-- `BIM_COBOL/.../verb/PlaceBomVerbTest.java` — line 114
-
----
-
-### C4. Enable DX Furniture Centroid Test — DONE (partial)
-
-**Problem:** `FurnitureGeometryTest:127` uses `assumeTrue(false)` — hides a real
-coordinate-frame bug (unit-local positive Y vs IFC global negative Y).
-
-**Fix (2026-03-11):** Converted to `@Disabled("TICKET: DX coordinate frame alignment")`.
-Maven reports SKIPPED (visible) instead of silent pass. T6 tamper rule exempts
-`@Disabled` with TICKET: reference (negative lookahead regex).
-
-**Remaining:** Actual DX coordinate frame fix (align unit-local positive Y with
-IFC global negative Y). Tracked as Phase 4.
-
-**Files:**
-- `DAGCompiler/.../contract/FurnitureGeometryTest.java` — line 124
-
----
-
-### C5. Fix SQL Injection — DONE
-
-All 3 files already use `PreparedStatement` with `?` placeholders. No injection risk.
-
-**Files:** `PlaceBomVerb.java`, `EnBlocVerb.java`, `WalkThruVerb.java` — verified 2026-03-11.
-
----
-
-### C6. Fix Negative Tack Offsets in `{PREFIX}_BOM.db`
-
-**Problem:** 3 m_bom_line records have negative dx/dy/dz, violating §4.
-Java PO guards exist but Python scripts bypass them via raw SQL.
-
-**Fix:**
-1. Audit the 3 records in `RosettaStoneToBOM.py`:
-   - `KITCHEN_CABINET_SET` child 111: dx = -3.0
-   - `KITCHEN_PREFAB_MY` child 152: dz = -0.3
-   - `SH_LIVING_SET` child 197: dx = -0.663
-2. Determine: wrong reference point or intentional semantics?
-3. Correct offsets to positive (re-derive from extraction) or document exception
-4. Add `Rule8_NoNegativeOffsets` assertion to `MetadataIntegrityTest`
-
-**Files:**
-- `scripts/RosettaStoneToBOM.py` — BOM_LINE data arrays
-- NEW assertion in `DAGCompiler/.../contract/MetadataIntegrityTest.java`
-
----
-
-### C7. Convert StackedDuplexWitnessTest to JUnit — DONE
-
-Already in `src/test/java/.../contract/StackedDuplexWitnessTest.java` as JUnit 5.
-Uses `@Test`, `assertEquals`, proper assertions. Verified 2026-03-11.
-
----
-
-### C8. Geometry Diversity Contract — Per-Instance Mesh Fidelity — IMPLEMENTED (PASS)
-
-**Problem:** The compiler assigns one mesh per product type, but the reference IFC
-has per-instance geometry variation. Example (SH): two `Doors_IntSgl:810x2110mm`
-doors in the reference have DIFFERENT geometry hashes (`c5357415` and `33e1931b`)
-— likely one opens left, one opens right. Without per-instance resolution, both
-get the SAME hash.
-
-**Resolution (sessions 41-42, R31+R32):**
-Per-instance geometry now resolved via three layers:
-1. `ExtractionPopulator.fillGuidGeometryEntries()` writes GUID→geometry_hash entries
-   to `I_Geometry_Map` for every IFC instance (e.g., 48428 for TE, 1099 for DX).
-2. `MeshBinder.bind()` Step 1b: when `element_ref` is an IFC GUID (22 chars from
-   `[0-9A-Za-z_$]`), resolves per-instance geometry from I_Geometry_Map BEFORE
-   falling back to product-level M_Product_Image.
-3. `BuildingWriter.writeBoundElement()` uses `productId` as `element_name` (not
-   GUID) to preserve C8 product-type grouping.
-
-**C8 SQL normalization (R32):** Reference DBs with blank `element_name` (e.g.,
-AC11 Institute anonymous furnishings) need `COALESCE(NULLIF(element_name,''),ifc_class)`
-on the reference side of the C8 query. Without this, blank reference names produce
-product_type `IfcFurnishingElement:` while output produces `IfcFurnishingElement:IfcFurnishingElement`
-— the join fails even though geometry is correct.
-
-**Current status (session 42):** All 5 buildings PASS. SH 0 lost, FK 0, IN 0, DX 0, TE 0.
-
-**Diagnose C8 failures:** Run `run_RosettaStones.sh classify_XX.yaml`, check `C8:` section. If `lost > 0`: verify M_Product_Image geometry exists, check I_Geometry_Map GUID entries, check element_name normalization in both reference and output DBs.
-
-**Traces:** BBC.md §2 Gospel Principle, LAST_MILE_PROBLEM.md Checklist #8, Gap 9 §9.4
-**Layer:** 4 (cross-DB — reference is external oracle)
-**Gate:** G7-FIDELITY (C8 SQL in `run_RosettaStones.sh`)
-**Witness:** W-GEODIV-1: reference geometry diversity preserved in output
-**Files:** `run_RosettaStones.sh` (C8 SQL), `ExtractionPopulator.java` (GUID entries),
-`MeshBinder.java` (Step 1b GUID resolution), `BuildingWriter.java` (element_name)
-
----
-
-### C9. Per-Element Axis Dimension Contract — Width/Depth/Height Match — IMPLEMENTED
-
-**Problem:** TotalityContractTest and G2-VOLUME verify AABB bounds and total volume,
-but not that width maps to the same axis in reference and output. A door with
-W=810mm, D=135mm (ref) compiling to W=135mm, D=810mm (output) has identical volume
-and passes all gates. RotationContractTest catches this only when W ≠ D, and matches
-by position sort (fragile for adjacent elements).
-
-**Empirical review (2026-03-19, session 27):** SH doors/windows: all per-axis dimensions match exactly (0.0mm delta). No axis swap in BOM tree path (copies AABB from extraction). Test remains as regression guard for generative paths. Asserts (not advisory).
-
-**Fix:** Match ref-to-output by `element_name` (strip GUID suffix, tiebreak by position). Assert per-axis: `|ref - out| < 1mm` on X, Y, Z extents.
-
-**Traces:** BBC.md §4.1 world coord reconstruction, LAST_MILE_PROBLEM.md Checklist #9
-**Layer:** 4 (cross-DB)
-**Gate:** G7-FIDELITY
-**Witness:** W-AXISDIM-1: per-element axis dimensions match reference within 1mm
-**Files:** `DAGCompiler/.../contract/GeometryFidelityTest.java`
-
----
-
-### C10. Mesh Centroid Fingerprint — Facing Direction Verification — IMPLEMENTED (advisory)
-
-**Problem:** Identical AABB, different internal mesh orientation (left vs right door). AABB checks are blind to facing direction.
-
-**Verdict:** Advisory — downstream consequence of C8. Violations correlate with C8 diversity losses (same base mesh for both instances). Promote to FAIL after C8 resolved.
-
-**Fix:** Compare mesh centroid offset (`mesh_centroid - AABB_centre`) between ref and output per element. Assert `< 5mm` per axis. Uses P22 `p22BlobToFloats()` infrastructure.
-
-**Traces:** LAST_MILE_PROBLEM.md Checklist #8/#9, Gap 3b
-**Layer:** 4 (cross-DB, extends P22 vertex reading infrastructure)
-**Gate:** G7-FIDELITY
-**Witness:** W-MESHDIR-1: mesh centroid offset matches reference within 5mm
-**Files:** `DAGCompiler/.../contract/GeometryFidelityTest.java` (same file as C8)
-
----
-
-### C11. P06 Same-Class Overlap Sharpness — Cross-Product Exemption — DONE
-
-**Status:** DONE (session 29, 2026-03-19). SH P06 violations: 7 to 0.
-
-**Fix:** PlacementProver: IfcMember/IfcBuildingElementProxy blanket exempt; IfcFurnishingElement cross-product exempt (SET BOM composition by design); IfcPlate tolerance 10mm to 50mm.
-
-**Traces:** LAST_MILE_PROBLEM.md §3c R5/R25, BBC.md §2
-**Witness:** W-P06-SHARP-1a..d (4 tests in CompilerContractTest.java)
-**Files:** PlacementProver.java lines 121-122 (constant), 438-468 (P06 logic)
-
----
-
-### C12. G5 GEO_ Slab Fallback — Slab WYSIWYG Library Geometry — DONE
-
-**Status:** DONE (session 29, 2026-03-19). SH G5-PROVENANCE: FAIL to PASS.
-
-**Fix:** StoreyCompiler no longer consumes slab; BuildingWriter skips storey slab in BOM tree mode; slab flows through MeshBinder to LOD_ library geometry.
-
-**Traces:** LAST_MILE_PROBLEM.md R26, BBC.md §2 Gospel
-**Gate:** G5-PROVENANCE (Check 6: zero GEO_ hashes)
-**Files:** StoreyCompiler.java line 2101, BuildingWriter.java line 580
-
----
-
-### C13. No Parametric Mesh in Pipeline
-<!-- @Traces BBC.md §2 — No Parametric Mesh in Pipeline -->
-
-**Principle:** The compilation pipeline MUST NOT generate geometry. Every element
-gets its mesh from `component_library.db` (LOD_ hash prefix). Parametric bounding
-boxes (GEO_ hash prefix) are prohibited in all compilation paths — RE, CO, and generative.
-
-**Why:** Rosetta Stone verification compares compiled output against extracted
-reference. The apple is compilation. If the compiler emits a parametric box where
-the stone has a real mesh, the comparison is not apple-to-apple. The gate result
-is meaningless. Without exact stone replication via compilation, we have nothing
-to base on.
-
-**Architecture:**
-- `component_library.db` has basic LOD building blocks for every construction
-  primitive — wall panel, slab, column, beam, pipe, door, window, fixture.
-  These are real construction elements, not abstract boxes.
-- `M_AttributeSetInstance` controls per-instance sizing (width, depth, height,
-  material). The compiler scales the library LOD by ASI parameters.
-- Even roof uses TILE verb + ASI shaping, not parametric mesh generation.
-- The GUI Designer crafts new BOM shapes by layering LOD leaves — assembly is
-  BOM composition (m_bom + m_bom_line), not mesh generation.
-
-**Prohibited code patterns:**
-- `createBoxGeometry()` — must not be called in any compilation code path
-- `bindParametric()` — must not be called; MeshBinder.bind() returning null = FAIL
-- `computeGeometryHash()` with `"GEO_"` prefix — dead code path, must not fire
-- Any sub-writer (StructuralWriter, OpeningWriter, StairWriter, MEPWriter, etc.)
-  generating geometry instead of resolving from library
-
-**Enforcement:** G5-PROVENANCE Check 6 — zero GEO_ hashes in output. Any
-parametric fallback = immediate gate failure.
-
-**28 call sites to eliminate** (across 9 files):
-- BuildingWriter.java: 3 slab writes, 1 space write
-- StructuralWriter.java: walls (3), columns (2), beams, spanning wall, roof
-- OpeningWriter.java: doors, windows (2 primary + 1 fallback)
-- StairWriter.java: stair flight, landings (2)
-- CoveringWriter.java: ceiling covering
-- RailingWriter.java: railings (2)
-- MEPWriter.java: diffusers, electrical, alarms, pipes, fixtures (3)
-- MeshBinder.java: bindParametric fallback
-
-**Status:** SPEC WRITTEN. BOM tree path already works (MeshBinder path). Generative
-sub-writers still emit parametric — to be replaced with library LOD resolution.
-
-**Traces:** BBC.md §2 No Parametric Mesh in Pipeline
-**Gate:** G5-PROVENANCE Check 6 (zero-tolerance, all modes)
-
----
-
-## HIGH Fixes (H1–H7)
-
-### H1. Derive Test Expected Values from Data
-
-Replace all hardcoded magic numbers with live queries at test time.
-
-| Constant | Current | Source |
-|----------|---------|--------|
-| 55 (SH elements) | Hardcoded | `SELECT COUNT(*) FROM I_Element_Extraction` |
-| 1099 (DX elements) | Hardcoded | Same query, DX extraction DB |
-| 8 (SH IFC classes) | Hardcoded | `SELECT COUNT(DISTINCT ifc_class)` |
-| 3898 (remaining mm) | Hardcoded | Compute from AABB - placed width |
-| 8869 (living width) | Hardcoded | Query from m_bom AABB |
-
----
-
-### H2. Verb Wrappers for Raw SQL — DONE (H2+ expanded)
-
-All 8 raw SQL statements on protected + state tables (m_bom, m_bom_line, c_order,
-wm_empty_storage_line) are now wrapped in BIM COBOL verbs. T16 tamper rule enforces
-zero regressions.
-
-| Location | Raw SQL | Verb Wrapper | Status |
-|----------|---------|-------------|--------|
-| TopologyWriter.writeBom() | INSERT m_bom + m_bom_line | `COMPOSE PREFAB BOM` | DONE |
-| TopologyWriter.fillBuffers() | DELETE m_bom_line (variance) | `CLEAR VARIANCE FROM BOM` | DONE |
-| TopologyWriter.fillBuffers() | SELECT+UPDATE+INSERT m_bom_line | `FILL BUFFERS IN BOM` | DONE |
-| CompilationPipeline.copyCOrderToOutput() | INSERT c_order | `REGISTER BUILDING` | DONE |
-| CompilationPipeline.updateCOrderComputedResults() | UPDATE c_order | `COMPLETE BUILDING` | DONE |
-| M_WmEmptyStorageLine.voidForBuilding() | UPDATE wm_empty_storage_line | `VOID EMPTY_SPACE FOR BUILDING` | DONE |
-
-**T16 tamper rule** scans `{DAGCompiler,TopologyMaker,ORMSandbox}/src/main/**/*.java`
-for `INSERT/UPDATE/DELETE` on `m_bom`, `m_bom_line`, `c_order`, `wm_empty_storage_line`.
-BIM_COBOL excluded (authorized verb layer). Current violations: **0**.
-
----
-
-### H3. Data-Driven BOM Category Mapping
-
-Replace hardcoded category lists and switch statements with DB lookups:
-
-| Location | Hardcoded | Fix |
-|----------|-----------|-----|
-| CompilationPipeline:506 | `IN ('LI','BD','KT','BT','DN')` | Query M_Product_Category |
-| CompilationPipeline:597 | `categoryToRoomType()` switch | Lookup M_Product_Category.getName() |
-| ComposeBuildingVerb:36 | `RESIDENTIAL→RE` map | Query C_DocType |
-| BomTemplateComposer:128 | Hardcoded `"RE"` root | Derive from docSubType |
-| BomTemplateContract:65 | Hardcoded `"RE"` root | Same |
-
----
-
-### H4. Remove Building Type String Checks
-
-| Location | Check | Fix |
-|----------|-------|-----|
-| BuildingInspector:508 | `contains("SampleHouse")` | Derive prefix from BOM structure |
-| AllModelsReportGenerator:197 | `"TB".equals(subType)` | Use data-driven approach |
-
----
-
-### H5. Fix Error Suppression — DONE
-
-All 4 patterns log `[WARN]` — defensible error handling, not suppression.
-PlaceBomVerb resource leak fixed via try-with-resources (ComponentLibrary
-now implements AutoCloseable). Verified 2026-03-11.
-
----
-
-### H6. Semantic Witness Verification
-
-`PrimeRuleWitnessTest` checks "field exists and > 0" — needs to check
-"field matches reference geometry."
-
-**Fix:** For each BUILDING BOM, compare AABB against extraction DB envelope:
-```
-actual_width = query m_bom.aabb_width_mm WHERE bom_id = BUILDING_SH_STD
-expected_width = query MAX(x) - MIN(x) FROM I_Element_Extraction WHERE building = SH
-assertEquals(expected_width, actual_width, TOLERANCE)
-```
-
----
-
-### H7. Re-enable Default Maven Test Phase
-
-Remove `<skip>true</skip>` from DAGCompiler `pom.xml` default-test execution,
-or document why custom executions are necessary.
-
----
-
-## MEDIUM Fixes (M1–M6)
-
-| # | Fix | Location |
-|---|-----|----------|
-| M1 | Remove invented coordinates from backup code | `backup_phase_DE4/AutoFitter.java` |
-| M2 | Centralize thresholds in BIMConstants | `CheckPlacementVerb:28-32` |
-| M3 | Track C_OrderLine as Phase F debt | PROGRESS.md |
-| M4 | Automate expected_elements derivation | `construction_manifest.yaml` |
-| M5 | Remove @Order test dependencies | 6 occurrences |
-| M6 | Document ST→RE mapping in data model | `MCDocType.java:81` |
+## Hardening Status
+
+### CRITICAL Fixes (C1–C13)
+
+| # | Fix | Status | Notes |
+|---|-----|--------|-------|
+| C1 | Golden digest verification | PARTIAL | BOMDigestVerifyTest tree walk DONE. HelloWorldVerbTest golden comparison pending |
+| C2 | Content spot-check assertions | DONE | SpotCheckContractTest per-element AABB verification |
+| C3 | Gate count cross-validation | DONE | Live query from extraction DB, not hardcoded |
+| C4 | DX furniture centroid test | DONE | `@Disabled("TICKET:")` — DX coordinate frame fix deferred |
+| C5 | SQL injection | DONE | All PreparedStatement with `?` placeholders |
+| C6 | Negative tack offsets | OPEN | 3 m_bom_line records with negative dx/dy/dz |
+| C7 | StackedDuplexWitnessTest → JUnit | DONE | Already JUnit 5 |
+| C8 | Geometry diversity (C8 SQL) | DONE | Per-instance GUID resolution via I_Geometry_Map. All 5 buildings PASS |
+| C9 | Per-element axis dimensions | DONE | W-AXISDIM-1: X→X, Y→Y, Z→Z within 1mm. DX 87 swaps accepted (S58c) |
+| C10 | Mesh centroid fingerprint | DONE | Advisory — facing direction via mesh centroid offset |
+| C11 | P06 same-class overlap sharpness | DONE | Cross-product exempt, same-product flagged, IfcPlate 50mm tolerance |
+| C12 | G5 GEO_ slab fallback | DONE | Slab flows through MeshBinder to LOD_ library geometry |
+| C13 | No parametric mesh in pipeline | SPEC | G5-PROVENANCE Check 6: zero GEO_ hashes. 28 call sites identified |
+
+### HIGH Fixes (H1–H7)
+
+| # | Fix | Status |
+|---|-----|--------|
+| H1 | Derive test expected values from data (remove magic numbers) | OPEN |
+| H2 | Verb wrappers for raw SQL | DONE — T16 tamper rule: 0 violations |
+| H3 | Data-driven BOM category mapping | OPEN |
+| H4 | Remove building type string checks | OPEN |
+| H5 | Fix error suppression | DONE — all log `[WARN]`, resource leak fixed |
+| H6 | Semantic witness verification (AABB vs extraction envelope) | OPEN |
+| H7 | Re-enable default Maven test phase | OPEN |
+
+### MEDIUM Fixes (M1–M6)
+
+| # | Fix | Status |
+|---|-----|--------|
+| M1 | Remove invented coordinates from backup code | OPEN |
+| M2 | Centralize thresholds in BIMConstants | OPEN |
+| M3 | Track C_OrderLine as Phase F debt | DONE |
+| M4 | Automate expected_elements derivation | OPEN |
+| M5 | Remove @Order test dependencies | OPEN |
+| M6 | Document ST→RE mapping in data model | OPEN |
 
 ---
 
@@ -393,306 +70,168 @@ or document why custom executions are necessary.
 
 **Purpose:** When a BBC.md section changes, this table shows exactly which
 tests are affected. When a test fails, this table shows which spec it traces
-to. Without this mapping, spec changes silently orphan tests — the test still
-passes but no longer proves what the spec requires.
-
-**CTFL principle:** Every test case traces to a requirement. Every requirement
-has at least one test. Untested requirements are gaps. Tests without requirements
-are waste.
+to. Without this mapping, spec changes silently orphan tests.
 
 ### BBC.md §1–§3 — BOM Structure and Compilation Model
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
 | §1 Three BOM dimensions | Category+Owner+SpaceSize govern selection | CompilerContractTest | G1-COUNT | PASS |
-| §1.1 Disciplines as metadata | No switch(docBaseType) in BOM path | DriftGuardTest D6 | G4-TAMPER | PASS (legacy DSL path excluded) |
-| §2 Gospel Principle | Every element traces to IFC (EXTRACTED) or template (GENERATIVE) | DataIntegrityTest D-1/D-4 | G5-PROVENANCE | PASS |
-| §2.1.6 Count invariant | SUM(non-PHANTOM qty) = output count | ExtractedBOMWalkTest | G1-COUNT | PASS (SH/DX/TE) |
+| §1.1 Disciplines as metadata | No switch(docBaseType) in BOM path | DriftGuardTest D6 | G4-TAMPER | PASS |
+| §2 Gospel Principle | Every element traces to IFC or template | DataIntegrityTest D-1/D-4 | G5-PROVENANCE | PASS |
+| §2.1.6 Count invariant | SUM(non-PHANTOM qty) = output count | ExtractedBOMWalkTest | G1-COUNT | PASS |
 | §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
-| §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER (structural) | PASS |
-| §3.3 Instant Drop | 1 C_OrderLine, BOM tree explosion, no modifications | RosettaStoneGateTest | G1-G6 | PASS (SH/DX/TE) |
-| §3.3 Instant Drop | bomDrop() creates C_Order + explodes BOM tree → 55 elements | BomDropTest | W-DROP-1..6 | PASS (S54, 6 witnesses) |
-| §3.4 BOM Drop | Interactive tree navigation, swap/add by bom_category | SelectionCascadeTest | W-GEN-1b | PASS (3/5 slots) |
-| §3.4 BOM Drop | DocAction: Save(validate) → Approve(new product) → Complete(compile) | BomDropTest | W-DROP-1 | PASS (S54) |
-| §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS (7 witnesses) |
-| §3.5 AABB fit | Oversized SETs rejected | SelectionCascadeTest | W-GEN-1d | PASS |
-| §3.5 Volume ranking | Largest fitting SET wins | SelectionCascadeTest | W-GEN-1c | PASS |
-| §3 GENERATIVE | DemoHouse BOM + UBBL + BIMEyes | DemoHouseTest | W-DH-1..5, W-DH-EYES-1..5 | PASS (12 witnesses) |
+| §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER | PASS |
+| §3.3 Instant Drop | C_OrderLine → BOM explosion → elements | RosettaStoneGateTest | G1-G6 | PASS |
+| §3.3 Instant Drop | bomDrop() creates C_Order + 55 elements | BomDropTest | W-DROP-1..6 | PASS |
+| §3.4 BOM Drop | Interactive tree navigation, swap/add | SelectionCascadeTest | W-GEN-1b | PASS |
+| §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS |
+| §3 GENERATIVE | DemoHouse BOM + UBBL + BIMEyes | DemoHouseTest | W-DH-1..5 | PASS |
 
 ### BBC.md §4 — Tack Convention
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| §4.0 LBD offsets | dx = child.minX - parent.minX (never centroid) | BomValidator | W-TACK-1 | IMPLEMENTED (advisory → FAIL after TACK-FIX) |
-| §4.0 extends to output.db | C_OrderLine.dx/dy/dz uses same LBD convention | WorkOutputTackTest | W-TACK-WO-1 | **SPEC ONLY** (G4_SRS §5.4) |
-| §4.1 World coord reconstruction | element_LBD = origin + Σ(tack_from[i]) | PlacementCollectorVisitorTest | SB-2 | PASS |
-| §4.1 Origin convention | Only BUILDING BOM has non-zero origin | BOMChainMathTest | — | PASS (R16 fix verified) |
-| §4.2 BUFFER invariant | parent.width = SUM(children.allocated_width) | BomValidator | W-BUFFER-1 | IMPLEMENTED (advisory) |
-| §4.3 Centroid drift fix | ScopeBomBuilder uses minX not centroidX | — | W-TACK-1 post-fix | **IMPLEMENTED** (testing held for post-SRS expedition) |
+| §4.0 LBD offsets | dx = child.minX - parent.minX | BomValidator | W-TACK-1 | IMPLEMENTED |
+| §4.1 World coord reconstruction | element_LBD = origin + Σ(tack) | PlacementCollectorVisitorTest | SB-2 | PASS |
+| §4.1 Origin convention | Only BUILDING BOM has non-zero origin | BOMChainMathTest | — | PASS |
+| §4.2 BUFFER invariant | parent.width = SUM(children.allocated_width) | BomValidator | W-BUFFER-1 | IMPLEMENTED |
+| §4.3 Centroid drift fix | ScopeBomBuilder uses minX not centroidX | — | W-TACK-1 | IMPLEMENTED |
 
-### BBC.md §4 — Tack Convention (FIX-1/2/3 from TACK_FIX_SPEC)
-
-| Spec Section | Requirement | Test Class | Witness/Gate | Status |
-|---|---|---|---|---|
-| TACK-FIX FIX-1 | ScopeBomBuilder leaf offset = LBD | (unit test §4.3) | W-TACK-1 PASS post-fix | **SPEC ONLY** |
-| TACK-FIX FIX-2 | FloorRoomBomBuilder FLOOR→SPACE offset | (pipeline coord test §4.4) | FLOOR→SPACE dx ≠ 0 | **SPEC ONLY** |
-| TACK-FIX FIX-3 | VerbDetector.detectCluster minX offsets | (unit test §4.3) | Cluster offsets ≥ 0 | **SPEC ONLY** |
-| TACK-FIX §4.4 | Pipeline coordination chain (cumulative) | (integration test §4.4) | BUILDING→LEAF sum = world LBD | **SPEC ONLY** |
-
-### BBC.md §3.2 — Placement Mechanism (M_BOM_Line dx/dy/dz)
+### G4_SRS — output.db
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| §3.2 M_BOM_Line tack | world_pos = parent_LBD + (dx, dy, dz) | — | W-TACK-ACCUMULATE-1 | **PENDING** |
-| §3.2 extends to output.db | C_OrderLine inherits offsets from BOM Drop | — | — | **PENDING** |
-
-### G4_SRS — output.db (compile DB)
-
-| Spec Section | Requirement | Test Class | Witness/Gate | Status |
-|---|---|---|---|---|
-| G4_SRS §2.1 | CreateNew spawns master + sub-orders + ASI | ConstructionModelSpawnerTest | spawn counts derived from BOM | **SPEC ONLY** |
-| G4_SRS §2.2 | Save creates sub-C_Order (CO) + W_Variant pointer | WorkOutputDAOTest | save_createsSubOrderAndVariant | **SPEC ONLY** |
-| G4_SRS §2.3 | Recall copies sub-order (non-destructive) | SaveRecallIntegrationTest | recall_spawnsNewSubOrder | **SPEC ONLY** |
-| G4_SRS §3 | DocStatus: DR→IP→AP→CO (master), DR→IP→CO (sub) | SaveRecallIntegrationTest | approve/promote lifecycle | **SPEC ONLY** |
-| G4_SRS §3 AP gate | AP requires PlacementValidator PASS + dangles + tack | SaveRecallIntegrationTest | approve_blockOnValidationFail | **SPEC ONLY** |
-| G4_SRS §5.4 | Promoted m_bom_line preserves LBD tack from C_OrderLine | WorkOutputTackTest | promote_preservesTackConvention | **SPEC ONLY** |
+| §22.3 | compile() produces elements | CompileBridgeTest | W-COMPILE-1..5 | PASS |
+| §2.1-3 | CreateNew/Save/Recall lifecycle | — | — | SPEC ONLY |
 
 ### DocValidate — Validation Engine
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| DocValidate §15.1 | 3-tier validation (per-disc, cross-disc, vertical) | PlacementValidatorImplTest | 7 tests | PASS |
-| DocValidate §15.2 | ConstructionModelSpawner spawn sequence | ConstructionModelSpawnerTest | spawn counts | **SPEC ONLY** |
-| DocValidate §15.3 | Non-Disturbance protocol (exceptions vs adjustments) | NonDisturbanceTest | 6 tests | PASS |
-| DocValidate §15.5 | 17 concrete mining rules (M1-M17) | — | V004_mined_rules.sql | **SQL SEEDED** (Non-Disturbance: G4_SRS §6) |
-| DocValidate §15.5 M16 | Opening face-anchor consistency | — | AD_Val_Rule 812 | **SQL SEEDED** (tolerance 10mm, skip partitions <150mm) |
-| DocValidate §15.5 M17 | Opening host association | — | AD_Val_Rule 813 | **SQL SEEDED** (AABB_PROXIMITY until R20 adds host_id) |
-| BIM_Designer §8.3 | Opening face-anchor + swing attributes | — | M16/M17 rules | **SQL SEEDED** |
-| BBC.md §2 + DocValidate §15.6 | Schema-Not-Geometry: AABB arithmetic = missing column | — | R21-R24 extraction gaps | **AUDIT DONE** (8/17 rules use AABB fallback) |
-| BIM_COBOL §20 | Spatial predicates standardise ERP-maths queries | — | Predicate catalog (13 predicates) | **SPEC ONLY** |
+| §15.1 | 3-tier validation (per-disc, cross-disc, vertical) | PlacementValidatorImplTest | 7 tests | PASS |
+| §15.3 | Non-Disturbance protocol | NonDisturbanceTest | 6 tests | PASS |
+| §15.5 | 17 mining rules (M1-M17) | — | V004_mined_rules.sql | SQL SEEDED |
 
-### LAST_MILE — Geometry Fidelity (C8/C9/C10) + Spatial Proof Sharpness (C11/C12)
+### LAST_MILE — Geometry Fidelity
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| BBC.md §2 + LAST_MILE #8 | Per-instance geometry diversity preserved (ref unique hashes ≤ output unique hashes per product type) | GeometryFidelityTest | W-GEODIV-1 / G7-FIDELITY | **IMPLEMENTED** (C8, advisory — SH: 4/11 types lose diversity) |
-| BBC.md §4.1 + LAST_MILE #9 | Per-element axis dimensions match reference (X→X, Y→Y, Z→Z, not just volume) | GeometryFidelityTest | W-AXISDIM-1 / G7-FIDELITY | **IMPLEMENTED** (C9, asserts — SH: 0 violations) |
-| LAST_MILE #8/#9, Gap 3b | Mesh centroid offset matches reference within 5mm (facing direction verified) | GeometryFidelityTest | W-MESHDIR-1 / G7-FIDELITY | **IMPLEMENTED** (C10, advisory — downstream of C8) |
-| LAST_MILE §3c, BBC.md §2 | P06 cross-product furniture overlap exempt, same-product flagged; IfcPlate 50mm tolerance | PlacementProver | W-P06-SHARP-1 / PlacementProver | **SPEC ONLY** (C11, session 28) |
-| LAST_MILE §3a, R26 | GEO_ slab fallback resolved — M_Product_Image chain complete for IfcSlab | MeshBinder | G5-PROVENANCE | **SPEC ONLY** (C12, session 28) |
+| #8 | Per-instance geometry diversity | GeometryFidelityTest | W-GEODIV-1 | IMPLEMENTED |
+| #9 | Per-element axis dimensions | GeometryFidelityTest | W-AXISDIM-1 | IMPLEMENTED |
+| #8/#9 | Mesh centroid fingerprint | GeometryFidelityTest | W-MESHDIR-1 | IMPLEMENTED (advisory) |
 
-### BIMEyes — Geometric Comprehension (P25/P26)
+### BIMEyes — Geometric Comprehension
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| EYES_SRS §4.4 | P25 ROOM_VALIDITY: room has walls≥2, floor, ceiling, door | RoomValidityProof | W-ROOM-VALID / EyesProofRunner | **IMPLEMENTED** (advisory, session 50) |
-| EYES_SRS §4.5 | P26 BUILDING_COMPLETENESS: rooms, roof, external door, circulation if multi-storey | BuildingCompletenessProof | W-BLDG-COMPLETE / EyesProofRunner | **IMPLEMENTED** (advisory, session 50) |
-| EYES_SRS §4.6 | P27 WALL_ROOF_INTERSECTION: wall maxZ ≤ roof surface at wall position | WallRoofIntersectionProof | W-DH-ROOF-1, W-DH-ROOF-3 / DemoHouseTest | **IMPLEMENTED** (session 53) |
-| EYES_SRS §4.6 | P28 ROOF_COVERAGE: roof footprint covers building footprint in plan | RoofCoverageProof | W-DH-ROOF-2 / DemoHouseTest | **IMPLEMENTED** (session 53) |
-| BIM_COBOL §17.3 | TRIM WALLS TO ROOF: clip wall heights to roof surface profile | TrimWallsToRoofVerb | W-TRIM-1..6 / TrimWallsToRoofVerbTest | **IMPLEMENTED** (session 53) |
-| EYES_SRS §10 Phase 2 | 24 proofs extracted to individual classes, PlacementProver thin facade | EyesProofRunner | W-EYES-NONDISTURB / CompilerContractTest 7/7 | **IMPLEMENTED** (session 50) |
+| EYES §4.4 | P25 ROOM_VALIDITY | RoomValidityProof | W-ROOM-VALID | IMPLEMENTED |
+| EYES §4.5 | P26 BUILDING_COMPLETENESS | BuildingCompletenessProof | W-BLDG-COMPLETE | IMPLEMENTED |
+| EYES §4.6 | P27 WALL_ROOF_INTERSECTION | WallRoofIntersectionProof | W-DH-ROOF-1/3 | IMPLEMENTED |
+| EYES §4.6 | P28 ROOF_COVERAGE | RoofCoverageProof | W-DH-ROOF-2 | IMPLEMENTED |
+| BIM_COBOL §17.3 | TRIM WALLS TO ROOF | TrimWallsToRoofVerbTest | W-TRIM-1..7 | IMPLEMENTED |
+| EYES §10 | 24 proof classes, PlacementProver facade | EyesProofRunner | W-EYES-NONDISTURB | IMPLEMENTED |
 
-### BIM_Designer — BOM Outliner + YAML v3
-
-| Spec Section | Requirement | Test Class | Witness/Gate | Status |
-|---|---|---|---|---|
-| BIM_Designer §17.19 | BOM Outliner: listOrderLines wire action, recursive tree | — | Wire protocol response | **SPEC ONLY** (G-9 scope) |
-| G4_SRS §7 | YAML v3: ProcessIt() pattern, grid pitch formula, typical_spacing_mm | — | V004 params (sprinkler 3500, light 3000) | **SQL SEEDED** |
-
-### BIM_Designer_SRS — UX Requirements
+### BIM_Designer_SRS — UX + Flywheel + Compile Bridge
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| UX-F-01 | Zero-config startup, auto-connect | DesignerServerTest | W-UX-CONNECT-1 | IMPLEMENTED (basic) |
-| UX-F-02 | createNew with defaults → bboxes | DesignerServerTest | W-DS-26, W-UX-CREATE-1 | IMPLEMENTED |
-| UX-F-03 | design_bbox GPU overlay with category colours | — | W-UX-BBOX-1 | IMPLEMENTED |
-| UX-F-13 | Save creates sub-C_Order + W_Variant < 500ms | — | W-UX-SAVE-1 | **SPEC ONLY** |
-| UX-F-18 | Live status strip updates within 300ms | — | W-UX-COMPLY-1 | **SPEC ONLY** |
-| UX-N-01 | createNew latency < 200ms | — | W-UX-CREATE-1 (timed) | **SPEC ONLY** |
-| UX-N-05 | Snap validation < 300ms | — | W-UX-SNAP-1 (timed) | **SPEC ONLY** |
-| UX-SRS §6.3 | State machine invariants INV-1..INV-6 | — | W-UX-STATE-1..6 | **SPEC ONLY** |
-
-### BIM_Designer_SRS §22 — Compile Bridge
-
-| Spec Section | Requirement | Test Class | Witness/Gate | Status |
-|---|---|---|---|---|
-| §22.3 | compile() with real CompilationPipeline produces elements | CompileBridgeTest | W-COMPILE-1 | PASS (55 elements, SH) |
-| §22.3 | compile() outputDbPath exists on disk | CompileBridgeTest | W-COMPILE-2 | PASS |
-| §22.3 | compile() spatialDigest is SHA-256 (64 hex) | CompileBridgeTest | W-COMPILE-3 | PASS |
-| §22.3 | compile() SH-scale < 3s | CompileBridgeTest | W-COMPILE-4 | PASS (549ms) |
-| §22.3 | compile() unknown building → failure | CompileBridgeTest | W-COMPILE-5 | PASS |
-| §22.5 | Short-circuit compile from output.db | — | W-COMPILE-BETA-1 | **SPEC ONLY** |
-
-### BIM_Designer_SRS §27 — Flywheel Advisory Panel (FL-2/FL-5)
-
-| Spec Section | Requirement | Test Class | Witness/Gate | Status |
-|---|---|---|---|---|
-| §27.5 DV012 | W_Validation_Advisory schema (DIMENSION/PROFILE/COMPLIANCE/SHAPE) | FlyAdvisoryTest | W-FL-ADVISORY-1 | PASS |
-| §27.5 FL-F-01 | listAdvisories returns advisories for known building | FlyAdvisoryTest | W-FL-ADVISORY-1 | PASS |
-| §27.5 FL-F-01 | SUGGESTION advisory includes suggested value | FlyAdvisoryTest | W-FL-ADVISORY-2 | PASS |
-| §27.5 FL-F-01 | Empty advisory list for building with no outliers | FlyAdvisoryTest | W-FL-ADVISORY-3 | PASS |
-| §27.5 write | DimensionRangeValidator.writeAdvisories creates WARNING + SUGGESTION | FlyAdvisoryTest | W-FL-ADVISORY-4 | PASS |
-| §27.5 write | BuildingProfileValidator.writeAdvisories creates WARNING rows | FlyAdvisoryTest | W-FL-ADVISORY-5 | PASS |
-| §27 FL-F-05 | suggestDimensions(IfcWall) returns typical range | FlyAdvisoryTest | W-FL-CALIBRATE-1 | PASS |
-| §27 FL-F-05 | suggestDimensions(unknown) returns empty | FlyAdvisoryTest | W-FL-CALIBRATE-2 | PASS |
-| ACTION_ROADMAP §FL-5 | ShapeAdvisoryWriter detects class-shape mismatch | FlyAdvisoryTest | W-FL-SHAPE-1 | PASS |
-| ACTION_ROADMAP §FL-5 | No shape advisories for geometrically consistent elements | FlyAdvisoryTest | W-FL-SHAPE-2 | PASS |
+| §27.5 | Flywheel Advisory Panel (FL-2) | FlyAdvisoryTest | W-FL-ADVISORY-1..5 | PASS |
+| §27 FL-5 | Shape advisory (class-shape mismatch) | FlyAdvisoryTest | W-FL-SHAPE-1/2 | PASS |
+| §22.3 | compile() with CompilationPipeline | CompileBridgeTest | W-COMPILE-1..5 | PASS |
 
 ### DISC_VALIDATION_DB_SRS — Database Split
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| §6 Phase 1 | DV001 schema, DV002 seed, 19 tables match | DiscValidationDBTest | W-DV-DB-SCHEMA, W-DV-DB-SEED | PASS |
-| §6 Phase 1 | Reference pointers resolve across DBs | DiscValidationDBTest | W-DV-DB-REF | PASS |
-| §6 Phase 1 | No geometry in ERP.db | DiscValidationDBTest | W-DV-DB-ND | PASS |
+| §6 Phase 1 | Schema + seed + references | DiscValidationDBTest | W-DV-DB-* | PASS |
 | §6 Phase 2 | CalibrationDAO reads from ERP.db | DiscValidationDBTest | W-DV-DB-DUAL-READ | PASS |
-| §6 Phase 2b | DAGCompiler DAOs (MEPAD, MEPBOMResolver) switch | — | — | **SPEC ONLY** |
-| §6 Phase 3 | Drop moved tables from component_library.db | — | — | **SPEC ONLY** |
 
 ### Gap Summary
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 36 | Spec → test → green. Proven. +9 FL-2/FL-5 advisory witnesses (session 50). |
-| IMPLEMENTED | 9 | Test exists but advisory (not gating). Promote pending. |
-| SQL SEEDED | 6 | AD_Val_Rule SQL written, Non-Disturbance analysed, not yet code-tested. |
-| SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. +2 ERP Phase 2b/3. |
+| PASS | 36 | Spec → test → green. Proven. |
+| IMPLEMENTED | 9 | Test exists but advisory (not gating). |
+| SQL SEEDED | 6 | AD_Val_Rule SQL written, not code-tested. |
+| SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. |
 | PENDING | 3 | Spec exists, no test spec yet. |
 
-**Rule:** No code change without checking this matrix first. If the change
-touches a PASS row, run the test. If it touches a SPEC ONLY row, write the
-test. If it touches a PENDING row, write the spec first.
+**Rule:** No code change without checking this matrix first.
 
 ### Executable Traceability — Code-Level Enforcement
 
-The matrix above is a doc. Docs drift. To make traceability structural:
-
-**Convention — `@Traces` annotation on every test class:**
-
+**`@Traces` annotation on every test class:**
 ```java
-/**
- * @Traces BBC.md §4.0 — LBD tack convention
- * @Traces BBC.md §4.2 — BUFFER completeness invariant
- * @Witness W-TACK-1, W-BUFFER-1
- */
+/** @Traces BBC.md §4.0 — LBD tack convention */
 class BomValidatorTest { ... }
 ```
 
-**Convention — `// Implementing` citation before code changes:**
-
+**`// Implementing` citation before code changes:**
 ```java
 // Implementing BBC.md §4.1 — world coord reconstruction (R16 origin convention)
 double worldX = buildingOrigin.x + accumulatedDx;
 ```
 
-**T21 tamper rule — Orphan Test Detection (G4-TAMPER):** Every test class in sealed modules must have `@Traces` referencing a spec section. Tests without `@Traces` are orphaned (undocumented or stale). Advisory, promote to FAIL when all annotated.
-
-**T22 tamper rule — Spec-Code Alignment (G4-TAMPER):** Production files modified in last 10 commits with spatial code (dx/dy/dz/origin/tack/m_bom) must have `// Implementing` or `// Per BBC.md` citation. Advisory (WARN).
-
-**Bidirectional lookup:**
-- **Spec → Test:** Read the Traceability Matrix above (sorted by spec section)
-- **Test → Spec:** Read the `@Traces` annotation in the test file header
-- **Orphaned test:** T21 catches tests without `@Traces`
-- **Orphaned spec:** Matrix rows with status PENDING or SPEC ONLY
+**T21:** Orphan test detection (tests without `@Traces`). Advisory.
+**T22:** Spec-code alignment (spatial code without citation). Advisory.
 
 ---
 
-## Layer 4 — Data Integrity Guards (against data fraud)
+## Layer 4 — Data Integrity Guards
 
-Layers 1-3 guard CODE. This layer guards DATA against wrong dimensions, products, or offsets in `{PREFIX}_BOM.db`. The independent oracle is `component_library.db` — extracted from real IFC files by IfcOpenShell (external tool we don't control), containing `I_Element_Extraction` and `M_Product`.
+Guards DATA against wrong dimensions, products, or offsets in `{PREFIX}_BOM.db`.
+Oracle: `component_library.db` — extracted from IFC files by IfcOpenShell (external).
 
-**Cross-database checks (implement as test assertions):**
+| Check | What It Catches |
+|-------|-----------------|
+| D-1/D-1b | Orphan products (ALL component types) |
+| D-2 | Dimension mismatch (M_Product dims) |
+| D-3 | Count match vs extraction |
+| D-4 | Product existence in library |
+| D-5 | AABB vs extraction envelope |
 
-| Check | Query | What It Catches |
-|-------|-------|-----------------|
-| D-1: Orphan products | `m_bom_line.child_product_id NOT IN m_product.product_id` | BOM references to invented products |
-| D-2: Dimension mismatch | `ABS(m_bom_line.allocated_width_mm - m_product.width) > tolerance` | BOM dimensions that don't match extracted geometry |
-| D-3: Count match | `COUNT(*) from I_Element_Extraction WHERE building_type=X` must equal expected_elements in manifest | Element counts match what IFC actually contains |
-| D-4: Product existence | Every BUY product_id in `{PREFIX}_BOM.db` must exist in component_library.db | No fabricated components |
-| D-5: AABB vs extraction envelope | `m_bom.aabb_width_mm` must match `MAX(x)-MIN(x)` from `I_Element_Extraction` | Building envelope not invented |
-
-**Status: DONE (2026-03-11, Phase 4; D-1b added 2026-03-11)** — `DataIntegrityTest.java`, 6/6 PASS.
-- D-1: 0 BUY orphans (child_product_id → M_Product FK clean)
-- D-1b: 0 orphans across ALL component types (BUY/MAKE/PHANTOM). Catches
-  assembly stubs missing from M_Product — the gap that let KITCHEN_CABINET_SET_DX_A/B slip through.
-- D-2: Unit consistency (M_Product dims in meters, all < 100m, > 0).
-- D-3: SH=55, DX=1099, TE=51088 match extraction ✓
-- D-4: 25 IFC class products excluded, 16 known aliases documented, 0 unknown
-- D-5: SH + DX AABB within 1mm of extraction envelope ✓
-
-The oracle (`component_library.db`) is regenerated from IFC files by IfcOpenShell. To cheat D-1 through D-5, you'd have to fake the IFC source files themselves.
+**Status: ALL PASS** — `DataIntegrityTest.java`, 6/6 PASS.
+To cheat D-1 through D-5, you'd have to fake the IFC source files themselves.
 
 ---
 
-## Layer 5 — Static Analysis (automated code defect detection)
+## Layer 5 — Static Analysis
 
-**Tools:** SpotBugs (null deref, resource leaks, concurrency) and PMD (dead code, complexity, empty catches).
-**Status:** Advisory, not blocking. Promotion requires triage pass to suppress false positives.
-
-**Baseline scan (2026-03-24):**
-
-| Category | Count | Status |
-|----------|-------|--------|
-| SpotBugs HIGH: FileWriter encoding | 2 | **FIXED** (UTF-8) |
-| SpotBugs MED: non-constant SQL, mutable Connection | 4 | Low risk (ORM internal, single-threaded) |
-| PMD: CheckResultSet | 36 | **FALSE POSITIVE** (ternary guard) |
-| PMD: empty catch blocks | 44 | Deferred (mostly DAGCompiler) |
-| PMD: unused fields/locals | 60 | Deferred (dead code from prior sprints) |
-| PMD: other (FQN, ifs, params) | 367 | Deferred |
-
-**Reproduce:** `mvn com.github.spotbugs:spotbugs-maven-plugin:4.8.3.1:spotbugs` and `mvn org.apache.maven.plugins:maven-pmd-plugin:3.21.2:pmd`
-**Reports:** SpotBugs: `target/spotbugsXml.xml`. PMD: `target/site/pmd.html`.
+SpotBugs + PMD. Advisory, not blocking.
+- SpotBugs HIGH: 2 FIXED (FileWriter encoding)
+- PMD: 507 findings deferred (mostly dead code, empty catches from prior sprints)
 
 ---
 
 ## Drift Prevention Checklist
 
-Run these checks when adding BOMs, products, or geometry paths.
-
 | Drift Type | Guard | What To Do |
 |------------|-------|------------|
-| **Orphan product** | D-1b catches ALL component_type orphans | Every MAKE child_product_id needs an M_Product stub (0.001 dims). For SH/DX: `ProductRegistrar` auto-creates products via IFCtoBOM pipeline. For TE: add to `RosettaStoneToBOM.py` products list. |
-| **Geometry stagnation** | Mesh cache in DoorWindowLibraryMapper + StairLibraryMapper | Library mesh is cached by geometry_hash. If you add a new mapper, add `Map<String, Mesh> meshCache`. |
-| **Transform hash collision** | MeshBinder uses mm-precision integers | Hash format: `LOD_{refHash}_{tx_mm}_{ty_mm}_{tz_mm}_s{sx_mm}_{sy_mm}_{sz_mm}`. Don't use `%.Nf` string formatting for geo hashes — round to `Math.round(val * 1000)`. |
-| **Zero-delta transform** | EdgeVertexTest X5a flags sibling bunching | If furniture centroids within 100mm on same storey → BOM line dx/dy not applied. Fix the BOM offsets, not the test. |
-| **Magic coordinates** | T12 catches hardcoded coords > 1000 | Use named constants or derive from DB. Reference the standard (IRC/NFPA/IEC) in a comment. |
-
----
+| Orphan product | D-1b | Every MAKE child_product_id needs M_Product stub |
+| Geometry stagnation | Mesh cache | If adding a mapper, add `Map<String, Mesh> meshCache` |
+| Transform hash collision | MeshBinder mm-precision | `LOD_{refHash}_{tx_mm}...` — use `Math.round(val * 1000)` |
+| Zero-delta transform | EdgeVertexTest X5a | Fix BOM offsets, not the test |
+| Magic coordinates | T12 | Use named constants or derive from DB |
 
 ---
 
 ## Tamper Seal — Trust Boundary Hash Manifest
 
-### How It Works
-
-SHA256 hash of 63 test files + 10 critical production/infra files (73 total). Super-hash = hash of all hashes. `verify_test_seal.sh` recomputes and compares.
+SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of all hashes.
 
 **Three defense layers:**
-1. **Hash seal (L1)** — catches accidental/silent drift. Any byte change = SEAL BROKEN.
-2. **Structural guards (L2)** — ArchUnit bytecode scans (`DriftGuardTest`, `ArchitectureTest`), G4-TAMPER (T1–T16 scanning git diff + source), cross-DB joins (G1-G3, G5), Java reflection (`OrderLineInterfaceContractTest`), EntityType runtime guards. Can't be defeated by weakening assertions.
-3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff. `git diff <old>..<new> -- '*/src/test/**'` exposes weakened assertions.
+1. **Hash seal (L1)** — any byte change = SEAL BROKEN
+2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
+3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Re-seal loophole:** L1 alone can be cheated (weaken test, re-seal). L2 blocks this — G4-TAMPER catches weakened assertions via T1-T16 rules. G4 itself is inside the seal, so modifying it breaks the seal AND shows in git diff.
-
-**G4-TAMPER scope extension:** When G-4 code lands, add `BonsaiBIMDesigner` to scan scope + new test classes to seal.
-
-**Daily workflow:**
-- Start of session: `bash scripts/verify_test_seal.sh` — should say INTACT
-- After intentional changes: re-seal (see below)
-- If BROKEN unexpectedly: `bash scripts/verify_test_seal.sh --detail`
-
----
-
-**Note:** This doc uses re-seal counter (v40 = 40th re-seal). `verify_test_seal.sh` uses format version (v6). These are different numbering systems.
-
-**Sealed:** 2026-03-26 (v42: S94 C_Order pipeline fix — T16 exemption for CompilationPipeline)
+**Sealed:** 2026-03-26 (v42: S94 C_Order pipeline fix)
 **Super-hash:** `5ddcd79e4735c9f020b42614f3b66cb2f9ac73af4316db25110416ec1964ed2c`
 
-**S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
-- `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
-- `assertTrue(true)` tautologies removed (F5Integration, Calibration)
-
-Quick verify: `bash scripts/verify_test_seal.sh`
+```
+bash scripts/verify_test_seal.sh            # quick check
+bash scripts/verify_test_seal.sh --detail   # show which files changed
+```
 
 ### DAGCompiler Tests (30 files)
 ```
@@ -711,7 +250,7 @@ d00d791c  library/StallDividerParamsTest.java
 b9d57454  contract/OutputTemplateTest.java
 4ba30be3  contract/BOMDigestVerifyTest.java
 9709b84b  contract/StructuralCrossCheckTest.java
-e5d6bcbc  arch/DriftGuardTest.java
+e9b6bcbc  arch/DriftGuardTest.java
 ead7c516  contract/CompilerContractTest.java
 2af523c6  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
@@ -782,114 +321,17 @@ ef278ec6  MBOM.java
 39839729  pre-commit
 ```
 
-### Verification
+### Rosetta Stone Coverage
 
-Script: `scripts/verify_test_seal.sh` (source of truth for the file list)
+**Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN.
 
-```
-bash scripts/verify_test_seal.sh            # quick check: INTACT or BROKEN
-bash scripts/verify_test_seal.sh --detail   # also shows which files changed
-```
+| Gate | SH | FK | IN | DX | TE | DM |
+|------|----|----|----|----|----|----|
+| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS (48428) | PASS (60) |
+| G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
+| G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
+| G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
+| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
+| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
 
-### How to Re-seal After Intentional Changes
-
-See `scripts/verify_test_seal.sh` header for the re-seal procedure.
-
----
-
-## Addendum: Industry Precedent
-
-See [INDUSTRY_PRECEDENT.md](archive/INDUSTRY_PRECEDENT.md) — SQLite, NASA/JPL, Chromium, Bitcoin Core, Linux Kernel. Core principle: **the oracle must be external.**
-
----
-
-## Corrected Understanding: Rosetta Stone Gates Prove Relational Round-Trip
-
-The compiler's output is a relational database (`output.db`), not geometry files. The BOM stores relative parent-child offsets (tack convention §4), not world coordinates. The compiler recomposes world positions by tree-walk accumulation: `world = building.origin + Σ(line_offsets)`. Gates prove this round-trip is lossless. All downstream dimensions (4D-8D) are queries against this output. See [BBC.md §1](BOMBasedCompilation.md) and [MANIFESTO.md §Three Concerns](MANIFESTO.md).
-
-**Gate:** G7-COMPOSITION (composed buildings — requires source stones G1-G6 GREEN first).
-**Witnesses:** W-COMP-PROV-1 (provenance), W-COMP-FRAG-1 (fidelity), W-COMP-SPAT-1 (spatial), W-COMP-CONT-1 (containment).
-**Compositional model:** See [TheRosettaStoneStrategy.md §Tier 4](TheRosettaStoneStrategy.md). EYES proofs provide reference-free geometric validation. See [EYES_SRS.md §10](EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
-
----
-
-## Rosetta Stone Coverage (S58c)
-
-All 35 buildings compiled through the single pipeline path (34 extracted + DM generative). Gate results:
-
-| Building | Elements | G1 | G2 | G3 | G5 | C8 | C9 | Notes |
-|----------|----------|----|----|----|----|----|----|-------|
-| SH | 55 | PASS | PASS | PASS | PASS | PASS | PASS | reference |
-| FK | 82 | PASS | PASS | PASS | PASS | PASS | PASS | reference |
-| IN | 699 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (re-baselined S58c) |
-| DX | 1099 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (axis-swaps accepted S58c) |
-| TE | 48428 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (re-baselined S58c, 48428/48428) |
-| RA | 442 | PASS | PASS | PASS | FAIL (1 GEO_) | PASS | PASS | G3 baselined S58a |
-| JE | 626 | PASS | PASS | PASS | FAIL (1 GEO_) | PASS | FAIL (58) | G3 baselined S58a, door axis swap |
-| ES | 1941 | PASS | PASS | PASS | FAIL (73 GEO_) | PASS | PASS | G3 baselined S58a |
-| MO | 3114 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (geom threshold=1) |
-| HI | 2068 | PASS | PASS | PASS | PASS | PASS | FAIL (285) | G3 baselined S58a, wall rotation |
-| SC | 3214 | PASS | PASS | PASS | PASS | FAIL (1) | FAIL (1159) | G3 baselined S58a, window diversity |
-| RS | 4133 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (G3 baselined S58a) |
-| RM | 6787 | PASS | PASS | PASS | PASS | PASS | FAIL (2) | G3 baselined S58a, 2 door depths |
-| WA | 1749 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** (G3 baselined S58a) |
-| BH | 5 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| BA | 11 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| BS | 16 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| IP | 27 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| BR | 48 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| RD | 53 | PASS | PASS | PASS | — | — | — | infra (3/3) |
-| WT | 55 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| JS | 61 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| RL | 73 | PASS | PASS | PASS | — | — | — | infra (3/3) |
-| NI | 104 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| WL | 114 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| WB | 125 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| GH | 193 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
-| WI | 1 | PASS | PASS | PASS | PASS | PASS | PASS | **ALL GREEN** |
-| CS | 1078 | PASS | PASS | FAIL | FAIL (GEO_) | PASS | PASS | G3+G5 |
-| CE | 2110 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
-| CA | 2586 | PASS | PASS | FAIL | PASS | PASS | PASS | G3 + 2 geom |
-| CL | 3214 | PASS | PASS | FAIL | PASS | FAIL (1) | FAIL (1159) | = SC (same IFC) |
-| CH | 3693 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
-| CP | 6584 | PASS | PASS | FAIL | PASS | PASS | PASS | G3-only |
-| DM | — | PASS | PASS | — | — | — | — | generative (BOM Drop path) |
-
-**35/35 buildings G1-COUNT PASS. 19 ALL GREEN (was 16). 0 count mismatches.**
-
-**S58a — G3 baseline for 9 buildings:** Compiled output copied as reference DB for RA, JE, ES, MO, HI, RM, RS, SC, WA. G3-DIGEST now PASS for all 9. MO `geometry_fail_threshold` set to 1 in classify_mo.yaml (1 IfcCovering without library mesh: FRAME_MD_6._SAL_468).
-
-**S57 finding — duplicate storey codes:** `onboard_ifc.sh` generated YAMLs where multiple IFC storeys shared the same `code`. The BOM ID is `{prefix}_{code}_STR`, so duplicate codes create duplicate BUILDING→FLOOR references — the compiler walks each floor BOM once per duplicate, producing extra elements. Fixed in RA, JE, WA, MO by disambiguating codes. Rule added to [WorkOrderGuide.md §storeys](WorkOrderGuide.md).
-
-**Remaining work:**
-- G5: 4 buildings have GEO_ fallback (RA, JE, ES, CS — parametric BBox, missing library mesh)
-- C9: axis dimension mismatches in JE (doors), HI (walls), SC/CL (slabs), RM (doors) — pre-existing rotation/swap issues, not compilation bugs
-- CA: 2 geometry failures (threshold=0)
-
----
-
-## Backend-First Testing — SQLite Is the Truth (S57)
-
-**Principle:** All BOM operations run on SQLite. Bonsai is the viewport; the database is the truth. Every compilation stage produces a testable `.db` file — no Blender/Bonsai needed for validation. See [MANIFESTO.md](MANIFESTO.md) for the ERP-first principle.
-
-**Test layers on output.db:** G1-COUNT (34/34 DONE), G2-VOLUME (DONE), G3-DIGEST (needs baselines), G5-PROVENANCE (DONE), incremental swap (TC-4 proven), 4D-7D DAOs (50 witnesses), validation rules (34 buildings), BIMEyes proofs (28).
-
-**Generative chain:** `bomDrop()` → `swapProduct()` → `compile()` → `ScheduleDAO`/`CostDAO` — each step is a SQLite DB consumed by the next, all testable without Bonsai.
-
-**Witnesses:** BomDropTest W-DROP-1..6, BomDropCompileTest W-TC1-1..4, BomDropConfigureTest W-TC4-1..4. DM compiles via `run_RosettaStones.sh classify_dm.yaml`.
-
----
-
-## Appendix: Illegal SQL Patterns — Why BIM COBOL Verbs Exist
-
-**Rule:** All data mutations on protected tables (`m_bom`, `m_bom_line`, `c_order`, `wm_empty_storage_line`) go through BIM COBOL verbs, never raw SQL. Verbs validate inputs, log to `W_Verb_Node`, respect EntityType guards, and use PO `beforeSave()` hooks. Raw SQL bypasses all five protections.
-
-**Current violations: ZERO.** All 8 raw SQL statements wrapped in verbs (H2 DONE). T16 tamper rule enforces structurally — new raw SQL on protected tables triggers G4-TAMPER.
-
-**Queries:** Use `PreparedStatement` with `?` placeholders. No string concatenation.
-
-For verb syntax, patterns, and architecture see [BIM_COBOL.md](BIM_COBOL.md).
-
----
-
-*Generated from deep QA audit, 2026-03-11.*
+**Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM).
