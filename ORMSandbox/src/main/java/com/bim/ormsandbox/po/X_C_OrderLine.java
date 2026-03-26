@@ -11,7 +11,7 @@ import java.sql.Connection;
  * <ul>
  *   <li><b>WHAT</b> (order topics) = this class</li>
  *   <li><b>HOW</b>  (production operations) = {@code W_Verb_Node}</li>
- *   <li><b>WHERE</b> (spatial workstation) = {@code co_empty_space_line} (S_Resource)</li>
+ *   <li><b>WHERE</b> (spatial workstation) = M_BOM_Line dx/dy/dz (co_empty_space removed S74)</li>
  *   <li><b>WITH WHAT</b> (material dims) = {@code M_Product}</li>
  * </ul>
  *

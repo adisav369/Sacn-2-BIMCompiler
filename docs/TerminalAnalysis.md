@@ -1426,8 +1426,8 @@ sprinkler lines but share no sub-BOM reference.
 
 | Pattern | Floors | Elements/floor | Potential sub-BOM |
 |---------|--------|---------------|-------------------|
-| FP sprinkler grid | 5 (GF-L3) | ~900 | Sprinkler bay template + ESLine per floor |
-| ELEC lighting grid | 5 (GF-L3) | ~160 | Ceiling light template + ESLine per floor |
+| FP sprinkler grid | 5 (GF-L3) | ~900 | Sprinkler bay template + M_BOM_Line offset per floor |
+| ELEC lighting grid | 5 (GF-L3) | ~160 | Ceiling light template + M_BOM_Line offset per floor |
 | ACMV duct run | 4 (GF-L2) | ~300 | Duct main template with branch variants |
 | CW pipe riser | 7 (all) | ~100 | Vertical riser template (per-floor instance attrs) |
 
@@ -1437,7 +1437,7 @@ that the sub-BOM pattern (product set + relative offsets) matches exactly.
 
 **Approach:** Investigate whether discipline sub-BOMs on adjacent floors share the
 same product-set signature (ignoring absolute position). If yes, a template sub-BOM
-with per-floor ESLine placement compresses further. If not, the current per-floor
+with per-floor M_BOM_Line offset placement compresses further. If not, the current per-floor
 independent BOMs are correct and 42.8:1 is the natural compression limit.
 
 **This is a future investigation** — does not block current compilation. The spec

@@ -47,7 +47,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.
 
 ## 1. Exception-Based Ordering — Configure-to-Order for Buildings
 
-> **Status:** Future — design specification only.
+> **Status:** PARTIALLY IMPLEMENTED. Exception-based ordering works (Sessions D+E). Replace, Remove, Compress, Add all implemented. Reference class and indexed exceptions are future.
 
 The full BOM explosion (BBC §3.4 BOM Drop) produces hundreds or thousands of
 C_OrderLines. For a developer building 200 houses from the same base design,
@@ -313,7 +313,7 @@ This must be resolved before any multi-order work. The fix is small (parameteriz
 | C_Project + C_ProjectLine schema (migration) | NOT implemented | YES |
 | §1 Reference Class (Compress) | NOT implemented (Session D) | NO — expand at project level before BomDropper |
 | §1 Exception ordering (full) | Partial (Replace works) | NO — plot exceptions are order-level swaps |
-| §6 Order Inheritance | NOT implemented (Session E) | NO — each order carries own base_bom |
+| §6 Order Inheritance | DONE (Session E, S68e) | NO — each order carries own base_bom |
 | Infrastructure BOM library | Partial (BR/RD/RL exist) | NO — defer INFRA to phase 2 |
 
 **Implementation sequence:** Schema migration → Model classes → Fix R-PROJ-3 → ProjectDropper → Unit tests → Integration tests → Scale test → Site validation → INFRA (phase 2).
@@ -434,6 +434,11 @@ in iDempiere — categories have parent categories. The BOM Selection Cascade
 (BBC §3.5) already walks this structure. A new domain is a new category
 subtree, not a new codebase.
 
+**Concrete proof:** [ShipYard.md](ShipYard.md) details a marine vertical — hull
+plates as TILE verb output, station offsets as curved surface provider, exception
+ordering for ice-class reinforcement. Phase 1 (flat-tile hull, 300 elements)
+compiles through the existing pipeline with zero code changes.
+
 ---
 
 ## 4. BOM Mining — Approve as Promote
@@ -482,20 +487,13 @@ patterns — contributed by everyone who compiles a building.
 
 ## 5. nD Dimensions — Time, Cost, Variance, Procurement
 
-> **Status:** Future — design specification only.
+> **Status:** IMPLEMENTED — queries work today (see §14.1). 5D: M_Product.unit_cost_rm exists. 6D/7D columns exist. 4D: BOM tree = schedule.
 
-The order already carries WHAT (C_OrderLine), WHERE (M_BOM_Line dx/dy/dz),
-and HOW (W_Verb_Node). The remaining dimensions are columns, not systems.
+Every "D" above 3D is a column, not a system. The BOM tree encodes all dimensions. See [MANIFESTO.md](MANIFESTO.md) §Why This Matters for the ERP framing.
 
 ### 5.1 4D Schedule — Topological Sort of BOM Tree
 
-The BOM tree encodes construction dependency: you can't build Floor 2
-before Floor 1. A parent must exist before its children can be placed.
-
-**The construction schedule IS a topological sort of the BOM tree.**
-Walk depth-first, assign sequence numbers. That's the 4D schedule.
-No Gantt chart tool, no Primavera — just a tree traversal query on the
-existing data.
+The construction schedule IS a topological sort of the BOM tree — depth-first, assign sequence numbers. Critical path = deepest branch. Parallel tasks = siblings. Milestone = BOM node where all children pass gates.
 
 ```sql
 WITH RECURSIVE bom_walk AS (
@@ -511,68 +509,29 @@ WITH RECURSIVE bom_walk AS (
 SELECT seq, depth, name FROM bom_walk ORDER BY seq;
 ```
 
-**Primavera-class features** that follow from the BOM structure:
-- **Critical path:** The deepest branch of the BOM tree. Delay any node
-  on it and the whole project slips
-- **Parallel tasks:** Siblings in the BOM tree can be built concurrently
-  (Room A and Room B on the same floor)
-- **Milestone:** Any BOM node can be flagged as a milestone. Completion
-  = all children compiled and gates passed
-- **Duration:** Verb execution time estimates on W_Verb_Node. TILE a
-  floor takes X hours. ROUTE plumbing takes Y hours. Sum up the branch
-
 ### 5.2 5D Cost — Inherent in the Data Model
 
-Each C_OrderLine references an M_Product. M_Product has a price.
-The cost of a building is `SUM(product.price × orderline.qty)`.
-The cost delta of an exception-based order is
-`SUM(replacement.price − original.price)` per exception line.
-
-5D is not a feature — it's a query.
+Cost of a building = `SUM(product.price × orderline.qty)`. Cost delta of an exception = `SUM(replacement.price − original.price)`. 5D is not a feature — it's a query.
 
 ### 5.3 Selection-Based Procurement — Click to Subcontract
 
-**Friction:** You want to send the plumbing scope to a subcontractor.
-Currently you'd extract it manually.
-
-In the Bonsai viewport or BOM Tree tab, **select a set of items** —
-all plumbing, or all items on Floor 3, or all items from vendor X.
-The selection is a filtered set of C_OrderLines. From that selection:
-
-- **Total cost** — SUM of selected items (instant, it's a query)
-- **Create sub-C_Order** — extract the selection as a child C_Order
-  under the same C_Project
-- **Assign to subcontractor** — set C_BPartner on the sub-order
-- **Track variance** — planned vs actual cost per sub-order
-
-This is **Primavera's Work Breakdown Structure (WBS) meets ERP
-procurement** — but driven by clicking items in a 3D viewport, not
-by manually building a WBS tree. The BOM tree IS the WBS.
+Select items in Bonsai viewport or BOM Tree tab → total cost (instant query), create sub-C_Order under C_Project (§2), assign to subcontractor (C_BPartner), track variance. The BOM tree IS the WBS.
 
 ### 5.4 6D Sustainability / 7D Facility Management
 
 Columns on M_Product or M_AttributeSetInstance:
-- **6D:** Embodied carbon, recyclability rating, EPD reference per product.
-  SUM across the order = building carbon footprint. Exception-based orders
-  show the carbon delta of a variant
-- **7D:** Maintenance schedule, warranty period, replacement cost per product.
-  The compiled order becomes the asset register for facility management.
-  Hand it to the building owner as a queryable database, not a PDF
+- **6D:** Embodied carbon, recyclability, EPD per product. SUM = building carbon footprint
+- **7D:** Maintenance schedule, warranty, replacement cost. Compiled order = asset register
 
-These are not features. They are columns that already have a home in the
-iDempiere product master. Populating them is data entry, not development.
+These are columns in the iDempiere product master. Populating them is data entry, not development.
 
 ---
 
 ## 6. Order Inheritance — Composable Variants
 
-> **Status:** Future — design specification only.
+> **Status:** IMPLEMENTED (Session E, S68e). `InheritanceResolver`, `Ref_Order_ID`. OrderInheritanceTest 6/6.
 
-**Friction:** DX_SOLAR exists (standard duplex + solar panels). You want
-DX_SOLAR_PREMIUM (solar + premium finishes). You re-specify the solar
-exceptions plus the premium ones — duplication.
-
-An order can declare a **parent order**:
+An order declares a **parent order** via `C_Order.Ref_Order_ID`:
 
 ```
 DX_BASE                          ← 1 line (standard duplex)
@@ -580,151 +539,16 @@ DX_BASE                          ← 1 line (standard duplex)
       └─ DX_SOLAR_PREMIUM (parent=DX_SOLAR)  ← +3 lines (premium finishes)
 ```
 
-DX_SOLAR_PREMIUM carries 3 lines, not 6. The compiler resolves the
-inheritance chain, applies exceptions in sequence. Conflict resolution:
-**last descendant wins** at a given locator_ref.
+DX_SOLAR_PREMIUM carries 3 lines, not 6. Each overlay is 2-3 lines — like CSS layers stacked on a base. The library of overlays is the product catalog of upgrades.
 
-This is object inheritance applied to construction orders. The Gang of Four
-pattern is the **Decorator** — each order in the chain wraps the previous
-one, adding or overriding specific slots without duplicating the base.
-But you don't need to think in GoF terms. Think of it as:
+**Key design rules:**
 
-- **Base order** = the default house
-- **Solar upgrade** = a transparency overlay that adds panels
-- **Premium upgrade** = another overlay that upgrades finishes
-- **Stack the overlays** = the compiled house has all three layers
-
-Each overlay is 2–3 lines. The library of overlays is the product catalog
-of upgrades. Mix and match overlays to create variants without authoring
-each combination from scratch.
-
-**iDempiere mapping:** C_Order.Ref_Order_ID (reference to parent order).
-The compiler walks the Ref_Order chain to root, collects all exception
-lines, applies in sequence. Standard iDempiere FK, no schema changes.
-
-### 6.1 Chain Walking
-
-The compiler resolves inheritance by walking `C_Order.Ref_Order_ID` from
-the current order to root, collecting exception C_OrderLines at each level.
-
-```
-resolveInheritanceChain(orderId):
-  chain = []
-  current = orderId
-  while current != NULL:
-    chain.prepend(current)           // root-first ordering
-    current = C_Order[current].Ref_Order_ID
-  return chain                       // [root, ..., leaf]
-```
-
-The chain is walked **root-first**. Each order's exception lines are
-applied in sequence. When two orders in the chain modify the same
-`locator_ref`, the deeper (closer to leaf) order wins — this is the
-"last descendant wins" rule.
-
-**Depth** is defined as distance from root. Root has depth 0. A child
-of root has depth 1. Deeper = higher priority.
-
-### 6.2 Override Rule — Last Descendant Wins
-
-At each `locator_ref` in the exploded BOM tree, at most one exception
-applies. If multiple orders in the chain target the same `locator_ref`,
-the override from the deepest order in the chain takes effect.
-
-```
-Example: DX_BASE → DX_SOLAR → DX_SOLAR_PREMIUM (3-deep chain)
-
-DX_BASE (depth 0):
-  locator_ref = 'Rm_Kitchen.Light_1'   → product = LIGHT_STD
-
-DX_SOLAR (depth 1, parent = DX_BASE):
-  locator_ref = 'Rm_Roof.Panel_1'      → product = SOLAR_PANEL_400W
-  locator_ref = 'Rm_Garage.Switchboard' → product = SOLAR_SWITCHBOARD
-
-DX_SOLAR_PREMIUM (depth 2, parent = DX_SOLAR):
-  locator_ref = 'Rm_Kitchen.Light_1'   → product = LIGHT_PREMIUM   ← overrides DX_BASE
-  locator_ref = 'Rm_Bathroom.Tile_1'   → product = TILE_MARBLE
-  locator_ref = 'Rm_Garage.Switchboard' → product = SOLAR_SWITCHBOARD_SMART  ← overrides DX_SOLAR
-
-Resolved exception set (depth wins):
-  'Rm_Kitchen.Light_1'    → LIGHT_PREMIUM           (depth 2 beats depth 0)
-  'Rm_Roof.Panel_1'       → SOLAR_PANEL_400W        (depth 1, no conflict)
-  'Rm_Garage.Switchboard' → SOLAR_SWITCHBOARD_SMART  (depth 2 beats depth 1)
-  'Rm_Bathroom.Tile_1'    → TILE_MARBLE             (depth 2, no conflict)
-```
-
-**Algorithm:** Build a `Map<locator_ref, ExceptionLine>`. Walk chain
-root-to-leaf. Each order's exceptions overwrite earlier entries. After
-the walk, the map contains the resolved set. O(N) where N = total
-exception lines across the chain.
-
-### 6.3 Sibling Conflict Resolution
-
-**The gap (GAP-SC-5):** The chain is linear (parent → child → grandchild).
-But two orders at the **same depth** could both modify the same `locator_ref`
-if the user creates two sibling variants from the same parent:
-
-```
-DX_BASE (depth 0)
-  ├─ DX_SOLAR   (depth 1, parent = DX_BASE)
-  │    locator_ref = 'Rm_Garage.Switchboard' → SOLAR_SWITCHBOARD
-  │
-  └─ DX_PREMIUM (depth 1, parent = DX_BASE)
-       locator_ref = 'Rm_Garage.Switchboard' → PREMIUM_SWITCHBOARD
-```
-
-If a third order DX_SOLAR_PREMIUM tries to inherit from **both**
-DX_SOLAR and DX_PREMIUM, the chain is no longer linear — it's a DAG.
-
-**Resolution: Single-parent inheritance only (error-on-conflict).**
-
-`C_Order.Ref_Order_ID` is a single FK — one parent per order. This is
-the iDempiere pattern: C_Order references at most one parent order.
-Diamond inheritance (inheriting from two siblings) is structurally
-impossible because the FK is scalar, not a list.
-
-The conflict scenario above cannot arise in the data model. The user
-must choose one lineage:
-
-```
-DX_SOLAR_PREMIUM (parent = DX_SOLAR)
-  → inherits solar + adds premium finishes     ← valid: linear chain
-
-DX_PREMIUM_SOLAR (parent = DX_PREMIUM)
-  → inherits premium + adds solar panels       ← valid: different linear chain
-
-DX_BOTH (parent = DX_SOLAR AND DX_PREMIUM)
-  → IMPOSSIBLE: Ref_Order_ID is scalar FK      ← structurally prevented
-```
-
-**iDempiere precedent:** C_OrderLine uses `SeqNo` for ordering within
-a single parent. M_PriceList_Version uses `ValidFrom` — latest wins.
-Both assume a linear resolution path, not a DAG. We follow the same
-assumption.
-
-**If sibling combination is needed:** The user authors a new order that
-manually includes both sets of exceptions. This is explicit, auditable,
-and avoids hidden precedence rules. Three lines (solar + premium + smart
-switchboard) instead of an implicit merge of two branches.
-
-**Validation rule:** At compile time, detect cycles in the Ref_Order_ID
-chain (A → B → A). Error immediately — cycles indicate data corruption,
-not a design intent. Implementation: track visited order IDs during
-chain walk; if a repeat is found, throw `IllegalStateException` with
-the cycle path.
-
-### 6.4 Ordering Within a Single Chain Level
-
-When a single order carries multiple exception lines, they are applied
-in `C_OrderLine.Line` order (iDempiere's standard line numbering,
-analogous to `C_OrderLine.SeqNo`). If two lines in the same order
-target the same `locator_ref`, the higher `Line` number wins —
-consistent with "last writer wins" within a document.
-
-**Validation:** At order entry time, warn if two lines in the same
-order target the same `locator_ref`. This is likely a user error
-(duplicate exception), not intentional layering. The warning does not
-block — it informs.
+1. **Chain walking:** `InheritanceResolver` walks `Ref_Order_ID` root-first, collecting exception C_OrderLines at each level. Algorithm: `Map<locator_ref, ExceptionLine>`, root-to-leaf overwrite. O(N).
+2. **Last descendant wins:** When two orders in the chain target the same `locator_ref`, the deeper order (closer to leaf) takes effect.
+3. **Single-parent only (GAP-SC-5 resolved):** `Ref_Order_ID` is a scalar FK — diamond inheritance is structurally impossible. To combine siblings, author a new order with both exception sets explicitly.
+4. **Within-order ordering:** Multiple exception lines in one order apply in `C_OrderLine.Line` order. Higher line number wins at same `locator_ref`.
+5. **Cycle detection:** Track visited IDs during chain walk; cycle → `IllegalStateException`.
+6. **Duplicate warning:** Two lines in the same order targeting the same `locator_ref` triggers a warning (likely user error), does not block.
 
 ---
 
@@ -812,153 +636,44 @@ familiar faces, one unfamiliar connection between them.
 
 <!-- Implementing SpecsAnalysis.txt §15 — processIt() vs ModelValidator -->
 
-Current `processIt()` dispatch is correct for batch compilation — the
-compiler processes one building at a time, one discipline at a time, in
-a deterministic pipeline. For enterprise deployment (multi-user, real-time
-collaborative BIM editing), two companion features become necessary:
+For enterprise deployment (multi-user, real-time collaborative editing), two companions are needed:
 
-**ModelValidator alignment.** iDempiere's `ModelValidator` fires
-`beforeSave`/`afterSave` hooks on every PO change — this is the pattern
-for interactive, event-driven validation. When the BIM Designer supports
-multi-user concurrent editing, each spatial mutation (drag wall, move
-sprinkler) must fire validation rules in real-time. Align `processIt()`
-dispatch with ModelValidator's event model: register validators via
-ComponentFactory (OSGi pattern), fire on MBOMLine save, return
-PASS/WARN/BLOCK synchronously. The batch pipeline continues to use
-`processIt()` for full-building compilation; ModelValidator handles the
-interactive per-element path.
+- **ModelValidator alignment:** Align `processIt()` with iDempiere's `beforeSave`/`afterSave` hooks for interactive per-element validation. Register via ComponentFactory (OSGi), fire on MBOMLine save, return PASS/WARN/BLOCK synchronously. Batch pipeline continues to use `processIt()`.
+- **Federated Spatial DB:** Partition spatial data by building x floor x discipline (93% memory reduction on 93K elements, [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) line 238). Same principle as iDempiere's AD_Org scoping.
 
-**Federated Spatial DB.** The current in-memory approach handles TE's
-48,428 elements, but multi-building federation (200 houses under one
-C_Project) cannot hold all buildings in memory simultaneously. The
-Federated Model Spatial DB addon (93% memory reduction on 93K elements,
-[StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) line 238)
-partitions spatial data by building × floor × discipline, loading only
-the active partition. This is the same principle as iDempiere's
-org-partitioned data — AD_Org scopes which records are visible in a
-given context.
-
-These two features are companions for enterprise deployment: ModelValidator
-for real-time validation, Federated Spatial DB for multi-project scale.
 Neither blocks the current single-building batch pipeline.
 
 ---
 
 ## 9. DiffVerb and Callout — Reactive Spatial Editing
 
-> **Status:** Future — design specification only.
+> **Status:** IMPLEMENTED (Session F, S72). `DiffVerbService`, `CalloutEngine`, `AD_Rule`. DiffVerbTest 5/5. Viewport gesture capture pending (Bonsai addon).
 
-The building is compiled and visible in the Bonsai viewport. The user wants
-to refine aesthetics — drag a fireplace 300mm left to centre it on the
-feature wall. This gesture is not an attribute override (ASI handles those).
-It is a **spatial mutation with cascading consequences**.
+Three layers of instance customisation:
 
-### 9.1 Three Layers of Instance Customisation
+| Layer | What it captures | Persistence |
+|-------|-----------------|-------------|
+| **ASI** | Static attribute overrides (colour, material, finish) | Name/value pairs on C_OrderLine |
+| **DiffVerb** | Spatial mutations from user gestures | W_Verb_Node (verb_type=DIFF), replayable delta |
+| **Callout** | Cascading consequences of a change | AD_Rule rows, fire in topo-sort order |
 
-| Layer | What it captures | iDempiere parallel | Persistence |
-|-------|-----------------|-------------------|-------------|
-| **ASI** | Static attribute overrides (colour, material, finish) | M_AttributeSetInstance | Name/value pairs on C_OrderLine |
-| **DiffVerb** | Spatial mutations from user gestures | W_Verb_Node (verb_type=DIFF) | Replayable operation with delta parameters |
-| **Callout** | Cascading consequences of a change | AD_Rule / AD_Column.Callout | Rule rows that fire on field change |
+ASI handles "this door is oak instead of pine." DiffVerb handles "move this fireplace 300mm left" — where the flue must follow, the hearth resizes, clearance re-validates, and the gas line reroutes.
 
-**ASI** is sufficient for: "this door is oak instead of pine."
-**ASI is insufficient for:** "move this fireplace 300mm left" — because
-the move has side effects that ASI cannot express. The flue must follow.
-The hearth pad must resize. The clearance to the adjacent wall must be
-re-validated. The gas line must reroute.
+### 9.1 DiffVerb — Captured Gesture as Replayable Operation
 
-### 9.2 DiffVerb — Captured Gesture as Replayable Operation
+User drags an element → `DiffVerbService` records a W_Verb_Node with `verb_type=DIFF`, `locator_ref`, and `delta_dx/dy/dz` parameters. DiffVerbs are stored, replayable, composable (stack additively like §1 exceptions), and already in delta form.
 
-When the user drags an element in the viewport, the gesture produces a
-**DiffVerb** — a new verb type alongside TILE, ARRAY, ROUTE, CLUSTER.
+### 9.2 Callout — Cascading Rules from Spatial Change
 
-```
-W_Verb_Node:
-    verb_type    = 'DIFF'
-    locator_ref  = 'L1.Living.FP_Mantel'
+Each Callout rule is an `AD_Rule` row (EventType, SourceTable/Column, RuleType: POSITIONAL/DIMENSIONAL/CONSTRAINT/REROUTE, TargetLocator, Expression). `CalloutEngine` evaluates rules in dependency order (topological sort). Circular dependencies rejected at definition time.
 
-W_Verb_NodeProduct (parameters):
-    delta_dx     = -300    (mm, parent-relative)
-    delta_dy     = 0
-    delta_dz     = 0
-    source       = 'viewport_drag'   (provenance: user gesture)
-```
-
-The DiffVerb is:
-- **Stored** as a W_Verb_Node row — same table as all other verbs
-- **Replayable** — apply the same DiffVerb to the same base BOM and get
-  the same result. Determinism is preserved
-- **Composable** — multiple DiffVerbs on the same order stack additively.
-  They are the spatial equivalent of exception-based ordering (§1)
-- **Diffable** — the DiffVerb IS the diff. No separate diff computation
-  needed. The user's gesture is already in delta form
-
-### 9.3 Callout — Cascading Rules from Spatial Change
-
-The DiffVerb fires. Now the **Callout chain** propagates consequences:
-
-```
-TRIGGER: C_OrderLine[FP_Mantel].dx changed by -300mm
-
-CALLOUT CHAIN (AD_Rule rows):
-├── Rule 1: FP_Flue.dx = FP_Mantel.dx
-│   (flue tracks mantel — positional coupling)
-│
-├── Rule 2: FP_Hearth.width = FP_Mantel.width + 2 × clearance_mm
-│   (hearth resizes — dimensional dependency)
-│
-├── Rule 3: Wall_Adjacent.clearance_check()
-│   └── IF clearance < 900mm → AD_Val_Rule WARN
-│   (fire code re-validation — constraint check)
-│
-└── Rule 4: MEP_GasLine.route_to(FP_Mantel.new_position)
-    (reroute gas line — verb re-execution)
-```
-
-**iDempiere precedent:** In iDempiere, changing `M_Product_ID` on a
-`C_OrderLine` triggers a Callout that updates `PriceActual`, `C_Tax_ID`,
-and `Description`. The field change is the trigger; the Callout is the
-rule engine that propagates consequences. Same pattern — different domain.
-
-**AD_Rule as the Callout store:** Each Callout rule is an `AD_Rule` row:
-
-| Column | Content |
-|--------|---------|
-| `EventType` | `FIELD_CHANGE` |
-| `SourceTable` | `C_OrderLine` |
-| `SourceColumn` | `dx` (or `dy`, `dz`, `m_product_id`) |
-| `RuleType` | `POSITIONAL` / `DIMENSIONAL` / `CONSTRAINT` / `REROUTE` |
-| `TargetLocator` | locator_ref of the affected element |
-| `Expression` | SQL or formula: `FP_Flue.dx = :new_value` |
-
-Rules are **declarative** — they state WHAT should happen, not HOW.
-The Callout engine evaluates them in dependency order (topological sort,
-same as the 4D schedule in §5.1). Circular dependencies are detected
-and rejected at rule definition time.
-
-### 9.4 Why This Completes the Editing Model
-
-Without Callout, the user can:
-- **Order** a building (C_Order + exceptions) — §1
-- **Compile** it (bomDrop + verb execution) — BBC §3
-- **Override** attributes (ASI) — static, no side effects
-
-With Callout, the user can also:
-- **Sculpt** the compiled result — drag, resize, reposition
-- **Trust** that consequences propagate automatically
-- **Replay** every gesture — the DiffVerb trail is the edit history
-
-The Bonsai viewport becomes a **live rule-driven editor**, not just a
-viewer. Every drag is a DiffVerb. Every DiffVerb fires Callouts. Every
-Callout consequence is itself a DiffVerb (recorded, replayable, auditable).
-The entire edit session is a sequence of DiffVerbs — like a Photoshop
-Action or a Blender modifier stack.
+The Bonsai viewport becomes a **live rule-driven editor**: every drag is a DiffVerb, every DiffVerb fires Callouts, every Callout consequence is itself a recorded DiffVerb. The edit session = sequence of DiffVerbs (like a Photoshop Action or Blender modifier stack).
 
 ---
 
 ## 10. AD_ChangeLog — Provenance and Audit Trail
 
-> **Status:** Future — design specification only.
+> **Status:** IMPLEMENTED. ChangelogDAO fully implemented. SAVE/PLACE/MOVE/RESIZE/DELETE/PROMOTE/UNDO.
 
 **Friction:** The BOM library grows through BOM Mining (§4 Approve).
 Community contributors promote validated orders into reusable recipes.
@@ -986,232 +701,78 @@ recorded with who, when, from-what, to-what.
 
 ### 10.2 Provenance Chain for Promoted BOMs
 
-When DocAction=Approve promotes a compiled order into a reusable BOM:
+When DocAction=Approve promotes a compiled order, `ChangelogDAO` records: who created it, which IFCs fed it (extraction lineage), which gates passed at promotion time, and which downstream orders reference it. This is the Wikipedia edit history for BOM recipes — attribution, lineage, verification, and impact analysis in one table.
 
-```
-AD_ChangeLog entries:
-├── M_BOM 'FLOOR_TROPICAL_3BR' CREATED
-│   UpdatedBy = 'redhuan'
-│   TrxName   = 'Approve_Order_2847'
-│
-├── Source IFCs:
-│   ├── extracted_from: 'SampleHouse.ifc' (extraction_id=14)
-│   ├── extracted_from: 'Duplex.ifc' (extraction_id=7)
-│   └── common_subtree_match: 87% overlap
-│
-├── Gate results at promotion time:
-│   ├── G1_EXTRACTION: PASS (196/196 witnesses)
-│   ├── G2_STRUCTURE: PASS
-│   └── G5_PROVENANCE: PASS
-│
-└── Downstream references:
-    ├── Used by: C_Order 'DX_SOLAR_v3'
-    ├── Used by: C_Order 'SH_CORNER_LOT'
-    └── Inherited by: M_BOM 'FLOOR_TROPICAL_4BR' (child recipe)
-```
+### 10.3 DiffVerb Audit Trail
 
-### 10.3 Trust in the Commons
-
-The FOSS ecosystem (§7) depends on trust. A community-contributed BOM
-library is only as trustworthy as its provenance. AD_ChangeLog provides:
-
-- **Attribution:** Who contributed this recipe
-- **Lineage:** Which IFC extractions fed it, which orders validated it
-- **Verification:** Which gates passed at promotion time
-- **Impact analysis:** Which orders depend on this BOM — if it changes,
-  what needs recompilation
-
-This is the Wikipedia edit history for BOM recipes. Every recipe has a
-full audit trail. Disputes are resolved by reading the log, not by
-arguing about intent.
-
-### 10.4 DiffVerb Audit Trail
-
-Every viewport gesture (§9) is a DiffVerb recorded in W_Verb_Node.
-AD_ChangeLog records the creation of each W_Verb_Node row. Together
-they provide a complete edit history:
-
-```
-Session replay:
-  10:14:03  DIFF  FP_Mantel dx -300mm         (user drag)
-  10:14:03  CALLOUT  FP_Flue dx -300mm        (auto: Rule 1)
-  10:14:03  CALLOUT  FP_Hearth width +600mm   (auto: Rule 2)
-  10:14:04  CALLOUT  WARN clearance 850mm     (auto: Rule 3)
-  10:14:15  DIFF  FP_Mantel dx +50mm          (user corrects)
-  10:14:15  CALLOUT  FP_Flue dx +50mm         (auto: Rule 1)
-  10:14:15  CALLOUT  OK clearance 900mm       (auto: Rule 3 clears)
-```
-
-Every line is an AD_ChangeLog entry. The session is replayable.
-The audit trail is the undo history, the provenance record, and the
-training data for future Callout rule refinement — all in one table.
+Every viewport gesture (§9) is a DiffVerb recorded in W_Verb_Node. AD_ChangeLog records each W_Verb_Node creation. Together: complete edit history, replayable sessions, undo history, and training data for Callout rule refinement — all in one table.
 
 ---
 
 ## 11. The 8th D — ERP as Business Intelligence
 
-> **Status:** Future — design specification only.
+> **Status:** IMPLEMENTED — working today as queries + Federation addon. All data in SQLite, cross-dimensional queries are JOINs.
 
-BIM has accumulated "dimensions" over the years:
+The 8th D is the enterprise dimension — procurement, accounting, subcontractor management, cash flow, variance analysis, BI — native in the database, not bolted on. See [MANIFESTO.md](MANIFESTO.md) §Why This Matters for the industry framing ("construction is manufacturing", "$500B waste").
 
-| D | What | Typical Tool | How it's done today |
-|---|------|-------------|-------------------|
-| 3D | Geometry | Revit, ArchiCAD | Modelling software |
-| 4D | Time/Schedule | Primavera P6, MS Project | Manually linked to 3D |
-| 5D | Cost | CostX, Sage | Manually extracted from 3D |
-| 6D | Sustainability | One Click LCA | Separate tool, manual input |
-| 7D | Facility Management | Archibus, FM:Systems | Separate system, manual handover |
-| **8D** | **ERP / BI** | **Nothing integrated** | **Doesn't exist** |
+**Why it exists here:** Every element is a row with spatial coordinates (3D), BOM tree position (4D), cost (5D), material properties (6D), maintenance data (7D), and ERP context (C_Order, C_Project, C_BPartner). Cross-dimensional queries are JOINs.
 
-The 8th D is the enterprise dimension — where the building sits inside
-a real database with real ERP operations: procurement, accounting, HR,
-subcontractor management, cash flow, variance analysis, business
-intelligence. Not as a bolt-on integration, but as the native environment.
+### 11.1 Construction Pain as SQL — Unique Examples
 
-**Why 8D doesn't exist today:** IFC is a file format. You can't run
-`SELECT SUM(cost) FROM wall WHERE fire_rating < 60 AND zone = 'corridor'`
-against an IFC file. You export it to a spreadsheet, filter manually,
-and hope you didn't miss anything. Every "D" above 3D is a separate
-tool that reads geometry and tries to attach its own data. None of them
-share a database. None of them can answer cross-dimensional queries.
-
-**Why it exists here:** The BOM compiler sits on SQLite. Every element
-is a row. Every row has spatial coordinates (3D), a position in the BOM
-tree (4D sequence), a cost (5D), material properties (6D), maintenance
-data (7D), and an ERP document context (C_Order, C_Project, C_BPartner).
-Cross-dimensional queries are JOINs.
-
-### 11.1 The $500B Question — Construction Pain as SQL
-
-The construction industry wastes an estimated **$500-600 billion/year
-in the US alone** (~30% of total spend) on problems that are fundamentally
-data integration failures. Each pain point below becomes a query when
-the building lives in a real database:
-
-**Change order impact — "an offer just came in":**
+**Change order impact:**
 ```sql
--- Swap flooring material, what's the cost delta?
-SELECT
-    SUM(new_product.price - old_product.price) * ol.qty AS cost_delta,
-    SUM(new_product.lead_time - old_product.lead_time) AS schedule_delta_days
+SELECT SUM(new_product.price - old_product.price) * ol.qty AS cost_delta,
+       SUM(new_product.lead_time - old_product.lead_time) AS schedule_delta_days
 FROM c_orderline ol
 JOIN m_product old_product ON ol.m_product_id = old_product.m_product_id
 CROSS JOIN m_product new_product
 WHERE new_product.name = 'PORCELAIN_TILE_600'
   AND old_product.m_product_category_id = new_product.m_product_category_id
-  AND ol.c_order_id = ?
-  AND ol.family_ref LIKE '%FLOOR_TILE%';
+  AND ol.c_order_id = ? AND ol.family_ref LIKE '%FLOOR_TILE%';
 ```
-One query. Instant. Not a 3-day exercise involving the estimator, the
-scheduler, and the procurement manager.
 
 **Work package generation:**
 ```sql
--- Generate mechanical work package for Level 2 North
 SELECT ol.family_ref, ol.qty, p.name, p.price * ol.qty AS line_total,
        es.tack_from_x, es.tack_from_y, es.tack_from_z
 FROM c_orderline ol
 JOIN m_product p ON ol.m_product_id = p.m_product_id
-JOIN co_empty_space_line es ON ol.c_orderline_id = es.c_orderline_id
+-- co_empty_space_line removed S74 (W008) — placement via M_BOM_Line dx/dy/dz
 WHERE p.m_product_category_id IN (SELECT id FROM m_product_category
                                    WHERE name IN ('ME','EL','PL'))
-  AND es.tack_from_z BETWEEN 3000 AND 6000  -- Level 2 height range
-  AND es.tack_from_x > 15000;               -- North zone
+  AND ol.dx > 15000;
 ```
-A work package is a filtered view. Not a 3-week manual exercise.
 
 **Trade conflict detection:**
 ```sql
--- Which trades overlap in the same zone during the same week?
 SELECT wp1.trade, wp2.trade, wp1.zone, wp1.week,
-       wp1.crew_size + wp2.crew_size AS total_crew,
-       z.max_crew_capacity
+       wp1.crew_size + wp2.crew_size AS total_crew, z.max_crew_capacity
 FROM work_package wp1
 JOIN work_package wp2 ON wp1.zone = wp2.zone
   AND wp1.week = wp2.week AND wp1.trade < wp2.trade
 JOIN zone z ON wp1.zone = z.zone_id
 WHERE wp1.crew_size + wp2.crew_size > z.max_crew_capacity;
 ```
-Conflict detection is a JOIN, not a 4-hour coordination meeting.
-
-**Cash flow forecast:**
-```sql
--- Monthly cash flow projection
-SELECT strftime('%Y-%m', scheduled_date) AS month,
-       SUM(CASE WHEN flow = 'IN' THEN amount ELSE 0 END) AS cash_in,
-       SUM(CASE WHEN flow = 'OUT' THEN amount ELSE 0 END) AS cash_out,
-       SUM(CASE WHEN flow = 'IN' THEN amount ELSE -amount END) AS net
-FROM (
-    -- Revenue: progress payments from client
-    SELECT install_month AS scheduled_date, cost * pct_complete AS amount, 'IN' AS flow
-    FROM bom_line_progress
-    UNION ALL
-    -- Cost: payments to subcontractors and suppliers
-    SELECT payment_due_date, amount, 'OUT'
-    FROM purchase_order_line
-) GROUP BY month ORDER BY month;
-```
-
-**Quantity validation:**
-```sql
--- Do extracted quantities make sense?
-SELECT element_type, COUNT(*) AS count,
-       SUM(volume_m3) AS total_volume,
-       AVG(volume_m3) AS avg_volume,
-       CASE WHEN MAX(volume_m3) > 10 * AVG(volume_m3)
-            THEN 'OUTLIER' ELSE 'OK' END AS check
-FROM bom_line
-GROUP BY element_type
-HAVING count > 1;
-```
-
-**As-built variance:**
-```sql
--- What deviated from design?
-SELECT bl.family_ref, bl.as_designed_product, bl.as_built_product,
-       bl.as_designed_dx - bl.as_built_dx AS position_drift_mm,
-       p_old.price - p_new.price AS cost_impact
-FROM bom_line bl
-JOIN m_product p_old ON bl.as_designed_product = p_old.m_product_id
-JOIN m_product p_new ON bl.as_built_product = p_new.m_product_id
-WHERE bl.as_built_status = 'DEVIATED';
-```
 
 ### 11.2 Industry Cost of the Integration Gap
 
-| Pain Point | Est. US Annual Waste | Root Cause | BOM+ERP Solution |
-|---|---|---|---|
-| Change orders | $128B | Design-cost-schedule disconnect | Cost delta = one query |
-| Labour inefficiency | $195B | No BOM-to-labour link | Labour hours = BOM qty × rate |
-| Work package errors | $50-80B | Manual scope decomposition | Work package = filtered BOM view |
-| Trade coordination | $40-60B | No spatial-temporal integration | Conflict = spatial-temporal JOIN |
-| Procurement mistiming | $30-50B | Schedule-procurement disconnect | PO date = install date − lead time |
-| MEP clash rework | $25B+ | Geometric-only detection | Clash + code + cost = rule query |
-| Quantity errors | $15-25B | Model-to-cost extraction gaps | Quantity = COUNT from BOM |
-| As-built variance | $10-20B | No structured tracking | Variance = designed vs built columns |
-| Compliance rework | $10-15B | Manual code checking | Compliance = AD_Val_Rule per element |
-| Cash flow errors | $5-10B | Accounting-schedule disconnect | Forecast = schedule × cost aggregation |
-| **Total** | **~$500-600B/yr** | **No shared database** | **Every pain point is a query** |
-
-**The punchline:** Manufacturing solved these problems decades ago with
-MRP/ERP. Construction hasn't because it never had a BOM. This project
-provides the BOM. The 8th D is what happens when the BOM lives in a
-real database with real ERP operations around it.
+| Pain Point | Est. US Annual Waste | BOM+ERP Solution |
+|---|---|---|
+| Change orders | $128B | Cost delta = one query |
+| Labour inefficiency | $195B | Labour hours = BOM qty × rate |
+| Work package errors | $50-80B | Work package = filtered BOM view |
+| Trade coordination | $40-60B | Conflict = spatial-temporal JOIN |
+| Procurement mistiming | $30-50B | PO date = install date - lead time |
+| MEP clash rework | $25B+ | Clash + code + cost = rule query |
+| Quantity errors | $15-25B | Quantity = COUNT from BOM |
+| As-built variance | $10-20B | Variance = designed vs built columns |
+| Compliance rework | $10-15B | Compliance = AD_Val_Rule per element |
+| Cash flow errors | $5-10B | Forecast = schedule x cost aggregation |
+| **Total** | **~$500-600B/yr** | **Every pain point is a query** |
 
 ### 11.3 Federation + Bonsai = Visual BI
 
-The Federation addon to Bonsai already shows breakdown by work packages,
-equipment, and labour factors. This is the visual layer over the SQL:
-
-- **Click a zone** in the 3D viewport → see cost, schedule, labour, trades
-- **Select a set of elements** → total cost, generate sub-C_Order,
-  assign to subcontractor under C_Project (§2)
-- **Colour by dimension** → red = over budget, blue = ahead of schedule,
-  yellow = procurement at risk
-- **Time slider** → 4D construction sequence, coloured by any dimension
-
-The viewport is the BI dashboard. The database is the warehouse.
-The BOM is the star schema. No separate BI tool needed.
+The Federation addon already shows breakdown by work packages, equipment, and labour factors. Click a zone → cost/schedule/labour. Select elements → generate sub-C_Order. Colour by dimension. Time slider for 4D. See [ExecutiveBrief.md](ExecutiveBrief.md) for the full pitch.
 
 ---
 
@@ -1270,7 +831,7 @@ INSERT INTO ad_rule (name, event_type, source_table, source_column,
  'Fire door rating must meet zone requirement per UBBL Schedule 3.2',
  'UBBL-2024'),
 
-('UBBL-S7.1-Corridor',  'FIELD_CHANGE', 'co_empty_space_line', 'width_mm',
+('UBBL-S7.1-Corridor',  'FIELD_CHANGE', 'c_orderline', 'width_mm', -- co_empty_space_line removed S74
  'CONSTRAINT', 'width_mm >= 1200',
  'Corridor minimum width 1200mm per UBBL Schedule 7.1',
  'UBBL-2024'),
@@ -1314,7 +875,7 @@ the projects. This is the flywheel.
 
 ## 13. Rule-Driven Discipline — Validation as Ordering
 
-> **Status:** Specified — first implementation target.
+> **Status:** PARTIALLY IMPLEMENTED (Sessions A+B). `addDiscipline` + `OrderLineMutation` interface done. FP/ELEC/ACMV suggestion engines implemented. Absent→Proposed→Accepted workflow done. Full framework (§13.5 validation spectrum) not yet gating.
 > **Foundation:** §1.1 Add mutation + §12 Rule packs.
 > **First case:** Fire Protection (FP) on DemoHouse.
 
@@ -1499,7 +1060,7 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 
 ## 14. Implementation Plan — Order Compilation Engine
 
-> **Status:** In progress. Session A DONE (S67 `fac5e8f`), Session B DONE (S67b). Sessions C-E not started.
+> **Status:** All sessions DONE (0, A-F). See individual status blocks below.
 > **Source:** Consolidated from ACTION_ROADMAP.md Task 4 (S60-S3 reframe).
 
 ### 14.1 Triage — Blueprint Sections vs Codebase State
@@ -1508,18 +1069,18 @@ rule pack rows. The framework is the value; FP is the proof of concept.
 |---|---------|---------------|-----|
 | **§1** Exception-based ordering | BomDropper.drop() with exceptions. locator_ref addressing. swapProduct (Replace). | **Session D DONE:** Remove + Compress implemented. Indexed exceptions (Session E) |
 | **§1.1** Four mutations | Replace ✓. Add ✓. **Remove ✓** (qty=0 skip, S68b). **Compress ✓** (reference class, S68b). | All 4 mutations implemented |
-| **§2** C_Project site-as-BOM | C_Order exists. No C_Project table or parent-order grouping. **R-PROJ-3:** C_Order_ID = docTypeId collision blocks multi-order (§2.1.4). | Schema + model + R-PROJ-3 fix needed. CTFL test plan in §2.1 |
+| **§2** C_Project site-as-BOM | C_Order exists. No C_Project table. **R-PROJ-3 FIXED** (Session 0). | Schema + model needed. CTFL test plan in §2.1 |
 | **§3** Abstract category tree | M_Product_Category exists (46 rows). BOM Selection Cascade (§3.5) works. | Already emergent — no code change needed, taxonomy is data |
 | **§4** BOM mining via Approve | PromoteTest (G-10) exists. DocAction state machine works (DR→IP→AP→CO). | Promotion path proven. BOM diff (building vs building) not built |
 | **§5** nD dimensions as queries | 5D: M_Product.unit_cost_rm exists. 6D/7D columns exist. 4D: BOM tree = schedule. | All dimensions are columns, not systems. Queries work today |
-| **§6** Order inheritance | No Ref_Order_ID column on C_Order. | Schema addition. Exception stacking logic needed |
+| **§6** Order inheritance | **DONE** (S68e). InheritanceResolver + Ref_Order_ID. OrderInheritanceTest 6/6. | ✓ Implemented |
 | **§7** FOSS ecosystem | Architecture supports it. No packaging or contribution flow. | Strategic, not code |
 | **§8** Forward friction | 34 buildings compiled. IFC dialect coverage growing. | Operational, not code |
 | **§9** DiffVerb + Callout | DiffVerbService records DIFF W_Verb_Node. W007 AD_Rule table (3 seed rules). CalloutEngine fires in topo-sort order. DiffVerbTest 5/5. | **Session F DONE** (S72). Viewport gesture capture pending (Bonsai addon) |
 | **§10** AD_ChangeLog | ChangelogDAO fully implemented. SAVE/PLACE/MOVE/RESIZE/DELETE/PROMOTE/UNDO. | ✓ DONE |
 | **§11** 8th D — ERP as BI | All data in SQLite. Queries work. Federation addon shows breakdown. | ✓ Working today — it's queries, not features |
 | **§12** Callout rule library | AD_Val_Rule (63 rows). ad_fp_trigger (12). ad_code_requirement (23). InferenceEngine exists. | Rules validate. Transition to propose (§13) is the gap |
-| **§13** Rule-driven discipline | ad_space_type_mep_bom (186 rows). FireProtectionAD. BOMRuleAD. MEPBomAD. PlacementValidatorImpl. | Data ready. Framework (Absent→Proposed→Accepted) not built |
+| **§13** Rule-driven discipline | **PARTIAL** (Sessions A+B). addDiscipline + OrderLineMutation done. FP/ELEC/ACMV suggestions. | Absent→Proposed→Accepted done. Validation spectrum (§13.5) not gating yet |
 
 ### 14.2 What Already Exists (Data + Code — READY)
 
@@ -1625,20 +1186,26 @@ Only the last order survives.
 - **Witness:** W-EXCEPTION-1 (remove skips subtree), W-REFCLASS-1 (qty=N instantiated)
 
 **Session E: Order inheritance (§6)**
+*Status: **DONE** (S68e). InheritanceResolver + Ref_Order_ID. OrderInheritanceTest 6/6.*
 
 - Add `Ref_Order_ID` to C_Order (parent order FK)
-- Compiler walks inheritance chain → collects all exception lines → applies in sequence
+- `InheritanceResolver` walks chain root-first → collects exception lines → applies in sequence
 - Conflict resolution: last descendant wins at locator_ref
-- **Gate:** DX_SOLAR_PREMIUM = 3 lines on top of DX_SOLAR on top of DX_BASE
+- **Gate:** DX_SOLAR_PREMIUM = 3 lines on top of DX_SOLAR on top of DX_BASE. OrderInheritanceTest 6/6
 - **Witness:** W-INHERIT-1 (stacked overlays compile correctly)
 
-### 14.4 Failure Criteria (stop-and-reassess if)
+**Session F: DiffVerb + Callout (§9)**
+*Status: **DONE** (S72). DiffVerbService + CalloutEngine + AD_Rule. DiffVerbTest 5/5.*
 
-- **Session A:** FPR C_OrderLines have no m_bom_line parent to walk (bom_child_id is NULL). If so, rule-driven lines need a different walker path — not BOM walk but direct placement from ad_space_type_mep_bom spatial data.
-- **Session B:** ad_space_type_mep_bom qty data is too coarse for real placement (no room AABB in the rule rows). If so, the suggestion engine needs M_BOM_Line spatial context (dx/dy/dz + AABB).
-- **Session C:** ELEC/ACMV products don't exist in component_library.db (no geometry). S67 onboarded 2 ELEC products; remaining products may block Session C.
-- **Session D:** locator_ref addressing conflicts with existing m_bom_line.locator_ref semantics (NORTH_WALL, CENTRE, FLOAT). If so, need separate exception_locator column.
-- **Session E:** Inheritance chain conflict — two sibling ancestors both modify the same locator_ref. "Last descendant wins" is undefined for sibling branches. If so, need explicit precedence ordering on Ref_Order_ID.
+- `DiffVerbService` records DIFF W_Verb_Node from viewport gestures
+- W007 migration: AD_Rule table with 3 seed rules (positional, dimensional, constraint)
+- `CalloutEngine` fires rules in topo-sort order (Kahn's algorithm)
+- **Gate:** DiffVerbTest 5/5. Full gate GREEN
+- **Witness:** W-DIFF-1 (DiffVerb recorded + Callout chain fires)
+
+### 14.4 Failure Criteria (historical -- all sessions completed)
+
+All sessions 0-F completed without hitting failure criteria. Key resolutions: bom_child_id=NULL via direct placement (A), room AABB from BOM context (B), locator_ref coexists with existing semantics (D), single-parent inheritance prevents sibling conflicts (E).
 
 ### 14.5 Relationship to Other Specs
 

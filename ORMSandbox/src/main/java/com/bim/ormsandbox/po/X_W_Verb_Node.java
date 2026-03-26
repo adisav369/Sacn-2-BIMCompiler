@@ -14,7 +14,7 @@ import java.sql.Connection;
  * <ul>
  *   <li><b>WHAT</b> (order topics) = {@code c_orderline}</li>
  *   <li><b>HOW</b>  (verb invocations) = this class</li>
- *   <li><b>WHERE</b> (spatial workstation) = M_BOM_Line dx/dy/dz (compiler-internal cache: co_empty_space_line)</li>
+ *   <li><b>WHERE</b> (spatial workstation) = M_BOM_Line dx/dy/dz (co_empty_space removed S74)</li>
  * </ul>
  *
  * <p>Lives in output.db (transaction data, not BOM.db dictionary).

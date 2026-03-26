@@ -21,7 +21,7 @@ import java.util.Map;
  * </ol>
  *
  * <p>Room slots are computed from BOM.db (m_bom + m_bom_line + ad_room_boundary),
- * replacing the former co_empty_space_line dependency.
+ * replacing the former co_empty_space_line dependency (removed S74 — W008).
  *
  * <p>Requires bomConn (BOM.db) and outputConn (output.db).
  */

@@ -25,7 +25,7 @@ import java.util.*;
  * <ul>
  *   <li>{@code EN-BLOC} (_s) — singularity. C_DocType AABB = M_Product AABB
  *       → exactly one BOM matches → take whole. One C_OrderLine, one
- *       spatial slot (compiler-internal: co_empty_space_line). No further decomposition.</li>
+ *       spatial slot (M_BOM_Line dx/dy/dz). No further decomposition.</li>
  *   <li>{@code WALK THRU} (_e) — structured UNIT BOMs. Walker enters each
  *       sub-assembly, accumulates tack coordinates through the hierarchy.
  *       C_OrderLine per slot, spatial data from M_BOM_Line dx/dy/dz.</li>

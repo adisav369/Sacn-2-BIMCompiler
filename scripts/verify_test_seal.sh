@@ -20,13 +20,13 @@
 #   5. bash scripts/verify_test_seal.sh  (should now say INTACT)
 #   6. git commit -m "[SEAL] Re-seal after <reason>"
 #
-# Sealed: 2026-03-13 (v6: 74 files — 64 test + 9 production + pre-commit hook)
+# Sealed: 2026-03-26 (v7: 73 files — 63 test + 9 production + pre-commit hook)
 # Manifest: docs/TestArchitecture.md
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="5ddcd79e4735c9f020b42614f3b66cb2f9ac73af4316db25110416ec1964ed2c"
+EXPECTED="07a039fb6b08e1cce1a66b4eeacc9d13a57c2d4a4c55456c4c22ad6e3db4ba5f"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java
@@ -48,7 +48,6 @@ FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/CompilerContractTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/ExtractedBOMWalkTest.java
-  DAGCompiler/src/test/java/com/bim/compiler/contract/CoEmptySpaceTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/BomChainIntegrityTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/BOMChainMathTest.java
   DAGCompiler/src/test/java/com/bim/compiler/contract/SpatialPlacementVisitorTest.java

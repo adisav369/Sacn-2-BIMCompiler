@@ -166,8 +166,8 @@ Our 4-DB split uses a mix of conventions. Most tables use **TEXT primary keys** 
 | W_Verb_NodeProduct | Yes (INTEGER) | Yes | Yes | W_Verb_NodeProduct_ID | INTEGER ✓ |
 | c_order | No | Yes | No | C_Order_ID (TEXT) | TEXT |
 | c_orderline | Yes (INTEGER) | Yes | No | C_OrderLine_ID | INTEGER |
-| co_empty_space | Yes (INTEGER) | No | No | co_emptyspace_id | INTEGER |
-| co_empty_space_line | Yes (INTEGER) | No | No | line_id | INTEGER |
+| co_empty_space | *(removed S74 — W008)* | — | — | — | — |
+| co_empty_space_line | *(removed S74 — W008)* | — | — | — | — |
 | element_assemblies | No | Yes | No | assembly_guid (TEXT) | TEXT |
 | element_instances | No | No | No | guid (TEXT) | TEXT |
 | element_properties | No | No | No | (guid, pset_name, property_name) | IMPLICIT |
@@ -220,7 +220,7 @@ These tables use TEXT as PK — the most divergent from iDempiere convention:
 |-------|----|-----------|---------------|-----------------|
 | **M_Product** | BOM, ERP, CL | `product_id TEXT` | m_bom_line.child_product_id, c_orderline.M_Product_ID, etc. | 29 |
 | **m_bom** | BOM | `bom_id TEXT` | m_bom_line.bom_id, m_bom_line_ma.bom_id | 37 |
-| **c_order** | Output | `C_Order_ID TEXT` | c_orderline.C_Order_ID, W_Verb_Node.C_Order_ID, co_empty_space.c_order_id | 19 |
+| **c_order** | Output | `C_Order_ID TEXT` | c_orderline.C_Order_ID, W_Verb_Node.C_Order_ID | 19 |
 | **C_DocType** | BOM | `C_DocType_ID TEXT` | c_order.C_DocType_ID | 14 |
 
 ### Medium (referenced but fewer dependents)
@@ -267,8 +267,8 @@ Tables with INTEGER PK but no `Name`:
 | ad_element_placement | CL | element_ref serves |
 | ad_element_rule | CL | element_ref serves |
 | component_types | CL | ifc_class+category serves |
-| co_empty_space | Output | Low |
-| co_empty_space_line | Output | Low |
+| co_empty_space | *(removed S74 — W008)* | — |
+| co_empty_space_line | *(removed S74 — W008)* | — |
 | elements_meta | Output | element_name serves |
 | simple_qto | Output | ifc_class+storey serves |
 | AD_Clash_Rule | Val | Low |
@@ -369,7 +369,7 @@ These REFERENCES clauses join on TEXT columns rather than INTEGER _ID:
 
 **In Output DB:**
 - `W_Verb_Node.C_Order_ID TEXT → c_order.C_Order_ID TEXT`
-- `co_empty_space_line.co_emptyspace_id INTEGER → co_empty_space.co_emptyspace_id INTEGER` ✓
+- *(co_empty_space tables removed S74 — W008)*
 - `element_instances.geometry_hash TEXT → base_geometries.geometry_hash TEXT`
 - `element_transforms.guid TEXT → elements_meta.guid TEXT`
 - `rel_contained_in_space.space_guid TEXT → spatial_structure.guid TEXT`

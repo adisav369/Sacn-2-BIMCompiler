@@ -318,9 +318,8 @@ derived from BOM spatial data:
 - Empty filler space = BOM line with `bom_type = 'FILLER'`, queryable via SQL
 - The GUI presents these as visual room/wall slots for drag-and-drop placement
 
-> **Implementation note:** `co_empty_space_line` is a compiler-internal table
-> that caches spatial slot data during compilation. It is NOT an architectural
-> entity — the source of truth is M_BOM_Line dx/dy/dz.
+> **Implementation note:** co_empty_space tables were removed S74 (W008).
+> The source of truth for placement is M_BOM_Line dx/dy/dz directly.
 
 ### 2.4 Selection Cascade → Auto-Fit
 

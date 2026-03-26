@@ -655,7 +655,7 @@ VERIFIED ✓ (or drift detected ✗)
 
 ### iDempiere ERP Layer Mapping
 - `M_Product` (BOM.db), `m_bom`/`m_bom_line`/`m_attribute`/`M_Product_Category` (BOM.db)
-- `c_order`/`c_orderline` (output.db), `co_empty_space`/`co_empty_space_line` (output.db, compiler-internal)
+- `c_order`/`c_orderline` (output.db) — co_empty_space tables removed S74 (W008)
 - `C_BPartner`/`C_Campaign`/`AD_User`/`C_DocType` (BOM.db lookup/config)
 
 ---
@@ -697,7 +697,7 @@ VERIFIED ✓ (or drift detected ✗)
 ### Geometry / Coord
 - WorldCoord: ONLY via `LocalCoord.toWorld(StoreyCoord)` or `StoreyCoord.asWorld()`. D8 ArchUnit enforces.
 - elements_rtree: id, minX, maxX, minY, maxY, minZ, maxZ (NOT interleaved)
-- Output DB R*Tree = metres, co_empty_space (compiler-internal) = mm (multiply by 1000.0)
+- Output DB R*Tree = metres, M_BOM_Line dx/dy/dz = metres (co_empty_space removed S74)
 - Library geometry (non-GEO_ hash) uses canonical coords, NOT world coords
 
 ### IFC Type

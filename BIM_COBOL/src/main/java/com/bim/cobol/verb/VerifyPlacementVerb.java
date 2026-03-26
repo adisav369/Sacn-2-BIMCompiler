@@ -12,7 +12,7 @@ import java.util.List;
  * VERIFY PLACEMENT &lt;output_db_path&gt; — validates spatial completeness via M_BOM.
  *
  * @deprecated Retained for gate compatibility. Checks BOM hierarchy in BOM.db
- * instead of the removed co_empty_space_line table.
+ * instead of the removed co_empty_space_line table (removed S74 — W008).
  *
  * <p>Opens the given output.db to verify elements_meta and spatial_structure,
  * then queries {@code ctx.bomConn()} for BOM completeness:

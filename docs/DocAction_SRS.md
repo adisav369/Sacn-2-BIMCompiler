@@ -133,7 +133,7 @@ processIt(compile DB):                               DocStatus: DR → IP
   │   │   │   (family_ref, host_type, dx/dy/dz, aabb_*_mm)
   │   │   │
   │   │   ├── Spatial slots derived from M_BOM_Line dx/dy/dz
-  │   │   │   (compiler-internal: co_empty_space_line caches slot data)
+  │   │   │   (co_empty_space tables removed S74 — W008)
   │   │   │
   │   │   ├── For LEAF nodes: fetch LOD from component_library.db
   │   │   │   → M_Product (dimensions) + component_definitions (attachment)
@@ -167,7 +167,7 @@ processIt(compile DB):                               DocStatus: DR → IP
   │       │   │   (family_ref=product_id, dx/dy/dz=computed tack)
   │       │   │
   │       │   ├── Spatial slot from M_BOM_Line dx/dy/dz
-  │       │   │   (compiler-internal: co_empty_space_line caches computed position)
+  │       │   │   (co_empty_space tables removed S74 — W008)
   │       │   │
   │       │   └── INSERT M_AttributeSetInstance
   │       │       (width, depth, height from M_Product)
@@ -310,7 +310,7 @@ approveIt(compile DB → {prefix}_BOM.db):              DocStatus: CO → AP
 resolved, host tack verified). Most buildings stay at CO. AP creates a new reusable
 BOM catalog entry.
 
-### 1.4 LOD Assembly + Handlers
+### 1.4b LOD Assembly + Handlers
 
 See `DISC_VALIDATE_SRS.md` for full detail:
 - **§9** — LOD resolution chain (5-table metadata lookup)
@@ -353,26 +353,7 @@ invoke these verbs on C_OrderLine.AD_Org_ID:
 | **Validation** | Tier 1 re-run on element (new discipline rules). Tier 2 re-run on storey (new pair interactions). |
 | **W_Verb_Node** | verb_ref='REASSIGN', description='pipe_42: CW→SP' |
 
-```
-REASSIGN pipe_segment_42, SP
-
-Before:                          After:
-  FLOOR_L1                         FLOOR_L1
-  ├── CW_L1                        ├── CW_L1
-  │   └── pipe_segment_42          │   (removed)
-  └── SP_L1                        └── SP_L1
-                                       └── pipe_segment_42
-
-SQL:
-  UPDATE C_OrderLine SET AD_Org_ID = 'SP',
-    Parent_OrderLine_ID = (SELECT C_OrderLine_ID
-      FROM C_OrderLine WHERE AD_Org_ID = 'SP'
-      AND host_type = 'DISCIPLINE' AND storey = 'L1')
-  WHERE C_OrderLine_ID = ?;
-
-  DELETE FROM W_Validation_Result WHERE C_OrderLine_ID = ?;
-  -- Tier 1+2 re-run inserts fresh results
-```
+SQL: UPDATE AD_Org_ID + Parent_OrderLine_ID, DELETE+re-INSERT W_Validation_Result.
 
 #### SPLIT — Break combined discipline into sub-disciplines
 
@@ -385,34 +366,9 @@ SQL:
 | **Validation** | Full Tier 1+2+3 re-run (discipline landscape changed). |
 | **W_Verb_Node** | verb_ref='SPLIT', description='MEP→CW(338)+SP(189)+FP(312)+ELEC(65)' |
 
-```
-SPLIT MEP, {
-  IfcFireSuppressionTerminal: FP,
-  IfcAlarm: FP,
-  IfcLightFixture: ELEC,
-  IfcElectricAppliance: ELEC,
-  IfcPipeSegment: _DISAMBIGUATE_,   -- by system_type or element_ref
-  IfcPipeFitting: _DISAMBIGUATE_
-}
-
-Disambiguation heuristic (DocEvent automates):
-  1. ifc_class unambiguous → direct map (IfcFireSuppressionTerminal → FP)
-  2. ifc_class ambiguous (IfcPipeSegment) → check element_ref string:
-     "Domestic Cold Water" → CW, "Sprinkler" → FP, "Waste" → SP
-  3. No match → stay in source discipline, flag WARN
-
-SQL per new discipline:
-  INSERT INTO C_OrderLine (C_Order_ID, family_ref, host_type,
-    AD_Org_ID, Parent_OrderLine_ID, ...)
-  VALUES (?, 'FP_L1', 'DISCIPLINE', 'FP', storey_orderline_id, ...);
-
-SQL per element:
-  UPDATE C_OrderLine SET AD_Org_ID = ?,
-    Parent_OrderLine_ID = new_disc_orderline_id
-  WHERE C_OrderLine_ID = ?;
-
-After: source MEP node → IsActive=0 (soft delete, audit trail)
-```
+Disambiguation heuristic: (1) unambiguous ifc_class → direct map, (2) ambiguous
+(IfcPipeSegment) → check element_ref string, (3) no match → stay in source, WARN.
+Source node → IsActive=0 (soft delete, audit trail).
 
 #### MERGE — Combine disciplines into one
 
@@ -425,23 +381,6 @@ After: source MEP node → IsActive=0 (soft delete, audit trail)
 | **Validation** | Tier 1 re-run (target rules apply). Tier 2 re-run (fewer pairs). |
 | **W_Verb_Node** | verb_ref='MERGE', description='SP→CW (single plumbing contract)' |
 
-```
-MERGE [SP], CW
-
-SQL:
-  UPDATE C_OrderLine SET AD_Org_ID = 'CW',
-    Parent_OrderLine_ID = cw_disc_orderline_id
-  WHERE AD_Org_ID = 'SP' AND C_Order_ID = ?
-    AND host_type NOT IN ('DISCIPLINE');  -- elements only, not the node
-
-  UPDATE C_OrderLine SET IsActive = 0
-  WHERE AD_Org_ID = 'SP' AND host_type = 'DISCIPLINE'
-    AND C_Order_ID = ?;  -- soft delete empty SP node
-
-Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
-      Tier 2 CW×ELEC pairs now cover former SP elements.
-```
-
 #### REPARENT — Move element to different storey or room
 
 | Field | Value |
@@ -452,25 +391,6 @@ Note: Tier 2 SP×ELEC pairs no longer checked (merged into CW).
 | **Writes** | `C_OrderLine.Parent_OrderLine_ID`, `C_OrderLine.dz` (recomputed). Spatial slot cache updated. |
 | **Validation** | Tier 1 on BOTH old and new parent (spacing recalc). Tier 3 re-check (vertical continuity may break). |
 | **W_Verb_Node** | verb_ref='REPARENT', description='sprinkler_23: GF→L1' |
-
-```
-REPARENT sprinkler_23, FP_L1
-
-SQL:
-  UPDATE C_OrderLine SET
-    Parent_OrderLine_ID = fp_l1_orderline_id,
-    dz = (new Z offset relative to L1 slab)
-  WHERE C_OrderLine_ID = ?;
-
-  -- Spatial slot cache (co_empty_space_line) updated from M_BOM_Line dx/dy/dz
-  -- UPDATE co_empty_space_line SET tack_from_z_mm = (new world Z) WHERE C_OrderLine_ID = ?;
-
-  DELETE FROM W_Validation_Result
-  WHERE C_OrderLine_ID = ?;
-  -- Tier 1 re-run on old storey (GF) — spacing gap check
-  -- Tier 1 re-run on new storey (L1) — spacing now tighter
-  -- Tier 3 re-run — riser alignment may break if reparented across storeys
-```
 
 #### SWAP — Replace product, keep position
 
@@ -484,52 +404,10 @@ SQL:
 | **Validation** | Tier 1 re-run (same spacing rules, different product dims/attachment). |
 | **W_Verb_Node** | verb_ref='SWAP', description='sprinkler: pendant→upright' |
 
-```
-SWAP sprinkler_23, sprinkler_head_upright
-
-SQL:
-  UPDATE C_OrderLine SET family_ref = 'sprinkler_head_upright'
-  WHERE C_OrderLine_ID = ?;
-
-LOD fetch:
-  SELECT cd.attachment_face, cd.orientation, cd.geometry_hash,
-         cg.vertices, cg.faces
-  FROM component_definitions cd
-  JOIN component_geometries cg ON cd.geometry_hash = cg.geometry_hash
-  WHERE cd.name LIKE '%sprinkler_head_upright%';
-
-  → attachment_face: TOP → BOTTOM (pendant vs upright)
-  → orientation: PENDANT → UPRIGHT
-  → geometry_hash: new mesh
-
-ASI update:
-  UPDATE M_AttributeInstance SET Value = new_width
-  WHERE M_AttributeSetInstance_ID = ? AND Name = 'width_mm';
-  -- repeat for depth_mm, height_mm
-
-  → Tier 1: same spacing rules, but ceiling offset check changes
-    (PENDANT=TOP attachment, UPRIGHT=BOTTOM attachment)
-```
-
 ### 1.9 Discipline Lifecycle Summary
 
-```
-DR:  Discipline routing declared in YAML (or absent)
-     C_OrderLine.AD_Org_ID populated by processIt()
-
-IP:  AD_Org_ID is EDITABLE
-     User actions: REASSIGN, SPLIT, MERGE, REPARENT, SWAP
-     Each action triggers validation re-run on affected lines
-     DocEvent can automate SPLIT (coarse → fine discipline mapping)
-
-CO:  AD_Org_ID FROZEN
-     Compiled to output.db with discipline structure intact
-     Discipline assignment is part of the compiled building
-
-AP:  AD_Org_ID PROMOTED
-     m_bom.AD_Org_ID in new {prefix}_BOM.db matches final assignment
-     Discipline structure becomes reusable catalog
-```
+See §1.2-1.3 for the full processIt() lifecycle (DR → IP → CO → AP) and
+§1.8 for discipline verbs available during IP (REASSIGN, SPLIT, MERGE, REPARENT, SWAP).
 
 ### 1.10 Construction Standards Localization — iDempiere C_Country Pattern
 
@@ -564,146 +442,27 @@ W_BuildingConfig.jurisdiction        ← set at project creation
 
 #### Common Standards (INTL — always loaded)
 
-These fire regardless of jurisdiction. They are engineering practice, not
-country-specific regulation:
-
-| Standard | Discipline | Rule | What it checks |
-|----------|-----------|------|---------------|
-| NFPA 13 §8.6 | FP | Sprinkler spacing | 3000-4600mm (Light Hazard) |
-| NEC 300.4 | ELEC×SP | Conduit-pipe clearance | ≥150mm separation |
-| Engineering practice | STR | Column vertical continuity | ≤25mm X,Y drift across storeys |
-| Engineering practice | CW/FP | Riser vertical continuity | ≤50mm X,Y drift across ≥3 storeys |
-| NFPA 13 §8.5 | FP×ACMV | Sprinkler-duct obstruction | 3× obstruction rule |
-| IFC schema | ARC | Opening host association | Every door/window has a host wall |
+Engineering practice rules that fire regardless of jurisdiction: NFPA 13 sprinkler
+spacing (3000-4600mm), NEC 300.4 conduit-pipe clearance (150mm), column vertical
+continuity (25mm drift), riser vertical continuity (50mm drift), sprinkler-duct
+obstruction (3x rule), opening host association.
 
 #### Jurisdiction-Specific Standards
 
-**MY — Malaysia (UBBL 2012)**
+Detailed rule tables (MY rules 101-110, US 201-205, UK 301-304, AU 401-404,
+SG 501-503) are seeded in `V004_mined_rules.sql` and documented in
+[DocValidate.md](DocValidate.md) §9-§11 with per-jurisdiction thresholds.
 
-| Rule ID | Standard | What | Values |
-|---------|----------|------|--------|
-| 101 | UBBL §33(1) | Bedroom min area | 9.2 m² |
-| 102 | UBBL §33(1) | Bedroom min dimension | 3000 mm |
-| 103 | UBBL §33(2) | Kitchen min area | 4.5 m² |
-| 104 | UBBL §33(2) | Kitchen min dimension | 1500 mm |
-| 105 | UBBL §33(3) | Bathroom min area | 1.5 m² |
-| 106 | UBBL §33(4) | Living room min area | 12.0 m² |
-| 107 | UBBL §36 | Ceiling min height | 2600 mm |
-| 108 | UBBL §40 | Corridor min width | 900 mm |
-| 109 | UBBL §41 | Door min width | 750 mm |
-| 110 | UBBL §39 | Window area ratio | 10% of floor area |
+#### Construction Verbs
 
-**US — United States (IRC 2021)**
+Three verb categories — all jurisdiction-independent (same engine, different thresholds):
 
-| Rule ID | Standard | What | Values |
-|---------|----------|------|--------|
-| 201 | IRC R304.1 | Habitable room min area | 6.5 m² (70 sq ft) |
-| 202 | IRC R304.2 | Habitable room min dimension | 2134 mm (7 ft) |
-| 203 | IRC R305.1 | Ceiling min height (habitable) | 2134 mm (7 ft) |
-| 204 | IRC R305.1 | Ceiling min height (bathroom) | 2032 mm (6'8") |
-| 205 | IRC R311.2 | Door min width | 813 mm (32") |
+- **Joining verbs** (FIT, JOIN, ATTACH, SCREW, BOLT, WELD, CLAMP, MOUNT, EMBED, HANG) — how elements connect. Recorded on W_Verb_Node.
+- **Placement verbs** (TILE, ROUTE, ARRAY, PLACE, SNAP) — how elements are positioned. See [BIM_COBOL.md](BIM_COBOL.md) §4.6 for details.
+- **Validation verbs** (CHECK PLACEMENT, VERIFY PLACEMENT, CONNECT FITTINGS) — how compliance is checked. Results in W_Validation_Result.
 
-**UK — United Kingdom (NDSS 2015 + Building Regs)**
-
-| Rule ID | Standard | What | Values |
-|---------|----------|------|--------|
-| 301 | NDSS 2015 | Single bedroom min area | 7.5 m² |
-| 302 | NDSS 2015 | Double bedroom min area | 11.5 m² |
-| 303 | NDSS 2015 | Bedroom min dimension | 2150 mm |
-| 304 | Building Regs | Ceiling min height | 2300 mm |
-
-**AU — Australia (NCC 2022)**
-
-| Rule ID | Standard | What | Values |
-|---------|----------|------|--------|
-| 401 | NCC F5/10.3 | Ceiling height (habitable) | 2400 mm |
-| 402 | NCC F5/10.3 | Ceiling height (service) | 2100 mm |
-| 403 | NCC | Door min width | 820 mm |
-| 404 | NCC | Corridor min width | 1000 mm |
-
-**SG — Singapore (BCA)**
-
-| Rule ID | Standard | What | Values |
-|---------|----------|------|--------|
-| 501 | BCA | Ceiling min height | 2400 mm |
-| 502 | BCA | Corridor min width | 1200 mm |
-| 503 | BCA | Door min width | 850 mm |
-
-#### Shared Construction Verbs — Universal Across All Jurisdictions
-
-Standards differ on thresholds. But the **construction actions** are the same
-everywhere — a pipe fits into a fitting in Kuala Lumpur the same way it does
-in New York. These verbs are the engine; standards are the data.
-
-**Joining Verbs** — how elements connect to each other:
-
-| Verb | What | Discipline | Example |
-|------|------|-----------|---------|
-| `FIT` | Insert element into receiving element (press/friction) | All MEP | Pipe FIT INTO fitting, conduit FIT INTO junction box |
-| `JOIN` | Connect two elements at ports (permanent connection) | FP, CW, SP, LPG | Pipe JOIN tee at port A, duct JOIN elbow |
-| `ATTACH` | Fix element to host surface (non-structural) | ELEC, FP, ACMV | Light fixture ATTACH TO ceiling, sprinkler head ATTACH TO branch pipe |
-| `SCREW` | Fasten with threaded fastener (removable) | All | Panel SCREW TO frame, access cover SCREW TO duct |
-| `BOLT` | Fasten with bolt/nut (structural, removable) | STR | Beam BOLT TO column, base plate BOLT TO foundation |
-| `WELD` | Fuse elements (permanent, structural) | STR | Beam WELD TO column, pipe WELD TO flange |
-| `CLAMP` | Secure with clamp (adjustable, removable) | MEP | Pipe CLAMP TO hanger, conduit CLAMP TO bracket |
-| `MOUNT` | Fix element to wall/floor/ceiling (with bracket/anchor) | ELEC, ACMV | Panel MOUNT ON wall, split unit MOUNT ON wall |
-| `EMBED` | Cast element into concrete (permanent, structural) | STR | Rebar EMBED IN slab, anchor bolt EMBED IN foundation |
-| `HANG` | Suspend element from above (gravity + fastener) | FP, ACMV, ELEC | Pipe HANG FROM slab with hanger, duct HANG FROM rod |
-
-**Placement Verbs** — how elements are positioned (existing, BIM COBOL):
-
-| Verb | What | Status |
-|------|------|--------|
-| `TILE` | 2D grid fill (roof plates, ceiling tiles) | LIVE — 33,324 elements |
-| `ROUTE` | 1D path (pipes, ducts, conduit) | LIVE — 9,345 elements |
-| `ARRAY` | Linear repetition | LIVE |
-| `PLACE` | Single element at position | LIVE |
-| `SNAP` | Align to grid/surface | LIVE |
-
-**Validation Verbs** — how compliance is checked (existing):
-
-| Verb | What | Status |
-|------|------|--------|
-| `CHECK PLACEMENT` | Tier 1 validation against AD_Val_Rule | LIVE |
-| `VERIFY PLACEMENT` | Cross-DB fidelity check | LIVE |
-| `CONNECT FITTINGS` | Port-budget fitting connectivity | LIVE |
-
-**The relationship:** Placement verbs create positions (dx/dy/dz on C_OrderLine).
-Joining verbs define HOW two elements connect (recorded on W_Verb_Node).
-Validation verbs check compliance (results in W_Validation_Result).
-
-All three verb categories are **jurisdiction-independent**. A `TILE` in MY
-is the same `TILE` in US — different `step_mm` (from AD_Val_Rule), same engine.
-A `FIT` is the same mechanical action everywhere — different clearance tolerance
-(from AD_Val_Rule_Param), same verb.
-
-**W_Verb_Node records joining verbs:**
-
-```sql
--- Example: sprinkler head attached to branch pipe
-INSERT INTO W_Verb_Node (C_Order_ID, C_OrderLine_ID, Name, SeqNo,
-    verb_ref, co_emptyspaceline_id, DocStatus)
-VALUES (?, sprinkler_orderline_id, 'ATTACH sprinkler to branch_pipe_01',
-    70, 'ATTACH', slot_id, 'DR');
-
-INSERT INTO W_Verb_NodeProduct (W_Verb_Node_ID, Name, Value, ValueType)
-VALUES
-    (?, 'host_element', 'branch_pipe_01', 'TEXT'),
-    (?, 'attachment_face', 'TOP', 'TEXT'),          -- from component_definitions
-    (?, 'connection_type', 'THREADED', 'TEXT'),      -- FIT type
-    (?, 'torque_nm', '25', 'NUM');                   -- installation spec
-```
-
-**Joining verb → validation linkage:**
-
-| Joining Verb | What validation checks | AD_Val_Rule type |
-|-------------|----------------------|-----------------|
-| FIT | Pipe diameter matches fitting port size | COMPLIANCE (M3: riser diameter) |
-| JOIN | Connection is watertight, pressure-rated | COMPLIANCE (pipe class rating) |
-| ATTACH | Host can bear load, clearance from obstructions | CLEARANCE (M9: sprinkler-duct) |
-| BOLT | Bolt grade matches structural demand | COMPLIANCE (steel connection design) |
-| HANG | Hanger spacing per code, rod size for load | COMPLIANCE (NFPA 13 §9: hangers) |
-| EMBED | Cover depth per code, splice length | COMPLIANCE (ACI 318 / SS CP 65) |
+See [DocValidate.md](DocValidate.md) for jurisdiction-specific rule packs and
+[BIM_COBOL.md](BIM_COBOL.md) §4.6 for joining verb details and W_Verb_Node recording.
 
 #### Adding a New Jurisdiction
 
@@ -733,7 +492,7 @@ practice from a real building — not a specific code. They serve as:
 3. **Non-Disturbance baseline** — every mined rule must pass against the
    Terminal it was mined from. See `TE_MINING_RESULTS.md`.
 
-### 1.10 Architectural Simplification: work_output.db Removal (S61)
+### 1.11 Architectural Simplification: work_output.db Removal (S61)
 
 **Decision:** `work_output.db` is removed from the architecture. The 5-DB split
 becomes a **4-DB split**: component_library / BOM / output / validation.
@@ -744,18 +503,8 @@ The viewport (Bonsai/Blender) holds all visual state. There is no intermediate
 design buffer to persist — work_output.db was a buffer between edits and
 compilation that has no edits to buffer.
 
-**Simplified lifecycle:**
-
-```
-bomDrop()     → DR    Explode BOM template into C_OrderLine tree (compile DB)
-CompleteIt    → CO    Compile BOM → output.db (path editable by user in UI)
-                      Preview BBoxes → coloured cubes in Bonsai
-                      Full Load → solid meshes in Blender
-[user works in Blender — drag, colour, verify. Save = .blend]
-[user wants BOM change → Web UI → swap product / pick different template]
-CompleteIt    → CO    Recompile → updated output.db → viewport refreshes
-approveIt     → AP    Promote as new BOM in catalog (governance gate)
-```
+**Lifecycle:** See §1.2-1.3 for the full DR → IP → CO → AP flow. Post-S61, all
+compile-time state lives in the compile DB (no work_output.db intermediary).
 
 **Output DB path:** The output path is editable in the Web UI (Tab 1 — Order).
 Defaults to `output/{project_name}.db` from C_DocType.OutputDbPath. User can
@@ -767,7 +516,7 @@ rename before each CompleteIt to version their builds (e.g. `output/demo_v2.db`)
 |-----------------------|-------------|-------|
 | C_Order + C_OrderLine | Compile DB | BomDropper already writes here |
 | M_AttributeSetInstance | Compile DB | ASI overrides per C_OrderLine |
-| co_empty_space_line | Compile DB | Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz) |
+| ~~co_empty_space_line~~ | *(removed S74 — W008)* | Placement via M_BOM_Line dx/dy/dz |
 | W_Validation_Result | Compile DB | Validation results |
 | W_Verb_Node | Compile DB | Verb audit trail |
 | W_Variant | **Removed** | No variants — BOM is read-only, no edit history |
@@ -781,21 +530,15 @@ rename before each CompleteIt to version their builds (e.g. `output/demo_v2.db`)
 
 Without these, promote is blocked. The selection list stays organized.
 
-**Files affected by removal (code changes — future session):**
-- `WorkOutputDAO.java` — 29 methods, primary target for removal
-- `DesignerAPIImpl.java` — save/recall/listVariants methods
-- `W001_work_output_schema.sql` — migration file (archive, do not delete)
-- 8 test classes importing WorkOutputDAO
-- 2 Python files (client.py, operator.py)
-- 13 doc files referencing work_output.db
-- 7 physical `library/work_*.db` files
-
-**Supersedes:** Prior versions of §1.6-§1.9 which referenced work_output.db.
-Those sections have been updated to reflect the post-S61 compile DB architecture.
+**S61 completed.** Sections §1.6-§1.9 already reflect post-removal compile DB architecture.
 
 ---
 
 ## 2. Validation Requirements
+
+<!-- Inner numbering note: §3.1-§5.2, §8.1-§8.3, §9.1-§9.3, §10.1-§10.3, §13.1-§13.3
+     are sub-sections within §2's requirement groups, not top-level sections.
+     Legacy numbering preserved for cross-reference stability. -->
 
 | Prefix | Domain | Count |
 |--------|--------|-------|
@@ -820,11 +563,17 @@ Priority: **P0** = needed for generative path, **P1** = needed for ambient compl
 | Mined rules M1-M17 seed data | DONE | `migration/V004_mined_rules.sql` |
 | UBBL/IRC/UK/AU/SG residential rules | DONE — seeded | `DocValidate.md §9-§11` |
 | Non-Disturbance analysis | DONE — documented | `TE_MINING_RESULTS.md` |
-| **Tier 2 engine (clash/clearance)** | **NOT DONE** | Spec: DocValidate.md §4, §13.2 |
+| **Tier 2 engine (clash/clearance)** | **PARTIAL — ClashDetector.java exists (bbox-intersection), but does not match the AD_Clash_Rule-driven engine in §4.1** | Spec: DocValidate.md §4, §13.2 |
 | **Tier 3 engine (vertical continuity)** | **NOT DONE** | Spec: DocValidate.md §12, §13.3 |
-| **ERP-maths spatial predicates** | **NOT DONE** | Spec: DocValidate.md §15.6 |
+| **ERP-maths spatial predicates** | **IMPLEMENTED — SpatialPredicates.java: nnDistance(), centreClearance()** | Spec: DocValidate.md §15.6 |
 | **ConstructionModelSpawner** | **NOT DONE** | Spec: DocValidate.md §14-§15.2 |
 | **Non-Disturbance automated test** | **NOT DONE** | Spec: DocValidate.md §7.2, §15.3 |
+
+> **Note: Two separate rule ecosystems.** validation.db (63 rules,
+> jurisdiction/discipline/rule_type schema) and ERP.db (415 rules,
+> provenance/ifc_class/check_method schema) are separate ecosystems with
+> incompatible schemas. validation.db drives the DocEvent engine (this spec).
+> ERP.db drives the extraction pipeline (see ConstructionAsERP.md).
 
 ---
 
@@ -1014,67 +763,16 @@ Violation found:
 
 ## 6. Data Flow — The Three-Tier Cascade (Code-Level)
 
-### 9.1 Tier 1: Per-Discipline (ModelValidator.beforeSave)
+Three tiers fire during processIt() (see §1.3 for full pseudocode):
 
-```
-Input:
-  PlacementRequest { productCategory, areaSqM, minDimMm, heightMm, widthMm,
-                     ifcClass, discipline, storeyId, centerX, centerY, centerZ,
-                     productWidth, productDepth, productHeight }
+| Tier | Hook | Engine | Input → Output |
+|------|------|--------|---------------|
+| **1** | ModelValidator.beforeSave | `PlacementValidatorImpl.validate(PlacementRequest)` | PlacementRequest (category, dims, position) → `ValidationVerdict` (PASS/WARN/BLOCK + rule ref) |
+| **2** | DocAction.prepareIt | `ClashDetector.checkFloor(bomConn, valConn, storeyId)` | AD_Clash_Rule pairs per storey → `List<ClashResult>` (element pairs, clash type, verdict) |
+| **3** | DocAction.completeIt | `VerticalContinuityChecker.checkBuilding(bomConn, valConn, buildingId)` | CONTINUITY rules, element groups by (discipline, ifc_class, ROUND(x), ROUND(y)) → `List<ContinuityResult>` (drift per group, verdict) |
 
-Engine:
-  PlacementValidatorImpl.validate(request)
-    → rulesByCategory.get(request.productCategory)  // O(1) lookup
-    → for each CachedRule:
-        if check_method present → dispatch to named evaluator
-        else → threshold comparison (existing logic)
-    → rulesByCategory.get("*")  // wildcard rules
-    → return first BLOCK, or PASS
-
-Output:
-  ValidationVerdict { status, ruleName, standardRef, actual, required, message }
-```
-
-### 9.2 Tier 2: Cross-Discipline (DocAction.prepareIt)
-
-```
-Input:
-  storeyId, bomConn (m_bom_line positions), valConn (AD_Clash_Rule)
-
-Engine:
-  ClashDetector.checkFloor(bomConn, valConn, storeyId)
-    → load AD_Clash_Rule set
-    → for each rule (discipline_a × discipline_b):
-        → get elements_a = elements on this storey where discipline = a
-        → get elements_b = elements on this storey where discipline = b
-        → for each (a, b) pair where proximity < threshold:
-            → apply clash_type logic
-            → if ALLOW_IF: check condition
-            → emit ClashResult
-
-Output:
-  List<ClashResult> { ruleRef, elementA, elementB, clashType, verdict, resolutionNote }
-```
-
-### 9.3 Tier 3: Cross-Storey (DocAction.completeIt)
-
-```
-Input:
-  buildingId, bomConn (full BOM tree), valConn (CONTINUITY rules)
-
-Engine:
-  VerticalContinuityChecker.checkBuilding(bomConn, valConn, buildingId)
-    → load AD_Val_Rule WHERE rule_type = 'CONTINUITY'
-    → group elements by (discipline, ifc_class, ROUND(x), ROUND(y))
-    → for each group spanning >= min_storey_span:
-        → compute max(x) - min(x), max(y) - min(y)  = drift
-        → if drift > max_xy_drift_mm → WARN/BLOCK
-    → emit ContinuityResult per group
-
-Output:
-  List<ContinuityResult> { ruleRef, discipline, ifcClass, gridX, gridY,
-                           storeysSpanned, maxDriftMm, verdict }
-```
+Tier 1 dispatches by `check_method` if present, else threshold comparison (see DV-F-01).
+Tier 2 uses M12 clearance formula (see §4.3). Tier 3 checks x/y drift across storeys (see §5.1).
 
 ---
 
@@ -1183,55 +881,11 @@ For extracted buildings (Provenance=EXTRACTED):
 
 ## 10. Terminal DB as Rule Oracle — Spatial Evidence Summary
 
-### 13.1 Position Data Available
-
-| Table | Key Columns | Rows (Terminal) | Use |
-|-------|------------|-----------------|-----|
-| `elements_meta` | guid, discipline, ifc_class, storey | 48,428 | Element identity |
-| `element_transforms` | guid, center_x, center_y, center_z | 48,428 | World position |
-| `spatial_structure` | guid, building, storey | 48,428 | Storey assignment |
-| `base_geometries` | geometry_hash, vertices, faces | shared | Mesh (not used by ERP-maths) |
-
-### 13.2 Discipline Spatial Footprint (from Terminal)
-
-| Discipline | Elements | X Range (m) | Y Range (m) | Z Range (m) | Storeys |
-|-----------|----------|-------------|-------------|-------------|---------|
-| ARC | 34,724 | 90-150 | -40 to +3 | -15 to +28 | All |
-| FP | 6,863 | 87-150 | -41 to +0 | -0.4 to +26 | All |
-| STR | 1,429 | 90-150 | -40 to +0 | -16 to +28 | All |
-| ACMV | 1,621 | 90-150 | -40 to +0 | varies | Most |
-| CW | 1,431 | 90-150 | -43 to +4 | -1 to +19 | GF-L4 |
-| ELEC | 1,172 | 90-150 | -40 to +0 | 1-24 | All |
-| SP | 979 | 90-150 | -41 to +6 | -1 to +24 | GF-L4 |
-| LPG | 209 | — | — | — | GF-L1 |
-
-### 13.3 Implied Placement Rules from Spatial Distribution
-
-**Rule 1 — Structural grid defines MEP zones:**
-STR columns at GF (56 columns, x=90-150, y=-40 to 0) establish a 60m × 40m grid.
-All MEP disciplines operate within this grid envelope. Columns at z=4.1-11.4m (GF)
-confirm double-height ground floor. MEP disciplines cluster at z ranges above/below
-structural slab levels.
-
-**Rule 2 — FP coverage follows architectural footprint:**
-909 sprinkler heads span the full x,y envelope at every storey. Fire protection
-is the most spatially complete MEP discipline — every occupied zone has heads.
-Spacing clusters at 3.5m and 4.5m (M1 bimodal) are driven by ceiling grid module.
-
-**Rule 3 — CW/SP risers are vertically consistent:**
-CW pipe segments at GF (338), L1 (82), L2 (122), L3 (77) share similar x,y ranges
-(131-150, -40 to 0). The count drop from GF→upper floors reflects branch vs riser:
-many horizontal branches at GF, fewer vertical risers above.
-
-**Rule 4 — ELEC fixtures align to ceiling grid:**
-814 IfcLightFixture cluster at consistent z values per storey (z=2.7-3.0 GF,
-z=6.8-7.0 L1, z=10.3-11.9 L2). The tight z-clustering per storey confirms
-ceiling-mounted installation at uniform soffit height.
-
-**Rule 5 — MEP disciplines have discipline-specific z zones:**
-FP pipes span the widest z range per storey (above-slab to above-ceiling).
-ELEC is ceiling-mounted (tight z). CW/SP are floor-to-ceiling (riser zones).
-This implies a z-order constraint: STR slab → FP main → ACMV duct → ELEC fixture → ceiling.
+Terminal spatial footprints (48,428 elements, 8 disciplines, 7+ storeys) extracted
+via mining pipeline. Position data from `elements_meta`, `element_transforms`,
+`spatial_structure`. See [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) for full
+M1/M4/M5/M6/M12 distributions, discipline footprints, and implied placement rules
+(structural grid, FP coverage, riser continuity, ceiling alignment, z-zone ordering).
 
 ---
 

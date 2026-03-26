@@ -97,22 +97,10 @@ DesignerAPIImpl.createNew(request)
 │      │   │   └─────────────────────────────────────────────────────────────┘
 │      │   │
 │      │   │   ┌─────────────────────────────────────────────────────────────┐
-│      │   │   │ STEP 3d-ii: Spatial slot (compiler-internal cache)         │
-│      │   │   │ INSERT co_empty_space_line (one per OrderLine)            │
-│      │   │   │ co_emptyspace_id  = building-level co_empty_space FK      │
-│      │   │   │ C_OrderLine_ID    = the just-inserted OrderLine           │
-│      │   │   │ bom_line_seq      = m_bom_line.seq                        │
-│      │   │   │ bom_id            = m_bom.bom_id                          │
-│      │   │   │ bom_line_role     = m_bom_line.role                       │
-│      │   │   │ bom_level         = DFS depth                             │
-│      │   │   │ tack_from_x/y/z   = dx/dy/dz * 1000 (m → mm)            │
-│      │   │   │ capacity_*_mm     = m_bom.aabb_width/depth/height         │
-│      │   │   │ storey            = from YAML storeys map (depth 1 nodes) │
-│      │   │   │ room_name         = from YAML floor_rooms.spaces[].name   │
-│      │   │   │                                                           │
-│      │   │   │ Also: INSERT co_empty_space header (one per C_Order):      │
-│      │   │   │   origin_x/y/z_mm = building world origin (BOM origin)    │
-│      │   │   │   aabb_*          = building AABB                         │
+│      │   │   │ STEP 3d-ii: Spatial slot (removed S74 — W008)              │
+│      │   │   │ co_empty_space / co_empty_space_line tables DROPPED.       │
+│      │   │   │ Placement now via M_BOM_Line dx/dy/dz directly.           │
+│      │   │   │ C_OrderLine inherits offsets from BOM Drop.               │
 │      │   │   └─────────────────────────────────────────────────────────────┘
 │      │   │
 │      │   │   ┌─────────────────────────────────────────────────────────────┐
@@ -253,7 +241,7 @@ DesignerAPIImpl.recall(buildingId, variantId)
 │      → INSERT C_Order (Parent_Order_ID = master, DocStatus = 'DR')
 │      → COPY C_OrderLine rows from recalled sub-order to new sub-order
 │      → COPY M_AttributeSetInstance + M_AttributeInstance
-│      → COPY spatial slot cache (co_empty_space_line)
+│      → (co_empty_space_line removed S74 — placement via M_BOM_Line dx/dy/dz)
 │      → Previous sub-orders stay CO (immutable history)
 │
 ├── 3. INSERT W_Variant pointer for new sub-order
@@ -496,8 +484,8 @@ class WorkOutputDAOTest {
         // Given: empty file path
         // When:  WorkOutputDAO.create(path)
         // Then:  9 tables exist (W_BuildingConfig, C_Order, C_OrderLine,
-        //        M_AttributeSetInstance, M_AttributeInstance, co_empty_space,
-        //        co_empty_space_line (compiler-internal), W_Verb_Node, W_Verb_NodeProduct,
+        //        M_AttributeSetInstance, M_AttributeInstance,
+        //        W_Verb_Node, W_Verb_NodeProduct, (co_empty_space tables removed S74 — W008)
         //        W_Variant, W_Validation_Result, AD_SysConfig)
         //        AD_SysConfig.SCHEMA_VERSION = 'W001'
     }
@@ -552,12 +540,12 @@ class ConstructionModelSpawnerTest {
         //
         // Derive expected counts from BOM template at test time:
         //   expectedLines = walk m_bom tree from BUILDING_DM_STD, count nodes
-        //   expectedESLines = count ROOM-level BOMs (each gets one ESLine)
+        //   (ESLine removed S74 — placement via M_BOM_Line dx/dy/dz)
         //   expectedASI = count LEAF products with M_AttributeSet_ID != null
         //   expectedPPNodes = count from M_Product_Category routing template
         //
         //   assertEquals(expectedLines, actualOrderLineCount)
-        //   assertEquals(expectedESLines, actualESLineCount)
+        //   (ESLine count check removed S74)
         //   assertEquals(expectedASI, actualASICount)
         //   assertEquals(expectedPPNodes, actualPPNodeCount)
         //   1 W_Variant (label="v0", initial snapshot)

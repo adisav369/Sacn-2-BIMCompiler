@@ -45,7 +45,7 @@ Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
 | **C_Order** (work order) | Construction project for a specific building. ONE doc type: "Construction Order" |
 | **C_OrderLine** (order line) | Instance of a product in this project. BOM Drop explodes parent → child lines |
 | **C_DocType** (document type) | "Construction Order" — one only. Classification metadata, NOT a compilation driver |
-| **CO_EmptySpace** (warehouse slot) | Compiler-internal spatial cache — WHERE = M_BOM_Line dx/dy/dz |
+| **CO_EmptySpace** (warehouse slot) | *(REMOVED S74 — replaced by M_BOM_Line dx/dy/dz. W008 dropped tables)* |
 | **[AD_ChangeLog](https://wiki.idempiere.org/en/AD_ChangeLog)** (audit trail) | Full provenance — every PLACE, DELETE, MOVE, RESIZE logged with before/after state. UNDO/REDO stack |
 | **C_Campaign** (marketing) | Design theme (Bali, Scandinavian, Industrial) |
 | **[C_Project](ProjectOrderBlueprint.md#2-c_project-site-as-bom)** (project) | Site development — groups C_Orders under one project (budget, schedule, milestones) |
@@ -69,13 +69,8 @@ UNIT  →  FLOOR  →  ROOM  →  SET  →  ITEM
 
 ### 1.1 Disciplines Are Metadata, Not Structure
 
-In iDempiere, the document engine is generic — it processes all document types
-identically. What differs per type is the **validation rules** (tax on Invoice,
-credit check on Order, BOM explosion on Manufacturing Order). The engine fires
-AD_Val_Rule / ModelValidator / Column Callout based on metadata, never via
-hardcoded type checks.
-
-Disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG) follow the same pattern:
+Disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG) are metadata partitions, not structural
+divisions. See [MANIFESTO.md](MANIFESTO.md) §AD_Org for the discipline-as-metadata pattern.
 
 | iDempiere | BIM Compiler |
 |-----------|-------------|
@@ -86,24 +81,14 @@ Disciplines (ARC, STR, FP, ACMV, ELEC, SP, CW, LPG) follow the same pattern:
 | Invoice → tax/charge validation | FP BOM → fire code compliance |
 | ModelValidator.docValidate() | PlacementValidator per jurisdiction |
 
-The BOM walker does not know what ARC or FP means. It just recurses
-(§2.2.1). The YAML `disciplines:` section is a classifier — it maps
-`ifc_class → AD_Org` — not a structural change. The `AD_Org_ID` on
-`m_bom` and `C_OrderLine` is the hook that AD_Val_Rule uses to fire
-the right validation rules (see [DocValidate.md](DocValidate.md)).
+The BOM walker does not know what ARC or FP means. It just recurses (§2.2.1).
+The `AD_Org_ID` on `m_bom` and `C_OrderLine` is the hook that AD_Val_Rule uses
+to fire the right validation rules (see [DocValidate.md](DocValidate.md)).
 
-**Legacy debt:** The DSL-generative compiler path (Phase 0-era, TB-LKTN)
-contains hardcoded category checks — `CompilationPipeline:506 IN (...)`,
-`categoryToRoomType()` switch, `ComposeBuildingVerb RESIDENTIAL→RE` map
-(see `TestArchitecture.md` H3/H4). These are on the DSL path only — the
-BOM-based pipeline (Instant Drop / BOM Drop) is clean. Target: migrate DSL path
-to data-driven lookups when generative compilation is prioritised.
-
-**MEP disciplines** (FP, ACMV, ELEC, SP, CW, LPG) are not structurally
-different from ARC. They follow the same tack convention (§4), the same
-BUFFER invariant (§4.2), the same validateBOM() check. What differs is
-the validation rules that fire after placement — spacing, clearance,
-capacity — just as an Invoice has tax rules that fire after line entry.
+**Legacy debt:** DSL-generative path contains hardcoded category checks
+(`CompilationPipeline:506 IN (...)`, `categoryToRoomType()`, `ComposeBuildingVerb
+RESIDENTIAL→RE` — see `TestArchitecture.md` H3/H4). BOM-based pipeline is clean.
+Target: migrate DSL path to data-driven lookups when generative compilation is prioritised.
 
 ### 1.2 Discipline Routing — Three States per Discipline
 
@@ -116,34 +101,15 @@ Each discipline in YAML has exactly three possible states:
 | Absent | Discipline does not exist for this building | Nothing. No BOM, no validation. The building genuinely has no such discipline. |
 
 ```yaml
-# Terminal: all disciplines from extraction BOM
-disciplines:
-  ARC:  TE_BOM
-  STR:  TE_BOM
-  FP:   TE_BOM
-  ACMV: TE_BOM
-  CW:   TE_BOM
-  ELEC: TE_BOM
-  SP:   TE_BOM
-  LPG:  TE_BOM
+# Terminal: all 8 disciplines from extraction BOM
+disciplines:  { ARC: TE_BOM, STR: TE_BOM, FP: TE_BOM, ACMV: TE_BOM, ... }
 
-# SampleHouse: ARC only, no MEP
-disciplines:
-  ARC:  SH_BOM
-  # FP, ELEC, CW etc. absent — SH has no MEP
+# SampleHouse: ARC only (absent = no such discipline)
+disciplines:  { ARC: SH_BOM }
 
-# Generative house: ARC from BOM, MEP via DocEvent validation
-disciplines:
-  ARC:  DM_BOM
-  FP:   DocEvent
-  ELEC: DocEvent
-  CW:   DocEvent
-  SP:   DocEvent
+# Generative: ARC from BOM, MEP via DocEvent validation
+disciplines:  { ARC: DM_BOM, FP: DocEvent, ELEC: DocEvent, CW: DocEvent, SP: DocEvent }
 ```
-
-**No ambiguity.** Every discipline is explicitly routed (`{prefix}_BOM`),
-delegated to validation (`DocEvent`), or absent (does not exist). The
-pipeline never guesses.
 
 **Two concerns, cleanly separated:**
 
@@ -175,59 +141,34 @@ Extract (IFC source)  →  Commit ({PREFIX}_BOM.db)  →  Reproduce (compile)  �
 assembly recipes, product dimensions, building type configuration, and spatial rules.
 All extracted from reference buildings and curated as immutable data.
 
-For **EXTRACTED** provenance (SH, DX, TE): every element traces to a real IFC
-source via `I_Element_Extraction`. If it cannot be traced, the output is invalid.
-
-For **GENERATIVE** provenance (DemoHouse, BIM Designer): elements trace to BOM
-templates (sources 1–7 in `LAST_MILE_PROBLEM.md` Gap 4) plus user spatial edits
-(C_OrderLine dx/dy/dz in the design workspace). The provenance field on C_Order
-and promoted m_bom rows distinguishes the two origins. See `G4_SRS.md` §2.4.
+**EXTRACTED** provenance (SH, DX, TE): every element traces to `I_Element_Extraction`.
+**GENERATIVE** provenance (DemoHouse, BIM Designer): elements trace to BOM templates
++ user spatial edits. The provenance field distinguishes origins. See `G4_SRS.md` §2.4.
 
 **EntityType enforcement:** Dictionary records (entity_type='D') are read-only at
 the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 (MBOM.beforeSave / MBOMLine.beforeSave), not documentation.
 
-**Schema-Not-Geometry rule:** Every validation check and spatial query must be
-expressible as a SQL query over the 4-database schema. If a check requires AABB
-arithmetic (centreline distance, centroid offset, proximity search), ask: does
-the IFC schema have a relationship (`IfcRelVoidsElement`, `IfcRelConnectsPathElements`,
-`IfcRelContainedInSpatialStructure`) that could be extracted as a column instead?
-If yes, that is a missing extraction column — fix the schema, do not add geometry
-code. LLMs are blind to spatial geometry but capable at schema mapping. The
-4-database architecture is a semantic firewall: extraction pre-digests IFC
-relationships into relational keys, validation queries those keys.
-Exception: ERP-maths (e.g., M12 pipe clearance via `centreline_distance - radius_a
-- radius_b`) is legitimate when the arithmetic on product dimensions IS the correct
-method and no IFC relationship would improve it.
-See `DocValidate.md` §15.6 for the full decision tree and M1-M17 audit.
-See `LAST_MILE_PROBLEM.md` R21-R24 for the 8 identified schema gaps.
-See `BIM_COBOL.md` §20 for spatial predicate verbs that standardise ERP-maths
-queries (DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST, WITHIN, etc.) so no
-code writes raw AABB SQL — predicates upgrade transparently when R21-R24 land.
+**Schema-Not-Geometry rule:** Every validation check must be expressible as SQL
+over the 5-database schema. If AABB arithmetic is needed, ask: does an IFC
+relationship exist that could be extracted as a column instead? If yes, fix the
+schema, not the geometry code. The 5-database architecture is a semantic firewall.
+Exception: ERP-maths on product dimensions (e.g., M12 pipe clearance) is legitimate
+when no IFC relationship would improve it.
+See `DocValidate.md` §15.6 (decision tree), `LAST_MILE_PROBLEM.md` R21-R24 (schema gaps),
+`BIM_COBOL.md` §20 (spatial predicate verbs).
 
-**No Parametric Mesh in Pipeline.** Every element in compiled output gets its
-geometry from `component_library.db` (LOD_ hash prefix). The pipeline MUST NOT
-generate parametric bounding boxes (GEO_ hash prefix) for any element in any mode.
-Rationale: Rosetta Stone verification compares compiled output against extracted
-reference. If the compiler emits a parametric box where the stone has a real mesh,
-the comparison is not apple-to-apple — the gate result is meaningless.
-`component_library.db` has basic LOD building blocks for every construction
-primitive (wall panel, slab, column, beam, pipe, door, window, fixture).
-`M_AttributeSetInstance` controls per-instance sizing (width, depth, height,
-material). The compiler scales the library LOD by ASI parameters — it never
-creates geometry. Even roof uses TILE verb + ASI shaping, not mesh generation.
-`G5-PROVENANCE` Check 6 enforces zero GEO_ hashes: any parametric fallback = FAIL.
+**No Parametric Mesh in Pipeline.** All geometry comes from `component_library.db`
+(LOD_ hash prefix). The pipeline MUST NOT generate parametric bounding boxes (GEO_
+hash prefix). ASI controls per-instance sizing; the compiler scales library LODs,
+never creates geometry. `G5-PROVENANCE` Check 6 enforces zero GEO_ hashes.
 `createBoxGeometry` and `bindParametric` must not exist in any compilation code path.
 
-**IFC already solves geometry.** The IFC schema carries a full relational model
-underneath the 3D mesh: `IfcRelAggregates` (spatial hierarchy), `IfcRelVoidsElement`
-(opening hosts), `IfcRelConnectsElements` (MEP connectivity), `IfcRelDefinesByType`
-(product typing). The FederatedModel DB pre-digests these relationships into SQLite
-for query speed and adds the manufacturing layer IFC never had (m_bom / m_bom_line
-with qty, verb_ref, tack offsets). The BOM Outliner (BIM_Designer.md §17.19) is the
-user-facing consequence: editing a building is configuring a relational tree, not
-manipulating geometry. Drag a SET to a different FLOOR = FK update. Swap a product
-= family_ref change. The compiler renders from the updated schema.
+**IFC already solves geometry.** The IFC schema carries relational structure
+(`IfcRelAggregates`, `IfcRelVoidsElement`, `IfcRelConnectsElements`, `IfcRelDefinesByType`)
+pre-digested into SQLite by the FederatedModel DB. The BOM layer adds manufacturing
+semantics IFC lacks (m_bom/m_bom_line with qty, verb_ref, tack offsets). Editing a
+building = configuring a relational tree, not manipulating geometry (BIM_Designer.md §17.19).
 
 ---
 
@@ -297,12 +238,9 @@ uses to assign elements. Elements whose centroid falls within this scope become
 children of that SET BOM. Elements not matching any scope become structural
 (direct children of the storey discipline BOM).
 
-**Zero-size scope** (`aabb_mm: [0, 0, 0]`): indicates a placeholder scope space
-with no spatial extent. No element centroid can fall within a zero-size envelope,
-so the SET BOM will have zero children. This is used for rooms that exist in the
-YAML topology but have no extracted furniture (e.g., BATHROOM in SH has no
-scope-assignable elements — bathroom fixtures are structural, not furniture).
-ScopeBomBuilder skips zero-size scopes: the SET BOM is created with no leaf lines.
+**Zero-size scope** (`aabb_mm: [0, 0, 0]`): placeholder for rooms with no
+scope-assignable elements (e.g., BATHROOM fixtures are structural). SET BOM
+created with no leaf lines.
 
 ### 2.1.4 Dedup and Product Registration
 
@@ -311,7 +249,11 @@ Identical elements (same `element_ref` pattern) are deduplicated into a single
 line per instance. This is the iDempiere pattern: 47 duplex receptacles =
 1 M_Product (`DUPLEX_RECEPTACLE`) with `qty=47` on the BOM line.
 
-### 2.1.5 Discipline Layer (schema_version 2)
+### 2.1.5 Composition Layer (Duplex/Multi-Unit)
+
+CompositionBomBuilder — duplex mirror partition, half-unit and pair BOMs. See `DuplexAnalysis.md`.
+
+### 2.1.6 Discipline Layer (schema_version 2)
 
 For multi-discipline buildings (DX, Terminal), the YAML `disciplines:` map
 inserts a discipline BOM level between STOREY and SCOPE SPACE. See
@@ -324,7 +266,7 @@ Single-discipline buildings (SH, schema_version 1) skip this layer — no
 discipline wrapper needed. The top-level M_Product_Category (RE/CO) determines
 which L2 axis is used: rooms (RE) or disciplines (CO). See MANIFESTO.md §Category Cascade.
 
-### 2.1.6 Recipe vs Placement — The BOM Contract
+### 2.1.7 Recipe vs Placement — The BOM Contract
 
 **`{PREFIX}_BOM.db` is a recipe.** Each m_bom_line is a **type line** — one row per
 unique product within its parent BOM, with a qty count or verb formula reference.
@@ -355,7 +297,7 @@ visible at TE scale where 505 unique products expand to 48,428 placement instanc
 represent gap-fill space — they carry qty but do not expand to output elements.
 The BOM is the recipe; the output is the cooked meal.
 
-**TE factorization (done, 2026-03-17; CLUSTER optimised 2026-03-18):**
+**TE factorization:**
 48,485 instances → 1,131 recipe lines (42.8:1). 505 unique products → 48,428 active elements.
 VerbDetector mines 4 verb patterns from extraction centroids:
 
@@ -369,21 +311,16 @@ VerbDetector mines 4 verb patterns from extraction centroids:
 
 Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
 ±20% of the average step. Non-uniform groups fall through to CLUSTER or flat writes.
-*(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER.
-SPRAY remains in VerbDetector as a legacy detection path; superseded by CLUSTER in the cascade.)*
+*(SPRAY remains in VerbDetector as a legacy detection path; superseded by CLUSTER.)*
 See [`BIM_COBOL.md`](BIM_COBOL.md) §19 for verb taxonomy,
 data flow, and fidelity details.
 
-**Pipeline phases (self-contained since 2026-03-20):**
-1. **BOM pipeline** (`IFCtoBOMPipeline.run()`): extracts geometry → populates product catalog → writes `{PREFIX}_BOM.db`. Calls `ensureProductCatalog()` + `ensureProductImages()` internally (INSERT OR IGNORE = idempotent). No separate populate step required.
+**Pipeline phases (self-contained):**
+1. **BOM pipeline** (`IFCtoBOMPipeline.run()`): extracts → populates catalog (idempotent) → writes `{PREFIX}_BOM.db`
 2. **Compile** (`DAGCompiler`): reads `{PREFIX}_BOM.db` + `component_library.db` → produces output.db
-   *(Note: `output_schema.sql` (Python) is stale — Java `BuildingWriter.initSchema()` is the authoritative output DDL.)*
+   *(Authoritative output DDL: Java `BuildingWriter.initSchema()`, not Python `output_schema.sql`.)*
 
-The shell script (`run_RosettaStones.sh`) still runs `--populate` as a fast-path
-when `I_Geometry_Map` count is 0, but it is no longer a prerequisite — the BOM
-pipeline is self-contained. Phase 1 can re-run freely (`rm *_BOM.db`).
-
-### 2.1.7 What IFCtoBOM Does NOT Do
+### 2.1.8 What IFCtoBOM Does NOT Do
 
 - Does not invent elements (EXTRACT only — every leaf traces to I_Element_Extraction)
 - Does not compute placement rules (layout_strategy, z_rule stay NULL — generative future)
@@ -422,33 +359,18 @@ BUILDING BOM  (LBD = world origin, stored in m_bom.origin_x/y/z)
                  └─ ...
 ```
 
-Every line carries a 3D position **(dx, dy, dz)** — where the child's LBD
-corner sits within the parent's bounding box. All three axes matter: a piano
-at (7.67, 1.61, 0.59) means 7.67m right, 1.61m back, 0.59m up from the
-room's LBD corner. The walker does not know or care about BOM types. It just
-recurses until it hits a leaf. Recursion depth capped at 20 levels (safety guard; practical buildings use 4–5 levels).
+The walker recurses until it hits a leaf (depth capped at 20; practical buildings use 4-5).
 
 ### 2.2.3 Library Population (Outside Compilation)
 
-When no suitable leaf product exists in `component_library.db`, it must be
-created outside the compilation pipeline:
+New leaf products are created outside compilation: **TopologyMaker** generates
+mesh geometry, **Mesh2Library** registers it into `component_library.db`. After
+population, the compiler treats it identically to extracted products.
 
-1. **TopologyMaker** — generates mesh geometry for a new product type
-   (parametric wall, slab, beam). Runs standalone, not during compilation.
-2. **Mesh2Library** (`Mesh2Library.txt` pipeline) — registers the generated
-   mesh into `component_library.db` as a new leaf product.
-
-After population, the product is a leaf like any other. The compiler never
-knows whether a product was extracted from IFC or generated — it just reads
-`component_library.db` and positions.
-
-**Orientation metadata:** Each leaf product in `component_definitions` carries
-intrinsic orientation: `attachment_face` (TOP/BOTTOM/SIDE/CENTER), `up_axis`,
-`forward_axis`, `orientation` (PENDANT/UPRIGHT/WALL_MOUNT), `default_rotation`.
-These are the "polarity markers" — like the white dot on a capacitor in SMT
-assembly. The compiler uses them to orient the mesh correctly at the tack
-position. See `BIM_Designer.md` §8.3 for per-instance ASI overrides
-(`face_anchor`, `swing_side`) and `DocValidate.md` M16/M17 for validation.
+**Orientation metadata:** Each leaf in `component_definitions` carries
+`attachment_face`, `up_axis`, `forward_axis`, `orientation`, `default_rotation` —
+polarity markers for correct mesh orientation at the tack position.
+See `BIM_Designer.md` §8.3 (ASI overrides) and `DocValidate.md` M16/M17.
 
 ---
 
@@ -458,7 +380,7 @@ position. See `BIM_Designer.md` §8.3 for per-instance ASI overrides
 
 | Term | iDempiere parallel | Definition |
 |------|-------------------|------------|
-| **ESLine** | S_Resource (spatial workstation) | `co_empty_space_line` — a spatial slot that receives a child BOM. The parent provides the attachment point (tack_from); the child doesn't know its host. |
+| **ESLine** | S_Resource (spatial workstation) | *(REMOVED S74 — replaced by M_BOM_Line dx/dy/dz. The parent BOM line's offset IS the attachment point.)* |
 | **BUFFER** | Phantom BOM line | Fills the gap between SUM(children AABB) and parent AABB. Ensures parent = SUM(children) invariant. |
 | **BOM Drop** | PP_Product_BOM explosion | Interactive tree navigation — expand BOM children one level at a time, swap products (same M_Product_Category), add lines. Only needed when making changes. Without BOM Drop, compile explodes the tree automatically (iDempiere Instant BOM Drop pattern). |
 | **Instant Drop** | Manufacturing Order processing | No modifications — 1 C_OrderLine references a BOM product, compile explodes the full tree. The quickest hello world test. |
@@ -466,74 +388,50 @@ position. See `BIM_Designer.md` §8.3 for per-instance ASI overrides
 | **BOM** | Bill of Materials | Any `m_bom` row. If `child_product_id` resolves to an `m_bom`, the walker recurses into it. There is no MAKE/BUY distinction — the walker decides by existence. |
 | **Leaf** | Purchased item | A `child_product_id` that resolves to `M_Product` in `ERP.db` (no matching `m_bom`). The compiler emits the element here. Geometry meshes in `component_library.db`. |
 
-### 3.2 The ESLine Mechanism — Parent Owns the Attachment Point
+### 3.2 Placement via M_BOM_Line — Parent Owns the Attachment Point
 
 **The child BOM does not know its parent.** A child BOM does not know which
 parent hosts it. A leaf product does not know which BOM contains it. This is by design —
 a child can be reused in any parent that has a slot for it.
 
-**The parent provides the attachment point via ESLine:**
+**The parent M_BOM_Line's dx/dy/dz IS the attachment point:**
 
 ```
 Parent BOM (e.g. FLOOR_TE_GF)
   │
-  ├─ tack_from = [slot_1_origin, slot_2_origin, ...]   ← parent defines WHERE
-  │
-  └─ m_bom_line (children)                               ← parent defines WHAT children
+  └─ m_bom_line (children)                            ← parent defines WHAT + WHERE
        │
-       ├─ child 1: AD_Org=ARC, dx/dy/dz                    ← architecture assembly
-       ├─ child 2: AD_Org=STR, dx/dy/dz                    ← structural assembly
-       └─ ...
-            │
-            ▼
-       Selection cascade picks best child BOM             ← child is selected, not self-aware
-            │
-            ▼
-       ESLine receives the child at parent's tack_from    ← parent's slot, child's content
+       ├─ child 1: AD_Org=ARC, dx=0, dy=0, dz=0        ← architecture assembly at origin
+       ├─ child 2: AD_Org=STR, dx=500, dy=0, dz=0       ← structural assembly offset 500mm
+       └─ ...                                            ← selection cascade (§3.5) picks child
 ```
 
-**ESLine carries the parent's tack_from value.** When the selection cascade picks
-a child BOM for a slot, the ESLine tells the compiler: "place this child's LBD
-at this position within the parent's frame." The child's tack_to (its own LBD)
-meets the parent's tack_from (the slot origin). The child never looks up.
+**The BOM walker accumulates offsets:** `world_pos = parent_LBD + (dx, dy, dz)`.
+One addition per BOM level — that's the entire placement mechanism. When the
+selection cascade picks a child BOM, the child's LBD is placed at the parent's
+offset position. The child never looks up.
 
-**Why this matters for generative:** In the BIM Designer, the user navigates the tree.
-The parent BOM defines its children via m_bom_line. The user can BOM Drop to navigate the tree and swap/add products. The child BOM is oblivious — it can be swapped, resized, or replaced without touching any other BOM.
+When BOM Drop explodes the tree, C_OrderLine inherits these offsets. No
+intermediate table, no slot abstraction — the LBD tack convention (§4) handles
+everything.
+
+**Generative consequence:** The child BOM can be swapped, resized, or replaced
+without touching any other BOM — the parent owns the attachment point, not the child.
 
 ### 3.3 Instant Drop — The HelloWorld Test
 
-The simplest compilation: one `C_OrderLine` references a BOM product (e.g.
-BUILDING_SH_STD). No BOM Drop, no modifications. The compiler processes the
-order and explodes the BOM tree — walking every level, accumulating tack
-offsets (dx/dy/dz), resolving leaves to M_Product geometry.
+One `C_OrderLine` references a BOM product (e.g. BUILDING_SH_STD). No BOM Drop,
+no modifications. The compiler explodes the full BOM tree — accumulating tack
+offsets, resolving leaves to M_Product geometry. This is the iDempiere **Instant
+BOM Drop** pattern. SH (55), DX (1099), TE (48,428) all compile this way.
 
-This is the iDempiere **Instant BOM Drop** pattern: drop without modification,
-auto-resolve cascading quantities from the parent.
-
-One C_OrderLine. One spatial slot at origin (0,0,0). The entire BOM
-hierarchy is accepted as-is. SH (55), DX (1099), TE (48,428) all compile
-this way — the Rosetta Stones prove the BOM data restacks correctly.
-
-**What Instant Drop proves:**
-- **Stacking order:** the BOM hierarchy restacks to reproduce the original
-- Verb expansion: factored recipes expand to correct instance count
-- The BOM data is complete and self-consistent (G1-G6 gates verify this)
-- Tacking: dx/dy/dz accumulates correctly through every BOM level
+**Proves:** stacking order, verb expansion, BOM completeness (G1-G6), tack accumulation.
 
 ### 3.4 BOM Drop — Interactive Modification
 
-When the user wants to modify a building, they use **BOM Drop** — the
-iDempiere BOMDrop Configurator pattern adapted for BIM.
-
-1. C_OrderLine references a BOM product (e.g. BUILDING_SH_STD)
-2. User performs BOM Drop — tree expands one level, showing immediate children
-3. User navigates to the child they want to change
-4. **Swap:** replace a child with another product in the same M_Product_Category
-   (e.g. swap flat roof → pitched roof, both category RF)
-5. **Add:** insert a new C_OrderLine for an additional product
-   (e.g. add FP sprinkler — validation rules compute placement)
-6. **Remove:** deactivate a child line (e.g. remove dining room furniture)
-7. Compile processes the modified order — same tacking, same explosion
+The iDempiere BOMDrop Configurator pattern adapted for BIM. User expands BOM
+one level, then **Swap** (same M_Product_Category), **Add** (new C_OrderLine),
+or **Remove** (deactivate child line). Compile processes the modified order.
 
 **Four component types** (from iDempiere BOMDrop Configurator):
 
@@ -569,14 +467,8 @@ filter by M_Product_Category, then by dimensional fit.
 ### 3.5.1 AttributeSetInstance — Per-Instance Customization
 
 The Selection Cascade picks the **BOM recipe** (WHAT). The `M_AttributeSetInstance`
-(ASI) customizes **each instance** (HOW) — the iDempiere ERP pattern:
-
-```
-ERP:  SKU = "TEE_CREW_NECK"    → ASI: { size: XL, color: navy }
-BIM:  Product = "WALL_EXT_150" → ASI: { length_mm: 12500, material: BrickPlaster }
-      Product = "PIPE_COLD_25" → ASI: { length_mm: 3200, angle_deg: 45 }
-      Product = "DOOR_INT_810" → ASI: { swing_side: -1, face_anchor: INT }
-```
+(ASI) customizes **each instance** (HOW). See [MANIFESTO.md](MANIFESTO.md)
+§M_AttributeSet for the shirt-size analogy and ERP pattern.
 
 **Three-table pattern** (identical to iDempiere manufacturing):
 
@@ -607,40 +499,22 @@ Library LOD is **scaled** by the effective dimension — never remodeled, never 
 instance is identical. `IsInstanceAttribute=1` products (walls, pipes, slabs) vary
 per instance and carry ASI overrides.
 
-**Generative flow:** The user defines a bigger room (e.g., LIVING 6000×4500×3000).
-The cascade finds a matching SET that fits. Each element in the SET becomes a
-C_OrderLine. The user (or auto-suggest) creates ASI overrides to stretch walls to
-the new room dimensions. The compiler resolves `effective = ASI ?? catalog` and
-produces the correctly-sized output. Zero new code — just data on the OrderLine.
+**Generative flow:** User defines room size → cascade finds matching SET → ASI
+overrides stretch walls to new dimensions → compiler resolves `effective = ASI ?? catalog`.
+Zero new code — just data on the OrderLine.
 
-*Full ASI field resolution matrix: BIM_Designer.md §8.*
-*Schema: output.db (M_AttributeSetInstance, M_AttributeInstance).*
-*Generative application: GENERATIVE_ROOM_SRS.md §6.*
+*ASI matrix: BIM_Designer.md §8. Schema: output.db. Generative: GENERATIVE_ROOM_SRS.md §6.*
 
 ### 3.6 The Rosetta Stone — Launch Booster
 
 The Rosetta Stone exercise (SH/DX/TE) proves the pipeline is **lossless**:
-Extract → BOM → Compile → Verify. If compiled output matches the reference IFC
-exactly (G1-G6 GREEN), the compiler faithfully reproduces known buildings.
+Extract → BOM → Compile → Verify (G1-G6 GREEN). It calibrates and proves tack
+convention, BOM recursion, verb expansion, and M_BOM_Line placement. Once proven,
+the same machinery drives generative compilation where the BOM is authored by a
+human or Designer, not extracted from IFC.
 
-**The Rosetta Stone is a launch booster — it is abandoned once it has worked.**
-Its purpose is to calibrate and prove the compilation machinery (tack convention,
-BOM recursion, verb expansion, ESLine placement). Once proven, the same machinery
-drives generative compilation where the BOM is authored by a human or Designer,
-not extracted from IFC.
-
-**What the Rosetta Stone proves for generative:**
-- Tack convention correctly reconstructs world positions (§4)
-- BOM-to-BOM recursion reaches LEAF correctly (§2.2)
-- Verb formulas expand to correct instances (§2.1.6)
-- ESLine/slot machinery places children at parent's tack_from (§3.2)
-- The pipeline from recipe to placement is deterministic and verifiable
-
-**What the Rosetta Stone does NOT prove:**
-- Multi-candidate selection (all stones are Instant Drop singularities)
-- BOM Drop with actual swap choice → first test is DemoHouse via BIM Designer
-- DocValidate compliance checking → proven separately (`DocValidate.md`),
-  applied in BIM Designer's ambient compliance (§18.4 in `BIM_Designer.md`)
+**Does NOT prove:** multi-candidate selection, BOM Drop with swap choice
+(first test: DemoHouse), or DocValidate compliance (proven separately).
 
 ### 3.7 locator_ref — Exception-Order Addressing (Session D)
 
@@ -690,18 +564,12 @@ corner at this offset from the parent's bounding box corner.
 
 No centroids. No special cases. One rule for every line at every depth.
 
-**Convention extends to the design workspace:** `C_OrderLine.dx/dy/dz` in the
-BIM Designer uses the same LBD convention. When a user moves a bbox, they edit
-a tack value. When Promote writes C_OrderLine → m_bom_line, the tack values
-transfer directly. See `G4_SRS.md` §5.4 for tack convention tests and
-`BIM_Designer.md` §17.10.3 for change tier detection.
+**Convention extends to design workspace:** `C_OrderLine.dx/dy/dz` uses the same
+LBD convention. See `G4_SRS.md` §5.4 and `BIM_Designer.md` §17.10.3.
 
-**tack_from / tack_to (Lego principle):**
-
-A parent BOM has N children. Each child needs a spot in the parent's space.
-The parent's `m_bom_line` defines **tack_from** — the (dx,dy,dz) position
-within the parent where the child's corner goes. The child's **tack_to** is
-always its own LBD = (0,0,0) in its own frame.
+**tack_from / tack_to (Lego principle):** The parent's `m_bom_line` defines
+**tack_from** — where the child's corner goes. The child's **tack_to** is always
+its own LBD = (0,0,0). The child never looks up.
 
 ```
 SH_LIVING_SET  (parent AABB = 8000 × 2000 × 1200 mm)
@@ -712,10 +580,12 @@ SH_LIVING_SET  (parent AABB = 8000 × 2000 × 1200 mm)
   └─ BUFFER fills remaining space (§4.2)
 ```
 
-Each `tack_from` is a named slot in the parent. The child's LBD corner lands
-there. The child doesn't know the parent — it can be reused in any parent
-that has a slot big enough for it. This is the Lego principle: the stud
-pattern is on the parent (tack_from), the child just has a flat bottom (tack_to).
+The child can be reused in any parent that has a slot big enough.
+
+**Typed coordinate hierarchy:** Code enforces typed coordinates: `LocalCoord`,
+`StoreyCoord`, `WorldCoord` (sealed classes). Accumulation chain:
+`LocalCoord.toWorld(StoreyCoord) → WorldCoord`. `DriftGuardTest` prevents
+direct `WorldCoord` construction — all world positions must flow through the chain.
 
 ### 4.1 World Coordinate Reconstruction
 
@@ -727,17 +597,10 @@ centroid    = element_LBD + (width/2, depth/2, height/2)
 where each `tack_from[i]` is the full 3D position `(dx, dy, dz)` from that
 level's m_bom_line. The walker accumulates all three axes through the BOM chain.
 
-**Origin convention (R16 lesson):** Only the **BUILDING BOM** carries a non-zero
-origin (`m_bom.origin_x/y/z` = world LBD position). All child BOMs (FLOOR,
-DISCIPLINE, SET) have `origin = (0, 0, 0)` — their position within the building
-is encoded solely in the parent's tack_from (dx/dy/dz on the m_bom_line that
-references them). If child BOMs also carried non-zero origins, the walker would
-double-count: `line.dx + childBom.origin` would exceed the correct offset.
-This was the root cause of R16 (session 17 fix).
-
-Centroid is computed **only at the output stage** — for display, for spatial
-digest, for comparison with extraction. Centroid never enters the BOM. The BOM
-stores only tack positions (dx/dy/dz) and AABB dimensions.
+**Origin convention:** Only the **BUILDING BOM** carries a non-zero origin
+(`m_bom.origin_x/y/z`). All child BOMs have `origin = (0, 0, 0)` — position is
+encoded solely in the parent's tack_from. Non-zero child origins cause double-count.
+Centroid is computed **only at the output stage** — never enters the BOM.
 
 **Example (SH Living Room):**
 ```
@@ -757,22 +620,14 @@ Piano world LBD:
 
 Piano centroid = piano_LBD + (piano_width/2, piano_depth/2, piano_height/2)
 
-**Scope box origin (YAML `origin_m`)** is a **containment filter only** — it
-determines which elements belong to which room during BOM generation. It is NOT
-a spatial reference for offsets. The tack_from on the FLOOR→ROOM line comes from
-the room's measured LBD relative to the floor's LBD, not from the scope box origin.
+**Scope box origin (YAML `origin_m`)** is a **containment filter only** — not a
+spatial reference for offsets. Tack_from comes from the room's measured LBD
+relative to the floor's LBD.
 
 ### 4.1.1 validateBOM() — The Spatial Analogue
 
-In iDempiere Manufacturing, `validateBOM()` checks that a BOM is complete and
-consistent before it can be used in production. The spatial analogue is:
-- Every child's tack_from must place it within the parent's AABB
-- Children must not overlap (clash detection)
-- The sum of children + BUFFER must account for the parent's full AABB (§4.2)
-- All tack_from values are non-negative (child cannot be behind parent's origin)
-
-This validation runs in `BomValidator.java` (9 check methods) and is the spatial
-equivalent of the ERP manufacturing BOM integrity check.
+`BomValidator.java` (9 checks) enforces spatial BOM integrity:
+child within parent AABB, no overlap, SUM(children)+BUFFER = parent, non-negative tack_from.
 
 ### 4.2 BUFFER — The Completeness Invariant
 
@@ -834,25 +689,12 @@ Click-to-Place (G-13) queries PHANTOMs for instant "where can I place this?"
 Zero-cost foam: sits in the BOM, walker skips it, enables spatial queries.
 
 **Witness claims:**
-- W-AABB-QUAL-1: IMPLEMENTED (ScopeBomBuilder, FloorRoomBomBuilder) — m_bom.aabb_qualifier
-  correctly tags INNER vs OUTER on SET and FLOOR ROOM BOMs.
-- W-PHANTOM-1: IMPLEMENTED (ScopeBomBuilder) — PHANTOM lines fill remaining INNER
-  volume per SET BOM. BOMWalker dispatches to onPhantom() (no output). IN: 66 PHANTOMs
-  across 82 SET BOMs. SH: verified no regression.
-- W-CENTROID-DIFF-1: IMPLEMENTED (SpatialDiff) — hosted elements (IfcWindow/IfcDoor)
-  use centroid distance for band classification. Invariant to asymmetric frame projection.
-- W-TACK-1: IMPLEMENTED (BomValidator.java) — child AABB fits within parent.
-  **SH:** advisory, pending TACK-FIX promotion to FAIL (`TACK_FIX_SPEC.md` §4.1).
-  **TE:** 306/1074 lines overshoot (28.5%) — expected for CLUSTER verb (approximate
-  grouping assigns elements to nearest product centroid, which may exceed discipline
-  SET AABB). Promotion to FAIL blocked until CLUSTER→exact verb promotion reduces
-  overshoot below 5%.
-- W-BUFFER-1: IMPLEMENTED (BomValidator.java) — SUM(children) vs parent.
-  **SH:** 2/3 SET BOMs balanced. **TE:** 12/50 SET BOMs balanced (76% unbalanced).
-  Root cause: discipline SET AABBs are computed from element centroids; CLUSTER
-  offset-table expansions can exceed the centroid-based envelope. BUFFER invariant
-  is structurally valid but requires exact verb fidelity to enforce.
-- W-WALKTHRU-DIFFERS-1: RESOLVED — single compilation path (S54b). No mode dichotomy.
+- W-AABB-QUAL-1: IMPLEMENTED — m_bom.aabb_qualifier tags INNER vs OUTER correctly.
+- W-PHANTOM-1: IMPLEMENTED — PHANTOM lines fill remaining INNER volume. 66 PHANTOMs across 82 SET BOMs.
+- W-CENTROID-DIFF-1: IMPLEMENTED — hosted elements use centroid distance for band classification.
+- W-TACK-1: IMPLEMENTED (advisory) — child AABB fits within parent. SH: pending promotion to FAIL. TE: 28.5% overshoot (CLUSTER approximate grouping). Promotion blocked until overshoot < 5%.
+- W-BUFFER-1: IMPLEMENTED — SUM(children) vs parent. SH: 2/3 balanced. TE: 12/50 balanced (CLUSTER exceeds centroid-based envelope).
+- W-WALKTHRU-DIFFERS-1: RESOLVED — single compilation path.
 
 #### 4.2.3 Shape Archetype + Scale Band (CP-4 §4a, session 46)
 
@@ -911,24 +753,9 @@ MEPWriter (furniture detection), WitnessBuilder (grid/wall-mount validation).
 
 ### 4.3 Centroid Drift — Historical Note (FIXED)
 
-**Status (2026-03-19):** All four builders now use LBD offsets:
-- DisciplineBomBuilder (CO path: TE) — fixed session 18
-- StructuralBomBuilder (structural path) — fixed session 18
-- ScopeBomBuilder (RE path: SH, DX) — TACK-FIX FIX-1 code written (compiles, testing pending)
-- FloorRoomBomBuilder (FLOOR→ROOM/SPACE) — TACK-FIX FIX-2 code written (compiles, testing pending)
-- VerbDetector.detectCluster() — TACK-FIX FIX-3 code written (compiles, testing pending)
-
-See `TACK_FIX_SPEC.md` for the full method specifications and test plan.
-
-**Root cause:** Commit `1399128` (2026-03-10) introduced centroid-floorMin as
-"parent-relative" — it passed compilation tests because centroid offsets round-trip
-correctly when there is no stacking.
-
-**Why centroid breaks:** Centroid offsets cannot tile. If child A is 1m wide and
-starts at parent LBD, child B should start at dx=1.0. With centroids, child A's
-offset is 0.5 (its center), and child B's offset must account for A's width plus
-its own half-width — the formula becomes context-dependent. LBD offsets are always
-`child_minX − parent_minX`, regardless of sibling dimensions.
+Centroid offsets were replaced by LBD offsets in all four builders (S17-S18).
+LBD offsets are context-free (`child_minX − parent_minX`); centroid offsets are
+sibling-dependent and cannot tile. See `TACK_FIX_SPEC.md` for the fix spec.
 
 ---
 
@@ -995,50 +822,16 @@ All 6 gates GREEN for SH (55 elements) and DX (1099 elements).
 
 ## 9. The Data Flywheel — Emergent Intelligence
 
-The compiler was designed to extract and compile — never to invent. But an
-unintended consequence of processing 34 real buildings is that the system
-**learns what buildings look like.** Each onboarded IFC enriches a pool of
-mined dimensional observations. Each new IFC is validated against that pool.
-The more buildings the system processes, the better it gets at catching
-problems in the next one.
+Processing 34 real buildings creates a **data flywheel** — each onboarded IFC
+enriches a pool of mined dimensional observations that validates the next one.
+Unlike fixed BIM rules (building codes, clash thresholds), this system validates
+against **empirical evidence from its own corpus.**
 
-This is a **data flywheel:**
+**Cycle:** New IFC → DimensionRangeValidator checks W/D/H against mined ranges →
+pipeline compiles BOM → `extract_validation_rules.sh` mines new patterns →
+`apply_mined_rules.sh` feeds back into ERP.db → pool grows.
 
-```
-New IFC file arrives
-  ↓
-DimensionRangeValidator checks every element's W/D/H
-against typical ranges mined from 20+ previous buildings
-  ↓
-Pipeline compiles the building into BOM
-  ↓
-extract_validation_rules.sh mines new dimension patterns
-  ↓
-apply_mined_rules.sh feeds them back into ERP.db
-  ↓
-The validation pool grows — better ranges for the next IFC
-```
-
-**This is uncommon in the AEC industry.** Most BIM tools validate against
-fixed, hand-authored rules (building codes, clash detection thresholds). This
-system validates against **empirical evidence from its own corpus** — the same
-way a spell-checker learns from a dictionary built from real documents, not
-from grammar rules alone.
-
-Three design decisions in the original specs created the conditions for this
-emergent property — none of them intended it:
-
-1. **"Extract or compile only, never invent"** (§1 Prime Rule) — forced the
-   pipeline to read real buildings, building a corpus of real-world data.
-
-2. **CP-3: "Scale up the corpus"** (session 44) — onboarded 34 buildings,
-   creating enough statistical mass for meaningful ranges.
-
-3. **ERP.db architecture** (DISC_VALIDATION_DB_SRS) — established
-   a clean separation between product geometry and discipline metadata,
-   giving the mined rules a natural home.
-
-The result is three layers of validation that work together:
+**Three validation layers:**
 
 | Layer | Question | Source | When |
 |-------|----------|--------|------|
@@ -1046,103 +839,30 @@ The result is three layers of validation that work together:
 | **Compliance** | "Does this room meet building code?" | Researched from UBBL/IRC/NFPA (63 rules) | Design time |
 | **Relational** | "Does this bathroom have the right MEP?" | Mined + researched (186 schedules, 4,801 placement rules) | MEP placement |
 
-Layer 1 is statistical and self-improving. Layer 2 is prescriptive and
-stable. Layer 3 is contextual and domain-rich. No single BIM tool combines
-all three — and Layer 1's self-improving nature is entirely novel.
+**Current state:** 415 rules, 25 IFC classes, 1,245 parameters mined from 20 buildings.
 
-**Current state (session 47):** 415 rules, 25 IFC classes, 1,245 parameters
-mined from 20 buildings. False-positive rate decreases with each new
-building because the observed ranges widen to accommodate legitimate
-variation (thin partitions, large warehouses, unusual structural members).
+### 9.1 Layer 2 — Building Profile Validation
 
-### 9.1 Layer 2 — Building Profile Validation (session 47)
+Every building has a signature — the percentage distribution of its IFC classes
+(e.g., residential = ~35% IfcWall, MEP = 90%+ flow elements). `BuildingProfileValidator`
+compares each new building's profile against archetype profiles mined from the
+34-building corpus. Catches mis-labelled files, wrong discipline tagging, and
+anomalous element compositions. Advisory only — never blocks.
 
-Layer 1 asks "is this element a plausible size?" Layer 2 asks a higher
-question: **"does this building's element composition make sense?"**
+**Storage:** `ad_building_profile` table in ERP.db (one row per building/ifc_class).
 
-Every building has a signature — the percentage distribution of its IFC
-classes. Residential buildings are 30–40% IfcWall. MEP-only files are
-90%+ flow elements. Structural models are dominated by IfcBeam or
-IfcReinforcingBar. This signature is the **building profile.**
+### 9.2 Flywheel Layers
 
-```
-Residential:  IfcWall 35%  IfcWindow 15%  IfcDoor 10%  IfcSlab 8%  ...
-MEP (plumb):  IfcFlowFitting 50%  IfcFlowSegment 44%  IfcFlowController 4%
-Structural:   IfcBeam 69%  IfcColumn 12%  IfcSlab 8%  IfcFooting 5%
-```
-
-The profile validator answers questions Layer 1 cannot:
-
-| Check | What it catches |
-|-------|----------------|
-| "Architecture file with 0 walls" | Mis-labelled or corrupt IFC |
-| "Residential building with 90% IfcReinforcingBar" | Structural file mis-classified |
-| "MEP file with 0 flow elements" | Wrong discipline tagging |
-| "13 IFC classes when typical for this size is 7" | Unusually rich or fragmented model |
-
-The profile is mined from the same corpus as Layer 1 — the 34 onboarded
-buildings. Each building contributes one profile row per IFC class. The
-validator aggregates profiles by building archetype (ARC-dominant,
-STR-dominant, MEP-dominant) and compares the new building against the
-nearest archetype.
-
-**Flywheel effect:** Each new building refines the archetype profiles.
-A hospital with unusual element ratios (high IfcFurnishingElement, low
-IfcWall) teaches the system what "institutional" looks like. The next
-hospital benefits from that knowledge.
-
-**Storage:** `ad_building_profile` table in ERP.db.
-One row per (building, ifc_class) — same pattern as ad_val_rule.
-
-**Integration:** `BuildingProfileValidator` runs as a second pre-flight
-in IFCtoBOMPipeline, immediately after DimensionRangeValidator. Advisory
-only — logs profile anomalies but never blocks.
-
-### 9.2 The Emergence Pattern
-
-Each layer emerges from the data the previous layer collected:
-
-```
-Layer 0: EXTRACTION          "Here are 97,000 elements"
-         → creates the corpus
-
-Layer 1: DIMENSION RANGES    "Walls are typically 800–10,000mm"        ← DONE (s47)
-         → mines per-element statistics from the corpus
-
-Layer 2: BUILDING PROFILES   "Residential buildings are 35% wall"      ← DONE (s47)
-         → mines per-building composition from the corpus
-
-Layer 3: SHAPE COMPREHENSION "This IfcWall is shaped like a beam"      ← EYES module
-         → geometric fingerprinting classifies what elements ARE
-         → 26 proofs verify spatial relationships are valid
-         → spec: EYES_SRS.md. Phase 1 ready to build
-
-Layer 4: RELATIONAL PATTERNS "Bathrooms always have toilet + sink"     ← FL-4
-         → mines element-to-space containment from the corpus
-
-Layer 5: SEQUENCE PATTERNS   (future) "Plumbing before electrical"
-         → mines cross-discipline ordering from BOM build sequence
-
-Layer 6: ARCHETYPE CLUSTERS  (future) "European residential cluster"
-         → mines building-level similarity from profiles
-```
+| Layer | Status | Question | Spec |
+|-------|--------|----------|------|
+| 0 — Extraction | DONE | "Here are 97,000 elements" | This document §2.1 |
+| 1 — Dimension Ranges | DONE (s47) | "Is this wall a plausible size?" | DimensionRangeValidator |
+| 2 — Building Profiles | DONE (s47) | "Does this building's composition make sense?" | §9.1 above |
+| 3 — Shape Comprehension | EYES module | "This IfcWall is shaped like a beam" | [EYES_SRS.md](EYES_SRS.md) |
+| 4–6 | Future | Relational patterns, sequence patterns, archetype clusters | — |
 
 Each layer uses the same mechanism — query the corpus, aggregate, compare.
-The code stays simple. The intelligence comes from the questions asked.
 No neural networks. No training. Just SQL aggregation on real data.
-
-Layer 3 (EYES) is different in kind: it introduces **geometric comprehension**
-— the system doesn't just compare numbers, it understands shapes. A wall
-must be planar (thin in one dimension). A column must be elongated (thin
-in two dimensions). Furniture must be compact (similar in all three).
-These are mathematical invariants derived from dimensionless ratios, not
-heuristics or ML. When combined with the flywheel, EYES advisories tell
-the Designer: "This element is labelled IfcWall but its shape says beam.
-Check the IFC source." That's a qualitatively stronger signal than
-"dimension outside range."
-
-See [EYES_SRS.md](EYES_SRS.md) for the full specification (26 proofs,
-3 tiers, 10 product categories, 4 shape archetypes).
 
 ---
 
@@ -1157,152 +877,22 @@ Adding a new building = adding BOM data. The compiler is the constant.
 
 ---
 
----
-
 ## 11. Dynamic Building Registration
 
-Adding a building type in the Java compiler requires zero code changes — `BuildingRegistry.loadActive()`
-reads C_DocType from `{PREFIX}_BOM.db` and compiles every active row. But the Python and shell tooling that
-*populates* `{PREFIX}_BOM.db` hardcodes building names, storey mappings, output paths, and expected element
-counts in four files. This is like hardcoding part numbers into the MRP engine instead of reading
-the BOM. When extraction counts change or a new building appears, the scripts drift from the data.
+Phases A-D complete. Manifest-driven registration via `scripts/construction_manifest.yaml`.
 
-This section specifies how to close that gap.
+**Architecture:** `BuildingRegistry.loadActive()` reads C_DocType from `{PREFIX}_BOM.db` —
+zero building names in Java. Python/shell scripts read the manifest or query `{PREFIX}_BOM.db`.
+Adding a new building = one YAML block + IFC extraction + IFCtoBOM pipeline. Zero code changes.
 
-### 11.1 The Problem: Hardcoded Registration
+**Key invariants:**
+1. Manifest is declarative — storey names, roles, paths, prefix. Never counts or dimensions.
+2. Extraction is measurement — element counts, AABB envelopes, storey origins.
+3. `{PREFIX}_BOM.db` is artifact — produced by IFCtoBOM, never hand-edited, regeneration is idempotent.
+4. Drift resistance — extraction count changes require only re-running the pipeline, no file edits.
 
-The Java side is clean — `BuildingRegistry` (line 70) issues one SQL query with zero building
-names in source code. The Python/shell side is not:
-
-| # | File | Lines | What is hardcoded |
-|---|------|-------|-------------------|
-| 1 | `scripts/RosettaStoneExtract.py` | 37–60 | `BUILDINGS` dict: prefixes (`SH`, `DX`), building prefix, building_bom_id, storey name→code mappings, roles, seq_no |
-| 2 | `scripts/RosettaStoneToBOM.py` | 48–55 | `C_DOCTYPE` list: doc_type_id, M_Product_Category, building prefix, output/reference paths, ExpectedElements (55, 1099, 139, 51088) |
-| 3 | `scripts/RosettaStoneToBOM.py` | 345–439 | `M_BOM` / `M_BOM_LINE`: BUILDING BOM headers with AABB, TACK children with dx/dy/dz offsets |
-| 4 | `scripts/run_RosettaStones.sh` | 39–40, 418–435 | `SH_BASE` / `DX_BASE` path variables, `case` dispatch with literal `"SH"` / `"DX"` |
-| 5 | `scripts/run_tests.sh` | 125–136 | `run_preflight "Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` — literal building names |
-| 6 | `scripts/run_tests.sh` | 145–183 | Expected pass/fail counts (191/1, 34/2, 19/0, 179/7) and intentional-failure offsets |
-
-**Consequence:** Every time an extraction changes element counts, a developer must hand-edit
-expected values in at least two files. Adding a third EXTRACTED building requires touching all four.
-The Java compiler handles it with one C_DocType row. The tooling should too.
-
-### 11.2 Building Manifest (Source of Truth)
-
-A YAML configuration file `scripts/construction_manifest.yaml` declares each building's identity
-and structure. The manifest is an index into extraction truth — it names things, never measures them.
-
-```yaml
-# construction_manifest.yaml — declarative building registration
-# Rule: storey names, roles, paths.  Never counts or dimensions.
-
-buildings:
-  Ifc4_SampleHouse:
-    prefix: SH
-    doc_sub_type: SH                  # deprecated — redundant with prefix + M_Product_Category (see DATA_MODEL.md §7)
-    doc_base_type: RE                 # deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)
-    provenance: EXTRACTED
-    output_path: DAGCompiler/lib/output/ifc4_samplehouse.db
-    reference_path: DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
-    seq_no: 10
-    storeys:
-      Ground Floor: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
-      Roof:         { code: ROOF, bom_category: RF, role: ROOF, seq: 1020 }
-      Unknown:      { code: CW, bom_category: CW, role: CURTAIN_WALL, seq: 1030 }
-
-  Ifc2x3_Duplex:
-    prefix: DX
-    doc_sub_type: DX                  # deprecated — redundant with prefix + M_Product_Category (see DATA_MODEL.md §7)
-    doc_base_type: RE                 # deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)
-    provenance: EXTRACTED
-    output_path: DAGCompiler/lib/output/ifc2x3_duplex.db
-    reference_path: DAGCompiler/lib/input/Ifc2x3_Duplex_extracted.db
-    seq_no: 20
-    geometry_fail_threshold: 5
-    storeys:
-      Level 1: { code: L1, bom_category: L1, role: LEVEL_1, seq: 1010 }
-      Level 2: { code: L2, bom_category: L2, role: LEVEL_2, seq: 1020 }
-      Roof:    { code: ROOF, bom_category: RF, role: ROOF, seq: 1030 }
-      T/FDN:   { code: FDN, bom_category: FN, role: FOUNDATION, seq: 1040 }
-      Unknown: { code: MISC, bom_category: MS, role: MISC, seq: 1050 }
-```
-
-**iDempiere pattern:** The manifest plays the same role as `AD_Table` — it defines metadata
-that scripts consume, so no script contains application logic about what buildings exist.
-One file is the single source of registration truth. Scripts import it; they never duplicate it.
-
-### 11.3 Derived Values (Never Hardcode)
-
-Some values currently hardcoded in the scripts are not properties of the building's identity.
-They are measurements that can — and must — be computed from extraction data.
-
-| Value | Current source | Correct source | Why |
-|-------|---------------|----------------|-----|
-| `ExpectedElements` (55, 1099) | Hardcoded in `C_DOCTYPE` tuple | `COUNT(*)` from extraction DB | Extraction is the measurement |
-| `AABB` on BUILDING BOM | Hardcoded in `M_BOM` list | Computed from extraction envelope | Extraction = truth (§2) |
-| Floor AABB dimensions | Hardcoded in `M_BOM` list | Aggregated from storey extraction | Same principle at floor level |
-| `M_BOM_LINE` offsets (dx/dy/dz) | Hardcoded in builder tuples | Computed from extraction storey origins | Offsets are measured, not declared |
-| DSL content | Generated inline | Derived from manifest + extraction | Content follows structure |
-| Spatial digest reference | Implicit in gate thresholds | SHA256 of compiled output | Digest is a function of data |
-
-**Rule:** If a value can be derived from extraction data, it MUST be derived, not declared.
-The manifest declares identity (name, role, path). Extraction measures reality (count, envelope,
-offset). Hardcoding a derived value violates the compilation model (§2) — it replaces measurement
-with opinion.
-
-### 11.4 Target Workflow: Add a New Building
-
-After migration, adding a new building follows the same pattern as adding a new product to an
-ERP system — one BOM entry, zero code changes:
-
-1. **Manifest entry** — add one YAML block to `construction_manifest.yaml` (name, prefix,
-   prefix, storeys, paths)
-2. **Extract IFC** — run extraction pipeline; reference DB appears at the declared path
-3. **Regenerate BOM dictionary** — IFCtoBOM Java pipeline (SH/DX) or `RosettaStoneToBOM.py` (TE)
-   reads classification YAML + extraction, writes M_BOM, M_BOM_Line with derived counts and dimensions
-4. **Verify** — `./scripts/run_RosettaStones.sh classify_XX.yaml` compiles and gates the new building
-
-Zero Python edits. Zero shell edits. Zero Java edits. The manifest is the only touch point.
-
-### 11.5 Script Migration
-
-Each script transitions from hardcoded values to manifest-driven or `{PREFIX}_BOM.db`-driven lookups:
-
-| Script | Reads now | Reads after | Change scope |
-|--------|-----------|-------------|-------------|
-| `RosettaStoneExtract.py` | `BUILDINGS` dict (lines 37–60): prefixes, storey maps, BOM IDs | `construction_manifest.yaml`: same data, external file | Replace dict literal with `yaml.safe_load()`. Storey mappings move verbatim. |
-| `RosettaStoneToBOM.py` | `C_DOCTYPE` list (lines 48–55): paths, ExpectedElements. `M_BOM` / `M_BOM_LINE` (lines 345–439): AABB, offsets | Manifest for identity; extraction DBs for counts, AABB, offsets | Biggest change. Builder loops derive dimensions from extraction instead of literals. |
-| `run_RosettaStones.sh` | `SH_BASE` / `DX_BASE` variables, `case` dispatch (lines 39–40, 418–435) | Query `SELECT C_DocType_ID, output_path FROM C_DocType WHERE IsActive=1` from `{PREFIX}_BOM.db` | Shell reads `{PREFIX}_BOM.db` via `sqlite3`. Loop replaces case statement. |
-| `run_tests.sh` | Literal `"Ifc4_SampleHouse"` / `"Ifc2x3_Duplex"` in preflight calls (lines 125–136); hardcoded expected counts (lines 145–183) | Preflight: query C_DocType for active EXTRACTED buildings. Counts: read from `{PREFIX}_BOM.db` or test output. | Preflight becomes a loop. Expected counts derived, not literal. |
-
-### 11.6 Invariants
-
-Six rules govern the boundary between declaration and derivation:
-
-1. **Manifest is declarative** — storey names, roles, paths, prefix. Never counts, dimensions,
-   or coordinates.
-2. **Extraction is measurement** — element counts, AABB envelopes, storey origins. These are
-   facts read from IFC reference data, not human assertions.
-3. **`{PREFIX}_BOM.db` is artifact** — produced by IFCtoBOM Java pipeline (SH/DX) or
-   `RosettaStoneToBOM.py` (TE) from classification YAML + extraction.
-   It is never hand-edited. Regeneration is idempotent.
-4. **Java reads `{PREFIX}_BOM.db` only** — `BuildingRegistry.loadActive()` queries C_DocType. It never
-   reads the manifest, never reads extraction DBs, never contains building names.
-5. **Shell reads `{PREFIX}_BOM.db` or manifest only** — no script contains a building name as a string
-   literal (except in log messages). Control flow is driven by query results.
-6. **Drift resistance** — if extraction changes element count from 1099 to 1102, the only
-   action is re-running the IFCtoBOM pipeline. No file is hand-edited. No test threshold
-   is manually adjusted.
-
-### 11.7 Migration Status
-
-Phases A–D complete: manifest created, all Python and shell scripts read from
-`construction_manifest.yaml` or `{PREFIX}_BOM.db`. Phase E (test script expected
-counts) deferred. All phases gated GREEN.
-
-**Onboarding gotchas:** See [WorkOrderGuide.md](WorkOrderGuide.md) §Drift Prevention
-and [SourceCodeGuide.md](SourceCodeGuide.md) §Extension Recipe for the recurring
-traps when onboarding a new IFC file.
+See [WorkOrderGuide.md](WorkOrderGuide.md) for the onboarding pipeline and drift prevention.
+See [SourceCodeGuide.md](SourceCodeGuide.md) §Extension Recipe for recurring traps.
 
 ---
 

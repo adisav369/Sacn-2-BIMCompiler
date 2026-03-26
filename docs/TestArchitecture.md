@@ -439,12 +439,12 @@ are waste.
 | TACK-FIX FIX-3 | VerbDetector.detectCluster minX offsets | (unit test §4.3) | Cluster offsets ≥ 0 | **SPEC ONLY** |
 | TACK-FIX §4.4 | Pipeline coordination chain (cumulative) | (integration test §4.4) | BUILDING→LEAF sum = world LBD | **SPEC ONLY** |
 
-### BBC.md §3.2 — ESLine Mechanism
+### BBC.md §3.2 — Placement Mechanism (M_BOM_Line dx/dy/dz)
 
 | Spec Section | Requirement | Test Class | Witness/Gate | Status |
 |---|---|---|---|---|
-| §3.2 ESLine tack_from | ESLine.tack_from = m_bom_line.dx/dy/dz | — | W-ESLINE-TACK-1 | **PENDING** |
-| §3.2 extends to output.db | Spatial slot tack_from = C_OrderLine.dx/dy/dz (compiler-internal: co_empty_space_line) | — | — | **PENDING** |
+| §3.2 M_BOM_Line tack | world_pos = parent_LBD + (dx, dy, dz) | — | W-TACK-ACCUMULATE-1 | **PENDING** |
+| §3.2 extends to output.db | C_OrderLine inherits offsets from BOM Drop | — | — | **PENDING** |
 
 ### G4_SRS — output.db (compile DB)
 
@@ -715,7 +715,6 @@ e5d6bcbc  arch/DriftGuardTest.java
 ead7c516  contract/CompilerContractTest.java
 2af523c6  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
-a41306f0  contract/CoEmptySpaceTest.java
 0e21e5e5  contract/BomChainIntegrityTest.java
 46e2e2f2  contract/BOMChainMathTest.java
 75dfd1a5  contract/SpatialPlacementVisitorTest.java

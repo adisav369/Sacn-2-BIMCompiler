@@ -14,7 +14,7 @@ import java.util.List;
  * placed the filled extent grows and the {@link #nextAnchor()} pointer advances.
  *
  * <p>This object is <b>not persisted</b>. On completion, the caller writes a
- * spatial slot row via {@code M_CO_EmptySpaceLine.create()} (compiler-internal cache).
+ * spatial slot row (co_empty_space removed S74 — placement via M_BOM_Line dx/dy/dz).
  * WHERE concern lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
  *
  * <p><b>Locator capacity conventions</b> (capacity_mm computation at createDraft() call time):

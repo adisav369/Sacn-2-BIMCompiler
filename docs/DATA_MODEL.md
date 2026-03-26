@@ -107,7 +107,7 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 
 World position is derived from M_BOM_Line dx/dy/dz tack offsets (the BOM itself
 carries WHERE). `{PREFIX}_BOM.db` is a pure dictionary — no world coords.
-`co_empty_space` (output.db) is a compiler-internal cache, not architectural.
+`co_empty_space` tables were removed S74 (W008) — placement is via M_BOM_Line dx/dy/dz directly.
 
 **Children:** Each child BOM is linked via a line carrying the tack offset:
 `dx = position where child's LBD sits within parent` (always >= 0, BOMBasedCompilation.md §4).
@@ -379,7 +379,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
               output.db
                 elements_meta + elements_rtree (world AABB)
                 c_orderline (WHAT)
-                co_empty_space_line (WHERE)
+                (co_empty_space removed S74 — WHERE = M_BOM_Line dx/dy/dz)
                 W_Verb_Node (HOW)
 ```
 
@@ -391,8 +391,8 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | c_orderline | Element instances (from BOM explosion) |
 | elements_meta | Element metadata (guid, ifc_class, storey) |
 | elements_rtree | Spatial index (world AABB) |
-| co_empty_space | Construction space header |
-| co_empty_space_line | Spatial resolution per BOM line |
+| ~~co_empty_space~~ | *(removed S74 — W008)* |
+| ~~co_empty_space_line~~ | *(removed S74 — W008)* |
 | W_Verb_Node | Verb execution audit trail |
 | base_geometries | Geometry meshes (copied from component_library) |
 | element_instances | Element → geometry mapping |
@@ -406,7 +406,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | c_order.C_DocType_ID | C_DocType.C_DocType_ID | `{PREFIX}_BOM.db` |
 | c_orderline.M_Product_ID | M_Product.product_id | `{PREFIX}_BOM.db` (transitional copy; master in component_library.db) |
 | element_instances.geometry_hash | LOD_Object.geometry_hash | component_library.db |
-| co_empty_space_line.bom_id | m_bom.bom_id | `{PREFIX}_BOM.db` |
+| ~~co_empty_space_line.bom_id~~ | *(removed S74 — W008)* | — |
 
 ---
 
@@ -462,7 +462,7 @@ See prompt 29 study for merge assessment (verdict: do not merge).
 | **Compliance** | `validation.db` | AD_Val_Rule (compliance), AD_Clash_Rule, AD_Occupancy_Class, AD_Validation_Result, ad_pattern_rule |
 | **Product catalog** | `component_library.db` | M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry |
 | **Per-building BOM** | `{PREFIX}_BOM.db` | m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy) |
-| **Transactional** | `output.db` | c_order, c_orderline, elements_meta, W_Verb_Node, co_empty_space* |
+| **Transactional** | `output.db` | c_order, c_orderline, elements_meta, W_Verb_Node |
 
 **Remaining consolidation targets:**
 - M_Product_Category: single authoritative copy in ERP.db (currently also in component_library.db)

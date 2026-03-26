@@ -28,7 +28,7 @@ public class SpatialStructureBuilder {
 
     /**
      * Room-level spatial slot — derived from M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
-     * Replaces the former co_empty_space_line L2 rows.
+     * Replaces the former co_empty_space_line L2 rows (removed S74).
      */
     public record RoomSlot(String storey, String roomName, String bomLineRole,
                             double beforeXMm, double beforeYMm, double beforeZMm,

@@ -8,7 +8,7 @@ import java.sql.Connection;
  *
  * <p>iDempiere M_Product analogue — catalog master for both leaf products (BUY)
  * and assembly BOMs (MAKE). Intrinsic geometry in METERS for BUY products;
- * dims=0.001 sentinel for MAKE/assembly stubs (spatial dims come from CO_EmptySpace).
+ * dims=0.001 sentinel for MAKE/assembly stubs (spatial dims come from M_BOM_Line dx/dy/dz).
  *
  * <p>THREE-TABLE AUTHORITY: NEVER add rotation or position here.
  *

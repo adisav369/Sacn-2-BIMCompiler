@@ -31,7 +31,7 @@ public class M_W_Verb_Node extends X_W_Verb_Node {
             .list();
     }
 
-    /** All verb nodes targeting a specific ESLine (S_Resource). */
+    /** All verb nodes targeting a specific spatial slot (M_BOM_Line). */
     public static List<M_W_Verb_Node> getByResource(Connection conn, int sResourceId)
             throws SQLException {
         return new ModelQuery<>(conn, M_W_Verb_Node::new, Table_Name)

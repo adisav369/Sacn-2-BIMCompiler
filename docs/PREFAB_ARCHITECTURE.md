@@ -76,7 +76,7 @@ compiling. The compiler reads the final schedule — it does not care what edits
 > host_type, host_ref). The W_Verb_Node model separates these: order topics stay in
 > c_orderline; placement moves to `W_Verb_Node` + `W_Verb_NodeProduct`.
 > WHERE concern lives in M_BOM_Line dx/dy/dz (MANIFESTO.md §Three Concerns).
-> co_empty_space_line is a compiler-internal cache, not architectural. BomCategory is unaffected — still drives template
+> co_empty_space tables removed S74 (W008) — placement via M_BOM_Line dx/dy/dz. BomCategory is unaffected — still drives template
 > composition via Sequence priority. See `BBC.md` §1 for migration phases.
 > Parallels iDempiere S_Resource (warehouse slot) — see `DocAction_SRS.md` §1.
 
