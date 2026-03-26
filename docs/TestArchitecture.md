@@ -877,8 +877,8 @@ SHA256 hash of 68 test files + 10 critical production files. Super-hash = hash o
 
 ---
 
-**Sealed:** 2026-03-26 (v38: S90 Tier 2 INTEGER PK migration)
-**Super-hash:** `cb56425f03294371c0cd7feb275f421016eb97d1de6d87e9c4a207ee21549b6a`
+**Sealed:** 2026-03-26 (v39: S91 Tier 2 Phase C Java migration)
+**Super-hash:** `48ec54806461e845385db17ff70738e167096253b324d84606ad8adede060e67`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

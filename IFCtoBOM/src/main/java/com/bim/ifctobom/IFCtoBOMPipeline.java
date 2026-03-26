@@ -356,9 +356,10 @@ public class IFCtoBOMPipeline {
                     }
                 }
 
+                // Tier 2: C_DocType_ID is INTEGER PK AUTOINCREMENT. Old text key → Value.
                 try (PreparedStatement ps = bomConn.prepareStatement("""
                         INSERT OR REPLACE INTO C_DocType (
-                            C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
+                            Value, Name, DocBaseType, DocSubType, IsActive,
                             ProjectName, OutputDbPath, ReferenceDbPath,
                             ExpectedElements, Provenance, SeqNo,
                             AabbWidthMm, AabbDepthMm, AabbHeightMm,
@@ -393,6 +394,29 @@ public class IFCtoBOMPipeline {
                     "VALUES ('EXPECTED_ELEMENTS', ?, 'Active extraction element count for compilation')")) {
                 ps.setString(1, String.valueOf(extractionCount));
                 ps.executeUpdate();
+            }
+
+            // 10d. Tier 2 backfill: populate Value/Name/M_BOM_ID on INTEGER PK tables.
+            // Implementing BBC.md §14.3 IDV-1 Phase C — Witness: W-TIER2-BACKFILL
+            // These columns are in the DDL but not written by individual builders.
+            // One-time backfill is simpler and safer than modifying every INSERT.
+            try (Statement backfill = bomConn.createStatement()) {
+                backfill.execute("UPDATE M_Product SET Value = product_id WHERE Value IS NULL");
+                backfill.execute("UPDATE M_Product SET Name = product_id WHERE Name IS NULL");
+                backfill.execute("UPDATE m_bom SET Value = bom_id WHERE Value IS NULL");
+                backfill.execute("UPDATE m_bom SET Name = bom_name WHERE Name IS NULL");
+                backfill.execute("""
+                    UPDATE m_bom_line SET M_BOM_ID = (
+                        SELECT mb.M_BOM_ID FROM m_bom mb WHERE mb.bom_id = m_bom_line.bom_id
+                    ) WHERE M_BOM_ID IS NULL
+                    """);
+                backfill.execute("""
+                    UPDATE m_bom_line_ma SET M_BOM_ID = (
+                        SELECT mb.M_BOM_ID FROM m_bom mb WHERE mb.bom_id = m_bom_line_ma.bom_id
+                    ) WHERE M_BOM_ID IS NULL
+                    """);
+                // C_DocType: Value written natively by INSERT (no backfill needed)
+                BIMLogger.info("PIPELINE", "Tier 2 backfill: Value/Name/M_BOM_ID populated");
             }
 
             // 11. Commit
@@ -479,9 +503,13 @@ public class IFCtoBOMPipeline {
             // written here by ensureAssemblyStub(). Real product data lives in
             // component_library.db — BOMWalker reads via compConn (R7).
             // TODO: migrate assembly stubs to component_library.db, then remove.
+            // Implementing BBC.md §14.3 IDV-1 — Witness: W-TIER2-DDL
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS M_Product (
-                    product_id        TEXT PRIMARY KEY,
+                    M_Product_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_id        TEXT NOT NULL UNIQUE,
+                    Value             TEXT,
+                    Name              TEXT,
                     product_type      TEXT NOT NULL,
                     width             REAL NOT NULL,
                     depth             REAL NOT NULL,
@@ -515,7 +543,10 @@ public class IFCtoBOMPipeline {
 
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom (
-                    bom_id            TEXT PRIMARY KEY,
+                    M_BOM_ID          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    bom_id            TEXT NOT NULL UNIQUE,
+                    Value             TEXT,
+                    Name              TEXT,
                     bom_name          TEXT NOT NULL,
                     description       TEXT,
                     target_ifc_class  TEXT DEFAULT 'IfcElementAssembly',
@@ -542,6 +573,7 @@ public class IFCtoBOMPipeline {
                 CREATE TABLE IF NOT EXISTS m_bom_line (
                     bom_child_id        INTEGER PRIMARY KEY AUTOINCREMENT,
                     bom_id              TEXT NOT NULL REFERENCES m_bom(bom_id),
+                    M_BOM_ID            INTEGER,
                     child_product_id    TEXT,
                     child_element_type  TEXT,
                     child_name_pattern  TEXT,
@@ -583,6 +615,7 @@ public class IFCtoBOMPipeline {
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom_line_ma (
                     bom_id      TEXT NOT NULL,
+                    M_BOM_ID    INTEGER,
                     sequence    INTEGER NOT NULL,
                     qi          INTEGER NOT NULL,
                     guid        TEXT NOT NULL,
@@ -603,9 +636,11 @@ public class IFCtoBOMPipeline {
                 """);
 
             // R27: C_DocType belongs in {PREFIX}_BOM.db (was shell-injected)
+            // Tier 2: C_DocType_ID INTEGER PK (iDempiere convention). Old TEXT key → Value.
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS C_DocType (
-                    C_DocType_ID         TEXT PRIMARY KEY,
+                    C_DocType_ID         INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Value                TEXT NOT NULL UNIQUE,
                     Name                 TEXT NOT NULL,
                     DocBaseType          TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN','ST')),
                     DocSubType           TEXT,

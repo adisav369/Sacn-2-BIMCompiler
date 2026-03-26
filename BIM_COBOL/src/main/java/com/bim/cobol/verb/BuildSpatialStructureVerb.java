@@ -88,14 +88,15 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
                                              String docSubType) throws SQLException {
         List<SpatialStructureBuilder.RoomSlot> slots = new ArrayList<>();
 
-        // 1. Get the BUILDING BOM
+        // 1. Get the BUILDING BOM (Tier 2: use M_BOM_ID INTEGER PK)
         int buildingBomId;
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT bom_id FROM m_bom WHERE bom_type = 'BUILDING' AND doc_sub_type = ?")) {
+                "SELECT M_BOM_ID FROM m_bom WHERE bom_type = 'BUILDING' AND doc_sub_type = ?")) {
             ps.setString(1, docSubType);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return slots;
                 buildingBomId = rs.getInt(1);
+                if (buildingBomId == 0) return slots;
             }
         }
 
@@ -109,17 +110,22 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
             }
         }
 
-        // 3. Walk BUILDING children (floors)
-        List<int[]> floorChildren = new ArrayList<>(); // [child_product_id]
+        // 3. Walk BUILDING children (floors) — Tier 2: JOIN via M_BOM_ID
+        List<int[]> floorChildren = new ArrayList<>(); // [M_BOM_ID of child BOM]
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT child_product_id, role, dz FROM m_bom_line " +
-                "WHERE bom_id = ? AND is_active = 1 ORDER BY sequence")) {
+                "SELECT mbl.child_product_id, mbl.role, mbl.dz, mb2.M_BOM_ID " +
+                "FROM m_bom_line mbl " +
+                "LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id " +
+                "WHERE mbl.M_BOM_ID = ? AND mbl.is_active = 1 ORDER BY mbl.sequence")) {
             ps.setInt(1, buildingBomId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String role = rs.getString("role");
                     if (role != null && (role.contains("LEVEL") || role.contains("GROUND_FLOOR"))) {
-                        floorChildren.add(new int[]{rs.getInt("child_product_id")});
+                        int childMBomId = rs.getInt("M_BOM_ID");
+                        if (childMBomId > 0) {
+                            floorChildren.add(new int[]{childMBomId});
+                        }
                     }
                 }
             }
@@ -131,12 +137,12 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
             String storeyName = storeyNames.get(storeyIdx);
             int floorBomId = floorChildren.get(storeyIdx)[0];
 
-            // Query room-category children of floor BOM
+            // Query room-category children of floor BOM — Tier 2: JOIN via M_BOM_ID
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "SELECT mbl.role, mb2.m_product_category_id " +
                     "FROM m_bom_line mbl " +
                     "LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id " +
-                    "WHERE mbl.bom_id = ? AND mbl.is_active = 1 " +
+                    "WHERE mbl.M_BOM_ID = ? AND mbl.is_active = 1 " +
                     "AND mb2.m_product_category_id IN ('LI','BD','KT','BT','DN')")) {
                 ps.setInt(1, floorBomId);
                 try (ResultSet rs = ps.executeQuery()) {

@@ -174,13 +174,14 @@ public class PlacementLoader {
             OrderLineWalker walker = new OrderLineWalker(conn, compConn);
 
             // Load C_Order rows → map to building types via C_DocType_ID
+            // Tier 2: C_Order_ID is INTEGER PK. Value holds text key. C_DocType_ID holds text FK.
             Map<String, String> docTypeToProject = loadDocTypeToProjectMap(conn);
 
-            String sql = "SELECT C_Order_ID, C_DocType_ID FROM C_Order WHERE IsActive = 1";
+            String sql = "SELECT Value, C_DocType_ID FROM C_Order WHERE IsActive = 1";
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
                 while (rs.next()) {
-                    String orderId = rs.getString("C_Order_ID");
+                    String orderId = rs.getString("Value");
                     String docTypeId = rs.getString("C_DocType_ID");
                     String buildingType = docTypeToProject.get(docTypeId);
                     if (buildingType == null) {
@@ -208,13 +209,13 @@ public class PlacementLoader {
         }
     }
 
-    /** Load C_DocType_ID → ProjectName mapping. */
+    /** Load C_DocType Value (text key) → ProjectName mapping. */
     private static Map<String, String> loadDocTypeToProjectMap(Connection conn) throws SQLException {
         Map<String, String> map = new HashMap<>();
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT C_DocType_ID, ProjectName FROM C_DocType")) {
+             ResultSet rs = stmt.executeQuery("SELECT Value, ProjectName FROM C_DocType")) {
             while (rs.next()) {
-                map.put(rs.getString("C_DocType_ID"), rs.getString("ProjectName"));
+                map.put(rs.getString("Value"), rs.getString("ProjectName"));
             }
         }
         return map;

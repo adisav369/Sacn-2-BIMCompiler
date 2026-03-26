@@ -149,38 +149,8 @@ prepare_compile_db() {
     # R27: C_DocType now written by IFCtoBOM pipeline into {PREFIX}_BOM.db.
     # Shell injection removed — C_DocType arrives via the BOM DB copy above.
 
-    # Tier 2: Add INTEGER PK columns to tables created by IFCtoBOM Java DDL (IDV-1 Phase A+B).
-    # IFCtoBOM hardcodes old TEXT PK schema; ALTER TABLE adds the new columns safely.
-    sqlite3 "$COMPILE_DB" "
-        -- M_Product: add M_Product_ID, Value, Name
-        ALTER TABLE M_Product ADD COLUMN M_Product_ID INTEGER;
-        ALTER TABLE M_Product ADD COLUMN Value TEXT;
-        ALTER TABLE M_Product ADD COLUMN Name TEXT;
-        UPDATE M_Product SET M_Product_ID = ROWID WHERE M_Product_ID IS NULL;
-        UPDATE M_Product SET Value = product_id WHERE Value IS NULL;
-        UPDATE M_Product SET Name = product_id WHERE Name IS NULL;
-
-        -- m_bom: add M_BOM_ID, Value
-        ALTER TABLE m_bom ADD COLUMN M_BOM_ID INTEGER;
-        ALTER TABLE m_bom ADD COLUMN Value TEXT;
-        UPDATE m_bom SET M_BOM_ID = ROWID WHERE M_BOM_ID IS NULL;
-        UPDATE m_bom SET Value = bom_id WHERE Value IS NULL;
-
-        -- m_bom_line: add M_BOM_ID FK
-        ALTER TABLE m_bom_line ADD COLUMN M_BOM_ID INTEGER;
-        UPDATE m_bom_line SET M_BOM_ID = (SELECT mb.M_BOM_ID FROM m_bom mb WHERE mb.bom_id = m_bom_line.bom_id) WHERE M_BOM_ID IS NULL;
-
-        -- C_DocType: add Value, C_DocType_ID_int
-        ALTER TABLE C_DocType ADD COLUMN Value TEXT;
-        ALTER TABLE C_DocType ADD COLUMN C_DocType_ID_int INTEGER;
-        UPDATE C_DocType SET Value = C_DocType_ID WHERE Value IS NULL;
-        UPDATE C_DocType SET C_DocType_ID_int = ROWID WHERE C_DocType_ID_int IS NULL;
-
-        -- M_Product_Category: add M_Product_Category_ID_int (Value may already exist from snapshot)
-        ALTER TABLE M_Product_Category ADD COLUMN M_Product_Category_ID_int INTEGER;
-        UPDATE M_Product_Category SET Value = M_Product_Category_ID WHERE Value IS NULL;
-        UPDATE M_Product_Category SET M_Product_Category_ID_int = ROWID WHERE M_Product_Category_ID_int IS NULL;
-    " 2>/dev/null || true
+    # Tier 2 Phase C: INTEGER PK columns now native in IFCtoBOM DDL + backfill.
+    # ALTER TABLE workaround removed — S91 (Phase A+B used ALTER TABLE; Phase C updated Java DDL).
 
     echo "  _${prefix}_compile.db prepared from ${bom_db}"
     return 0

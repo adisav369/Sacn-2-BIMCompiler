@@ -334,9 +334,11 @@ public class BuildingWriter {
             stmt.execute("DROP TABLE IF EXISTS c_orderline");
             stmt.execute("DROP TABLE IF EXISTS c_order");
 
+            // Tier 2: C_Order_ID INTEGER PK. Value holds buildingId text key.
             stmt.execute("""
                 CREATE TABLE c_order (
-                    C_Order_ID             TEXT PRIMARY KEY,     -- ProjectName from C_DocType
+                    C_Order_ID             INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Value                  TEXT NOT NULL UNIQUE, -- buildingId (ProjectName from C_DocType)
                     Name                   TEXT NOT NULL,        -- building display name
                     DSLContent             TEXT NOT NULL,        -- DSL template (from C_DocType)
                     OutputDbPath           TEXT NOT NULL,        -- output path (from C_DocType)
@@ -355,26 +357,36 @@ public class BuildingWriter {
                     AabbHeightMm           REAL,
                     CompiledAt             TEXT,                 -- compile timestamp
                     CompilerVersion        TEXT,
-                    C_DocType_ID           TEXT                  -- FK → C_DocType in BOM.db (cross-DB)
+                    C_DocType_ID           TEXT                  -- FK → C_DocType.Value in BOM.db (cross-DB)
                 )
             """);
 
+            // Implementing BBC.md §14.3 IDV-1 V.5 — Witness: W-TIER2-ORDERLINE
+            // BOM tree schema: matches BomDropper output + BIM Designer expectations.
+            // Replaces element-list schema (Storey/Name/IfcClass) — those live in elements_meta.
             stmt.execute("""
                 CREATE TABLE c_orderline (
-                    C_OrderLine_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
-                    C_Order_ID       TEXT NOT NULL,       -- FK to c_order (was: building_type)
-                    Storey           TEXT NOT NULL,       -- storey identifier (was: storey)
-                    Name             TEXT NOT NULL,       -- element instance name (was: element_ref)
-                    IfcClass         TEXT NOT NULL,       -- IFC entity type (was: ifc_class)
-                    Discipline       TEXT DEFAULT 'ARC',  -- ARC|STR|MEP|FURN (was: discipline)
-                    AD_Org_ID        INTEGER,             -- FK to AD_Org (ERP.db) — integer discipline
-                    M_Product_ID     TEXT,                -- FK to M_Product (was: family_ref)
-                    IsActive         INTEGER DEFAULT 1,   -- (was: is_active)
-                    UNIQUE(C_Order_ID, Storey, Name)
-                    -- §11.9 DROPPED → W_Verb_Node: host_type, host_ref, position_rule,
-                    --   position_value, position_value_2, position_value_3, height_mm, orientation
-                    -- §11.9 DROPPED → M_Product: width_mm, height_extent_mm, depth_mm,
-                    --   geometry_hash, material_name, material_rgba
+                    C_OrderLine_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
+                    C_Order_ID          TEXT NOT NULL REFERENCES c_order(Value),
+                    Parent_OrderLine_ID INTEGER REFERENCES c_orderline(C_OrderLine_ID),
+                    Line                INTEGER NOT NULL DEFAULT 10,
+                    family_ref          TEXT NOT NULL,
+                    host_type           TEXT NOT NULL,
+                    m_product_category_id TEXT,
+                    bom_child_id        INTEGER,
+                    dx                  REAL NOT NULL DEFAULT 0,
+                    dy                  REAL NOT NULL DEFAULT 0,
+                    dz                  REAL NOT NULL DEFAULT 0,
+                    aabb_width_mm       REAL,
+                    aabb_depth_mm       REAL,
+                    aabb_height_mm      REAL,
+                    M_Product_ID        TEXT,
+                    Discipline          TEXT DEFAULT 'ARC',
+                    AD_Org_ID           INTEGER,
+                    Qty                 INTEGER NOT NULL DEFAULT 1,
+                    locator_ref         TEXT,
+                    is_reference_class  INTEGER DEFAULT 0,
+                    IsActive            INTEGER NOT NULL DEFAULT 1
                 )
             """);
 
@@ -384,7 +396,7 @@ public class BuildingWriter {
             stmt.execute("""
                 CREATE TABLE W_Verb_Node (
                     W_Verb_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
-                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(C_Order_ID),
+                    C_Order_ID        TEXT NOT NULL REFERENCES c_order(Value),
                     SeqNo             INTEGER NOT NULL DEFAULT 10,
                     Name              TEXT NOT NULL,
                     Description       TEXT NOT NULL,

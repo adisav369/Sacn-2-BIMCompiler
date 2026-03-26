@@ -91,7 +91,7 @@ public class BuildingRegistry {
      * Load a building type by C_DocType_ID.
      */
     public static BuildingEntry loadByDocTypeId(String docTypeId) {
-        List<BuildingEntry> entries = load("WHERE C_DocType_ID = ?", docTypeId);
+        List<BuildingEntry> entries = load("WHERE Value = ?", docTypeId);
         return entries.isEmpty() ? null : entries.get(0);
     }
 
@@ -130,7 +130,8 @@ public class BuildingRegistry {
         // LEFT JOIN: m_product_category_id+doc_sub_type → DocBaseType+DocSubType (§7 alignment).
         // ST_SH/ST_DX (DocSubType='ST') resolve AABB from M_BomCategory, not from BUILDING BOM.
         // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
-        String sql = "SELECT d.C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType, "
+        // Tier 2: C_DocType_ID is INTEGER PK. Value holds old TEXT key (e.g., 'RE_SH').
+        String sql = "SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType, "
                    + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
                    + "d.ExpectedElements, d.Provenance, d.Description, "
                    + "d.GeometryFailThreshold, "
@@ -181,7 +182,7 @@ public class BuildingRegistry {
         return clause
             .replace("IsActive", "d.IsActive")
             .replace("ProjectName", "d.ProjectName")
-            .replace("C_DocType_ID", "d.C_DocType_ID")
+            .replace("Value", "d.Value")
             .replace("SeqNo", "d.SeqNo");
     }
 

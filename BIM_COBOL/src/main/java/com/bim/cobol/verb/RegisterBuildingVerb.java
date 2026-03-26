@@ -73,12 +73,13 @@ public class RegisterBuildingVerb implements Verb<RegisterBuildingVerb.RegisterB
             return VerbResult.fail(keyword(),
                 "outputConn required — REGISTER BUILDING writes to output.db", null);
 
-        // Look up C_DocType_ID from bomConn if available
+        // Look up C_DocType Value (text key) from bomConn if available
+        // Tier 2: C_DocType_ID is INTEGER PK; Value holds the old text key.
         String docTypeId = null;
         Connection bomConn = ctx.bomConn();
         if (bomConn != null) {
             try (PreparedStatement ps = bomConn.prepareStatement(
-                    "SELECT c_doctype_id FROM c_doctype WHERE DocSubType = ?")) {
+                    "SELECT Value FROM C_DocType WHERE DocSubType = ?")) {
                 ps.setString(1, docSubType);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) docTypeId = rs.getString(1);
@@ -87,9 +88,10 @@ public class RegisterBuildingVerb implements Verb<RegisterBuildingVerb.RegisterB
         }
 
         // INSERT c_order with DocStatus='IP'
+        // Tier 2: C_Order_ID is INTEGER PK AUTOINCREMENT. Value holds buildingId.
         try (PreparedStatement ins = outputConn.prepareStatement("""
                 INSERT INTO c_order (
-                    C_Order_ID, Name, DSLContent,
+                    Value, Name, DSLContent,
                     OutputDbPath, ReferenceDbPath, IsActive, SeqNo,
                     ExpectedElements, Provenance, Description,
                     GeometryFailThreshold, DocStatus,

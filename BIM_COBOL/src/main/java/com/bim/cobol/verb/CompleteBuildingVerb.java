@@ -53,7 +53,7 @@ public class CompleteBuildingVerb implements Verb<CompleteBuildingVerb.CompleteB
                     SpatialDigest = ?,
                     ExpectedElements = ?,
                     DocStatus = 'CO'
-                WHERE C_Order_ID = ?
+                WHERE Value = ?
                 """)) {
             ps.setString(1, digest);
             ps.setInt(2, elements);

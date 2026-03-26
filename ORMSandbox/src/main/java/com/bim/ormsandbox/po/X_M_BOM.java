@@ -42,6 +42,9 @@ import java.sql.Connection;
 public class X_M_BOM extends BasePO {
 
     public static final String Table_Name                    = "m_bom";
+    public static final String COLUMNNAME_M_BOM_ID            = "M_BOM_ID";
+    public static final String COLUMNNAME_Value              = "Value";
+    public static final String COLUMNNAME_Name_IDV           = "Name";  // _IDV suffix avoids clash
     public static final String COLUMNNAME_bom_id             = "bom_id";
     public static final String COLUMNNAME_bom_name           = "bom_name";
     public static final String COLUMNNAME_description        = "description";
@@ -135,4 +138,12 @@ public class X_M_BOM extends BasePO {
 
     public String getAabbQualifier()       { return get_ValueAsString(COLUMNNAME_aabb_qualifier); }
     public void setAabbQualifier(String v) { set_Value(COLUMNNAME_aabb_qualifier, v); }
+
+    // ── Tier 2: INTEGER PK accessors (Phase C) ──────────────────────────────
+    public int     getMBomId()             { return get_ValueAsInt(COLUMNNAME_M_BOM_ID); }
+    public String  getValue()              { return get_ValueAsString(COLUMNNAME_Value); }
+    public String  getNameIDV()            { return get_ValueAsString(COLUMNNAME_Name_IDV); }
+    public void    setMBomId(int v)        { set_Value(COLUMNNAME_M_BOM_ID, v); }
+    public void    setValue(String v)       { set_Value(COLUMNNAME_Value, v); }
+    public void    setNameIDV(String v)    { set_Value(COLUMNNAME_Name_IDV, v); }
 }

@@ -156,12 +156,13 @@ public class BomDropper {
     private static void createOrder(Connection conn, String orderId, BuildingEntry entry)
             throws SQLException {
         // Delete any existing order (re-drop is idempotent)
+        // Tier 2: C_Order_ID is INTEGER PK. Value holds old text key.
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("DELETE FROM C_OrderLine WHERE C_Order_ID = '" + orderId + "'");
-            stmt.execute("DELETE FROM C_Order WHERE C_Order_ID = '" + orderId + "'");
+            stmt.execute("DELETE FROM C_Order WHERE Value = '" + orderId + "'");
         }
 
-        String sql = "INSERT INTO C_Order (C_Order_ID, C_DocType_ID, Name, DocStatus, "
+        String sql = "INSERT INTO C_Order (Value, C_DocType_ID, Name, DocStatus, "
                    + "aabb_width_mm, aabb_depth_mm, aabb_height_mm) "
                    + "VALUES (?, ?, ?, 'DR', ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {

@@ -279,6 +279,10 @@ public class CompilationPipeline {
                 // Create C_Order in output.db from C_DocType config (transactional, fresh each compile)
                 copyCOrderToOutput(conn, ctx);
 
+                // Implementing BBC.md §14.3 IDV-1 V.5 — Witness: W-TIER2-ORDERLINE
+                // Copy BOM tree C_OrderLine from compile DB → output DB (was discarded before S91)
+                copyCOrderLineToOutput(conn, ctx);
+
                 writer.write(ctx.spec());
                 conn.commit();
                 System.out.println("Database written: " + outputDbPath);
@@ -605,8 +609,76 @@ public class CompilationPipeline {
                 System.err.printf("[C_ORDER] WARN: No VerbExecutor on classpath — cannot register %s%n",
                     buildingId);
             }
-            // NOTE: c_orderline NOT populated here — C_OrderLine generated at compile time
-            // from BOM explosion, not copied from BOM.db (redundant data removed).
+        }
+
+        /**
+         * Copy C_OrderLine BOM tree from compile DB → output DB.
+         * BomDropper creates C_OrderLine in compile DB (C_Order_ID = docTypeId).
+         * Output DB uses C_Order_ID = projectName (buildingId). Remap during copy.
+         */
+        private static void copyCOrderLineToOutput(Connection outConn, CompilationContext ctx) {
+            String compileDbPath = System.getProperty("bom.db");
+            if (compileDbPath == null) return;
+
+            String srcOrderId = ctx.entry().docTypeId();     // compile DB key
+            String dstOrderId = ctx.buildingId();            // output DB key
+
+            try (Connection compileDb = DriverManager.getConnection("jdbc:sqlite:" + compileDbPath)) {
+                String select = """
+                    SELECT C_OrderLine_ID, Parent_OrderLine_ID, Line, family_ref, host_type,
+                           m_product_category_id, bom_child_id, dx, dy, dz,
+                           aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                           M_Product_ID, Discipline, AD_Org_ID, Qty, locator_ref, is_reference_class
+                    FROM C_OrderLine WHERE C_Order_ID = ? ORDER BY C_OrderLine_ID
+                    """;
+
+                String insert = """
+                    INSERT INTO c_orderline
+                    (C_OrderLine_ID, C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type,
+                     m_product_category_id, bom_child_id, dx, dy, dz,
+                     aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                     M_Product_ID, Discipline, AD_Org_ID, Qty, locator_ref, is_reference_class)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """;
+
+                int copied = 0;
+                try (PreparedStatement ps = compileDb.prepareStatement(select)) {
+                    ps.setString(1, srcOrderId);
+                    try (ResultSet rs = ps.executeQuery();
+                         PreparedStatement ins = outConn.prepareStatement(insert)) {
+                        while (rs.next()) {
+                            ins.setInt(1, rs.getInt(1));           // C_OrderLine_ID
+                            ins.setString(2, dstOrderId);          // C_Order_ID (remapped)
+                            ins.setObject(3, rs.getObject(2));     // Parent_OrderLine_ID
+                            ins.setInt(4, rs.getInt(3));           // Line
+                            ins.setString(5, rs.getString(4));     // family_ref
+                            ins.setString(6, rs.getString(5));     // host_type
+                            ins.setString(7, rs.getString(6));     // m_product_category_id
+                            ins.setObject(8, rs.getObject(7));     // bom_child_id
+                            ins.setDouble(9, rs.getDouble(8));     // dx
+                            ins.setDouble(10, rs.getDouble(9));    // dy
+                            ins.setDouble(11, rs.getDouble(10));   // dz
+                            ins.setObject(12, rs.getObject(11));   // aabb_width_mm
+                            ins.setObject(13, rs.getObject(12));   // aabb_depth_mm
+                            ins.setObject(14, rs.getObject(13));   // aabb_height_mm
+                            ins.setString(15, rs.getString(14));   // M_Product_ID
+                            ins.setString(16, rs.getString(15));   // Discipline
+                            ins.setObject(17, rs.getObject(16));   // AD_Org_ID
+                            ins.setInt(18, rs.getInt(17));         // Qty
+                            ins.setString(19, rs.getString(18));   // locator_ref
+                            ins.setObject(20, rs.getObject(19));   // is_reference_class
+                            ins.executeUpdate();
+                            copied++;
+                        }
+                    }
+                }
+                if (copied > 0) {
+                    System.out.printf("[C_ORDERLINE] Copied %d rows to output.db (order %s → %s)%n",
+                        copied, srcOrderId, dstOrderId);
+                }
+            } catch (Exception e) {
+                System.err.printf("[C_ORDERLINE] WARN: Failed to copy C_OrderLine: %s%n", e.getMessage());
+            }
         }
     }
 

@@ -57,6 +57,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String Table_Name                       = "m_bom_line";
     public static final String COLUMNNAME_bom_child_id          = "bom_child_id";
     public static final String COLUMNNAME_bom_id                = "bom_id";
+    public static final String COLUMNNAME_M_BOM_ID              = "M_BOM_ID";
     public static final String COLUMNNAME_child_product_id      = "child_product_id";
     public static final String COLUMNNAME_child_element_type    = "child_element_type";
     public static final String COLUMNNAME_child_name_pattern    = "child_name_pattern";
@@ -228,4 +229,9 @@ public class X_M_BOMLine extends BasePO {
                                    double parentHeightMm) {
         return validateParentRelative(parentWidthMm, parentDepthMm, parentHeightMm) != null;
     }
+
+    // ── Tier 2: INTEGER FK accessor (Phase C) ───────────────────────────────
+    /** M_BOM_ID integer FK — points to m_bom.M_BOM_ID (backfilled by IFCtoBOM). */
+    public int getMBomId()             { return get_ValueAsInt(COLUMNNAME_M_BOM_ID); }
+    public void setMBomId(int v)       { set_Value(COLUMNNAME_M_BOM_ID, v); }
 }

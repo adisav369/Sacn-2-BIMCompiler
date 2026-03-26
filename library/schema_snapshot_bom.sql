@@ -13,12 +13,18 @@ CREATE TABLE IF NOT EXISTS "m_attribute" (
 );
 CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE M_Product_Category (
-    M_Product_Category_ID  TEXT PRIMARY KEY,
+    M_Product_Category_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value             TEXT NOT NULL UNIQUE,  -- old TEXT PK (e.g., 'RE', 'LIVING')
     Name              TEXT NOT NULL,
     Description       TEXT,
-    IsActive          INTEGER DEFAULT 1
-, C_BPartner_ID TEXT REFERENCES C_BPartner(C_BPartner_ID), Value TEXT, M_Product_Category_ID_int INTEGER, aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0, doc_type TEXT DEFAULT NULL
-    CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')), doc_sub_type TEXT DEFAULT NULL);
+    IsActive          INTEGER DEFAULT 1,
+    C_BPartner_ID     TEXT REFERENCES C_BPartner(C_BPartner_ID),
+    aabb_width_mm     INTEGER DEFAULT 0,
+    aabb_depth_mm     INTEGER DEFAULT 0,
+    aabb_height_mm    INTEGER DEFAULT 0,
+    doc_type          TEXT DEFAULT NULL
+        CHECK(doc_type IS NULL OR doc_type IN ('Residential','Commercial','Industrial','RE','CO','IN')),
+    doc_sub_type      TEXT DEFAULT NULL);
 CREATE TABLE ad_building_storey (
     building_type  TEXT NOT NULL,     -- 'Ifc2x3_Duplex', 'Ifc4_SampleHouse', 'SJTII_Terminal'
     storey_name    TEXT NOT NULL,
@@ -1088,14 +1094,13 @@ CREATE TABLE M_AttributeSet (
     Description         TEXT
 );
 CREATE TABLE M_Product_Category (
-    M_Product_Category_ID TEXT PRIMARY KEY,
+    M_Product_Category_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value                 TEXT NOT NULL UNIQUE, -- old TEXT PK (e.g., 'RE', 'LIVING')
     Name                  TEXT NOT NULL,
     Description           TEXT,
     IFC_Class             TEXT,              -- IFC4 class name (leaf nodes only)
     SeqNo                 INTEGER DEFAULT 10,
-    IsActive              INTEGER DEFAULT 1,
-    Value                 TEXT,              -- iDempiere SearchKey (Tier 2)
-    M_Product_Category_ID_int INTEGER        -- INTEGER surrogate (Tier 2)
+    IsActive              INTEGER DEFAULT 1
 );
 CREATE TABLE _migration_log (
     migration_name TEXT PRIMARY KEY,
@@ -1142,7 +1147,8 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
 , doc_base_type TEXT DEFAULT NULL -- DEPRECATED: same value as m_product_category_id on BUILDING BOMs (§7)
 );
 CREATE TABLE IF NOT EXISTS "C_DocType" (
-    C_DocType_ID   TEXT PRIMARY KEY,
+    C_DocType_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value          TEXT NOT NULL UNIQUE,    -- old TEXT PK (e.g., 'RE_SH')
     Name           TEXT NOT NULL,
     DocBaseType    TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN','ST')),
     DocSubType     TEXT,
@@ -1161,9 +1167,7 @@ CREATE TABLE IF NOT EXISTS "C_DocType" (
     AabbDepthMm    REAL,
     AabbHeightMm   REAL,
     C_Campaign_ID  TEXT REFERENCES C_Campaign(C_Campaign_ID),
-    SalesRep_ID    INTEGER REFERENCES AD_User(AD_User_ID),
-    Value          TEXT,                   -- iDempiere SearchKey (Tier 2)
-    C_DocType_ID_int INTEGER               -- INTEGER surrogate (Tier 2)
+    SalesRep_ID    INTEGER REFERENCES AD_User(AD_User_ID)
 );
 CREATE INDEX idx_threshold_check
     ON ad_check_threshold(check_id, occupancy_group, storey_type)
@@ -1180,8 +1184,9 @@ CREATE INDEX idx_ad_space_type_alias_type
 -- BomDropper populates these from m_bom before compilation.
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS C_Order (
-    C_Order_ID        TEXT PRIMARY KEY,
-    C_DocType_ID      TEXT NOT NULL,
+    C_Order_ID        INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value             TEXT NOT NULL UNIQUE,  -- old TEXT PK (e.g., 'RE_SH')
+    C_DocType_ID      TEXT NOT NULL,         -- text FK (C_DocType.Value)
     Name              TEXT NOT NULL,
     DocStatus         TEXT NOT NULL DEFAULT 'DR'
                       CHECK(DocStatus IN ('DR','IP','AP','CO','VO')),
@@ -1192,13 +1197,11 @@ CREATE TABLE IF NOT EXISTS C_Order (
     OccupancyClass    TEXT,
     IsActive          INTEGER NOT NULL DEFAULT 1,
     created           TEXT NOT NULL DEFAULT (datetime('now')),
-    updated           TEXT NOT NULL DEFAULT (datetime('now')),
-    Value             TEXT,                -- iDempiere SearchKey (Tier 2)
-    C_Order_ID_int    INTEGER              -- INTEGER surrogate (Tier 2)
+    updated           TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE TABLE IF NOT EXISTS C_OrderLine (
     C_OrderLine_ID    INTEGER PRIMARY KEY AUTOINCREMENT,
-    C_Order_ID        TEXT NOT NULL REFERENCES C_Order(C_Order_ID),
+    C_Order_ID        TEXT NOT NULL REFERENCES C_Order(Value),
     Parent_OrderLine_ID INTEGER REFERENCES C_OrderLine(C_OrderLine_ID),
     Line              INTEGER NOT NULL DEFAULT 10,
     family_ref        TEXT NOT NULL,

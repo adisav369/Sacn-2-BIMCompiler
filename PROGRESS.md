@@ -43,6 +43,7 @@
 
 ## Session Log (recent first)
 
+**S91-tier2c** — Tier 2 Phase C: Java INTEGER PK migration. IFCtoBOM DDL nativized (M_Product_ID, M_BOM_ID, C_DocType_ID all INTEGER PK AUTOINCREMENT). Value/Name backfill in IFCtoBOM pipeline. C_OrderLine persisted in output.db (37 rows for SH — was 0). prepare_compile_db() ALTER TABLE workaround removed. ORM accessors added (X_M_BOM, X_M_BOMLine). BuildSpatialStructureVerb fixed (was using getInt on TEXT). All `_int` sidecar columns eliminated (C_DocType, C_Order, M_Product_Category → proper INTEGER PK in snapshot). `mvn compile -q` PASS + SH 7/7 PASS.
 **S90-tier2** — Tier 2: INTEGER PK on 5 core tables (Phase A+B, schema only). 8 migration SQL files. ERP.db + CL applied directly; BOM.db via prepare_compile_db ALTER TABLE (IFCtoBOM Java DDL is hardcoded). 3 pre-existing fixes: snapshot C_OrderLine stale (S78), singularity doc_base_type (S84), G6 co_empty_space stub (S74). `mvn compile -q` PASS + SH 7/7 PASS.
 **S89-trim1** — Wire TRIM WALLS TO ROOF: VerbRegistry (74→75), SH + DM .bimcobol, BIM_COBOL.md §17. Stale verb count sweep (64→75 across 13 files). 6 witnesses pass.
 **S88-study** — validation.db merge study. Name collision blocker (ad_val_rule in both DBs, incompatible schemas). Decision: DO NOT MERGE. Architecture is 5-DB (4+1), not 4.
