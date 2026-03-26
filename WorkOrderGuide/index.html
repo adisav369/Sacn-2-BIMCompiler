@@ -3810,91 +3810,91 @@ mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> 
 <td><strong>YAML</strong></td>
 <td>Human/AI author</td>
 <td><strong>YES</strong> — the only point of invention</td>
-<td><a href="../IFCtoBOM/src/main/resources/"><code>classify_*.yaml</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/resources/"><code>classify_*.yaml</code></a></td>
 </tr>
 <tr>
 <td>YAML parsing</td>
 <td>YAML → config records</td>
 <td>No</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java</code></a></td>
 </tr>
 <tr>
 <td>Extraction</td>
 <td>Reference DB → <code>I_Element_Extraction</code></td>
 <td>No — reads data</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.java</code></a></td>
 </tr>
 <tr>
 <td>Product link</td>
 <td><code>M_Product_ID = element_ref</code></td>
 <td>No — deterministic</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.java:150</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.java:150</code></a></td>
 </tr>
 <tr>
 <td>Geometry gap fill</td>
 <td>Import missing meshes from ref DB</td>
 <td>No — copies blobs</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.fillGeometryGaps()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.fillGeometryGaps()</code></a></td>
 </tr>
 <tr>
 <td>Product images</td>
 <td><code>M_Product_ID → geometry_hash</code></td>
 <td>No — join</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductImages()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductImages()</code></a></td>
 </tr>
 <tr>
 <td>Product registration</td>
 <td>M_Product in component_library.db</td>
 <td>No — from extraction</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductCatalog()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductCatalog()</code></a></td>
 </tr>
 <tr>
 <td>Scope spaces</td>
 <td>Element → room assignment</td>
 <td>No — centroid-in-AABB</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.java</code></a></td>
 </tr>
 <tr>
 <td>Composition</td>
 <td>Mirror partition → half-unit BOM</td>
 <td>No — axis-agnostic algo</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java"><code>CompositionBomBuilder.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java"><code>CompositionBomBuilder.java</code></a></td>
 </tr>
 <tr>
 <td>Structural BOM</td>
 <td>BUILDING + FLOOR STR BOMs</td>
 <td>No — from extraction</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.java</code></a></td>
 </tr>
 <tr>
 <td>Room BOMs</td>
 <td>Static children from YAML</td>
 <td>No — template refs</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a></td>
 </tr>
 <tr>
 <td>QA validation</td>
 <td>Pre-commit gate</td>
 <td>No — asserts</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java"><code>BomValidator.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java"><code>BomValidator.java</code></a></td>
 </tr>
 <tr>
 <td>Pipeline orchestrator</td>
 <td>Steps 1–11 in order</td>
 <td>No</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline.java</code></a></td>
 </tr>
 <tr>
 <td>Compilation</td>
 <td>BOM + reference DB → output</td>
 <td>No — resolves geometry</td>
-<td><a href="../DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java"><code>DAGCompiler/.../dsl/CompilationPipeline.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java"><code>DAGCompiler/.../dsl/CompilationPipeline.java</code></a></td>
 </tr>
 <tr>
 <td>Shell driver</td>
 <td>Runs pipeline + delta tests</td>
 <td>No</td>
-<td><a href="../scripts/run_RosettaStones.sh"><code>scripts/run_RosettaStones.sh</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>scripts/run_RosettaStones.sh</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -4157,7 +4157,7 @@ products and geometry links (skips if already done), runs IFCtoBOM to produce
 </tbody>
 </table>
 <h3 id="storeys-or-segments-required"><code>storeys</code> or <code>segments</code> (required)<a class="headerlink" href="#storeys-or-segments-required" title="Permanent link">&para;</a></h3>
-<p>Parsed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:94</code></a>. Consumed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.java:83</code></a> to create per-segment FLOOR STR BOMs.</p>
+<p>Parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:94</code></a>. Consumed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.java:83</code></a> to create per-segment FLOOR STR BOMs.</p>
 <p>Maps segment names (from IFC spatial structure) to classification metadata.
 For buildings, segments are storeys (<code>IfcBuildingStorey</code>). For infrastructure,
 segments are facility parts (<code>IfcRoadPart</code>, <code>IfcBridgePart</code>, <code>IfcRailwayPart</code>).
@@ -4202,7 +4202,7 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 - Every storey name in the reference DB must have a matching key here. Unmapped storeys are silently dropped (with a warning).
 - <strong>Each storey <code>code</code> must be unique within the building.</strong> The code becomes the BOM ID (<code>{prefix}_{code}_STR</code>). If two IFC storeys share the same code, the BOM builder creates duplicate BUILDING→FLOOR references and the compiler walks the floor BOM once per duplicate — producing extra elements (S57 finding: RA +31%, JE +29%, WA +220%, MO +2%). When <code>onboard_ifc.sh</code> generates a YAML with colliding codes, disambiguate them before committing (e.g. <code>L1</code> → <code>L1A</code>/<code>L1B</code>, or merge both storeys into one entry if they are architecturally the same floor).</p>
 <h3 id="floor_rooms-optional"><code>floor_rooms</code> (optional)<a class="headerlink" href="#floor_rooms-optional" title="Permanent link">&para;</a></h3>
-<p>Parsed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:110</code></a>. Consumed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.java</code></a> (scope assignment) and <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a> (room BOM creation).</p>
+<p>Parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:110</code></a>. Consumed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.java</code></a> (scope assignment) and <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a> (room BOM creation).</p>
 <p>Defines room/scope space structure per storey.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">floor_rooms</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">Ground Floor</span><span class="p">:</span>
@@ -4248,7 +4248,7 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 </table>
 <p>Elements whose centroid falls inside <code>origin_m + aabb_mm</code> are assigned to that scope space.</p>
 <h3 id="static_children-optional"><code>static_children</code> (optional)<a class="headerlink" href="#static_children-optional" title="Permanent link">&para;</a></h3>
-<p>Parsed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:151</code></a>. Consumed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a> which inserts MAKE children into the BUILDING BOM.</p>
+<p>Parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:151</code></a>. Consumed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a> which inserts MAKE children into the BUILDING BOM.</p>
 <p>Fixed MAKE children added to the BUILDING BOM (slabs, roof, MEP trunk, pair container).</p>
 <div class="highlight"><pre><span></span><code><span class="nt">static_children</span><span class="p">:</span>
 <span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> child_product_id</span><span class="p">:</span><span class="w"> </span><span class="nv">FLOOR_SLAB_GF</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">GROUND_SLAB</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="nt"> dz</span><span class="p">:</span><span class="w"> </span><span class="nv">0.0</span><span class="w"> </span><span class="p p-Indicator">}</span>
@@ -4280,7 +4280,7 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 </tbody>
 </table>
 <h3 id="composition-optional"><code>composition</code> (optional)<a class="headerlink" href="#composition-optional" title="Permanent link">&para;</a></h3>
-<p>Parsed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:165</code></a>. Consumed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java"><code>CompositionBomBuilder.java</code></a> which runs the three-tier mirror partition algorithm.</p>
+<p>Parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:165</code></a>. Consumed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java"><code>CompositionBomBuilder.java</code></a> which runs the three-tier mirror partition algorithm.</p>
 <p>Defines how a building is composed from repeated units.</p>
 <div class="highlight"><pre><span></span><code><span class="nt">composition</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MIRRORED_PAIR</span>
@@ -4346,7 +4346,7 @@ sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span><span class
 <p>Zero code changes. See <a href="../DISC_VALIDATION_DB_SRS/"><code>DISC_VALIDATION_DB_SRS.md</code></a> §5.2 for the full schema.</p>
 <h3 id="step-1-extract-geometry-from-ifc-python-one-time">Step 1 — Extract geometry from IFC (Python, one-time)<a class="headerlink" href="#step-1-extract-geometry-from-ifc-python-one-time" title="Permanent link">&para;</a></h3>
 <p>Use IfcOpenShell to extract element metadata + geometry into a reference DB.
-See <a href="../tools/extract.py"><code>tools/extract.py</code></a> for the extraction script.</p>
+See <a href="https://github.com/red1oon/BIMCompiler/blob/master/tools/extract.py"><code>tools/extract.py</code></a> for the extraction script.</p>
 <div class="highlight"><pre><span></span><code>python3<span class="w"> </span>tools/extract.py<span class="w"> </span>--to<span class="w"> </span>reference<span class="w"> </span>source.ifc<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-o<span class="w"> </span>DAGCompiler/lib/input/MyBuilding_extracted.db
 </code></pre></div>
@@ -4356,7 +4356,7 @@ See <a href="../tools/extract.py"><code>tools/extract.py</code></a> for the extr
 - <code>element_instances</code> — geometry hashes per element
 - <code>base_geometries</code> — mesh blobs (vertices + faces)</p>
 <p><strong>What happens next (automatic, inside the Java pipeline):</strong></p>
-<p>When you run the pipeline (Step 5), <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.java</code></a> reads this reference DB and populates <code>library/component_library.db</code> with:</p>
+<p>When you run the pipeline (Step 5), <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.java</code></a> reads this reference DB and populates <code>library/component_library.db</code> with:</p>
 <table>
 <thead>
 <tr>
@@ -4396,7 +4396,7 @@ See <a href="../tools/extract.py"><code>tools/extract.py</code></a> for the extr
 <p>component_library.db is the <strong>master catalog</strong>. Products created for one building are
 automatically reused by subsequent buildings if the same product_id appears.</p>
 <p>Schema docs: <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a> §Reference DB.
-ERD: <a href="bim_architecture_viz.html"><code>bim_architecture_viz.html</code></a>.</p>
+ERD: <a href="https://github.com/red1oon/BIMCompiler/blob/master/database/bim_architecture_viz.html"><code>bim_architecture_viz.html</code></a>.</p>
 <h3 id="step-2-inspect-the-extracted-data">Step 2 — Inspect the extracted data<a class="headerlink" href="#step-2-inspect-the-extracted-data" title="Permanent link">&para;</a></h3>
 <p>Query the reference DB to understand storey names, element counts, and IFC classes:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># List storeys and element counts</span>
@@ -4416,21 +4416,21 @@ For mirror buildings, identify the party wall position — see <a href="../Duple
 <h3 id="step-3-write-the-classification-yaml-only-invention-step">Step 3 — Write the classification YAML (only invention step)<a class="headerlink" href="#step-3-write-the-classification-yaml-only-invention-step" title="Permanent link">&para;</a></h3>
 <p>Create <code>IFCtoBOM/src/main/resources/classify_{prefix}.yaml</code>.
 Copy from an existing YAML and adapt:
-- <a href="../IFCtoBOM/src/main/resources/classify_sh.yaml"><code>classify_sh.yaml</code></a> — simple building (no composition)
-- <a href="../IFCtoBOM/src/main/resources/classify_dx.yaml"><code>classify_dx.yaml</code></a> — mirrored pair (duplex)</p>
+- <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/resources/classify_sh.yaml"><code>classify_sh.yaml</code></a> — simple building (no composition)
+- <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/resources/classify_dx.yaml"><code>classify_dx.yaml</code></a> — mirrored pair (duplex)</p>
 <p>Key fields to set:
 - <code>building_type</code> — must match the reference DB filename (without <code>_extracted.db</code>)
 - <code>prefix</code> — short code (2–3 chars), used for <code>{prefix}_BOM.db</code>
 - <code>storeys</code> — one entry per storey name from step 2
 - <code>composition</code> — add if the building has mirrored/repeated units</p>
-<p>YAML is parsed by <a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java</code></a>.
+<p>YAML is parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java</code></a>.
 See <a href="#schema-v1">Schema (v1)</a> above for field reference.</p>
 <h3 id="step-4-write-the-bim-cobol-dsl-script">Step 4 — Write the BIM COBOL DSL script<a class="headerlink" href="#step-4-write-the-bim-cobol-dsl-script" title="Permanent link">&para;</a></h3>
 <p>Create <code>IFCtoBOM/src/main/resources/dsl_{prefix}.bim</code>.
 This script tells the DAGCompiler how to walk the BOM and emit elements.
 Copy from an existing DSL:
-- <a href="../IFCtoBOM/src/main/resources/dsl_sh.bim"><code>dsl_sh.bim</code></a> — simple building
-- <a href="../IFCtoBOM/src/main/resources/dsl_dx.bim"><code>dsl_dx.bim</code></a> — duplex with mirror</p>
+- <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/resources/dsl_sh.bim"><code>dsl_sh.bim</code></a> — simple building
+- <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/resources/dsl_dx.bim"><code>dsl_dx.bim</code></a> — duplex with mirror</p>
 <p>Reference the DSL filename in the YAML: <code>dsl_file: dsl_{prefix}.bim</code>.
 Verb reference: <a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a>.
 Compiler internals: <a href="../SourceCodeGuide/"><code>SourceCodeGuide.md</code></a>, <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a>.</p>
@@ -4438,9 +4438,9 @@ Compiler internals: <a href="../SourceCodeGuide/"><code>SourceCodeGuide.md</code
 <div class="highlight"><pre><span></span><code>rm<span class="w"> </span>-f<span class="w"> </span>library/<span class="o">{</span>PREFIX<span class="o">}</span>_BOM.db
 ./scripts/run_RosettaStones.sh<span class="w"> </span>classify_<span class="o">{</span>prefix<span class="o">}</span>.yaml
 </code></pre></div>
-<p>The shell script (<a href="../scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a>) calls
-<a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMMain.java"><code>IFCtoBOMMain.java</code></a> which runs
-<a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline.java</code></a> —
+<p>The shell script (<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a>) calls
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMMain.java"><code>IFCtoBOMMain.java</code></a> which runs
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline.java</code></a> —
 the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db</code>:</p>
 <table>
 <thead>
@@ -4454,25 +4454,25 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 <tbody>
 <tr>
 <td>1. Load YAML</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.load()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.load()</code></a></td>
 <td>—</td>
 <td>Parses the classification YAML into config records</td>
 </tr>
 <tr>
 <td>2. Create schema</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline:234</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline:234</code></a></td>
 <td><code>*_BOM.db</code></td>
 <td>Creates <code>m_bom</code>, <code>m_bom_line</code>, <code>ad_sysconfig</code> tables (recipe + integrity hash)</td>
 </tr>
 <tr>
 <td>3. Extract</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.populate()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java"><code>ExtractionPopulator.populate()</code></a></td>
 <td><code>component_library.db</code></td>
 <td>Reference DB → <code>I_Element_Extraction</code>, sets <code>M_Product_ID = element_ref</code>, imports missing geometry blobs</td>
 </tr>
 <tr>
 <td>4. Read extraction</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java"><code>ExtractionReader.readByStorey()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java"><code>ExtractionReader.readByStorey()</code></a></td>
 <td>—</td>
 <td>Reads <code>I_Element_Extraction</code> grouped by storey. <strong>FAIL if NULL M_Product_ID</strong></td>
 </tr>
@@ -4484,13 +4484,13 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 </tr>
 <tr>
 <td>5a. Product catalog</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductCatalog()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductCatalog()</code></a></td>
 <td><code>component_library.db</code></td>
 <td>Creates M_Product in persistent catalog. <strong>INSERT OR IGNORE = reuse across buildings</strong></td>
 </tr>
 <tr>
 <td>5b. Product images</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductImages()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java"><code>ProductRegistrar.ensureProductImages()</code></a></td>
 <td><code>component_library.db</code></td>
 <td>Joins <code>M_Product × I_Geometry_Map</code> (on product_id = element_ref, filtered by building_type) → <code>M_Product_Image</code></td>
 </tr>
@@ -4508,37 +4508,37 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 </tr>
 <tr>
 <td>6. Scope spaces</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.build()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.build()</code></a></td>
 <td><code>*_BOM.db</code></td>
 <td>Assigns elements to rooms by centroid-in-AABB → SET BOMs</td>
 </tr>
 <tr>
 <td>7. Composition</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java"><code>CompositionBomBuilder.build()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java"><code>CompositionBomBuilder.build()</code></a></td>
 <td><code>*_BOM.db</code></td>
 <td>Mirror partition → half-unit LEAF lines + pair container (2 children)</td>
 </tr>
 <tr>
 <td>8. Structural</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.build()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.build()</code></a></td>
 <td><code>*_BOM.db</code></td>
 <td>BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children</td>
 </tr>
 <tr>
 <td>9. Room BOMs</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.build()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.build()</code></a></td>
 <td><code>*_BOM.db</code></td>
 <td>Static children from YAML + room template LEAF refs</td>
 </tr>
 <tr>
 <td>10. QA gate</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java"><code>BomValidator.validateAndReport()</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java"><code>BomValidator.validateAndReport()</code></a></td>
 <td>—</td>
 <td>Pre-commit validation: FAIL → rollback, broken data never reaches disk</td>
 </tr>
 <tr>
 <td>11. Commit</td>
-<td><a href="../IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java"><code>IFCtoBOMPipeline</code></a></td>
 <td><code>*_BOM.db</code></td>
 <td>Integrity hash + commit transaction</td>
 </tr>
@@ -4572,37 +4572,37 @@ Schema reference: <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a>.</p>
 <tbody>
 <tr>
 <td>Prepare compile DB</td>
-<td><a href="../scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh:116</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh:116</code></a></td>
 <td>Copies <code>*_BOM.db</code> → temp <code>_XX_compile.db</code></td>
 </tr>
 <tr>
 <td>Compile</td>
-<td><a href="../DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java"><code>CompilationPipeline.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java"><code>CompilationPipeline.java</code></a></td>
 <td>C_OrderLine → BOM explosion → elements</td>
 </tr>
 <tr>
 <td>Contracts</td>
-<td><a href="../DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java"><code>RosettaStoneGateTest.java</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java"><code>RosettaStoneGateTest.java</code></a></td>
 <td>G1-G6 gate tests</td>
 </tr>
 <tr>
 <td>Rule 8</td>
-<td><a href="../scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
 <td>All <code>M_BOM_Line</code> offsets within parent AABB envelope</td>
 </tr>
 <tr>
 <td>Clash check</td>
-<td><a href="../scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
 <td>0 furniture AABB overlaps</td>
 </tr>
 <tr>
 <td>C8 Diversity</td>
-<td><a href="../scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
 <td>Per-instance mesh uniqueness preserved</td>
 </tr>
 <tr>
 <td>C9 Axis</td>
-<td><a href="../scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
 <td>W/D/H match per axis vs reference</td>
 </tr>
 </tbody>
@@ -5104,11 +5104,11 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 </tr>
 <tr>
 <td>ERD (interactive HTML)</td>
-<td><a href="bim_architecture_viz.html"><code>bim_architecture_viz.html</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/database/bim_architecture_viz.html"><code>bim_architecture_viz.html</code></a></td>
 </tr>
 <tr>
 <td>Terminal ERD</td>
-<td><a href="terminal_erd.html"><code>terminal_erd.html</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/database/terminal_erd.html"><code>terminal_erd.html</code></a></td>
 </tr>
 </tbody>
 </table>
@@ -5130,7 +5130,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 <td><a href="../SourceCodeGuide/"><code>SourceCodeGuide.md</code></a></td>
 </tr>
 <tr>
-<td>BIM COBOL verbs (64 verbs)</td>
+<td>BIM COBOL verbs (75 verbs)</td>
 <td><a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a></td>
 </tr>
 <tr>
@@ -5158,7 +5158,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 </tr>
 <tr>
 <td>Current state, gate status</td>
-<td><a href="../PROGRESS.md"><code>../PROGRESS.md</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md"><code>../PROGRESS.md</code></a></td>
 </tr>
 <tr>
 <td>Roadmap (phases 0–H)</td>

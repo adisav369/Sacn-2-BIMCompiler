@@ -2993,7 +2993,7 @@
 <h2 id="why-this-exists">Why This Exists<a class="headerlink" href="#why-this-exists" title="Permanent link">&para;</a></h2>
 <p>AI is blind to spatial geometry. It can parse text, generate code, and reason about logic — but it cannot see that a wall must sit on a slab, that a door must be inside a wall, or that two columns must not occupy the same space. No amount of prompt engineering fixes this: spatial correctness is a mathematical problem, not a language problem. The Rosetta Stone strategy exists to solve it deterministically — real buildings become ground truth, and every compiled output is proven against that truth with pure arithmetic. No heuristics. No tolerance tuning. No AI in the proof gates — those are pure arithmetic. If the coordinates match, the grammar is certified.</p>
 <h2 id="what-this-is">What This Is<a class="headerlink" href="#what-this-is" title="Permanent link">&para;</a></h2>
-<p>Three real IFC buildings, decomposed into reference DBs. The compiler
+<p>35 real buildings (34 extracted + 1 generative), decomposed into reference DBs. The compiler
 reads a BOM describing the same building and produces output. The test:
 does every compiled element land at the <strong>same position</strong> as the reference?</p>
 <p>Not the same dimensions. The same COORDINATES. Position in 3D space.

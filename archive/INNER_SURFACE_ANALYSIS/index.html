@@ -2710,7 +2710,7 @@
 <blockquote>
 <p><strong>Origin:</strong> Session 42 shadow analysis (CP-3 session observing main session's IN G3 drift investigation).
 <strong>Status:</strong> Analysis confirmed and implemented in session 43. Core findings now in
-<a href="BOMBasedCompilation.md">BBC.md</a> §4.2.1 (qualifier table) and §4.2.2 (PHANTOM generation rule).</p>
+<a href="../../BOMBasedCompilation/">BBC.md</a> §4.2.1 (qualifier table) and §4.2.2 (PHANTOM generation rule).</p>
 </blockquote>
 <hr />
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
@@ -2772,7 +2772,7 @@ envelope concepts:</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Implemented:</strong> <code>m_bom.aabb_qualifier TEXT DEFAULT 'OUTER'</code> — see <a href="BOMBasedCompilation.md">BBC.md</a> §4.2.1.</p>
+<p><strong>Implemented:</strong> <code>m_bom.aabb_qualifier TEXT DEFAULT 'OUTER'</code> — see <a href="../../BOMBasedCompilation/">BBC.md</a> §4.2.1.</p>
 <p><strong>Design implications:</strong>
 - Wireframe bounding boxes (WF-BB §26) render INNER for rooms, OUTER for elements
 - PHANTOM lines represent remaining INNER volume after OUTER children subtracted
@@ -2800,7 +2800,7 @@ envelope concepts:</p>
 Centroids are symmetric — frame projections cancel.</p>
 <p><strong>Long-term fix (R21 TODO):</strong> Extract <code>host_element_ref</code> from <code>IfcRelVoidsElement</code>.
 With the host wall known, the inner surface position is a column, not computed from AABB.
-See <a href="../LAST_MILE_PROBLEM/">LAST_MILE_PROBLEM.md</a> R21.</p>
+See <a href="../../LAST_MILE_PROBLEM/">LAST_MILE_PROBLEM.md</a> R21.</p>
 <hr />
 <h2 id="phantom-spatial-index-bbcmd-42">PHANTOM Spatial Index (BBC.md §4.2)<a class="headerlink" href="#phantom-spatial-index-bbcmd-42" title="Permanent link">&para;</a></h2>
 <p>PHANTOMs are the SAP empty storage bin principle applied to BOM spatial management:</p>
@@ -2858,13 +2858,13 @@ Click-to-Place (G-13) queries: <code>SELECT * FROM m_bom_line WHERE component_ty
 <hr />
 <h2 id="spec-references">Spec References<a class="headerlink" href="#spec-references" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="BOMBasedCompilation.md">BBC.md</a> §4.2.1 — AABB qualifier table (session 43)</li>
-<li><a href="BOMBasedCompilation.md">BBC.md</a> §4.2.2 — PHANTOM generation rule (session 43)</li>
-<li><a href="BOMBasedCompilation.md">BBC.md</a> §4 — tack convention (parent-relative offsets)</li>
-<li><a href="../LAST_MILE_PROBLEM/">LAST_MILE_PROBLEM.md</a> R21 — <code>host_element_ref</code> extraction</li>
-<li><a href="ACTION_ROADMAP.md">ACTION_ROADMAP.md</a> AABB-Q — known debt entry</li>
-<li><a href="DocValidate.md">DocValidate.md</a> §15.6 — Schema-Not-Geometry principle</li>
-<li><a href="ACInstituteAnalysis.md">ACInstituteAnalysis.md</a> — IN building analysis (699 elements)</li>
+<li><a href="../../BOMBasedCompilation/">BBC.md</a> §4.2.1 — AABB qualifier table (session 43)</li>
+<li><a href="../../BOMBasedCompilation/">BBC.md</a> §4.2.2 — PHANTOM generation rule (session 43)</li>
+<li><a href="../../BOMBasedCompilation/">BBC.md</a> §4 — tack convention (parent-relative offsets)</li>
+<li><a href="../../LAST_MILE_PROBLEM/">LAST_MILE_PROBLEM.md</a> R21 — <code>host_element_ref</code> extraction</li>
+<li><a href="../../ACTION_ROADMAP/">ACTION_ROADMAP.md</a> AABB-Q — known debt entry</li>
+<li><a href="../../DocValidate/">DocValidate.md</a> §15.6 — Schema-Not-Geometry principle</li>
+<li><a href="../../ACInstituteAnalysis/">ACInstituteAnalysis.md</a> — IN building analysis (699 elements)</li>
 </ul>
 
 

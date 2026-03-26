@@ -4514,7 +4514,7 @@
 </div>
 
 <p><strong>Version:</strong> 1.1 (2026-03-18)
-<strong>Depends on:</strong> <a href="../MANIFESTO/">MANIFESTO.md</a>, <a href="../BIM_Designer/">BIM_Designer.md</a> §4/§9, <a href="DISC_BOM_DESIGN.md">DISC_BOM_DESIGN.md</a></p>
+<strong>Depends on:</strong> <a href="../MANIFESTO/">MANIFESTO.md</a>, <a href="../BIM_Designer/">BIM_Designer.md</a> §4/§9, <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a></p>
 <p><em>iDempiere's <code>IDocActionInterceptor</code> / <code>ModelValidator</code> architecture applied to
 BIM placement compliance, clash detection, and building code enforcement.</em></p>
 <blockquote>
@@ -5140,7 +5140,7 @@ The validation engine selects the matching rule set. When codes update
 existing buildings validated against their original code remain valid.</p>
 <hr />
 <h2 id="6-relationship-to-discipline-bom-design">6. Relationship to Discipline BOM Design<a class="headerlink" href="#6-relationship-to-discipline-bom-design" title="Permanent link">&para;</a></h2>
-<p>This paper complements <code>DISC_BOM_DESIGN.md</code>:</p>
+<p>This paper complements <code>DISC_VALIDATION_DB_SRS.md</code>:</p>
 <table>
 <thead>
 <tr>
@@ -5152,7 +5152,7 @@ existing buildings validated against their original code remain valid.</p>
 <tbody>
 <tr>
 <td>BOM organization</td>
-<td>DISC_BOM_DESIGN.md</td>
+<td>DISC_VALIDATION_DB_SRS.md</td>
 <td>How disciplines structure the BOM tree</td>
 </tr>
 <tr>
@@ -5162,7 +5162,7 @@ existing buildings validated against their original code remain valid.</p>
 </tr>
 </tbody>
 </table>
-<p>The discipline BOM structure (§2 of DISC_BOM_DESIGN.md) enables validation:
+<p>The discipline BOM structure (§2 of DISC_VALIDATION_DB_SRS.md) enables validation:
 clash detection is inherently cross-discipline — you need discipline BOMs to
 know which elements belong to which trade. Without discipline separation, clash
 detection is a flat scan of all elements against all elements (O(n²)). With
@@ -7274,7 +7274,7 @@ instead of writing ad-hoc SQL. When R21-R24 extraction columns land, the
 predicate upgrades internally (AABB fallback → FK join) without changing callers.</p>
 <hr />
 <p><em>References:
-<a href="DISC_BOM_DESIGN.md">DISC_BOM_DESIGN.md</a> (discipline BOM structure) |
+<a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a> (discipline BOM structure) |
 <a href="../BOMBasedCompilation/">BBC.md</a> §1 (C_Order model) |
 <a href="../BIM_Designer/">BIM_Designer.md</a> §4 (compliance as compilation constraint), §9 (container rules), §11 (BonsaiBIMDesigner) |
 <a href="../TestArchitecture/">TestArchitecture.md</a> (ProveStage gates) |

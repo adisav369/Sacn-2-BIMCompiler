@@ -4539,7 +4539,7 @@ ADD LINE TO SY_MY_ROOM CHILD sofa_001 ROLE FURNITURE SEQ 10 DX 0.5 DY 0.3
 FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </code></pre></div>
 <p>Core interfaces: <code>Verb&lt;T&gt;</code> (execute → <code>VerbResult&lt;T&gt;</code>), <code>VerbContext</code> (3 connections: bom/component/output), <code>VerbRegistry</code> (longest-prefix dispatch).</p>
-<p>5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 64 verbs, 196 witnesses.</p>
+<p>5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 75 verbs, 202 witnesses.</p>
 <blockquote>
 <p><strong>Full verb catalog, grammar, witnesses:</strong> <a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a> §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)</p>
 </blockquote>
@@ -5007,7 +5007,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </tr>
 <tr>
 <td><code>VerbRegistry</code></td>
-<td>Longest-prefix dispatch (64 verbs)</td>
+<td>Longest-prefix dispatch (75 verbs)</td>
 </tr>
 <tr>
 <td><code>VerbContext</code></td>
@@ -5248,7 +5248,7 @@ VERIFIED ✓ (or drift detected ✗)
 </tr>
 <tr>
 <td>Browse the interactive architecture diagram</td>
-<td><a href="bim_architecture_viz.html"><code>bim_architecture_viz.html</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/database/bim_architecture_viz.html"><code>bim_architecture_viz.html</code></a></td>
 </tr>
 <tr>
 <td>Read the Rosetta Stone strategy</td>

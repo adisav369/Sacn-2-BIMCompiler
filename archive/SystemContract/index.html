@@ -3062,9 +3062,9 @@
 this document says which spec answers which question, for whom, and when.
 Like iDempiere's Application Dictionary governs modules, this contract
 governs the 52 docs in <code>docs/</code>.</p>
-<p><strong>Foundation:</strong> <a href="BOMBasedCompilation.md">BBC</a> · <a href="./">SystemContract</a> ·
-<a href="TestArchitecture.md">TestArchitecture</a> · <a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint</a> ·
-<a href="DATA_MODEL.md">DATA_MODEL</a> · <a href="SourceCodeGuide.md">SourceCodeGuide</a> · <a href="INDEX.md">INDEX</a></p>
+<p><strong>Foundation:</strong> <a href="../../BOMBasedCompilation/">BBC</a> · <a href="./">SystemContract</a> ·
+<a href="../../TestArchitecture/">TestArchitecture</a> · <a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint</a> ·
+<a href="../../DATA_MODEL/">DATA_MODEL</a> · <a href="../../SourceCodeGuide/">SourceCodeGuide</a> · <a href="../../INDEX/">INDEX</a></p>
 </blockquote>
 <hr />
 <h2 id="1-the-recursive-principle">1. The Recursive Principle<a class="headerlink" href="#1-the-recursive-principle" title="Permanent link">&para;</a></h2>
@@ -3085,8 +3085,8 @@ WHERE: Plot (ABL)       WHERE: M_BOM_Line dx/dy/dz WHERE: tack offset (dx/dy/dz)
 The compiler, the gates, the DocAction lifecycle, the three-concern separation
 — all work unchanged at every scale. New scales are configuration, not code.</p>
 <p><strong>Spec authority:</strong> §4 below (three-concern matrix),
-<a href="BOMBasedCompilation.md">BBC.md §3.3-3.5</a> (BOM Drop, Selection Cascade),
-<a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §2</a> (C_Project site-as-BOM).</p>
+<a href="../../BOMBasedCompilation/">BBC.md §3.3-3.5</a> (BOM Drop, Selection Cascade),
+<a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §2</a> (C_Project site-as-BOM).</p>
 <hr />
 <h2 id="2-entity-registry">2. Entity Registry<a class="headerlink" href="#2-entity-registry" title="Permanent link">&para;</a></h2>
 <p>Every table in the system serves one of five roles. No table serves two roles.</p>
@@ -3106,47 +3106,47 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>ad_fp_trigger</code></td>
 <td>Fire protection trigger rules</td>
-<td><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §13</a></td>
+<td><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §13</a></td>
 </tr>
 <tr>
 <td><code>ad_fp_coverage</code></td>
 <td>NFPA 13 spacing/coverage</td>
-<td><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §13</a></td>
+<td><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §13</a></td>
 </tr>
 <tr>
 <td><code>ad_space_type_mep_bom</code></td>
 <td>Per-room MEP qty/placement</td>
-<td><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §13</a></td>
+<td><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §13</a></td>
 </tr>
 <tr>
 <td><code>ad_element_mep</code></td>
 <td>MEP element definitions</td>
-<td><a href="DISC_VALIDATE_SRS.md">DISC_VALIDATE_SRS.md</a></td>
+<td><a href="../../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a></td>
 </tr>
 <tr>
 <td><code>ad_bom_rule</code></td>
 <td>BOM quantity calculation</td>
-<td><a href="DISC_VALIDATE_SRS.md">DISC_VALIDATE_SRS.md</a></td>
+<td><a href="../../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a></td>
 </tr>
 <tr>
 <td><code>ad_building_code</code></td>
 <td>Code registry (NFPA, UBBL)</td>
-<td><a href="DocValidate.md">DocValidate.md</a></td>
+<td><a href="../../DocValidate/">DocValidate.md</a></td>
 </tr>
 <tr>
 <td><code>ad_code_requirement</code></td>
 <td>Code rules per element × space</td>
-<td><a href="DocValidate.md">DocValidate.md</a></td>
+<td><a href="../../DocValidate/">DocValidate.md</a></td>
 </tr>
 <tr>
 <td><code>ad_mep_profile</code></td>
 <td>Budget/Standard/Premium multiplier</td>
-<td><a href="DISC_VALIDATE_SRS.md">DISC_VALIDATE_SRS.md</a></td>
+<td><a href="../../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a></td>
 </tr>
 <tr>
 <td><code>AD_Val_Rule</code></td>
 <td>Validation rules</td>
-<td><a href="DocValidate.md">DocValidate.md</a></td>
+<td><a href="../../DocValidate/">DocValidate.md</a></td>
 </tr>
 <tr>
 <td><code>C_DocType</code></td>
@@ -3156,7 +3156,7 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>M_Product_Category</code></td>
 <td>Product taxonomy (46 rows)</td>
-<td><a href="BOMBasedCompilation.md">BBC.md §1</a></td>
+<td><a href="../../BOMBasedCompilation/">BBC.md §1</a></td>
 </tr>
 </tbody>
 </table>
@@ -3176,52 +3176,52 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>M_Product</code></td>
 <td>Product catalog (2475 products)</td>
-<td><a href="BOMBasedCompilation.md">BBC.md §1</a></td>
+<td><a href="../../BOMBasedCompilation/">BBC.md §1</a></td>
 </tr>
 <tr>
 <td><code>m_bom</code></td>
 <td>Assembly recipe (BUILDING/FLOOR/ROOM)</td>
-<td><a href="BOMBasedCompilation.md">BBC.md §3</a></td>
+<td><a href="../../BOMBasedCompilation/">BBC.md §3</a></td>
 </tr>
 <tr>
 <td><code>m_bom_line</code></td>
 <td>Child placement (dx/dy/dz tack offsets)</td>
-<td><a href="BOMBasedCompilation.md">BBC.md §4</a></td>
+<td><a href="../../BOMBasedCompilation/">BBC.md §4</a></td>
 </tr>
 <tr>
 <td><code>m_bom_line_ma</code></td>
 <td>Per-instance identity (GUID threading)</td>
-<td><a href="../LAST_MILE_PROBLEM/">LAST_MILE_PROBLEM.md §Gap 5</a></td>
+<td><a href="../../LAST_MILE_PROBLEM/">LAST_MILE_PROBLEM.md §Gap 5</a></td>
 </tr>
 <tr>
 <td><code>m_attribute</code></td>
 <td>Leaf attributes (ports, clearances)</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md</a></td>
 </tr>
 <tr>
 <td><code>M_AttributeSet</code></td>
 <td>Attribute templates</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md</a></td>
 </tr>
 <tr>
 <td><code>component_definitions</code></td>
 <td>Component metadata + bounds</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md §1</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md §1</a></td>
 </tr>
 <tr>
 <td><code>component_geometries</code></td>
 <td>Vertex/face BLOBs (deduplicated)</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md §1</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md §1</a></td>
 </tr>
 <tr>
 <td><code>placement_rules</code></td>
 <td>Host-relative placement</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md §1</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md §1</a></td>
 </tr>
 <tr>
 <td><code>surface_styles</code></td>
 <td>Material RGBA per product</td>
-<td><a href="TheRosettaStoneStrategy.md">TheRosettaStoneStrategy.md</a></td>
+<td><a href="../../TheRosettaStoneStrategy/">TheRosettaStoneStrategy.md</a></td>
 </tr>
 </tbody>
 </table>
@@ -3251,12 +3251,12 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>C_Project</code></td>
 <td>Site development (groups C_Orders)</td>
-<td><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §2</a> — <strong>NOT YET IMPLEMENTED</strong></td>
+<td><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §2</a> — <strong>NOT YET IMPLEMENTED</strong></td>
 </tr>
 <tr>
 <td><code>C_ProjectLine</code></td>
 <td>Plot allocation (one per plot/group)</td>
-<td><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §2</a> — <strong>NOT YET IMPLEMENTED</strong></td>
+<td><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §2</a> — <strong>NOT YET IMPLEMENTED</strong></td>
 </tr>
 <tr>
 <td><code>M_AttributeSetInstance</code></td>
@@ -3266,12 +3266,12 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>elements_meta</code></td>
 <td>Compiled elements (world xyz)</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md §4</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md §4</a></td>
 </tr>
 <tr>
 <td><code>element_instances</code></td>
 <td>Geometry instances (transform)</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md §4</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md §4</a></td>
 </tr>
 </tbody>
 </table>
@@ -3291,17 +3291,17 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>PP_Order_Node</code></td>
 <td>Verb execution audit</td>
-<td><a href="BIM_COBOL.md">BIM_COBOL.md</a></td>
+<td><a href="../../BIM_COBOL/">BIM_COBOL.md</a></td>
 </tr>
 <tr>
 <td><code>PP_Order_NodeProduct</code></td>
 <td>Verb parameters</td>
-<td><a href="BIM_COBOL.md">BIM_COBOL.md</a></td>
+<td><a href="../../BIM_COBOL/">BIM_COBOL.md</a></td>
 </tr>
 <tr>
 <td><code>AD_ChangeLog</code></td>
 <td>Full audit trail (who/what/when)</td>
-<td><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §10</a></td>
+<td><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §10</a></td>
 </tr>
 </tbody>
 </table>
@@ -3321,12 +3321,12 @@ The compiler, the gates, the DocAction lifecycle, the three-concern separation
 <tr>
 <td><code>m_bom_line</code> (dx/dy/dz)</td>
 <td>Spatial relationships within BOM</td>
-<td><a href="MANIFESTO.md">MANIFESTO.md §Three Concerns</a></td>
+<td><a href="../../MANIFESTO/">MANIFESTO.md §Three Concerns</a></td>
 </tr>
 <tr>
 <td><code>elements_rtree</code></td>
 <td>R-tree spatial index</td>
-<td><a href="DATA_MODEL.md">DATA_MODEL.md</a></td>
+<td><a href="../../DATA_MODEL/">DATA_MODEL.md</a></td>
 </tr>
 </tbody>
 </table>
@@ -3365,9 +3365,9 @@ document transition. Not an API call. A document transition.</p>
                                                               │
                     └─────────────────────────────────────────┘
 </code></pre></div>
-<p><strong>Spec authority:</strong> <a href="DocAction_SRS.md">DocAction_SRS.md</a> (lifecycle),
-<a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §1.1</a> (four mutations),
-<a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md §14.3</a> (implementation sessions).</p>
+<p><strong>Spec authority:</strong> <a href="../../DocAction_SRS/">DocAction_SRS.md</a> (lifecycle),
+<a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §1.1</a> (four mutations),
+<a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §14.3</a> (implementation sessions).</p>
 <h3 id="32-mutation-registry">3.2 Mutation Registry<a class="headerlink" href="#32-mutation-registry" title="Permanent link">&para;</a></h3>
 <p>Every mutation has: a trigger, a validation, an effect, and an audit record.</p>
 <table>
@@ -3519,19 +3519,19 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>WHAT</strong></td>
 <td>C_ProjectLine (which buildings, qty)</td>
 <td>NOT IMPL</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §2</a></td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §2</a></td>
 </tr>
 <tr>
 <td><strong>HOW</strong></td>
 <td>SitePlacementStrategy (put-away rules)</td>
 <td>NOT IMPL</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §2.2</a> (this session)</td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §2.2</a> (this session)</td>
 </tr>
 <tr>
 <td><strong>WHERE</strong></td>
 <td>Plot locator (ABL: Street/Lot/Terrace)</td>
 <td>NOT IMPL</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §2.2</a> (this session)</td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §2.2</a> (this session)</td>
 </tr>
 </tbody>
 </table>
@@ -3556,13 +3556,13 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>HOW</strong></td>
 <td>PP_Order_Node (verb execution)</td>
 <td>✓ DONE</td>
-<td><a href="BIM_COBOL.md">BIM_COBOL.md</a></td>
+<td><a href="../../BIM_COBOL/">BIM_COBOL.md</a></td>
 </tr>
 <tr>
 <td><strong>WHERE</strong></td>
 <td>M_BOM_Line dx/dy/dz (spatial relationships)</td>
 <td>✓ DONE</td>
-<td><a href="MANIFESTO.md">MANIFESTO.md §Three Concerns</a></td>
+<td><a href="../../MANIFESTO/">MANIFESTO.md §Three Concerns</a></td>
 </tr>
 </tbody>
 </table>
@@ -3581,19 +3581,19 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>WHAT</strong></td>
 <td>M_BOM_Line (which products)</td>
 <td>✓ DONE</td>
-<td><a href="BOMBasedCompilation.md">BBC.md §3</a></td>
+<td><a href="../../BOMBasedCompilation/">BBC.md §3</a></td>
 </tr>
 <tr>
 <td><strong>HOW</strong></td>
 <td>Verb pattern (TILE/ROUTE/FRAME)</td>
 <td>✓ DONE</td>
-<td><a href="BIM_COBOL.md">BIM_COBOL.md</a></td>
+<td><a href="../../BIM_COBOL/">BIM_COBOL.md</a></td>
 </tr>
 <tr>
 <td><strong>WHERE</strong></td>
 <td>tack offset (dx/dy/dz)</td>
 <td>✓ DONE</td>
-<td><a href="BOMBasedCompilation.md">BBC.md §4</a></td>
+<td><a href="../../BOMBasedCompilation/">BBC.md §4</a></td>
 </tr>
 </tbody>
 </table>
@@ -3612,19 +3612,19 @@ A <code>?</code> means the spec is missing — this is a gap that must be closed
 <td><strong>WHAT</strong></td>
 <td>C_OrderLine (status=PROPOSED)</td>
 <td>PARTIAL</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §14.3 Session A</a></td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §14.3 Session A</a></td>
 </tr>
 <tr>
 <td><strong>HOW</strong></td>
 <td>OrderLineMutation interface</td>
 <td>NOT IMPL</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §14.3 Session B</a></td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §14.3 Session B</a></td>
 </tr>
 <tr>
 <td><strong>WHERE</strong></td>
 <td>locator_ref addressing</td>
 <td>NOT IMPL</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §14.3 Session D</a></td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §14.3 Session D</a></td>
 </tr>
 </tbody>
 </table>
@@ -3867,7 +3867,7 @@ tracks <strong>materials movement</strong>, not site allocation. Plot placement 
 C_Order). M_InOut enters the picture under 4D scheduling: when materials
 arrive on site, M_InOut records the delivery batch; M_InOutLine records each
 material item; M_InOutLineMA tracks lot numbers and inspection certificates.
-→ <a href="ProjectOrderBlueprint.md#51-4d-schedule--topological-sort-of-bom-tree">ProjectOrderBlueprint.md §5.1</a></p>
+→ <a href="../../ProjectOrderBlueprint/#51-4d-schedule--topological-sort-of-bom-tree">ProjectOrderBlueprint.md §5.1</a></p>
 </blockquote>
 <h3 id="62-plot-as-locator-abl-addressing">6.2 Plot as Locator — ABL Addressing<a class="headerlink" href="#62-plot-as-locator-abl-addressing" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>TERRAIN TOPOLOGY (from PDFTerrain survey: 689 points, 294m × 229m, Z: 28-48m)
@@ -4045,55 +4045,55 @@ VALIDATION:
 <td>G1-COUNT</td>
 <td>Building</td>
 <td>Element count matches BOM</td>
-<td><a href="TestArchitecture.md">TestArchitecture.md</a></td>
+<td><a href="../../TestArchitecture/">TestArchitecture.md</a></td>
 </tr>
 <tr>
 <td>G2-VOLUME</td>
 <td>Building</td>
 <td>Total volume preserved</td>
-<td><a href="TestArchitecture.md">TestArchitecture.md</a></td>
+<td><a href="../../TestArchitecture/">TestArchitecture.md</a></td>
 </tr>
 <tr>
 <td>G3-DIGEST</td>
 <td>Building</td>
 <td>Spatial digest matches reference</td>
-<td><a href="TestArchitecture.md">TestArchitecture.md</a></td>
+<td><a href="../../TestArchitecture/">TestArchitecture.md</a></td>
 </tr>
 <tr>
 <td>G4-TAMPER</td>
 <td>Building</td>
 <td>Seal intact, no unauthorized changes</td>
-<td><a href="G4_SRS.md">G4_SRS.md</a></td>
+<td><a href="../../G4_SRS/">G4_SRS.md</a></td>
 </tr>
 <tr>
 <td>G5-PROVENANCE</td>
 <td>Building</td>
 <td>All elements trace to BOM source</td>
-<td><a href="TestArchitecture.md">TestArchitecture.md</a></td>
+<td><a href="../../TestArchitecture/">TestArchitecture.md</a></td>
 </tr>
 <tr>
 <td>G6-ISOLATION</td>
 <td>Building</td>
 <td>No cross-building contamination</td>
-<td><a href="TestArchitecture.md">TestArchitecture.md</a></td>
+<td><a href="../../TestArchitecture/">TestArchitecture.md</a></td>
 </tr>
 <tr>
 <td>G7-COMPOSITION</td>
 <td>Building (composed)</td>
 <td>Fragment provenance + fidelity + spatial invariants</td>
-<td><a href="TheRosettaStoneStrategy.md">TheRosettaStoneStrategy.md §Tier 4</a></td>
+<td><a href="../../TheRosettaStoneStrategy/">TheRosettaStoneStrategy.md §Tier 4</a></td>
 </tr>
 <tr>
 <td>G7-PROJECT</td>
 <td>Site</td>
 <td>Aggregate count, spatial containment</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §2.1</a></td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §2.1</a></td>
 </tr>
 <tr>
 <td>G8-SITE</td>
 <td>Site</td>
 <td>All buildings within site_aabb, setbacks</td>
-<td><a href="ProjectOrderBlueprint.md">Blueprint §2.1</a></td>
+<td><a href="../../ProjectOrderBlueprint/">Blueprint §2.1</a></td>
 </tr>
 </tbody>
 </table>
@@ -4112,25 +4112,25 @@ VALIDATION:
 <td>Tier 1: Vocabulary</td>
 <td>Right parts</td>
 <td>Yes (reference DB)</td>
-<td><a href="TheRosettaStoneStrategy.md">TheRosettaStoneStrategy.md</a></td>
+<td><a href="../../TheRosettaStoneStrategy/">TheRosettaStoneStrategy.md</a></td>
 </tr>
 <tr>
 <td>Tier 2: Placement</td>
 <td>Right places</td>
 <td>Yes (reference DB)</td>
-<td><a href="TheRosettaStoneStrategy.md">TheRosettaStoneStrategy.md</a></td>
+<td><a href="../../TheRosettaStoneStrategy/">TheRosettaStoneStrategy.md</a></td>
 </tr>
 <tr>
 <td>Tier 3: Integrity</td>
 <td>Building works</td>
 <td>No (reference-free)</td>
-<td><a href="EYES_SRS.md">EYES_SRS.md</a></td>
+<td><a href="../../EYES_SRS/">EYES_SRS.md</a></td>
 </tr>
 <tr>
 <td>Tier 4: Composition</td>
 <td>Valid sentences from proven words</td>
 <td>Indirect (source stones)</td>
-<td><a href="TheRosettaStoneStrategy.md">TheRosettaStoneStrategy.md §Tier 4</a></td>
+<td><a href="../../TheRosettaStoneStrategy/">TheRosettaStoneStrategy.md §Tier 4</a></td>
 </tr>
 </tbody>
 </table>
@@ -4161,7 +4161,7 @@ VALIDATION:
               (infrastructure: terrain, alignment, cut-fill)
 </code></pre></div>
 <p><strong>Reading order for a new contributor:</strong>
-1. <strong><a href="MANIFESTO.md">MANIFESTO.md</a></strong> — the ERP world view (read this first, always)
+1. <strong><a href="../../MANIFESTO/">MANIFESTO.md</a></strong> — the ERP world view (read this first, always)
 2. BBC.md — entity mapping table + compilation model
 3. This file (SystemContract.md) — entity registry, three-concern matrix, gap register
 4. DATA_MODEL.md — schema, 4-DB architecture

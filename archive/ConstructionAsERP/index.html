@@ -4080,7 +4080,7 @@
 
 <h1 id="construction-as-erp">Construction as ERP<a class="headerlink" href="#construction-as-erp" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="BOMBasedCompilation.md">BBC</a> · <a href="DATA_MODEL.md">DATA_MODEL</a> · <a href="BIM_COBOL.md">BIM_COBOL</a> · <a href="TestArchitecture.md">TestArchitecture</a> · <a href="ACTION_ROADMAP.md">ACTION_ROADMAP</a> · <a href="SourceCodeGuide.md">SourceCodeGuide</a></p>
+<p><strong>Foundation:</strong> <a href="../../BOMBasedCompilation/">BBC</a> · <a href="../../DATA_MODEL/">DATA_MODEL</a> · <a href="../../BIM_COBOL/">BIM_COBOL</a> · <a href="../../TestArchitecture/">TestArchitecture</a> · <a href="../../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../../SourceCodeGuide/">SourceCodeGuide</a></p>
 </blockquote>
 <p><em>How BIM compilation maps to iDempiere C_Order → BOM explosion → spatial resolution</em></p>
 <blockquote>
@@ -4204,7 +4204,7 @@ orientation rules, locator references.</p>
 <tr>
 <td><code>m_bom_line</code></td>
 <td>M_BOM_Line</td>
-<td>Child placement: dx/dy/dz (parent-relative per tack convention, <a href="BOMBasedCompilation.md">BOMBasedCompilation.md §4</a>), rotation_rule, locator_ref, allocated_*_mm</td>
+<td>Child placement: dx/dy/dz (parent-relative per tack convention, <a href="../../BOMBasedCompilation/">BOMBasedCompilation.md §4</a>), rotation_rule, locator_ref, allocated_*_mm</td>
 </tr>
 <tr>
 <td><code>m_attribute</code></td>
@@ -4377,7 +4377,7 @@ viewport is purely visual confirmation.</p>
 <p>C_OrderLine tree (from BOM Drop) lives in the compile DB. ASI overrides,
 validation results, and verb audit trail also go to the compile DB.
 CompleteIt compiles from compile DB → output.db (path editable by user).</p>
-<p>See <a href="DocAction_SRS.md">DocAction_SRS.md §1.10</a> for the simplified lifecycle.</p>
+<p>See <a href="../../DocAction_SRS/">DocAction_SRS.md §1.10</a> for the simplified lifecycle.</p>
 <p><strong>Promote conditions:</strong> New BOMs must declare parent category, qualified name,
 author/version, and have all child references validated. Without these,
 promote is blocked — the selection list stays organized.</p>
@@ -7061,7 +7061,7 @@ floor, and structural container (PAIR). The line count scales with
 <h2 id="11-design-decisions-qa1-consolidation-2026-03-02">11. Design Decisions — Q&amp;A1 Consolidation (2026-03-02)<a class="headerlink" href="#11-design-decisions-qa1-consolidation-2026-03-02" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>Compilation methodology:</strong> Single path — C_OrderLine → BOM explosion → elements.
-See <a href="BOMBasedCompilation.md">BOMBasedCompilation.md</a> for the full spec.</p>
+See <a href="../../BOMBasedCompilation/">BOMBasedCompilation.md</a> for the full spec.</p>
 </blockquote>
 <p>Decisions confirmed through structured Q&amp;A. Each resolves a model ambiguity.</p>
 <h3 id="111-single-compilation-path-s54b">11.1 Single Compilation Path (S54b)<a class="headerlink" href="#111-single-compilation-path-s54b" title="Permanent link">&para;</a></h3>
@@ -7079,13 +7079,13 @@ The distinction was unnecessary — BOM Drop (§11.1.1) handles both cases.</p>
 <li><strong>BuildingWriter</strong> emits elements with geometry from <code>component_library.db</code></li>
 </ol>
 <p>The user creates or modifies C_OrderLines via BOM Drop in the Bonsai Designer
-(see <a href="BIM_Designer_SRS.md">BIM_Designer_SRS.md</a> §28). The compiler compiles
+(see <a href="../../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> §28). The compiler compiles
 whatever the order contains. No mode selection, no DocSubType routing.</p>
 <ul>
 <li><strong>{PREFIX}_BOM.db has no c_orderline</strong> (dropped 2026-03-04 — redundant with M_BOM + M_Product)</li>
 <li><strong>output.db c_orderline</strong> = what the compiler produced (compile-time, from BOM explosion)</li>
 <li><strong>BOM Drop configurator:</strong> user navigates the BOM tree, swaps products by
-  ProductCategory, adds/removes OrderLines. See <a href="GENERATIVE_HOUSE_SRS.md">GENERATIVE_HOUSE_SRS.md</a> TC-1..TC-8.</li>
+  ProductCategory, adds/removes OrderLines. See <a href="../../GENERATIVE_HOUSE_SRS/">GENERATIVE_HOUSE_SRS.md</a> TC-1..TC-8.</li>
 </ul>
 <h3 id="112-c_orderline-generation-in-outputdb">11.2 C_OrderLine generation in output.db<a class="headerlink" href="#112-c_orderline-generation-in-outputdb" title="Permanent link">&para;</a></h3>
 <p>Compiler-generated C_OrderLines are <strong>transactional instance data</strong> — they go to
@@ -8347,7 +8347,7 @@ Filler distribution: <code>filler.space_width_mm = (parent - SUM(fixed)) / N_fil
 <li><strong>PREFAB_ARCHITECTURE.md</strong> — 6-level assembly hierarchy + MRP BOM Drop chain</li>
 <li><strong>RELATIONAL_PLACEMENT_SPEC.md</strong> — C_OrderLine placement rules</li>
 <li><strong>TerminalAnalysis.md</strong> — Terminal forensics + §ERP Model Architecture (discipline hierarchy, verb-to-AttributeSet, Val_Rule, ROUTE as BOM tree)</li>
-<li><strong><a href="ProjectOrderBlueprint.md">ProjectOrderBlueprint.md</a></strong> — Exception-based ordering (§1), C_Project site-as-BOM (§2), abstract category tree (§3), BOM mining via Approve (§4), nD as queries (§5), order inheritance (§6), rule-pack compliance library (§12)</li>
+<li><strong><a href="../../ProjectOrderBlueprint/">ProjectOrderBlueprint.md</a></strong> — Exception-based ordering (§1), C_Project site-as-BOM (§2), abstract category tree (§3), BOM mining via Approve (§4), nD as queries (§5), order inheritance (§6), rule-pack compliance library (§12)</li>
 </ul>
 
 

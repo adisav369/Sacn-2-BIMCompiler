@@ -3677,7 +3677,7 @@ See <code>docs/ConstructionAsERP.md</code> §3.7 for the ST mode roadmap.</p>
 </code></pre></div>
 <h2 id="the-library-databases">The Library Databases<a class="headerlink" href="#the-library-databases" title="Permanent link">&para;</a></h2>
 <p>The compiler uses a 3-database split. For complete schema details, table definitions,
-column types, and cross-DB FK map, see <a href="DATA_MODEL.md"><code>DATA_MODEL.md</code></a> §1-5.</p>
+column types, and cross-DB FK map, see <a href="../../DATA_MODEL/"><code>DATA_MODEL.md</code></a> §1-5.</p>
 <table>
 <thead>
 <tr>
@@ -4203,7 +4203,7 @@ mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-
 <blockquote>
 <p><strong>[1]</strong> BIM COBOL is the construction programming language layer — 38 verbs across 5 tiers:
 15 original verbs (geometry + inspection), 8 data handling, 8 P0 synthetic BOM primitives (§18.4),
-3 utility verbs (§18.5), 4 Level 1 convenience verbs (§18.6). See <a href="BIM_COBOL.md"><code>docs/BIM_COBOL.md</code></a>
+3 utility verbs (§18.5), 4 Level 1 convenience verbs (§18.6). See <a href="../../BIM_COBOL/"><code>docs/BIM_COBOL.md</code></a>
 for the full language specification and verb scoreboard.</p>
 </blockquote>
 <h3 id="spatial-fidelity-check-sh-dx-only-spatialdigest-gate">Spatial fidelity check (SH / DX only — SpatialDigest gate)<a class="headerlink" href="#spatial-fidelity-check-sh-dx-only-spatialdigest-gate" title="Permanent link">&para;</a></h3>
@@ -4673,7 +4673,7 @@ cross-reference by hand. With it: three commands, one hypothesis, straight to th
 <div class="highlight"><pre><span></span><code>mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>ORMSandbox
 </code></pre></div></p>
 <h2 id="output-db-schema">Output DB Schema<a class="headerlink" href="#output-db-schema" title="Permanent link">&para;</a></h2>
-<p>The compiler writes to SQLite. Each compilation run creates a fresh output DB via <code>BuildingWriter.initSchema()</code> (~40 DDL statements). For the full coordinate flow diagram and table column definitions, see <a href="DATA_MODEL.md"><code>DATA_MODEL.md</code></a> §4.</p>
+<p>The compiler writes to SQLite. Each compilation run creates a fresh output DB via <code>BuildingWriter.initSchema()</code> (~40 DDL statements). For the full coordinate flow diagram and table column definitions, see <a href="../../DATA_MODEL/"><code>DATA_MODEL.md</code></a> §4.</p>
 <p><strong>Browsable template:</strong> <code>library/output_template.db</code> is a blank copy of the output schema with an extra <code>_schema_guide</code> table documenting every table's purpose and the three-concern lock (WHAT/HOW/WHERE). Open it with <code>sqlite3</code> or DB Browser to explore the data model without running the compiler. Regenerate after schema changes with <code>./scripts/generate_output_template.sh</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="n">sqlite3</span><span class="w"> </span><span class="n">library</span><span class="o">/</span><span class="n">output_template</span><span class="p">.</span><span class="n">db</span><span class="w"> </span><span class="ss">&quot;SELECT table_name, description FROM _schema_guide&quot;</span>
 </code></pre></div>
@@ -5256,7 +5256,7 @@ Perimeter offset: 700mm from outer wall face (aligns with roof eave drip line).<
 <li>Add a simple BOM recipe (SQL only) and see it appear in output</li>
 <li>Read <code>ConstructionAsERP.md</code> for the full theory</li>
 <li>Read <code>CurrentState.txt</code> for known issues and architectural trade-offs</li>
-<li>Read <a href="BIM_COBOL.md"><code>BIM_COBOL.md</code></a> — the construction programming language (12 verbs, 63 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3</li>
+<li>Read <a href="../../BIM_COBOL/"><code>BIM_COBOL.md</code></a> — the construction programming language (12 verbs, 63 witnesses). Start with the scoreboard in §2.4, then the formula coverage table in §4.3</li>
 </ol>
 
 

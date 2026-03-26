@@ -1938,10 +1938,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#where-we-are-s83-2026-03-26" class="md-nav__link">
+  <a href="#where-we-are-s92-2026-03-26" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where We Are (S83, 2026-03-26)
+        Where We Are (S92, 2026-03-26)
       
     </span>
   </a>
@@ -2008,6 +2008,17 @@
     <span class="md-ellipsis">
       
         Open Gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doc-debt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc Debt
       
     </span>
   </a>
@@ -2811,10 +2822,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#where-we-are-s83-2026-03-26" class="md-nav__link">
+  <a href="#where-we-are-s92-2026-03-26" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where We Are (S83, 2026-03-26)
+        Where We Are (S92, 2026-03-26)
       
     </span>
   </a>
@@ -2881,6 +2892,17 @@
     <span class="md-ellipsis">
       
         Open Gaps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doc-debt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Doc Debt
       
     </span>
   </a>
@@ -2977,14 +2999,14 @@
 <blockquote>
 <p><strong>Governing documents:</strong> <a href="../MANIFESTO/">MANIFESTO.md</a> (ERP world view) ·
 <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint.md §14</a> (session plan) ·
-<a href="../SpecsAnalysis.txt">SpecsAnalysis.txt</a> (gap analysis)</p>
+<a href="../ID_NAME_VALUE_STUDY/">ID_NAME_VALUE_STUDY.md</a> (iDempiere conformance)</p>
 </blockquote>
 <hr />
-<h2 id="where-we-are-s83-2026-03-26">Where We Are (S83, 2026-03-26)<a class="headerlink" href="#where-we-are-s83-2026-03-26" title="Permanent link">&para;</a></h2>
-<p><strong>Pipeline:</strong> 9 stages. 64 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative).
+<h2 id="where-we-are-s92-2026-03-26">Where We Are (S92, 2026-03-26)<a class="headerlink" href="#where-we-are-s92-2026-03-26" title="Permanent link">&para;</a></h2>
+<p><strong>Pipeline:</strong> 9 stages. 75 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative). 5-DB architecture.
 <strong>Gates:</strong> 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v6.
-<strong>Tests:</strong> 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice.
-<strong>iDempiere conformance:</strong> Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 pending (TEXT→INTEGER PK).</p>
+<strong>Tests:</strong> 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice. 202 witnesses.
+<strong>iDempiere conformance:</strong> Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 Phase A–D done (S90–S92). Phase E pending (drop TEXT FK columns).</p>
 <hr />
 <h2 id="quick-navigation">Quick Navigation<a class="headerlink" href="#quick-navigation" title="Permanent link">&para;</a></h2>
 <table>
@@ -3005,7 +3027,7 @@
 </tr>
 <tr>
 <td><strong>See what's proven</strong></td>
-<td><a href="../PROGRESS.md">PROGRESS.md</a> (gate table, session log)</td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md">PROGRESS.md</a> (gate table, session log)</td>
 </tr>
 <tr>
 <td><strong>Navigate the code</strong></td>
@@ -3021,7 +3043,7 @@
 </tr>
 <tr>
 <td><strong>See the schema</strong></td>
-<td><a href="../DATA_MODEL/">DATA_MODEL.md</a> + <a href="../database/DATABASE_SCHEMA.md">DATABASE_SCHEMA.md</a></td>
+<td><a href="../DATA_MODEL/">DATA_MODEL.md</a> + <a href="https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md">DATABASE_SCHEMA.md</a></td>
 </tr>
 </tbody>
 </table>
@@ -3089,21 +3111,33 @@
 <tbody>
 <tr>
 <td>TRIM-1</td>
-<td>Wire <code>TRIM WALLS TO ROOF</code> in pipeline. Add to <code>.bimcobol</code> + create DemoHouse_2BR.bimcobol</td>
+<td>Wire <code>TRIM WALLS TO ROOF</code> in pipeline</td>
 <td>—</td>
-<td><a href="../SpecsAnalysis.txt">SpecsAnalysis §21</a>, <a href="../BIM_COBOL/">BIM_COBOL.md §TRIM</a></td>
+<td><strong>DONE</strong> (S89-trim1, adeaf75b)</td>
 </tr>
 <tr>
 <td>TRIM-2</td>
 <td>End-to-end witness: BOM Drop SH → swap roof → TRIM fires → curtain wall trimmed</td>
 <td>TRIM-1</td>
-<td><a href="../SpecsAnalysis.txt">SpecsAnalysis §22</a>, <a href="../BOMBasedCompilation/">BBC.md §Selection</a></td>
+<td><a href="../BOMBasedCompilation/">BBC.md §Selection</a></td>
 </tr>
 <tr>
 <td>CP-2</td>
 <td>DX MIRROR verb (85 axis mismatches)</td>
 <td>Large effort</td>
 <td><a href="../DuplexAnalysis/">DuplexAnalysis.md</a>, <a href="../TestArchitecture/">TestArchitecture.md</a></td>
+</tr>
+<tr>
+<td>PRED-1</td>
+<td>Spatial Predicate verbs (DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST)</td>
+<td>—</td>
+<td><a href="../BIM_COBOL/">BIM_COBOL.md §20</a> — SPEC ONLY</td>
+</tr>
+<tr>
+<td>VERB-DOC</td>
+<td>19 registered verbs unlisted in scoreboard → add to §2.4</td>
+<td>—</td>
+<td>Doc task, not code</td>
 </tr>
 </tbody>
 </table>
@@ -3121,7 +3155,7 @@
 <tr>
 <td>FMT-1</td>
 <td>Evaluate retiring DSL for generative buildings. GRID axis algebra must port to YAML first</td>
-<td>SpecsAnalysis §23</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
@@ -3178,7 +3212,7 @@
 <tr>
 <td>GAP-SC-1</td>
 <td>ASI mutation → recompile</td>
-<td>Which verbs re-fire? Transaction flow spec</td>
+<td>Which verbs re-fire? Transaction flow spec. S89 BBC audit confirmed: extraction writes ASI, compilation does NOT consume ASI for generative path</td>
 <td>HIGH (blocks viewport drag)</td>
 </tr>
 <tr>
@@ -3208,14 +3242,124 @@
 <tr>
 <td>IDV-1</td>
 <td>iDempiere _ID/Name/Value</td>
-<td>Tier 2: TEXT→INTEGER PK on core tables (M_Product, m_bom, c_order)</td>
+<td>Tier 2 Phase A–D DONE (S90–S92). Phase E pending: drop TEXT FK columns</td>
 <td><a href="../ID_NAME_VALUE_STUDY/">ID_NAME_VALUE_STUDY.md</a></td>
+</tr>
+<tr>
+<td>GAP-DA-1</td>
+<td>processIt() orchestrator</td>
+<td>Spec'd in <a href="../DocAction_SRS/">DocAction_SRS §1.3</a> but no implementation. → ENT-1</td>
+<td>HIGH (cross-ref ENT-1)</td>
+</tr>
+<tr>
+<td>GAP-DA-2</td>
+<td>ClashDetector Phase 2</td>
+<td>AD_Clash_Rule-driven engine beyond current bbox check</td>
+<td>MED. <a href="../DocAction_SRS/">DocAction_SRS §2.1</a></td>
+</tr>
+<tr>
+<td>GAP-DA-3</td>
+<td>VerticalContinuityChecker</td>
+<td>Spec'd in <a href="../DocAction_SRS/">DocAction_SRS §2.1</a>, not built</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>GAP-DA-4</td>
+<td>Dual ad_val_rule ecosystems</td>
+<td>validation.db (63 rules) vs ERP.db (415 rules) — spec doesn't acknowledge 5-DB split</td>
+<td>MED. <a href="../DocAction_SRS/">DocAction_SRS §5</a></td>
+</tr>
+<tr>
+<td>GAP-DS-1</td>
+<td>Set vs individual placement (UX-F-25)</td>
+<td>No placeSet() in DesignerAPIImpl</td>
+<td>MED. <a href="../BIM_Designer_SRS/">BIM_Designer_SRS §2</a></td>
+</tr>
+<tr>
+<td>GAP-DS-2</td>
+<td>Multi-view sync BBox↔ORDER↔3D (UX-F-26/27)</td>
+<td>Three views not wired</td>
+<td>MED. <a href="../BIM_Designer_SRS/">BIM_Designer_SRS §2</a></td>
+</tr>
+<tr>
+<td>GAP-DS-3</td>
+<td>Server error handling (UX-E-01..03)</td>
+<td>Auto-launch, retry, crash recovery</td>
+<td>LOW. <a href="../BIM_Designer_SRS/">BIM_Designer_SRS §4</a></td>
+</tr>
+<tr>
+<td>GAP-DS-4</td>
+<td>DesignerServer standalone launcher</td>
+<td>No main() method</td>
+<td>LOW. <a href="../BIM_Designer_SRS/">BIM_Designer_SRS §23</a></td>
+</tr>
+<tr>
+<td>GAP-DS-5</td>
+<td>Capacity contracts (UX-N-11..15)</td>
+<td>Max rooms=100, storeys=10, variants=50 — not enforced</td>
+<td>LOW. <a href="../BIM_Designer_SRS/">BIM_Designer_SRS §3</a></td>
+</tr>
+<tr>
+<td>GAP-C13</td>
+<td>No Parametric Mesh — 28 call sites</td>
+<td>Sub-writers still emit parametric geometry</td>
+<td>MED. <a href="../TestArchitecture/">TestArchitecture §C13</a></td>
+</tr>
+<tr>
+<td>GAP-PO-1</td>
+<td>BOM Mining via DocAction=Approve</td>
+<td>Not tracked</td>
+<td>MED. <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint §4</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="doc-debt">Doc Debt<a class="headerlink" href="#doc-debt" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Area</th>
+<th>What</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DD-1</td>
+<td>BIM_COBOL §2.4</td>
+<td>19 verbs registered but unlisted in scoreboard</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>DD-2</td>
+<td>TestArchitecture</td>
+<td>Ghost seal entry (WalkThruCompilationTest.java) — remove from manifest</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>DD-3</td>
+<td>TestArchitecture</td>
+<td>Seal version numbering diverged (v6 script vs v40 doc) — reconcile</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>DD-4</td>
+<td>BOMBasedCompilation §4</td>
+<td>Typed coordinate hierarchy (LocalCoord/StoreyCoord/WorldCoord) undocumented</td>
+<td>LOW</td>
+</tr>
+<tr>
+<td>DD-5</td>
+<td>ProjectOrderBlueprint §5/§6/§9/§10/§11/§13</td>
+<td>6 stale "Future" labels — sections are IMPLEMENTED</td>
+<td>LOW</td>
 </tr>
 </tbody>
 </table>
 <hr />
 <h2 id="schema-migration-backlog">Schema Migration Backlog<a class="headerlink" href="#schema-migration-backlog" title="Permanent link">&para;</a></h2>
-<p>From <a href="../SpecsAnalysis.txt">SpecsAnalysis.txt</a> §10 and <a href="../ID_NAME_VALUE_STUDY/">ID_NAME_VALUE_STUDY.md</a>:</p>
+<p>From <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md §11</a> and <a href="../ID_NAME_VALUE_STUDY/">ID_NAME_VALUE_STUDY.md</a>:</p>
 <table>
 <thead>
 <tr>
@@ -3267,8 +3411,8 @@
 </tr>
 <tr>
 <td>9. Tier 2: TEXT→INTEGER PK on core tables</td>
-<td>M_Product, m_bom, c_order, C_DocType</td>
-<td>NOT STARTED (high risk)</td>
+<td>M_Product, m_bom, c_order, C_DocType, M_Product_Category</td>
+<td><strong>Phase A+B DONE</strong> (S90). <strong>Phase C DONE</strong> (S91). <strong>Phase D DONE</strong> (S92: _int sidecar dropped). Phase E: drop TEXT FK columns</td>
 </tr>
 </tbody>
 </table>
@@ -3354,6 +3498,16 @@
 <td>S80-S83</td>
 <td>s80-s83</td>
 <td>Docs readability, stale ref cleanup, <a href="../ID_NAME_VALUE_STUDY/">Name/Value Tier 1</a></td>
+</tr>
+<tr>
+<td>S84-S88</td>
+<td>s84-s88</td>
+<td>Schema cleanup (W012 doc_base_type), callout boxes, CTFL review, mkdocs warnings, validation.db study</td>
+</tr>
+<tr>
+<td>S89-S92</td>
+<td>s89-s92</td>
+<td>BBC audit (6 stale fixes), TRIM-1 wired, Tier 2 INTEGER PK Phases A–D, _int sidecar drop</td>
 </tr>
 </tbody>
 </table>

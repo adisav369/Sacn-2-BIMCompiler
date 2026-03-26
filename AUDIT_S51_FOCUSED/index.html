@@ -4635,6 +4635,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#appendix-v-s90-tier-2-integer-pk-migration-audit-2026-03-26" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix V — S90 Tier 2 INTEGER PK Migration Audit (2026-03-26)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Appendix V — S90 Tier 2 INTEGER PK Migration Audit (2026-03-26)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#v1-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V.1 Scope
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v2-deliverables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V.2 Deliverables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v3-architecture-finding-ifctobom-hardcoded-ddl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V.3 Architecture Finding: IFCtoBOM Hardcoded DDL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v4-pre-existing-stale-code-3-findings-all-fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V.4 Pre-existing Stale Code (3 findings, all fixed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v5-design-gap-c_orderc_orderline-not-persisted-in-output-db" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V.5 Design Gap: C_Order/C_OrderLine not persisted in output DB
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#v6-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        V.6 Gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -7116,7 +7199,7 @@ single-check validator classes. Currently testable only as monolith.</p>
 <h3 id="j6-readme-post-session-a-assessment">J.6 — README Post-Session A Assessment<a class="headerlink" href="#j6-readme-post-session-a-assessment" title="Permanent link">&para;</a></h3>
 <p>The 5 README commits (0822ce1..bf99c80) slimmed README from ~209 lines to 80 lines. Current state:</p>
 <ul>
-<li><strong>Stats table accurate:</strong> 35 buildings, 64 verbs, 2,475 products, 408+ tests — all match PROGRESS.md</li>
+<li><strong>Stats table accurate:</strong> 35 buildings, 75 verbs, 2,475 products, 408+ tests — all match PROGRESS.md</li>
 <li><strong>Quick Start works:</strong> clone → compile → run gates → run tests</li>
 <li><strong>Docs link correct:</strong> points to https://red1oon.github.io/BIMCompiler/ (verified HTTP 200)</li>
 <li><strong>YouTube link present:</strong> walkthrough of Claude pair programming</li>
@@ -9111,6 +9194,24 @@ major themes. Code changes are thorough and consistent — the Discipline enum m
 17 source files without leaving type mismatches. The CO_EmptySpace three-phase retirement was
 textbook. The only weakness is documentation lag: SystemContract.md link cleanup was incomplete,
 and the work_output.db doc propagation from S61 remains undone. No P0 code bugs found.</p>
+<h2 id="appendix-v-s90-tier-2-integer-pk-migration-audit-2026-03-26">Appendix V — S90 Tier 2 INTEGER PK Migration Audit (2026-03-26)<a class="headerlink" href="#appendix-v-s90-tier-2-integer-pk-migration-audit-2026-03-26" title="Permanent link">&para;</a></h2>
+<h3 id="v1-scope">V.1 Scope<a class="headerlink" href="#v1-scope" title="Permanent link">&para;</a></h3>
+<p>Phase A+B: add INTEGER PK columns to 5 core iDempiere tables (M_Product_Category, M_Product, m_bom, C_Order, C_DocType) across 4 databases. Schema only, zero Java changes.</p>
+<h3 id="v2-deliverables">V.2 Deliverables<a class="headerlink" href="#v2-deliverables" title="Permanent link">&para;</a></h3>
+<p>8 migration SQL files: DV022, CL003 (M_Product_Category), W014, DV023, CL004 (M_Product), W015 (m_bom + m_bom_line FK), W016 (C_Order), W017 (C_DocType). Row counts verified before/after — all preserved.</p>
+<h3 id="v3-architecture-finding-ifctobom-hardcoded-ddl">V.3 Architecture Finding: IFCtoBOM Hardcoded DDL<a class="headerlink" href="#v3-architecture-finding-ifctobom-hardcoded-ddl" title="Permanent link">&para;</a></h3>
+<p><code>IFCtoBOMPipeline.createSchema()</code> line 469 comment: "The schemaPath parameter is accepted but NOT read." M_Product, m_bom, m_bom_line, C_DocType DDL is hardcoded in Java. BOM.db files are rebuilt from scratch each extraction. Migration SQL cannot be applied directly — <code>prepare_compile_db()</code> applies ALTER TABLE + backfill to the temp compile DB instead. <strong>Phase C must update the Java DDL.</strong></p>
+<h3 id="v4-pre-existing-stale-code-3-findings-all-fixed">V.4 Pre-existing Stale Code (3 findings, all fixed)<a class="headerlink" href="#v4-pre-existing-stale-code-3-findings-all-fixed" title="Permanent link">&para;</a></h3>
+<p><strong>V.4.1 schema_snapshot_bom.sql C_OrderLine — stale since S78</strong>
+Missing: <code>AD_Org_ID INTEGER</code>, <code>locator_ref TEXT</code>, <code>is_reference_class INTEGER</code>. BomDropper.insertLine() (line 408) writes all three. The compile DB's C_OrderLine was created from the snapshot, so BomDropper failed with "no such column." SH gate was passing from a cached output DB, not a fresh compile. <strong>Fix:</strong> added 3 columns to snapshot.</p>
+<p><strong>V.4.2 singularity_check — querying dropped column since S84</strong>
+<code>run_RosettaStones.sh</code> singularity_check queried <code>doc_base_type</code> on m_bom, but W012 (S84) dropped it. Query failed silently (<code>2&gt;/dev/null</code>). <strong>Fix:</strong> changed to <code>m_product_category_id</code> (the replacement column from S77).</p>
+<p><strong>V.4.3 G6 isolation test — querying dropped table since S74</strong>
+RosettaStoneGateTest.g6_isolation queries <code>co_empty_space_line</code> (line 617), but W008 (S74) dropped it from BuildingWriter. Output DB has no such table. <strong>Fix:</strong> added empty stub tables to output DB in script before contract tests run.</p>
+<h3 id="v5-design-gap-c_orderc_orderline-not-persisted-in-output-db">V.5 Design Gap: C_Order/C_OrderLine not persisted in output DB<a class="headerlink" href="#v5-design-gap-c_orderc_orderline-not-persisted-in-output-db" title="Permanent link">&para;</a></h3>
+<p>BomDropper populates C_Order + C_OrderLine in the temp compile DB. The output DB has the tables (BuildingWriter DDL) but 0 rows — data is discarded with the temp file. BIM Designer needs them to recall/display the construction order. <strong>Phase C must copy C_OrderLine tree from compile DB → output DB.</strong> Already spec'd in ProjectOrderBlueprint.md + BIM_Designer_SRS.</p>
+<h3 id="v6-gate">V.6 Gate<a class="headerlink" href="#v6-gate" title="Permanent link">&para;</a></h3>
+<p><code>mvn compile -q</code> PASS. SH 7/7 PASS (IFCtoBOM, Compile, Singularity, Contracts G3/G6, Integrity, Fidelity C8/C9).</p>
 
 
 

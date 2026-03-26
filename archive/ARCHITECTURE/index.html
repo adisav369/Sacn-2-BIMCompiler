@@ -3832,7 +3832,7 @@ FLOOR
 </code></pre></div></p>
 <p>The existing <code>ad_building_template</code> (8 rows), <code>ad_floor_type</code> (12 rows), and <code>ad_unit_type</code> (7 rows) tables are already populated — they await Java consumers.</p>
 <blockquote>
-<p><strong>See also:</strong> <a href="PREFAB_ARCHITECTURE.md">PREFAB_ARCHITECTURE.md</a> — Phase 115 concretizes this vision with a prefab assembly catalog (<code>prefab_product</code>, <code>prefab_bom</code>, <code>prefab_interface</code>) that replaces runtime spatial resolution with DAG expansion of pre-computed assemblies.</p>
+<p><strong>See also:</strong> <a href="../../PREFAB_ARCHITECTURE/">PREFAB_ARCHITECTURE.md</a> — Phase 115 concretizes this vision with a prefab assembly catalog (<code>prefab_product</code>, <code>prefab_bom</code>, <code>prefab_interface</code>) that replaces runtime spatial resolution with DAG expansion of pre-computed assemblies.</p>
 </blockquote>
 <h3 id="37-floor-plate-as-spatial-bom-phase-95-target">3.7 Floor Plate as Spatial BOM (Phase 95 Target)<a class="headerlink" href="#37-floor-plate-as-spatial-bom-phase-95-target" title="Permanent link">&para;</a></h3>
 <p><strong>The problem:</strong> The DSL currently specifies exact grid bounds for every room (<code>bounds:C2-D4</code>). When you add a toilet, you manually shrink the lobby. When you remove a corridor, you manually expand the units. The compiler has no spatial reasoning — it trusts the user's manual layout.</p>
