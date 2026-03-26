@@ -237,8 +237,8 @@ manipulating geometry. Drag a SET to a different FLOOR = FK update. Swap a produ
 
 The IFCtoBOM pipeline reads `I_Element_Extraction` (component_library.db) and a
 classification YAML, then produces a `*_BOM.db` with spatial arrangement (m_bom + m_bom_line).
-Products are created in component_library.db first (persistent catalog, reused across buildings),
-then transitionally copied to BOM DB. 9 BomValidator checks + 2 pre-flight guards enforce data integrity pre-commit.
+Products are written to component_library.db (geometry catalog) AND ERP.db (product master);
+BOM DB product copy is deprecated. 12+ BomValidator checks + verb fidelity + 2 pre-flight guards enforce data integrity pre-commit.
 See [`WorkOrderGuide.md`](WorkOrderGuide.md) §Step 5 for the full pipeline table and §Drift Prevention
 for the guard list. The decomposition is **top-down** — from the largest AABB to the smallest —
 with each layer stopping when it has assigned its children.
@@ -369,13 +369,15 @@ VerbDetector mines 4 verb patterns from extraction centroids:
 
 Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
 ±20% of the average step. Non-uniform groups fall through to CLUSTER or flat writes.
-*(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER.)*
+*(History: 1,442 lines pre-CLUSTER → 1,297 post-SPRAY → 1,131 post-CLUSTER.
+SPRAY remains in VerbDetector as a legacy detection path; superseded by CLUSTER in the cascade.)*
 See [`BIM_COBOL.md`](BIM_COBOL.md) §19 for verb taxonomy,
 data flow, and fidelity details.
 
 **Pipeline phases (self-contained since 2026-03-20):**
 1. **BOM pipeline** (`IFCtoBOMPipeline.run()`): extracts geometry → populates product catalog → writes `{PREFIX}_BOM.db`. Calls `ensureProductCatalog()` + `ensureProductImages()` internally (INSERT OR IGNORE = idempotent). No separate populate step required.
 2. **Compile** (`DAGCompiler`): reads `{PREFIX}_BOM.db` + `component_library.db` → produces output.db
+   *(Note: `output_schema.sql` (Python) is stale — Java `BuildingWriter.initSchema()` is the authoritative output DDL.)*
 
 The shell script (`run_RosettaStones.sh`) still runs `--populate` as a fast-path
 when `I_Geometry_Map` count is 0, but it is no longer a prerequisite — the BOM
@@ -397,7 +399,8 @@ pipeline is self-contained. Phase 1 can re-run freely (`rm *_BOM.db`).
 Every `m_bom_line` is a placement instruction: "place this child's LBD at
 offset (dx, dy, dz) from my LBD." The compiler walks the BOM tree by one
 rule: if `child_product_id` resolves to another `m_bom`, recurse into it.
-If it resolves to an `M_Product` in `component_library.db`, it is a leaf —
+If it resolves to an `M_Product` in `ERP.db` (product catalog migrated S65;
+geometry meshes remain in `component_library.db` via MeshBinder), it is a leaf —
 emit the element at the accumulated world position.
 
 **`component_type` does not exist in compilation.** The iDempiere Manufacturing
@@ -423,7 +426,7 @@ Every line carries a 3D position **(dx, dy, dz)** — where the child's LBD
 corner sits within the parent's bounding box. All three axes matter: a piano
 at (7.67, 1.61, 0.59) means 7.67m right, 1.61m back, 0.59m up from the
 room's LBD corner. The walker does not know or care about BOM types. It just
-recurses until it hits a leaf. The hierarchy depth is unlimited.
+recurses until it hits a leaf. Recursion depth capped at 20 levels (safety guard; practical buildings use 4–5 levels).
 
 ### 2.2.3 Library Population (Outside Compilation)
 
@@ -461,7 +464,7 @@ position. See `BIM_Designer.md` §8.3 for per-instance ASI overrides
 | **Instant Drop** | Manufacturing Order processing | No modifications — 1 C_OrderLine references a BOM product, compile explodes the full tree. The quickest hello world test. |
 | **Tack** | Origin datum | Left-Back-Down (LBD) corner of AABB = (minX, minY, minZ) = (0,0,0) in own frame. All offsets are parent-LBD to child-LBD. |
 | **BOM** | Bill of Materials | Any `m_bom` row. If `child_product_id` resolves to an `m_bom`, the walker recurses into it. There is no MAKE/BUY distinction — the walker decides by existence. |
-| **Leaf** | Purchased item | A `child_product_id` that resolves to `M_Product` in `component_library.db` (no matching `m_bom`). The compiler emits the element here. |
+| **Leaf** | Purchased item | A `child_product_id` that resolves to `M_Product` in `ERP.db` (no matching `m_bom`). The compiler emits the element here. Geometry meshes in `component_library.db`. |
 
 ### 3.2 The ESLine Mechanism — Parent Owns the Attachment Point
 
