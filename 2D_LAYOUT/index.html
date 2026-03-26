@@ -1854,6 +1854,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#visual-proof-sample-house" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visual Proof — Sample House
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-it-matters-for-the-erp-paradigm" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2745,6 +2756,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#visual-proof-sample-house" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visual Proof — Sample House
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#why-it-matters-for-the-erp-paradigm" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2834,6 +2856,30 @@
 <a href="../ProjectOrderBlueprint/">4D–8D queries</a> also produces 2D architectural
 drawings. No separate drawing tool. No manual drafting. The 3D model IS
 the drawing — sliced at the right plane.</p>
+<hr />
+<h2 id="visual-proof-sample-house">Visual Proof — Sample House<a class="headerlink" href="#visual-proof-sample-house" title="Permanent link">&para;</a></h2>
+<p><strong>The 3D compiled model (Bonsai/Blender viewport):</strong></p>
+<p><img alt="Sample House 3D — compiled from BOM, rendered in Bonsai" src="../assets/images/SampleHouseOri.png" /></p>
+<p><em>55 elements compiled from BOM recipe. Glass curtain wall meets pitched roof — the
+TRIM verb adjusts wall panels at the roof intersection. Every element traces to
+component_library.db via G5-PROVENANCE.</em></p>
+<p><strong>The 2D floor plan — generated from the same compiled output.db:</strong></p>
+<p><img alt="Pelan Lantai / Floor Plan — horizontal section cut at 1.2m" src="../assets/images/2D_FLOOR_SAMPLEHOUSE.png" /></p>
+<p><em>Pelan Lantai (Floor Plan): horizontal section cut at 1.2m above floor level.
+Walls, doors, windows, furniture — all from the compiled BOM. Room labels
+(Ruang Tamu, Ruang Makan, Bilik) from M_Product_Category names. Grid lines
+and dimensions from AABB extents. Title block follows JKR/ISO convention.</em></p>
+<p><strong>The 2D roof plan — generated from the same compiled output.db:</strong></p>
+<p><img alt="Pelan Bumbung / Roof Plan — ridge lines and slope arrows" src="../assets/images/2D_ROOF_SAMPLEHOUSE.png" /></p>
+<p><em>Pelan Bumbung (Roof Plan): top-down projection showing ridge lines (Cumbung Sana,
+Cumbung Sini), slope direction arrows, and drainage layout. Generated from the
+same BOM tree — the roof is an M_BOM with TILE verb expansion.</em></p>
+<p><strong>The architect's original roof plan — the ground truth we compile against:</strong></p>
+<p><img alt="Architect's original roof plan — the reference drawing" src="../assets/images/RoofPlan.png" /></p>
+<p><em>The architect's hand-drawn roof plan (scale 1:100). Grid lines A-E, levels 1-5,
+material hatching, drainage symbols, legend. The compiler-generated version above
+reproduces the spatial layout from BOM data alone — no manual drafting.</em></p>
+<hr />
 <h2 id="why-it-matters-for-the-erp-paradigm">Why It Matters for the ERP Paradigm<a class="headerlink" href="#why-it-matters-for-the-erp-paradigm" title="Permanent link">&para;</a></h2>
 <p>In construction, 2D drawings are still the legal deliverable — the document
 the contractor builds from, the regulator stamps, the QS prices. Most BIM
@@ -2876,9 +2922,12 @@ multiple views:</p>
 <h2 id="the-round-trip-proof">The Round-Trip Proof<a class="headerlink" href="#the-round-trip-proof" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>1D BOM recipe → 3D compilation → 2D drawing → back to BOM verification
 </code></pre></div>
-<p>The <a href="../">Sample House floor plan</a> (Pelan Lantai) visible on the landing
-page was generated from this pipeline. If the 2D drawing matches the architect's
-original, the BOM grammar is proven from yet another angle.</p>
+<p>The floor plan and roof plan above were generated from this pipeline. Compare the
+compiler-generated roof plan against the architect's original — the spatial layout
+matches. If the 2D drawing reproduces the architect's intent from BOM data alone,
+the BOM grammar is proven from yet another angle.</p>
+<p>This is the <strong>Rosetta Stone principle applied to drawings</strong>: the architect's original
+is the stone, the compiler-generated drawing is the translation. Match = proof.</p>
 <h2 id="how-it-connects">How It Connects<a class="headerlink" href="#how-it-connects" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2920,32 +2969,39 @@ original, the BOM grammar is proven from yet another angle.</p>
 <tr>
 <th>Deliverable</th>
 <th>Status</th>
+<th>Evidence</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Floor plan (SH)</td>
 <td>POC — SVG generated from mesh section cut</td>
+<td>See Pelan Lantai above</td>
+</tr>
+<tr>
+<td>Roof plan (SH)</td>
+<td>POC — SVG generated from top-down projection</td>
+<td>See Pelan Bumbung above</td>
 </tr>
 <tr>
 <td>Elevations</td>
 <td>Designed — no ceiling overlap, level markers</td>
+<td>SVGs in <code>2D_Layout/archive/</code> (front, rear, left, right)</td>
 </tr>
 <tr>
 <td>Sections</td>
 <td>Stub — hatching per material pending</td>
-</tr>
-<tr>
-<td>Roof plan</td>
-<td>Stub — envelope extraction designed</td>
+<td>—</td>
 </tr>
 <tr>
 <td>Annotations</td>
 <td>Designed — grid lines, dimensions, room labels</td>
+<td>Visible in floor plan</td>
 </tr>
 <tr>
 <td>Java port</td>
 <td>6 stub classes created, Python prototype as reference</td>
+<td><code>2D_Layout/src/main/java/com/bim/layout/</code></td>
 </tr>
 </tbody>
 </table>
@@ -2953,6 +3009,8 @@ original, the BOM grammar is proven from yet another angle.</p>
 <p><strong>Module:</strong> <code>2D_Layout/</code> in <a href="https://github.com/red1oon/BIMCompiler">BIMCompiler</a> repository.
 See <code>2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md</code> for the full technical spec
 (mesh section cut algorithm, annotation overlay, JKR/ISO conventions).</p>
+<p><strong>SVG archive:</strong> <code>2D_Layout/archive/</code> contains generated floor plan, roof plan,
+and 4 elevation SVGs for the Sample House.</p>
 
 
 
