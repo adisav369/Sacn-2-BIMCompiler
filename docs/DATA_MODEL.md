@@ -98,9 +98,7 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
 | bom_type | BUILDING | Fixed (abstract root — used for both buildings and infrastructure facilities) |
-| doc_base_type | RE / CO / IN | Legacy — superseded by m_product_category_id |
-| doc_sub_type | SH / DX / BR / RD | Legacy — superseded by building prefix |
-| m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification lives here |
+| m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification axis |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
 | entity_type | D | Dictionary (read-only) |
@@ -193,8 +191,8 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 |--------|------|-------|
 | C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |
 | Name | TEXT | Display name |
-| DocBaseType | TEXT | Legacy — superseded by M_Product_Category |
-| DocSubType | TEXT | Legacy — superseded by building prefix |
+| DocBaseType | TEXT | Domain classification (RE/CO/IN/ST) |
+| DocSubType | TEXT | Building prefix (SH/DX/TE) |
 | ProjectName | TEXT | Building instance name |
 | DSLContent | TEXT | DSL template text |
 | OutputDbPath | TEXT | Output DB path |
@@ -214,8 +212,8 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 | bom_name | TEXT | Display name |
 | bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
-| doc_base_type | TEXT | **Deprecated** — RE/CO/IN. Redundant with m_product_category_id (see §7) |
-| doc_sub_type | TEXT | Legacy — superseded by bom_id prefix |
+| doc_base_type | TEXT | Domain classification (RE/CO/IN) — see m_product_category_id |
+| doc_sub_type | TEXT | Building prefix (SH/DX/TE) — derived from bom_id |
 | origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
 | aabb_width_mm, aabb_depth_mm, aabb_height_mm | INTEGER | Envelope dimensions |
 | group_by | TEXT | Grouping key |

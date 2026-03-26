@@ -85,11 +85,6 @@ The BOM walker does not know what ARC or FP means. It just recurses (§2.2.1).
 The `AD_Org_ID` on `m_bom` and `C_OrderLine` is the hook that AD_Val_Rule uses
 to fire the right validation rules (see [DocValidate.md](DocValidate.md)).
 
-**Legacy debt:** DSL-generative path contains hardcoded category checks
-(`CompilationPipeline:506 IN (...)`, `categoryToRoomType()`, `ComposeBuildingVerb
-RESIDENTIAL→RE` — see `TestArchitecture.md` H3/H4). BOM-based pipeline is clean.
-Target: migrate DSL path to data-driven lookups when generative compilation is prioritised.
-
 ### 1.2 Discipline Routing — Three States per Discipline
 
 Each discipline in YAML has exactly three possible states:
@@ -311,7 +306,6 @@ VerbDetector mines 4 verb patterns from extraction centroids:
 
 Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
 ±20% of the average step. Non-uniform groups fall through to CLUSTER or flat writes.
-*(SPRAY remains in VerbDetector as a legacy detection path; superseded by CLUSTER.)*
 See [`BIM_COBOL.md`](BIM_COBOL.md) §19 for verb taxonomy,
 data flow, and fidelity details.
 

@@ -197,8 +197,8 @@ mvn exec:java -pl IFCtoBOM \
 | `building_type` | string | Must match reference DB name: `{building_type}_extracted.db` |
 | `prefix` | string | Short code (SH, DX, TE). Used for BOM DB name: `{prefix}_BOM.db` |
 | `building_bom_id` | string | Root BOM ID (e.g., `BUILDING_SH_STD`) |
-| `doc_sub_type` | string | Legacy — use `prefix` instead |
-| `doc_base_type` | string | Legacy — use [M_Product_Category](MANIFESTO.md#the-category-cascade-one-pattern-three-domains) (RE/CO/IN) instead |
+| `doc_sub_type` | string | Building prefix (SH/DX/TE) |
+| `doc_base_type` | string | Domain classification — matches [M_Product_Category](MANIFESTO.md#the-category-cascade-one-pattern-three-domains) (RE/CO/IN) |
 | `name` | string | Human-readable building name |
 | `dsl_file` | string | BIM COBOL script filename (e.g., `dsl_sh.bim`) |
 
