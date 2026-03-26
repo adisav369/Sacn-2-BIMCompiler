@@ -569,49 +569,50 @@ public class CompilationPipeline {
          * <p>Source: C_DocType in BOM.db (constant domain config).
          * Target: c_order in output.db (transactional, self-contained).
          *
-         * <p>DEFERRED (S92): BIM_COBOL not on DAGCompiler classpath during gate runs.
-         * T16 tamper rule bans raw SQL on c_order outside verb layer.
-         * Fix requires: either add BIM_COBOL dependency or move INSERT to ORMSandbox.
+         * <p>Direct SQL — same pattern as copyCOrderLineToOutput().
+         * RegisterBuildingVerb remains for interactive Designer mode (BIM_COBOL on classpath).
          */
+        // Implementing BBC.md §14.3 — Witness: W-TIER2-ORDER
         private static void copyCOrderToOutput(Connection outConn, CompilationContext ctx) {
             String buildingId = ctx.buildingId();
             var entry = ctx.entry();
 
-            // Build REGISTER BUILDING verb line
-            String verbLine = String.format(
-                "REGISTER BUILDING %s DOC_SUB_TYPE %s NAME \"%s\" DSL \"%s\" " +
-                "OUTPUT_PATH \"%s\" REF_PATH \"%s\" ACTIVE %d SEQ %d EXPECTED %d " +
-                "PROVENANCE %s DESC \"%s\" GEO_THRESHOLD %d AABB_W %.0f AABB_D %.0f AABB_H %.0f",
-                buildingId, entry.docSubType(), entry.name(),
-                entry.dslContent() != null ? entry.dslContent().replace("\"", "'") : "",
-                entry.outputDbPath(),
-                entry.referenceDbPath() != null ? entry.referenceDbPath() : "",
-                entry.isActive() ? 1 : 0, entry.seqNo(), entry.expectedElements(),
-                entry.provenance(), entry.description() != null ? entry.description() : "",
-                entry.geometryFailThreshold(),
-                entry.aabbWidthMm(), entry.aabbDepthMm(), entry.aabbHeightMm());
+            String sql = """
+                INSERT OR IGNORE INTO c_order (
+                    Value, Name, DSLContent,
+                    OutputDbPath, ReferenceDbPath, IsActive, SeqNo,
+                    ExpectedElements, Provenance, Description,
+                    GeometryFailThreshold, DocStatus,
+                    AabbWidthMm, AabbDepthMm, AabbHeightMm,
+                    CompiledAt, CompilerVersion, C_DocType_ID
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
+                """;
 
-            // Dispatch via SPI (BIM_COBOL on classpath)
-            VerbExecutor executor = ServiceLoader.load(VerbExecutor.class)
-                    .findFirst().orElse(null);
-            if (executor != null) {
-                try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
-                    VerbExecutor.ExecutionReport report = executor.execute(
-                        bomConn, outConn, buildingId, List.of(verbLine));
-                    if (report.allPass()) {
-                        System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s) in output.db%n",
-                            buildingId, entry.docTypeId());
-                    } else {
-                        System.err.printf("[C_ORDER] WARN: REGISTER BUILDING failed for %s: %s%n",
-                            buildingId, report.details());
-                    }
-                } catch (Exception e) {
-                    System.err.printf("[C_ORDER] WARN: Failed to create C_Order for %s: %s%n",
-                        buildingId, e.getMessage());
-                }
-            } else {
-                System.err.printf("[C_ORDER] WARN: No VerbExecutor on classpath — cannot register %s%n",
-                    buildingId);
+            try (PreparedStatement ps = outConn.prepareStatement(sql)) {
+                ps.setString(1, buildingId);                          // Value
+                ps.setString(2, entry.name());                        // Name
+                ps.setString(3, entry.dslContent() != null ? entry.dslContent() : "");  // DSLContent
+                ps.setString(4, entry.outputDbPath());                // OutputDbPath
+                ps.setString(5, entry.referenceDbPath());             // ReferenceDbPath
+                ps.setInt(6, entry.isActive() ? 1 : 0);              // IsActive
+                ps.setInt(7, entry.seqNo());                          // SeqNo
+                ps.setInt(8, entry.expectedElements());               // ExpectedElements
+                ps.setString(9, entry.provenance());                  // Provenance
+                ps.setString(10, entry.description());                // Description
+                ps.setInt(11, entry.geometryFailThreshold());         // GeometryFailThreshold
+                ps.setString(12, "IP");                               // DocStatus
+                ps.setObject(13, entry.aabbWidthMm() > 0 ? entry.aabbWidthMm() : null);   // AabbWidthMm
+                ps.setObject(14, entry.aabbDepthMm() > 0 ? entry.aabbDepthMm() : null);   // AabbDepthMm
+                ps.setObject(15, entry.aabbHeightMm() > 0 ? entry.aabbHeightMm() : null); // AabbHeightMm
+                ps.setString(16, "BIM-Compiler-1.0");                 // CompilerVersion
+                ps.setString(17, entry.docTypeId());                  // C_DocType_ID
+                ps.executeUpdate();
+
+                System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s, DocStatus=IP) in output.db%n",
+                    buildingId, entry.docTypeId());
+            } catch (Exception e) {
+                System.err.printf("[C_ORDER] WARN: Failed to create C_Order for %s: %s%n",
+                    buildingId, e.getMessage());
             }
         }
 

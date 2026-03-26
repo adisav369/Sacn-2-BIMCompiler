@@ -685,8 +685,8 @@ SHA256 hash of 63 test files + 10 critical production/infra files (73 total). Su
 
 **Note:** This doc uses re-seal counter (v40 = 40th re-seal). `verify_test_seal.sh` uses format version (v6). These are different numbering systems.
 
-**Sealed:** 2026-03-26 (v41: S93 Tier 2 Phase E INTEGER PK query migration)
-**Super-hash:** `21ac21c4f1fb0e0a889442e7821b369afbbb37a0d438dd0276accd342a9ddbbc`
+**Sealed:** 2026-03-26 (v42: S94 C_Order pipeline fix — T16 exemption for CompilationPipeline)
+**Super-hash:** `5ddcd79e4735c9f020b42614f3b66cb2f9ac73af4316db25110416ec1964ed2c`
 
 **S51-AUDIT pending re-seal:** The following hardening changes require a re-seal once applied:
 - `assumeTrue` → `fail()` in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)

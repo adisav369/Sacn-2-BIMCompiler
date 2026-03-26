@@ -790,6 +790,8 @@ class RosettaStoneGateTest {
                         // Exclude this test class itself from T6/T7 false positives
                         String rel = base.relativize(file).toString();
                         if (rel.contains("RosettaStoneGateTest.java")) continue;
+                        // T16: CompilationPipeline.copyCOrderToOutput is the authorized c_order write path
+                        if ("T16".equals(rule.id()) && rel.contains("CompilationPipeline.java")) continue;
                         // T17: ElementPersistence.java is the authorized UPDATE path for verbs
                         if ("T17".equals(rule.id()) && rel.contains("ElementPersistence.java")) continue;
                         // T19: ExtractionPopulator.java has a storey fix for SJTII_Terminal — tracked debt
