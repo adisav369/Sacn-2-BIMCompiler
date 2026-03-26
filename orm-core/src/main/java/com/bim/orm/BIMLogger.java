@@ -49,7 +49,7 @@ public class BIMLogger {
             try { return Level.valueOf(prop.toUpperCase()); }
             catch (IllegalArgumentException badLevel) { /* unrecognised level string — fall through to INFO */ }
         }
-        return Level.INFO;
+        return Level.FINE;  // default FINE — heavy debugging phase
     }
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");

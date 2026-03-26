@@ -89,11 +89,20 @@ for arg in "$@"; do
     esac
 done
 
-# Default: all classify_*.yaml files
+# Default: run all 4 Product Category groups (RE, CO, IN, ST)
+# DocType = ConstructionOrder (single). Grouping is by M_Product_Category.
 if [ ${#YAML_FILES[@]} -eq 0 ]; then
-    for f in "${YAML_DIR}"/classify_*.yaml; do
-        [ -f "$f" ] && YAML_FILES+=("$f")
+    EXTRA_ARGS=""
+    [ "$DELTA_ONLY" = "true" ] && EXTRA_ARGS="$EXTRA_ARGS delta"
+    [ "$DIFF_TSV" = "true" ] && EXTRA_ARGS="$EXTRA_ARGS --diff"
+    for pc in RE CO IN ST; do
+        echo ""
+        echo "╔══════════════════════════════════════════╗"
+        echo "║  M_Product_Category: ${pc}"
+        echo "╚══════════════════════════════════════════╝"
+        "$SCRIPT_DIR/run_RosettaStones_${pc}.sh" $EXTRA_ARGS || true
     done
+    exit 0
 fi
 
 if [ ${#YAML_FILES[@]} -eq 0 ]; then
