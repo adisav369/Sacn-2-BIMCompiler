@@ -156,6 +156,93 @@ components are unavailable.
 can't reach `CO` (Completed) status until all placement proofs pass. Validation
 rules would fire during `prepareIt` — before compilation commits to output.db.
 
+### 1.5 Column.Callout — BIM Spatial Callout Wiring
+
+In iDempiere, `CalloutOrder.amt()` is a generic callout that fires on ANY order
+line change and calculates totals. It doesn't know specific products — tax rules
+(`C_Tax`) provide the specifics as data. The callout is the **engine** (generic,
+code); the rules are the **data** (AD_Rule rows, ASI values).
+
+**BIM mapping:** A generic spatial callout fires on ANY C_OrderLine placement or
+dimension change. It reads per-instance ASI for verb overrides and queries AD_Rule
+for matching spatial conditions. New verb associations = SQL INSERT, not code change.
+
+#### 1.5.1 Dispatch Chain
+
+```
+C_OrderLine field change (dx, dy, dz, M_Product_ID)
+  │
+  ├─ 1. CalloutEngine queries AD_Rule WHERE source_column = changed_field
+  │     AND is_active = 1, ordered by depends_on (Kahn topo-sort)
+  │
+  ├─ 2. For each matching rule, read ASI from C_OrderLine.M_AttributeSetInstance_ID
+  │     → M_AttributeInstance name/value pairs (trim_action, tolerance, etc.)
+  │
+  ├─ 3. ASI overrides compose with AD_Rule.rule_type to select domain callout:
+  │     POSITIONAL  → CalloutSPATIAL  (AABB recalc, parent cascade)
+  │     DIMENSIONAL → CalloutTRIM     (trim verb family: detect→filter→decide→act)
+  │     CONSTRAINT  → CalloutJOIN     (joint/connection type enforcement)
+  │     REROUTE     → CalloutMEP      (MEP path rerouting)
+  │
+  └─ 4. Domain callout orchestrates its verb family via VerbRegistry
+```
+
+#### 1.5.2 How AD_Rule + ASI Compose
+
+The key separation: AD_Rule defines WHEN a callout fires and WHAT type it is.
+ASI on the C_OrderLine defines HOW the verb executes for this specific instance.
+
+| Layer | Source | Example |
+|-------|--------|---------|
+| **When** | AD_Rule.source_column | `dx` changes on C_OrderLine |
+| **What** | AD_Rule.rule_type | `DIMENSIONAL` → trim family |
+| **How** | M_AttributeInstance via ASI | `trim_action=CUT_FILL`, `trim_tolerance_mm=25` |
+| **Who** | M_Product.M_AttributeSet_ID | `BIM_Wall` → defines which attributes are valid |
+
+#### 1.5.3 Resolution Order
+
+```
+1. AD_Rule match:     source_table='C_OrderLine' AND source_column=<changed>
+2. Product filter:    M_Product.M_Product_Category constrains which rules apply
+3. ASI resolution:    effective = ASI_override ?? DefaultValue (from M_Attribute)
+4. Verb dispatch:     VerbRegistry.resolve(rule_type, ASI params)
+```
+
+This mirrors iDempiere exactly: `CalloutOrder.amt()` doesn't know tax rates —
+it queries `C_Tax` by product category and date. Our `CalloutEngine` doesn't
+know trim tolerances — it queries ASI by attribute set and instance.
+
+#### 1.5.4 Extending with Data, Not Code
+
+Adding a new callout rule (e.g., "when a duct moves, reroute connected pipes"):
+
+```sql
+INSERT INTO AD_Rule (ad_rule_id, name, event_type, source_table, source_column,
+    rule_type, expression, seq_no)
+VALUES (10, 'DUCT_REROUTE_DX', 'FIELD_CHANGE', 'C_OrderLine', 'dx',
+    'REROUTE', 'REROUTE_CONNECTED', 20);
+```
+
+Adding a per-instance override (e.g., "this wall skips trim"):
+
+```sql
+-- Create ASI for the wall instance
+INSERT INTO M_AttributeSetInstance (M_AttributeSet_ID, Description)
+VALUES ('BIM_Wall', 'Wall A-1: skip trim');
+
+INSERT INTO M_AttributeInstance (M_AttributeSetInstance_ID, Name, Value, ValueType)
+VALUES (last_insert_rowid(), 'trim_action', 'SKIP', 'TEXT');
+
+-- Link to order line
+UPDATE c_orderline SET M_AttributeSetInstance_ID = <asi_id>
+WHERE locator_ref = 'SH/GF/LIVING/WALL_EXT_A1';
+```
+
+No Java change. The callout engine discovers the SKIP override at dispatch time.
+
+*Cross-references: BBC.md §3.5.2 (Product → Verb Routing), BIM_Designer_SRS.md §31
+(ASI Attribute Chain), AUDIT Appendix T.3 (AD_Rule schema).*
+
 ---
 
 ## 2. Construction Validation Types

@@ -505,6 +505,72 @@ Zero new code — just data on the OrderLine.
 
 *ASI matrix: BIM_Designer.md §8. Schema: output.db. Generative: GENERATIVE_ROOM_SRS.md §6.*
 
+### 3.5.2 Product → Verb Routing via ASI
+
+In iDempiere Manufacturing, each product has a routing (`PP_Product_Planning` →
+operations → sequences). We removed PP_Order as too heavy (S73). The lighter
+equivalent uses the existing ASI chain to carry verb parameters as structured
+per-instance data.
+
+#### The Chain
+
+```
+M_Product
+  └─ M_AttributeSet_ID → 'BIM_Wall'
+       └─ M_AttributeUse → [trim_action, trim_tolerance_mm, joint_type, ...]
+            └─ M_Attribute → ValueType, DefaultValue
+
+C_OrderLine
+  └─ M_AttributeSetInstance_ID → ASI #47
+       └─ M_AttributeInstance → trim_action='CUT_FILL', trim_tolerance_mm=25
+
+AD_Rule
+  └─ source_column='dx', rule_type='DIMENSIONAL'
+       └─ CalloutEngine → reads ASI → dispatches verb with overrides
+```
+
+#### How It Replaces PP_Order Routing
+
+| iDempiere Manufacturing | BIM Equivalent | Why Lighter |
+|------------------------|----------------|-------------|
+| PP_Product_Planning | M_Product.M_AttributeSet_ID | One FK, not a planning table |
+| PP_Order_BOMLine (sequence) | M_AttributeUse.SeqNo | Attribute ordering within set |
+| PP_Order_Node (operation) | AD_Rule (reactive callout) | Declarative rules, not operation graph |
+| PP_Cost_Collector | Not needed | Costing is on M_PriceList, not per-operation |
+
+#### Resolution at Verb Dispatch Time
+
+When a verb fires (via DiffVerb → CalloutEngine → VerbRegistry):
+
+```
+1. Product lookup:    M_Product.M_AttributeSet_ID → 'BIM_Wall'
+2. Attribute schema:  M_AttributeUse WHERE M_AttributeSet_ID = 'BIM_Wall'
+                      → [trim_action, trim_tolerance_mm, joint_type, ...]
+3. Instance values:   M_AttributeInstance WHERE M_AttributeSetInstance_ID = <ASI>
+                      → trim_action='CUT_FILL', trim_tolerance_mm=25
+4. Default fallback:  M_Attribute.DefaultValue WHERE Name = 'trim_tolerance_mm'
+                      → 50 (if no ASI override)
+5. Effective params:  effective = ASI_override ?? M_Attribute.DefaultValue
+6. Verb execution:    TRIM_WALLS_TO_ROOF(action=CUT_FILL, tolerance=25)
+```
+
+This is the same three-tier resolution as §3.5.1 (`ASI_override ?? allocated_*_mm
+?? catalog_default`), extended from geometric dimensions to verb parameters.
+
+#### What This Means
+
+- **New verb parameter** = `INSERT INTO M_Attribute` + `INSERT INTO M_AttributeUse`.
+  No Java change.
+- **Per-instance override** = `INSERT INTO M_AttributeInstance` on the order line's ASI.
+  No Java change.
+- **New product type with different verb params** = `INSERT INTO M_AttributeSet` +
+  map attributes via `M_AttributeUse`. No Java change.
+- **AD_Rule** controls WHEN verbs fire. **ASI** controls HOW they execute.
+  Both are data. The engine (CalloutEngine + VerbRegistry) is generic.
+
+*Schema: migration/ASI_002_attribute_detail.sql. Callout wiring: DocValidate.md §1.5.
+ASI field matrix: BIM_Designer_SRS.md §28.7 + §31.*
+
 ### 3.6 The Rosetta Stone — Launch Booster
 
 The Rosetta Stone exercise (SH/DX/TE) proves the pipeline is **lossless**:

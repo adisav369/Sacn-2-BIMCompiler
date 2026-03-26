@@ -26,13 +26,9 @@ Priority: **P0** = must-have for first usable demo, **P1** = needed for daily us
 ### 1.1 Foundation Guarantee — Zero Delta Compilation
 
 All five Rosetta Stone buildings compile with verified volume:
-SH (55), FK (82), IN (699), DX (1,099), TE (48,428). The BOM→compile→output pipeline is lossless.
-
-This is the bedrock UX guarantee: **what the user designs IS what the compiler
-produces.** No approximation, no drift, no geometry surprise. Every UX claim
-in this document — slider edits, jurisdiction switches, version recall — rests
-on the fact that BOM data deterministically reproduces exact geometry. The
-compiler is a pure function: same input → same output, always.
+SH (55), FK (82), IN (699), DX (1,099), TE (48,428). The compiler is a pure
+function: same input → same output, always. Every UX claim in this document
+rests on this guarantee. See [MANIFESTO.md §Why This Matters](MANIFESTO.md).
 
 ---
 
@@ -423,7 +419,7 @@ Maps requirements to implementation files and test witnesses.
 | UX-F-14 | §17.10.5 | DesignerAPIImpl.listVariants, WorkOutputDAO | panel.py | W-JOURNEY-HELLO-5 | IMPLEMENTED |
 | UX-F-15 | G4_SRS §2.3 | DesignerAPIImpl.recall, WorkOutputDAO | operator.py (recall) | W-JOURNEY-HELLO-6 | IMPLEMENTED |
 | UX-F-16 | §17.10.2 | DesignerAPIImpl.approve | operator.py | W-APPROVE-1..4 | IMPLEMENTED |
-| UX-F-17 | §17.10.4 | DesignerAPI.promote | operator.py (promote) | — | SPEC ONLY (stub) |
+| UX-F-17 | §17.10.4 | DesignerAPI.promote | operator.py (promote) | W-PROMOTE-1..6 | IMPLEMENTED (PromoteTest) |
 | UX-F-18 | §18.4 | DesignerAPIImpl.snap, PlacementValidatorImpl | panel.py (_draw_status_strip) | W-SNAP-1 | IMPLEMENTED |
 | UX-F-19 | §18.4 | ValidationVerdict, Adjustment | panel.py (_draw_status_strip) | W-SNAP-1 | IMPLEMENTED |
 | UX-F-20 | §18.4, §17.13 | DesignerAPIImpl.snap (fixRule) | panel.py, design_bbox.py | W-FIX-1..2 | IMPLEMENTED |
@@ -436,7 +432,7 @@ Maps requirements to implementation files and test witnesses.
 | UX-F-27 | §17.19 | — | panel.py | — | SPEC ONLY |
 | UX-F-28 | §17.9 | — | operator.py (UNDO) | — | IMPLEMENTED (basic) |
 
-**Summary:** 23 IMPLEMENTED, 5 SPEC ONLY (UX-F-04, 17, 25, 26, 27). Witnesses: 87 total across 10 test classes.
+**Summary:** 24 IMPLEMENTED, 4 SPEC ONLY (UX-F-04, 25, 26, 27). Witnesses: 93 total across 11 test classes.
 
 ---
 
@@ -497,164 +493,51 @@ witness claim. Format follows the project convention (BomValidator pattern).
 
 ---
 
-## 10. What Makes This UX Unique — Analysis
+## 10. What Makes This UX Unique
 
-### 10.1 The Compilation Advantage
+Five principles distinguish this UX from geometry-first BIM tools:
 
-Most BIM tools edit geometry directly — every click mutates mesh data. Our tool
-edits **metadata** (OrderLine + ASI) and **compiles** geometry. This inversion
-enables UX patterns that geometry-first tools cannot match:
-
-| UX Pattern | Why geometry-first tools can't do it | Our approach |
-|-----------|--------------------------------------|-------------|
-| **Instant jurisdiction switch** | Geometry doesn't know about building codes. Changing country means manual redesign. | OrderLine unchanged. PlacementValidator swaps AD_Val_Rule set. Re-validate, don't redesign. |
-| **Non-destructive versioning** | Saving mesh snapshots is expensive (MB per version). Undo is sequential. | Saving OrderLine rows is cheap (KB per version). Recall any version, not just sequential undo. |
-| **Ambient compliance** | Checking geometry against rules requires spatial queries on mesh data (slow). | Checking OrderLine dimensions against AD_Val_Rule bounds is a SQL comparison (fast). |
-| **Product swap** | Replacing a component means deleting mesh + creating new mesh + repositioning. | Updating family_ref on OrderLine. Compiler generates correct geometry on next compile. |
-| **Three-view editing** | Mesh data is hard to render as a table or tree. Views diverge. | OrderLine is inherently tabular. Tree via Parent_OrderLine_ID. BBox via dx/dy/dz. Same data, different projections. |
-| **Compound enrichment** | Each project's geometry is siloed. No reuse. | Each Promote adds to BOM catalog. Next project starts richer. |
-
-### 10.2 The "No Save Anxiety" Pattern
-
-Traditional tools: Save overwrites. "Save As" creates confusion. Version chaos.
-
-Our model: **every Save creates a new immutable version.** There is no overwrite.
-Recall is a copy, not a restore. The user never loses work. This is the Git model
-applied to building design — but with a simpler UX (no branches, no merge conflicts,
-just a linear version list with labels).
-
-The psychological effect: users iterate more when saving is safe. TestFit's 2-3x
-iteration improvement comes from speed alone. We add safety: iterate freely because
-you can always go back. Speed × safety = confidence to explore.
-
-### 10.3 The "Teammate" Interaction Model
-
-The system is opinionated but not authoritarian:
-
-| System behaviour | Authoritarian (Revit) | Teammate (BIM Designer) |
-|-----------------|----------------------|------------------------|
-| Room too small | Error dialog, blocks placement | Status strip shows shortfall, auto-fix offered, editing continues |
-| Product doesn't fit | Hidden from catalog | Shown with red badge + "TOO WIDE". User might resize room. |
-| Compliance fails | Separate validation report, post-design | Live strip during design. Fix as you go. |
-| Undo | Sequential Ctrl+Z only | Version list — jump to any point |
-| Defaults | Generic | Jurisdiction-aware, building-type-aware, history-aware |
-
-The key: **information, not gates.** Design Mode never blocks (only Approve does).
-The user sees consequences in real-time but retains full control. This is the
-Finch3D insight applied to a BOM-aware system.
+1. **Compilation advantage:** Edit metadata (OrderLine + ASI), compile geometry. Enables instant jurisdiction switch, cheap versioning, ambient compliance, product swap, and three-view editing. See [MANIFESTO.md §The Insight](MANIFESTO.md).
+2. **No save anxiety:** Every Save creates a new immutable version. Recall is a copy, not a restore. See [MANIFESTO.md §The Order](MANIFESTO.md).
+3. **Teammate, not gatekeeper:** Design Mode never blocks — only Approve does. Failed rules show shortfall + auto-fix, not error dialogs.
+4. **Compound enrichment:** Each Promote adds to the BOM catalog. Next project starts richer.
+5. **Information, not gates:** The user sees consequences in real-time but retains full control.
 
 ---
 
-## 11. Output.db Relationship Discovery — "More Resolved Than We Think"
+## 11. Output.db Relationship Discovery — Summary
 
-> **Context:** The main compilation session is still hardening BBC.md SRS and
-> processing the output pipeline. This section documents what the output.db
-> schema already resolves — grounding future Designer UX in proven data, not
-> speculative maths. The stable foundation is `*_BOM.db` (m_bom + m_bom_line
-> with tack dx/dy/dz, verb_ref, allocated dimensions) and `WorkOrderGuide.md`
-> (pipeline config). The output.db tables below are the **compiled result**
-> of that BOM data — relationship tables that the other session is actively
-> populating and verifying.
+### 11.1 Key Finding
 
-### 11.1 The Finding
+The output.db already contains rich IFC relationship data (parent-child, storey
+containment, material layers) that eliminates AABB float arithmetic for many rules.
+See [DATA_MODEL.md](DATA_MODEL.md) for the full output.db schema.
 
-The output.db (FederatedModel schema) already contains **rich IFC relationship
-data** that the specs have been treating as "missing extraction columns" or
-"AABB arithmetic needed." Verified counts from actual compiled output:
+| Table | What it resolves |
+|-------|------------------|
+| `assembly_components` | Parent-child: door→wall, pipe→system (85 unique SH, 263K unique TE) |
+| `rel_contained_in_space` | Storey containment: 100% coverage, FK not float |
+| `spatial_structure` | Building hierarchy: Building → Storeys with parent_guid |
+| `material_layers` | Wall composition: layer-by-layer with thickness_mm |
+| `element_assemblies` | Container bounds: per-storey-per-discipline AABB |
 
-| Table | SH (55 el.) | TE (48,428 el.) | What it resolves |
-|-------|-------------|-----------------|------------------|
-| `assembly_components` | 85 unique (212 raw — 127 dupes) | 263,869 unique (791K raw — 528K dupes) | **Parent-child**: door→wall, pipe→system, plate→roof |
-| `element_assemblies` | 8 | 50 | **Container bounds**: per-storey-per-discipline AABB |
+### 11.2 Architectural Rule: Prefer FK Over Float
 
-> **Data quality note:** `assembly_components` has duplicate (assembly_guid,
-> component_guid) rows — same element inserted 2-3× into the same assembly.
-> The PRIMARY KEY constraint in output_schema.sql should prevent this but the
-> writer inserts without `INSERT OR IGNORE`. The unique pair count is the
-> meaningful number. The other session's output pipeline hardening should
-> address this duplication. Raw row counts in this document use **unique**
-> (deduplicated) values unless noted.
-| `rel_contained_in_space` | 55 (100%) | 48,428 (100%) | **Storey containment**: every element → its IfcBuildingStorey |
-| `spatial_structure` | 4 | 8 | **Building hierarchy**: Building → Storeys with parent_guid |
-| `material_layers` | 12 | 0 (TE has none) | **Wall composition**: layer-by-layer with thickness_mm |
-| `element_properties` | 55 | (exists) | **IFC property sets**: Pset_IfcDoorCommon etc. |
-| `simple_qto` | 8 | (exists) | **Quantities**: area, volume from IfcQuantitySet |
-
-### 11.2 Impact on Validation Rules — Do Away With More Maths
-
-The `assembly_components` table has columns: `assembly_guid, component_guid,
-role, local_x, local_y, local_z, sequence, optional`. The `role` column
-currently stores ifc_class (IfcDoor, IfcWall, etc.) but the **parent-child
-FK** is the relationship that matters.
-
-**Rules that can now be pure SQL JOINs (not AABB proximity):**
-
-| Rule | Was (AABB arithmetic) | Now (SQL JOIN) | SQL |
-|------|----------------------|---------------|-----|
-| **M16/M17** Opening host | AABB_PROXIMITY 200mm tolerance | `assembly_components` WHERE role='IfcDoor' → JOIN to parent assembly → host resolved | `SELECT ac.assembly_guid FROM assembly_components ac WHERE ac.component_guid = :door_guid` |
-| **M13-15** Vertical continuity | SAME_COLUMN predicate with XY tolerance | `rel_contained_in_space` + `elements_meta.storey` → group by product across storeys | `SELECT storey, COUNT(*) FROM elements_meta em JOIN rel_contained_in_space rc ON em.guid = rc.element_guid WHERE em.ifc_class = :class GROUP BY storey` |
-| **Container bounds** | Calculate from children's AABB | `element_assemblies.total_width/depth/height` already has it | Direct read — no computation |
-| **Fire rating** | Missing column (M11) | `material_layers.material_name` + thickness → U-value / fire rating derivable | JOIN `material_layers` on wall element_name pattern |
-| **Storey membership** | SAME_LEVEL Z-band tolerance | `rel_contained_in_space` — 100% coverage, FK not float | Direct FK lookup |
-
-### 11.3 BOM.db Foundation — What the Designer Reads Directly
-
-The Designer's primary data source is `*_BOM.db`, not output.db. The BOM
-schema is the stable, proven foundation (SH/DX/TE all GREEN, 7/7 gates):
-
-**m_bom** — assembly recipes with AABB:
-- `bom_id, bom_name, bom_category` — identity + classification
-- `aabb_width_mm, aabb_depth_mm, aabb_height_mm` — container bounds
-- `origin_x/y/z` — world anchor (only BUILDING non-zero, R16 fix)
-- `entity_type` (D/U/A) — governance guard
-
-**m_bom_line** — recipe children with tack and allocation:
-- `dx, dy, dz` — LBD tack offset (parent-relative, BBC.md §4)
-- `allocated_width/depth/height_mm` — child AABB
-- `verb_ref` — factorization verb (TILE, SPRAY, ROUTE, FRAME, or NULL for leaf)
-- `qty` — factored count (1 for leaf, N for verb-expanded)
-- `anchor_face, rotation_rule, orientation` — placement attributes
-- `child_product_id` → component_library.db M_Product FK
-
-The Designer reads BOM.db via `DesignerDAO.java` (proven, tested). The output.db
-relationship tables are downstream — produced by the compiler from this BOM data.
-The finding below is that the output already resolves more than specs acknowledge,
-which means UI verbs can query compiled relationships instead of re-deriving them.
-
-### 11.4 New Rule: **Prefer FK Over Float** (extends Schema-Not-Geometry)
-
-> **When output.db has a foreign key (parent_guid, assembly_guid,
-> space_guid), never use AABB float arithmetic to derive the same
-> relationship.** FKs are exact. Floats have tolerance drift.
-
-This extends the Schema-Not-Geometry rule (BBC.md §2):
-- **Level 1 (existing):** If IFC has a relationship, extract it as a column
-- **Level 2 (new):** If output.db already has the FK, use it — don't re-derive from geometry
+Extends Schema-Not-Geometry (BBC.md §2):
+- **Level 1:** If IFC has a relationship, extract it as a column
+- **Level 2:** If output.db already has the FK, use it — don't re-derive from geometry
 - **Level 3:** Only use AABB arithmetic when no FK or IFC relationship exists
 
-### 11.5 Impact on BIM_COBOL Spatial Predicates
+This upgrades BIM_COBOL §20 predicates: `HOST_OF` uses `assembly_components` FK
+(R21 landed), `WITHIN` uses `rel_contained_in_space`, `SAME_LEVEL` uses
+`spatial_structure.parent_guid`. AABB is fallback only.
 
-The spatial predicates in BIM_COBOL §20 specced AABB fallbacks for several
-operations. With output.db FKs, they can upgrade:
+### 11.3 BOM.db Foundation
 
-| Predicate | BIM_COBOL §20 spec | Upgraded implementation |
-|-----------|-------------------|----------------------|
-| `HOST_OF` | "AABB containment in 2/3 axes. Upgrades to FK when R21 lands" | **R21 already landed** — `assembly_components.assembly_guid` IS the host FK. No upgrade needed — use it now. |
-| `WITHIN` | "R-tree: minX >= c.minX AND maxX <= c.maxX" | Can also use `rel_contained_in_space` for element→space containment. R-tree for arbitrary containment. |
-| `SAME_LEVEL` | "Z-band tolerance" | `rel_contained_in_space` → `spatial_structure.parent_guid` gives exact storey match. Z-band is fallback only. |
-| `ALONG_PATH` | "Walk ad_element_dependency" | `system_edges` + `system_nodes` gives MEP connectivity graph directly (for TE: populated). |
-
-### 11.6 Impact on BIM Designer UX
-
-**For the Designer, this means simpler, faster, more reliable operations:**
-
-| UX Operation | Old approach (maths) | New approach (FK) | UX impact |
-|-------------|---------------------|-------------------|-----------|
-| "Which wall hosts this door?" | AABB overlap + proximity search | `SELECT assembly_guid FROM assembly_components WHERE component_guid = :door` | Instant, no tolerance issues |
-| "Show all elements on this floor" | Z-band filter on R-tree | `SELECT element_guid FROM rel_contained_in_space WHERE space_guid = :storey` | Exact, no Z-drift |
-| "What's in this assembly?" | Parent AABB containment | `SELECT component_guid, role FROM assembly_components WHERE assembly_guid = :asm` | Full tree with roles |
-| "Wall composition" | Missing — needed extraction | `SELECT * FROM material_layers WHERE layer_set_name LIKE :wall_type` | Layer-by-layer ready for assembly builder |
-| "Move door to different wall" | Re-run AABB proximity | UPDATE `assembly_components SET assembly_guid = :new_wall` | FK update, not geometry recomputation |
+The Designer's primary data source is `*_BOM.db` (m_bom + m_bom_line with tack
+dx/dy/dz, verb_ref, allocated dimensions), read via `DesignerDAO.java`. The
+output.db relationship tables are downstream compiled results. UI verbs can query
+compiled relationships instead of re-deriving them.
 
 ---
 
@@ -705,29 +588,7 @@ commands. Java does the query (smart), Python does the bpy (dumb).
    "edges":[{"from":"n1","to":"n2","type":"PIPE"}]}
 ```
 
-### 12.4 How These Enable Richer UX
-
-**Assembly explorer (clicking a wall shows its family):**
-User clicks wall → Python sends `queryHost` → Java returns assembly tree →
-Python highlights all siblings (other walls, doors, windows in same assembly).
-The user sees: "this wall is part of SH_GF_STR with 26 elements."
-
-**Material layers panel (clicking a wall shows its composition):**
-User clicks wall → Python sends `queryComposition` → Java returns layer stack
-→ Python draws coloured bands in panel: Brick 102mm | Insulation 75mm | Block 100mm | Plaster 12mm.
-This is the data for the assembly builder (BIM_Designer.md §18.4 Principle 4).
-
-**MEP route tracer (clicking a sprinkler shows its system):**
-User clicks sprinkler → Python sends `traceSystem` → Java walks `system_edges`
-→ Python highlights the entire sprinkler route in the viewport. At TE scale
-(16,362 sprinklers, dense pipe network), this is already queryable.
-
-**Floor navigator (clicking a storey shows its contents):**
-User clicks storey in section chooser → Python sends `show_containment` →
-Java returns all 48,428/storey element GUIDs → Python shows/hides by
-collection. No AABB computation needed — `rel_contained_in_space` is exact.
-
-### 12.5 Traceability
+### 12.4 Traceability
 
 | Verb | Output.db table | BIM_COBOL predicate | BIM Designer SRS req |
 |------|----------------|--------------------|--------------------|
@@ -782,16 +643,11 @@ BIMLogger.info("DESIGNER", "Server started on port {}", port);
 
 Log file: `logs/pipeline_designer_server_{timestamp}.log`
 
-### 13.3 Why This Matters for UX
+### 13.3 UX Impact
 
-1. **Latency tracking.** Every action logs elapsed time. If UX-N-01 (createNew < 200ms)
-   regresses, the log shows it without needing a profiler.
-2. **Connection diagnostics.** UX-E-01/E-02 (server not running, disconnection) are
-   diagnosed from the log, not from the user's description.
-3. **Save verification.** UX-E-03 (crash during save) — the log shows whether the
-   save transaction committed before the crash.
-4. **Compliance audit.** Every validate call logs per-rule verdicts at FINE level.
-   An auditor can verify compliance from the log alone.
+Logs enable latency regression detection (UX-N-01+), connection diagnostics
+(UX-E-01/E-02), save verification (UX-E-03), and compliance audit (FINE-level
+per-rule verdicts).
 
 ---
 
@@ -837,57 +693,11 @@ The inference engine evolves it in three stages:
 - Downstream rules SKIP when upstream premise fails
 - Proof trace: each result carries the chain of premises that led to it
 
-**Stage 2 (G-7): Spatial predicate integration**
-- BIM_COBOL §20 predicates (DISTANCE_BETWEEN, HOST_OF, WITHIN, etc.) become
-  callable from AD_Val_Rule.check_method
-- Predicates compose: `HOST_OF` upgrades from AABB_PROXIMITY to FK join
-  transparently when R21 lands (no rule change, just predicate implementation)
-- Predicate results cached per evaluation cycle (200ms sync timer budget)
+**Stage 2 (G-7, SPEC ONLY):** Spatial predicates (BIM_COBOL §20: HOST_OF, WITHIN, etc.) become callable from `AD_Val_Rule.check_method`. Predicates compose and cache per evaluation cycle.
 
-**Stage 3 (G-10): Full proof tree for Promote gate**
-- Promote requires all-rules-pass + dangle detection + tack integrity
-- Engine produces a proof tree: root = "PROMOTE_SAFE", children = per-rule proofs
-- Each leaf cites: AD_Val_Rule ID, jurisdiction, measured value, threshold, §reference
-- Failed proof tree serialised to W_Validation_Result for audit trail
+**Stage 3 (G-10, SPEC ONLY):** Full proof tree for Promote gate — all-rules-pass + dangle detection + tack integrity. Each leaf cites AD_Val_Rule ID, jurisdiction, measured value, threshold. Failed proof tree serialised to `W_Validation_Result`.
 
-### 14.4 Implementation — Datalog-Style Rules Over SQL
-
-The spatial predicates and validation rules are expressed as Datalog-style
-Horn clauses evaluated over the 4-database SQL schema. This matches the
-Schema-Not-Geometry principle (BBC.md §2): every predicate is a SQL query,
-not geometry code.
-
-```
-% Rule M3: bedroom minimum width (jurisdiction-parameterised)
-compliant(Room, m3_bedroom_width) :-
-    room_category(Room, 'BD'),
-    dim_width(Room, W),
-    jurisdiction_min(m3_bedroom_width, Jurisdiction, MinW),
-    W >= MinW.
-
-% Rule M16: opening face-anchor (depends on M17 host resolution)
-compliant(Opening, m16_face_anchor) :-
-    host_resolved(Opening, Wall),          % ← M17 must pass first
-    forward_axis(Opening, FA),
-    wall_normal(Wall, WN),
-    perpendicular(FA, WN).
-
-% Spatial predicate composition
-within(Element, Room) :-
-    host_of(Element, Wall),                % FK: assembly_components
-    within(Wall, Room).                    % FK: rel_contained_in_space
-
-% Constraint: new placement must not overlap existing
-valid_placement(Item, Slot) :-
-    aabb(Item, W, D, H),
-    capacity(Slot, CW, CD, CH),
-    W =< CW, D =< CD, H =< CH,
-    \+ overlaps(Item, Slot).               % negation-as-failure
-```
-
-Each rule maps to a SQL query pattern. The engine evaluates them in
-topological order (dependency DAG), caches intermediate results, and
-builds a proof tree from the evaluation trace.
+Stages 2-3 express rules as Datalog-style Horn clauses over the 4-database SQL schema (Schema-Not-Geometry principle). Each rule maps to a SQL query pattern evaluated in topological order with cached intermediate results.
 
 ### 14.5 Non-Functional Requirements
 
@@ -1319,7 +1129,7 @@ both call validate() and get richer results.
 | §14 Inf | §19.2 | InferenceEngine | W-INF-DEP-1..CYCLE-1 | IMPLEMENTED |
 
 **Summary after implementation:**
-- 23 IMPLEMENTED, 5 SPEC ONLY (UX-F-04, 17, 25, 26, 27). Witnesses: 87 total across 10 test classes (87/87 GREEN).
+- 24 IMPLEMENTED, 4 SPEC ONLY (UX-F-04, 25, 26, 27). Witnesses: 93 total across 11 test classes.
 
 ---
 
@@ -1371,11 +1181,7 @@ resources across multiple designers.**
 | `output.db` | **Per-building** (compile DB) | Read-write per session | Save/Recall/placeItem |
 | `PlacementValidator` state | **Per-session** | In-memory | setJurisdiction per user |
 
-This is the iDempiere pattern:
-- `M_Product` = shared catalog (component_library.db)
-- `AD_Val_Rule` = shared validation (validation.db)
-- `M_BOM` = shared recipes (BOM.db)
-- `C_Order` = per-user work orders (output.db)
+This maps to the iDempiere entity-relationship model. See [MANIFESTO.md §Entity-Relationship Model](MANIFESTO.md).
 
 ### 21.3 Session Isolation (Stage 1 — Current)
 
@@ -1386,15 +1192,9 @@ but needs extension for multi-user:
 **Stage 1 (current):** Single user. One PlacementValidator, one jurisdiction.
 All methods share state. Functional for development and demo.
 
-**Stage 2 (beta):** Session handshake. Client sends `{"action":"connect",
-"sessionId":"user-A", "jurisdiction":"MY"}`. Server creates per-session state
-(validator, jurisdiction, building context). Existing wire protocol unchanged —
-sessionId added as header field.
+**Stage 2 (beta, SPEC ONLY):** Session handshake — per-session state (validator, jurisdiction, building context). sessionId added as header field.
 
-**Stage 3 (production):** Authentication + authorization. Session → user →
-role (architect/engineer/QS). Promote gate requires specific role. Audit
-trail in W_Validation_Result links to user. Standard iDempiere AD_User
-pattern.
+**Stage 3 (production, SPEC ONLY):** Authentication + authorization — Session → user → role. Promote gate requires specific role. Audit trail in W_Validation_Result. Standard iDempiere AD_User pattern.
 
 ### 21.4 Concurrency Model
 
@@ -1406,31 +1206,7 @@ pattern.
 | approve, promote | **Serialised** — writes to shared BOM.db | Needs mutex on BOM.db writes (Promote is rare, governance-gated) |
 | compile | **Per-building** — reads BOM.db, writes output.db | Safe (output.db is per-building) |
 
-### 21.5 Collaborative Design Scenario
-
-```
-User A (architect):                 User B (engineer):
-─────────────────                   ─────────────────
-createNew "House_1"                 browseItems "sprinkler"
-  → bboxes → Design Mode             → 12 results
-addRoom BEDROOM                     (waits for A to save)
-save "v1"
-                                    recall "v1" of House_1
-                                    placeItem SPRINKLER_HEAD
-                                    save "v2-mep"
-snap (MY jurisdiction)
-  → sees A's rooms + B's sprinklers
-approve
-  → InferenceEngine: all PASS
-promote
-  → House_1 enters shared BOM catalog
-```
-
-Both users work on the same building (`House_1`), each saving their own
-variants. The server serialises writes to the same output.db. Promote
-is a governance gate — only one user (with role) can execute it.
-
-### 21.6 Witness Claims
+### 21.5 Witness Claims
 
 | Witness | Tests | Requirement |
 |---|---|---|
@@ -1485,40 +1261,11 @@ return CompileResponse.success(result.elementCount(), result.elapsedMs(),
 
 ### 22.4 Generative Compile Path
 
-For generative buildings (Create New → design → compile), the sequence is:
+Generative sequence: createNew → edit → save → approve → promote → compile → viewport.
+For beta, short-circuit compile reads C_OrderLine directly (skips Promote). See §28 for
+the full BOM Drop paradigm that supersedes this path.
 
-```
-1. createNew → bboxes (in-memory, no DB)
-2. User edits: addRoom, placeItem, resize, snap
-3. save → output.db (C_Order + C_OrderLine)
-4. approve → InferenceEngine validates, all PASS → AP
-5. promote → writes m_bom + m_bom_line to {PREFIX}_BOM.db   ← G-10
-6. compile → CompilationPipeline reads BOM.db → output.db   ← THIS
-7. Federation Full Load → output.db → Blender 3D viewport   ← G-8
-```
-
-Steps 5 and 7 are stubs. Step 6 is the compile bridge (this section).
-The generative path needs Promote (step 5) to produce a BOM.db that
-the compiler can read. For beta, we can short-circuit: compile directly
-from output.db C_OrderLine data without requiring full Promote.
-
-### 22.5 Short-Circuit Compile (Beta Path)
-
-For beta, skip Promote. Compile directly from output.db:
-
-```java
-// Beta compile: read C_OrderLine from output.db,
-// build temporary m_bom/m_bom_line in memory,
-// feed to CompilationPipeline.
-CompileDAO compileDao = getCompileDAO(buildingId);
-List<DesignBBox> bboxes = woDao.recall(latestVariantId);
-// Convert bboxes to m_bom_line format
-// Run pipeline
-```
-
-This lets users see 3D geometry without the full Promote governance flow.
-
-### 22.6 Implementation Status — DONE (session 29)
+### 22.5 Implementation Status — DONE (session 29)
 
 **Java wiring:**
 - `DesignerAPIImpl.compile()` — replaced stub with real `CompilationPipeline.run(entry)`.
@@ -1648,150 +1395,60 @@ within 300ms of Snap.
 
 ---
 
-## 25. Embedding-Assisted Inference (Stage 2-3 — Not ERP-Aligned)
+## 25. Embedding-Assisted Inference (SPEC ONLY — Deferred)
 
-> **Status:** SPEC ONLY. AI/ML inference layer, not iDempiere-aligned. Deferred.
->
-> **Inspiration:** Yann LeCun's VL-JEPA (Joint Embedding Predictive Architecture
-> for Vision-Language, 2026). Core insight: predict in **embedding space**, not
-> in raw data space. Learn abstract representations; match and retrieve via
-> embedding similarity rather than exact query.
->
-> **Design decision (2026-03-19):** The compiler pipeline remains deterministic
-> and symbolic (§14 Inference Engine unchanged). Embeddings augment the
-> **BOM Chooser** and **Inference Engine** with semantic similarity search,
-> not replace rule evaluation. The symbolic engine is the authority;
-> embeddings are the suggestion engine.
+> **Status:** SPEC ONLY. AI/ML inference layer, not iDempiere-aligned.
+> The compiler pipeline remains deterministic and symbolic (§14 unchanged).
+> Embeddings augment BOM Chooser and Inference Engine with semantic similarity,
+> not replace rule evaluation.
 
-### 25.1 Architectural Alignment
+### 25.1 Core Concept
 
-The BIM compiler already operates in a JEPA-compatible pattern:
+Each M_Product gets a pre-computed embedding vector (category, material, dimensions,
+flags — 32-64 dims). Enables "Find Similar" in BOM Chooser and predictive placement
+("What Goes Here Next?"). The embedding predictor is **advisory only** — the symbolic
+engine validates all suggestions against AD_Val_Rule.
 
-| JEPA Concept | BIM Compiler Equivalent | Where |
-|---|---|---|
-| **Predict in embedding space** | Compile from intent (BOM), not geometry | BBC.md §2, verb grammar |
-| **Joint embedding** | Bridge IFC geometry + BOM semantics + ERP data + building code | 4-database schema |
-| **Selective decoding** | Defer to concrete IFC only at final compile step | Tack-fix pipeline, deferred resolution |
-| **Target embedding prediction** | Given partial design, predict next likely component | InferenceEngine forward-chaining (§14.2) |
-
-The gap: the current system uses **exact SQL queries** for component lookup
-(§2.5 BOM Chooser). Embeddings add a semantic similarity layer on top.
-
-### 25.2 Component Embedding Space
-
-Each M_Product row in `component_library.db` gets a pre-computed embedding
-vector encoding its semantic properties:
-
-**Embedding dimensions (input features):**
-```
-[category, subcategory, material_class, width_mm, depth_mm, height_mm,
- wet_area_flag, load_bearing_flag, exterior_flag, jurisdiction_set,
- typical_host_category, assembly_role, cost_tier]
-```
-
-**Storage:** New column on M_Product or a companion table:
-```sql
-ALTER TABLE M_Product ADD COLUMN embedding BLOB;  -- float32[] serialised
-```
-
-**Computation:** Offline batch job. No neural network required for Stage 1 —
-a deterministic feature vector from existing columns suffices. Neural
-embeddings (Stage 2) can be trained later from user placement histories.
-
-### 25.3 Semantic BOM Chooser — "Find Similar"
-
-Current BOM Chooser (UX-F-22) searches by keyword and category. Embedding
-similarity adds a new interaction:
-
-| ID | Requirement | Acceptance Criteria | Priority |
-|---|---|---|---|
-| UX-F-29 | **Semantic search.** BOM Chooser accepts natural-language queries ("something like this wall but for a wet area") and returns ranked results by embedding distance. | Top-5 results by cosine similarity returned within 200ms. Results show similarity score badge alongside FITS/TIGHT/TOO WIDE. | P2 |
-| UX-F-30 | **"More like this."** Selecting an item offers "Find Similar" which queries by that item's embedding vector. | Results ranked by cosine distance to selected item's embedding. Excludes exact match. | P2 |
-| UX-F-31 | **Context-aware ranking.** Search results boosted by compatibility with current design context (room category, jurisdiction, existing placements). | Context vector = mean of placed items' embeddings. Results re-ranked by distance to context centroid. | P2 |
-
-**Algorithm:**
-```
-1. User types query OR clicks "Find Similar" on existing item
-2. Query → embedding (keyword: TF-IDF over product descriptions;
-   "Find Similar": copy item's embedding vector)
-3. Cosine similarity against all M_Product embeddings
-4. Filter by FITS/TIGHT/TOO WIDE (existing §17.18.3 logic)
-5. Re-rank by context affinity (mean embedding of placed items)
-6. Return top-N with similarity + fit badges
-```
-
-### 25.4 Predictive Placement — "What Goes Here Next?"
-
-JEPA's core capability: given context, predict the target embedding. Applied
-to the BIM Designer, this becomes **predictive component suggestion**.
-
-| ID | Requirement | Acceptance Criteria | Priority |
-|---|---|---|---|
-| UX-F-32 | **Next-component suggestion.** When a room is focused and empty, the Inference Engine suggests likely components based on room category + jurisdiction + building type. | Suggestion list appears in BOM Chooser sidebar. Items ranked by embedding prediction. "Place Suggested" one-click action. | P2 |
-| UX-F-33 | **Learned placement patterns.** After Stage 2 embeddings (trained on user placement histories), suggestions reflect actual usage patterns, not just category rules. | Precision@5 > 80% on held-out placement sequences from completed designs. | P2 (Stage 2) |
-
-**Integration with Inference Engine (§14):**
-```
-InferenceEngine.evaluate()
-  ├── Stage 1: rule dependency DAG (deterministic, authoritative)
-  ├── Stage 2: spatial predicates (deterministic)
-  └── Stage 3+: embedding prediction (suggestive, non-blocking)
-       ├── Input: current design state → context embedding
-       ├── Predict: target component embedding
-       └── Match: nearest neighbours in component_library
-```
-
-The embedding predictor is **advisory only** — it suggests, the symbolic
-engine validates. A suggested component still must pass all AD_Val_Rule
-checks before placement is accepted.
-
-### 25.5 Joint Embedding Across the 4-Database Schema
-
-VL-JEPA bridges vision and language modalities. The BIM compiler bridges
-five data modalities. A shared embedding space enables cross-modal queries:
-
-| Query | Modalities Bridged | Example |
-|---|---|---|
-| "What BOM line corresponds to this IFC element?" | IFC ↔ BOM | R4/R5 gap resolution |
-| "Which products meet this jurisdiction's rules?" | Product catalog ↔ AD_Val_Rule | Compliance-filtered browse |
-| "What did similar designs use here?" | Design history ↔ Product catalog | Predictive placement |
-| "Which ERP order matches this design intent?" | output.db ↔ BOM.db | Promote verification |
-
-Stage 1 uses deterministic feature vectors. Stage 2 trains a lightweight
-encoder (MLP or shallow transformer) on the cross-modal alignment task:
-given (IFC element, BOM line, OrderLine) triples from Rosetta Stone
-buildings, learn an embedding where matched triples are close.
-
-### 25.6 Non-Functional Requirements
-
-| ID | Requirement | Target | Rationale |
-|---|---|---|---|
-| EMB-N-01 | Embedding computation (per product) | < 1ms | Offline batch; no runtime cost |
-| EMB-N-02 | Similarity search (full library) | < 200ms | Brute-force cosine over ~500 products; ANN index if > 5000 |
-| EMB-N-03 | Context embedding update | < 50ms | Mean of placed items; incremental on place/remove |
-| EMB-N-04 | Embedding dimensionality | 32-64 dims | Sufficient for ~500 products; avoids curse of dimensionality |
-| EMB-N-05 | Storage overhead | < 1KB per product | 64 × float32 = 256 bytes + index |
-
-### 25.7 Implementation Stages
+### 25.2 Implementation Stages
 
 | Stage | Gate | What | Deterministic? |
 |---|---|---|---|
-| **Stage 1: Feature vectors** | G-8 | Compute embeddings from existing M_Product columns. Enable "Find Similar" in BOM Chooser. | Yes — no ML, pure feature engineering |
-| **Stage 2: Learned embeddings** | G-11 | Train encoder on Rosetta Stone (IFC, BOM, OrderLine) triples. Enable predictive placement. | No — requires training data + MLP |
-| **Stage 3: Cross-modal retrieval** | G-12 | Joint embedding across all 4 databases. Natural-language queries over the full schema. | No — requires VL-JEPA-style encoder |
+| **Stage 1: Feature vectors** | G-8 | Compute embeddings from existing M_Product columns. Enable "Find Similar". | Yes — no ML |
+| **Stage 2: Learned embeddings** | G-11 | Train encoder on Rosetta Stone triples. Predictive placement. | No — MLP |
+| **Stage 3: Cross-modal retrieval** | G-12 | Joint embedding across all 4 databases. NL queries. | No — JEPA-style |
 
-### 25.8 Witness Claims
+### 25.3 Requirements
+
+| ID | Requirement | Acceptance Criteria | Priority |
+|---|---|---|---|
+| UX-F-29 | **Semantic search.** NL queries return ranked results by embedding distance. | Top-5 by cosine similarity within 200ms. | P2 |
+| UX-F-30 | **"More like this."** Query by item's embedding vector. | Ranked by cosine distance, excludes exact match. | P2 |
+| UX-F-31 | **Context-aware ranking.** Boost by current design context. | Re-rank by context centroid distance. | P2 |
+| UX-F-32 | **Next-component suggestion.** Suggest likely components for focused room. | Ranked suggestions in BOM Chooser sidebar. | P2 |
+| UX-F-33 | **Learned placement patterns.** Trained on user histories. | Precision@5 > 80% on held-out sequences. | P2 (Stage 2) |
+
+### 25.4 Non-Functional Requirements
+
+| ID | Requirement | Target |
+|---|---|---|
+| EMB-N-01 | Embedding computation (per product) | < 1ms (offline batch) |
+| EMB-N-02 | Similarity search (full library) | < 200ms |
+| EMB-N-03 | Context embedding update | < 50ms |
+| EMB-N-04 | Embedding dimensionality | 32-64 dims |
+| EMB-N-05 | Storage overhead | < 1KB per product |
+
+### 25.5 Witness Claims
 
 | Witness | Tests | Requirement |
 |---|---|---|
-| W-EMB-SIM-1 | "Find Similar" on a bedroom door returns other doors, not walls | Embedding quality (§25.3) |
-| W-EMB-FIT-1 | Similarity results still carry correct FITS/TIGHT/TOO WIDE badges | Integration with §17.18.3 |
-| W-EMB-CTX-1 | Context-aware ranking boosts wet-area products when focused room is bathroom | Context affinity (§25.3) |
-| W-EMB-PRED-1 | Empty bedroom suggestion list includes bed, wardrobe, window — not toilet | Predictive placement (§25.4) |
-| W-EMB-PERF-1 | Full similarity search completes within 200ms for 500-product library | EMB-N-02 |
-| W-EMB-DET-1 | Stage 1 embeddings are deterministic: same product → same vector across runs | Reproducibility |
+| W-EMB-SIM-1 | "Find Similar" on a bedroom door returns other doors, not walls | §25.3 |
+| W-EMB-FIT-1 | Similarity results carry correct FITS/TIGHT/TOO WIDE badges | §25.3 |
+| W-EMB-CTX-1 | Context-aware ranking boosts wet-area products for bathroom | §25.3 |
+| W-EMB-PRED-1 | Empty bedroom suggestion includes bed, wardrobe, window — not toilet | §25.3 |
+| W-EMB-PERF-1 | Full similarity search within 200ms for 500-product library | EMB-N-02 |
+| W-EMB-DET-1 | Stage 1 embeddings deterministic across runs | Reproducibility |
 
-### 25.9 Traceability
+### 25.6 Traceability
 
 | Req ID | Spec Section | Java File | Witness | Status |
 |---|---|---|---|---|
@@ -1840,108 +1497,32 @@ This phase is unchanged from current implementation.
 
 ### 26.4 Phase 2 — Edit Existing Geometry (WF-R2)
 
-Full geometry exists in scene. User re-enters Design Mode to make changes.
+Full geometry exists. User re-enters Design Mode.
 
-**Entry:** User toggles Design Mode (S0 → S1).
-**On toggle Design Mode:**
-1. Iterate all objects in Designer collections
-2. Store original `display_type` per object (for restore on exit)
-3. Set all objects to `display_type = 'BOUNDS'` (native Blender per-object bounding box, grey)
-4. No global X-ray — per-object BOUNDS gives spatial context without uniform dimming
+**On toggle Design Mode:** Store original `display_type` per object, set all to
+`display_type = 'BOUNDS'` (grey). No global X-ray.
 
-**On select/focus (S1 → S2):**
-1. Set focused object to `display_type = 'SOLID'` (full geometry visible for this item)
-2. Set `obj.show_in_front = True` (draws on top, no depth-sorting confusion)
-3. Draw vivid bbox overlay via `design_bbox.py` around the focused item only
-4. All other objects remain `display_type = 'BOUNDS'` (grey bboxes)
+**On focus:** Focused object → `display_type = 'SOLID'` + `show_in_front = True`
++ vivid bbox overlay. All others stay BOUNDS. On change focus: swap SOLID/BOUNDS.
 
-**On deselect / change focus:**
-1. Previous focused object → back to `display_type = 'BOUNDS'`
-2. Previous `show_in_front = False`
-3. New focused object gets SOLID + show_in_front + vivid bbox
-
-**On exit Design Mode (→ S0):**
-1. Restore all objects to original `display_type` (SOLID/TEXTURED)
-2. Clear all `show_in_front` flags
-3. Disable bbox overlay (`design_bbox.disable()`)
-
-**Key advantage over global X-ray:** Selected item is full-opacity SOLID with vivid
-bbox cage. Unselected items are native Blender BOUNDS (grey boxes with spatial
-proportions). The contrast ratio is high — user instantly knows what they're editing.
+**On exit:** Restore all to original `display_type`, clear `show_in_front`, disable
+bbox overlay. Selected item is full-opacity SOLID with bbox cage; unselected are
+BOUNDS — high contrast ratio.
 
 ### 26.5 Phase 2 + Add New (WF-R3)
 
-User is in Design Mode with existing geometry (Phase 2) and adds a new item.
-
-**On Add Room / Add Storey:**
-1. New item appears as GPU overlay bbox (Phase 1 style) — vivid category colour
-2. Existing committed objects remain `display_type = 'BOUNDS'`
-3. New item is auto-focused (vivid bbox, no SOLID geometry — it has none yet)
-4. On CO → new item compiles to 3D → joins the BOUNDS pool
-
-**Visual distinction:** New items are GPU overlay wireframe (thin lines, category
-colour). Existing items are native Blender BOUNDS (thicker, grey, filled faces on
-some viewport modes). The user can tell draft from committed at a glance.
+Add Room/Storey in Phase 2: new item appears as GPU overlay bbox (vivid category
+colour), existing stay BOUNDS. New item auto-focused. On CO → compiles to 3D →
+joins BOUNDS pool. Draft (thin wireframe) visually distinct from committed (BOUNDS).
 
 ### 26.6 Double-Click Inspection (Peek Mode)
 
-**Trigger:** Double-click-and-hold on a focused bbox (Phase 1 or Phase 2).
-**Visual:**
-1. Properties popup appears near the bbox showing item data from DB/BOM:
-   - Product ID, Name, Category
-   - Dimensions (W × D × H mm)
-   - Material, Construction System
-   - Compliance status (PASS/FAIL per rule)
-   - BOM line reference
-2. Orientation markers drawn on the bbox — three axis arrows at bbox centre:
-   - **Red** arrow → Right (+X)
-   - **Green** arrow → Front (+Y)
-   - **Blue** arrow → Up (+Z)
-   - Arrow length = 30% of bbox extent in that axis
-3. GPU overlay only — no Blender objects created
+Double-click-and-hold on a focused bbox shows a properties popup (Product ID, Name,
+Category, Dimensions, Material, Compliance status, BOM ref) plus RGB orientation
+markers (Red=+X, Green=+Y, Blue=+Z, 30% of bbox extent). GPU overlay only.
+Dismisses on release. Zero DB queries, <1ms render.
 
-**On release:** Popup and markers dismiss. Returns to normal focus state.
-**Latency:** Properties read from scene `_design_bboxes` JSON (already loaded).
-Orientation markers are 6 vertices (3 line segments). Total cost: zero DB queries, <1ms render.
-
-### 26.7 Implementation — Per-Object Display Control
-
-```python
-# Phase 2: Toggle Design Mode — set all to BOUNDS
-def _enter_design_phase2(context):
-    """Switch existing geometry to BOUNDS display for Design Mode."""
-    designer_objects = _get_designer_objects(context)
-    for obj in designer_objects:
-        obj["_wf_original_display"] = obj.display_type  # store for restore
-        obj.display_type = 'BOUNDS'
-        obj.display_bounds_type = 'BOX'
-        obj.color = (0.4, 0.4, 0.4, 0.3)  # grey, semi-transparent
-
-# Phase 2: Focus item — promote to SOLID
-def _focus_phase2(obj):
-    """Show focused item as full SOLID with bbox overlay."""
-    obj.display_type = 'SOLID'
-    obj.show_in_front = True
-
-# Phase 2: Unfocus — demote back to BOUNDS
-def _unfocus_phase2(obj):
-    """Return item to BOUNDS display."""
-    obj.display_type = 'BOUNDS'
-    obj.show_in_front = False
-
-# Exit Design Mode — restore all
-def _exit_design_phase2(context):
-    """Restore all objects to original display type."""
-    designer_objects = _get_designer_objects(context)
-    for obj in designer_objects:
-        original = obj.get("_wf_original_display", 'SOLID')
-        obj.display_type = original
-        obj.show_in_front = False
-        if "_wf_original_display" in obj:
-            del obj["_wf_original_display"]
-```
-
-### 26.8 State Machine Update
+### 26.7 State Machine Update
 
 The WF-BB protocol adds sub-states to the existing state machine (§6):
 
@@ -2020,454 +1601,80 @@ Phase detection: `has_full_geometry = any(obj.type == 'MESH' for obj in designer
 | WF-24 | §26.14 | DesignerServer (AD_Session) | W-WF-SESSION | SPEC ONLY |
 | WF-25 | §26.14 | DesignerServer (CR↔changelog link) | W-WF-CR-LOG | SPEC ONLY |
 
-### 26.12 Clash-Aware Chain Highlight + Ghost Drag (Future: Federation Bridge)
+### 26.12 Chain Highlight + Ghost Drag + Cost-of-Change (SPEC ONLY)
 
-When WF-BB is used during clash resolution or conduit routing, two additional
-behaviours activate. These extend the same bbox-first principle to connected
-element chains.
+> These extend the bbox-first principle to connected element chains during
+> clash resolution or conduit routing. All SPEC ONLY.
 
-#### 26.12.1 Chain Highlight — "Select One, See the Whole Run"
-
-**Trigger:** User selects an item that has adjacency/connectivity data (conduit
-segment, pipe run, duct branch, cable tray span).
-
-**Behaviour:**
-1. Selected item → vivid bbox overlay (standard WF-R2 focus)
-2. Query adjacency graph for all items connected to the selected item
-   (same conduit run, same pipe circuit, same cable tray path)
-3. All connected items → tagged with a **single chain colour** (distinct from
-   both the vivid focus colour and the grey BOUNDS)
-4. Chain colour is per-run — if two conduit runs cross, each gets its own colour
-5. Unrelated items remain grey BOUNDS
-
-**Chain colour palette** (high-contrast, colourblind-safe):
-
-| Chain # | Colour | RGBA |
-|---------|--------|------|
-| 1 | Orange | (1.0, 0.6, 0.1, 0.7) |
-| 2 | Teal | (0.0, 0.7, 0.65, 0.7) |
-| 3 | Magenta | (0.85, 0.2, 0.6, 0.7) |
-| 4 | Lime | (0.5, 0.85, 0.1, 0.7) |
-| 5+ | Cycle 1-4 | — |
-
-**Data source:** Federation `elements_meta` table has `system_id` / `circuit_id`
-columns. The clash module's `clash_grouping.py` already groups elements by system.
-No new DB schema needed — just a query: `SELECT id FROM elements_meta WHERE
-system_id = (SELECT system_id FROM elements_meta WHERE guid = ?)`.
-
-**Visual result:** User clicks one conduit elbow → entire conduit run lights up
-in orange. They instantly see the full path, all connected fittings, the extent
-of what they're affecting. Everything else is grey boxes.
-
-#### 26.12.2 Ghost Drag — "Move the Box, Not the Geometry"
-
-**Trigger:** User grabs (G key or gizmo) a focused item while in Design Mode
-(Phase 2 — full geometry exists).
-
-**Behaviour:**
-1. The solid geometry of the selected item **stays in place** (frozen at original
-   position). It becomes a "ghost" — dimmed to 30% alpha or switched to WIRE
-   display, showing where the item currently is.
-2. A **drag proxy bbox** appears — a vivid wireframe box at the cursor that moves
-   freely with the user's mouse/gizmo input.
-3. Chain-highlighted items (§26.12.1) **also spawn ghost drag bboxes** that move
-   in sync, maintaining their relative offsets to the selected item. The entire
-   conduit run moves as a chain of wireframe boxes.
-4. The original solid geometry of chain items also stays frozen as ghosts.
-5. The user sees: ghost solids (where things were) + moving bbox wireframes
-   (where things will go). Zero ambiguity.
-
-**On commit (Enter / CO):**
-1. Solid geometry snaps to the new bbox positions
-2. Ghost display removed
-3. Positions written to DB
-4. Items return to BOUNDS display (Phase 2 normal)
-
-**On cancel (Esc / right-click):**
-1. Drag proxy bboxes removed
-2. Ghost display removed
-3. Everything returns to pre-drag state
-4. Zero changes to DB
-
-**Implementation approach:**
-```python
-# Ghost drag state
-_ghost_originals = {}  # obj → (original_location, original_display_type)
-_drag_bboxes = []      # list of GPU overlay bboxes tracking cursor
-
-def _enter_ghost_drag(focused_obj, chain_objects):
-    """Freeze solids, spawn drag proxy bboxes."""
-    all_objs = [focused_obj] + chain_objects
-    for obj in all_objs:
-        _ghost_originals[obj] = (obj.location.copy(), obj.display_type)
-        obj.display_type = 'WIRE'
-        obj.color = (0.5, 0.5, 0.5, 0.3)  # ghost
-
-    # Build drag proxy bboxes from object bounds
-    # These are GPU overlays that follow cursor offset
-    _build_drag_proxies(all_objs)
-
-def _commit_ghost_drag():
-    """Snap geometry to new positions, clean up ghosts."""
-    for obj, (orig_loc, orig_display) in _ghost_originals.items():
-        # obj.location already updated by proxy tracking
-        obj.display_type = 'BOUNDS'  # back to Phase 2 normal
-        obj.color = (0.4, 0.4, 0.4, 0.3)
-    _ghost_originals.clear()
-    _drag_bboxes.clear()
-```
-
-#### 26.12.3 Cost-of-Change Feedback
-
-**Trigger:** During ghost drag (§26.12.2), while the user is moving proxy bboxes
-but before commit.
-
-**Behaviour:**
-1. As the drag proxy moves, the frontend sends a lightweight `costOfChange` query
-   to the backend with the original and proposed positions of all chain items.
-2. The backend computes a **BOM diff** — what changes in the bill of materials
-   between the current and proposed positions:
-
-| Delta field | Source | Example |
-|-------------|--------|---------|
-| Material length | Path recalculation (conduit/pipe/tray meters) | "+2.3m copper pipe" |
-| Fittings | Bend detection at new routing angles | "+1 elbow, −1 straight coupling" |
-| Labour hours | Fitting count × installation rate | "+0.5 hrs" |
-| Cost | `M_Product_PO.PriceStd` × quantity deltas | "+RM 47.50" |
-| Compliance | Rule check at new positions (clearance, max run, fire zone) | "PASS" or "EXCEEDS 15m max run" |
-| Clash count | R-tree intersection at proposed positions | "0 new clashes" or "2 new clashes (ELEC×PLUMB)" |
-
-3. Results display in a **floating cost strip** near the drag proxy — same GPU
-   overlay approach as the properties popup (§26.6). Updates live as user drags.
-4. Colour-coded: green = cost-neutral or cheaper, yellow = cost increase,
-   red = compliance fail or new clash.
-
-**Backend verb:**
-```
-costOfChange(chainGuids[], originalPositions[], proposedPositions[])
-→ { materialDelta, fittingsDelta, labourHrs, costDelta, currency,
-    compliance: [{rule, status, detail}],
-    newClashes: [{guidA, guidB, discipline}] }
-```
-
-**Data source:** All from existing DB — `M_Product` pricing, `AD_Val_Rule`
-compliance rules, `elements_rtree` for clash detection. The verb is a pure
-function: no side effects, no DB writes until commit.
-
-**Latency contract:** <200ms per update. Debounced at 100ms during drag (don't
-query on every mouse pixel — batch the delta).
-
-**On commit:** The cost strip freezes, showing final delta. The `moveChain` verb
-writes new positions + updated BOM lines to DB. The cost becomes the audit trail.
-
-**On cancel:** Cost strip dismissed. Zero DB impact.
-
-**UX impact:** The user never commits blind. Every drag shows its business
-consequence. "This reroute saves RM 120" or "This move creates 2 new clashes"
-— visible before the decision is made, not discovered in a report two weeks later.
-
-#### 26.12.4 Requirements
+#### 26.12.1 Requirements
 
 | ID | Requirement | Acceptance Criteria | Priority |
 |----|------------|-------------------|----------|
-| WF-11 | Select connected item → entire chain highlighted in single colour | All items sharing `system_id` get chain colour. Max query time 50ms. | P1 |
-| WF-12 | Drag in Design Mode spawns ghost + proxy bbox | Original geometry freezes as WIRE/30% alpha. Proxy bbox follows cursor. Chain items move together. | P1 |
-| WF-13 | Commit drag updates positions; Cancel restores originals | Enter → snap + DB write. Esc → full restore. Zero residual state. | P1 |
-| WF-14 | Cost-of-change shown live during drag | Floating cost strip: material delta, fittings, labour, cost, compliance, clashes. Updates <200ms debounced. | P2 |
-| WF-15 | Cost strip colour-coded by severity | Green = neutral/cheaper. Yellow = cost increase. Red = compliance fail or new clash. | P2 |
-| WF-16 | Cost-of-change query is side-effect-free | `costOfChange` verb reads DB only, zero writes. Cancel = zero DB impact. | P2 |
+| WF-11 | **Chain highlight.** Select connected item → entire chain highlighted in single colour | All items sharing `system_id` get chain colour (4-colour colourblind-safe palette). Max query 50ms. | P1 |
+| WF-12 | **Ghost drag.** Drag in Design Mode spawns ghost + proxy bbox | Original geometry freezes as WIRE/30% alpha. Proxy bbox follows cursor. Chain items move together. | P1 |
+| WF-13 | **Commit/Cancel.** Commit drag updates positions; Cancel restores originals | Enter → snap + DB write. Esc → full restore. Zero residual state. | P1 |
+| WF-14 | **Cost-of-change.** Live cost strip during drag | Floating strip: material delta, fittings, labour, cost, compliance, clashes. <200ms debounced. | P2 |
+| WF-15 | **Severity coding.** Cost strip colour-coded | Green = neutral/cheaper. Yellow = cost increase. Red = compliance fail or new clash. | P2 |
+| WF-16 | **Side-effect-free query.** `costOfChange` reads only | Zero writes. Cancel = zero DB impact. | P2 |
 
-#### 26.12.5 Witnesses
+#### 26.12.2 Witnesses
 
 | Witness | Tests | Requirement |
 |---|---|---|
-| W-WF-CHAIN | Select conduit segment → all segments in same system_id highlighted in chain colour, rest grey | WF-11 |
-| W-WF-GHOST | Drag focused item → solid freezes as ghost, proxy bbox moves with cursor | WF-12 |
-| W-WF-DRAG-COMMIT | Commit drag → geometry at new position. Cancel → geometry at original position. | WF-13 |
-| W-WF-COST | Drag conduit 2m right → cost strip shows material delta + cost delta + compliance status | WF-14, WF-15 |
+| W-WF-CHAIN | Select conduit segment → all in same system_id highlighted, rest grey | WF-11 |
+| W-WF-GHOST | Drag focused → solid freezes as ghost, proxy bbox moves with cursor | WF-12 |
+| W-WF-DRAG-COMMIT | Commit → geometry at new position. Cancel → original position. | WF-13 |
+| W-WF-COST | Drag conduit 2m → cost strip shows material + cost delta + compliance | WF-14, WF-15 |
 | W-WF-COST-CANCEL | Drag then cancel → zero DB changes, cost strip dismissed | WF-16 |
-| W-WF-CR-SPAWN | Commit drag with cost delta → R_Request created with affected disciplines + approvers | WF-17 |
-| W-WF-CR-IMPACT | Change Request shows all affected engineers by discipline | WF-18 |
-| W-WF-CR-FILES | Change Request attaches before/after BOM diff + cost summary | WF-19 |
 
-### 26.13 Change Request — Stakeholder Impact on Commit (R_Request)
+### 26.13 Change Request on Commit (R_Request) (SPEC ONLY)
 
-**Principle:** A design change is not just geometry + cost. It affects people.
-When a move crosses discipline boundaries, the affected engineers must know.
-This maps directly to iDempiere's `R_Request` (CRM request/change order) model.
+Cross-discipline drag commits spawn an iDempiere `R_Request` when impact
+exceeds thresholds. Follows `processIt()` DocAction lifecycle (DR→IP→CO→AP).
+See [MANIFESTO.md §Application Dictionary Heritage](MANIFESTO.md).
 
-#### 26.13.1 Trigger
-
-When the user commits a ghost drag (§26.12.2) and the `costOfChange` response
-indicates:
-- **Cross-discipline impact** — the moved chain affects items owned by other
-  disciplines (e.g., moving ACMV duct crosses ELEC cable tray)
-- **Cost delta exceeds threshold** — configurable per project (e.g., >RM 500)
-- **New clashes introduced** — any non-zero clash count
-- **Compliance failure** — any rule violation at new position
-
-A Change Request is automatically spawned.
-
-#### 26.13.2 Change Request Content
-
-The CR maps to iDempiere `R_Request` with BIM-specific fields:
-
-| R_Request field | BIM source | Example |
-|----------------|-----------|---------|
-| `DocumentNo` | Auto-generated | CR-2026-0047 |
-| `R_RequestType_ID` | "Design Change" | — |
-| `Summary` | Auto-generated from verb | "ACMV conduit run C-14 relocated +2.3m east" |
-| `Priority` | From compliance status | Red=Urgent, Yellow=Normal, Green=Low |
-| `SalesRep_ID` | Initiating user (designer) | — |
-| `AD_User_ID` (assigned) | Discipline lead of most-affected discipline | — |
-
-**Attached data (R_RequestUpdate / document attachments):**
-
-| Attachment | Content |
-|-----------|---------|
-| `bom_diff.json` | Before/after BOM line changes — added, removed, modified items |
-| `cost_summary.json` | Material, fittings, labour, total cost delta |
-| `affected_disciplines.json` | List of disciplines touched + element count per discipline |
-| `clash_report.json` | New clashes introduced (if any) — guidA, guidB, type |
-| `position_delta.json` | Original and proposed coordinates for all moved items |
-
-#### 26.13.3 Affected Stakeholder Resolution
-
-**"Who is affected?"** — resolved from the discipline ownership chain:
-
-```
-1. Query moved items → get discipline per item from elements_meta
-2. Query new clashes → get disciplines of clashing items
-3. Union all affected disciplines
-4. Look up discipline lead (AD_User) from project assignment table
-5. Each affected engineer gets notified via R_Request
-```
-
-| Stakeholder role | How identified | What they see |
-|-----------------|----------------|---------------|
-| **Initiator** | Current user | Full CR with "I did this" |
-| **Discipline lead (affected)** | `project_discipline_assignment.AD_User_ID` | "Your {ELEC} elements affected by ACMV change" |
-| **Project manager** | `C_Project.SalesRep_ID` | CR summary + cost delta |
-| **Approver** | Discipline lead with highest cost impact | CR assigned for approval |
-
-#### 26.13.4 Workflow — DocAction Lifecycle
-
-The CR follows the same `processIt()` lifecycle as all iDempiere documents
-(see `DocAction_SRS.md`):
-
-```
-DR (Draft) ──→ IP (In Progress) ──→ CO (Complete) ──→ AP (Approved)
-     │                                                      │
-     │         User commits drag                    Engineer reviews
-     └── CR auto-created ──→ Notification sent ──→ Approve/Reject
-```
-
-**On Approve (AP):** The position change is finalised. BOM updated. Geometry
-committed to master.
-
-**On Reject:** The position reverts to pre-drag state. The initiator is notified
-with the rejection reason. The ghost drag effectively becomes a cancel — but
-with an audit trail of why.
-
-**On Void:** CR withdrawn by initiator before review. Positions revert.
-
-#### 26.13.5 UX in Blender
-
-The CR is spawned **server-side** by the `moveChain` verb. The Python frontend:
-
-1. Calls `moveChain(guids, positions)` on commit
-2. Server returns `{ success: true, changeRequestId: "CR-2026-0047",
-   affectedDisciplines: ["ELEC", "PLUMB"], approver: "john.doe" }`
-3. Blender shows a non-modal notification:
-   **"CR-2026-0047 created — ELEC, PLUMB affected — assigned to john.doe"**
-4. The committed items show a small badge/icon in their BOUNDS display
-   indicating "pending approval" (optional, P2)
-
-The designer keeps working. They don't wait for approval. If the CR is rejected,
-the next time they open the project, the revert is visible.
-
-#### 26.13.6 Backend Verb
-
-```
-moveChain(chainGuids[], originalPositions[], proposedPositions[])
-→ {
-    success: boolean,
-    updatedPositions: [...],
-    costDelta: { material, fittings, labour, total, currency },
-    compliance: [{ rule, status, detail }],
-    newClashes: [{ guidA, guidB, discipline }],
-    // Change Request (if cross-discipline or threshold exceeded)
-    changeRequest: {
-      id: "CR-2026-0047",
-      affectedDisciplines: ["ELEC", "PLUMB"],
-      affectedEngineers: [{ name, discipline, email }],
-      approver: { name, discipline },
-      bomDiff: { added: [...], removed: [...], modified: [...] },
-      costSummary: { before, after, delta, currency }
-    }
-  }
-```
-
-#### 26.13.7 Requirements
+#### 26.13.1 Requirements
 
 | ID | Requirement | Acceptance Criteria | Priority |
 |----|------------|-------------------|----------|
-| WF-17 | Cross-discipline drag commit spawns R_Request | `moveChain` returns `changeRequest` with CR ID when affected disciplines > 1 or cost > threshold | P2 |
-| WF-18 | CR identifies all affected engineers by discipline | `affectedEngineers` list populated from `project_discipline_assignment` | P2 |
-| WF-19 | CR attaches BOM diff, cost summary, clash report | All attachment JSONs present in R_Request. Retrievable via `getChangeRequest(crId)`. | P2 |
-| WF-20 | CR rejection reverts positions | On AP=Reject, moved items return to original positions. Initiator notified. | P2 |
+| WF-17 | Cross-discipline commit spawns R_Request | `moveChain` returns CR ID when affected disciplines > 1 or cost > threshold | P2 |
+| WF-18 | CR identifies affected engineers by discipline | `affectedEngineers` from `project_discipline_assignment` | P2 |
+| WF-19 | CR attaches BOM diff, cost summary, clash report | All JSONs present and retrievable via `getChangeRequest(crId)` | P2 |
+| WF-20 | CR rejection reverts positions | Moved items return to original positions. Initiator notified. | P2 |
 
-#### 26.13.8 Witnesses
+#### 26.13.2 Witnesses
 
 | Witness | Tests | Requirement |
 |---|---|---|
-| W-WF-CR-SPAWN | Move ACMV chain across ELEC tray → R_Request created, DocumentNo returned | WF-17 |
-| W-WF-CR-IMPACT | CR contains affectedDisciplines=["ELEC"] + engineer name from project assignment | WF-18 |
-| W-WF-CR-FILES | CR attachments contain bom_diff with added/removed lines + cost_summary with delta | WF-19 |
-| W-WF-CR-REVERT | Reject CR → moved items back at original positions, BOM restored | WF-20 |
+| W-WF-CR-SPAWN | Move ACMV chain across ELEC → R_Request created | WF-17 |
+| W-WF-CR-IMPACT | CR contains affectedDisciplines + engineer names | WF-18 |
+| W-WF-CR-FILES | CR attachments contain bom_diff + cost_summary | WF-19 |
+| W-WF-CR-REVERT | Reject CR → items at original positions, BOM restored | WF-20 |
 
-### 26.14 ChangeLog — Audit Trail + Multi-User Undo (AD_ChangeLog)
+### 26.14 ChangeLog — Audit Trail + Multi-User Undo (AD_ChangeLog) (SPEC ONLY)
 
-**Principle:** Every change to every field by every user is recorded. This is
-iDempiere's `AD_ChangeLog` reimagined for BIM — not just "what changed" but
-"who changed what, when, from what value, to what value, and why."
+iDempiere `AD_ChangeLog` pattern for BIM: every mutation logged with who, when,
+old/new values, undo_sequence for atomic multi-record undo.
 
-#### 26.14.1 Schema
-
-Maps directly to iDempiere's `AD_ChangeLog` table pattern:
-
-```sql
-CREATE TABLE bim_changelog (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    -- Who
-    ad_user_id      INTEGER NOT NULL,       -- logged-in user
-    ad_session_id   INTEGER NOT NULL,       -- Blender session
-    -- When
-    created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    -- What
-    table_name      TEXT NOT NULL,           -- 'element_placement', 'x_m_bom', etc.
-    record_id       TEXT NOT NULL,           -- PK of changed record (guid or bomId)
-    column_name     TEXT NOT NULL,           -- 'pos_x', 'quantity', 'M_Product_ID'
-    -- Delta
-    old_value       TEXT,                    -- serialised previous value
-    new_value       TEXT,                    -- serialised new value
-    -- Context
-    change_type     TEXT NOT NULL,           -- 'INSERT', 'UPDATE', 'DELETE'
-    r_request_id    TEXT,                    -- link to CR if change was part of one
-    undo_sequence   INTEGER,                -- groups atomic changes (one drag = one seq)
-    description     TEXT                     -- human-readable: "Moved conduit C-14 +2.3m east"
-);
-
-CREATE INDEX idx_changelog_user ON bim_changelog(ad_user_id, created);
-CREATE INDEX idx_changelog_record ON bim_changelog(table_name, record_id);
-CREATE INDEX idx_changelog_undo ON bim_changelog(undo_sequence);
-CREATE INDEX idx_changelog_session ON bim_changelog(ad_session_id);
-```
-
-#### 26.14.2 What Gets Logged
-
-Every mutation through the Designer server is logged. The Java DAO layer
-intercepts writes and records old→new values automatically.
-
-| Operation | table_name | Columns logged | Example |
-|-----------|-----------|---------------|---------|
-| Ghost drag commit | `element_placement` | `pos_x, pos_y, pos_z` | old: (5.0, 3.0, 0.0) → new: (7.3, 3.0, 0.0) |
-| Room resize | `x_m_bom` | `width_mm, depth_mm` | old: 3000 → new: 3500 |
-| Product swap | `x_m_bom_line` | `M_Product_ID` | old: DOOR-001 → new: DOOR-002 |
-| Add room | `x_m_bom` | (all columns) | change_type=INSERT |
-| Remove room | `x_m_bom` | (all columns) | change_type=DELETE, old values preserved |
-| Jurisdiction switch | `x_m_bom` | `jurisdiction` | old: "MY" → new: "SG" |
-| Save/CO | `output` | `DocStatus` | old: "DR" → new: "CO" |
-| Chain move | `element_placement` | `pos_x, pos_y, pos_z` × N items | Same undo_sequence for all |
-
-#### 26.14.3 Undo Levels
-
-Changes are grouped by `undo_sequence` — all mutations from a single user action
-share the same sequence number. This enables multi-field, multi-record undo as
-one atomic operation.
-
-```
-undo(ad_user_id, undo_sequence)
-→ For each changelog row with this sequence (in reverse order):
-    UPDATE {table_name} SET {column_name} = {old_value} WHERE id = {record_id}
-    INSERT new changelog row recording the undo itself
-```
-
-**Undo is itself logged.** An undo creates new changelog entries (change_type =
-'UNDO'), so the undo can itself be undone (redo). The chain is infinite and
-fully auditable.
-
-**Multi-user safety:** A user can only undo their own changes. If user A moves
-a conduit and user B later modifies the same conduit, user A's undo is blocked
-with: "Conflict: {column} modified by {user B} at {timestamp}. Resolve manually
-or create CR."
-
-#### 26.14.4 Multi-User Login (AD_User / AD_Session)
-
-Each Blender instance authenticates against the project's user table:
-
-| Table | Purpose |
-|-------|---------|
-| `AD_User` | Users: name, email, discipline, role |
-| `AD_Session` | Active sessions: user, login time, Blender instance ID |
-| `project_discipline_assignment` | User → discipline → project mapping |
-
-**Login flow:**
-1. BIM Designer connect (A.1) includes `user_id` + `session_token`
-2. Server creates `AD_Session` row
-3. All subsequent verbs carry `ad_session_id` → logged in `bim_changelog`
-4. Panel header shows: "Connected as {user.name} ({discipline})"
-
-**Concurrent edit visibility:** When two users are editing the same building,
-each sees the other's changes via the changelog:
-- Sync timer (200ms, already in `design_bbox.py`) polls for new changelog entries
-  from other sessions
-- Other user's changes appear as a notification: "{user} moved {item}"
-- Conflicting edits (same item, same field) show a warning badge
-
-#### 26.14.5 Audit Trail Query
-
-The changelog enables queries that no BIM tool currently supports:
-
-| Query | SQL pattern | Use case |
-|-------|------------|----------|
-| "Who moved this conduit?" | `WHERE record_id = ? ORDER BY created` | Accountability |
-| "What did John change today?" | `WHERE ad_user_id = ? AND created > date('now')` | Daily review |
-| "Show all changes in CR-47" | `WHERE r_request_id = 'CR-2026-0047'` | CR review |
-| "Undo John's last 3 actions" | `WHERE ad_user_id = ? ORDER BY undo_sequence DESC LIMIT 3` | Supervisor override |
-| "What changed since last AP?" | `WHERE created > (SELECT created FROM bim_changelog WHERE description LIKE '%DocStatus%CO→AP%')` | Approval gate |
-| "Cost history of this room" | `WHERE record_id = ? AND column_name IN ('width_mm','depth_mm','M_Product_ID')` | Cost tracking |
-
-#### 26.14.6 Backend Verb
-
-```
-getChangeLog(filters: { recordId?, userId?, sinceTimestamp?, requestId?, limit? })
-→ { entries: [{ id, user, timestamp, table, record, column,
-                 oldValue, newValue, changeType, undoSeq, description }] }
-
-undoChanges(userId, undoSequence)
-→ { success, undoneCount, conflicts: [{ column, modifiedBy, at }] }
-```
-
-#### 26.14.7 Requirements
+#### 26.14.1 Requirements
 
 | ID | Requirement | Acceptance Criteria | Priority |
 |----|------------|-------------------|----------|
-| WF-21 | Every mutation logged to bim_changelog | INSERT/UPDATE/DELETE on Designer tables → changelog row with old/new values, user, timestamp | P1 |
-| WF-22 | Atomic undo by undo_sequence | `undoChanges(user, seq)` reverts all rows in sequence, logs the undo | P1 |
-| WF-23 | Multi-user conflict detection | Undo blocked if another user modified the same record+column after the original change | P1 |
-| WF-24 | Session-based user identity | Each Blender session has ad_session_id, all verbs carry it, changelog links to user | P1 |
-| WF-25 | Changelog linked to Change Request | Mutations from a CR carry r_request_id. CR rejection undoes all linked changes. | P2 |
+| WF-21 | Every mutation logged to `bim_changelog` | INSERT/UPDATE/DELETE → row with old/new values, user, timestamp | P1 |
+| WF-22 | Atomic undo by `undo_sequence` | `undoChanges(user, seq)` reverts all rows in sequence, logs the undo | P1 |
+| WF-23 | Multi-user conflict detection | Undo blocked if another user modified same record+column after original change | P1 |
+| WF-24 | Session-based user identity | Each Blender session has `ad_session_id`, all verbs carry it | P1 |
+| WF-25 | Changelog linked to Change Request | Mutations from a CR carry `r_request_id`. CR rejection undoes all linked. | P2 |
 
-#### 26.14.8 Witnesses
+#### 26.14.2 Witnesses
 
 | Witness | Tests | Requirement |
 |---|---|---|
 | W-WF-LOG | Move item → changelog row with old/new pos_x, correct ad_user_id | WF-21 |
-| W-WF-UNDO | Undo sequence → item returns to original position, undo logged as new entry | WF-22 |
-| W-WF-CONFLICT | User A moves item, User B moves same item, User A undo → conflict error with B's details | WF-23 |
-| W-WF-SESSION | Connect with user credentials → ad_session_id in all subsequent changelog entries | WF-24 |
-| W-WF-CR-LOG | CR rejection → all changelog entries with that r_request_id undone | WF-25 |
+| W-WF-UNDO | Undo sequence → item at original position, undo logged as new entry | WF-22 |
+| W-WF-CONFLICT | User A moves, User B moves same, User A undo → conflict error | WF-23 |
+| W-WF-SESSION | Connect with credentials → ad_session_id in subsequent changelog entries | WF-24 |
+| W-WF-CR-LOG | CR rejection → all linked changelog entries undone | WF-25 |
 
 ---
 
@@ -2654,71 +1861,18 @@ Step 4: Compile — same compiler, same gates   │
 
 ### 28.2 Why This Is Simpler
 
-The old room-by-room cascade required 8 heavy steps (layout generation → cascade per
-room → ASI computation per element → gap-fill per rule → clash detection). BOM Drop
-requires 3 steps: pick template → navigate tree → swap what you want.
-
-| Concern | Room-by-room | BOM Drop |
-|---------|-------------|----------|
-| Roof | Must author BIM_Roof ASI, compute rafters | Already in template (SH flat / FK pitched) |
-| Foundation | Must author from scratch | Already in template |
-| Structural load path | Must compute beams, columns | Already proven in extracted building |
-| Wall-roof junction | Compute top_trim_mm per wall | Template walls already sized correctly |
-| Opening gap-fill | Query 103 rules, auto-add | Template already has all openings |
-| MEP gap-fill | Query 186 rules, auto-add | Additive only (TC-5: add discipline) |
-| FP clash | Check all auto-placed items | Only check items user added/moved |
-| Element count | Unknown until cascade fills | Known from template (SH=55, FK=82) |
-| Roof-wall trim for curtain wall | Must compute per-panel | Pre-cut in extracted template |
-
-**The construction completeness problem (§8 in GENERATIVE_HOUSE_SRS.md) disappears
-for template-based builds.** The extracted building already has roof, foundation,
-structural frame, curtain wall panels, all correctly sized. The user only deals with
-construction completeness if they create from scratch (fallback path).
+Room-by-room cascade required 8 heavy steps. BOM Drop requires 3: pick template →
+navigate tree → swap what you want. Template-based builds eliminate the construction
+completeness problem (GENERATIVE_HOUSE_SRS.md §8) — roof, foundation, structural
+frame are already proven. The user only adds/swaps items.
 
 ### 28.3 Architectural Boundary — Designer vs Engine
 
-```
-┌─────────────────────────────────────────────────────┐
-│  BIM Designer (GUI layer)                           │
-│                                                     │
-│  1. Render tree (BOM Outliner)                      │
-│  2. Accept user edits (swap/add/remove/ASI)         │
-│  3. Write changes to C_OrderLine in output.db        │
-│  4. Call engine: bomDrop() / compile()              │
-│                                                     │
-│  NEVER: walks BOMs, resolves products, computes     │
-│         geometry, reads m_bom_line, runs verbs      │
-└──────────────────────┬──────────────────────────────┘
-                       │  save → call engine
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│  BOM Drop Engine (backend — DAGCompiler / pipeline) │
-│                                                     │
-│  bomDrop():  read C_OrderLine → resolve BUILDING    │
-│              product → walk m_bom/m_bom_line →      │
-│              return exploded tree for GUI            │
-│                                                     │
-│  compile():  same 9-stage pipeline as Rosetta Stones│
-│              reads the saved C_OrderLine state       │
-│              explodes → places → output.db          │
-│                                                     │
-│  Owns: BOMWalker, PlacementCollector, VerbRegistry, │
-│        MeshBinder, BIMEyes, gate checks             │
-└─────────────────────────────────────────────────────┘
-```
+**Designer (GUI):** Render tree, accept edits, write C_OrderLine to output.db, call `bomDrop()`/`compile()`. NEVER walks BOMs, resolves products, or computes geometry.
 
-**The pattern is identical to compilation today:**
+**Engine (backend):** `bomDrop()` explodes BOM tree for GUI; `compile()` runs 9-stage pipeline. Owns BOMWalker, PlacementCollector, VerbRegistry, MeshBinder, BIMEyes, gate checks.
 
-1. GUI makes changes → writes to output.db (C_OrderLine mutations)
-2. GUI calls engine (bomDrop or compile)
-3. Engine reads the saved state, does all the heavy lifting, returns result
-4. GUI renders the result
-
-The Designer never interprets BOM structure. It writes OrderLine rows and calls
-the engine. The engine reads those rows, resolves them against the BOM/product
-databases, and returns either a tree (for navigation) or output.db (for delivery).
-This is the same separation as the existing `compile()` path — `DesignerAPIImpl`
-delegates to `CompilationPipeline`, which owns all BOM walking and placement logic.
+Same pattern as existing `compile()` — `DesignerAPIImpl` delegates to `CompilationPipeline`.
 
 ### 28.4 API Mapping — What the Designer Calls
 
@@ -2891,23 +2045,13 @@ Validation rules have a **lighter** role in BOM Drop than in room-by-room:
 The approve gate (§18) runs all validation before promote. BOM Drop makes validation
 faster because most elements are template-proven — only user modifications need checking.
 
-### 28.11 DocAction Lifecycle — iDempiere Document Processing
+### 28.11 DocAction Lifecycle
 
-BOM Drop follows the standard iDempiere DocAction pattern on C_Order:
+BOM Drop follows the standard iDempiere DocAction pattern: `bomDrop()` → DR,
+`Complete` → CO (compile), `Approve` → AP (promote). See [MANIFESTO.md §Application Dictionary Heritage](MANIFESTO.md).
 
-| DocAction | DocStatus | Backend behaviour |
-|-----------|-----------|------------------|
-| **bomDrop()** | → DR | Create C_Order + explode BOM tree into C_OrderLine hierarchy (compile DB). Backend auto-explodes; GUI shows collapsed tree. |
-| **Save** | — | Blender native save (.blend file). No backend action — BOM is read-only. |
-| **Complete** | DR → CO | Full 9-stage compilation from compile DB → output.db (path editable in UI). Preview BBoxes → coloured cubes. Full Load → solid meshes in Blender. |
-| **Approve** | CO → AP | Promote as new BOM in catalog. Requires: parent category, qualified name, author/version, children validated. Governance gate. |
-
-**iDempiere OrderLine model:**
-- C_OrderLine references `M_Product_ID` (= `family_ref`). No BOMCategory on OrderLine level.
-- Product category for swap browsing is resolved from `M_Product.M_Product_Category_ID` or `m_bom.bom_category`.
-- Only products with IsBOM=Y (matching `m_bom` entry) are exploded recursively.
-- If user doesn't modify the tree, fold back to parent line (thin pipe performance).
-- If user expands and modifies, all child C_OrderLine rows flow through.
+C_OrderLine references `M_Product_ID` (= `family_ref`). Products with IsBOM=Y
+explode recursively. Unmodified trees fold back to parent line for performance.
 
 ### 28.12 Witness Claims
 
@@ -3156,18 +2300,10 @@ Bonsai (viewport)         WebUIServer (:9878)         Browser (Web UI)
 
 ### 30.1 Design Paradigm Shift: YAML → Work Order
 
-The pipeline no longer starts from a YAML classify file. It starts from a
-**C_Order** (Work Order) containing **C_OrderLines**, each referencing an
-**M_Product** from the component library. The compiler explodes the BOM tree
-exactly as iDempiere Manufacturing does: Order → OrderLine → BOM → sub-assemblies
-→ leaf elements. This is the ERP Manufacturing BOM pattern applied to construction.
-
-**What this means for the Designer:**
-- `createNew` = create a C_Order with one C_OrderLine (the BUILDING product)
-- `bomDrop` = explode that product's BOM tree into the viewport
-- Swap/add/remove = modify C_OrderLines, recompile
-- `promote` = write the finalized order back to BOM.db as a new M_BOM
-- YAML files remain only as onboarding scripts for legacy IFC buildings
+The pipeline starts from a **C_Order** (Work Order) with **C_OrderLines** referencing
+**M_Product** entries. The compiler explodes the BOM tree (Order → OrderLine → BOM →
+sub-assemblies → leaves) — the ERP Manufacturing BOM pattern. See [MANIFESTO.md §The Order](MANIFESTO.md).
+YAML files remain only as onboarding scripts for legacy IFC buildings.
 
 ### 30.2 Bidirectional Sync: HTML ↔ Bonsai
 
@@ -3255,92 +2391,27 @@ Bonsai UI — the HTML is an alternative surface, not a replacement.
 
 ### 30.6 UAT Gap Analysis — OrderLine Validation Model (S59→S60)
 
-The C_OrderLine schema is structurally ready (16 columns) but semantically
-incomplete for the validator to work end-to-end. This section documents the
-gaps that must be closed before the DemoHouse acceptance test (§30.4) can
-exercise the full BOM Drop → configure → validate → compile → promote flow.
+Open gaps for the DemoHouse acceptance test (§30.4). See [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) for the full 10-item migration plan.
 
-#### 30.6.1 User Scenarios That Must Work
+**Schema gaps:**
+- C_OrderLine: missing `ifc_class` (TEXT) and `Discipline` (TEXT DEFAULT 'ARC') — needed for clash rules, discipline resolution
+- C_Order: missing `jurisdiction` (TEXT DEFAULT 'MY') and `occupancy_class` (TEXT) — needed for rule selection
+- Migrations: W003 (Discipline), W004 (jurisdiction + occupancy_class), W005 (AD_Val_Rule_Exception)
 
-| # | Scenario | User Action | Backend Must Do |
-|---|----------|-------------|-----------------|
-| U1 | **Swap roof** | Select roof OrderLine by category (RF), pick pitched roof from library | `swapProduct(lineId, FK_DG_STR)` → recompile. **Works today.** |
-| U2 | **Add FP discipline** | Add a Fire Protection OrderLine to the order | Insert C_OrderLine with `Discipline='FPR'`, link to `ad_space_type_mep_bom` for per-room sprinkler placement. **Gap: no Discipline column.** |
-| U3 | **Set compliance** | Choose jurisdiction (MY/US/UK) for validation | `PlacementValidator.activate(jurisdiction)` selects AD_Val_Rule set. **Gap: no jurisdiction on C_Order.** |
-| U4 | **Set occupancy** | Specify Light Hazard / Residential for NFPA 13 rules | AD_Val_Rule_Occupancy join filters rules. **Gap: no occupancy_class on Order.** |
-| U5 | **Validate before compile** | Click Approve → see PASS/BLOCK per rule | Hydrate `PlacementRequest` from `C_OrderLine + M_Product`, run `validateAll()`, persist to `W_Validation_Result`. **Gap: no hydration DAO.** |
-| U6 | **Override a WARN** | Engineer-approve a specific violation | `AD_Val_Rule_Exception` table exists but not wired. **Gap: no override UI.** |
+**Integration gaps:**
+- No hydration DAO to build `PlacementRequest` from C_OrderLine + M_Product
+- No result persistence — `validate()` returns in-memory only, needs W_Validation_Result INSERT
+- No batch spatial context for sprinkler spacing / MEP clearances
+- InferenceEngine (Kahn's sort) exists but not wired to OrderLine validation
+- FP discipline: BOM Drop only explodes structural BOM — FP elements come from `ad_space_type_mep_bom`, need bridge to create child C_OrderLines
 
-#### 30.6.2 Schema Gaps — Missing Columns on C_OrderLine
-
-| Column | Type | Why Needed | Source |
-|--------|------|-----------|--------|
-| `ifc_class` | TEXT | Validator needs it for clash rules, mined dimension rules, discipline resolution | `M_Product.ifc_class` or `m_bom_line.child_element_type` |
-| `Discipline` | TEXT DEFAULT 'ARC' | Cross-discipline clash rules, occupancy-filtered rules, spatial predicates | `m_bom.bom_category` or `ad_ifc_class_map` |
-
-#### 30.6.3 Schema Gaps — Missing Context on C_Order
-
-| Column | Type | Why Needed | Current State |
-|--------|------|-----------|---------------|
-| `jurisdiction` | TEXT DEFAULT 'MY' | Selects AD_Val_Rule set (UBBL vs IRC vs UK NDSS) | `W_BuildingConfig.jurisdiction` exists but not on C_Order |
-| `occupancy_class` | TEXT | Filters NFPA 13 sprinkler spacing (LH=4600mm, OH1=3500mm, OH2=2800mm) | `AD_Occupancy_Class` table seeded (6 rows) but no link to Order |
-
-#### 30.6.4 Integration Gaps — Validator ↔ OrderLine Bridge
-
-| Gap | Description | Fix |
-|-----|-------------|-----|
-| **No hydration DAO** | No code to build `PlacementRequest` from `C_OrderLine + M_Product` | Write `OrderLineValidator.buildRequest()` — resolve ifc_class, discipline, dimensions from product |
-| **No result persistence** | `PlacementValidatorImpl.validate()` returns in-memory verdict only | Wire `W_Validation_Result` INSERT on `DocAction.validateLine()` |
-| **No batch spatial context** | `validateBatch()` processes elements independently, cannot check sprinkler spacing or MEP clearances | Pass storey grouping + AABB context to SpatialPredicates |
-| **InferenceEngine not wired** | Dependency-ordered rule evaluation (Kahn's sort) exists but not called from OrderLine validation | Connect to PlacementValidatorImpl for rule chains (e.g., room size depends on occupancy) |
-
-#### 30.6.5 Lookup Chain — How FP Discipline Gets Added
-
-Current data path for fire protection:
-```
-ad_space_type_mep_bom (ERP.db)
-  → WHERE discipline = 'FPR' AND space_type = 'BEDROOM'
-  → Returns: element_type = 'SPRINKLER', qty_per_room = 1, ifc_class = 'IfcFireSuppressionTerminal'
-
-MEPBomAD.getBOM(discipline, spaceType)     -- query layer READY
-PlacementValidatorImpl.validateBatch()     -- validation layer EXISTS
-```
-
-**Missing link:** No C_OrderLine row is created for the FP discipline.
-The BOM Drop explodes the structural BOM only — FP elements come from
-`ad_space_type_mep_bom`, not from `m_bom`. The bridge must:
-1. User adds an FP OrderLine (or toggles FP discipline on the order)
-2. Server queries `ad_space_type_mep_bom` for each room in the order
-3. Server inserts child C_OrderLines (sprinkler per room) under the FP line
-4. Compile picks up FP OrderLines and places sprinklers
-
-#### 30.6.6 Migration Plan
-
-See [S60_ERP_ALIGNMENT.md](archive/S60_ERP_ALIGNMENT.md) for the full 10-item code change list.
-
-| Migration | DDL | Blocks | S60 Item |
-|-----------|-----|--------|----------|
-| **W003** | `ALTER TABLE C_OrderLine ADD COLUMN Discipline TEXT DEFAULT 'ARC';` | U2, U5 | #1 |
-| **W004** | `ALTER TABLE C_Order ADD COLUMN jurisdiction TEXT DEFAULT 'MY';` | U3 | #1 |
-| | `ALTER TABLE C_Order ADD COLUMN occupancy_class TEXT;` | U4 | #1 |
-| **W005** | `CREATE TABLE AD_Val_Rule_Exception ...` | U6 | #8 |
-
-**Architectural changes (S60):**
-- Compiler walks C_OrderLine tree, not C_DocType (#2)
-- run_RosettaStones.sh uses bomDrop + completeIt path (#4)
-- The former M_BomCategory, now M_Product_Category (#6)
-- OrderLineHydrationDAO bridges C_OrderLine → PlacementRequest (#7)
-
-#### 30.6.7 UAT Acceptance Criteria
-
-The DemoHouse acceptance test (§30.4) passes when:
-
-1. BOM Drop → 60 elements (structural) **[DONE — W-WO-1]**
-2. Swap roof → pitched roof compiles correctly **[DONE — W-DM-TC4-1]**
-3. Add FP discipline → sprinklers placed per room (NFPA 13 spacing)
-4. Set jurisdiction=MY → UBBL rules applied, bedroom min area checked
-5. Approve → validation results persisted, blockers shown in UI
-6. Complete → compile → output.db with STR + FP elements
+**UAT acceptance (§30.4):**
+1. BOM Drop → 60 elements **[DONE — W-WO-1]**
+2. Swap roof → pitched roof compiles **[DONE — W-DM-TC4-1]**
+3. Add FP discipline → sprinklers placed per room (NFPA 13)
+4. Set jurisdiction=MY → UBBL rules applied
+5. Approve → validation results persisted, blockers in UI
+6. Complete → compile → output.db with STR + FP
 7. Save/recall → identical element count **[backend DONE — needs UI test]**
 8. Promote → m_bom entries written, order frozen
 
@@ -3369,67 +2440,12 @@ ALTER TABLE M_Product ADD COLUMN M_Product_Category_ID TEXT
     REFERENCES M_Product_Category(M_Product_Category_ID);
 ```
 
-#### 30.7.2 Category Hierarchy (derived from extraction data)
+#### 30.7.2 Category Hierarchy
 
-Data source: `m_bom.bom_category` from TE (48K elements, 8 disciplines) and
-SH/FK (architectural). The hierarchy is EXTRACTED, not invented.
-
-```
-ALL (root)
-├── ARC — Architecture (268 TE products, 24 SH products)
-│   ├── ARC_WALL — Walls (IfcWall)
-│   │   ├── ARC_WALL_EXT — Exterior (brick, block, curtain)
-│   │   └── ARC_WALL_INT — Interior (partition, stud)
-│   ├── ARC_DOOR — Doors (IfcDoor)
-│   ├── ARC_WINDOW — Windows (IfcWindow)
-│   ├── ARC_SLAB — Slabs/Floors (IfcSlab)
-│   ├── ARC_ROOF — Roofing (IfcRoof)
-│   ├── ARC_COVER — Ceilings (IfcCovering)
-│   └── ARC_FURN — Furniture (IfcFurnishingElement)
-├── STR — Structural (29 TE products)
-│   ├── STR_BEAM — Beams (IfcBeam)
-│   ├── STR_COL — Columns (IfcColumn)
-│   └── STR_MEMBER — Members/Rafters (IfcMember)
-├── FP — Fire Protection (22 TE products)
-│   ├── FP_HEAD — Sprinkler heads (IfcFlowTerminal)
-│   ├── FP_PIPE — Risers/laterals (IfcPipeSegment)
-│   └── FP_ALARM — Alarms (IfcAlarm)
-├── ELEC — Electrical (50 TE products)
-│   ├── ELEC_LIGHT — Light fixtures (IfcLightFixture)
-│   ├── ELEC_OUTLET — Outlets/receptacles (IfcOutlet)
-│   ├── ELEC_SWITCH — Switches (IfcSwitchingDevice)
-│   └── ELEC_CABLE — Cable trays (IfcCableSegment)
-├── CW — Cold Water (50 TE products)
-│   ├── CW_PIPE — Pipes (IfcPipeSegment)
-│   ├── CW_FITTING — Fittings (IfcPipeFitting)
-│   └── CW_TERMINAL — Taps/valves (IfcFlowTerminal)
-├── SP — Sanitary/Plumbing (21 TE products)
-│   ├── SP_FIXTURE — Basins/WC (IfcSanitaryTerminal)
-│   └── SP_PIPE — Waste pipes (IfcPipeSegment)
-├── ACMV — HVAC (60 TE products)
-│   ├── ACMV_DUCT — Ducts (IfcDuctSegment)
-│   ├── ACMV_DIFF — Diffusers (IfcAirTerminal)
-│   └── ACMV_FITTING — Fittings (IfcDuctFitting)
-└── LPG — Gas (18 TE products)
-    └── LPG_PIPE — Gas pipes (IfcPipeSegment)
-```
-
-Level 1 = discipline (`m_bom.bom_category`). Level 2 = IFC class grouping.
-Level 3 = product type (exterior/interior, fixture subtype).
-
-**RE (room-driven) cascade** — expressed by the BOM tree, not by category hierarchy:
-
-```
-M_BOM "SH" (M_Product_Category=RE)
-  └─ M_BOM_Line → M_BOM "GF" (M_Product_Category=GF)
-       └─ M_BOM_Line → M_BOM "LIVING" (M_Product_Category=LIVING)
-            ├─ M_BOM_Line → SOFA_001 (leaf, M_Product_Category=IFC_FURNISHING)
-            └─ M_BOM_Line → TABLE_001 (leaf, M_Product_Category=IFC_FURNISHING)
-```
-
-RE cascade is room-driven (swap pools at room level), CO cascade is
-discipline-driven (ARC, STR, FP sub-trees). Both expressed by BOM tree.
-M_Product_Category at each node is a flat tag, not a tree node.
+See [DATA_MODEL.md §M_Product_Category](DATA_MODEL.md) for the full category tree
+(8 disciplines, 3 levels: discipline → IFC class → product type). Derived from
+`m_bom.bom_category` (TE 48K elements, SH/FK architectural). Categories are flat
+tags per iDempiere standard — the BOM tree (M_BOM → M_BOM_Line) expresses hierarchy.
 
 #### 30.7.3 Population Strategy
 
@@ -3448,90 +2464,108 @@ Categories are derived from extraction data, not invented:
 
 #### 30.7.4 FP Trial — First MEP Discipline via DocEvent
 
-**Goal:** Prove the DocEvent placement chain for FP (Fire Protection) end-to-end.
-The BOM does NOT record every pipe length — it records abstract ingredients
-(SPRINKLER, RISER). The engine infers quantity from room area, picks the product,
-and the compiler determines actual dimensions from the containing space.
-
-**The 5-table chain** (DISC_VALIDATE_SRS.md §9.1):
-
-```
-User enables FP for DemoHouse
-  → ad_space_type_mep_bom: BEDROOM needs 0.07 sprinklers/m²
-  → ad_element_mep: SPRINKLER → IfcFireSuppressionTerminal, host=CEILING
-  → ad_fp_coverage: LIGHT hazard → max_spacing=4.6m, coverage=18.6m²
-  → M_Product: sprinkler_pendant → width, depth, height (from library)
-  → component_definitions: geometry_hash → LOD mesh
-```
-
-**What TE extracted:** 22 FP products at many different lengths/placements.
-**What the BOM records:** Abstract ingredients (SPRINKLER, RISER, LATERAL).
-The BOM is not a catalog of every length — it's a recipe of common elements.
-The compiler computes spatial data (dx/dy/dz, actual length) from the
-containing space at compile time.
-
-**Steps:**
-1. Seed `ad_space_type_mep_bom` rows for DemoHouse room types (from TE mining)
-2. Seed `ad_element_mep` rows for FP elements (SPRINKLER, ALARM)
-3. Seed `ad_fp_coverage` for LIGHT hazard class
-4. Onboard 2-3 FP products into component_library.db M_Product (sprinkler + alarm)
-   with M_Product_Category = FP_HEAD / FP_ALARM
-5. Copy geometry from TE extraction (component_definitions + component_geometries)
-6. Rosetta Stone pipeline (`classify_dm.yaml`): enable FP discipline → DocEvent places sprinklers per room
-7. CompleteIt → verify IfcFireSuppressionTerminal appears in output.db
-
-**User swap scenario:** After DocEvent places a pendant sprinkler, user can
-swap it for an upright sprinkler — same category (FP_HEAD), different product.
-The category constrains the swap list.
+Prove the 5-table chain (DISC_VALIDATE_SRS.md §9.1): `ad_space_type_mep_bom` →
+`ad_element_mep` → `ad_fp_coverage` → `M_Product` → `component_definitions`.
+BOM records abstract ingredients (SPRINKLER, RISER); compiler infers quantity from
+room area and computes dx/dy/dz from containing space at compile time.
 
 **Witness:** W-FP-TRIAL-1: DocEvent FP placement via 5-table chain.
 
-**Success criteria:** DemoHouse compiles with FP elements placed by rules,
-not hardcoded. Each room gets sprinklers per ad_space_type_mep_bom schedule.
-
-**S63 findings (Task 4A):**
-- DM compilation needs `FP_PIPE_ASSEMBLY` BOM + `m_attribute` seed (spacing, z_offset, diameter) — BuildingWriter calls `BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY","MAIN")` when FireProtectionResolver detects sprinklers. Without it the compile fails. *(S67: DemoHouseCompileTest removed; DM compiles via standard Rosetta Stone pipeline.)*
-- FP elements currently resolve as discipline='MEP' (IFC class fallback: IfcFireSuppressionTerminal → MEP_TERMINAL → MEP). Finer FP discipline requires either: (a) FP-specific SET BOMs with `bom_category='FP'`, or (b) the addDiscipline API setting `C_OrderLine.Discipline='FPR'` explicitly — which is the Task 4B DocEvent path above.
-- `m_bom.bom_type` CHECK constraint is `('BUILDING','FLOOR','ROOM','SET','ITEM')` — no 'ASSEMBLY'. FP pipe assemblies should use 'SET'.
+**S63 findings:** DM needs `FP_PIPE_ASSEMBLY` BOM + `m_attribute` seed. FP elements
+resolve as discipline='MEP' (fallback); finer FP discipline needs FP-specific SET
+BOMs or `C_OrderLine.Discipline='FPR'`. `m_bom.bom_type` has no 'ASSEMBLY' — use 'SET'.
 
 #### 30.7.5 Two Browsing Modes — ARC vs MEP
 
-**ARC (manual selection):** User browses the category tree to pick products.
+**ARC (manual):** User browses category tree → picks product → `UPDATE C_OrderLine.family_ref`. Uses existing `browseItems()` API with category filter.
+
+**MEP (rule-driven):** User toggles discipline ON → DocEvent engine queries
+`AD_Val_Rule` + `ad_space_type_mep_bom` + room AABB → computes grid positions →
+inserts C_OrderLines automatically. No manual product picking for MEP — rules ARE
+the placement engine.
+
+---
+
+---
+
+## §31 — ASI Attribute Detail Chain (S95+)
+
+> **Goal:** Complete the iDempiere M_AttributeSet chain with detail tables
+> (M_Attribute, M_AttributeUse, M_AttributeValue) so that verb parameters travel
+> as structured per-instance data, not free-text hacks.
+
+### 31.1 Schema — Before and After
+
+**Before (ASI_001):** Three tables exist but attributes are free-form name/value
+pairs in M_AttributeInstance. No constraint on which attributes belong to which
+set. No valid-values enforcement for list-type attributes.
+
+**After (ASI_002):** Full iDempiere chain completed.
 
 ```
-User clicks "Swap Product" on a wall OrderLine
-  → Category picker: [ARC_WALL ▼]
-    → Sub-category: [ARC_WALL_EXT ▼]  [ARC_WALL_INT ▼]
-    → Product list: Wall-Ext_102Bwk-75Ins-100LBlk, ...
-    → User picks product → UPDATE C_OrderLine.family_ref
+M_AttributeSet (ASI_001)          ← "BIM_Wall", "BIM_Pipe", etc.
+  └─ M_AttributeUse (ASI_002)    ← join: which attributes belong to which set
+       └─ M_Attribute (ASI_002)  ← individual definitions: Name, ValueType, DefaultValue
+            └─ M_AttributeValue (ASI_002)  ← valid values for LIST-type attributes
 ```
 
-The `browseItems()` API already exists (`DesignerAPIImpl.java`). It needs a
-`category` filter parameter to query `M_Product WHERE M_Product_Category_ID = ?`.
+New FK columns:
+- `M_Product.M_AttributeSet_ID` → links product to its attribute set
+- `c_orderline.M_AttributeSetInstance_ID` → already exists (W001)
 
-**MEP (rule-driven placement via DocEvent):** User toggles a discipline ON.
-The system infers what goes where from validation rules + room geometry.
+### 31.2 Detail Tables
 
-```
-User enables: [✓ FP] for this building
-  → DocEvent engine (DocAction_SRS §1.3):
-    1. AD_Val_Rule WHERE discipline='FP' AND jurisdiction=order.jurisdiction
-       → spacing rules (NFPA 13 / UBBL), coverage, occupancy class
-    2. ad_space_type_mep_bom WHERE space_type=room.type AND discipline='FP'
-       → product_id (which sprinkler for this room type)
-    3. Room AABB from ad_room_boundary
-       → pitch = min(max_spacing, dim / ceil(dim / typical_spacing))
-       → grid positions computed per room
-    4. INSERT C_OrderLine per computed position
-       → family_ref from ad_space_type_mep_bom (not user-selected)
-       → dx/dy/dz from computed grid
-    5. Tier 1 validate each placement against same rules
-       → INSERT W_Validation_Result per C_OrderLine
-```
+| Table | Columns | Purpose |
+|-------|---------|---------|
+| `M_Attribute` | M_Attribute_ID, Name, ValueType (NUM/TEXT/LIST), IsInstanceAttribute, DefaultValue | Individual attribute definition |
+| `M_AttributeUse` | M_AttributeSet_ID, M_Attribute_ID, SeqNo | Which attributes belong to which set |
+| `M_AttributeValue` | M_Attribute_ID, Value, Name, SeqNo | Valid values for LIST-type attributes |
 
-**No manual product picking for MEP.** The user says "this building needs FP."
-The rules + containing space determine the product, quantity, and position.
-This is the DocEvent path — validation rules ARE the placement engine.
+### 31.3 Seed Data Summary
+
+**18 attributes** seeded from §28.7 field resolution matrix:
+
+| Category | Attributes | Count |
+|----------|-----------|-------|
+| Geometric (§28.7) | length_mm, height_mm, span_mm, area_m2, thickness_mm, angle_deg, elevation, cross_section, sill_height_mm, material, finish, swing_side, face_anchor | 13 |
+| Verb parameters | trim_action, trim_tolerance_mm, joint_type, connection_type, fire_rating_min | 5 |
+
+**29 attribute-use mappings** across 9 attribute sets (BIM_Component and BIM_Fitting
+have no attributes — IsInstanceAttribute=0).
+
+**15 list values** across 4 LIST-type attributes:
+
+| Attribute | Values |
+|-----------|--------|
+| trim_action | DEFAULT, SKIP, CUT_ONLY, CUT_FILL |
+| joint_type | BUTT, MITRE, LAP |
+| connection_type | SOCKET, FLANGE, WELD |
+| fire_rating_min | 0, 30, 60, 90, 120 |
+
+### 31.4 Interaction with Existing ASI Pump
+
+The existing ASI authoring pump (WorkOutputDAO, ASIAuthoringTest) creates
+M_AttributeInstance rows with free-form names. With ASI_002:
+
+1. **Schema enforcement:** M_AttributeUse defines which attribute Names are valid
+   for a given M_AttributeSet. The pump can validate before INSERT.
+2. **List enforcement:** M_AttributeValue defines valid values for LIST-type
+   attributes. The pump can validate trim_action ∈ {DEFAULT, SKIP, CUT_ONLY, CUT_FILL}.
+3. **Default resolution:** M_Attribute.DefaultValue provides fallback when no
+   M_AttributeInstance row exists for a given attribute.
+4. **Product binding:** M_Product.M_AttributeSet_ID eliminates the
+   `resolveAttributeSetForProduct(familyRef)` prefix-matching heuristic — the FK
+   is authoritative.
+
+### 31.5 Migration
+
+File: `migration/ASI_002_attribute_detail.sql`
+
+Independently committable. Requires ASI_001 (M_AttributeSet table) to exist first.
+Does not modify any existing table except adding M_AttributeSet_ID column to M_Product.
+
+*Cross-references: BBC.md §3.5.1–3.5.2 (ASI pattern + verb routing),
+DocValidate.md §1.5 (Column.Callout wiring), §28.5–28.7 (ASI in BOM Drop).*
 
 ---
 
