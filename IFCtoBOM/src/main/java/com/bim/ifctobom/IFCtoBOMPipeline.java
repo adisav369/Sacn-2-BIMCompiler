@@ -123,6 +123,8 @@ public class IFCtoBOMPipeline {
             List<ExtractionElement> allElements = new ArrayList<>();
             storeyElements.values().forEach(allElements::addAll);
             int extractionCount = allElements.size();
+            BIMLogger.fine("EXTRACTION", "{}: {} elements across {} storeys",
+                    config.buildingType(), extractionCount, storeyElements.size());
             System.out.printf("[IFCtoBOM] Read %d elements across %d storeys%n",
                     extractionCount, storeyElements.size());
 
@@ -259,6 +261,10 @@ public class IFCtoBOMPipeline {
                 scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0);
                 composition = new CompositionResult(Map.of(), 0, 0);
                 roomLines = 0;
+                BIMLogger.fine("EXTRACTION", "{}: {} BOMs (discipline path), AABB={}x{}x{}mm",
+                        config.buildingType(), structural.totalLines(),
+                        (int) structural.aabbWidthMm(), (int) structural.aabbDepthMm(),
+                        (int) structural.aabbHeightMm());
                 System.out.printf("[IFCtoBOM] Discipline: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
                         structural.totalLines(),
                         structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
@@ -279,6 +285,11 @@ public class IFCtoBOMPipeline {
                         scope.excludeByStorey(), composition.excludeByStorey());
                 structural = StructuralBomBuilder.build(
                         bomConn, config, storeyElements, allExclude);
+                BIMLogger.fine("EXTRACTION", "{}: {} structural + {} scope + {} composition lines, AABB={}x{}x{}mm",
+                        config.buildingType(), structural.totalLines(),
+                        scope.totalSetLines(), composition.halfUnitLines() + composition.pairLines(),
+                        (int) structural.aabbWidthMm(), (int) structural.aabbDepthMm(),
+                        (int) structural.aabbHeightMm());
                 System.out.printf("[IFCtoBOM] Structural: %d lines, AABB=%.0fx%.0fx%.0f mm%n",
                         structural.totalLines(),
                         structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());

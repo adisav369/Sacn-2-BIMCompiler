@@ -5,6 +5,8 @@ import com.bim.compiler.topology.Discipline;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
 
+import com.bim.orm.BIMLogger;
+
 import java.sql.*;
 import java.util.List;
 import java.util.Map;
@@ -113,6 +115,8 @@ public class BomDropper {
         explode(compileDb, orderId, buildingBomId, 0, "BUILDING",
                 null, 0, leafCount, lineSeq, "", exceptions);
 
+        BIMLogger.fine("BOMDROP", "{} → {} leaves (order={}, bom={})",
+                entry.id(), leafCount[0], orderId, buildingBomId);
         System.out.printf("[BomDropper] %s → %d leaves (order=%s, bom=%s)%n",
                 entry.id(), leafCount[0], orderId, buildingBomId);
         return leafCount[0];

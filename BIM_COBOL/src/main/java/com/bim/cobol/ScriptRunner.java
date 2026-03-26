@@ -1,5 +1,6 @@
 package com.bim.cobol;
 
+import com.bim.orm.BIMLogger;
 import com.google.gson.Gson;
 
 import java.util.ArrayList;
@@ -47,6 +48,11 @@ public class ScriptRunner {
 
             totalLines++;
             VerbResult<?> r = registry.dispatch(ctx, line);
+            if (r.pass()) {
+                BIMLogger.fine("VERB", "{} → {}", r.verb(), r.summary());
+            } else {
+                BIMLogger.warn("VERB", "{} → FAIL: {}", r.verb(), r.summary());
+            }
             results.add(r);
         }
 

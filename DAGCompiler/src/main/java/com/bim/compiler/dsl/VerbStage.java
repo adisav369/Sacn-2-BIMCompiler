@@ -1,5 +1,7 @@
 package com.bim.compiler.dsl;
 
+import com.bim.orm.BIMLogger;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,6 +76,9 @@ public class VerbStage implements CompilerStage {
 
             outputConn.commit();
 
+            BIMLogger.fine("VERB", "{} — {} pass, {} fail, {} W_Verb_Node rows",
+                    report.allPass() ? "PASS" : "FAIL",
+                    report.passCount(), report.failCount(), report.totalNodes());
             System.out.printf("[VERB] %s — %d pass, %d fail, %d W_Verb_Node rows%n",
                     report.allPass() ? "PASS" : "FAIL",
                     report.passCount(), report.failCount(), report.totalNodes());

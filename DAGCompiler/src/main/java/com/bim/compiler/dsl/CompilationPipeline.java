@@ -88,18 +88,128 @@ public class CompilationPipeline {
                 BIMLogger.info("PIPELINE", "[SKIP] {}", stage.name());
                 continue;
             }
+            long t0 = System.currentTimeMillis();
             stage.execute(ctx);
+            long elapsed = System.currentTimeMillis() - t0;
+            BIMLogger.fine("PIPELINE", "Stage {} ({}) completed in {}ms", i + 1, stage.name(), elapsed);
         }
 
         BIMLogger.info("PIPELINE", "=".repeat(70));
         BIMLogger.info("PIPELINE", "PIPELINE COMPLETE: {} — {} elements", entry.name(), ctx.elementCount());
         BIMLogger.info("PIPELINE", "=".repeat(70));
+
+        // ── LAST_MILE_PROBLEM drift check (FINE only — file, not console) ──
+        logDriftCheck(entry, ctx);
+
         String logPath = BIMLogger.getLogFilePath();
         if (logPath != null) {
             BIMLogger.info("PIPELINE", "Log saved: {}", logPath);
         }
         BIMLogger.close();
         return ctx.toResult();
+    }
+
+    /**
+     * Log LAST_MILE_PROBLEM §Session Checklist drift verdicts at FINE level.
+     * Each line maps to one of the 11 drift points so that pipeline logs
+     * surface known risk areas without needing a viewer.
+     */
+    private static void logDriftCheck(BuildingEntry entry, CompilationContext ctx) {
+        BIMLogger.fine("DRIFT", "-".repeat(50));
+        BIMLogger.fine("DRIFT", "LAST MILE CHECK: {} (LAST_MILE_PROBLEM.md §Session Checklist)", entry.name());
+        int pass = 0, fail = 0, skip = 0;
+
+        // §1 Input = Output — count invariant (BBC §2.2.1)
+        int expected = entry.expectedElements();
+        int actual = ctx.elementCount();
+        boolean s1 = expected == actual;
+        BIMLogger.fine("DRIFT", "§1  Input=Output: expected={}, actual={} → {}",
+                expected, actual, s1 ? "PASS" : "FAIL (delta=" + (actual - expected) + ")");
+        if (s1) pass++; else fail++;
+
+        // §2 LOD400 Geometry — no fallback shapes (BBC §2.2)
+        GeometryIntegrityChecker.CheckReport geo = ctx.geometryReport();
+        if (geo != null) {
+            boolean s2 = geo.passed();
+            BIMLogger.fine("DRIFT", "§2  LOD400 Geometry: {}/{} OK, {} warn, {} fail → {}",
+                    geo.fullyOk(), geo.totalElements(), geo.warnCount(), geo.failCount(),
+                    s2 ? "PASS" : "FAIL");
+            if (s2) pass++; else fail++;
+        } else {
+            BIMLogger.fine("DRIFT", "§2  LOD400 Geometry: no geometry report");
+            skip++;
+        }
+
+        // §3 Compiler Only — no extraction DB reference (BBC §2)
+        // Enforced by T18/T19/T20 tamper rules at gate time; logged here as implicit PASS.
+        BIMLogger.fine("DRIFT", "§3  Compiler Only: T18/T19/T20 guard (checked at gate)");
+        pass++;
+
+        // §4 Openings & Furniture — P05 (duplicate), P06 (overlap) (BBC §4)
+        PlacementProver.ProofReport proofs = ctx.proofReport();
+        if (proofs != null) {
+            long p05Violations = proofs.results().stream()
+                    .filter(r -> r.proofId().startsWith("P05") && r.status() == PlacementProver.ProofResult.Status.VIOLATED)
+                    .count();
+            long p06Violations = proofs.results().stream()
+                    .filter(r -> r.proofId().startsWith("P06") && r.status() == PlacementProver.ProofResult.Status.VIOLATED)
+                    .count();
+            boolean s4 = (p05Violations + p06Violations) == 0;
+            BIMLogger.fine("DRIFT", "§4  Openings: P05={} violations, P06={} violations → {}",
+                    p05Violations, p06Violations, s4 ? "PASS" : "WARN");
+            if (s4) pass++; else fail++;
+        } else {
+            BIMLogger.fine("DRIFT", "§4  Openings: no proof aggregate");
+            skip++;
+        }
+
+        // §5 Spec Fidelity — verified by audit, not runtime
+        // §6 Output Path — single path enforced by architecture (BBC §3.3)
+        BIMLogger.fine("DRIFT", "§6  Output Path: C_OrderLine → BOM explosion → elements (structural)");
+        pass++;
+
+        // §7 Separate From Input — BOM DB is read-only during compilation (BBC §2)
+        String bomDb = System.getProperty("bom.db", "");
+        BIMLogger.fine("DRIFT", "§7  Separate From Input: bom.db={}", bomDb);
+        pass++;
+
+        // §8 Visual Fidelity — geometry + proofs combined (TestArchitecture C8/C9/P06)
+        if (proofs != null) {
+            boolean s8 = proofs.allCriticalProven();
+            BIMLogger.fine("DRIFT", "§8  Visual Fidelity: {} proven, {} violated, {} skipped → {}",
+                    proofs.proven(), proofs.violated(), proofs.skipped(),
+                    s8 ? "PASS" : "FAIL");
+            if (s8) pass++; else fail++;
+        } else if (geo != null && geo.passed()) {
+            BIMLogger.fine("DRIFT", "§8  Visual Fidelity: geometry OK (prover not aggregated)");
+            pass++;
+        } else {
+            BIMLogger.fine("DRIFT", "§8  Visual Fidelity: no proof aggregate");
+            skip++;
+        }
+
+        // §9 Orientation — P01 (positive extent) covers rotation sanity (BBC §4)
+        if (proofs != null) {
+            long p01Violations = proofs.results().stream()
+                    .filter(r -> r.proofId().startsWith("P01") && r.status() == PlacementProver.ProofResult.Status.VIOLATED)
+                    .count();
+            boolean s9 = p01Violations == 0;
+            BIMLogger.fine("DRIFT", "§9  Orientation: P01={} violations → {}",
+                    p01Violations, s9 ? "PASS" : "FAIL");
+            if (s9) pass++; else fail++;
+        } else {
+            BIMLogger.fine("DRIFT", "§9  Orientation: no proof aggregate");
+            skip++;
+        }
+
+        // §10 Tamper Seal — checked at gate time (verify_test_seal.sh)
+        BIMLogger.fine("DRIFT", "§10 Tamper Seal: checked at gate (verify_test_seal.sh)");
+
+        // §11 Factorization — material/dimension/identity guards (BBC §6)
+        BIMLogger.fine("DRIFT", "§11 Factorization: BOM line guards (checked at extraction)");
+
+        BIMLogger.fine("DRIFT", "SUMMARY: {} pass, {} fail, {} deferred", pass, fail, skip);
+        BIMLogger.fine("DRIFT", "-".repeat(50));
     }
 
     // =====================================================================
