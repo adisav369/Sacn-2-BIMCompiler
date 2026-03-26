@@ -73,19 +73,6 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
 ---
 
-## **Key Terms**
-
-| Term | Meaning |
-|------|---------|
-| **Tack** | Parent-relative offset (dx, dy, dz) on a BOM line — where a child sits inside its parent |
-| **Stone** | A Rosetta Stone — a real building used as ground truth for verification |
-| **Verb** | A named BOM mutation (TILE, ROUTE, FRAME, CLUSTER) that generates geometry from a formula |
-| **Gate** | One of 6 mathematical verification checks (G1-G6) that prove a compiled output correct |
-| **Witness** | A machine-checkable assertion (e.g. "sprinkler spacing >= 3000mm") — 202 total |
-| **BOM Drop** | Exploding a parent product into its child placements — the core compilation act |
-
----
-
 ## **How It Works**
 
 ```
