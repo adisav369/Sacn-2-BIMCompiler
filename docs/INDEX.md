@@ -52,6 +52,7 @@ Single-page entry point. All active docs by tier.
 | [ACInstituteAnalysis.md](ACInstituteAnalysis.md) | IN (AC Institute) 699-element institutional |
 | [DemoHouseAnalysis.md](DemoHouseAnalysis.md) | DM guardrails: 3-OrderLine compilation, SH base + FK roof + FP discipline |
 | [InfrastructureAnalysis.md](InfrastructureAnalysis.md) | Infrastructure IFC4X3, FACILITY/SEGMENT mapping |
+| [ShipYard.md](ShipYard.md) | Domain-agnostic treatise: marine hulls, tunnels, earthworks, industrial plant — 4 verticals, same engine |
 | [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) | M1/M4/M5/M6/M12 distributions (V004 seed data) |
 
 ## T4 Guides — User-Facing

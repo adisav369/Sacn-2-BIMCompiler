@@ -167,7 +167,46 @@ code); the rules are the **data** (AD_Rule rows, ASI values).
 dimension change. It reads per-instance ASI for verb overrides and queries AD_Rule
 for matching spatial conditions. New verb associations = SQL INSERT, not code change.
 
-#### 1.5.1 Dispatch Chain
+#### 1.5.1 Where the User Works — The OrderLine
+
+The user never touches M_Product, M_AttributeSet, or AD_Rule. Those are
+catalog and engine concerns — set up once by the implementor.
+
+The user works on **C_OrderLine** — the order line. When they place a wall,
+edit its position, or customise its behaviour, they edit the order line.
+The ASI attributes appear as editable fields on the order line because the
+product declared which attributes apply (via M_AttributeSet_ID).
+
+```
+Catalog (set up once, never touched by user):
+  M_Product (Wall_EXT_150)
+    └─ M_AttributeSet_ID = 'BIM_Wall'     ← declares vocabulary
+         └─ trim_action, trim_tolerance_mm, joint_type ...
+
+User workspace (edited per instance):
+  C_OrderLine #37 (this specific wall on grid A-1)
+    └─ M_AttributeSetInstance_ID → ASI #47
+         └─ trim_action = CUT_FILL         ← user's choice
+         └─ trim_tolerance_mm = 25          ← user's override
+```
+
+**Having M_AttributeSet_ID on the product does NOT mean the verb will fire.**
+It means the attribute is AVAILABLE for the user to set. The callout still
+detects the spatial condition (is there a roof above?). If no roof, nothing
+happens regardless of the attribute.
+
+| ASI value | Callout behaviour |
+|-----------|------------------|
+| No ASI at all | Callout decides from AD_Rule defaults |
+| `trim_action = DEFAULT` | Callout decides (same as no ASI) |
+| `trim_action = SKIP` | Callout skips — user said no |
+| `trim_action = CUT_ONLY` | Force CUT, skip FILL |
+| `trim_action = CUT_FILL` | Force both CUT and FILL |
+
+The product declares the vocabulary. The order line declares the intent.
+The callout does the work.
+
+#### 1.5.2 Dispatch Chain
 
 ```
 C_OrderLine field change (dx, dy, dz, M_Product_ID)
@@ -187,7 +226,7 @@ C_OrderLine field change (dx, dy, dz, M_Product_ID)
   └─ 4. Domain callout orchestrates its verb family via VerbRegistry
 ```
 
-#### 1.5.2 How AD_Rule + ASI Compose
+#### 1.5.3 How AD_Rule + ASI Compose
 
 The key separation: AD_Rule defines WHEN a callout fires and WHAT type it is.
 ASI on the C_OrderLine defines HOW the verb executes for this specific instance.
@@ -199,7 +238,7 @@ ASI on the C_OrderLine defines HOW the verb executes for this specific instance.
 | **How** | M_AttributeInstance via ASI | `trim_action=CUT_FILL`, `trim_tolerance_mm=25` |
 | **Who** | M_Product.M_AttributeSet_ID | `BIM_Wall` → defines which attributes are valid |
 
-#### 1.5.3 Resolution Order
+#### 1.5.4 Resolution Order
 
 ```
 1. AD_Rule match:     source_table='C_OrderLine' AND source_column=<changed>
@@ -212,7 +251,7 @@ This mirrors iDempiere exactly: `CalloutOrder.amt()` doesn't know tax rates —
 it queries `C_Tax` by product category and date. Our `CalloutEngine` doesn't
 know trim tolerances — it queries ASI by attribute set and instance.
 
-#### 1.5.4 Extending with Data, Not Code
+#### 1.5.5 Extending with Data, Not Code
 
 Adding a new callout rule (e.g., "when a duct moves, reroute connected pipes"):
 

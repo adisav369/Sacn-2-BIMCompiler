@@ -557,12 +557,32 @@ When a verb fires (via DiffVerb → CalloutEngine → VerbRegistry):
 This is the same three-tier resolution as §3.5.1 (`ASI_override ?? allocated_*_mm
 ?? catalog_default`), extended from geometric dimensions to verb parameters.
 
+#### Where the User Works
+
+The user edits **C_OrderLine** — the order line. They never touch M_Product,
+M_AttributeSet, or AD_Rule. Those are catalog/engine concerns.
+
+When a product has `M_AttributeSet_ID = 'BIM_Wall'`, it does NOT mean the
+wall must be trimmed. It means the wall CAN carry verb-parameter attributes
+(trim_action, tolerance, joint_type). The ASI on the order line is the
+user's override channel:
+
+- **No ASI** → callout decides from AD_Rule defaults (most common case)
+- **ASI trim_action=SKIP** → user explicitly says "don't trim this wall"
+- **ASI trim_action=CUT_FILL** → user explicitly says "cut and fill"
+
+Same iDempiere pattern: picking a product on a Sales Order doesn't force a
+specific tax rate. The product's tax category defines which rates ARE VALID.
+The order line's context (date, jurisdiction) selects the actual rate.
+Here: the product's attribute set defines which verb params are valid.
+The order line's ASI selects the actual values.
+
 #### What This Means
 
 - **New verb parameter** = `INSERT INTO M_Attribute` + `INSERT INTO M_AttributeUse`.
   No Java change.
 - **Per-instance override** = `INSERT INTO M_AttributeInstance` on the order line's ASI.
-  No Java change.
+  No Java change. User edits the order line.
 - **New product type with different verb params** = `INSERT INTO M_AttributeSet` +
   map attributes via `M_AttributeUse`. No Java change.
 - **AD_Rule** controls WHEN verbs fire. **ASI** controls HOW they execute.

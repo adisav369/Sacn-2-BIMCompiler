@@ -2542,7 +2542,35 @@ have no attributes — IsInstanceAttribute=0).
 | connection_type | SOCKET, FLANGE, WELD |
 | fire_rating_min | 0, 30, 60, 90, 120 |
 
-### 31.4 Interaction with Existing ASI Pump
+### 31.4 User Interaction — The OrderLine Is the Workspace
+
+The user never edits catalog tables (M_Product, M_AttributeSet, M_Attribute).
+Those are set up once by the implementor and define the vocabulary.
+
+The user works on **C_OrderLine**. When they place a wall and want to
+control how it interacts with the roof, they edit the order line's ASI:
+
+1. **Place wall** → C_OrderLine created, M_Product_ID set
+2. **Callout fires** → detects roof overlap, presents suggestion
+3. **User opens ASI** → sees available attributes from M_AttributeSet
+   (trim_action, trim_tolerance_mm, joint_type — constrained by product type)
+4. **User sets override** → e.g., trim_action = SKIP (chimney wall)
+5. **Callout re-evaluates** → respects the override
+
+Most order lines have **no ASI** — the callout uses AD_Rule defaults and
+the user accepts the automatic behaviour. ASI only appears when the user
+actively customises. This matches §28.5 (BOM Drop context): "No ASI needed
+— template dimensions are correct."
+
+| Scenario | ASI needed? | Why |
+|----------|------------|-----|
+| Standard wall under flat roof | No | Callout auto-trims, defaults are correct |
+| Glass curtain wall under barrel vault | Maybe | User might set CUT_FILL explicitly |
+| Chimney wall penetrating roof | Yes | User sets SKIP to prevent trimming |
+| Load-bearing wall at junction | Yes | User sets joint_type = LAP |
+| Standard partition wall | No | No roof overlap, callout doesn't fire |
+
+### 31.5 Interaction with Existing ASI Pump
 
 The existing ASI authoring pump (WorkOutputDAO, ASIAuthoringTest) creates
 M_AttributeInstance rows with free-form names. With ASI_002:
@@ -2557,7 +2585,7 @@ M_AttributeInstance rows with free-form names. With ASI_002:
    `resolveAttributeSetForProduct(familyRef)` prefix-matching heuristic — the FK
    is authoritative.
 
-### 31.5 Migration
+### 31.6 Migration
 
 File: `migration/ASI_002_attribute_detail.sql`
 
