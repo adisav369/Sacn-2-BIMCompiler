@@ -2371,17 +2371,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#key-terms" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Terms
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2419,17 +2408,6 @@
     <span class="md-ellipsis">
       
         Design in Blender, Compile from BOM
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#the-last-mile" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The Last Mile
       
     </span>
   </a>
@@ -2533,42 +2511,6 @@ A compiled building IS a manufacturing work order.</p>
 </ul>
 </div>
 <hr />
-<h2 id="key-terms"><strong>Key Terms</strong><a class="headerlink" href="#key-terms" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Term</th>
-<th>Meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Tack</strong></td>
-<td>Parent-relative offset (dx, dy, dz) on a BOM line — where a child sits inside its parent</td>
-</tr>
-<tr>
-<td><strong>Stone</strong></td>
-<td>A Rosetta Stone — a real building used as ground truth for verification</td>
-</tr>
-<tr>
-<td><strong>Verb</strong></td>
-<td>A named BOM mutation (TILE, ROUTE, FRAME, CLUSTER) that generates geometry from a formula</td>
-</tr>
-<tr>
-<td><strong>Gate</strong></td>
-<td>One of 6 mathematical verification checks (G1-G6) that prove a compiled output correct</td>
-</tr>
-<tr>
-<td><strong>Witness</strong></td>
-<td>A machine-checkable assertion (e.g. "sprinkler spacing &gt;= 3000mm") — 202 total</td>
-</tr>
-<tr>
-<td><strong>BOM Drop</strong></td>
-<td>Exploding a parent product into its child placements — the core compilation act</td>
-</tr>
-</tbody>
-</table>
-<hr />
 <h2 id="how-it-works"><strong>How It Works</strong><a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code>INPUT: IFC file (from Revit, ArchiCAD, Bonsai — any BIM authoring tool)
                 ↓
@@ -2609,10 +2551,6 @@ OUTPUT: Verified 3D coordinates + procurement BOM (what to buy, where it goes, p
 <p><a href="BIM_Designer_UserGuide/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Designer guide</a></p>
 <div style="clear: right;"></div>
 
-<hr />
-<h2 id="the-last-mile"><strong>The Last Mile</strong><a class="headerlink" href="#the-last-mile" title="Permanent link">&para;</a></h2>
-<p>The compiler works. The gates prove it. But construction has edge cases that no compiler handles on day one — <a href="LAST_MILE_PROBLEM/">the last mile</a> tracks every gap between "it compiles" and "it ships." Open gaps invite contribution. <a href="TestArchitecture/">Test architecture</a> defines the proof standard.</p>
-<p><a href="LAST_MILE_PROBLEM/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> See the open gaps</a></p>
 <hr />
 <h2 id="quick-start"><strong>Quick Start</strong><a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="c1"># Prerequisites: Java 17+, Maven 3.8+, SQLite3</span>
