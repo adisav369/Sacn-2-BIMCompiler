@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- FK: FZK-Haus (Ifc4_FZKHaus)
 -- Source: DAGCompiler/lib/output/ifc4_fzkhaus.db
--- Generated: 2026-03-24 07:34
+-- Generated: 2026-03-26 20:19
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -30,17 +30,13 @@
 
 -- ifc_class   discipline  cnt
 -- ----------  ----------  ---
--- IfcMember   STR         31 
--- IfcMember   ARC         11 
+-- IfcMember   STR         42 
+-- IfcWall     STR         13 
 -- IfcWindow   ARC         11 
--- IfcWall     STR         7  
--- IfcWall     ARC         6  
 -- IfcDoor     ARC         5  
--- IfcSlab     STR         3  
--- IfcBeam     ARC         2  
--- IfcBeam     STR         2  
+-- IfcBeam     STR         4  
+-- IfcSlab     STR         4  
 -- IfcRailing  ARC         2  
--- IfcSlab     ARC         1  
 -- IfcStair    ARC         1  
 
 -- §5: Candidate validation rules for ERP.db

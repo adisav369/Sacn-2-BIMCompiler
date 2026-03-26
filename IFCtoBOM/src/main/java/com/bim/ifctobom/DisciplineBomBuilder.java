@@ -82,7 +82,7 @@ public class DisciplineBomBuilder {
                 prefix + " " + config.name(),
                 "BUILDING", "BUILDING",
                 config.docSubType(), config.docBaseType(),
-                aabbW, aabbD, aabbH, null,
+                aabbW, aabbD, aabbH, config.docBaseType(),
                 allMinX, allMinY, allMinZ);
 
         // ── Process each storey ───────────────────────────────────────────

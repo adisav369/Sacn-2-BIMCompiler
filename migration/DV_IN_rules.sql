@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- IN: AC11 Institute (Ifc2x3_AC11Institute)
 -- Source: DAGCompiler/lib/output/ifc2x3_ac11institute.db
--- Generated: 2026-03-22 23:08
+-- Generated: 2026-03-26 20:04
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -46,12 +46,10 @@
 -- --------------------  ----------  ---
 -- IfcFurnishingElement  ARC         253
 -- IfcWindow             ARC         206
--- IfcWall               ARC         89 
+-- IfcWall               STR         119
 -- IfcDoor               ARC         77 
--- IfcWall               STR         30 
--- IfcSlab               STR         20 
+-- IfcSlab               STR         26 
 -- IfcRailing            ARC         12 
--- IfcSlab               ARC         6  
 -- IfcStair              ARC         4  
 -- IfcColumn             STR         2  
 

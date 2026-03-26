@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CA: Clinic Architecture (Clinic_Architecture)
 -- Source: DAGCompiler/lib/output/clinic_architecture.db
--- Generated: 2026-03-22 08:28
+-- Generated: 2026-03-26 20:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -46,8 +46,9 @@
 -- IfcCovering           ARC         250 
 -- IfcPlate              STR         172 
 -- IfcFurnishingElement  ARC         118 
--- IfcFlowTerminal       MEP         102 
+-- IfcFlowTerminal       ARC         88  
 -- IfcWindow             ARC         58  
+-- IfcFlowTerminal       MEP         14  
 -- IfcRailing            ARC         9   
 
 -- §5: Candidate validation rules for ERP.db

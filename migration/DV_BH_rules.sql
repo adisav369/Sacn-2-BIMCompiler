@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- BH: PCERT Building Hvac (Building_Hvac)
 -- Source: DAGCompiler/lib/output/building_hvac.db
--- Generated: 2026-03-22 08:19
+-- Generated: 2026-03-26 20:16
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -25,7 +25,7 @@
 -- -----------------------  ----------  ---
 -- IfcBuildingElementProxy  ARC         2  
 -- IfcFlowTerminal          MEP         2  
--- IfcFlowSegment           MEP         1  
+-- IfcFlowSegment           ARC         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

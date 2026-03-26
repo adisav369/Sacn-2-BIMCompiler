@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- GH: AC9 Haus G-H (AC9_HausGH)
 -- Source: DAGCompiler/lib/output/ac9_hausgh.db
--- Generated: 2026-03-22 08:23
+-- Generated: 2026-03-26 19:51
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

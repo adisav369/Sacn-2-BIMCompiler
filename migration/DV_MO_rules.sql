@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- MO: Molio (Molio)
 -- Source: DAGCompiler/lib/output/molio.db
--- Generated: 2026-03-22 23:16
+-- Generated: 2026-03-26 20:17
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

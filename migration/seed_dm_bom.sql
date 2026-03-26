@@ -17,7 +17,8 @@
 -- ── Schema (minimal — full schema applied by schema_snapshot_bom.sql before this seed) ──
 
 CREATE TABLE IF NOT EXISTS C_DocType (
-    C_DocType_ID TEXT PRIMARY KEY, Name TEXT NOT NULL,
+    C_DocType_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value TEXT NOT NULL UNIQUE, Name TEXT NOT NULL,
     DocBaseType TEXT NOT NULL, DocSubType TEXT,
     IsDefault INTEGER DEFAULT 0, IsActive INTEGER DEFAULT 1,
     Description TEXT, ProjectName TEXT, DSLContent TEXT,
@@ -29,16 +30,17 @@ CREATE TABLE IF NOT EXISTS C_DocType (
 );
 
 CREATE TABLE IF NOT EXISTS m_bom (
-    bom_id TEXT PRIMARY KEY, bom_name TEXT, bom_type TEXT,
-    bom_category TEXT, group_by TEXT DEFAULT 'default',
+    M_BOM_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    bom_id TEXT NOT NULL UNIQUE, Value TEXT, Name TEXT,
+    bom_name TEXT NOT NULL, bom_type TEXT NOT NULL DEFAULT 'SET',
+    m_product_category_id TEXT, group_by TEXT DEFAULT 'default',
     aabb_width_mm INTEGER DEFAULT 0, aabb_depth_mm INTEGER DEFAULT 0,
     aabb_height_mm INTEGER DEFAULT 0, entity_type TEXT DEFAULT 'D',
     is_active INTEGER DEFAULT 1, description TEXT,
     target_ifc_class TEXT DEFAULT 'IfcElementAssembly',
-    bom_level TEXT DEFAULT 'SET', doc_base_type TEXT, doc_sub_type TEXT,
+    bom_level TEXT DEFAULT 'SET', doc_sub_type TEXT,
     seq_no INTEGER DEFAULT 10, origin_x REAL DEFAULT 0,
-    origin_y REAL DEFAULT 0, origin_z REAL DEFAULT 0,
-    aabb_qualifier TEXT DEFAULT 'OUTER'
+    origin_y REAL DEFAULT 0, origin_z REAL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS m_bom_line (
@@ -67,7 +69,7 @@ CREATE TABLE IF NOT EXISTS ad_sysconfig (
 
 -- ── C_DocType ──
 INSERT OR REPLACE INTO C_DocType (
-    C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
+    Value, Name, DocBaseType, DocSubType, IsActive,
     ProjectName, Provenance, SeqNo,
     OutputDbPath, ExpectedElements, GeometryFailThreshold,
     AabbWidthMm, AabbDepthMm, AabbHeightMm
@@ -79,13 +81,13 @@ INSERT OR REPLACE INTO C_DocType (
 );
 
 -- ── BUILDING BOM ──
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
-    aabb_width_mm, aabb_depth_mm, aabb_height_mm, doc_base_type, doc_sub_type, seq_no)
-VALUES ('BUILDING_DEMO_2BR', 'Demo House 2BR', 'BUILDING', NULL, 'building',
-        11000, 7000, 2800, 'RE', 'DM', 10);
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
+    aabb_width_mm, aabb_depth_mm, aabb_height_mm, doc_sub_type, seq_no)
+VALUES ('BUILDING_DEMO_2BR', 'Demo House 2BR', 'BUILDING', 'RE', 'building',
+        11000, 7000, 2800, 'DM', 10);
 
 -- ── FLOOR BOM ──
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, seq_no)
 VALUES ('FLOOR_DEMO_GF', 'Ground Floor', 'FLOOR', 'GF', 'storey',
         11000, 7000, 2800, 10);
@@ -95,7 +97,7 @@ INSERT INTO m_bom_line (bom_id, child_product_id, component_type, role, sequence
 VALUES ('BUILDING_DEMO_2BR', 'FLOOR_DEMO_GF', 'MAKE', 'GROUND_FLOOR', 10);
 
 -- ── ROOF BOM ──
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, seq_no)
 VALUES ('ROOF_DEMO', 'Roof', 'FLOOR', 'RF', 'roof',
         11000, 7000, 500, 20);
@@ -121,7 +123,7 @@ VALUES ('ROOF_DEMO', 'Basic Roof:Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr', 'L
 -- ROOM_DEMO_LI (LIVING) 4000×3500×2800mm @ (0.0, 3.5)
 -- Exterior: N, W
 -- ────────────────────────────────────────────────────────────
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z)
 VALUES ('ROOM_DEMO_LI', 'LIVING', 'ROOM', 'LIVING', 'ROOM',
         4000, 3500, 2800, 0.0, 3.5, 0.0);
@@ -193,7 +195,7 @@ VALUES ('ROOM_DEMO_LI', 'M_Lighting Switches:Single Pole:Single Pole', 'LEAF', '
 -- ROOM_DEMO_KT (KITCHEN) 4000×3500×2800mm @ (0.0, 0.0)
 -- Exterior: S, W
 -- ────────────────────────────────────────────────────────────
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z)
 VALUES ('ROOM_DEMO_KT', 'KITCHEN', 'ROOM', 'KITCHEN', 'ROOM',
         4000, 3500, 2800, 0.0, 0.0, 0.0);
@@ -265,7 +267,7 @@ VALUES ('ROOM_DEMO_KT', 'M_Lighting Switches:Single Pole:Single Pole', 'LEAF', '
 -- ROOM_DEMO_BD1 (BEDROOM) 5000×3500×2800mm @ (4.0, 3.5)
 -- Exterior: E, N
 -- ────────────────────────────────────────────────────────────
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z)
 VALUES ('ROOM_DEMO_BD1', 'BEDROOM', 'ROOM', 'BEDROOM', 'ROOM',
         5000, 3500, 2800, 4.0, 3.5, 0.0);
@@ -337,7 +339,7 @@ VALUES ('ROOM_DEMO_BD1', 'M_Lighting Switches:Single Pole:Single Pole', 'LEAF', 
 -- ROOM_DEMO_BD2 (BEDROOM) 5000×3500×2800mm @ (4.0, 0.0)
 -- Exterior: E, S
 -- ────────────────────────────────────────────────────────────
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z)
 VALUES ('ROOM_DEMO_BD2', 'BEDROOM', 'ROOM', 'BEDROOM', 'ROOM',
         5000, 3500, 2800, 4.0, 0.0, 0.0);
@@ -409,7 +411,7 @@ VALUES ('ROOM_DEMO_BD2', 'M_Lighting Switches:Single Pole:Single Pole', 'LEAF', 
 -- ROOM_DEMO_BT (BATHROOM) 2000×1500×2800mm @ (9.0, 0.0)
 -- Exterior: E, S
 -- ────────────────────────────────────────────────────────────
-INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, bom_category, group_by,
+INSERT OR REPLACE INTO m_bom (bom_id, bom_name, bom_type, m_product_category_id, group_by,
     aabb_width_mm, aabb_depth_mm, aabb_height_mm, origin_x, origin_y, origin_z)
 VALUES ('ROOM_DEMO_BT', 'BATHROOM', 'ROOM', 'BATHROOM', 'ROOM',
         2000, 1500, 2800, 9.0, 0.0, 0.0);

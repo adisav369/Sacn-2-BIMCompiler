@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- JS: AC90 Jasmin Sun (AC90_Jasmin)
 -- Source: DAGCompiler/lib/output/ac90_jasmin.db
--- Generated: 2026-03-22 08:21
+-- Generated: 2026-03-26 20:19
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
