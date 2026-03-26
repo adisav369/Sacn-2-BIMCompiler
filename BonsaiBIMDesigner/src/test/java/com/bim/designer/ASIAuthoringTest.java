@@ -337,7 +337,7 @@ class ASIAuthoringTest {
             s.execute("""
                 CREATE TABLE IF NOT EXISTS C_DocType (
                     C_DocType_ID TEXT PRIMARY KEY, ProjectName TEXT, Name TEXT,
-                    DocBaseType TEXT, DocSubType TEXT, IsActive INTEGER DEFAULT 1,
+                    doc_sub_type TEXT, IsActive INTEGER DEFAULT 1,
                     SeqNo INTEGER DEFAULT 10, ExpectedElements INTEGER DEFAULT 0
                 )""");
             s.execute("""
@@ -377,7 +377,7 @@ class ASIAuthoringTest {
             // Building type
             s.execute("""
                 INSERT INTO C_DocType VALUES
-                ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'RE', 'SH', 1, 10, 55)
+                ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'SH', 1, 10, 55)
                 """);
 
             // SET BOMs — room content packs with m_product_category_id

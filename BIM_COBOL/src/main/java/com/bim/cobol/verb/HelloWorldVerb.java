@@ -208,7 +208,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
             String outputPath = null, refPath = null;
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "SELECT OutputDbPath, ReferenceDbPath "
-                    + "FROM C_DocType WHERE DocSubType = ?")) {
+                    + "FROM C_DocType WHERE doc_sub_type = ?")) {
                 ps.setString(1, docSubType);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {

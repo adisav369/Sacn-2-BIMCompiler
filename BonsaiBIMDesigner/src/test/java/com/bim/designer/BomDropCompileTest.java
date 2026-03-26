@@ -196,8 +196,8 @@ class BomDropCompileTest {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("""
                     CREATE TABLE IF NOT EXISTS C_DocType (
-                        C_DocType_ID TEXT PRIMARY KEY, Name TEXT, DocBaseType TEXT,
-                        DocSubType TEXT, IsActive INTEGER DEFAULT 1, ProjectName TEXT,
+                        C_DocType_ID TEXT PRIMARY KEY, Name TEXT,
+                        doc_sub_type TEXT, IsActive INTEGER DEFAULT 1, ProjectName TEXT,
                         OutputDbPath TEXT, ReferenceDbPath TEXT,
                         ExpectedElements INTEGER DEFAULT 0, Provenance TEXT DEFAULT 'EXTRACTED',
                         SeqNo INTEGER DEFAULT 10, DSLContent TEXT, Description TEXT,
@@ -210,20 +210,19 @@ class BomDropCompileTest {
 
             try (var ps = conn.prepareStatement("""
                     INSERT OR REPLACE INTO C_DocType (
-                        C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
+                        C_DocType_ID, Name, doc_sub_type, IsActive,
                         ProjectName, OutputDbPath, ReferenceDbPath,
                         ExpectedElements, Provenance, SeqNo, DSLContent,
                         GeometryFailThreshold
-                    ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, 55, 'EXTRACTED', 10, ?, 0)
+                    ) VALUES (?, ?, ?, 1, ?, ?, ?, 55, 'EXTRACTED', 10, ?, 0)
                     """)) {
                 ps.setString(1, "RE_SH");
                 ps.setString(2, "Sample House");
-                ps.setString(3, "RE");
-                ps.setString(4, "SH");
-                ps.setString(5, "Ifc4_SampleHouse");
-                ps.setString(6, outputPath);
-                ps.setString(7, refPath);
-                ps.setString(8, dslContent);
+                ps.setString(3, "SH");
+                ps.setString(4, "Ifc4_SampleHouse");
+                ps.setString(5, outputPath);
+                ps.setString(6, refPath);
+                ps.setString(7, dslContent);
                 ps.executeUpdate();
             }
 

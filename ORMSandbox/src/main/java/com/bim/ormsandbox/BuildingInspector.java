@@ -53,14 +53,14 @@ public class BuildingInspector {
 
     /** Print all registered buildings from C_DocType (c_order dropped from BOM.db §11.2). */
     public void dumpBuildings() throws SQLException {
-        String sql = "SELECT C_DocType_ID, ProjectName, DocSubType, SeqNo, ExpectedElements"
+        String sql = "SELECT C_DocType_ID, ProjectName, doc_sub_type, SeqNo, ExpectedElements"
                    + " FROM C_DocType WHERE IsActive=1 ORDER BY SeqNo";
         System.out.println("=== BUILDINGS (from C_DocType) ===");
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 System.out.printf("  [%s] %s  sub=%s  seq=%d  expected=%d%n",
                     rs.getString("C_DocType_ID"), rs.getString("ProjectName"),
-                    rs.getString("DocSubType"), rs.getInt("SeqNo"),
+                    rs.getString("doc_sub_type"), rs.getInt("SeqNo"),
                     rs.getInt("ExpectedElements"));
             }
         }
@@ -458,13 +458,13 @@ public class BuildingInspector {
 
         // Sub-check 2: cross-contamination — slot reachable by this building but assembly_id
         // uses a naming convention that implies a different building
-        // Convention: assembly_id starting with another building's DocSubType prefix
-        // Prefix derived from C_DocType.DocSubType (e.g., SH_, DX_, TE_, ST_)
+        // Convention: assembly_id starting with another building's doc_sub_type prefix
+        // Prefix derived from C_DocType.doc_sub_type (e.g., SH_, DX_, TE_, ST_)
         List<M_AdRoomSlot> reachableSlots = allSlots.stream()
             .filter(s -> buildingRoomTypes.contains(s.getRoomType()))
             .collect(Collectors.toList());
         // Foreign prefix = assembly_ids that start with a known tag but NOT this building's tag
-        // Data-driven: query all DocSubType prefixes from C_DocType
+        // Data-driven: query all doc_sub_type prefixes from C_DocType
         List<String> allPrefixes = allBuildingPrefixes();
         String ownPrefix = deriveBuildingPrefix(buildingType);
         List<M_AdRoomSlot> crossContaminated = reachableSlots.stream()
@@ -508,16 +508,16 @@ public class BuildingInspector {
     /**
      * Derive the short prefix used for building-specific BOM assembly naming.
      *
-     * <p>Data-driven: looks up DocSubType from C_DocType by ProjectName.
+     * <p>Data-driven: looks up doc_sub_type from C_DocType by ProjectName.
      * No hardcoded building-type checks — BOM structure (C_DocType) carries the semantics.
      */
     private String deriveBuildingPrefix(String buildingType) throws SQLException {
-        String sql = "SELECT DocSubType FROM C_DocType WHERE ProjectName=? AND IsActive=1";
+        String sql = "SELECT doc_sub_type FROM C_DocType WHERE ProjectName=? AND IsActive=1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, buildingType);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    String sub = rs.getString("DocSubType");
+                    String sub = rs.getString("doc_sub_type");
                     if (sub != null && !sub.isBlank()) return sub.toUpperCase() + "_";
                 }
             }
@@ -527,16 +527,16 @@ public class BuildingInspector {
     }
 
     /**
-     * Query all known building prefixes from C_DocType (DocSubType + "_").
+     * Query all known building prefixes from C_DocType (doc_sub_type + "_").
      *
      * <p>Data-driven replacement for hardcoded prefix lists.
      */
     private List<String> allBuildingPrefixes() throws SQLException {
-        String sql = "SELECT DISTINCT DocSubType FROM C_DocType WHERE IsActive=1 AND DocSubType IS NOT NULL";
+        String sql = "SELECT DISTINCT doc_sub_type FROM C_DocType WHERE IsActive=1 AND doc_sub_type IS NOT NULL";
         List<String> prefixes = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
-                String sub = rs.getString("DocSubType");
+                String sub = rs.getString("doc_sub_type");
                 if (sub != null && !sub.isBlank()) prefixes.add(sub.toUpperCase() + "_");
             }
         }

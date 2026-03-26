@@ -150,7 +150,7 @@ class CompileBridgeTest {
                 stmt.execute("""
                     CREATE TABLE IF NOT EXISTS C_DocType (
                         C_DocType_ID TEXT PRIMARY KEY,
-                        Name TEXT, DocBaseType TEXT, DocSubType TEXT,
+                        Name TEXT, doc_sub_type TEXT,
                         IsActive INTEGER DEFAULT 1, ProjectName TEXT,
                         OutputDbPath TEXT, ReferenceDbPath TEXT,
                         ExpectedElements INTEGER DEFAULT 0,
@@ -171,21 +171,20 @@ class CompileBridgeTest {
             String refPath = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
             try (var ps = conn.prepareStatement("""
                     INSERT OR REPLACE INTO C_DocType (
-                        C_DocType_ID, Name, DocBaseType, DocSubType, IsActive,
+                        C_DocType_ID, Name, doc_sub_type, IsActive,
                         ProjectName, OutputDbPath, ReferenceDbPath,
                         ExpectedElements, Provenance, SeqNo, DSLContent,
                         GeometryFailThreshold
-                    ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, 0)
+                    ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, 0)
                     """)) {
                 ps.setString(1, "RE_SH");
                 ps.setString(2, "Sample House");
-                ps.setString(3, "RE");
-                ps.setString(4, "SH");
-                ps.setString(5, "Ifc4_SampleHouse");
-                ps.setString(6, outputPath);
-                ps.setString(7, refPath);
-                ps.setInt(8, expectedElements);
-                ps.setString(9, dslContent);
+                ps.setString(3, "SH");
+                ps.setString(4, "Ifc4_SampleHouse");
+                ps.setString(5, outputPath);
+                ps.setString(6, refPath);
+                ps.setInt(7, expectedElements);
+                ps.setString(8, dslContent);
                 ps.executeUpdate();
             }
 

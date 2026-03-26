@@ -243,7 +243,7 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
 
     private String lookupProjectName(Connection conn, String docSubType) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-                     "SELECT ProjectName FROM C_DocType WHERE DocSubType=?")) {
+                     "SELECT ProjectName FROM C_DocType WHERE doc_sub_type=?")) {
             ps.setString(1, docSubType);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString(1) : null;

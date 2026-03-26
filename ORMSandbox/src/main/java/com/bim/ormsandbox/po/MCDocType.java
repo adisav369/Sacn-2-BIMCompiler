@@ -3,28 +3,20 @@ package com.bim.ormsandbox.po;
 import com.bim.orm.ModelQuery;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
 /**
  * Model layer for {@code C_DocType} (iDempiere: C_DocType).
  *
- * <p>6 entries: RE_SH (Sample House), RE_DX (Duplex), RE_TB (Terrace Block),
- * CO_TE (Airport Terminal), ST_SH (Standard SH), ST_DX (Standard DX).
+ * <p>iDempiere BIM has one DocType: ConstructionOrder. Building routing uses
+ * m_bom.m_product_category_id (RE/CO/IN/ST) and doc_sub_type (SH/DX/TE).
  *
- * <p>DocBaseType (= M_Product_Category on BUILDING BOMs) drives compilation path (Prime Rule):
- * <ul>
- *   <li>RE → direct BUILDING BOM match → EN-BLOC (singularity)</li>
- *   <li>ST → no BUILDING BOM → template path (M_BomCategory AABB match)</li>
- *   <li>CO → Commercial template (future)</li>
- *   <li>IN → Industrial template (future)</li>
- * </ul>
- *
- * <p>DocSubType drives BOM scoping:
- * <ul>
- *   <li>SH → SH-specific BOMs (SH_BED_SET, SH_LIVING_SET, etc.)</li>
- *   <li>DX → DX-specific BOMs (DUPLEX_SET_STD, etc.)</li>
- * </ul>
+ * <p>W018: DocBaseType + DocSubType dropped from C_DocType.
+ * doc_sub_type is the single FK to m_bom BUILDING records.
+ * m_product_category_id is read from m_bom when needed.
  *
  * @see <a href="docs/ConstructionAsERP.md">Construction as ERP — §11.36</a>
  */
@@ -38,48 +30,49 @@ public class MCDocType extends X_C_DocType {
         return dt.load(docTypeId) && dt.isActive() ? dt : null;
     }
 
-    /** All active document types, ordered by DocBaseType + DocSubType. */
+    /** All active document types, ordered by doc_sub_type. */
     public static List<MCDocType> getAll(Connection conn) throws SQLException {
         return new ModelQuery<>(conn, MCDocType::new, Table_Name)
             .where(COLUMNNAME_IsActive + " = ?", 1)
-            .orderBy(COLUMNNAME_DocBaseType + ", " + COLUMNNAME_DocSubType)
+            .orderBy(COLUMNNAME_doc_sub_type)
             .list();
     }
 
-    /** All active document types for a given base type (RE, CO, IN). */
-    public static List<MCDocType> getByDocBaseType(Connection conn, String baseType) throws SQLException {
-        return new ModelQuery<>(conn, MCDocType::new, Table_Name)
-            .where(COLUMNNAME_DocBaseType + " = ?", baseType)
-            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
-            .orderBy(COLUMNNAME_DocSubType)
-            .list();
-    }
-
-    /** Find by DocSubType (SH, DX, TB, TE). Returns first match or null. */
+    /** Find by doc_sub_type (SH, DX, TB, TE). Returns first match or null. */
     public static MCDocType getByDocSubType(Connection conn, String subType) throws SQLException {
         return new ModelQuery<>(conn, MCDocType::new, Table_Name)
-            .where(COLUMNNAME_DocSubType + " = ?", subType)
-            .andWhere(COLUMNNAME_IsActive + " = ?", 1)
-            .first()
-            .orElse(null);
-    }
-
-    /** Find the default DocType for a given base type. Returns null if none marked default. */
-    public static MCDocType getDefault(Connection conn, String baseType) throws SQLException {
-        return new ModelQuery<>(conn, MCDocType::new, Table_Name)
-            .where(COLUMNNAME_DocBaseType + " = ?", baseType)
-            .andWhere(COLUMNNAME_IsDefault + " = ?", 1)
+            .where(COLUMNNAME_doc_sub_type + " = ?", subType)
             .andWhere(COLUMNNAME_IsActive + " = ?", 1)
             .first()
             .orElse(null);
     }
 
     /**
-     * Map DocBaseType to the M_BomCategory.doc_type used for template tree lookup.
-     * ST shares the RE structural grammar, so both map to 'RE'.
+     * Resolve M_Product_Category from m_bom BUILDING record via doc_sub_type FK.
+     * Returns RE/CO/IN/ST, or null if no BUILDING BOM found.
      */
-    public String toDocTypeName() {
-        return switch (getDocBaseType()) {
+    public String resolveProductCategory() throws SQLException {
+        String dst = getDocSubType();
+        if (dst == null) return null;
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT m_product_category_id FROM m_bom " +
+                "WHERE bom_type = 'BUILDING' AND doc_sub_type = ? AND is_active = 1 LIMIT 1")) {
+            ps.setString(1, dst);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
+    /**
+     * Map M_Product_Category to the M_BomCategory.doc_type used for template tree lookup.
+     * ST shares the RE structural grammar, so both map to 'RE'.
+     * Reads m_product_category_id from m_bom via doc_sub_type FK.
+     */
+    public String toDocTypeName() throws SQLException {
+        String cat = resolveProductCategory();
+        if (cat == null) return "RE"; // fallback
+        return switch (cat) {
             case "RE" -> "RE";
             case "ST" -> "RE";  // ST uses RE template tree
             case "CO" -> "CO";

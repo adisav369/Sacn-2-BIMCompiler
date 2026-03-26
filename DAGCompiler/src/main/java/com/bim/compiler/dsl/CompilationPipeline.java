@@ -128,13 +128,13 @@ public class CompilationPipeline {
         @Override public String name() { return "TEMPLATE COMPOSITION"; }
 
         /**
-         * TemplateStage is skipped when DocSubType is not 'ST'.
-         * ST is a DocSubType value (NOT DocBaseType). DocBaseType = RE/CO/IN only.
-         * Template entries: C_DocType ST_SH/ST_DX (DocBaseType='RE', DocSubType='ST').
+         * TemplateStage is skipped when M_Product_Category is not 'ST'.
+         * ST = Standard Template: m_product_category_id='ST' on BUILDING BOM.
+         * Template entries: C_DocType ST_SH/ST_DX have doc_sub_type=TE/SH etc.
          */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
-            return !"ST".equals(ctx.entry().docSubType());
+            return !"ST".equals(ctx.entry().mProductCategoryId());
         }
 
         @Override
@@ -154,7 +154,7 @@ public class CompilationPipeline {
             int widthMm, depthMm, heightMm;
             try (Connection bomConn2 = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                 MBomCategory tplCat = MBomCategory.getByDocTypeAndSubType(
-                    bomConn2, ctx.entry().docBaseType(), ctx.entry().docSubType());
+                    bomConn2, ctx.entry().mProductCategoryId(), ctx.entry().docSubType());
                 if (tplCat != null && tplCat.getAabbWidthMm() > 0) {
                     widthMm  = (int) tplCat.getAabbWidthMm();
                     depthMm  = (int) tplCat.getAabbDepthMm();
@@ -239,7 +239,7 @@ public class CompilationPipeline {
          */
         @Override
         public boolean shouldSkip(CompilationContext ctx) {
-            if ("CO".equals(ctx.entry().docBaseType())) {
+            if ("CO".equals(ctx.entry().mProductCategoryId())) {
                 ctx.setSpec(new BuildingSpec(ctx.entry().projectName(), List.of(), null));
                 return true;
             }
@@ -377,7 +377,7 @@ public class CompilationPipeline {
                         MBOM bldgBom = MBOM.getBuildingBom(libConn, docSubType);
                         if (bldgBom != null) bldgBomId = bldgBom.getBomId();
                     }
-                    if (bldgBomId == null && "ST".equals(docSubType)) {
+                    if (bldgBomId == null && "ST".equals(ctx.entry().mProductCategoryId())) {
                         BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
                         if (tmplReport != null) {
                             String gfOwner = tmplReport.selections().stream()

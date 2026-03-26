@@ -218,7 +218,7 @@ class DemoHouseTest {
     void w_dh_5_provenance() throws Exception {
         try (Statement st = bomConn.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT Provenance FROM C_DocType WHERE DocSubType = 'DM'")) {
+                     "SELECT Provenance FROM C_DocType WHERE doc_sub_type = 'DM'")) {
             assertTrue(rs.next(), "C_DocType row for DM must exist");
             assertEquals("GENERATIVE", rs.getString(1));
         }
@@ -422,7 +422,7 @@ class DemoHouseTest {
             st.execute("""
                 CREATE TABLE C_DocType (
                     C_DocType_ID TEXT PRIMARY KEY, ProjectName TEXT, Name TEXT,
-                    DocBaseType TEXT, DocSubType TEXT, Provenance TEXT DEFAULT 'EXTRACTED',
+                    doc_sub_type TEXT, Provenance TEXT DEFAULT 'EXTRACTED',
                     IsActive INTEGER DEFAULT 1)""");
             st.execute("""
                 CREATE TABLE m_bom (
@@ -442,7 +442,7 @@ class DemoHouseTest {
             // C_DocType
             st.execute("""
                 INSERT INTO C_DocType VALUES
-                ('RE_DM','DemoHouse_2BR','Demo House 2BR','RE','DM','GENERATIVE',1)""");
+                ('RE_DM','DemoHouse_2BR','Demo House 2BR','DM','GENERATIVE',1)""");
 
             // Building BOM
             st.execute("""

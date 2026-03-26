@@ -282,8 +282,7 @@ public class DataIntegrityTest {
                  "SELECT b.bom_id, b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm, " +
                  "       d.ProjectName, d.ReferenceDbPath " +
                  "FROM m_bom b " +
-                 "JOIN C_DocType d ON b.doc_sub_type = d.DocSubType " +
-                 "  AND b.m_product_category_id = d.DocBaseType " +
+                 "JOIN C_DocType d ON b.doc_sub_type = d.doc_sub_type " +
                  "WHERE b.bom_type = 'BUILDING' " +
                  "  AND d.Provenance = 'EXTRACTED' " +
                  "  AND d.ExpectedElements > 0 " +

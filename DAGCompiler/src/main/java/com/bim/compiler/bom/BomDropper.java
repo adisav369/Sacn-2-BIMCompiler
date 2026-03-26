@@ -100,7 +100,7 @@ public class BomDropper {
         String buildingBomId = findBuildingBom(compileDb, entry);
         if (buildingBomId == null) {
             System.err.printf("[BomDropper] No BUILDING BOM for %s (%s/%s) — skipping%n",
-                    entry.id(), entry.docBaseType(), entry.docSubType());
+                    entry.id(), entry.mProductCategoryId(), entry.docSubType());
             return 0;
         }
 
@@ -134,15 +134,15 @@ public class BomDropper {
     }
 
     /**
-     * Find the BUILDING BOM matching this entry's M_Product_Category + DocSubType.
-     * // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
+     * Find the BUILDING BOM matching this entry's M_Product_Category + doc_sub_type.
+     * // Implementing DATA_MODEL.md §7 — M_Product_Category alignment (W018)
      */
     private static String findBuildingBom(Connection conn, BuildingEntry entry) throws SQLException {
         String sql = "SELECT Value FROM m_bom "
                    + "WHERE bom_type = 'BUILDING' AND m_product_category_id = ? AND doc_sub_type = ? "
                    + "AND is_active = 1 ORDER BY seq_no LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, entry.docBaseType());
+            ps.setString(1, entry.mProductCategoryId());
             ps.setString(2, entry.docSubType());
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString(1) : null;

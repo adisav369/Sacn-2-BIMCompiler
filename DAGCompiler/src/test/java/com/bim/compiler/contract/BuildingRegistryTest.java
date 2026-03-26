@@ -45,7 +45,7 @@ public class BuildingRegistryTest {
         //   null → all active (default)
         String docBaseType = System.getProperty("doc.base.type");
         List<BuildingEntry> buildings = docBaseType != null
-            ? BuildingRegistry.loadByDocBaseType(docBaseType)
+            ? BuildingRegistry.loadByProductCategory(docBaseType)
             : BuildingRegistry.loadActive();
         assertFalse(buildings.isEmpty(),
             "C_DocType must have active building types"

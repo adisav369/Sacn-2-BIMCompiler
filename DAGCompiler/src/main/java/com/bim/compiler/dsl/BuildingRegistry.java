@@ -22,11 +22,11 @@ public class BuildingRegistry {
      * Domain config only — no transactional state (DocStatus, checksums go on C_Order in output.db).
      */
     public record BuildingEntry(
-        String docTypeId,           // C_DocType_ID ('RE_SH', 'RE_DX', 'ST_SH', 'ST_DX')
+        String docTypeId,           // C_DocType.Value ('RE_SH', 'RE_DX', 'ST_SH', 'ST_DX')
         String projectName,         // building instance name ('Ifc4_SampleHouse')
         String name,                // human-readable ('Sample House')
-        String docBaseType,         // RE, CO, IN, ST (Prime Rule: DocType)
-        String docSubType,          // SH, DX, TB, TE (Prime Rule: DocSubType)
+        String mProductCategoryId,  // RE, CO, IN, ST — from m_bom.m_product_category_id
+        String docSubType,          // SH, DX, TB, TE — from C_DocType.doc_sub_type / m_bom.doc_sub_type
         String dslContent,          // DSL template text
         String outputDbPath,        // output DB path
         String referenceDbPath,     // reference DB for verification
@@ -80,11 +80,11 @@ public class BuildingRegistry {
     }
 
     /**
-     * Load active building types filtered by DocBaseType (RE, CO, IN).
+     * Load active building types filtered by M_Product_Category (RE, CO, IN, ST).
      * Used by compile_building() to select RE for ENBLOC, ST for WALKTHRU.
      */
-    public static List<BuildingEntry> loadByDocBaseType(String docBaseType) {
-        return load("WHERE DocBaseType = ? AND IsActive = 1 ORDER BY SeqNo", docBaseType);
+    public static List<BuildingEntry> loadByProductCategory(String category) {
+        return load("WHERE MProductCategoryId = ? AND IsActive = 1 ORDER BY SeqNo", category);
     }
 
     /**
@@ -126,12 +126,13 @@ public class BuildingRegistry {
 
     private static List<BuildingEntry> load(String whereClause, String... params) {
         List<BuildingEntry> entries = new ArrayList<>();
-        // AABB from BUILDING BOM (m_bom), not C_DocType (dead columns since NULLed).
-        // LEFT JOIN: m_product_category_id+doc_sub_type → DocBaseType+DocSubType (§7 alignment).
-        // ST_SH/ST_DX (DocSubType='ST') resolve AABB from M_BomCategory, not from BUILDING BOM.
-        // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
+        // AABB + m_product_category_id from BUILDING BOM (m_bom).
+        // W018: DocBaseType/DocSubType dropped from C_DocType. doc_sub_type is the single FK.
+        // ST_SH/ST_DX (m_product_category_id='ST') resolve AABB from M_BomCategory, not BUILDING BOM.
         // Tier 2: C_DocType_ID is INTEGER PK. Value holds old TEXT key (e.g., 'RE_SH').
-        String sql = "SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType, "
+        String sql = "SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, "
+                   + "b.m_product_category_id AS MProductCategoryId, "
+                   + "COALESCE(d.doc_sub_type, b.doc_sub_type) AS DocSubType, "
                    + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
                    + "d.ExpectedElements, d.Provenance, d.Description, "
                    + "d.GeometryFailThreshold, "
@@ -139,8 +140,7 @@ public class BuildingRegistry {
                    + "COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm, "
                    + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm "
                    + "FROM C_DocType d "
-                   + "LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType "
-                   + "  AND b.m_product_category_id = d.DocBaseType "
+                   + "LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type "
                    + "  AND b.bom_type = 'BUILDING' AND b.is_active = 1 "
                    + qualifyWhereClause(whereClause);
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
@@ -154,7 +154,7 @@ public class BuildingRegistry {
                         rs.getString("C_DocType_ID"),
                         rs.getString("ProjectName"),
                         rs.getString("Name"),
-                        rs.getString("DocBaseType"),
+                        rs.getString("MProductCategoryId"),
                         rs.getString("DocSubType"),
                         rs.getString("DSLContent"),
                         rs.getString("OutputDbPath"),
@@ -177,13 +177,14 @@ public class BuildingRegistry {
         return entries;
     }
 
-    /** Qualify bare column names in WHERE/ORDER clause with 'd.' table alias. */
+    /** Qualify bare column names in WHERE/ORDER clause with table alias. */
     private static String qualifyWhereClause(String clause) {
         return clause
             .replace("IsActive", "d.IsActive")
             .replace("ProjectName", "d.ProjectName")
             .replace("Value", "d.Value")
-            .replace("SeqNo", "d.SeqNo");
+            .replace("SeqNo", "d.SeqNo")
+            .replace("MProductCategoryId", "b.m_product_category_id");
     }
 
 }

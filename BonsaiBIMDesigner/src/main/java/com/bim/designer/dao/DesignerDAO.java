@@ -48,18 +48,18 @@ public class DesignerDAO {
         }
     }
 
-    /** Active building types from C_DocType, with AABB from BUILDING-level m_bom. */
+    /** Active building types from C_DocType, with AABB + m_product_category_id from BUILDING-level m_bom. */
     public List<BuildingTypeRow> listBuildingTypes() throws SQLException {
         String sql = """
                 SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
-                       d.DocBaseType, d.DocSubType, d.IsActive,
+                       b.m_product_category_id AS MProductCategoryId,
+                       COALESCE(d.doc_sub_type, b.doc_sub_type) AS doc_sub_type,
                        d.ExpectedElements,
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
                        COALESCE(b.aabb_depth_mm, 0)  AS aabb_depth_mm,
                        COALESCE(b.aabb_height_mm, 0) AS aabb_height_mm
                 FROM C_DocType d
-                LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType
-                  AND b.m_product_category_id = d.DocBaseType
+                LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
                   AND b.bom_type = 'BUILDING' AND b.is_active = 1
                 WHERE d.IsActive = 1
                 ORDER BY d.SeqNo
@@ -72,8 +72,8 @@ public class DesignerDAO {
                         rs.getString("C_DocType_ID"),
                         rs.getString("ProjectName"),
                         rs.getString("Name"),
-                        rs.getString("DocBaseType"),
-                        rs.getString("DocSubType"),
+                        rs.getString("MProductCategoryId"),
+                        rs.getString("doc_sub_type"),
                         rs.getInt("ExpectedElements"),
                         rs.getDouble("aabb_width_mm"),
                         rs.getDouble("aabb_depth_mm"),
@@ -88,14 +88,14 @@ public class DesignerDAO {
     public BuildingTypeRow getBuildingType(String buildingId) throws SQLException {
         String sql = """
                 SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
-                       d.DocBaseType, d.DocSubType,
+                       b.m_product_category_id AS MProductCategoryId,
+                       COALESCE(d.doc_sub_type, b.doc_sub_type) AS doc_sub_type,
                        d.ExpectedElements,
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
                        COALESCE(b.aabb_depth_mm, 0)  AS aabb_depth_mm,
                        COALESCE(b.aabb_height_mm, 0) AS aabb_height_mm
                 FROM C_DocType d
-                LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType
-                  AND b.m_product_category_id = d.DocBaseType
+                LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
                   AND b.bom_type = 'BUILDING' AND b.is_active = 1
                 WHERE d.ProjectName = ?
                 """;
@@ -107,8 +107,8 @@ public class DesignerDAO {
                             rs.getString("C_DocType_ID"),
                             rs.getString("ProjectName"),
                             rs.getString("Name"),
-                            rs.getString("DocBaseType"),
-                            rs.getString("DocSubType"),
+                            rs.getString("MProductCategoryId"),
+                            rs.getString("doc_sub_type"),
                             rs.getInt("ExpectedElements"),
                             rs.getDouble("aabb_width_mm"),
                             rs.getDouble("aabb_depth_mm"),
@@ -414,7 +414,7 @@ public class DesignerDAO {
 
     public record BuildingTypeRow(
             String docTypeId, String projectName, String name,
-            String docBaseType, String docSubType,
+            String mProductCategoryId, String docSubType,
             int expectedElements,
             double aabbWidthMm, double aabbDepthMm, double aabbHeightMm
     ) {}

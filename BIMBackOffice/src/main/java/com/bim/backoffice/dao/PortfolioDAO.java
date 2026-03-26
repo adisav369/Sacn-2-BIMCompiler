@@ -262,15 +262,18 @@ public class PortfolioDAO {
         int expectedElements = 0;
 
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT Name, DocBaseType, DocSubType, ProjectName, ExpectedElements " +
-                "FROM C_DocType WHERE IsActive = 1 LIMIT 1")) {
+                "SELECT d.Name, b.m_product_category_id, d.doc_sub_type, d.ProjectName, d.ExpectedElements " +
+                "FROM C_DocType d " +
+                "LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type " +
+                "  AND b.bom_type = 'BUILDING' AND b.is_active = 1 " +
+                "WHERE d.IsActive = 1 LIMIT 1")) {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     buildingName = rs.getString("Name");
-                    String baseType = rs.getString("DocBaseType");
+                    String baseType = rs.getString("m_product_category_id");
                     expectedElements = rs.getInt("ExpectedElements");
                     if ("IN".equals(baseType)) {
-                        String sub = rs.getString("DocSubType");
+                        String sub = rs.getString("doc_sub_type");
                         facilityType = switch (sub) {
                             case "BR" -> "BRIDGE";
                             case "RD" -> "ROAD";

@@ -6,25 +6,23 @@ import java.sql.Connection;
 /**
  * Generated-structure layer for {@code C_DocType} (iDempiere: C_DocType).
  *
- * <p>Document type classification for construction orders. Borrowed from
- * iDempiere's C_DocType model: DocBaseType (3-char category = M_Product_Category)
- * + DocSubType (variant within category).
+ * <p>Document type classification for construction orders. iDempiere BIM uses
+ * a single DocType: ConstructionOrder. Building routing is via
+ * {@code m_bom.m_product_category_id} (RE/CO/IN/ST) and
+ * {@code doc_sub_type} (SH/DX/TE — building prefix, FK to m_bom).
  *
- * <p>Replaces the dual c_order.building_type + c_order.c_bpartner with a
- * single FK. DocBaseType (= m_product_category_id on BUILDING BOMs) drives
- * template selection (RE → Residential template).
- * DocSubType drives BOM scoping (SH BOMs for SH buildings).
+ * <p>W018: DocBaseType + DocSubType dropped. doc_sub_type is the single FK
+ * linking C_DocType to m_bom BUILDING records.
  *
  * <p>Table: {@code C_DocType}
  * <pre>
- *   C_DocType_ID   TEXT PRIMARY KEY     composite: DocBaseType + '_' + DocSubType
- *   Name           TEXT NOT NULL         human-readable ('Sample House', 'Duplex')
- *   DocBaseType    TEXT NOT NULL          RE (Residential), CO (Commercial), IN (Industrial)
- *   DocSubType     TEXT                   SH, DX, TB, TE (NULL = generic)
- *   IsDefault      INTEGER DEFAULT 0     default DocType for this DocBaseType
+ *   C_DocType_ID   INTEGER PRIMARY KEY   AUTOINCREMENT
+ *   Value          TEXT NOT NULL UNIQUE   composite key (e.g. 'RE_SH')
+ *   Name           TEXT NOT NULL          human-readable ('Sample House', 'Duplex')
+ *   doc_sub_type   TEXT                   FK to m_bom.doc_sub_type (SH, DX, TE; NULL = generic)
+ *   IsDefault      INTEGER DEFAULT 0
  *   IsActive       INTEGER DEFAULT 1
  *   Description    TEXT
- *   -- Domain config (absorbed from c_order, 2026-03-04):
  *   ProjectName    TEXT                   building instance name ('Ifc2x3_Duplex')
  *   DSLContent     TEXT                   DSL template text
  *   OutputDbPath   TEXT                   output DB path
@@ -33,8 +31,6 @@ import java.sql.Connection;
  *   Provenance     TEXT                   EXTRACTED | GENERATIVE
  *   GeometryFailThreshold INTEGER         fail threshold
  *   SeqNo          INTEGER                compilation ordering
- *   -- AABB removed from C_DocType: dimensions belong on C_Order (user's request)
- *   -- and are computed from BOM lines (ground truth), not stored on the type.
  * </pre>
  *
  * @see <a href="docs/ConstructionAsERP.md">Construction as ERP — §11.36</a>
@@ -44,8 +40,7 @@ public class X_C_DocType extends BasePO {
     public static final String Table_Name                    = "C_DocType";
     public static final String COLUMNNAME_C_DocType_ID       = "C_DocType_ID";
     public static final String COLUMNNAME_Name               = "Name";
-    public static final String COLUMNNAME_DocBaseType        = "DocBaseType";
-    public static final String COLUMNNAME_DocSubType         = "DocSubType";
+    public static final String COLUMNNAME_doc_sub_type       = "doc_sub_type";
     public static final String COLUMNNAME_IsDefault          = "IsDefault";
     public static final String COLUMNNAME_IsActive           = "IsActive";
     public static final String COLUMNNAME_Description        = "Description";
@@ -59,7 +54,6 @@ public class X_C_DocType extends BasePO {
     public static final String COLUMNNAME_Provenance             = "Provenance";
     public static final String COLUMNNAME_GeometryFailThreshold  = "GeometryFailThreshold";
     public static final String COLUMNNAME_SeqNo                  = "SeqNo";
-    // AABB removed — dimensions belong on C_Order, computed from BOM lines
 
     // ERP dimension columns (Phase H0, 2026-03-09)
     public static final String COLUMNNAME_C_Campaign_ID          = "C_Campaign_ID";
@@ -73,8 +67,7 @@ public class X_C_DocType extends BasePO {
     // Classification accessors
     public String  getDocTypeId()    { return get_ValueAsString(COLUMNNAME_C_DocType_ID); }
     public String  getName()         { return get_ValueAsString(COLUMNNAME_Name); }
-    public String  getDocBaseType()  { return get_ValueAsString(COLUMNNAME_DocBaseType); }
-    public String  getDocSubType()   { return get_ValueAsString(COLUMNNAME_DocSubType); }
+    public String  getDocSubType()   { return get_ValueAsString(COLUMNNAME_doc_sub_type); }
     public boolean isDefault()       { return get_ValueAsBoolean(COLUMNNAME_IsDefault); }
     public boolean isActive()        { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
     public String  getDescription()  { return get_ValueAsString(COLUMNNAME_Description); }
@@ -94,8 +87,7 @@ public class X_C_DocType extends BasePO {
 
     public void setDocTypeId(String v)   { set_Value(COLUMNNAME_C_DocType_ID, v); }
     public void setName(String v)        { set_Value(COLUMNNAME_Name, v); }
-    public void setDocBaseType(String v) { set_Value(COLUMNNAME_DocBaseType, v); }
-    public void setDocSubType(String v)  { set_Value(COLUMNNAME_DocSubType, v); }
+    public void setDocSubType(String v)  { set_Value(COLUMNNAME_doc_sub_type, v); }
     public void setIsDefault(boolean v)  { set_Value(COLUMNNAME_IsDefault, v ? 1 : 0); }
     public void setIsActive(boolean v)   { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
     public void setDescription(String v) { set_Value(COLUMNNAME_Description, v); }

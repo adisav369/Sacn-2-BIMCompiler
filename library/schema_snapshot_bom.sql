@@ -1135,7 +1135,7 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     bom_type          TEXT NOT NULL DEFAULT 'SET'
         CHECK(bom_type IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM')),
     m_product_category_id TEXT DEFAULT NULL,
-    doc_sub_type      TEXT DEFAULT NULL, -- DEPRECATED: routing uses m_product_category_id (§7)
+    doc_sub_type      TEXT DEFAULT NULL, -- STRUCTURAL: building identity (SH/DX/TE), FK to C_DocType.doc_sub_type
     seq_no            INTEGER DEFAULT 10,
     origin_x          REAL DEFAULT 0.0,
     origin_y          REAL DEFAULT 0.0,
@@ -1144,14 +1144,13 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     aabb_width_mm     INTEGER DEFAULT 0,
     aabb_depth_mm     INTEGER DEFAULT 0,
     aabb_height_mm    INTEGER DEFAULT 0
-, doc_base_type TEXT DEFAULT NULL -- DEPRECATED: same value as m_product_category_id on BUILDING BOMs (§7)
 );
+-- W018: DocBaseType + DocSubType dropped from C_DocType. doc_sub_type is the single FK.
 CREATE TABLE IF NOT EXISTS "C_DocType" (
     C_DocType_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
-    Value          TEXT NOT NULL UNIQUE,    -- old TEXT PK (e.g., 'RE_SH')
+    Value          TEXT NOT NULL UNIQUE,    -- composite key (e.g., 'RE_SH')
     Name           TEXT NOT NULL,
-    DocBaseType    TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN','ST')),
-    DocSubType     TEXT,
+    doc_sub_type   TEXT,                    -- FK to m_bom.doc_sub_type (was DocSubType)
     IsDefault      INTEGER DEFAULT 0,
     IsActive       INTEGER DEFAULT 1,
     Description    TEXT,

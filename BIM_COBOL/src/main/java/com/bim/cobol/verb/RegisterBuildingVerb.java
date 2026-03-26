@@ -79,7 +79,7 @@ public class RegisterBuildingVerb implements Verb<RegisterBuildingVerb.RegisterB
         Connection bomConn = ctx.bomConn();
         if (bomConn != null) {
             try (PreparedStatement ps = bomConn.prepareStatement(
-                    "SELECT Value FROM C_DocType WHERE DocSubType = ?")) {
+                    "SELECT Value FROM C_DocType WHERE doc_sub_type = ?")) {
                 ps.setString(1, docSubType);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) docTypeId = rs.getString(1);

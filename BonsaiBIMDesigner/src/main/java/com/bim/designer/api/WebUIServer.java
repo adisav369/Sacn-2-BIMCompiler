@@ -315,11 +315,11 @@ public class WebUIServer implements AutoCloseable {
              Statement stmt = conn.createStatement()) {
             detail.put("dbFile", dbFilePath);
             try (ResultSet rs = stmt.executeQuery(
-                    "SELECT ProjectName, Name, DocSubType, ExpectedElements FROM C_DocType WHERE IsActive=1 LIMIT 1")) {
+                    "SELECT ProjectName, Name, doc_sub_type, ExpectedElements FROM C_DocType WHERE IsActive=1 LIMIT 1")) {
                 if (rs.next()) {
                     detail.put("buildingId", rs.getString("ProjectName"));
                     detail.put("name", rs.getString("Name"));
-                    detail.put("docSubType", rs.getString("DocSubType"));
+                    detail.put("docSubType", rs.getString("doc_sub_type"));
                     detail.put("elementCount", rs.getInt("ExpectedElements"));
                 }
             }

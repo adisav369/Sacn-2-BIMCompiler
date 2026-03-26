@@ -295,9 +295,9 @@ public class PlacementLoader {
     private static Map<String, String> loadDocSubTypeMap(Connection conn) throws SQLException {
         Map<String, String> map = new HashMap<>();
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT DocSubType, ProjectName FROM C_DocType")) {
+             ResultSet rs = stmt.executeQuery("SELECT doc_sub_type, ProjectName FROM C_DocType")) {
             while (rs.next()) {
-                map.put(rs.getString("DocSubType"), rs.getString("ProjectName"));
+                map.put(rs.getString("doc_sub_type"), rs.getString("ProjectName"));
             }
         }
         return map;

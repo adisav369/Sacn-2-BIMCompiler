@@ -357,31 +357,31 @@ public class IFCtoBOMPipeline {
                 }
 
                 // Tier 2: C_DocType_ID is INTEGER PK AUTOINCREMENT. Old text key → Value.
+                // W018: DocBaseType dropped from C_DocType. doc_sub_type is the single FK to m_bom.
                 try (PreparedStatement ps = bomConn.prepareStatement("""
                         INSERT OR REPLACE INTO C_DocType (
-                            Value, Name, DocBaseType, DocSubType, IsActive,
+                            Value, Name, doc_sub_type, IsActive,
                             ProjectName, OutputDbPath, ReferenceDbPath,
                             ExpectedElements, Provenance, SeqNo,
                             AabbWidthMm, AabbDepthMm, AabbHeightMm,
                             GeometryFailThreshold, DSLContent
-                        ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, ?, ?, ?, ?)
                         """)) {
                     ps.setString(1, docTypeId);
                     ps.setString(2, config.name());
-                    ps.setString(3, config.docBaseType());
-                    ps.setString(4, config.docSubType());
-                    ps.setString(5, config.buildingType());
-                    ps.setString(6, outputPath);
-                    ps.setString(7, refPath);
-                    ps.setInt(8, extractionCount);
-                    ps.setDouble(9, structural.aabbWidthMm());
-                    ps.setDouble(10, structural.aabbDepthMm());
-                    ps.setDouble(11, structural.aabbHeightMm());
-                    ps.setInt(12, config.geometryFailThreshold());
+                    ps.setString(3, config.docSubType());
+                    ps.setString(4, config.buildingType());
+                    ps.setString(5, outputPath);
+                    ps.setString(6, refPath);
+                    ps.setInt(7, extractionCount);
+                    ps.setDouble(8, structural.aabbWidthMm());
+                    ps.setDouble(9, structural.aabbDepthMm());
+                    ps.setDouble(10, structural.aabbHeightMm());
+                    ps.setInt(11, config.geometryFailThreshold());
                     if (dslContent != null) {
-                        ps.setString(13, dslContent);
+                        ps.setString(12, dslContent);
                     } else {
-                        ps.setNull(13, java.sql.Types.VARCHAR);
+                        ps.setNull(12, java.sql.Types.VARCHAR);
                     }
                     ps.executeUpdate();
                 }
@@ -637,13 +637,13 @@ public class IFCtoBOMPipeline {
 
             // R27: C_DocType belongs in {PREFIX}_BOM.db (was shell-injected)
             // Tier 2: C_DocType_ID INTEGER PK (iDempiere convention). Old TEXT key → Value.
+            // W018: DocBaseType dropped. doc_sub_type is FK to m_bom.doc_sub_type.
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS C_DocType (
                     C_DocType_ID         INTEGER PRIMARY KEY AUTOINCREMENT,
                     Value                TEXT NOT NULL UNIQUE,
                     Name                 TEXT NOT NULL,
-                    DocBaseType          TEXT NOT NULL CHECK(DocBaseType IN ('RE','CO','IN','ST')),
-                    DocSubType           TEXT,
+                    doc_sub_type         TEXT,
                     IsDefault            INTEGER DEFAULT 0,
                     IsActive             INTEGER DEFAULT 1,
                     Description          TEXT,

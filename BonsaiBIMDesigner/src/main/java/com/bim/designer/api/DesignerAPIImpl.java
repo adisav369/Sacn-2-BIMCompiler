@@ -163,7 +163,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
             LOG.info(() -> String.format("COMPILE %s from %s [%s/%s] ...",
                     request.buildingId(), bomDbPath,
-                    entry.docBaseType(), entry.docSubType()));
+                    entry.mProductCategoryId(), entry.docSubType()));
 
             // Run the real 9-stage compilation pipeline
             CompilationPipeline.PipelineResult result = CompilationPipeline.run(entry);
@@ -201,7 +201,9 @@ public class DesignerAPIImpl implements DesignerAPI {
      */
     private static BuildingEntry loadBuildingEntry(String bomDbPath, String buildingId) {
         String sql = """
-                SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType,
+                SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
+                       b.m_product_category_id AS MProductCategoryId,
+                       COALESCE(d.doc_sub_type, b.doc_sub_type) AS DocSubType,
                        d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo,
                        d.ExpectedElements, d.Provenance, d.Description,
                        d.GeometryFailThreshold,
@@ -209,8 +211,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                        COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm,
                        COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm
                 FROM C_DocType d
-                LEFT JOIN m_bom b ON b.doc_sub_type = d.DocSubType
-                  AND b.m_product_category_id = d.DocBaseType
+                LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
                   AND b.bom_type = 'BUILDING' AND b.is_active = 1
                 WHERE d.ProjectName = ?
                 """;
@@ -223,7 +224,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                             rs.getString("C_DocType_ID"),
                             rs.getString("ProjectName"),
                             rs.getString("Name"),
-                            rs.getString("DocBaseType"),
+                            rs.getString("MProductCategoryId"),
                             rs.getString("DocSubType"),
                             rs.getString("DSLContent"),
                             rs.getString("OutputDbPath"),
@@ -587,7 +588,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                             r.docTypeId(), r.name(), r.docSubType(),
                             r.expectedElements(),
                             r.aabbWidthMm(), r.aabbDepthMm(), r.aabbHeightMm(),
-                            deriveFacilityType(r.docBaseType(), r.docSubType())
+                            deriveFacilityType(r.mProductCategoryId(), r.docSubType())
                     ))
                     .toList();
         } catch (Exception e) {
@@ -597,14 +598,14 @@ public class DesignerAPIImpl implements DesignerAPI {
     }
 
     /**
-     * Map M_Product_Category (was DocBaseType) + DocSubType to FacilityType string for the API.
-     * IN = infrastructure — derive specific type from DocSubType (BR/RD/RL).
+     * Map M_Product_Category + doc_sub_type to FacilityType string for the API.
+     * IN = infrastructure — derive specific type from doc_sub_type (BR/RD/RL).
      * All others = null (BUILDING default).
      *
      * // Implementing INFRA_DESIGNER_SRS.md §0.1
      */
-    static String deriveFacilityType(String docBaseType, String docSubType) {
-        if (!"IN".equals(docBaseType)) return null;  // null = BUILDING
+    static String deriveFacilityType(String mProductCategoryId, String docSubType) {
+        if (!"IN".equals(mProductCategoryId)) return null;  // null = BUILDING
         if (docSubType == null) return "BRIDGE";      // safe default for infra
         return switch (docSubType) {
             case "BR" -> "BRIDGE";

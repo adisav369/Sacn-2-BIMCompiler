@@ -358,29 +358,29 @@ class BuildingInspectorTest {
     // ── W-OWNER-2: every C_DocType entry has required fields ─
 
     @Test
-    @DisplayName("W-OWNER-2: every active C_DocType has DocSubType and ProjectName set")
+    @DisplayName("W-OWNER-2: every active C_DocType has doc_sub_type and ProjectName set")
     void w_owner_2_allBuildingsHaveOwner() throws SQLException {
         String sql = """
             SELECT C_DocType_ID FROM C_DocType
-            WHERE IsActive = 1 AND (DocSubType IS NULL OR ProjectName IS NULL)
+            WHERE IsActive = 1 AND (doc_sub_type IS NULL OR ProjectName IS NULL)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(rs.getString("C_DocType_ID"));
         }
         assertTrue(bad.isEmpty(),
-            "W-OWNER-2: active C_DocType entries with NULL DocSubType or ProjectName: " + bad);
+            "W-OWNER-2: active C_DocType entries with NULL doc_sub_type or ProjectName: " + bad);
     }
 
     // ── W-DOCTYPE-1: every doc_sub_type/C_DocType_ID exists in C_DocType ──
 
     @Test
-    @DisplayName("W-DOCTYPE-1: every doc_sub_type in m_bom exists in C_DocType.DocSubType")
+    @DisplayName("W-DOCTYPE-1: every doc_sub_type in m_bom exists in C_DocType.doc_sub_type")
     void w_doctype_1_allSubTypesInLookup() throws SQLException {
         String sql = """
             SELECT DISTINCT doc_sub_type AS src FROM m_bom
             WHERE doc_sub_type IS NOT NULL
-              AND doc_sub_type NOT IN (SELECT DocSubType FROM C_DocType WHERE DocSubType IS NOT NULL)
+              AND doc_sub_type NOT IN (SELECT doc_sub_type FROM C_DocType WHERE doc_sub_type IS NOT NULL)
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {

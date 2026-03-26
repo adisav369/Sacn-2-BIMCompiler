@@ -19,7 +19,7 @@
 CREATE TABLE IF NOT EXISTS C_DocType (
     C_DocType_ID INTEGER PRIMARY KEY AUTOINCREMENT,
     Value TEXT NOT NULL UNIQUE, Name TEXT NOT NULL,
-    DocBaseType TEXT NOT NULL, DocSubType TEXT,
+    doc_sub_type TEXT,
     IsDefault INTEGER DEFAULT 0, IsActive INTEGER DEFAULT 1,
     Description TEXT, ProjectName TEXT, DSLContent TEXT,
     OutputDbPath TEXT, ReferenceDbPath TEXT,
@@ -67,14 +67,14 @@ CREATE TABLE IF NOT EXISTS ad_sysconfig (
     config_key TEXT PRIMARY KEY, config_value TEXT
 );
 
--- ── C_DocType ──
+-- ── C_DocType (W018: DocBaseType dropped, doc_sub_type is FK to m_bom) ──
 INSERT OR REPLACE INTO C_DocType (
-    Value, Name, DocBaseType, DocSubType, IsActive,
+    Value, Name, doc_sub_type, IsActive,
     ProjectName, Provenance, SeqNo,
     OutputDbPath, ExpectedElements, GeometryFailThreshold,
     AabbWidthMm, AabbDepthMm, AabbHeightMm
 ) VALUES (
-    'RE_DM', 'Demo House 2BR', 'RE', 'DM', 1,
+    'RE_DM', 'Demo House 2BR', 'DM', 1,
     'DemoHouse_2BR', 'GENERATIVE', 10,
     'DAGCompiler/lib/output/demohouse_2br.db', 60, 25,
     11000, 7000, 2800

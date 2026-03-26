@@ -70,8 +70,7 @@ def _build_c_doctype():
         rows.append((
             doc_type_id,
             cfg['name'],
-            cfg['doc_base_type'],
-            cfg['doc_sub_type'],
+            cfg['doc_sub_type'],       # W018: DocBaseType dropped, doc_sub_type is FK
             0,  # IsDefault
             1,  # IsActive
             cfg['description'],
@@ -755,11 +754,11 @@ def populate_reference(conn):
     c = conn.cursor()
     for row in C_DOCTYPE:
         c.execute("""INSERT INTO C_DocType
-            (C_DocType_ID, Name, DocBaseType, DocSubType, IsDefault, IsActive,
+            (C_DocType_ID, Name, doc_sub_type, IsDefault, IsActive,
              Description, ProjectName, DSLContent, OutputDbPath, ReferenceDbPath,
              ExpectedElements, Provenance, GeometryFailThreshold, SeqNo,
              AabbWidthMm, AabbDepthMm, AabbHeightMm, C_Campaign_ID, SalesRep_ID)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row)
     for row in M_BOMCATEGORY:
         c.execute("""INSERT INTO M_BomCategory
             (M_BomCategory_ID, Name, Description, IsActive, C_BPartner_ID, Value,
@@ -800,11 +799,13 @@ def populate_products(conn):
 def populate_boms(conn):
     c = conn.cursor()
     for row in M_BOM:
+        # W012: doc_base_type dropped from m_bom. Skip index 14 (was doc_base_type).
+        r = row[:14] + row[15:]
         c.execute("""INSERT INTO m_bom
             (bom_id, bom_name, description, bom_type, group_by, bom_category,
              doc_sub_type, entity_type, aabb_width_mm, aabb_depth_mm, aabb_height_mm,
-             origin_x, origin_y, origin_z, doc_base_type, is_active)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", row)
+             origin_x, origin_y, origin_z, is_active)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", r)
     for row in M_BOM_LINE:
         c.execute("""INSERT INTO m_bom_line
             (bom_id, child_product_id, component_type, role, sequence,

@@ -36,15 +36,14 @@ public class StubDataSeeder {
 
     private static void createSchema(Connection conn) throws SQLException {
         try (Statement s = conn.createStatement()) {
-            // C_DocType — building type registry
+            // C_DocType — building type registry (W018: DocBaseType dropped, DocSubType → doc_sub_type)
             s.execute("""
                     CREATE TABLE IF NOT EXISTS C_DocType (
                         C_DocType_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
                         Value          TEXT,
                         ProjectName    TEXT NOT NULL,
                         Name           TEXT,
-                        DocBaseType    TEXT NOT NULL,
-                        DocSubType     TEXT NOT NULL,
+                        doc_sub_type   TEXT NOT NULL,
                         DSLContent     TEXT,
                         OutputDbPath   TEXT,
                         ReferenceDbPath TEXT,
@@ -139,32 +138,33 @@ public class StubDataSeeder {
     private static void seedBuildingTypes(Connection conn) throws SQLException {
         try (Statement s = conn.createStatement()) {
             // Three Rosetta Stone buildings — proven reference data
+            // W018: DocBaseType dropped. doc_sub_type is FK to m_bom.
             s.execute("""
-                    INSERT INTO C_DocType (Value, ProjectName, Name, DocBaseType, DocSubType,
+                    INSERT INTO C_DocType (Value, ProjectName, Name, doc_sub_type,
                         DSLContent, OutputDbPath, ReferenceDbPath,
                         IsActive, SeqNo, ExpectedElements, Provenance, Description, GeometryFailThreshold)
                     VALUES
-                    ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'RE', 'SH',
+                    ('RE_SH', 'Ifc4_SampleHouse', 'Sample House', 'SH',
                      NULL, 'DAGCompiler/lib/output/ifc4_samplehouse.db',
                      'reference/rosetta/Ifc4_SampleHouse_extracted.db',
                      1, 10, 55, 'EXTRACTED', '2-storey sample house', 0)
                     """);
             s.execute("""
-                    INSERT INTO C_DocType (Value, ProjectName, Name, DocBaseType, DocSubType,
+                    INSERT INTO C_DocType (Value, ProjectName, Name, doc_sub_type,
                         DSLContent, OutputDbPath, ReferenceDbPath,
                         IsActive, SeqNo, ExpectedElements, Provenance, Description, GeometryFailThreshold)
                     VALUES
-                    ('RE_DX', 'Duplex_A_01', 'Duplex A Unit 01', 'RE', 'DX',
+                    ('RE_DX', 'Duplex_A_01', 'Duplex A Unit 01', 'DX',
                      NULL, 'DAGCompiler/lib/output/duplex_a_01.db',
                      'reference/rosetta/Duplex_extracted.db',
                      1, 20, 1099, 'EXTRACTED', 'Duplex terrace unit', 0)
                     """);
             s.execute("""
-                    INSERT INTO C_DocType (Value, ProjectName, Name, DocBaseType, DocSubType,
+                    INSERT INTO C_DocType (Value, ProjectName, Name, doc_sub_type,
                         DSLContent, OutputDbPath, ReferenceDbPath,
                         IsActive, SeqNo, ExpectedElements, Provenance, Description, GeometryFailThreshold)
                     VALUES
-                    ('ST_TE', 'Terminal_KLIA', 'Airport Terminal', 'ST', 'TE',
+                    ('ST_TE', 'Terminal_KLIA', 'Airport Terminal', 'TE',
                      NULL, 'DAGCompiler/lib/output/terminal_klia.db',
                      'reference/rosetta/Terminal_extracted.db',
                      1, 30, 48428, 'EXTRACTED', 'Airport terminal building', 0)

@@ -151,15 +151,12 @@ class PrimeRuleWitnessTest {
         // Check each has a matching C_DocType
         for (String subType : bomSubTypes) {
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT DocBaseType FROM C_DocType "
-                    + "WHERE DocSubType = ? AND IsActive = 1")) {
+                    "SELECT doc_sub_type FROM C_DocType "
+                    + "WHERE doc_sub_type = ? AND IsActive = 1")) {
                 ps.setString(1, subType);
                 try (ResultSet rs = ps.executeQuery()) {
                     assertTrue(rs.next(),
-                            "C_DocType must exist for DocSubType=" + subType);
-                    String docBaseType = rs.getString(1);
-                    assertNotNull(docBaseType,
-                            "C_DocType.DocBaseType must not be null for " + subType);
+                            "C_DocType must exist for doc_sub_type=" + subType);
                 }
             }
         }
@@ -223,23 +220,22 @@ class PrimeRuleWitnessTest {
             assertNotNull(bom,
                     "BUILDING BOM must exist for " + subType);
 
-            // Step 2: Find C_DocType by DocSubType
+            // Step 2: Find C_DocType by doc_sub_type
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT DocBaseType, DocSubType FROM C_DocType "
-                    + "WHERE DocSubType = ? AND DocBaseType = 'RE' "
+                    "SELECT doc_sub_type FROM C_DocType "
+                    + "WHERE doc_sub_type = ? "
                     + "AND IsActive = 1")) {
                 ps.setString(1, subType);
                 try (ResultSet rs = ps.executeQuery()) {
                     assertTrue(rs.next(),
-                            "C_DocType RE/" + subType + " must exist");
+                            "C_DocType for " + subType + " must exist");
                 }
             }
 
-            // Step 3: Three-key match — M_Product_Category + DocSubType + AABB
+            // Step 3: Three-key match — M_Product_Category + doc_sub_type + AABB
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT b.bom_id FROM m_bom b "
-                    + "JOIN C_DocType d ON d.DocSubType = b.doc_sub_type "
-                    + "  AND d.DocBaseType = b.m_product_category_id "
+                    + "JOIN C_DocType d ON d.doc_sub_type = b.doc_sub_type "
                     + "WHERE b.bom_type = 'BUILDING' "
                     + "  AND b.doc_sub_type = ? "
                     + "  AND b.aabb_width_mm > 0")) {
