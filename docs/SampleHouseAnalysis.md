@@ -60,8 +60,9 @@
    Re-run after SRS expedition to verify W-TACK-1 PASS.
 4. **Scope space origins** — room assignments depend on `origin_m` in YAML.
    Currently scope spaces populated; verify after any YAML change.
-5. **No verb factorization** — 55 elements are flat (qty=1 each). No TILE/ROUTE.
-   SH proves the base pipeline, not verb compression.
+5. **TRIM verb active** — glass curtain wall panels trimmed to the pitched roof intersection.
+   No TILE/ROUTE/CLUSTER factorization (55 elements are flat, qty=1 each).
+   SH proves the base pipeline + TRIM, not verb compression.
 
 ## Known Issues
 

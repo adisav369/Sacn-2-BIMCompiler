@@ -8,11 +8,11 @@ hide:
 
 ## Construction is manufacturing. A building IS its Bill of Materials.
 
-A deterministic compiler that reads [BOM](BOMBasedCompilation.md) (Bill of Materials) recipes and produces verified 3D building coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output can then be edited live in [Bonsai](https://bonsaibim.org/) (Blender BIM).
+### Problem Statement
 
-**The proof:** [35 real buildings](TheRosettaStoneStrategy.md) recompiled from their BOMs. If every element lands at the same coordinates as the original [IFC](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/) model, the grammar is certified. Nothing is invented. No AI inside. Pure arithmetic. [6 mathematical gates](TestArchitecture.md) prove every output — not sampled, proven.
+Design tools produce geometry. ERP systems manage procurement. Between them sits a manual gap where quantity surveyors extract [Bills of Materials](https://en.wikipedia.org/wiki/Bill_of_materials) from drawings by hand — billions lost annually in rework and over-ordering. No tool bridges this deterministically.
 
-**The vocabulary:** [75 domain verbs](BIM_COBOL.md) (TILE, ROUTE, FRAME, CLUSTER) generate geometry from [2,475 products](DATA_MODEL.md). The same 9-stage pipeline compiles a 55-element house and a [48,428-element airport terminal](TerminalAnalysis.md). The engine is [domain-agnostic](ShipYard.md) — buildings, bridges, ships, tunnels.
+This compiler does. It reads a [BOM](BOMBasedCompilation.md) and produces verified 3D coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output can then be edited live in [Bonsai](https://bonsaibim.org/) (Blender BIM). The engine is [domain-agnostic](ShipYard.md) — buildings, bridges, ships, tunnels. Nothing is invented. No AI inside. Pure arithmetic.
 
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-top: 4px solid #ffc107; border-bottom: 4px solid #ffc107; text-align: center;">
 <span style="font-size: 1.35em; line-height: 1.7; color: #263238; letter-spacing: 0.3px;">"What <b>AUTODESK</b>, <b>PRIMAVERA</b> and <b>SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
