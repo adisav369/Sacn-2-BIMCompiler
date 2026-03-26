@@ -3602,7 +3602,7 @@ See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code><
 </table>
 <p>World position is derived from M_BOM_Line dx/dy/dz tack offsets (the BOM itself
 carries WHERE). <code>{PREFIX}_BOM.db</code> is a pure dictionary — no world coords.
-<code>co_empty_space</code> (output.db) is a compiler-internal cache, not architectural.</p>
+<code>co_empty_space</code> tables were removed S74 (W008) — placement is via M_BOM_Line dx/dy/dz directly.</p>
 <p><strong>Children:</strong> Each child BOM is linked via a line carrying the tack offset:
 <code>dx = position where child's LBD sits within parent</code> (always &gt;= 0, BOMBasedCompilation.md §4).
 Child BOMs have origin=(0,0,0) — only BUILDING carries world origin.</p>
@@ -4234,7 +4234,7 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
               output.db
                 elements_meta + elements_rtree (world AABB)
                 c_orderline (WHAT)
-                co_empty_space_line (WHERE)
+                (co_empty_space removed S74 — WHERE = M_BOM_Line dx/dy/dz)
                 W_Verb_Node (HOW)
 </code></pre></div>
 <h3 id="key-tables">Key Tables<a class="headerlink" href="#key-tables" title="Permanent link">&para;</a></h3>
@@ -4263,12 +4263,12 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 <td>Spatial index (world AABB)</td>
 </tr>
 <tr>
-<td>co_empty_space</td>
-<td>Construction space header</td>
+<td>~~co_empty_space~~</td>
+<td><em>(removed S74 — W008)</em></td>
 </tr>
 <tr>
-<td>co_empty_space_line</td>
-<td>Spatial resolution per BOM line</td>
+<td>~~co_empty_space_line~~</td>
+<td><em>(removed S74 — W008)</em></td>
 </tr>
 <tr>
 <td>W_Verb_Node</td>
@@ -4311,9 +4311,9 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 <td>component_library.db</td>
 </tr>
 <tr>
-<td>co_empty_space_line.bom_id</td>
-<td>m_bom.bom_id</td>
-<td><code>{PREFIX}_BOM.db</code></td>
+<td>~~co_empty_space_line.bom_id~~</td>
+<td><em>(removed S74 — W008)</em></td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
@@ -4450,7 +4450,7 @@ See prompt 29 study for merge assessment (verdict: do not merge).</p>
 <tr>
 <td><strong>Transactional</strong></td>
 <td><code>output.db</code></td>
-<td>c_order, c_orderline, elements_meta, W_Verb_Node, co_empty_space*</td>
+<td>c_order, c_orderline, elements_meta, W_Verb_Node</td>
 </tr>
 </tbody>
 </table>

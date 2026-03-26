@@ -1525,10 +1525,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#151-the-spatial-slot-hierarchy-compiler-internal-co_empty_space_line" class="md-nav__link">
+  <a href="#151-the-spatial-slot-hierarchy-m_bom_line-dxdydz" class="md-nav__link">
     <span class="md-ellipsis">
       
-        15.1 The Spatial Slot Hierarchy (compiler-internal: co_empty_space_line)
+        15.1 The Spatial Slot Hierarchy (M_BOM_Line dx/dy/dz)
       
     </span>
   </a>
@@ -4977,10 +4977,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#151-the-spatial-slot-hierarchy-compiler-internal-co_empty_space_line" class="md-nav__link">
+  <a href="#151-the-spatial-slot-hierarchy-m_bom_line-dxdydz" class="md-nav__link">
     <span class="md-ellipsis">
       
-        15.1 The Spatial Slot Hierarchy (compiler-internal: co_empty_space_line)
+        15.1 The Spatial Slot Hierarchy (M_BOM_Line dx/dy/dz)
       
     </span>
   </a>
@@ -7541,9 +7541,9 @@ SUMMARIZE BUILDING SH
 <hr />
 <h2 id="15-verbs-as-pipeline-applicators-ad_val_rules-over-spatial-slots">15. Verbs as Pipeline Applicators — AD_Val_Rules over Spatial Slots<a class="headerlink" href="#15-verbs-as-pipeline-applicators-ad_val_rules-over-spatial-slots" title="Permanent link">&para;</a></h2>
 <p><em>Added v0.5 — insight from Rosetta Stone analysis</em></p>
-<p>BIM COBOL verbs are not just standalone validation tools. They are the mechanism by which <strong>cross-discipline MEP rules get applied during the compilation pipeline</strong>, operating over the spatial slot hierarchy (WHERE = M_BOM_Line dx/dy/dz; compiler-internal cache: co_empty_space_line).</p>
-<h3 id="151-the-spatial-slot-hierarchy-compiler-internal-co_empty_space_line">15.1 The Spatial Slot Hierarchy (compiler-internal: co_empty_space_line)<a class="headerlink" href="#151-the-spatial-slot-hierarchy-compiler-internal-co_empty_space_line" title="Permanent link">&para;</a></h3>
-<p>The compilation pipeline produces <code>co_empty_space_line</code> at three levels, each representing a BOM decomposition tier:</p>
+<p>BIM COBOL verbs are not just standalone validation tools. They are the mechanism by which <strong>cross-discipline MEP rules get applied during the compilation pipeline</strong>, operating over the spatial slot hierarchy (WHERE = M_BOM_Line dx/dy/dz).</p>
+<h3 id="151-the-spatial-slot-hierarchy-m_bom_line-dxdydz">15.1 The Spatial Slot Hierarchy (M_BOM_Line dx/dy/dz)<a class="headerlink" href="#151-the-spatial-slot-hierarchy-m_bom_line-dxdydz" title="Permanent link">&para;</a></h3>
+<p>The BOM walker produces placement offsets at three levels, each representing a BOM decomposition tier:</p>
 <div class="highlight"><pre><span></span><code>Level 0: UNIT BOM acceptance     — full building AABB        → building-level verbs
 Level 1: Structural decomposition — per-storey structural tiers → storey-level routing verbs
 Level 2: Room selections          — per-room BOMs (LI, BD, KT) → room-level placement verbs
@@ -7887,7 +7887,7 @@ Both stay in sync — the text is the COBOL source; the params are the form fiel
 7. Cross-discipline clearance checked via R-tree spatial index</p>
 <p>This replaces <code>placeMEPSprinklers()</code>, <code>placeHVAC()</code>, <code>placeElectrical()</code>, <code>mepBomGapFill()</code> with a data-driven, declarative, provable verb pipeline.</p>
 <h4 id="c_orderline-separation-what-moves-to-verb-tables-decided-2026-03-04">C_OrderLine Separation — What Moves to Verb Tables (DECIDED 2026-03-04)<a class="headerlink" href="#c_orderline-separation-what-moves-to-verb-tables-decided-2026-03-04" title="Permanent link">&para;</a></h4>
-<p><strong>Architectural invariant:</strong> c_orderline is WHAT-only (no placement columns, no position setters in Java PO). W_Verb_Node completes the split: placement -&gt; <code>W_Verb_Node</code>/<code>W_Verb_NodeProduct</code> (HOW), spatial containers -&gt; <code>co_empty_space_line</code> (WHERE). Migration: Phase 1 (current) verb tables added, Phase 2 VerbStage with RelationalResolver fallback, Phase 3 drop placement columns. Full analysis: <code>BBC.md</code> §1.</p>
+<p><strong>Architectural invariant:</strong> c_orderline is WHAT-only (no placement columns, no position setters in Java PO). W_Verb_Node completes the split: placement -&gt; <code>W_Verb_Node</code>/<code>W_Verb_NodeProduct</code> (HOW), spatial containers -&gt; M_BOM_Line dx/dy/dz (WHERE; co_empty_space tables removed S74). Migration: Phase 1 (current) verb tables added, Phase 2 VerbStage with RelationalResolver fallback, Phase 3 drop placement columns. Full analysis: <code>BBC.md</code> §1.</p>
 <blockquote>
 <p><strong>Phase 1 — CURRENT:</strong> Create verb tables in {PREFIX}_BOM.db (DDL above). Additive, no breakage.
 c_orderline becomes WHAT-only — Java PO class has no placement setters.</p>
@@ -7895,8 +7895,8 @@ c_orderline becomes WHAT-only — Java PO class has no placement setters.</p>
 absent → RelationalResolver fallback (deprecated path).</p>
 <p><strong>Phase 3:</strong> Drop placement columns from c_orderline. Remove RelationalResolver.
 Migrate SH/DX extracted data to verb recipes.</p>
-<p><strong>RESOLVED:</strong> <code>W_Verb_Node.co_emptyspace_line_id</code> is the primary
-production→space link. ESLine.c_orderline_id (NORM-0b) superseded — drop in Phase 3.</p>
+<p><strong>RESOLVED:</strong> co_empty_space tables removed S74 (W008). Placement via M_BOM_Line dx/dy/dz.
+W_Verb_Node links to C_OrderLine directly (no intermediate spatial slot table).</p>
 </blockquote>
 <hr />
 <h2 id="16-verbstage-integration-plan-after-last-mile">16. VerbStage Integration Plan — After Last Mile<a class="headerlink" href="#16-verbstage-integration-plan-after-last-mile" title="Permanent link">&para;</a></h2>
@@ -7987,7 +7987,7 @@ CHECK BOM FLOOR_TBLKTN_GF_STD
 <div class="highlight"><pre><span></span><code>Step 1: VerbStage shell
   - New stage in CompilationPipeline.STAGES after WriteStage
   - Receives output.db Connection + {PREFIX}_BOM.db Connection
-  - Iterates co_empty_space_line WHERE bom_level = 2 (rooms)
+  - Iterates C_OrderLine WHERE bom_level = 2 (rooms) — (co_empty_space removed S74)
   - For each room: loads space_type, queries ad_space_type_mep_bom
   - Dispatches to VerbRegistry per placement_rule
 

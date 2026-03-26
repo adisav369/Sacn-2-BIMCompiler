@@ -6598,13 +6598,13 @@ sprinkler lines but share no sub-BOM reference.</p>
 <td>FP sprinkler grid</td>
 <td>5 (GF-L3)</td>
 <td>~900</td>
-<td>Sprinkler bay template + ESLine per floor</td>
+<td>Sprinkler bay template + M_BOM_Line offset per floor</td>
 </tr>
 <tr>
 <td>ELEC lighting grid</td>
 <td>5 (GF-L3)</td>
 <td>~160</td>
-<td>Ceiling light template + ESLine per floor</td>
+<td>Ceiling light template + M_BOM_Line offset per floor</td>
 </tr>
 <tr>
 <td>ACMV duct run</td>
@@ -6625,7 +6625,7 @@ spacing differs, building footprint tapers. True typical-floor recurrence requir
 that the sub-BOM pattern (product set + relative offsets) matches exactly.</p>
 <p><strong>Approach:</strong> Investigate whether discipline sub-BOMs on adjacent floors share the
 same product-set signature (ignoring absolute position). If yes, a template sub-BOM
-with per-floor ESLine placement compresses further. If not, the current per-floor
+with per-floor M_BOM_Line offset placement compresses further. If not, the current per-floor
 independent BOMs are correct and 42.8:1 is the natural compression limit.</p>
 <p><strong>This is a future investigation</strong> — does not block current compilation. The spec
 (BOMBasedCompilation.md §3.3) supports recurrence via M_Product_Category_Line templates.</p>

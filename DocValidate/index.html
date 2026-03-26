@@ -6494,7 +6494,7 @@ Engine spawns (in output.db):
 3. Spatial relationships (from M_BOM_Line dx/dy/dz)
    ├── parent BOM&#39;s tack offset (attachment origin via dx/dy/dz)
    ├── AABB capacity derived from BOM spatial data
-   └── compiler-internal: co_empty_space_line caches slot data during compilation
+   └── (co_empty_space tables removed S74 — placement via M_BOM_Line dx/dy/dz)
 
 4. M_AttributeSetInstance (default per OrderLine)
    ├── customer-facing defaults (finish=DEFAULT, config=STANDARD)
@@ -6758,7 +6758,7 @@ Output:
 <span class="cm"> *</span>
 <span class="cm"> * &lt;p&gt;Entry point: called by DesignerAPIImpl.createNew() after initial</span>
 <span class="cm"> * BOM compilation. Reads the compiled BOM tree and spawns one C_OrderLine</span>
-<span class="cm"> * per BOM level, one ESLine per slot, default ASI per product.</span>
+<span class="cm"> * per BOM level, one M_BOM_Line offset per slot, default ASI per product.</span>
 <span class="cm"> */</span>
 <span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ConstructionModelSpawner</span><span class="w"> </span><span class="p">{</span>
 
@@ -6784,7 +6784,7 @@ Output:
 2. Walk BOM tree (same BOMWalker used for compilation)
    For each m_bom encountered during walk:
      → Create C_OrderLine (family_ref = bom_id, host_type = bom_type)
-     → Spatial slot from M_BOM_Line dx/dy/dz (compiler-internal: co_empty_space_line caches slot)
+     → Spatial slot from M_BOM_Line dx/dy/dz (co_empty_space removed S74)
      → Create default M_AttributeSetInstance (from M_Product.M_AttributeSet_ID)
 
 3. Create W_Verb_Node (default routing from M_Product_Category template)

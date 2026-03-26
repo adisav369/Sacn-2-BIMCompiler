@@ -3976,19 +3976,19 @@ Date: 2026-03-26</p>
 </tr>
 <tr>
 <td>co_empty_space</td>
-<td>Yes (INTEGER)</td>
-<td>No</td>
-<td>No</td>
-<td>co_emptyspace_id</td>
-<td>INTEGER</td>
+<td><em>(removed S74 — W008)</em></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 <tr>
 <td>co_empty_space_line</td>
-<td>Yes (INTEGER)</td>
-<td>No</td>
-<td>No</td>
-<td>line_id</td>
-<td>INTEGER</td>
+<td><em>(removed S74 — W008)</em></td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
 </tr>
 <tr>
 <td>element_assemblies</td>
@@ -4254,7 +4254,7 @@ Date: 2026-03-26</p>
 <td><strong>c_order</strong></td>
 <td>Output</td>
 <td><code>C_Order_ID TEXT</code></td>
-<td>c_orderline.C_Order_ID, W_Verb_Node.C_Order_ID, co_empty_space.c_order_id</td>
+<td>c_orderline.C_Order_ID, W_Verb_Node.C_Order_ID</td>
 <td>19</td>
 </tr>
 <tr>
@@ -4420,13 +4420,13 @@ Date: 2026-03-26</p>
 </tr>
 <tr>
 <td>co_empty_space</td>
-<td>Output</td>
-<td>Low</td>
+<td><em>(removed S74 — W008)</em></td>
+<td>—</td>
 </tr>
 <tr>
 <td>co_empty_space_line</td>
-<td>Output</td>
-<td>Low</td>
+<td><em>(removed S74 — W008)</em></td>
+<td>—</td>
 </tr>
 <tr>
 <td>elements_meta</td>
@@ -4567,7 +4567,7 @@ Date: 2026-03-26</p>
 - <code>placement_rules.component_id INTEGER → component_definitions.id INTEGER</code> ✓ (correct)</p>
 <p><strong>In Output DB:</strong>
 - <code>W_Verb_Node.C_Order_ID TEXT → c_order.C_Order_ID TEXT</code>
-- <code>co_empty_space_line.co_emptyspace_id INTEGER → co_empty_space.co_emptyspace_id INTEGER</code> ✓
+- <em>(co_empty_space tables removed S74 — W008)</em>
 - <code>element_instances.geometry_hash TEXT → base_geometries.geometry_hash TEXT</code>
 - <code>element_transforms.guid TEXT → elements_meta.guid TEXT</code>
 - <code>rel_contained_in_space.space_guid TEXT → spatial_structure.guid TEXT</code>

@@ -1309,10 +1309,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#bbcmd-32-esline-mechanism" class="md-nav__link">
+  <a href="#bbcmd-32-placement-mechanism-m_bom_line-dxdydz" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BBC.md §3.2 — ESLine Mechanism
+        BBC.md §3.2 — Placement Mechanism (M_BOM_Line dx/dy/dz)
       
     </span>
   </a>
@@ -3651,10 +3651,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#bbcmd-32-esline-mechanism" class="md-nav__link">
+  <a href="#bbcmd-32-placement-mechanism-m_bom_line-dxdydz" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BBC.md §3.2 — ESLine Mechanism
+        BBC.md §3.2 — Placement Mechanism (M_BOM_Line dx/dy/dz)
       
     </span>
   </a>
@@ -4636,7 +4636,7 @@ are waste.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="bbcmd-32-esline-mechanism">BBC.md §3.2 — ESLine Mechanism<a class="headerlink" href="#bbcmd-32-esline-mechanism" title="Permanent link">&para;</a></h3>
+<h3 id="bbcmd-32-placement-mechanism-m_bom_line-dxdydz">BBC.md §3.2 — Placement Mechanism (M_BOM_Line dx/dy/dz)<a class="headerlink" href="#bbcmd-32-placement-mechanism-m_bom_line-dxdydz" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -4649,15 +4649,15 @@ are waste.</p>
 </thead>
 <tbody>
 <tr>
-<td>§3.2 ESLine tack_from</td>
-<td>ESLine.tack_from = m_bom_line.dx/dy/dz</td>
+<td>§3.2 M_BOM_Line tack</td>
+<td>world_pos = parent_LBD + (dx, dy, dz)</td>
 <td>—</td>
-<td>W-ESLINE-TACK-1</td>
+<td>W-TACK-ACCUMULATE-1</td>
 <td><strong>PENDING</strong></td>
 </tr>
 <tr>
 <td>§3.2 extends to output.db</td>
-<td>Spatial slot tack_from = C_OrderLine.dx/dy/dz (compiler-internal: co_empty_space_line)</td>
+<td>C_OrderLine inherits offsets from BOM Drop</td>
 <td>—</td>
 <td>—</td>
 <td><strong>PENDING</strong></td>
@@ -5436,7 +5436,6 @@ e5d6bcbc  arch/DriftGuardTest.java
 ead7c516  contract/CompilerContractTest.java
 2af523c6  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
-a41306f0  contract/CoEmptySpaceTest.java
 0e21e5e5  contract/BomChainIntegrityTest.java
 46e2e2f2  contract/BOMChainMathTest.java
 75dfd1a5  contract/SpatialPlacementVisitorTest.java

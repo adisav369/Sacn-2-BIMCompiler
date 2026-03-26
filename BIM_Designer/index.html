@@ -6496,9 +6496,8 @@ derived from BOM spatial data:</p>
 <li>The GUI presents these as visual room/wall slots for drag-and-drop placement</li>
 </ul>
 <blockquote>
-<p><strong>Implementation note:</strong> <code>co_empty_space_line</code> is a compiler-internal table
-that caches spatial slot data during compilation. It is NOT an architectural
-entity — the source of truth is M_BOM_Line dx/dy/dz.</p>
+<p><strong>Implementation note:</strong> co_empty_space tables were removed S74 (W008).
+The source of truth for placement is M_BOM_Line dx/dy/dz directly.</p>
 </blockquote>
 <h3 id="24-selection-cascade-auto-fit">2.4 Selection Cascade → Auto-Fit<a class="headerlink" href="#24-selection-cascade-auto-fit" title="Permanent link">&para;</a></h3>
 <p>When the user places a room or furniture set, the BOM selection cascade

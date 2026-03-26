@@ -992,10 +992,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#32-the-esline-mechanism-parent-owns-the-attachment-point" class="md-nav__link">
+  <a href="#32-placement-via-m_bom_line-parent-owns-the-attachment-point" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.2 The ESLine Mechanism — Parent Owns the Attachment Point
+        3.2 Placement via M_BOM_Line — Parent Owns the Attachment Point
       
     </span>
   </a>
@@ -3444,10 +3444,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#32-the-esline-mechanism-parent-owns-the-attachment-point" class="md-nav__link">
+  <a href="#32-placement-via-m_bom_line-parent-owns-the-attachment-point" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.2 The ESLine Mechanism — Parent Owns the Attachment Point
+        3.2 Placement via M_BOM_Line — Parent Owns the Attachment Point
       
     </span>
   </a>
@@ -3887,7 +3887,7 @@ Read the <a href="../MANIFESTO/">MANIFESTO</a> first for the ERP world view.</p>
 </tr>
 <tr>
 <td><strong>CO_EmptySpace</strong> (warehouse slot)</td>
-<td>Compiler-internal spatial cache — WHERE = M_BOM_Line dx/dy/dz</td>
+<td><em>(REMOVED S74 — replaced by M_BOM_Line dx/dy/dz. W008 dropped tables)</em></td>
 </tr>
 <tr>
 <td><strong><a href="https://wiki.idempiere.org/en/AD_ChangeLog">AD_ChangeLog</a></strong> (audit trail)</td>
@@ -4337,7 +4337,7 @@ See <code>BIM_Designer.md</code> §8.3 (ASI overrides) and <code>DocValidate.md<
 <tr>
 <td><strong>ESLine</strong></td>
 <td>S_Resource (spatial workstation)</td>
-<td><code>co_empty_space_line</code> — a spatial slot that receives a child BOM. The parent provides the attachment point (tack_from); the child doesn't know its host.</td>
+<td><em>(REMOVED S74 — replaced by M_BOM_Line dx/dy/dz. The parent BOM line's offset IS the attachment point.)</em></td>
 </tr>
 <tr>
 <td><strong>BUFFER</strong></td>
@@ -4371,25 +4371,26 @@ See <code>BIM_Designer.md</code> §8.3 (ASI overrides) and <code>DocValidate.md<
 </tr>
 </tbody>
 </table>
-<h3 id="32-the-esline-mechanism-parent-owns-the-attachment-point">3.2 The ESLine Mechanism — Parent Owns the Attachment Point<a class="headerlink" href="#32-the-esline-mechanism-parent-owns-the-attachment-point" title="Permanent link">&para;</a></h3>
+<h3 id="32-placement-via-m_bom_line-parent-owns-the-attachment-point">3.2 Placement via M_BOM_Line — Parent Owns the Attachment Point<a class="headerlink" href="#32-placement-via-m_bom_line-parent-owns-the-attachment-point" title="Permanent link">&para;</a></h3>
 <p><strong>The child BOM does not know its parent.</strong> A child BOM does not know which
 parent hosts it. A leaf product does not know which BOM contains it. This is by design —
 a child can be reused in any parent that has a slot for it.</p>
-<p><strong>The parent provides the attachment point via ESLine:</strong></p>
+<p><strong>The parent M_BOM_Line's dx/dy/dz IS the attachment point:</strong></p>
 <div class="highlight"><pre><span></span><code>Parent BOM (e.g. FLOOR_TE_GF)
   │
-  ├─ tack_from = [slot_1_origin, slot_2_origin, ...]   ← parent defines WHERE
-  │
-  └─ m_bom_line (children)                               ← parent defines WHAT children
+  └─ m_bom_line (children)                            ← parent defines WHAT + WHERE
        │
-       ├─ child 1: AD_Org=ARC, dx/dy/dz                    ← architecture assembly
-       ├─ child 2: AD_Org=STR, dx/dy/dz                    ← structural assembly
+       ├─ child 1: AD_Org=ARC, dx=0, dy=0, dz=0        ← architecture assembly at origin
+       ├─ child 2: AD_Org=STR, dx=500, dy=0, dz=0       ← structural assembly offset 500mm
        └─ ...                                            ← selection cascade (§3.5) picks child
 </code></pre></div>
-<p><strong>ESLine carries the parent's tack_from value.</strong> When the selection cascade picks
-a child BOM for a slot, the ESLine tells the compiler: "place this child's LBD
-at this position within the parent's frame." The child's tack_to (its own LBD)
-meets the parent's tack_from (the slot origin). The child never looks up.</p>
+<p><strong>The BOM walker accumulates offsets:</strong> <code>world_pos = parent_LBD + (dx, dy, dz)</code>.
+One addition per BOM level — that's the entire placement mechanism. When the
+selection cascade picks a child BOM, the child's LBD is placed at the parent's
+offset position. The child never looks up.</p>
+<p>When BOM Drop explodes the tree, C_OrderLine inherits these offsets. No
+intermediate table, no slot abstraction — the LBD tack convention (§4) handles
+everything.</p>
 <p><strong>Generative consequence:</strong> The child BOM can be swapped, resized, or replaced
 without touching any other BOM — the parent owns the attachment point, not the child.</p>
 <h3 id="33-instant-drop-the-helloworld-test">3.3 Instant Drop — The HelloWorld Test<a class="headerlink" href="#33-instant-drop-the-helloworld-test" title="Permanent link">&para;</a></h3>
@@ -4540,7 +4541,7 @@ Zero new code — just data on the OrderLine.</p>
 <h3 id="36-the-rosetta-stone-launch-booster">3.6 The Rosetta Stone — Launch Booster<a class="headerlink" href="#36-the-rosetta-stone-launch-booster" title="Permanent link">&para;</a></h3>
 <p>The Rosetta Stone exercise (SH/DX/TE) proves the pipeline is <strong>lossless</strong>:
 Extract → BOM → Compile → Verify (G1-G6 GREEN). It calibrates and proves tack
-convention, BOM recursion, verb expansion, and ESLine placement. Once proven,
+convention, BOM recursion, verb expansion, and M_BOM_Line placement. Once proven,
 the same machinery drives generative compilation where the BOM is authored by a
 human or Designer, not extracted from IFC.</p>
 <p><strong>Does NOT prove:</strong> multi-candidate selection, BOM Drop with swap choice

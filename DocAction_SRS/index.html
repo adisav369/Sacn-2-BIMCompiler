@@ -4329,7 +4329,7 @@ YAML.FP absent          →  No FP in this building. Nothing fires for FP.
   │   │   │   (family_ref, host_type, dx/dy/dz, aabb_*_mm)
   │   │   │
   │   │   ├── Spatial slots derived from M_BOM_Line dx/dy/dz
-  │   │   │   (compiler-internal: co_empty_space_line caches slot data)
+  │   │   │   (co_empty_space tables removed S74 — W008)
   │   │   │
   │   │   ├── For LEAF nodes: fetch LOD from component_library.db
   │   │   │   → M_Product (dimensions) + component_definitions (attachment)
@@ -4363,7 +4363,7 @@ YAML.FP absent          →  No FP in this building. Nothing fires for FP.
   │       │   │   (family_ref=product_id, dx/dy/dz=computed tack)
   │       │   │
   │       │   ├── Spatial slot from M_BOM_Line dx/dy/dz
-  │       │   │   (compiler-internal: co_empty_space_line caches computed position)
+  │       │   │   (co_empty_space tables removed S74 — W008)
   │       │   │
   │       │   └── INSERT M_AttributeSetInstance
   │       │       (width, depth, height from M_Product)
@@ -5015,9 +5015,9 @@ rename before each CompleteIt to version their builds (e.g. <code>output/demo_v2
 <td>ASI overrides per C_OrderLine</td>
 </tr>
 <tr>
-<td>co_empty_space_line</td>
-<td>Compile DB</td>
-<td>Compiler-internal spatial cache (WHERE = M_BOM_Line dx/dy/dz)</td>
+<td>~~co_empty_space_line~~</td>
+<td><em>(removed S74 — W008)</em></td>
+<td>Placement via M_BOM_Line dx/dy/dz</td>
 </tr>
 <tr>
 <td>W_Validation_Result</td>
