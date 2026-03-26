@@ -59,21 +59,21 @@ nav:
       - Home: index.md
       - The ERP World View: MANIFESTO.md
       - Beyond Buildings: ShipYard.md
-      - Last Mile Gaps: LAST_MILE_PROBLEM.md
+
+  # ─── The nerdy pull ───────────────────────────────────
+  - Last Mile:
+      - Honest Gaps: LAST_MILE_PROBLEM.md
+      - 6 Gates: TestArchitecture.md
+      - BIMEyes: EYES_SRS.md
+      - Calibration: CALIBRATION_SRS.md
 
   # ─── Core specs ────────────────────────────────────────
   - Specs:
       - BOM Compilation: BOMBasedCompilation.md
       - Data Model: DATA_MODEL.md
       - Rosetta Stones: TheRosettaStoneStrategy.md
-      - Source Code Guide: SourceCodeGuide.md
-
-  # ─── Compilation engine ───────────────────────────────
-  - Engine:
       - BIM COBOL (75 Verbs): BIM_COBOL.md
-      - 6 Gates: TestArchitecture.md
-      - BIMEyes: EYES_SRS.md
-      - Calibration: CALIBRATION_SRS.md
+      - Source Code Guide: SourceCodeGuide.md
 
   # ─── BIM Designer ─────────────────────────────────────
   - Designer:
@@ -91,10 +91,7 @@ nav:
       - Infrastructure Designer: INFRA_DESIGNER_SRS.md
       - PDF Terrain: PDF_TERRAIN.md
       - 2D Layout: 2D_LAYOUT.md
-
-  # ─── Disciplines & Validation ─────────────────────────
-  - Disciplines:
-      - Multi-Discipline SRS: DISC_VALIDATE_SRS.md
+      - Disciplines: DISC_VALIDATE_SRS.md
       - ERP Database: DISC_VALIDATION_DB_SRS.md
       - Generative House: GENERATIVE_HOUSE_SRS.md
       - Prefab Architecture: PREFAB_ARCHITECTURE.md
