@@ -6,11 +6,11 @@
 
 ---
 
-## Where We Are (S88, 2026-03-26)
+## Where We Are (S92, 2026-03-26)
 
-**Pipeline:** 9 stages. 75 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative).
+**Pipeline:** 9 stages. 75 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative). 5-DB architecture.
 **Gates:** 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v6.
-**Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice.
+**Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice. 202 witnesses.
 **iDempiere conformance:** Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 Phase A–D done (S90–S92). Phase E pending (drop TEXT FK columns).
 
 ---
@@ -51,9 +51,11 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 
 | Item | What | Blocker | Ref |
 |------|------|---------|-----|
-| TRIM-1 | Wire `TRIM WALLS TO ROOF` in pipeline. Add to `.bimcobol` + create DemoHouse_2BR.bimcobol | — | [BIM_COBOL.md §TRIM](BIM_COBOL.md) |
+| TRIM-1 | Wire `TRIM WALLS TO ROOF` in pipeline | — | **DONE** (S89-trim1, adeaf75b) |
 | TRIM-2 | End-to-end witness: BOM Drop SH → swap roof → TRIM fires → curtain wall trimmed | TRIM-1 | [BBC.md §Selection](BOMBasedCompilation.md) |
 | CP-2 | DX MIRROR verb (85 axis mismatches) | Large effort | [DuplexAnalysis.md](DuplexAnalysis.md), [TestArchitecture.md](TestArchitecture.md) |
+| PRED-1 | Spatial Predicate verbs (DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST) | — | [BIM_COBOL.md §20](BIM_COBOL.md) — SPEC ONLY |
+| VERB-DOC | 19 registered verbs unlisted in scoreboard → add to §2.4 | — | Doc task, not code |
 
 ---
 
@@ -81,12 +83,35 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 
 | # | Area | What's Missing | Status |
 |---|------|---------------|--------|
-| GAP-SC-1 | ASI mutation → recompile | Which verbs re-fire? Transaction flow spec | HIGH (blocks viewport drag) |
+| GAP-SC-1 | ASI mutation → recompile | Which verbs re-fire? Transaction flow spec. S89 BBC audit confirmed: extraction writes ASI, compilation does NOT consume ASI for generative path | HIGH (blocks viewport drag) |
 | GAP-SC-2 | Freehand drawing → BOM | How viewport geometry becomes a BOM mutation | MED (blocks freehand mode) |
 | GAP-SC-4 | Rule pack versioning | Effectivity dates, version precedence. pack_id done (S67c) | MED (partially addressed) |
 | R22 | I_Element_Connectivity | Extract linking table from IfcRelConnectsElements | TODO |
 | VPA-002 | ROUTE step-uniformity | 533 instances with non-uniform per-leg steps | KNOWN LIMIT |
-| IDV-1 | iDempiere _ID/Name/Value | Tier 2 Phase A–D DONE (S90–S92). Phase E: drop TEXT FK columns | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
+| IDV-1 | iDempiere _ID/Name/Value | Tier 2 Phase A–D DONE (S90–S92). Phase E pending: drop TEXT FK columns | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
+| GAP-DA-1 | processIt() orchestrator | Spec'd in [DocAction_SRS §1.3](DocAction_SRS.md) but no implementation. → ENT-1 | HIGH (cross-ref ENT-1) |
+| GAP-DA-2 | ClashDetector Phase 2 | AD_Clash_Rule-driven engine beyond current bbox check | MED. [DocAction_SRS §2.1](DocAction_SRS.md) |
+| GAP-DA-3 | VerticalContinuityChecker | Spec'd in [DocAction_SRS §2.1](DocAction_SRS.md), not built | LOW |
+| GAP-DA-4 | Dual ad_val_rule ecosystems | validation.db (63 rules) vs ERP.db (415 rules) — spec doesn't acknowledge 5-DB split | MED. [DocAction_SRS §5](DocAction_SRS.md) |
+| GAP-DS-1 | Set vs individual placement (UX-F-25) | No placeSet() in DesignerAPIImpl | MED. [BIM_Designer_SRS §2](BIM_Designer_SRS.md) |
+| GAP-DS-2 | Multi-view sync BBox↔ORDER↔3D (UX-F-26/27) | Three views not wired | MED. [BIM_Designer_SRS §2](BIM_Designer_SRS.md) |
+| GAP-DS-3 | Server error handling (UX-E-01..03) | Auto-launch, retry, crash recovery | LOW. [BIM_Designer_SRS §4](BIM_Designer_SRS.md) |
+| GAP-DS-4 | DesignerServer standalone launcher | No main() method | LOW. [BIM_Designer_SRS §23](BIM_Designer_SRS.md) |
+| GAP-DS-5 | Capacity contracts (UX-N-11..15) | Max rooms=100, storeys=10, variants=50 — not enforced | LOW. [BIM_Designer_SRS §3](BIM_Designer_SRS.md) |
+| GAP-C13 | No Parametric Mesh — 28 call sites | Sub-writers still emit parametric geometry | MED. [TestArchitecture §C13](TestArchitecture.md) |
+| GAP-PO-1 | BOM Mining via DocAction=Approve | Not tracked | MED. [ProjectOrderBlueprint §4](ProjectOrderBlueprint.md) |
+
+---
+
+## Doc Debt
+
+| # | Area | What | Priority |
+|---|------|------|----------|
+| DD-1 | BIM_COBOL §2.4 | 19 verbs registered but unlisted in scoreboard | LOW |
+| DD-2 | TestArchitecture | Ghost seal entry (WalkThruCompilationTest.java) — remove from manifest | LOW |
+| DD-3 | TestArchitecture | Seal version numbering diverged (v6 script vs v40 doc) — reconcile | LOW |
+| DD-4 | BOMBasedCompilation §4 | Typed coordinate hierarchy (LocalCoord/StoreyCoord/WorldCoord) undocumented | LOW |
+| DD-5 | ProjectOrderBlueprint §5/§6/§9/§10/§11/§13 | 6 stale "Future" labels — sections are IMPLEMENTED | LOW |
 
 ---
 
@@ -130,6 +155,7 @@ From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VA
 | S64-S79 | s64-s79 | [AD Dictionary](DISC_VALIDATION_DB_SRS.md) Steps 0-6, Discipline enum, AD_Org_ID FK |
 | S80-S83 | s80-s83 | Docs readability, stale ref cleanup, [Name/Value Tier 1](ID_NAME_VALUE_STUDY.md) |
 | S84-S88 | s84-s88 | Schema cleanup (W012 doc_base_type), callout boxes, CTFL review, mkdocs warnings, validation.db study |
+| S89-S92 | s89-s92 | BBC audit (6 stale fixes), TRIM-1 wired, Tier 2 INTEGER PK Phases A–D, _int sidecar drop |
 
 ---
 
