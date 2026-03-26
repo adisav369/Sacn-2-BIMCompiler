@@ -76,13 +76,15 @@ public class ComposePrefabBomVerb implements Verb<ComposePrefabBomVerb.ComposePr
         int bomInserted;
         try (PreparedStatement stmt = conn.prepareStatement(
                 "INSERT OR IGNORE INTO m_bom " +
-                "(bom_id, bom_name, description, bom_type, group_by, is_active) " +
-                "VALUES (?,?,?,?,?,1)")) {
+                "(bom_id, Value, bom_name, Name, description, bom_type, group_by, is_active) " +
+                "VALUES (?,?,?,?,?,?,?,1)")) {
             stmt.setString(1, bomId);
-            stmt.setString(2, bomName);
-            stmt.setString(3, description != null ? description : bomName);
-            stmt.setString(4, bomType);
-            stmt.setString(5, "BUILDING");
+            stmt.setString(2, bomId);       // Value = bom_id (Tier 2 iDempiere SearchKey)
+            stmt.setString(3, bomName);
+            stmt.setString(4, bomName);     // Name = bom_name (Tier 2 iDempiere Name)
+            stmt.setString(5, description != null ? description : bomName);
+            stmt.setString(6, bomType);
+            stmt.setString(7, "BUILDING");
             bomInserted = stmt.executeUpdate();
         }
 

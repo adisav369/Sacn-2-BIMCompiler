@@ -65,7 +65,7 @@ public class FacilityMgmtDAO {
         String sql = """
                 SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
-                JOIN m_bom b ON bl.bom_id = b.bom_id
+                JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
                 """;
 
@@ -177,7 +177,7 @@ public class FacilityMgmtDAO {
                 SELECT bl.child_product_id, bl.bom_id, bl.storey,
                        b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
-                JOIN m_bom b ON bl.bom_id = b.bom_id
+                JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
                 ORDER BY bl.storey, b.m_product_category_id
                 """;
@@ -216,7 +216,7 @@ public class FacilityMgmtDAO {
     private Map<String, ProductFM> loadFMMap(Connection compLibConn) throws SQLException {
         Map<String, ProductFM> map = new LinkedHashMap<>();
         String sql = """
-                SELECT product_id, product_type, maintenance_interval_months,
+                SELECT Value, product_type, maintenance_interval_months,
                        lifespan_years, carbon_kg_per_unit
                 FROM M_Product
                 WHERE is_active = 1
@@ -224,7 +224,7 @@ public class FacilityMgmtDAO {
         try (PreparedStatement ps = compLibConn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                map.put(rs.getString("product_id"),
+                map.put(rs.getString("Value"),
                         new ProductFM(
                                 rs.getString("product_type"),
                                 rs.getInt("maintenance_interval_months"),

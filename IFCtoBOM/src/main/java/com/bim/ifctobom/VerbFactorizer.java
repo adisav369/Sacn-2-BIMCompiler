@@ -255,7 +255,7 @@ public class VerbFactorizer {
 
         String sql = """
                 INSERT INTO m_bom_line
-                (bom_id, child_product_id, component_type, role, sequence,
+                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
                  dx, dy, dz, is_active, entity_type, qty, verb_ref,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
@@ -263,7 +263,7 @@ public class VerbFactorizer {
                  material_name, material_rgba,
                  shape_archetype, scale_band,
                  host_element_ref)
-                VALUES (?, ?, 'LEAF', ?, ?,
+                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', ?, ?,
                         ?, ?, ?,
@@ -274,27 +274,28 @@ public class VerbFactorizer {
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
-            stmt.setString(2, childProductId);
-            stmt.setString(3, role);
-            stmt.setInt(4, sequence);
-            stmt.setString(5, rotationRule);
-            stmt.setDouble(6, dx);
-            stmt.setDouble(7, dy);
-            stmt.setDouble(8, dz);
-            stmt.setInt(9, qty);
-            stmt.setString(10, verbRef);
-            stmt.setDouble(11, allocW);
-            stmt.setDouble(12, allocD);
-            stmt.setDouble(13, allocH);
-            stmt.setString(14, storey);
-            stmt.setString(15, elementRef);
-            stmt.setInt(16, ordinal);
-            stmt.setString(17, orientation);
-            stmt.setString(18, materialName);
-            stmt.setString(19, materialRgba);
-            stmt.setString(20, archetype);
-            stmt.setString(21, scaleBand);
-            stmt.setString(22, hostElementRef);
+            stmt.setString(2, bomId);  // M_BOM_ID subquery
+            stmt.setString(3, childProductId);
+            stmt.setString(4, role);
+            stmt.setInt(5, sequence);
+            stmt.setString(6, rotationRule);
+            stmt.setDouble(7, dx);
+            stmt.setDouble(8, dy);
+            stmt.setDouble(9, dz);
+            stmt.setInt(10, qty);
+            stmt.setString(11, verbRef);
+            stmt.setDouble(12, allocW);
+            stmt.setDouble(13, allocD);
+            stmt.setDouble(14, allocH);
+            stmt.setString(15, storey);
+            stmt.setString(16, elementRef);
+            stmt.setInt(17, ordinal);
+            stmt.setString(18, orientation);
+            stmt.setString(19, materialName);
+            stmt.setString(20, materialRgba);
+            stmt.setString(21, archetype);
+            stmt.setString(22, scaleBand);
+            stmt.setString(23, hostElementRef);
             stmt.executeUpdate();
         }
     }
@@ -322,11 +323,12 @@ public class VerbFactorizer {
     private static void insertMaRow(Connection conn, String bomId, int sequence,
                                      int qi, String guid) throws SQLException {
         try (PreparedStatement stmt = conn.prepareStatement(
-                "INSERT OR IGNORE INTO m_bom_line_ma (bom_id, sequence, qi, guid) VALUES (?, ?, ?, ?)")) {
+                "INSERT OR IGNORE INTO m_bom_line_ma (bom_id, M_BOM_ID, sequence, qi, guid) VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?)")) {
             stmt.setString(1, bomId);
-            stmt.setInt(2, sequence);
-            stmt.setInt(3, qi);
-            stmt.setString(4, guid);
+            stmt.setString(2, bomId);  // M_BOM_ID subquery
+            stmt.setInt(3, sequence);
+            stmt.setInt(4, qi);
+            stmt.setString(5, guid);
             stmt.executeUpdate();
         }
     }

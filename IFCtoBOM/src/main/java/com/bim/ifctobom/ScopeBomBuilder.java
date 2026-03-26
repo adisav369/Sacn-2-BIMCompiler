@@ -192,20 +192,21 @@ public class ScopeBomBuilder {
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
-                (bom_id, bom_name, bom_type, group_by, m_product_category_id,
+                (bom_id, Value, bom_name, bom_type, group_by, m_product_category_id,
                  entity_type, origin_x, origin_y, origin_z,
                  aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
-                VALUES (?, ?, 'SET', 'ROOM', ?,
+                VALUES (?, ?, ?, 'SET', 'ROOM', ?,
                         'D', 0.0, 0.0, 0.0,
                         ?, ?, ?, 'OUTER', 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, space.templateBom());
-            stmt.setString(2, space.name() + " SET");
-            stmt.setString(3, space.role());
-            stmt.setDouble(4, aabbW);
-            stmt.setDouble(5, aabbD);
-            stmt.setDouble(6, aabbH);
+            stmt.setString(2, space.templateBom());  // Value = bom_id
+            stmt.setString(3, space.name() + " SET");
+            stmt.setString(4, space.role());
+            stmt.setDouble(5, aabbW);
+            stmt.setDouble(6, aabbD);
+            stmt.setDouble(7, aabbH);
             stmt.executeUpdate();
         }
     }
@@ -218,21 +219,22 @@ public class ScopeBomBuilder {
         String aabbQual = space.hasScopeBox() ? "INNER" : "OUTER";
         String sql = """
                 INSERT OR REPLACE INTO m_bom
-                (bom_id, bom_name, bom_type, group_by, m_product_category_id,
+                (bom_id, Value, bom_name, bom_type, group_by, m_product_category_id,
                  entity_type, origin_x, origin_y, origin_z,
                  aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
-                VALUES (?, ?, 'SET', 'ROOM', ?,
+                VALUES (?, ?, ?, 'SET', 'ROOM', ?,
                         'D', 0.0, 0.0, 0.0,
                         ?, ?, ?, ?, 1)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, space.templateBom());
-            stmt.setString(2, space.name() + " SET");
-            stmt.setString(3, space.role());
-            stmt.setInt(4, space.hasScopeBox() ? space.aabbW() : 0);
-            stmt.setInt(5, space.hasScopeBox() ? space.aabbD() : 0);
-            stmt.setInt(6, space.hasScopeBox() ? space.aabbH() : 0);
-            stmt.setString(7, aabbQual);
+            stmt.setString(2, space.templateBom());  // Value = bom_id
+            stmt.setString(3, space.name() + " SET");
+            stmt.setString(4, space.role());
+            stmt.setInt(5, space.hasScopeBox() ? space.aabbW() : 0);
+            stmt.setInt(6, space.hasScopeBox() ? space.aabbD() : 0);
+            stmt.setInt(7, space.hasScopeBox() ? space.aabbH() : 0);
+            stmt.setString(8, aabbQual);
             stmt.executeUpdate();
         }
     }
@@ -249,22 +251,23 @@ public class ScopeBomBuilder {
             throws SQLException {
         String sql = """
                 INSERT INTO m_bom_line
-                (bom_id, child_product_id, component_type, role, sequence,
+                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
                  dx, dy, dz, is_active, entity_type,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm)
-                VALUES (?, ?, 'PHANTOM', 'BUFFER', ?,
+                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'PHANTOM', 'BUFFER', ?,
                         '0', 99, 0,
                         0.0, 0.0, 0.0, 1, 'D',
                         ?, ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
-            stmt.setString(2, "PHANTOM_" + bomId);
-            stmt.setInt(3, sequence);
-            stmt.setDouble(4, phantomW);
-            stmt.setDouble(5, phantomD);
-            stmt.setDouble(6, phantomH);
+            stmt.setString(2, bomId);  // M_BOM_ID subquery
+            stmt.setString(3, "PHANTOM_" + bomId);
+            stmt.setInt(4, sequence);
+            stmt.setDouble(5, phantomW);
+            stmt.setDouble(6, phantomD);
+            stmt.setDouble(7, phantomH);
             stmt.executeUpdate();
         }
     }
@@ -279,7 +282,7 @@ public class ScopeBomBuilder {
 
         String sql = """
                 INSERT INTO m_bom_line
-                (bom_id, child_product_id, component_type, role, sequence,
+                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
                  rotation_rule, fit_priority, min_space_mm,
                  dx, dy, dz, is_active, entity_type,
                  allocated_width_mm, allocated_depth_mm, allocated_height_mm,
@@ -287,7 +290,7 @@ public class ScopeBomBuilder {
                  material_name, material_rgba,
                  shape_archetype, scale_band,
                  host_element_ref)
-                VALUES (?, ?, 'LEAF', ?, ?,
+                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D',
                         ?, ?, ?,
@@ -298,25 +301,26 @@ public class ScopeBomBuilder {
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
-            stmt.setString(2, e.mProductId());
-            stmt.setString(3, e.ifcClass());
-            stmt.setInt(4, seq);
-            stmt.setString(5, e.orientation() != null ? e.orientation() : "0");
-            stmt.setDouble(6, dx);
-            stmt.setDouble(7, dy);
-            stmt.setDouble(8, dz);
-            stmt.setDouble(9, e.widthMm());
-            stmt.setDouble(10, e.depthMm());
-            stmt.setDouble(11, e.heightMm());
-            stmt.setString(12, e.storey());
-            stmt.setString(13, e.elementRef());
-            stmt.setInt(14, e.ordinal());
-            stmt.setString(15, e.orientation());
-            stmt.setString(16, e.materialName());
-            stmt.setString(17, e.materialRgba());
-            stmt.setString(18, archetype);
-            stmt.setString(19, scaleBand);
-            stmt.setString(20, e.hostElementRef());
+            stmt.setString(2, bomId);  // M_BOM_ID subquery
+            stmt.setString(3, e.mProductId());
+            stmt.setString(4, e.ifcClass());
+            stmt.setInt(5, seq);
+            stmt.setString(6, e.orientation() != null ? e.orientation() : "0");
+            stmt.setDouble(7, dx);
+            stmt.setDouble(8, dy);
+            stmt.setDouble(9, dz);
+            stmt.setDouble(10, e.widthMm());
+            stmt.setDouble(11, e.depthMm());
+            stmt.setDouble(12, e.heightMm());
+            stmt.setString(13, e.storey());
+            stmt.setString(14, e.elementRef());
+            stmt.setInt(15, e.ordinal());
+            stmt.setString(16, e.orientation());
+            stmt.setString(17, e.materialName());
+            stmt.setString(18, e.materialRgba());
+            stmt.setString(19, archetype);
+            stmt.setString(20, scaleBand);
+            stmt.setString(21, e.hostElementRef());
             stmt.executeUpdate();
         }
     }

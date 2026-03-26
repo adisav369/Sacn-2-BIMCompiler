@@ -481,7 +481,7 @@ public class CompilationPipeline {
             String SQL_ROOM_CHILDREN = """
                 SELECT mbl.child_product_id, mbl.role, mbl.sequence, mb2.m_product_category_id
                 FROM m_bom_line mbl
-                LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id
+                LEFT JOIN m_bom mb2 ON mb2.Value = mbl.child_product_id
                 WHERE mbl.bom_id = ? AND mbl.is_active = 1
                   AND mb2.m_product_category_id IN ('LI','BD','KT','BT','DN')
                 ORDER BY mbl.sequence

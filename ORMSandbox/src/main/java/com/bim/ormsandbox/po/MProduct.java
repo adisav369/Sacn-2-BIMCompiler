@@ -33,15 +33,15 @@ public class MProduct extends X_MProduct {
         return new ModelQuery<>(conn, MProduct::new, Table_Name)
             .where(COLUMNNAME_product_type + " = ?", productType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_product_id)
+            .orderBy(COLUMNNAME_Value)
             .list();
     }
 
-    /** All active products, ordered by product_id. */
+    /** All active products, ordered by Value. */
     public static List<MProduct> getAll(Connection conn) throws SQLException {
         return new ModelQuery<>(conn, MProduct::new, Table_Name)
             .where(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_product_id)
+            .orderBy(COLUMNNAME_Value)
             .list();
     }
 

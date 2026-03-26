@@ -1531,8 +1531,8 @@ public class BuildingWriter {
         List<String> ids = new ArrayList<>();
         if (docSubType != null) {
             try (PreparedStatement ps = bomConn.prepareStatement(
-                    "SELECT bom_id FROM m_bom WHERE is_active = 1"
-                    + " AND (doc_sub_type = ? OR doc_sub_type IS NULL) ORDER BY bom_id")) {
+                    "SELECT Value FROM m_bom WHERE is_active = 1"
+                    + " AND (doc_sub_type = ? OR doc_sub_type IS NULL) ORDER BY Value")) {
                 ps.setString(1, docSubType);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) ids.add(rs.getString(1));
@@ -1542,7 +1542,7 @@ public class BuildingWriter {
             // Fallback: no docSubType — only walk generic BOMs
             try (Statement stmt = bomConn.createStatement();
                  ResultSet rs = stmt.executeQuery(
-                     "SELECT bom_id FROM m_bom WHERE is_active = 1 AND doc_sub_type IS NULL ORDER BY bom_id")) {
+                     "SELECT Value FROM m_bom WHERE is_active = 1 AND doc_sub_type IS NULL ORDER BY Value")) {
                 while (rs.next()) ids.add(rs.getString(1));
             }
         }

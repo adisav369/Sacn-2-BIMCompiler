@@ -201,7 +201,7 @@ public class DesignerAPIImpl implements DesignerAPI {
      */
     private static BuildingEntry loadBuildingEntry(String bomDbPath, String buildingId) {
         String sql = """
-                SELECT d.C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType,
+                SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, d.DocBaseType, d.DocSubType,
                        d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo,
                        d.ExpectedElements, d.Provenance, d.Description,
                        d.GeometryFailThreshold,
@@ -1300,11 +1300,11 @@ public class DesignerAPIImpl implements DesignerAPI {
 
             // 4a. Write m_bom for BUILDING/FLOOR/ROOM bboxes
             String insertBom = """
-                    INSERT OR IGNORE INTO m_bom (bom_id, bom_name, description,
+                    INSERT OR IGNORE INTO m_bom (bom_id, Value, bom_name, description,
                         bom_type, group_by, m_product_category_id, entity_type,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                         doc_sub_type, origin_x, origin_y, origin_z)
-                    VALUES (?, ?, 'GENERATIVE', ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, 'GENERATIVE', ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
                     """;
             try (PreparedStatement ps = bomConn.prepareStatement(insertBom)) {
                 for (DesignBBox bb : bboxes) {
@@ -1313,21 +1313,22 @@ public class DesignerAPIImpl implements DesignerAPI {
                         String promBomId = bb.bomId() + "_GEN";
                         promotedBomIds.put(bb.bomId(), promBomId);
 
-                        ps.setString(1, promBomId);
-                        ps.setString(2, bb.name());
-                        ps.setString(3, bt);
-                        ps.setString(4, "ROOM".equals(bt) ? "ROOM" : "BUILDING");
-                        ps.setString(5, bb.category());
+                        ps.setString(1, promBomId);  // bom_id
+                        ps.setString(2, promBomId);  // Value
+                        ps.setString(3, bb.name());
+                        ps.setString(4, bt);
+                        ps.setString(5, "ROOM".equals(bt) ? "ROOM" : "BUILDING");
+                        ps.setString(6, bb.category());
                         double w = bb.maxX() - bb.minX();
                         double d = bb.maxY() - bb.minY();
                         double h = bb.maxZ() - bb.minZ();
-                        ps.setInt(6, (int) w);
-                        ps.setInt(7, (int) d);
-                        ps.setInt(8, (int) h);
-                        ps.setString(9, request.provenance());
-                        ps.setDouble(10, bb.minX() / 1000.0);
-                        ps.setDouble(11, bb.minY() / 1000.0);
-                        ps.setDouble(12, bb.minZ() / 1000.0);
+                        ps.setInt(7, (int) w);
+                        ps.setInt(8, (int) d);
+                        ps.setInt(9, (int) h);
+                        ps.setString(10, request.provenance());
+                        ps.setDouble(11, bb.minX() / 1000.0);
+                        ps.setDouble(12, bb.minY() / 1000.0);
+                        ps.setDouble(13, bb.minZ() / 1000.0);
                         ps.addBatch();
                         entriesCreated++;
                     }
@@ -1346,11 +1347,11 @@ public class DesignerAPIImpl implements DesignerAPI {
             }
 
             String insertLine = """
-                    INSERT INTO m_bom_line (bom_id, child_product_id, role,
+                    INSERT INTO m_bom_line (bom_id, M_BOM_ID, child_product_id, role,
                         component_type, entity_type,
                         allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                         dx, dy, dz, storey)
-                    VALUES (?, ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
                     """;
             try (PreparedStatement ps = bomConn.prepareStatement(insertLine)) {
                 for (DesignBBox bb : bboxes) {
@@ -1392,17 +1393,18 @@ public class DesignerAPIImpl implements DesignerAPI {
                     double relDy = parentBb != null ? (bb.minY() - parentBb.minY()) / 1000.0 : bb.minY() / 1000.0;
                     double relDz = parentBb != null ? (bb.minZ() - parentBb.minZ()) / 1000.0 : bb.minZ() / 1000.0;
 
-                    ps.setString(1, parentPromId);
-                    ps.setString(2, bb.name());
-                    ps.setString(3, bb.category() != null ? bb.category() : bb.bomType());
-                    ps.setString(4, "ITEM".equals(bb.bomType()) ? "BUY" : "MAKE");
-                    ps.setInt(5, (int) (bb.maxX() - bb.minX()));
-                    ps.setInt(6, (int) (bb.maxY() - bb.minY()));
-                    ps.setInt(7, (int) (bb.maxZ() - bb.minZ()));
-                    ps.setDouble(8, relDx);
-                    ps.setDouble(9, relDy);
-                    ps.setDouble(10, relDz);
-                    ps.setString(11, bb.storey());
+                    ps.setString(1, parentPromId);  // bom_id
+                    ps.setString(2, parentPromId);  // M_BOM_ID subquery
+                    ps.setString(3, bb.name());
+                    ps.setString(4, bb.category() != null ? bb.category() : bb.bomType());
+                    ps.setString(5, "ITEM".equals(bb.bomType()) ? "BUY" : "MAKE");
+                    ps.setInt(6, (int) (bb.maxX() - bb.minX()));
+                    ps.setInt(7, (int) (bb.maxY() - bb.minY()));
+                    ps.setInt(8, (int) (bb.maxZ() - bb.minZ()));
+                    ps.setDouble(9, relDx);
+                    ps.setDouble(10, relDy);
+                    ps.setDouble(11, relDz);
+                    ps.setString(12, bb.storey());
                     ps.addBatch();
                     entriesCreated++;
                 }

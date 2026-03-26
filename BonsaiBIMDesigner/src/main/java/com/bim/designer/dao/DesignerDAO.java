@@ -38,7 +38,7 @@ public class DesignerDAO {
      * Returns null if not found.
      */
     public String resolveBuildingType(String buildingId) throws SQLException {
-        String sql = "SELECT Name FROM C_DocType WHERE C_DocType_ID = ? OR Name = ?";
+        String sql = "SELECT Name FROM C_DocType WHERE Value = ? OR Name = ?";
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, buildingId);
             ps.setString(2, buildingId);
@@ -51,7 +51,7 @@ public class DesignerDAO {
     /** Active building types from C_DocType, with AABB from BUILDING-level m_bom. */
     public List<BuildingTypeRow> listBuildingTypes() throws SQLException {
         String sql = """
-                SELECT d.C_DocType_ID, d.ProjectName, d.Name,
+                SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
                        d.DocBaseType, d.DocSubType, d.IsActive,
                        d.ExpectedElements,
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
@@ -87,7 +87,7 @@ public class DesignerDAO {
     /** Single building type by projectName (buildingId). */
     public BuildingTypeRow getBuildingType(String buildingId) throws SQLException {
         String sql = """
-                SELECT d.C_DocType_ID, d.ProjectName, d.Name,
+                SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
                        d.DocBaseType, d.DocSubType,
                        d.ExpectedElements,
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
@@ -160,18 +160,20 @@ public class DesignerDAO {
     public List<SegmentRow> listSegments(String buildingBomId) throws SQLException {
         // Step 1: find FLOOR-level BOMs that are children of the BUILDING BOM
         String floorSQL = """
-                SELECT f.bom_id, f.bom_name, f.m_product_category_id,
+                SELECT f.Value AS bom_id, f.bom_name, f.m_product_category_id,
                        (SELECT COUNT(*) FROM m_bom_line fl
-                        WHERE fl.bom_id IN (
-                            SELECT s.bom_id FROM m_bom s
+                        WHERE fl.M_BOM_ID IN (
+                            SELECT s.M_BOM_ID FROM m_bom s
                             WHERE s.bom_type = 'SET' AND s.is_active = 1
                               AND EXISTS (SELECT 1 FROM m_bom_line sl
-                                          WHERE sl.bom_id = ? AND sl.child_product_id = f.bom_id)
+                                          WHERE sl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
+                                            AND sl.child_product_id = f.Value)
                         )) AS element_count
                 FROM m_bom f
-                JOIN m_bom_line bl ON bl.bom_id = ? AND bl.child_product_id = f.bom_id
+                JOIN m_bom_line bl ON bl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
+                  AND bl.child_product_id = f.Value
                 WHERE f.bom_type = 'FLOOR' AND f.is_active = 1
-                ORDER BY f.bom_id
+                ORDER BY f.Value
                 """;
         List<SegmentRow> rows = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(floorSQL)) {
@@ -196,7 +198,8 @@ public class DesignerDAO {
         String sql = """
                 SELECT DISTINCT s.m_product_category_id
                 FROM m_bom s
-                JOIN m_bom_line bl ON bl.bom_id = ? AND bl.child_product_id = s.bom_id
+                JOIN m_bom_line bl ON bl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
+                  AND bl.child_product_id = s.Value
                 WHERE s.bom_type = 'SET' AND s.is_active = 1
                 ORDER BY s.m_product_category_id
                 """;
@@ -222,10 +225,10 @@ public class DesignerDAO {
     /** BOM header by bom_id. */
     public BomHeaderRow getBomHeader(String bomId) throws SQLException {
         String sql = """
-                SELECT bom_id, bom_name, bom_type, m_product_category_id,
+                SELECT Value AS bom_id, bom_name, bom_type, m_product_category_id,
                        aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                        entity_type
-                FROM m_bom WHERE bom_id = ?
+                FROM m_bom WHERE Value = ?
                 """;
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, bomId);
@@ -250,12 +253,12 @@ public class DesignerDAO {
     /** BOM lines for a given bom_id. */
     public List<BomLineRow> getBomLines(String bomId) throws SQLException {
         String sql = """
-                SELECT bom_child_id, bom_id, child_product_id,
+                SELECT bom_child_id, M_BOM_ID, child_product_id,
                        component_type, dx, dy, dz,
                        allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                        storey, element_ref, verb_ref, sequence
                 FROM m_bom_line
-                WHERE bom_id = ? AND is_active = 1
+                WHERE M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?) AND is_active = 1
                 ORDER BY sequence, bom_child_id
                 """;
         List<BomLineRow> rows = new ArrayList<>();
@@ -265,7 +268,7 @@ public class DesignerDAO {
                 while (rs.next()) {
                     rows.add(new BomLineRow(
                             rs.getInt("bom_child_id"),
-                            rs.getString("bom_id"),
+                            rs.getString("M_BOM_ID"),
                             rs.getString("child_product_id"),
                             rs.getString("component_type"),
                             rs.getDouble("dx"),
@@ -297,7 +300,7 @@ public class DesignerDAO {
             String buildingType, int offset, int limit) throws SQLException {
 
         StringBuilder sql = new StringBuilder("""
-                SELECT product_id, product_type,
+                SELECT Value AS product_id, product_type,
                        width * 1000 AS width_mm,
                        depth * 1000 AS depth_mm,
                        height * 1000 AS height_mm,
@@ -307,7 +310,7 @@ public class DesignerDAO {
                 """);
         List<Object> params = new ArrayList<>();
         appendFilters(sql, params, search, category, buildingType);
-        sql.append(" ORDER BY product_type, product_id LIMIT ? OFFSET ?");
+        sql.append(" ORDER BY product_type, Value LIMIT ? OFFSET ?");
         params.add(limit);
         params.add(offset);
 
@@ -358,7 +361,7 @@ public class DesignerDAO {
                 """);
         List<Object> params = new ArrayList<>();
         if (search != null && !search.isBlank()) {
-            sql.append(" AND product_id LIKE ?");
+            sql.append(" AND Value LIKE ?");
             params.add("%" + search.trim() + "%");
         }
         if (buildingType != null && !buildingType.isBlank()) {
@@ -385,7 +388,7 @@ public class DesignerDAO {
     private void appendFilters(StringBuilder sql, List<Object> params,
             String search, String category, String buildingType) {
         if (search != null && !search.isBlank()) {
-            sql.append(" AND product_id LIKE ?");
+            sql.append(" AND Value LIKE ?");
             params.add("%" + search.trim() + "%");
         }
         if (category != null && !category.isBlank()) {
@@ -458,10 +461,10 @@ public class DesignerDAO {
     public List<SetMatchRow> findMatchingSets(String category,
             int slotWidthMm, int slotDepthMm, int slotHeightMm) throws SQLException {
         String sql = """
-                SELECT b.bom_id, b.bom_name, b.m_product_category_id,
+                SELECT b.Value AS bom_id, b.bom_name, b.m_product_category_id,
                        b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm,
                        (SELECT COUNT(*) FROM m_bom_line l
-                        WHERE l.bom_id = b.bom_id AND l.is_active = 1
+                        WHERE l.M_BOM_ID = b.M_BOM_ID AND l.is_active = 1
                           AND l.component_type != 'PHANTOM') AS child_count
                 FROM m_bom b
                 WHERE b.m_product_category_id = ?
@@ -599,13 +602,13 @@ public class DesignerDAO {
     /** Single product by product_id. Returns null if not found. */
     public ProductRow getProduct(String productId) throws SQLException {
         String sql = """
-                SELECT product_id, product_type,
+                SELECT Value AS product_id, product_type,
                        width * 1000 AS width_mm,
                        depth * 1000 AS depth_mm,
                        height * 1000 AS height_mm,
                        ifc_class, building_type
                 FROM M_Product
-                WHERE product_id = ? AND is_active = 1
+                WHERE Value = ? AND is_active = 1
                 """;
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, productId);

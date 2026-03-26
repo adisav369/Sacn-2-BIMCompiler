@@ -115,7 +115,7 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
         try (PreparedStatement ps = bomConn.prepareStatement(
                 "SELECT mbl.child_product_id, mbl.role, mbl.dz, mb2.M_BOM_ID " +
                 "FROM m_bom_line mbl " +
-                "LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id " +
+                "LEFT JOIN m_bom mb2 ON mb2.Value = mbl.child_product_id " +
                 "WHERE mbl.M_BOM_ID = ? AND mbl.is_active = 1 ORDER BY mbl.sequence")) {
             ps.setInt(1, buildingBomId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -141,7 +141,7 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "SELECT mbl.role, mb2.m_product_category_id " +
                     "FROM m_bom_line mbl " +
-                    "LEFT JOIN m_bom mb2 ON mb2.bom_id = mbl.child_product_id " +
+                    "LEFT JOIN m_bom mb2 ON mb2.Value = mbl.child_product_id " +
                     "WHERE mbl.M_BOM_ID = ? AND mbl.is_active = 1 " +
                     "AND mb2.m_product_category_id IN ('LI','BD','KT','BT','DN')")) {
                 ps.setInt(1, floorBomId);

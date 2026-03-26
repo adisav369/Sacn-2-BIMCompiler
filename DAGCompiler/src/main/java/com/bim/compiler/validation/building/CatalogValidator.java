@@ -56,7 +56,7 @@ public class CatalogValidator implements CatalogContract {
             Set<String> bomRefs = collectFloorBomRefs();
             for (String bomId : bomRefs) {
                 total++;
-                if (existsInTable(conn, "m_bom", "bom_id", bomId)) {
+                if (existsInTable(conn, "m_bom", "Value", bomId)) {
                     resolved++;
                 } else {
                     violations.add(new CatalogViolation(

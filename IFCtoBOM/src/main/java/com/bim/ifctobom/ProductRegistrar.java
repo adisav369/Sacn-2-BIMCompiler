@@ -61,10 +61,13 @@ public class ProductRegistrar {
                                            List<ExtractionElement> elements,
                                            String buildingType) throws SQLException {
         // Create table if not exists (first run)
+        // Implementing BBC.md §14.3 IDV-1 — Witness: W-TIER2-DDL
         try (Statement stmt = compConn.createStatement()) {
             stmt.execute("""
                     CREATE TABLE IF NOT EXISTS M_Product (
-                        product_id        TEXT PRIMARY KEY,
+                        M_Product_ID      INTEGER PRIMARY KEY AUTOINCREMENT,
+                        product_id        TEXT NOT NULL UNIQUE,
+                        Value             TEXT,
                         product_type      TEXT NOT NULL,
                         width             REAL NOT NULL,
                         depth             REAL NOT NULL,
@@ -86,9 +89,9 @@ public class ProductRegistrar {
 
         String sql = """
                 INSERT OR IGNORE INTO M_Product
-                (product_id, product_type, width, depth, height,
+                (product_id, Value, product_type, width, depth, height,
                  ifc_class, extracted_from, is_active, building_type)
-                VALUES (?, ?, ?, ?, ?, ?, 'IFC_EXTRACTION', 1, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'IFC_EXTRACTION', 1, ?)
                 """;
 
         int count = 0;
@@ -107,24 +110,26 @@ public class ProductRegistrar {
 
                 // Write to component_library.db (for ensureProductImages geometry join)
                 stmt.setString(1, productId);
-                stmt.setString(2, productType);
-                stmt.setDouble(3, w);
-                stmt.setDouble(4, d);
-                stmt.setDouble(5, h);
-                stmt.setString(6, ifcClass);
-                stmt.setString(7, buildingType);
+                stmt.setString(2, productId);  // Value = product_id
+                stmt.setString(3, productType);
+                stmt.setDouble(4, w);
+                stmt.setDouble(5, d);
+                stmt.setDouble(6, h);
+                stmt.setString(7, ifcClass);
+                stmt.setString(8, buildingType);
                 int rows = stmt.executeUpdate();
                 if (rows > 0) count++;
                 else reused++;
 
                 // Write to ERP.db (authoritative master catalog)
                 discStmt.setString(1, productId);
-                discStmt.setString(2, productType);
-                discStmt.setDouble(3, w);
-                discStmt.setDouble(4, d);
-                discStmt.setDouble(5, h);
-                discStmt.setString(6, ifcClass);
-                discStmt.setString(7, buildingType);
+                discStmt.setString(2, productId);  // Value = product_id
+                discStmt.setString(3, productType);
+                discStmt.setDouble(4, w);
+                discStmt.setDouble(5, d);
+                discStmt.setDouble(6, h);
+                discStmt.setString(7, ifcClass);
+                discStmt.setString(8, buildingType);
                 discStmt.executeUpdate();
             }
         }
@@ -164,15 +169,15 @@ public class ProductRegistrar {
 
         // Try to copy from component_library.db catalog first (reuse)
         String copyFromCatalog = """
-                SELECT product_id, product_type, width, depth, height,
+                SELECT Value, product_type, width, depth, height,
                        ifc_class, extracted_from, is_active
-                FROM M_Product WHERE product_id = ?
+                FROM M_Product WHERE Value = ?
                 """;
         String insertIntoBom = """
                 INSERT OR IGNORE INTO M_Product
-                (product_id, product_type, width, depth, height,
+                (product_id, Value, product_type, width, depth, height,
                  ifc_class, extracted_from, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         int count = 0;
@@ -192,14 +197,16 @@ public class ProductRegistrar {
                     readStmt.setString(1, productId);
                     try (ResultSet rs = readStmt.executeQuery()) {
                         if (rs.next()) {
-                            writeStmt.setString(1, rs.getString(1));
-                            writeStmt.setString(2, rs.getString(2));
-                            writeStmt.setDouble(3, rs.getDouble(3));
-                            writeStmt.setDouble(4, rs.getDouble(4));
-                            writeStmt.setDouble(5, rs.getDouble(5));
-                            writeStmt.setString(6, rs.getString(6));
-                            writeStmt.setString(7, rs.getString(7));
-                            writeStmt.setInt(8, rs.getInt(8));
+                            String val = rs.getString(1);
+                            writeStmt.setString(1, val);
+                            writeStmt.setString(2, val);  // Value = product_id
+                            writeStmt.setString(3, rs.getString(2));
+                            writeStmt.setDouble(4, rs.getDouble(3));
+                            writeStmt.setDouble(5, rs.getDouble(4));
+                            writeStmt.setDouble(6, rs.getDouble(5));
+                            writeStmt.setString(7, rs.getString(6));
+                            writeStmt.setString(8, rs.getString(7));
+                            writeStmt.setInt(9, rs.getInt(8));
                             int rows = writeStmt.executeUpdate();
                             if (rows > 0) { count++; copied = true; }
                         }
@@ -209,13 +216,14 @@ public class ProductRegistrar {
                 // Fallback: create from extraction data (backward compatibility)
                 if (!copied) {
                     writeStmt.setString(1, productId);
-                    writeStmt.setString(2, deriveProductType(e.ifcClass()));
-                    writeStmt.setDouble(3, e.maxX() - e.minX());
-                    writeStmt.setDouble(4, e.maxY() - e.minY());
-                    writeStmt.setDouble(5, e.maxZ() - e.minZ());
-                    writeStmt.setString(6, e.ifcClass());
-                    writeStmt.setString(7, "IFC_EXTRACTION");
-                    writeStmt.setInt(8, 1);
+                    writeStmt.setString(2, productId);  // Value = product_id
+                    writeStmt.setString(3, deriveProductType(e.ifcClass()));
+                    writeStmt.setDouble(4, e.maxX() - e.minX());
+                    writeStmt.setDouble(5, e.maxY() - e.minY());
+                    writeStmt.setDouble(6, e.maxZ() - e.minZ());
+                    writeStmt.setString(7, e.ifcClass());
+                    writeStmt.setString(8, "IFC_EXTRACTION");
+                    writeStmt.setInt(9, 1);
                     int rows = writeStmt.executeUpdate();
                     if (rows > 0) count++;
                 }
@@ -240,13 +248,14 @@ public class ProductRegistrar {
                                           String productId, String productType) throws SQLException {
         String sql = """
                 INSERT OR IGNORE INTO M_Product
-                (product_id, product_type, width, depth, height,
+                (product_id, Value, product_type, width, depth, height,
                  extracted_from, is_active)
-                VALUES (?, ?, 0.001, 0.001, 0.001, 'BOM_ASSEMBLY', 0)
+                VALUES (?, ?, ?, 0.001, 0.001, 0.001, 'BOM_ASSEMBLY', 0)
                 """;
         try (PreparedStatement stmt = bomConn.prepareStatement(sql)) {
             stmt.setString(1, productId);
-            stmt.setString(2, productType);
+            stmt.setString(2, productId);  // Value = product_id
+            stmt.setString(3, productType);
             stmt.executeUpdate();
         }
     }
@@ -282,16 +291,16 @@ public class ProductRegistrar {
         }
 
         // R17: Join M_Product → I_Geometry_Map (I_Element_Extraction removed).
-        // M_Product.product_id = element_ref by extraction convention.
+        // M_Product.Value = element_ref by extraction convention.
         // One geometry_hash per product (product type = one canonical shape).
         String sql = """
                 INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
-                SELECT p.product_id, g.geometry_hash
+                SELECT p.Value, g.geometry_hash
                 FROM M_Product p
-                JOIN I_Geometry_Map g ON g.element_ref = p.product_id
+                JOIN I_Geometry_Map g ON g.element_ref = p.Value
                 WHERE p.building_type = ?
                     AND p.is_active = 1
-                GROUP BY p.product_id
+                GROUP BY p.Value
                 """;
 
         int count = 0;
@@ -316,9 +325,9 @@ public class ProductRegistrar {
     public static int countUnlinkedProducts(Connection compConn,
                                             String buildingType) throws SQLException {
         String sql = """
-                SELECT COUNT(DISTINCT p.product_id)
+                SELECT COUNT(DISTINCT p.Value)
                 FROM M_Product p
-                LEFT JOIN M_Product_Image i ON p.product_id = i.M_Product_ID
+                LEFT JOIN M_Product_Image i ON p.Value = i.M_Product_ID
                 WHERE p.building_type = ?
                     AND p.is_active = 1
                     AND i.M_Product_ID IS NULL

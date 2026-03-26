@@ -208,7 +208,7 @@ public class OrderMutationService {
         // Next Line sequence
         int nextLine = 10;
         try (PreparedStatement ps = woConn.prepareStatement(
-                "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = ?")) {
+                "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?)")) {
             ps.setString(1, orderId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) nextLine = rs.getInt(1) + 10;
@@ -220,7 +220,7 @@ public class OrderMutationService {
         String sql = "INSERT INTO C_OrderLine "
                 + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                 + " m_product_category_id, M_Product_ID, Discipline, AD_Org_ID, Qty, proposal_status) "
-                + "VALUES (?, ?, ?, ?, 'LEAF', ?, ?, ?, ?, ?, 'PROPOSED')";
+                + "VALUES ((SELECT C_Order_ID FROM C_Order WHERE Value = ?), ?, ?, ?, 'LEAF', ?, ?, ?, ?, ?, 'PROPOSED')";
         try (PreparedStatement ps = woConn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, orderId);
             ps.setInt(2, parentLineId);

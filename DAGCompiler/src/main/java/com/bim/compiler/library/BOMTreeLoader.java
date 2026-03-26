@@ -139,7 +139,7 @@ public final class BOMTreeLoader {
             // ① Load BOM children — JOIN m_bom for is_active gate
             ModelQuery<MBOMLine> query = new ModelQuery<>(
                     conn, MBOMLine::new, MBOMLine.Table_Name + " bc")
-                .addJoin("m_bom b", "bc.bom_id = b.bom_id")
+                .addJoin("m_bom b", "bc.M_BOM_ID = b.M_BOM_ID")
                 .where("b.is_active = ?", 1)
                 .andWhere("bc.is_active = ?", 1);
 
@@ -205,12 +205,13 @@ public final class BOMTreeLoader {
 
             // ④ Load BOM origins (tack convention §3.4)
             Map<String, double[]> origins = new HashMap<>();
-            String originSql = "SELECT bom_id, origin_x, origin_y, origin_z FROM m_bom WHERE is_active = 1"
+            // Tier 2: m_bom.bom_id TEXT → Value column for text lookups
+            String originSql = "SELECT Value, origin_x, origin_y, origin_z FROM m_bom WHERE is_active = 1"
                 + " AND (origin_x != 0 OR origin_y != 0 OR origin_z != 0)";
             try (Statement st = conn.createStatement();
                  ResultSet rs = st.executeQuery(originSql)) {
                 while (rs.next()) {
-                    origins.put(rs.getString("bom_id"),
+                    origins.put(rs.getString("Value"),
                         new double[]{ rs.getDouble("origin_x"),
                                       rs.getDouble("origin_y"),
                                       rs.getDouble("origin_z") });

@@ -64,6 +64,11 @@ public class X_MProduct extends BasePO {
     public static final String COLUMNNAME_bom_id             = "bom_id";
     public static final String COLUMNNAME_ifc_class          = "ifc_class";
 
+    // ── Tier 2: INTEGER PK + iDempiere triad (Phase E) ─────────────────────
+    public static final String COLUMNNAME_M_Product_ID      = "M_Product_ID";
+    public static final String COLUMNNAME_Value             = "Value";
+    public static final String COLUMNNAME_Name_IDV          = "Name";
+
     public X_MProduct(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
@@ -126,4 +131,13 @@ public class X_MProduct extends BasePO {
     public void setComponentId(int v)      { set_Value(COLUMNNAME_component_id, v); }
     public void setBomId(String v)         { set_Value(COLUMNNAME_bom_id, v); }
     public void setIfcClass(String v)      { set_Value(COLUMNNAME_ifc_class, v); }
+
+    // ── Tier 2: INTEGER PK accessors (Phase E) ──────────────────────────────
+    /** M_Product_ID integer PK — AUTOINCREMENT surrogate (backfilled by IFCtoBOM). */
+    public int     getMProductId()         { return get_ValueAsInt(COLUMNNAME_M_Product_ID); }
+    public String  getValue()              { return get_ValueAsString(COLUMNNAME_Value); }
+    public String  getNameIDV()            { return get_ValueAsString(COLUMNNAME_Name_IDV); }
+    public void    setMProductId(int v)    { set_Value(COLUMNNAME_M_Product_ID, v); }
+    public void    setValue(String v)       { set_Value(COLUMNNAME_Value, v); }
+    public void    setNameIDV(String v)    { set_Value(COLUMNNAME_Name_IDV, v); }
 }

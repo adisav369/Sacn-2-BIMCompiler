@@ -80,7 +80,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         String buildingBomId = null;
         int buildingCount = 0;
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT bom_id FROM m_bom "
+                "SELECT Value FROM m_bom "
                 + "WHERE bom_type = 'BUILDING' AND doc_sub_type = ?")) {
             ps.setString(1, docSubType);
             try (ResultSet rs = ps.executeQuery()) {
@@ -96,7 +96,7 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
         if (buildingBomId != null) {
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm "
-                    + "FROM m_bom WHERE bom_id = ?")) {
+                    + "FROM m_bom WHERE Value = ?")) {
                 ps.setString(1, buildingBomId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {

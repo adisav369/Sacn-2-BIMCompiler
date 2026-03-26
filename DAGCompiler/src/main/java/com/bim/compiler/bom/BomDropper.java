@@ -138,7 +138,7 @@ public class BomDropper {
      * // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
      */
     private static String findBuildingBom(Connection conn, BuildingEntry entry) throws SQLException {
-        String sql = "SELECT bom_id FROM m_bom "
+        String sql = "SELECT Value FROM m_bom "
                    + "WHERE bom_type = 'BUILDING' AND m_product_category_id = ? AND doc_sub_type = ? "
                    + "AND is_active = 1 ORDER BY seq_no LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -160,6 +160,7 @@ public class BomDropper {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("DELETE FROM C_OrderLine WHERE C_Order_ID = '" + orderId + "'");
             stmt.execute("DELETE FROM C_Order WHERE Value = '" + orderId + "'");
+            // Note: C_OrderLine.C_Order_ID stores text key (Value). C_Order PK is INTEGER.
         }
 
         String sql = "INSERT INTO C_Order (Value, C_DocType_ID, Name, DocStatus, "

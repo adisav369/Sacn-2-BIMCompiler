@@ -43,7 +43,7 @@ public class MBOM extends X_M_BOM {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_type + " = ?", bomType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
     }
 
@@ -52,7 +52,7 @@ public class MBOM extends X_M_BOM {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
     }
 
@@ -66,17 +66,17 @@ public class MBOM extends X_M_BOM {
             .where(COLUMNNAME_bom_type + " = ?", "BUILDING")
             .andWhere(COLUMNNAME_doc_sub_type + " = ?", docSubType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
         return bldgs.isEmpty() ? null : bldgs.get(0);
     }
 
-    /** All active BOMs whose bom_id starts with the given prefix. */
+    /** All active BOMs whose Value starts with the given prefix. */
     public static List<MBOM> getByBomIdPrefix(Connection conn, String prefix) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_id + " LIKE ?", prefix + "%")
+            .where(COLUMNNAME_Value + " LIKE ?", prefix + "%")
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
     }
 
@@ -88,7 +88,7 @@ public class MBOM extends X_M_BOM {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where("(" + COLUMNNAME_doc_sub_type + " = ? OR " + COLUMNNAME_doc_sub_type + " IS NULL)", docSubType)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
     }
 
@@ -258,7 +258,7 @@ public class MBOM extends X_M_BOM {
             query.andWhere(ownerFilter);
         }
 
-        List<MBOM> candidates = query.orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id).list();
+        List<MBOM> candidates = query.orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value).list();
 
         MBOM bestFit = null;
         long bestVolume = -1;
@@ -323,7 +323,7 @@ public class MBOM extends X_M_BOM {
         List<MBOM> candidates = new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
-            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_bom_id)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
 
         MBOM bestFit = null;

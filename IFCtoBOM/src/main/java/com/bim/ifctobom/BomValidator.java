@@ -50,7 +50,7 @@ public class BomValidator {
 
     /** SQL fragment: lines whose child_product_id is itself a BOM (assembly refs). */
     private static final String IS_ASSEMBLY_REF =
-            "child_product_id IN (SELECT bom_id FROM m_bom)";
+            "child_product_id IN (SELECT Value FROM m_bom)";
 
     /** SQL fragment: leaf lines (component_type = 'LEAF'). */
     private static final String IS_LEAF = "component_type = 'LEAF'";
@@ -181,7 +181,7 @@ public class BomValidator {
             if (dupBoms > 0) fails++;
 
             rs = stmt.executeQuery(
-                    "SELECT COUNT(*) FROM m_bom_line WHERE bom_id NOT IN (SELECT bom_id FROM m_bom)");
+                    "SELECT COUNT(*) FROM m_bom_line WHERE M_BOM_ID NOT IN (SELECT M_BOM_ID FROM m_bom)");
             int orphans = rs.next() ? rs.getInt(1) : 0;
             report("Orphan lines", String.valueOf(orphans),
                     orphans == 0 ? "PASS" : "FAIL");
@@ -280,7 +280,7 @@ public class BomValidator {
             // Assembly-ref lines from BUILDING pointing to non-existent BOMs
             ResultSet rs = stmt.executeQuery(
                     "SELECT COUNT(*) FROM m_bom_line l " +
-                    "JOIN m_bom b ON l.bom_id = b.bom_id " +
+                    "JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID " +
                     "WHERE b.bom_type = 'BUILDING' " +
                     "AND l." + IS_ASSEMBLY_REF);
             int validRefs = rs.next() ? rs.getInt(1) : 0;
@@ -289,11 +289,11 @@ public class BomValidator {
             // but that BOM doesn't exist (dangling)
             rs = stmt.executeQuery(
                     "SELECT COUNT(*) FROM m_bom_line l " +
-                    "JOIN m_bom b ON l.bom_id = b.bom_id " +
+                    "JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID " +
                     "WHERE b.bom_type = 'BUILDING' " +
                     "AND l.child_product_id IS NOT NULL " +
-                    "AND l.child_product_id NOT IN (SELECT bom_id FROM m_bom) " +
-                    "AND l.child_product_id NOT IN (SELECT product_id FROM M_Product)");
+                    "AND l.child_product_id NOT IN (SELECT Value FROM m_bom) " +
+                    "AND l.child_product_id NOT IN (SELECT Value FROM M_Product)");
             int dangling = rs.next() ? rs.getInt(1) : 0;
 
             report("Tack: assembly refs valid",
@@ -406,7 +406,7 @@ public class BomValidator {
             //   This exceeds parentWidth when element is in the right half of parent
             ResultSet rs = stmt.executeQuery(
                     "SELECT COUNT(*) FROM m_bom_line l "
-                    + "JOIN m_bom b ON l.bom_id = b.bom_id "
+                    + "JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID "
                     + "WHERE " + IS_LEAF
                     + " AND l.allocated_width_mm > 0 AND b.aabb_width_mm > 0 "
                     + "AND (l.dx + l.allocated_width_mm / 1000.0) > (b.aabb_width_mm / 1000.0 * 1.01)");
@@ -414,7 +414,7 @@ public class BomValidator {
 
             rs = stmt.executeQuery(
                     "SELECT COUNT(*) FROM m_bom_line l "
-                    + "JOIN m_bom b ON l.bom_id = b.bom_id "
+                    + "JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID "
                     + "WHERE " + IS_LEAF
                     + " AND l.allocated_width_mm > 0 AND b.aabb_width_mm > 0");
             int total = rs.next() ? rs.getInt(1) : 0;
@@ -447,7 +447,7 @@ public class BomValidator {
                     "SELECT b.bom_id, b.aabb_width_mm, "
                     + "COALESCE(SUM(l.allocated_width_mm), 0) as child_sum "
                     + "FROM m_bom b "
-                    + "LEFT JOIN m_bom_line l ON l.bom_id = b.bom_id AND " + IS_LEAF + " "
+                    + "LEFT JOIN m_bom_line l ON l.M_BOM_ID = b.M_BOM_ID AND " + IS_LEAF + " "
                     + "WHERE b.bom_type = 'SET' AND b.aabb_width_mm > 0 "
                     + "GROUP BY b.bom_id "
                     + "HAVING child_sum > 0");
@@ -682,7 +682,7 @@ public class BomValidator {
         try (Statement stmt = conn.createStatement()) {
             ResultSet rs = stmt.executeQuery(
                     "SELECT b.bom_id, b.m_product_category_id, " +
-                    "  (SELECT COUNT(*) FROM m_bom_line l WHERE l.bom_id = b.bom_id AND l." + IS_LEAF + ") AS leaf_lines, " +
+                    "  (SELECT COUNT(*) FROM m_bom_line l WHERE l.M_BOM_ID = b.M_BOM_ID AND l." + IS_LEAF + ") AS leaf_lines, " +
                     "  b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm " +
                     "FROM m_bom b WHERE b.bom_type = 'FLOOR' ORDER BY b.seq_no");
             while (rs.next()) {
@@ -765,7 +765,7 @@ public class BomValidator {
             rs = stmt.executeQuery(
                     "SELECT b.m_product_category_id, "
                     + "COUNT(*) AS lines, COALESCE(SUM(l.qty), COUNT(*)) AS instances "
-                    + "FROM m_bom_line l JOIN m_bom b ON l.bom_id = b.bom_id "
+                    + "FROM m_bom_line l JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID "
                     + "WHERE l." + IS_LEAF + " "
                     + "GROUP BY b.m_product_category_id ORDER BY instances DESC");
             boolean hasDisc = false;
@@ -819,7 +819,7 @@ public class BomValidator {
                        l.dx, l.dy, l.dz, l.qty, l.verb_ref,
                        b.m_product_category_id
                 FROM m_bom_line l
-                JOIN m_bom b ON l.bom_id = b.bom_id
+                JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID
                 WHERE l.component_type = 'LEAF' AND l.verb_ref IS NOT NULL
                 ORDER BY l.storey, l.child_product_id
                 """)) {

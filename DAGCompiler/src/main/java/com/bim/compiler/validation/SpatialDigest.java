@@ -378,15 +378,15 @@ public class SpatialDigest {
                    COALESCE(leaf.material_rgba, '') as material_rgba,
                    '' as geometry_hash
             FROM m_bom_line parent
-            JOIN m_bom sub ON sub.bom_id = parent.child_product_id
+            JOIN m_bom sub ON sub.Value = parent.child_product_id
                           AND sub.is_active = 1
-            JOIN m_bom_line leaf ON leaf.bom_id = sub.bom_id
+            JOIN m_bom_line leaf ON leaf.M_BOM_ID = sub.M_BOM_ID
                                 AND leaf.is_active = 1
-            LEFT JOIN m_bom leaf_sub ON leaf_sub.bom_id = leaf.child_product_id
+            LEFT JOIN m_bom leaf_sub ON leaf_sub.Value = leaf.child_product_id
                                      AND leaf_sub.is_active = 1
             WHERE parent.bom_id = ?
               AND parent.is_active = 1
-              AND leaf_sub.bom_id IS NULL
+              AND leaf_sub.M_BOM_ID IS NULL
             ORDER BY leaf.role,
                      round((parent.dx + leaf.dx - leaf.allocated_width_mm / 2000.0) * 1000),
                      round((parent.dy + leaf.dy - leaf.allocated_depth_mm / 2000.0) * 1000),

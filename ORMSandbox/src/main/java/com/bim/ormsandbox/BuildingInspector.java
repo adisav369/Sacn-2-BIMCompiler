@@ -230,9 +230,11 @@ public class BuildingInspector {
      * This is a global check (BOMs are shared across buildings).
      */
     private int preflightCheckA() throws SQLException {
-        String sql = "SELECT bc.bom_id, bc.bom_child_id, bc.child_name_pattern, bc.role"
+        // Implementing S92-tier2e — Witness: W-INT-PK-PHASE-E
+        // JOIN on M_BOM_ID INTEGER FK; SELECT Value for text display
+        String sql = "SELECT b.Value AS bom_id, bc.bom_child_id, bc.child_name_pattern, bc.role"
                    + " FROM m_bom_line bc"
-                   + " JOIN m_bom b ON bc.bom_id = b.bom_id"
+                   + " JOIN m_bom b ON bc.M_BOM_ID = b.M_BOM_ID"
                    + " WHERE bc.is_active=1 AND b.is_active=1"
                    + " AND bc.component_type != 'MAKE'"
                    + " AND (bc.child_name_pattern IS NULL OR trim(bc.child_name_pattern)='')";

@@ -137,7 +137,7 @@ public class WorkOutputDAO {
                                      double siteWidthMm, double siteDepthMm,
                                      double siteHeightMm) throws SQLException {
         // Check if master exists
-        String check = "SELECT C_Order_ID FROM C_Order WHERE C_Order_ID = ? AND Parent_Order_ID IS NULL";
+        String check = "SELECT Value FROM C_Order WHERE Value = ? AND Parent_Order_ID IS NULL";
         try (PreparedStatement ps = conn.prepareStatement(check)) {
             ps.setString(1, buildingId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -147,7 +147,7 @@ public class WorkOutputDAO {
 
         // Create master
         String insert = """
-                INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
+                INSERT INTO C_Order (Value, Parent_Order_ID, C_DocType_ID, Name,
                     DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
                 VALUES (?, NULL, ?, ?, 'IP', ?, ?, ?)
                 """;
@@ -190,7 +190,7 @@ public class WorkOutputDAO {
 
             // 2. Create sub-C_Order
             String subOrderId = buildingId + "_sub_" + System.currentTimeMillis();
-            String masterWidth = "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM C_Order WHERE C_Order_ID = ?";
+            String masterWidth = "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM C_Order WHERE Value = ?";
             double w = 0, d = 0, h = 0;
             try (PreparedStatement ps = conn.prepareStatement(masterWidth)) {
                 ps.setString(1, buildingId);
@@ -202,9 +202,9 @@ public class WorkOutputDAO {
             }
 
             String insertOrder = """
-                    INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
+                    INSERT INTO C_Order (Value, Parent_Order_ID, C_DocType_ID, Name,
                         DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                    VALUES (?, ?, 'GENERATIVE', ?, 'CO', ?, ?, ?)
+                    VALUES (?, (SELECT C_Order_ID FROM C_Order WHERE Value = ?), 'GENERATIVE', ?, 'CO', ?, ?, ?)
                     """;
             try (PreparedStatement ps = conn.prepareStatement(insertOrder)) {
                 ps.setString(1, subOrderId);
@@ -221,7 +221,7 @@ public class WorkOutputDAO {
                     INSERT INTO C_OrderLine (C_Order_ID, Line, family_ref, host_type,
                         m_product_category_id, dx, dy, dz,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES ((SELECT C_Order_ID FROM C_Order WHERE Value = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """;
             try (PreparedStatement ps = conn.prepareStatement(insertLine)) {
                 int seq = 10;
@@ -246,7 +246,7 @@ public class WorkOutputDAO {
 
             // 4. Deactivate previous active variant, create W_Variant pointer
             String deactivate = "UPDATE W_Variant SET is_active = 0 WHERE C_Order_ID IN "
-                    + "(SELECT C_Order_ID FROM C_Order WHERE Parent_Order_ID = ?)";
+                    + "(SELECT C_Order_ID FROM C_Order WHERE Parent_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?))";
             try (PreparedStatement ps = conn.prepareStatement(deactivate)) {
                 ps.setString(1, buildingId);
                 ps.executeUpdate();
@@ -255,7 +255,7 @@ public class WorkOutputDAO {
             String insertVariant = """
                     INSERT INTO W_Variant (C_Order_ID, label, is_active, orderline_count,
                         compliance_status)
-                    VALUES (?, ?, 1, ?, 'UNCHECKED')
+                    VALUES ((SELECT C_Order_ID FROM C_Order WHERE Value = ?), ?, 1, ?, 'UNCHECKED')
                     """;
             try (PreparedStatement ps = conn.prepareStatement(insertVariant)) {
                 ps.setString(1, subOrderId);
@@ -293,7 +293,7 @@ public class WorkOutputDAO {
                        dx, dy, dz,
                        aabb_width_mm, aabb_depth_mm, aabb_height_mm
                 FROM C_OrderLine
-                WHERE C_Order_ID = ? AND IsActive = 1
+                WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND IsActive = 1
                 ORDER BY Line
                 """;
 
@@ -341,11 +341,11 @@ public class WorkOutputDAO {
      */
     public List<VariantInfo> listVariants(String buildingId) throws SQLException {
         String sql = """
-                SELECT v.C_Order_ID, v.label, v.created, v.orderline_count,
+                SELECT o.Value AS C_Order_ID, v.label, v.created, v.orderline_count,
                        v.compliance_status
                 FROM W_Variant v
                 JOIN C_Order o ON v.C_Order_ID = o.C_Order_ID
-                WHERE o.Parent_Order_ID = ?
+                WHERE o.Parent_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?)
                 ORDER BY v.created DESC
                 """;
 
@@ -382,9 +382,9 @@ public class WorkOutputDAO {
             // No active sub-order — create one as an auto-save
             activeSubOrder = buildingId + "_auto_" + System.currentTimeMillis();
             String insertOrder = """
-                    INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
+                    INSERT INTO C_Order (Value, Parent_Order_ID, C_DocType_ID, Name,
                         DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                    VALUES (?, ?, 'GENERATIVE', ?, 'DR', 0, 0, 0)
+                    VALUES (?, (SELECT C_Order_ID FROM C_Order WHERE Value = ?), 'GENERATIVE', ?, 'DR', 0, 0, 0)
                     """;
             try (PreparedStatement ps = conn.prepareStatement(insertOrder)) {
                 ps.setString(1, activeSubOrder);
@@ -397,7 +397,7 @@ public class WorkOutputDAO {
 
         // Find next Line sequence
         int nextLine = 10;
-        String maxLine = "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = ?";
+        String maxLine = "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?)";
         try (PreparedStatement ps = conn.prepareStatement(maxLine)) {
             ps.setString(1, activeSubOrder);
             try (ResultSet rs = ps.executeQuery()) {
@@ -410,7 +410,7 @@ public class WorkOutputDAO {
                 INSERT INTO C_OrderLine (C_Order_ID, Line, family_ref, host_type,
                     m_product_category_id, dx, dy, dz,
                     aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES ((SELECT C_Order_ID FROM C_Order WHERE Value = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(insertLine,
                 Statement.RETURN_GENERATED_KEYS)) {
@@ -439,8 +439,8 @@ public class WorkOutputDAO {
      */
     private String findActiveSubOrder(String buildingId) throws SQLException {
         String sql = """
-                SELECT C_Order_ID FROM C_Order
-                WHERE Parent_Order_ID = ? AND DocStatus IN ('DR', 'IP')
+                SELECT Value FROM C_Order
+                WHERE Parent_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND DocStatus IN ('DR', 'IP')
                 ORDER BY created DESC LIMIT 1
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -489,7 +489,7 @@ public class WorkOutputDAO {
                        Qty, validation_status,
                        COALESCE(Parent_OrderLine_ID, 0) AS parent_id
                 FROM C_OrderLine
-                WHERE C_Order_ID = ? AND IsActive = 1
+                WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND IsActive = 1
                 ORDER BY Line
                 """;
 
@@ -620,8 +620,8 @@ public class WorkOutputDAO {
      */
     private String findLatestSubOrder(String buildingId) throws SQLException {
         String sql = """
-                SELECT C_Order_ID FROM C_Order
-                WHERE Parent_Order_ID = ?
+                SELECT Value FROM C_Order
+                WHERE Parent_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?)
                 ORDER BY created DESC LIMIT 1
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -651,9 +651,9 @@ public class WorkOutputDAO {
             throws SQLException {
         String orderId = "DROP_" + buildingProductId + "_" + System.currentTimeMillis();
         String sql = """
-                INSERT INTO C_Order (C_Order_ID, Parent_Order_ID, C_DocType_ID, Name,
+                INSERT INTO C_Order (Value, Parent_Order_ID, C_DocType_ID, Name,
                     DocStatus, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                VALUES (?, ?, 'BOM_DROP', ?, 'DR', ?, ?, ?)
+                VALUES (?, (SELECT C_Order_ID FROM C_Order WHERE Value = ?), 'BOM_DROP', ?, 'DR', ?, ?, ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
@@ -695,7 +695,7 @@ public class WorkOutputDAO {
                                   int qty) throws SQLException {
         // Find next Line sequence for this order
         int nextLine = 10;
-        String maxLine = "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = ?";
+        String maxLine = "SELECT COALESCE(MAX(Line), 0) FROM C_OrderLine WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?)";
         try (PreparedStatement ps = conn.prepareStatement(maxLine)) {
             ps.setString(1, orderId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -708,7 +708,7 @@ public class WorkOutputDAO {
                     family_ref, host_type, m_product_category_id, M_Product_ID,
                     dx, dy, dz,
                     aabb_width_mm, aabb_depth_mm, aabb_height_mm, Qty)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES ((SELECT C_Order_ID FROM C_Order WHERE Value = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql,
                 Statement.RETURN_GENERATED_KEYS)) {
@@ -744,8 +744,8 @@ public class WorkOutputDAO {
      */
     public int countOrderLines(String orderId, String hostType) throws SQLException {
         String sql = hostType != null
-                ? "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = ? AND host_type = ? AND IsActive = 1"
-                : "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = ? AND IsActive = 1";
+                ? "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND host_type = ? AND IsActive = 1"
+                : "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND IsActive = 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
             if (hostType != null) ps.setString(2, hostType);
@@ -759,7 +759,7 @@ public class WorkOutputDAO {
      * Count C_OrderLine rows that have M_Product_ID set (iDempiere alignment check).
      */
     public int countOrderLinesWithProductId(String orderId) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = ? AND M_Product_ID IS NOT NULL";
+        String sql = "SELECT COUNT(*) FROM C_OrderLine WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND M_Product_ID IS NOT NULL";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -777,7 +777,7 @@ public class WorkOutputDAO {
      * // Implementing BIM_Designer.md §17.10.4 — Witness: W-PROMOTE-2
      */
     public String getMasterDocStatus(String buildingId) throws SQLException {
-        String sql = "SELECT DocStatus FROM C_Order WHERE C_Order_ID = ? AND Parent_Order_ID IS NULL";
+        String sql = "SELECT DocStatus FROM C_Order WHERE Value = ? AND Parent_Order_ID IS NULL";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, buildingId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -794,7 +794,7 @@ public class WorkOutputDAO {
      */
     public boolean setMasterDocStatus(String buildingId, String newStatus) throws SQLException {
         String sql = "UPDATE C_Order SET DocStatus = ?, updated = datetime('now') "
-                + "WHERE C_Order_ID = ? AND Parent_Order_ID IS NULL";
+                + "WHERE Value = ? AND Parent_Order_ID IS NULL";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newStatus);
             ps.setString(2, buildingId);
@@ -1094,7 +1094,7 @@ public class WorkOutputDAO {
         String sql = """
                 SELECT COUNT(*) FROM W_Variant v
                 JOIN C_Order o ON v.C_Order_ID = o.C_Order_ID
-                WHERE o.Parent_Order_ID = ?
+                WHERE o.Parent_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?)
                 """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, buildingId);
@@ -1137,8 +1137,9 @@ public class WorkOutputDAO {
                 created               TEXT NOT NULL DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS C_Order (
-                C_Order_ID            TEXT PRIMARY KEY,
-                Parent_Order_ID       TEXT REFERENCES C_Order(C_Order_ID),
+                C_Order_ID            INTEGER PRIMARY KEY AUTOINCREMENT,
+                Value                 TEXT,
+                Parent_Order_ID       INTEGER REFERENCES C_Order(C_Order_ID),
                 C_DocType_ID          TEXT NOT NULL,
                 Name                  TEXT NOT NULL,
                 Description           TEXT,
@@ -1153,7 +1154,7 @@ public class WorkOutputDAO {
             );
             CREATE TABLE IF NOT EXISTS C_OrderLine (
                 C_OrderLine_ID        INTEGER PRIMARY KEY AUTOINCREMENT,
-                C_Order_ID            TEXT NOT NULL REFERENCES C_Order(C_Order_ID),
+                C_Order_ID            INTEGER NOT NULL REFERENCES C_Order(C_Order_ID),
                 Parent_OrderLine_ID   INTEGER REFERENCES C_OrderLine(C_OrderLine_ID),
                 Line                  INTEGER NOT NULL DEFAULT 10,
                 family_ref            TEXT NOT NULL,
@@ -1181,7 +1182,7 @@ public class WorkOutputDAO {
             CREATE INDEX IF NOT EXISTS idx_orderline_locator ON C_OrderLine(locator_ref);
             CREATE TABLE IF NOT EXISTS W_Variant (
                 W_Variant_ID          INTEGER PRIMARY KEY AUTOINCREMENT,
-                C_Order_ID            TEXT NOT NULL REFERENCES C_Order(C_Order_ID),
+                C_Order_ID            INTEGER NOT NULL REFERENCES C_Order(C_Order_ID),
                 label                 TEXT NOT NULL,
                 description           TEXT,
                 is_active             INTEGER NOT NULL DEFAULT 0,

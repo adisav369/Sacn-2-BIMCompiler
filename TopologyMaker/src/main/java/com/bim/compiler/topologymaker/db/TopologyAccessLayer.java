@@ -93,8 +93,9 @@ public final class TopologyAccessLayer implements AutoCloseable {
 
     /** Check whether a given BOM ID already exists in m_bom (BOM.db). */
     public boolean bomExists(String bomId) {
+        // Phase E: text lookup via Value column (INTEGER PK migration)
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT 1 FROM m_bom WHERE bom_id = ?")) {
+                "SELECT 1 FROM m_bom WHERE Value = ?")) {
             stmt.setString(1, bomId);
             try (ResultSet rs = stmt.executeQuery()) {
                 return rs.next();

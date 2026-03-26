@@ -104,7 +104,8 @@ public class InheritanceResolver {
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private static String getRefOrderId(Connection conn, String orderId) throws SQLException {
-        String sql = "SELECT Ref_Order_ID FROM C_Order WHERE C_Order_ID = ?";
+        // Tier 2: C_Order_ID is INTEGER PK. Value holds text key.
+        String sql = "SELECT Ref_Order_ID FROM C_Order WHERE Value = ?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
             try (ResultSet rs = ps.executeQuery()) {

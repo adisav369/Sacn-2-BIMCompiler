@@ -60,7 +60,7 @@ public class SustainabilityDAO {
                 SELECT bl.bom_id, bl.child_product_id, bl.qty,
                        b.m_product_category_id
                 FROM m_bom_line bl
-                JOIN m_bom b ON bl.bom_id = b.bom_id
+                JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
                 WHERE bl.child_product_id IS NOT NULL
                   AND bl.is_active = 1
                 ORDER BY bl.bom_child_id
@@ -112,16 +112,16 @@ public class SustainabilityDAO {
      */
     public CarbonLine elementCarbon(Connection compLibConn, String productId) throws SQLException {
         String sql = """
-                SELECT product_id, product_type, carbon_kg_per_unit,
+                SELECT Value, product_type, carbon_kg_per_unit,
                        recyclability, eol_strategy
-                FROM M_Product WHERE product_id = ?
+                FROM M_Product WHERE Value = ?
                 """;
         try (PreparedStatement ps = compLibConn.prepareStatement(sql)) {
             ps.setString(1, productId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return new CarbonLine(
-                            productId, rs.getString("product_id"),
+                            productId, rs.getString("Value"),
                             rs.getString("product_type"),
                             1, rs.getDouble("carbon_kg_per_unit"),
                             rs.getDouble("carbon_kg_per_unit"),
@@ -186,7 +186,7 @@ public class SustainabilityDAO {
     private Map<String, ProductCarbon> loadCarbonMap(Connection compLibConn) throws SQLException {
         Map<String, ProductCarbon> map = new LinkedHashMap<>();
         String sql = """
-                SELECT product_id, product_type, carbon_kg_per_unit,
+                SELECT Value, product_type, carbon_kg_per_unit,
                        recyclability, eol_strategy
                 FROM M_Product
                 WHERE carbon_kg_per_unit > 0 AND is_active = 1
@@ -194,7 +194,7 @@ public class SustainabilityDAO {
         try (PreparedStatement ps = compLibConn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                map.put(rs.getString("product_id"),
+                map.put(rs.getString("Value"),
                         new ProductCarbon(
                                 rs.getString("product_type"),
                                 rs.getDouble("carbon_kg_per_unit"),

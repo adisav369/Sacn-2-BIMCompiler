@@ -66,7 +66,7 @@ public class CostDAO {
         String sql = """
                 SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
-                JOIN m_bom b ON bl.bom_id = b.bom_id
+                JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
                 ORDER BY bl.bom_child_id
                 """;
@@ -186,7 +186,7 @@ public class CostDAO {
             throws SQLException {
         Map<String, ProductCost> map = new LinkedHashMap<>();
         String sql = """
-                SELECT product_id, unit_cost_rm, cost_uom, construction_phase,
+                SELECT Value, unit_cost_rm, cost_uom, construction_phase,
                        labor_resource, labor_rate_rm_per_day, labor_crew_size,
                        productivity_rate, equipment_rate_rm_per_day,
                        equipment_duration_factor
@@ -196,7 +196,7 @@ public class CostDAO {
         try (PreparedStatement ps = compLibConn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                map.put(rs.getString("product_id"),
+                map.put(rs.getString("Value"),
                         new ProductCost(
                                 rs.getDouble("unit_cost_rm"),
                                 rs.getString("cost_uom"),

@@ -96,8 +96,8 @@ public class MetadataValidator implements CompilerStage {
     private void checkBomChain(Connection conn, List<String> errors) throws SQLException {
         int bomD = queryInt(conn,
             "SELECT COUNT(*) FROM m_bom_line bc " +
-            "LEFT JOIN m_bom b ON bc.bom_id = b.bom_id " +
-            "WHERE b.bom_id IS NULL AND bc.is_active = 1");
+            "LEFT JOIN m_bom b ON bc.M_BOM_ID = b.M_BOM_ID " +
+            "WHERE b.M_BOM_ID IS NULL AND bc.is_active = 1");
         if (bomD > 0) errors.add("m_bom_line.bom_id: " + bomD + " dangling refs to m_bom");
 
         int paramD = queryInt(conn,
@@ -205,12 +205,12 @@ public class MetadataValidator implements CompilerStage {
         String sql = """
             SELECT DISTINCT bl.child_product_id
             FROM m_bom_line bl
-            JOIN m_bom b ON bl.bom_id = b.bom_id
+            JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
             WHERE bl.is_active = 1
               AND b.is_active = 1
               AND bl.component_type = 'BUY'
               AND b.doc_sub_type = ?
-              AND b.bom_id LIKE 'EB_%'
+              AND b.Value LIKE 'EB_%'
             """;
 
         List<String> missingImage = new ArrayList<>();

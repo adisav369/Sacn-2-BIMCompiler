@@ -149,9 +149,9 @@ public class CalibrationDAO {
      */
     public Map<String, double[]> floorAABB(Connection bomConn) throws SQLException {
         String sql = """
-                SELECT bom_id, aabb_width_mm, aabb_depth_mm, aabb_height_mm
+                SELECT Value AS bom_id, aabb_width_mm, aabb_depth_mm, aabb_height_mm
                 FROM m_bom WHERE bom_type = 'FLOOR'
-                ORDER BY bom_id
+                ORDER BY Value
                 """;
         Map<String, double[]> result = new LinkedHashMap<>();
         try (Statement st = bomConn.createStatement();
@@ -172,13 +172,13 @@ public class CalibrationDAO {
      */
     public Map<String, Integer> bomDisciplineCounts(Connection bomConn) throws SQLException {
         String sql = """
-                SELECT mb.bom_id, mb.m_product_category_id, SUM(ml.qty) as total_qty
+                SELECT mb.Value AS bom_id, mb.m_product_category_id, SUM(ml.qty) as total_qty
                 FROM m_bom_line ml
-                JOIN m_bom mb ON ml.bom_id = mb.bom_id
+                JOIN m_bom mb ON ml.M_BOM_ID = mb.M_BOM_ID
                 WHERE mb.m_product_category_id IN ('FP','ELEC','CW','SP','ACMV')
                   AND mb.bom_type = 'SET'
-                GROUP BY mb.bom_id, mb.m_product_category_id
-                ORDER BY mb.bom_id
+                GROUP BY mb.Value, mb.m_product_category_id
+                ORDER BY mb.Value
                 """;
         Map<String, Integer> result = new LinkedHashMap<>();
         try (Statement st = bomConn.createStatement();

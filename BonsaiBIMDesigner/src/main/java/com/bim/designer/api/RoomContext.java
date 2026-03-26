@@ -19,7 +19,7 @@ public record RoomContext(int orderLineId, String productCategory, double areaSq
         String sql = "SELECT C_OrderLine_ID, m_product_category_id, "
                 + "COALESCE(aabb_width_mm, 0) * COALESCE(aabb_depth_mm, 0) / 1e6 AS area_sqm "
                 + "FROM C_OrderLine "
-                + "WHERE C_Order_ID = ? AND host_type = 'ROOM' "
+                + "WHERE C_Order_ID = (SELECT C_Order_ID FROM C_Order WHERE Value = ?) AND host_type = 'ROOM' "
                 + "ORDER BY Line";
         List<RoomContext> rooms = new ArrayList<>();
         try (PreparedStatement ps = woConn.prepareStatement(sql)) {

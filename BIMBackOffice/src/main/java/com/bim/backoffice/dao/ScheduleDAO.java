@@ -69,7 +69,7 @@ public class ScheduleDAO {
         String sql = """
                 SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
                 FROM m_bom_line bl
-                JOIN m_bom b ON bl.bom_id = b.bom_id
+                JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
                 ORDER BY bl.bom_child_id
                 """;
@@ -198,7 +198,7 @@ public class ScheduleDAO {
             throws SQLException {
         Map<String, ProductSchedule> map = new LinkedHashMap<>();
         String sql = """
-                SELECT product_id, construction_phase, construction_sequence,
+                SELECT Value, construction_phase, construction_sequence,
                        labor_resource, labor_crew_size, productivity_rate, cost_uom
                 FROM M_Product
                 WHERE is_active = 1 AND construction_phase IS NOT NULL
@@ -206,7 +206,7 @@ public class ScheduleDAO {
         try (PreparedStatement ps = compLibConn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                map.put(rs.getString("product_id"),
+                map.put(rs.getString("Value"),
                         new ProductSchedule(
                                 rs.getString("construction_phase"),
                                 rs.getInt("construction_sequence"),
