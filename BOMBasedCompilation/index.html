@@ -4140,10 +4140,6 @@ divisions. See <a href="../MANIFESTO/">MANIFESTO.md</a> §AD_Org for the discipl
 <p>The BOM walker does not know what ARC or FP means. It just recurses (§2.2.1).
 The <code>AD_Org_ID</code> on <code>m_bom</code> and <code>C_OrderLine</code> is the hook that AD_Val_Rule uses
 to fire the right validation rules (see <a href="../DocValidate/">DocValidate.md</a>).</p>
-<p><strong>Legacy debt:</strong> DSL-generative path contains hardcoded category checks
-(<code>CompilationPipeline:506 IN (...)</code>, <code>categoryToRoomType()</code>, <code>ComposeBuildingVerb
-RESIDENTIAL→RE</code> — see <code>TestArchitecture.md</code> H3/H4). BOM-based pipeline is clean.
-Target: migrate DSL path to data-driven lookups when generative compilation is prioritised.</p>
 <h3 id="12-discipline-routing-three-states-per-discipline">1.2 Discipline Routing — Three States per Discipline<a class="headerlink" href="#12-discipline-routing-three-states-per-discipline" title="Permanent link">&para;</a></h3>
 <p>Each discipline in YAML has exactly three possible states:</p>
 <table>
@@ -4449,7 +4445,6 @@ VerbDetector mines 4 verb patterns from extraction centroids:</p>
 </table>
 <p>Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
 ±20% of the average step. Non-uniform groups fall through to CLUSTER or flat writes.
-<em>(SPRAY remains in VerbDetector as a legacy detection path; superseded by CLUSTER.)</em>
 See <a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a> §19 for verb taxonomy,
 data flow, and fidelity details.</p>
 <p><strong>Pipeline phases (self-contained):</strong>

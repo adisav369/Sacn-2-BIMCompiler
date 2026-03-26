@@ -3599,19 +3599,9 @@ See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code><
 <td>Fixed (abstract root — used for both buildings and infrastructure facilities)</td>
 </tr>
 <tr>
-<td>doc_base_type</td>
-<td>RE / CO / IN</td>
-<td>Legacy — superseded by m_product_category_id</td>
-</tr>
-<tr>
-<td>doc_sub_type</td>
-<td>SH / DX / BR / RD</td>
-<td>Legacy — superseded by building prefix</td>
-</tr>
-<tr>
 <td>m_product_category_id</td>
 <td>RE / CO / IN</td>
-<td>Top-level M_Product_Category — classification lives here</td>
+<td>Top-level M_Product_Category — classification axis</td>
 </tr>
 <tr>
 <td>origin_x/y/z</td>
@@ -3738,12 +3728,12 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>DocBaseType</td>
 <td>TEXT</td>
-<td>Legacy — superseded by M_Product_Category</td>
+<td>Domain classification (RE/CO/IN/ST)</td>
 </tr>
 <tr>
 <td>DocSubType</td>
 <td>TEXT</td>
-<td>Legacy — superseded by building prefix</td>
+<td>Building prefix (SH/DX/TE)</td>
 </tr>
 <tr>
 <td>ProjectName</td>
@@ -3821,12 +3811,12 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>doc_base_type</td>
 <td>TEXT</td>
-<td><strong>Deprecated</strong> — RE/CO/IN. Redundant with m_product_category_id (see §7)</td>
+<td>Domain classification (RE/CO/IN) — see m_product_category_id</td>
 </tr>
 <tr>
 <td>doc_sub_type</td>
 <td>TEXT</td>
-<td>Legacy — superseded by bom_id prefix</td>
+<td>Building prefix (SH/DX/TE) — derived from bom_id</td>
 </tr>
 <tr>
 <td>origin_x, origin_y, origin_z</td>
