@@ -9683,57 +9683,23 @@ Focused section vivid, rest grey (existing <code>focus_section()</code> behaviou
 <strong>Latency contract:</strong> Bboxes appear within 1 frame (16ms) of server response (UX-F-03).</p>
 <p>This phase is unchanged from current implementation.</p>
 <h3 id="264-phase-2-edit-existing-geometry-wf-r2">26.4 Phase 2 — Edit Existing Geometry (WF-R2)<a class="headerlink" href="#264-phase-2-edit-existing-geometry-wf-r2" title="Permanent link">&para;</a></h3>
-<p>Full geometry exists in scene. User re-enters Design Mode to make changes.</p>
-<p><strong>Entry:</strong> User toggles Design Mode (S0 → S1).
-<strong>On toggle Design Mode:</strong>
-1. Iterate all objects in Designer collections
-2. Store original <code>display_type</code> per object (for restore on exit)
-3. Set all objects to <code>display_type = 'BOUNDS'</code> (native Blender per-object bounding box, grey)
-4. No global X-ray — per-object BOUNDS gives spatial context without uniform dimming</p>
-<p><strong>On select/focus (S1 → S2):</strong>
-1. Set focused object to <code>display_type = 'SOLID'</code> (full geometry visible for this item)
-2. Set <code>obj.show_in_front = True</code> (draws on top, no depth-sorting confusion)
-3. Draw vivid bbox overlay via <code>design_bbox.py</code> around the focused item only
-4. All other objects remain <code>display_type = 'BOUNDS'</code> (grey bboxes)</p>
-<p><strong>On deselect / change focus:</strong>
-1. Previous focused object → back to <code>display_type = 'BOUNDS'</code>
-2. Previous <code>show_in_front = False</code>
-3. New focused object gets SOLID + show_in_front + vivid bbox</p>
-<p><strong>On exit Design Mode (→ S0):</strong>
-1. Restore all objects to original <code>display_type</code> (SOLID/TEXTURED)
-2. Clear all <code>show_in_front</code> flags
-3. Disable bbox overlay (<code>design_bbox.disable()</code>)</p>
-<p><strong>Key advantage over global X-ray:</strong> Selected item is full-opacity SOLID with vivid
-bbox cage. Unselected items are native Blender BOUNDS (grey boxes with spatial
-proportions). The contrast ratio is high — user instantly knows what they're editing.</p>
+<p>Full geometry exists. User re-enters Design Mode.</p>
+<p><strong>On toggle Design Mode:</strong> Store original <code>display_type</code> per object, set all to
+<code>display_type = 'BOUNDS'</code> (grey). No global X-ray.</p>
+<p><strong>On focus:</strong> Focused object → <code>display_type = 'SOLID'</code> + <code>show_in_front = True</code>
++ vivid bbox overlay. All others stay BOUNDS. On change focus: swap SOLID/BOUNDS.</p>
+<p><strong>On exit:</strong> Restore all to original <code>display_type</code>, clear <code>show_in_front</code>, disable
+bbox overlay. Selected item is full-opacity SOLID with bbox cage; unselected are
+BOUNDS — high contrast ratio.</p>
 <h3 id="265-phase-2-add-new-wf-r3">26.5 Phase 2 + Add New (WF-R3)<a class="headerlink" href="#265-phase-2-add-new-wf-r3" title="Permanent link">&para;</a></h3>
-<p>User is in Design Mode with existing geometry (Phase 2) and adds a new item.</p>
-<p><strong>On Add Room / Add Storey:</strong>
-1. New item appears as GPU overlay bbox (Phase 1 style) — vivid category colour
-2. Existing committed objects remain <code>display_type = 'BOUNDS'</code>
-3. New item is auto-focused (vivid bbox, no SOLID geometry — it has none yet)
-4. On CO → new item compiles to 3D → joins the BOUNDS pool</p>
-<p><strong>Visual distinction:</strong> New items are GPU overlay wireframe (thin lines, category
-colour). Existing items are native Blender BOUNDS (thicker, grey, filled faces on
-some viewport modes). The user can tell draft from committed at a glance.</p>
+<p>Add Room/Storey in Phase 2: new item appears as GPU overlay bbox (vivid category
+colour), existing stay BOUNDS. New item auto-focused. On CO → compiles to 3D →
+joins BOUNDS pool. Draft (thin wireframe) visually distinct from committed (BOUNDS).</p>
 <h3 id="266-double-click-inspection-peek-mode">26.6 Double-Click Inspection (Peek Mode)<a class="headerlink" href="#266-double-click-inspection-peek-mode" title="Permanent link">&para;</a></h3>
-<p><strong>Trigger:</strong> Double-click-and-hold on a focused bbox (Phase 1 or Phase 2).
-<strong>Visual:</strong>
-1. Properties popup appears near the bbox showing item data from DB/BOM:
-   - Product ID, Name, Category
-   - Dimensions (W × D × H mm)
-   - Material, Construction System
-   - Compliance status (PASS/FAIL per rule)
-   - BOM line reference
-2. Orientation markers drawn on the bbox — three axis arrows at bbox centre:
-   - <strong>Red</strong> arrow → Right (+X)
-   - <strong>Green</strong> arrow → Front (+Y)
-   - <strong>Blue</strong> arrow → Up (+Z)
-   - Arrow length = 30% of bbox extent in that axis
-3. GPU overlay only — no Blender objects created</p>
-<p><strong>On release:</strong> Popup and markers dismiss. Returns to normal focus state.
-<strong>Latency:</strong> Properties read from scene <code>_design_bboxes</code> JSON (already loaded).
-Orientation markers are 6 vertices (3 line segments). Total cost: zero DB queries, &lt;1ms render.</p>
+<p>Double-click-and-hold on a focused bbox shows a properties popup (Product ID, Name,
+Category, Dimensions, Material, Compliance status, BOM ref) plus RGB orientation
+markers (Red=+X, Green=+Y, Blue=+Z, 30% of bbox extent). GPU overlay only.
+Dismisses on release. Zero DB queries, &lt;1ms render.</p>
 <h3 id="267-state-machine-update">26.7 State Machine Update<a class="headerlink" href="#267-state-machine-update" title="Permanent link">&para;</a></h3>
 <p>The WF-BB protocol adds sub-states to the existing state machine (§6):</p>
 <div class="highlight"><pre><span></span><code>S0 (REAL) ──[toggle Design]──→ S1a or S1b
@@ -10589,46 +10555,9 @@ navigate tree → swap what you want. Template-based builds eliminate the constr
 completeness problem (GENERATIVE_HOUSE_SRS.md §8) — roof, foundation, structural
 frame are already proven. The user only adds/swaps items.</p>
 <h3 id="283-architectural-boundary-designer-vs-engine">28.3 Architectural Boundary — Designer vs Engine<a class="headerlink" href="#283-architectural-boundary-designer-vs-engine" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────┐
-│  BIM Designer (GUI layer)                           │
-│                                                     │
-│  1. Render tree (BOM Outliner)                      │
-│  2. Accept user edits (swap/add/remove/ASI)         │
-│  3. Write changes to C_OrderLine in output.db        │
-│  4. Call engine: bomDrop() / compile()              │
-│                                                     │
-│  NEVER: walks BOMs, resolves products, computes     │
-│         geometry, reads m_bom_line, runs verbs      │
-└──────────────────────┬──────────────────────────────┘
-                       │  save → call engine
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│  BOM Drop Engine (backend — DAGCompiler / pipeline) │
-│                                                     │
-│  bomDrop():  read C_OrderLine → resolve BUILDING    │
-│              product → walk m_bom/m_bom_line →      │
-│              return exploded tree for GUI            │
-│                                                     │
-│  compile():  same 9-stage pipeline as Rosetta Stones│
-│              reads the saved C_OrderLine state       │
-│              explodes → places → output.db          │
-│                                                     │
-│  Owns: BOMWalker, PlacementCollector, VerbRegistry, │
-│        MeshBinder, BIMEyes, gate checks             │
-└─────────────────────────────────────────────────────┘
-</code></pre></div>
-<p><strong>The pattern is identical to compilation today:</strong></p>
-<ol>
-<li>GUI makes changes → writes to output.db (C_OrderLine mutations)</li>
-<li>GUI calls engine (bomDrop or compile)</li>
-<li>Engine reads the saved state, does all the heavy lifting, returns result</li>
-<li>GUI renders the result</li>
-</ol>
-<p>The Designer never interprets BOM structure. It writes OrderLine rows and calls
-the engine. The engine reads those rows, resolves them against the BOM/product
-databases, and returns either a tree (for navigation) or output.db (for delivery).
-This is the same separation as the existing <code>compile()</code> path — <code>DesignerAPIImpl</code>
-delegates to <code>CompilationPipeline</code>, which owns all BOM walking and placement logic.</p>
+<p><strong>Designer (GUI):</strong> Render tree, accept edits, write C_OrderLine to output.db, call <code>bomDrop()</code>/<code>compile()</code>. NEVER walks BOMs, resolves products, or computes geometry.</p>
+<p><strong>Engine (backend):</strong> <code>bomDrop()</code> explodes BOM tree for GUI; <code>compile()</code> runs 9-stage pipeline. Owns BOMWalker, PlacementCollector, VerbRegistry, MeshBinder, BIMEyes, gate checks.</p>
+<p>Same pattern as existing <code>compile()</code> — <code>DesignerAPIImpl</code> delegates to <code>CompilationPipeline</code>.</p>
 <h3 id="284-api-mapping-what-the-designer-calls">28.4 API Mapping — What the Designer Calls<a class="headerlink" href="#284-api-mapping-what-the-designer-calls" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -11909,72 +11838,20 @@ tags per iDempiere standard — the BOM tree (M_BOM → M_BOM_Line) expresses hi
 - For each TE product not in library: INSERT M_Product + assign M_Product_Category_ID
 - Geometry: copy from TE extraction (component_definitions + component_geometries)</p>
 <h4 id="3074-fp-trial-first-mep-discipline-via-docevent">30.7.4 FP Trial — First MEP Discipline via DocEvent<a class="headerlink" href="#3074-fp-trial-first-mep-discipline-via-docevent" title="Permanent link">&para;</a></h4>
-<p><strong>Goal:</strong> Prove the DocEvent placement chain for FP (Fire Protection) end-to-end.
-The BOM does NOT record every pipe length — it records abstract ingredients
-(SPRINKLER, RISER). The engine infers quantity from room area, picks the product,
-and the compiler determines actual dimensions from the containing space.</p>
-<p><strong>The 5-table chain</strong> (DISC_VALIDATE_SRS.md §9.1):</p>
-<div class="highlight"><pre><span></span><code>User enables FP for DemoHouse
-  → ad_space_type_mep_bom: BEDROOM needs 0.07 sprinklers/m²
-  → ad_element_mep: SPRINKLER → IfcFireSuppressionTerminal, host=CEILING
-  → ad_fp_coverage: LIGHT hazard → max_spacing=4.6m, coverage=18.6m²
-  → M_Product: sprinkler_pendant → width, depth, height (from library)
-  → component_definitions: geometry_hash → LOD mesh
-</code></pre></div>
-<p><strong>What TE extracted:</strong> 22 FP products at many different lengths/placements.
-<strong>What the BOM records:</strong> Abstract ingredients (SPRINKLER, RISER, LATERAL).
-The BOM is not a catalog of every length — it's a recipe of common elements.
-The compiler computes spatial data (dx/dy/dz, actual length) from the
-containing space at compile time.</p>
-<p><strong>Steps:</strong>
-1. Seed <code>ad_space_type_mep_bom</code> rows for DemoHouse room types (from TE mining)
-2. Seed <code>ad_element_mep</code> rows for FP elements (SPRINKLER, ALARM)
-3. Seed <code>ad_fp_coverage</code> for LIGHT hazard class
-4. Onboard 2-3 FP products into component_library.db M_Product (sprinkler + alarm)
-   with M_Product_Category = FP_HEAD / FP_ALARM
-5. Copy geometry from TE extraction (component_definitions + component_geometries)
-6. Rosetta Stone pipeline (<code>classify_dm.yaml</code>): enable FP discipline → DocEvent places sprinklers per room
-7. CompleteIt → verify IfcFireSuppressionTerminal appears in output.db</p>
-<p><strong>User swap scenario:</strong> After DocEvent places a pendant sprinkler, user can
-swap it for an upright sprinkler — same category (FP_HEAD), different product.
-The category constrains the swap list.</p>
+<p>Prove the 5-table chain (DISC_VALIDATE_SRS.md §9.1): <code>ad_space_type_mep_bom</code> →
+<code>ad_element_mep</code> → <code>ad_fp_coverage</code> → <code>M_Product</code> → <code>component_definitions</code>.
+BOM records abstract ingredients (SPRINKLER, RISER); compiler infers quantity from
+room area and computes dx/dy/dz from containing space at compile time.</p>
 <p><strong>Witness:</strong> W-FP-TRIAL-1: DocEvent FP placement via 5-table chain.</p>
-<p><strong>Success criteria:</strong> DemoHouse compiles with FP elements placed by rules,
-not hardcoded. Each room gets sprinklers per ad_space_type_mep_bom schedule.</p>
-<p><strong>S63 findings (Task 4A):</strong>
-- DM compilation needs <code>FP_PIPE_ASSEMBLY</code> BOM + <code>m_attribute</code> seed (spacing, z_offset, diameter) — BuildingWriter calls <code>BOMRuleAD.loadPlacementParams("FP_PIPE_ASSEMBLY","MAIN")</code> when FireProtectionResolver detects sprinklers. Without it the compile fails. <em>(S67: DemoHouseCompileTest removed; DM compiles via standard Rosetta Stone pipeline.)</em>
-- FP elements currently resolve as discipline='MEP' (IFC class fallback: IfcFireSuppressionTerminal → MEP_TERMINAL → MEP). Finer FP discipline requires either: (a) FP-specific SET BOMs with <code>bom_category='FP'</code>, or (b) the addDiscipline API setting <code>C_OrderLine.Discipline='FPR'</code> explicitly — which is the Task 4B DocEvent path above.
-- <code>m_bom.bom_type</code> CHECK constraint is <code>('BUILDING','FLOOR','ROOM','SET','ITEM')</code> — no 'ASSEMBLY'. FP pipe assemblies should use 'SET'.</p>
+<p><strong>S63 findings:</strong> DM needs <code>FP_PIPE_ASSEMBLY</code> BOM + <code>m_attribute</code> seed. FP elements
+resolve as discipline='MEP' (fallback); finer FP discipline needs FP-specific SET
+BOMs or <code>C_OrderLine.Discipline='FPR'</code>. <code>m_bom.bom_type</code> has no 'ASSEMBLY' — use 'SET'.</p>
 <h4 id="3075-two-browsing-modes-arc-vs-mep">30.7.5 Two Browsing Modes — ARC vs MEP<a class="headerlink" href="#3075-two-browsing-modes-arc-vs-mep" title="Permanent link">&para;</a></h4>
-<p><strong>ARC (manual selection):</strong> User browses the category tree to pick products.</p>
-<div class="highlight"><pre><span></span><code>User clicks &quot;Swap Product&quot; on a wall OrderLine
-  → Category picker: [ARC_WALL ▼]
-    → Sub-category: [ARC_WALL_EXT ▼]  [ARC_WALL_INT ▼]
-    → Product list: Wall-Ext_102Bwk-75Ins-100LBlk, ...
-    → User picks product → UPDATE C_OrderLine.family_ref
-</code></pre></div>
-<p>The <code>browseItems()</code> API already exists (<code>DesignerAPIImpl.java</code>). It needs a
-<code>category</code> filter parameter to query <code>M_Product WHERE M_Product_Category_ID = ?</code>.</p>
-<p><strong>MEP (rule-driven placement via DocEvent):</strong> User toggles a discipline ON.
-The system infers what goes where from validation rules + room geometry.</p>
-<div class="highlight"><pre><span></span><code>User enables: [✓ FP] for this building
-  → DocEvent engine (DocAction_SRS §1.3):
-    1. AD_Val_Rule WHERE discipline=&#39;FP&#39; AND jurisdiction=order.jurisdiction
-       → spacing rules (NFPA 13 / UBBL), coverage, occupancy class
-    2. ad_space_type_mep_bom WHERE space_type=room.type AND discipline=&#39;FP&#39;
-       → product_id (which sprinkler for this room type)
-    3. Room AABB from ad_room_boundary
-       → pitch = min(max_spacing, dim / ceil(dim / typical_spacing))
-       → grid positions computed per room
-    4. INSERT C_OrderLine per computed position
-       → family_ref from ad_space_type_mep_bom (not user-selected)
-       → dx/dy/dz from computed grid
-    5. Tier 1 validate each placement against same rules
-       → INSERT W_Validation_Result per C_OrderLine
-</code></pre></div>
-<p><strong>No manual product picking for MEP.</strong> The user says "this building needs FP."
-The rules + containing space determine the product, quantity, and position.
-This is the DocEvent path — validation rules ARE the placement engine.</p>
+<p><strong>ARC (manual):</strong> User browses category tree → picks product → <code>UPDATE C_OrderLine.family_ref</code>. Uses existing <code>browseItems()</code> API with category filter.</p>
+<p><strong>MEP (rule-driven):</strong> User toggles discipline ON → DocEvent engine queries
+<code>AD_Val_Rule</code> + <code>ad_space_type_mep_bom</code> + room AABB → computes grid positions →
+inserts C_OrderLines automatically. No manual product picking for MEP — rules ARE
+the placement engine.</p>
 <hr />
 <p><em>References:
 <a href="../BIM_Designer/">BIM_Designer.md</a> (architecture, §17 Design Mode, §18 UI Strategy) |

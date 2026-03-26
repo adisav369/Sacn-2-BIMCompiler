@@ -5410,8 +5410,8 @@ test. If it touches a PENDING row, write the spec first.</p>
 - If BROKEN unexpectedly: <code>bash scripts/verify_test_seal.sh --detail</code></p>
 <hr />
 <p><strong>Note:</strong> This doc uses re-seal counter (v40 = 40th re-seal). <code>verify_test_seal.sh</code> uses format version (v6). These are different numbering systems.</p>
-<p><strong>Sealed:</strong> 2026-03-26 (v40: S92 Tier 2 Phase D _int sidecar drop)
-<strong>Super-hash:</strong> <code>6bc14dd6230c2db875e4a1e471e74d97d844abb4d5be07805f254a3e9f4374db</code></p>
+<p><strong>Sealed:</strong> 2026-03-26 (v41: S93 Tier 2 Phase E INTEGER PK query migration)
+<strong>Super-hash:</strong> <code>21ac21c4f1fb0e0a889442e7821b369afbbb37a0d438dd0276accd342a9ddbbc</code></p>
 <p><strong>S51-AUDIT pending re-seal:</strong> The following hardening changes require a re-seal once applied:
 - <code>assumeTrue</code> → <code>fail()</code> in DB-dependent tests (CompileBridge, MEPBOMQuery, RotationContract)
 - <code>assertTrue(true)</code> tautologies removed (F5Integration, Calibration)</p>

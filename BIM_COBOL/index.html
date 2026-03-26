@@ -7887,35 +7887,7 @@ Both stay in sync — the text is the COBOL source; the params are the form fiel
 7. Cross-discipline clearance checked via R-tree spatial index</p>
 <p>This replaces <code>placeMEPSprinklers()</code>, <code>placeHVAC()</code>, <code>placeElectrical()</code>, <code>mepBomGapFill()</code> with a data-driven, declarative, provable verb pipeline.</p>
 <h4 id="c_orderline-separation-what-moves-to-verb-tables-decided-2026-03-04">C_OrderLine Separation — What Moves to Verb Tables (DECIDED 2026-03-04)<a class="headerlink" href="#c_orderline-separation-what-moves-to-verb-tables-decided-2026-03-04" title="Permanent link">&para;</a></h4>
-<p><strong>Architectural invariant:</strong> c_orderline is WHAT-only. No placement columns.
-The Java PO/DAO class has no position setters — the compiler enforces this structurally.
-Schema enforces shape. Interface enforces access. Javadoc enforces intent.</p>
-<p>The W_Verb_Node model completes the <strong>split</strong> of the overloaded c_orderline table.
-Placement moves to <code>W_Verb_Node</code> + <code>W_Verb_NodeProduct</code> (HOW).
-Spatial containers stay in <code>co_empty_space_line</code> (WHERE).</p>
-<p><strong>What stays in c_orderline (order topics):</strong>
-- building_type, storey, element_ref, ifc_class, discipline, family_ref, is_active</p>
-<p><strong>What migrates to verb params (production detail):</strong>
-- host_type, host_ref, position_rule, position_value ×3, height_mm, orientation
-- These become structured <code>W_Verb_NodeProduct</code> rows (ORIGIN_X, GRID_NX, SPACING_MM, etc.)</p>
-<p><strong>What's already in M_Product (material attributes):</strong>
-- width_mm, height_extent_mm, depth_mm, material_name, material_rgba, geometry_hash</p>
-<p><strong>Spatial slots (compiler-internal: co_empty_space_line) — WHERE = M_BOM_Line dx/dy/dz:</strong>
-- Spatial slot ≈ iDempiere <code>S_Resource</code> (workstation with capacity), but derived from BOM
-- Verb line targets slot via spatial data from M_BOM_Line tack offsets
-- Multiple verbs target the same spatial slot (TILE + ARRAY + ROUTE on one slab)
-- Slot capacity (capacity_mm, filled_mm, remaining_mm) tracks verb consumption
-- Parallels iDempiere S_Resource (warehouse slot) — see <code>DocAction_SRS.md</code> §1</p>
-<p><strong>BomCategory unchanged:</strong> Still drives template composition (BomCategoryLine.Sequence
-= priority). Verbs attach downstream at the ESLine level, not at category level.</p>
-<p><strong>RelationalResolver → VerbStage:</strong> The deprecated resolver reads c_orderline's
-placement columns. VerbStage reads <code>W_Verb_Node</code> by seq_no instead.
-The deprecation path (NORM-3a Phase D→E) aligns with this migration.</p>
-<p><strong>Migration phases</strong> (non-breaking, coexistence):
-1. <strong>Phase 1 (current)</strong> — Verb tables added to {PREFIX}_BOM.db. c_orderline PO class stripped of placement setters. New/generative buildings use verbs. Legacy keeps flat data temporarily.
-2. <strong>Phase 2</strong> — VerbStage with fallback to RelationalResolver for legacy buildings.
-3. <strong>Phase 3</strong> — Drop placement columns from c_orderline schema. Remove RelationalResolver. SH/DX migrated to verb recipes.</p>
-<p>Full analysis: <code>BBC.md</code> §1.</p>
+<p><strong>Architectural invariant:</strong> c_orderline is WHAT-only (no placement columns, no position setters in Java PO). W_Verb_Node completes the split: placement -&gt; <code>W_Verb_Node</code>/<code>W_Verb_NodeProduct</code> (HOW), spatial containers -&gt; <code>co_empty_space_line</code> (WHERE). Migration: Phase 1 (current) verb tables added, Phase 2 VerbStage with RelationalResolver fallback, Phase 3 drop placement columns. Full analysis: <code>BBC.md</code> §1.</p>
 <blockquote>
 <p><strong>Phase 1 — CURRENT:</strong> Create verb tables in {PREFIX}_BOM.db (DDL above). Additive, no breakage.
 c_orderline becomes WHAT-only — Java PO class has no placement setters.</p>
@@ -8512,47 +8484,18 @@ DERIVE BUILDING SY_SCHOOL FROM BUILDING_SH_STD
 <strong>Payload:</strong> <code>DerivePayload(sourceBomId, newBomId, reusedFloors[], replacedFloors[], addedFloors[])</code></p>
 <h3 id="1811-verb-chaining-the-feedback-pipeline">18.11 Verb Chaining — The Feedback Pipeline<a class="headerlink" href="#1811-verb-chaining-the-feedback-pipeline" title="Permanent link">&para;</a></h3>
 <p>Synthetic BOM verbs are designed to chain. The output payload of one verb feeds as input to the next. This is how the Bonsai GUI builds a building interactively:</p>
-<div class="highlight"><pre><span></span><code>-- Step 1: User draws a box in Bonsai
-EXTRACT AABB FROM POINTS (0,0,0) (12.0,10.0,6.0)
-    → AabbPayload: WIDTH 12000 DEPTH 10000 HEIGHT 6000
-
--- Step 2: Snap to structural grid
-SNAP TO GRID AABB 12000 10000 SPACING 1000
-    → GridSnapPayload: WIDTH 12000 DEPTH 10000 (no change needed)
-
--- Step 3: Check viability
-VALIDATE AABB 12000 10000 6000 FOR RESIDENTIAL UNITS 2
-    → ValidationPayload: valid=true, candidateFloors=2
-
--- Step 4: Preview the spatial partition
-PARTITION AABB 12000 10000 3000 INTO ROOMS LI DN KT BD BT
-    → PartitionPayload: 5 slots with positions
-    -- GUI shows the partition overlay on the drawn box
-    -- User approves or adjusts room positions
-
--- Step 5: Compose the building
-COMPOSE BUILDING RESIDENTIAL 12000 10000 6000 UNITS 2
-    → ComposeBuildingPayload: SY_RE_12000x10000, 12 BOMs, 47 lines
-
--- Step 6: User clicks on kitchen, drags to resize
-RESIZE ROOM KITCHEN_3500x2500 TO 4000 3000 2800 AS KITCHEN_4000x3000
-    → ResizePayload: 2 cabinets added, 0 dropped
-
--- Step 7: User adds a mezzanine
-ADD FLOOR MEZZANINE TO SY_RE_12000x10000 HEIGHT 2400 ROOMS LI
-    → AddFloorPayload: roof shifted up by 2600mm
-
--- Step 8: Auto-fix vertical stacking
-STACK FLOORS IN SY_RE_12000x10000
-    → StackPayload: GF=0, MEZZANINE=3000, ROOF=5600
-
--- Step 9: Compile and preview
-PLACE BOM SY_RE_12000x10000
-    → output.db with all elements
-SUMMARIZE BUILDING RE
-    → SummaryPayload: elements, storeys, AABB — GUI renders 3D preview
+<div class="highlight"><pre><span></span><code>EXTRACT AABB FROM POINTS (0,0,0) (12.0,10.0,6.0)       -- → WIDTH 12000 DEPTH 10000 HEIGHT 6000
+SNAP TO GRID AABB 12000 10000 SPACING 1000                -- → snapped dimensions
+VALIDATE AABB 12000 10000 6000 FOR RESIDENTIAL UNITS 2    -- → valid=true
+PARTITION AABB 12000 10000 3000 INTO ROOMS LI DN KT BD BT -- → 5 room slots (GUI preview)
+COMPOSE BUILDING RESIDENTIAL 12000 10000 6000 UNITS 2     -- → 12 BOMs, 47 lines
+RESIZE ROOM KITCHEN_3500x2500 TO 4000 3000 2800 AS KITCHEN_4000x3000  -- → 2 cabinets added
+ADD FLOOR MEZZANINE TO SY_RE_12000x10000 HEIGHT 2400 ROOMS LI        -- → roof shifted up
+STACK FLOORS IN SY_RE_12000x10000                          -- → GF=0, MEZZANINE=3000, ROOF=5600
+PLACE BOM SY_RE_12000x10000                                -- → output.db
+SUMMARIZE BUILDING RE                                      -- → GUI renders 3D preview
 </code></pre></div>
-<p>Each step is an atomic verb with a typed payload. The GUI can checkpoint after any step, undo by reversing the {PREFIX}_BOM.db writes, and resume from any point.</p>
+<p>Each step is an atomic verb with a typed payload. The GUI can checkpoint, undo, and resume from any point.</p>
 <h3 id="1812-verb-to-gui-action-mapping">18.12 Verb-to-GUI Action Mapping<a class="headerlink" href="#1812-verb-to-gui-action-mapping" title="Permanent link">&para;</a></h3>
 <p>Every Bonsai Creator UI action maps to exactly one verb. The GUI never writes SQL directly — it emits BIM COBOL.</p>
 <table>
@@ -8822,60 +8765,43 @@ CREATE ROOM DEPARTURE_LOUNGE 40000 30000 4500
 </tr>
 </tbody>
 </table>
-<p>Key challenges that residential BOMs never face:</p>
-<p><strong>1. Discipline overlap.</strong> A pipe that crosses from the MEP model into the FP model is the same physical pipe but appears in two IFC files. Federated databases must deduplicate by GUID or spatial proximity. The extraction pipeline already handles this via <code>enhanced_federation_GI.db</code>, but the BOM must track provenance (which consultant, which IFC file, which discipline).</p>
-<p><strong>2. IFC class ambiguity.</strong> <code>IfcBuildingElementProxy</code> is used by every discipline for "things that don't have a proper IFC class." In Terminal, 500+ proxies cover everything from bollards to access panels. The BOM needs a classification verb that assigns proxy elements to categories based on property sets, not IFC class alone.</p>
-<p><strong>3. System topology.</strong> MEP elements don't exist in isolation — they form connected systems (pipe networks, duct trees, circuit branches). A sprinkler head is meaningless without its lateral pipe, branch pipe, main run, riser, and pump. The BOM must capture system connectivity, not just element-by-element placement.</p>
-<p><strong>4. Parametric repetition at scale.</strong> 33,324 roof deck plates are NOT 33,324 independent placements. They are 19 TILE formulas. 2,660 rebar bars are 150+ ARRAY formulas. 909 sprinkler heads are zone-based ROUTE formulas. The analysis must discover these patterns and factorize them.</p>
-<p><strong>5. Storey mismatch.</strong> Different disciplines may use different storey definitions. The ARC model may define "Ground Floor" at +0.000, while the STR model defines "Basement" at -3.000 and calls +0.000 "Level 1." The BOM must normalise storey references across disciplines.</p>
+<p>Key challenges residential BOMs never face: (1) discipline overlap/deduplication across federated IFC files; (2) IFC class ambiguity (500+ IfcBuildingElementProxy need property-based classification); (3) system topology (MEP connectivity trees, not flat lists); (4) parametric repetition at scale (33K plates = 19 TILE formulas); (5) storey mismatch across discipline models.</p>
 <h4 id="analysis-verbs-for-terminal-scale-extraction">Analysis Verbs for Terminal-Scale Extraction<a class="headerlink" href="#analysis-verbs-for-terminal-scale-extraction" title="Permanent link">&para;</a></h4>
-<p>These verbs analyse an extracted reference database to discover BOM structure. They are read-only — they inspect, classify, and report. The output feeds into the creation primitives (§18.4) to materialise the discovered structure.</p>
-<div class="highlight"><pre><span></span><code>CENSUS BUILDING TE
-    -- Counts elements per discipline, per storey, per IFC class
-    -- Groups by spatial zone (AABB clustering)
-    -- Discovers: 9 disciplines, 4 storeys, 51K elements
-    -- Output: discipline×storey matrix with element counts
-    -- This is the first verb to run on any new Rosetta Stone
-
-DISCOVER PATTERNS IN TE DISCIPLINE CW
-    -- Analyses spatial distribution for repetition patterns
-    -- Grid detection: find dominant X/Y spacing per Z-band
-    -- Output: candidate TILE formulas with coverage percentage
-    -- Already proven: 19 panels, 33K plates, 95% coverage
-
-DISCOVER PATTERNS IN TE DISCIPLINE STR
-    -- Detects: column grids (FRAME formula), beam spans
-    -- Detects: rebar arrays (ARRAY formula) with host association
-    -- Output: candidate FRAME + ARRAY formulas
-
-DISCOVER PATTERNS IN TE DISCIPLINE FP
-    -- Detects: sprinkler grids per zone (ROUTE formula)
-    -- Associates heads with pipe networks (system topology)
-    -- Output: zone boundaries + ROUTE formulas
-
-CLASSIFY ELEMENTS IN TE WHERE ifc_class = &#39;IfcBuildingElementProxy&#39;
-    -- Reads property sets (IfcPropertySingleValue, IfcClassificationReference)
-    -- Assigns M_Product_Category based on properties, not IFC class
-    -- Output: reclassification map (proxy GUID → category)
-
-DISCOVER ZONES IN TE STOREY &quot;Aras Tanah&quot;
-    -- Spatial clustering: groups elements by proximity
-    -- Identifies room/zone boundaries from wall enclosures
-    -- Output: zone polygons with element membership
-    -- This is the automated version of manual room assignment
-
-ANALYSE SYSTEMS IN TE DISCIPLINE MEP
-    -- Follows pipe/duct connectivity (fitting→segment→fitting chains)
-    -- Identifies system trees: riser → main → branch → terminal
-    -- Computes: pipe lengths, fitting counts, terminal counts per system
-    -- Output: system topology suitable for ROUTE formula discovery
-
-NORMALISE STOREYS IN TE
-    -- Aligns storey definitions across disciplines
-    -- Resolves: &quot;Ground Floor&quot; (ARC) = &quot;Level 1&quot; (STR) = &quot;GF&quot; (MEP)
-    -- Maps each element to a canonical storey name
-    -- Output: normalised storey map with element reassignments
-</code></pre></div>
+<p>Read-only verbs that analyse extracted reference databases to discover BOM structure. Output feeds into creation primitives (§18.4).</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CENSUS BUILDING</code></td>
+<td>Element counts per discipline/storey/IFC class</td>
+</tr>
+<tr>
+<td><code>DISCOVER PATTERNS</code></td>
+<td>Spatial pattern detection per discipline (TILE/FRAME/ARRAY/ROUTE formulas)</td>
+</tr>
+<tr>
+<td><code>CLASSIFY ELEMENTS</code></td>
+<td>Property-based reclassification of IfcBuildingElementProxy</td>
+</tr>
+<tr>
+<td><code>DISCOVER ZONES</code></td>
+<td>Spatial clustering (DBSCAN) for room/zone boundaries</td>
+</tr>
+<tr>
+<td><code>ANALYSE SYSTEMS</code></td>
+<td>MEP connectivity tree recovery (fitting-&gt;segment chains)</td>
+</tr>
+<tr>
+<td><code>NORMALISE STOREYS</code></td>
+<td>Cross-discipline storey alignment</td>
+</tr>
+</tbody>
+</table>
 <h4 id="the-terminal-decomposition-pipeline-verb-sequence">The Terminal Decomposition Pipeline (Verb Sequence)<a class="headerlink" href="#the-terminal-decomposition-pipeline-verb-sequence" title="Permanent link">&para;</a></h4>
 <p>8-phase pipeline: (1) CENSUS + NORMALISE STOREYS, (2) DISCOVER PATTERNS per discipline (CW-&gt;TILE, STR-&gt;FRAME/ARRAY, FP-&gt;ROUTE, ELEC-&gt;WIRE, ACMV-&gt;ROUTE DUCT), (3) CLASSIFY proxy elements, (4) DISCOVER ZONES per storey, (5) CREATE BOM + ADD LINE per zone, (6) REGISTER BOMs into catalog, (7) DEFINE CATEGORY + ADD TEMPLATE RULE for commercial grammar, (8) COMPOSE BUILDING COMMERCIAL to prove round-trip. Full decomposition is Phase B scope — the primitives and analysis verbs are abstract across building scale.</p>
 <h4 id="institutional-scale-ifc-patterns">Institutional-Scale IFC Patterns<a class="headerlink" href="#institutional-scale-ifc-patterns" title="Permanent link">&para;</a></h4>
