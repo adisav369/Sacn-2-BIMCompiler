@@ -772,7 +772,7 @@ WHERE wp1.crew_size + wp2.crew_size > z.max_crew_capacity;
 
 ### 11.3 Federation + Bonsai = Visual BI
 
-The Federation addon already shows breakdown by work packages, equipment, and labour factors. Click a zone → cost/schedule/labour. Select elements → generate sub-C_Order. Colour by dimension. Time slider for 4D. See [ExecutiveBrief.md](ExecutiveBrief.md) for the full pitch.
+The Federation addon already shows breakdown by work packages, equipment, and labour factors. Click a zone → cost/schedule/labour. Select elements → generate sub-C_Order. Colour by dimension. Time slider for 4D. See [MANIFESTO.md](MANIFESTO.md) for the full pitch.
 
 ---
 

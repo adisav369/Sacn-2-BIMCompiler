@@ -6,12 +6,12 @@
 
 ---
 
-## Where We Are (S92, 2026-03-26)
+## Where We Are (S96, 2026-03-26)
 
 **Pipeline:** 9 stages. 75 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative). 5-DB architecture.
-**Gates:** 19/34 ALL GREEN. G1-G6 + C8/C9 + W-TOT. Seal v6.
+**Gates:** 19/34 ALL GREEN (pre-S96-p0). S96-p0 unblocked 11 DocType-blocked buildings — recount pending. 3 regressions: DX (severe), IN (windows), RM (stairs).
 **Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice. 202 witnesses.
-**iDempiere conformance:** Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 Phase A–D done (S90–S92). Phase E pending (drop TEXT FK columns).
+**iDempiere conformance:** Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 Phase A–D done (S90–S92). Phase E queries migrated (S93), TEXT columns not yet dropped.
 
 ---
 
@@ -88,7 +88,7 @@ AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD
 | GAP-SC-4 | Rule pack versioning | Effectivity dates, version precedence. pack_id done (S67c) | MED (partially addressed) |
 | R22 | I_Element_Connectivity | Extract linking table from IfcRelConnectsElements | TODO |
 | VPA-002 | ROUTE step-uniformity | 533 instances with non-uniform per-leg steps | KNOWN LIMIT |
-| IDV-1 | iDempiere _ID/Name/Value | Tier 2 Phase A–D DONE (S90–S92). Phase E pending: drop TEXT FK columns | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
+| IDV-1 | iDempiere _ID/Name/Value | Tier 2 Phase A–D DONE (S90–S92). Phase E queries migrated (S93). TEXT columns not yet dropped (ORM + 5 verb files still reference) | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
 | GAP-DA-1 | processIt() orchestrator | Spec'd in [DocAction_SRS §1.3](DocAction_SRS.md) but no implementation. → ENT-1 | HIGH (cross-ref ENT-1) |
 | GAP-DA-2 | ClashDetector Phase 2 | AD_Clash_Rule-driven engine beyond current bbox check | MED. [DocAction_SRS §2.1](DocAction_SRS.md) |
 | GAP-DA-3 | VerticalContinuityChecker | Spec'd in [DocAction_SRS §2.1](DocAction_SRS.md), not built | LOW |
@@ -156,6 +156,7 @@ From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VA
 | S80-S83 | s80-s83 | Docs readability, stale ref cleanup, [Name/Value Tier 1](ID_NAME_VALUE_STUDY.md) |
 | S84-S88 | s84-s88 | Schema cleanup (W012 doc_base_type), callout boxes, CTFL review, mkdocs warnings, validation.db study |
 | S89-S92 | s89-s92 | BBC audit (6 stale fixes), TRIM-1 wired, Tier 2 INTEGER PK Phases A–D, _int sidecar drop |
+| S93-S96 | s93-s96 | Phase E queries, C_Order fix, ESLine removed, ASI detail tables, TRIM rewrite, DocType P0 fix, docs tightening |
 
 ---
 

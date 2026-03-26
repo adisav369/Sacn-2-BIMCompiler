@@ -7,7 +7,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN. Remaining debt: G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM).
+**Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN (pre-S96). S96-p0 unblocked 11 DocType-blocked buildings — recount pending. 3 regressions open: DX (severe coordinate failure), IN (44 windows shifted), RM (stair miscompilation).
 
 | Gate | SH | FK | IN | DX | TE | DM |
 |------|----|----|----|----|----|----|
@@ -43,6 +43,11 @@
 
 ## Session Log (recent first)
 
+**S96-docs** — Docs tightening + 2D layout images + ShipYard spec.
+**S96-p0** — Fix DocType null regression: DisciplineBomBuilder null→config.docBaseType(). seed_dm_bom.sql aligned. Unblocks 11 CO/IN buildings.
+**S95-trim** — Rewrite TRIM WALLS TO ROOF: roofSurfaceZ() replaces tent model. SH barrel vault: 2 walls trimmed. W-TRIM-7 added. 7/7 PASS.
+**S95-asi** — ASI attribute detail tables (M_Attribute 18, M_AttributeUse 29, M_AttributeValue 15). Column.Callout spec (DocValidate §1.5). Product→Verb routing spec (BBC §3.5.2).
+**S95-esline** — Remove ESLine concept: 3 dead Java files, 14 docs, -2824 lines. Placement is M_BOM_Line dx/dy/dz tack only.
 **S94-c_order** — Fix C_Order pipeline: copyCOrderToOutput() direct SQL (was SPI dispatch, BIM_COBOL not on classpath). T16 tamper rule exemption for CompilationPipeline.java (authorized write path, same as T17/ElementPersistence). Every compiled building now produces 1 c_order row (SH/DX/FK/IN verified). SH 7/7 PASS + FK 7/7 PASS.
 **S92-tier2d** — Tier 2 Phase D: Drop `_int` sidecar columns. DV024 (ERP.db) + CL005 (component_library.db) migrations — `M_Product_Category_ID_int` column + index dropped. TEXT FK audit: all 6 TEXT FK columns still actively used in production (deferred to Phase E). c_order 0 rows: root cause is BIM_COBOL SPI not on DAGCompiler classpath (deferred — T16 tamper rule blocks direct SQL fix). ACTION_ROADMAP updated. `mvn compile -q` PASS + SH 7/7 PASS.
 **S91-tier2c** — Tier 2 Phase C: Java INTEGER PK migration. IFCtoBOM DDL nativized (M_Product_ID, M_BOM_ID, C_DocType_ID all INTEGER PK AUTOINCREMENT). Value/Name backfill in IFCtoBOM pipeline. C_OrderLine persisted in output.db (37 rows for SH — was 0). prepare_compile_db() ALTER TABLE workaround removed. ORM accessors added (X_M_BOM, X_M_BOMLine). BuildSpatialStructureVerb fixed (was using getInt on TEXT). All `_int` sidecar columns eliminated (C_DocType, C_Order, M_Product_Category → proper INTEGER PK in snapshot). `mvn compile -q` PASS + SH 7/7 PASS.
@@ -70,9 +75,6 @@
 **S75** — M_Product_Category hierarchy + BUILDING backfill + AD table consolidation. DV018 migration (71 new categories: 4 top-level, 32 floor, 19 room, 11 infra, 5 cross-domain/anomaly → 117 total). DV019 migration (bad_* tables moved from component_library.db → ERP.db: 67 rows). BUILDING BOM backfill verified (0 NULL). cleanup_complib_duplicates.sh script for stale table removal. `mvn compile -q` PASS.
 **S74** — Phase 3: remove CO_EmptySpaceLine. Pipeline rewritten to use in-memory RoomSlot from M_BOM_Line dx/dy/dz. 4 PO classes deleted, W008 migration (DROP TABLE), populateCoEmptySpace → computeRoomSlots, SpatialStructureBuilder accepts List\<RoomSlot\>, EmptySpaceChecksum removed from C_Order/pipeline. 6 verbs updated (BuildSpatialStructure, VerifyPlacement, HelloWorld, SummarizeBuilding, CompleteBuilding). BuildingWriter DDL cleaned, OutputTemplateGenerator cleaned, SpatialDigest.computeEmptySpaceChecksum removed. `mvn compile -q` + `mvn test-compile -q` PASS.
 **S73** — CO_EmptySpaceLine → compiler-internal. Phase 1: 15 docs aligned (WHERE = M_BOM_Line dx/dy/dz). Phase 2: 4 PO classes @Deprecated, all consumer javadoc/comments updated, SpatialDigest + VerifyPlacementVerb @Deprecated. Phase 3 deferred (tables still needed by pipeline). AUDIT docs untouched (historical).
-**S72** — Session F: DiffVerb + Callout (§9). W007 migration (AD_Rule callout table). DiffVerbService (records DIFF W_Verb_Node + delta params). CalloutEngine (topo-sort rule evaluation). DiffVerbTest 5/5. [AUDIT Appendix T](docs/AUDIT_S51_FOCUSED.md).
-**S68e** — Session E: Order inheritance. DV017 applied all DBs. W006 migration (Ref_Order_ID). InheritanceResolver (chain walk + exception collect). BomDropper.dropWithInheritance. OrderInheritanceTest 6/6. MANIFESTO.md reorder + category triage.
-**S68b** — Session D: Remove + Compress mutations. W005 migration (locator_ref + is_reference_class). BomDropper exception-order support. RemoveCompressTest 5/5. [AUDIT Appendix Q](docs/AUDIT_S51_FOCUSED.md).
-*S64–S68 — AD Dictionary Steps 0–5, ERP alignment Sessions A–F, DV015–DV017. [AUDIT Appendix I–T](docs/AUDIT_S51_FOCUSED.md).*
+*S64–S72 — AD Dictionary Steps 0–5, ERP alignment Sessions A–F (DV015–DV017, W005–W007), CO_EmptySpaceLine removed. [AUDIT Appendix I–T](docs/AUDIT_S51_FOCUSED.md).*
 *S57–S60 — 1D Order Configurator, gate debt, DM generative, ERP alignment. 34/34 compiled.*
 *Earlier: S39–S56 — ASI, WALK-THRU, focused audit, BIMEyes, 6D/7D, Web UI, BOM Drop.*

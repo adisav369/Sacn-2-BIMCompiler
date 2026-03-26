@@ -11,6 +11,13 @@ Single-page entry point. All active docs by tier.
 | [MANIFESTO.md](MANIFESTO.md) | **READ FIRST:** The ERP world view — why construction is manufacturing, iDempiere pattern, three concerns |
 | [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) | FRONTIER: §1-§14 future features, §2.1 CTFL test plan, §2.2 site layout, §14 implementation sessions |
 
+## Last Mile — Proof & Gap Closure
+
+| Doc | What |
+|-----|------|
+| [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist — the distance between "it compiles" and "it ships" |
+| [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix, 35 Rosetta Stones |
+
 ## T1 Foundation — Master References
 
 | Doc | What |
@@ -18,7 +25,6 @@ Single-page entry point. All active docs by tier.
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, gospel |
 | [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 4-DB architecture |
 | [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 75 verbs, TILE/CLUSTER/ROUTE/FRAME |
-| [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix |
 | [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
 
@@ -88,7 +94,6 @@ Single-page entry point. All active docs by tier.
 | [BIMLogger.md](BIMLogger.md) | Levelled pipeline logging spec, grep patterns |
 | [WorkOrderGuide.md](WorkOrderGuide.md) | Pipeline config, discipline mapping |
 | [BlenderBridge.md](BlenderBridge.md) | Java-smart/Python-dumb pipe |
-| [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist |
 | [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md) | FIX-1/2/3 method specs, pipeline coordination |
 | [PREFAB_ARCHITECTURE.md](PREFAB_ARCHITECTURE.md) | 6-level assembly hierarchy, MRP BOM drop |
 | [VIEW_CONTRACTS.md](VIEW_CONTRACTS.md) | Data access layer, 6 SQL views |
