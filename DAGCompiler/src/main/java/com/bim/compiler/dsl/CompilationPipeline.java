@@ -568,6 +568,10 @@ public class CompilationPipeline {
          *
          * <p>Source: C_DocType in BOM.db (constant domain config).
          * Target: c_order in output.db (transactional, self-contained).
+         *
+         * <p>DEFERRED (S92): BIM_COBOL not on DAGCompiler classpath during gate runs.
+         * T16 tamper rule bans raw SQL on c_order outside verb layer.
+         * Fix requires: either add BIM_COBOL dependency or move INSERT to ORMSandbox.
          */
         private static void copyCOrderToOutput(Connection outConn, CompilationContext ctx) {
             String buildingId = ctx.buildingId();
