@@ -1392,6 +1392,78 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#15-columncallout-bim-spatial-callout-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5 Column.Callout — BIM Spatial Callout Wiring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.5 Column.Callout — BIM Spatial Callout Wiring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#151-where-the-user-works-the-orderline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.1 Where the User Works — The OrderLine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#152-dispatch-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.2 Dispatch Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#153-how-ad_rule-asi-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.3 How AD_Rule + ASI Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#154-resolution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.4 Resolution Order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#155-extending-with-data-not-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.5 Extending with Data, Not Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3693,6 +3765,78 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#15-columncallout-bim-spatial-callout-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5 Column.Callout — BIM Spatial Callout Wiring
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1.5 Column.Callout — BIM Spatial Callout Wiring">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#151-where-the-user-works-the-orderline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.1 Where the User Works — The OrderLine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#152-dispatch-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.2 Dispatch Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#153-how-ad_rule-asi-compose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.3 How AD_Rule + ASI Compose
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#154-resolution-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.4 Resolution Order
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#155-extending-with-data-not-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5.5 Extending with Data, Not Code
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4696,6 +4840,150 @@ components are unavailable.</p>
 <p><strong>BIM mapping:</strong> Our <code>ProveStage</code> (Stage 9) is exactly this — the building
 can't reach <code>CO</code> (Completed) status until all placement proofs pass. Validation
 rules would fire during <code>prepareIt</code> — before compilation commits to output.db.</p>
+<h3 id="15-columncallout-bim-spatial-callout-wiring">1.5 Column.Callout — BIM Spatial Callout Wiring<a class="headerlink" href="#15-columncallout-bim-spatial-callout-wiring" title="Permanent link">&para;</a></h3>
+<p>In iDempiere, <code>CalloutOrder.amt()</code> is a generic callout that fires on ANY order
+line change and calculates totals. It doesn't know specific products — tax rules
+(<code>C_Tax</code>) provide the specifics as data. The callout is the <strong>engine</strong> (generic,
+code); the rules are the <strong>data</strong> (AD_Rule rows, ASI values).</p>
+<p><strong>BIM mapping:</strong> A generic spatial callout fires on ANY C_OrderLine placement or
+dimension change. It reads per-instance ASI for verb overrides and queries AD_Rule
+for matching spatial conditions. New verb associations = SQL INSERT, not code change.</p>
+<h4 id="151-where-the-user-works-the-orderline">1.5.1 Where the User Works — The OrderLine<a class="headerlink" href="#151-where-the-user-works-the-orderline" title="Permanent link">&para;</a></h4>
+<p>The user never touches M_Product, M_AttributeSet, or AD_Rule. Those are
+catalog and engine concerns — set up once by the implementor.</p>
+<p>The user works on <strong>C_OrderLine</strong> — the order line. When they place a wall,
+edit its position, or customise its behaviour, they edit the order line.
+The ASI attributes appear as editable fields on the order line because the
+product declared which attributes apply (via M_AttributeSet_ID).</p>
+<div class="highlight"><pre><span></span><code>Catalog (set up once, never touched by user):
+  M_Product (Wall_EXT_150)
+    └─ M_AttributeSet_ID = &#39;BIM_Wall&#39;     ← declares vocabulary
+         └─ trim_action, trim_tolerance_mm, joint_type ...
+
+User workspace (edited per instance):
+  C_OrderLine #37 (this specific wall on grid A-1)
+    └─ M_AttributeSetInstance_ID → ASI #47
+         └─ trim_action = CUT_FILL         ← user&#39;s choice
+         └─ trim_tolerance_mm = 25          ← user&#39;s override
+</code></pre></div>
+<p><strong>Having M_AttributeSet_ID on the product does NOT mean the verb will fire.</strong>
+It means the attribute is AVAILABLE for the user to set. The callout still
+detects the spatial condition (is there a roof above?). If no roof, nothing
+happens regardless of the attribute.</p>
+<table>
+<thead>
+<tr>
+<th>ASI value</th>
+<th>Callout behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No ASI at all</td>
+<td>Callout decides from AD_Rule defaults</td>
+</tr>
+<tr>
+<td><code>trim_action = DEFAULT</code></td>
+<td>Callout decides (same as no ASI)</td>
+</tr>
+<tr>
+<td><code>trim_action = SKIP</code></td>
+<td>Callout skips — user said no</td>
+</tr>
+<tr>
+<td><code>trim_action = CUT_ONLY</code></td>
+<td>Force CUT, skip FILL</td>
+</tr>
+<tr>
+<td><code>trim_action = CUT_FILL</code></td>
+<td>Force both CUT and FILL</td>
+</tr>
+</tbody>
+</table>
+<p>The product declares the vocabulary. The order line declares the intent.
+The callout does the work.</p>
+<h4 id="152-dispatch-chain">1.5.2 Dispatch Chain<a class="headerlink" href="#152-dispatch-chain" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>C_OrderLine field change (dx, dy, dz, M_Product_ID)
+  │
+  ├─ 1. CalloutEngine queries AD_Rule WHERE source_column = changed_field
+  │     AND is_active = 1, ordered by depends_on (Kahn topo-sort)
+  │
+  ├─ 2. For each matching rule, read ASI from C_OrderLine.M_AttributeSetInstance_ID
+  │     → M_AttributeInstance name/value pairs (trim_action, tolerance, etc.)
+  │
+  ├─ 3. ASI overrides compose with AD_Rule.rule_type to select domain callout:
+  │     POSITIONAL  → CalloutSPATIAL  (AABB recalc, parent cascade)
+  │     DIMENSIONAL → CalloutTRIM     (trim verb family: detect→filter→decide→act)
+  │     CONSTRAINT  → CalloutJOIN     (joint/connection type enforcement)
+  │     REROUTE     → CalloutMEP      (MEP path rerouting)
+  │
+  └─ 4. Domain callout orchestrates its verb family via VerbRegistry
+</code></pre></div>
+<h4 id="153-how-ad_rule-asi-compose">1.5.3 How AD_Rule + ASI Compose<a class="headerlink" href="#153-how-ad_rule-asi-compose" title="Permanent link">&para;</a></h4>
+<p>The key separation: AD_Rule defines WHEN a callout fires and WHAT type it is.
+ASI on the C_OrderLine defines HOW the verb executes for this specific instance.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Source</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>When</strong></td>
+<td>AD_Rule.source_column</td>
+<td><code>dx</code> changes on C_OrderLine</td>
+</tr>
+<tr>
+<td><strong>What</strong></td>
+<td>AD_Rule.rule_type</td>
+<td><code>DIMENSIONAL</code> → trim family</td>
+</tr>
+<tr>
+<td><strong>How</strong></td>
+<td>M_AttributeInstance via ASI</td>
+<td><code>trim_action=CUT_FILL</code>, <code>trim_tolerance_mm=25</code></td>
+</tr>
+<tr>
+<td><strong>Who</strong></td>
+<td>M_Product.M_AttributeSet_ID</td>
+<td><code>BIM_Wall</code> → defines which attributes are valid</td>
+</tr>
+</tbody>
+</table>
+<h4 id="154-resolution-order">1.5.4 Resolution Order<a class="headerlink" href="#154-resolution-order" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>1. AD_Rule match:     source_table=&#39;C_OrderLine&#39; AND source_column=&lt;changed&gt;
+2. Product filter:    M_Product.M_Product_Category constrains which rules apply
+3. ASI resolution:    effective = ASI_override ?? DefaultValue (from M_Attribute)
+4. Verb dispatch:     VerbRegistry.resolve(rule_type, ASI params)
+</code></pre></div>
+<p>This mirrors iDempiere exactly: <code>CalloutOrder.amt()</code> doesn't know tax rates —
+it queries <code>C_Tax</code> by product category and date. Our <code>CalloutEngine</code> doesn't
+know trim tolerances — it queries ASI by attribute set and instance.</p>
+<h4 id="155-extending-with-data-not-code">1.5.5 Extending with Data, Not Code<a class="headerlink" href="#155-extending-with-data-not-code" title="Permanent link">&para;</a></h4>
+<p>Adding a new callout rule (e.g., "when a duct moves, reroute connected pipes"):</p>
+<div class="highlight"><pre><span></span><code><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Rule</span><span class="w"> </span><span class="p">(</span><span class="n">ad_rule_id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">event_type</span><span class="p">,</span><span class="w"> </span><span class="n">source_table</span><span class="p">,</span><span class="w"> </span><span class="n">source_column</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rule_type</span><span class="p">,</span><span class="w"> </span><span class="n">expression</span><span class="p">,</span><span class="w"> </span><span class="n">seq_no</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;DUCT_REROUTE_DX&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;FIELD_CHANGE&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;C_OrderLine&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;dx&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;REROUTE&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;REROUTE_CONNECTED&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">20</span><span class="p">);</span>
+</code></pre></div>
+<p>Adding a per-instance override (e.g., "this wall skips trim"):</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Create ASI for the wall instance</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">M_AttributeSetInstance</span><span class="w"> </span><span class="p">(</span><span class="n">M_AttributeSet_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Description</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;BIM_Wall&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Wall A-1: skip trim&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">M_AttributeInstance</span><span class="w"> </span><span class="p">(</span><span class="n">M_AttributeSetInstance_ID</span><span class="p">,</span><span class="w"> </span><span class="n">Name</span><span class="p">,</span><span class="w"> </span><span class="n">Value</span><span class="p">,</span><span class="w"> </span><span class="n">ValueType</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="n">last_insert_rowid</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;trim_action&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;SKIP&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TEXT&#39;</span><span class="p">);</span>
+
+<span class="c1">-- Link to order line</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">c_orderline</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">M_AttributeSetInstance_ID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="n">asi_id</span><span class="o">&gt;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">locator_ref</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;SH/GF/LIVING/WALL_EXT_A1&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p>No Java change. The callout engine discovers the SKIP override at dispatch time.</p>
+<p><em>Cross-references: BBC.md §3.5.2 (Product → Verb Routing), BIM_Designer_SRS.md §31
+(ASI Attribute Chain), AUDIT Appendix T.3 (AD_Rule schema).</em></p>
 <hr />
 <h2 id="2-construction-validation-types">2. Construction Validation Types<a class="headerlink" href="#2-construction-validation-types" title="Permanent link">&para;</a></h2>
 <h3 id="21-compliance-validation-ad_val_rule-pattern">2.1 Compliance Validation (AD_Val_Rule pattern)<a class="headerlink" href="#21-compliance-validation-ad_val_rule-pattern" title="Permanent link">&para;</a></h3>

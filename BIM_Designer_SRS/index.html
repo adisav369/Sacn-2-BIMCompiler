@@ -3191,6 +3191,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#31-asi-attribute-detail-chain-s95" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §31 — ASI Attribute Detail Chain (S95+)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§31 — ASI Attribute Detail Chain (S95+)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-schema-before-and-after" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.1 Schema — Before and After
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-detail-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.2 Detail Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#313-seed-data-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.3 Seed Data Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#314-user-interaction-the-orderline-is-the-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.4 User Interaction — The OrderLine Is the Workspace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#315-interaction-with-existing-asi-pump" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.5 Interaction with Existing ASI Pump
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#316-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.6 Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6659,6 +6742,89 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#31-asi-attribute-detail-chain-s95" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §31 — ASI Attribute Detail Chain (S95+)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§31 — ASI Attribute Detail Chain (S95+)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#311-schema-before-and-after" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.1 Schema — Before and After
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#312-detail-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.2 Detail Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#313-seed-data-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.3 Seed Data Summary
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#314-user-interaction-the-orderline-is-the-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.4 User Interaction — The OrderLine Is the Workspace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#315-interaction-with-existing-asi-pump" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.5 Interaction with Existing ASI Pump
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#316-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        31.6 Migration
+      
+    </span>
+  </a>
   
 </li>
         
@@ -11852,6 +12018,179 @@ BOMs or <code>C_OrderLine.Discipline='FPR'</code>. <code>m_bom.bom_type</code> h
 <code>AD_Val_Rule</code> + <code>ad_space_type_mep_bom</code> + room AABB → computes grid positions →
 inserts C_OrderLines automatically. No manual product picking for MEP — rules ARE
 the placement engine.</p>
+<hr />
+<hr />
+<h2 id="31-asi-attribute-detail-chain-s95">§31 — ASI Attribute Detail Chain (S95+)<a class="headerlink" href="#31-asi-attribute-detail-chain-s95" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Goal:</strong> Complete the iDempiere M_AttributeSet chain with detail tables
+(M_Attribute, M_AttributeUse, M_AttributeValue) so that verb parameters travel
+as structured per-instance data, not free-text hacks.</p>
+</blockquote>
+<h3 id="311-schema-before-and-after">31.1 Schema — Before and After<a class="headerlink" href="#311-schema-before-and-after" title="Permanent link">&para;</a></h3>
+<p><strong>Before (ASI_001):</strong> Three tables exist but attributes are free-form name/value
+pairs in M_AttributeInstance. No constraint on which attributes belong to which
+set. No valid-values enforcement for list-type attributes.</p>
+<p><strong>After (ASI_002):</strong> Full iDempiere chain completed.</p>
+<div class="highlight"><pre><span></span><code>M_AttributeSet (ASI_001)          ← &quot;BIM_Wall&quot;, &quot;BIM_Pipe&quot;, etc.
+  └─ M_AttributeUse (ASI_002)    ← join: which attributes belong to which set
+       └─ M_Attribute (ASI_002)  ← individual definitions: Name, ValueType, DefaultValue
+            └─ M_AttributeValue (ASI_002)  ← valid values for LIST-type attributes
+</code></pre></div>
+<p>New FK columns:
+- <code>M_Product.M_AttributeSet_ID</code> → links product to its attribute set
+- <code>c_orderline.M_AttributeSetInstance_ID</code> → already exists (W001)</p>
+<h3 id="312-detail-tables">31.2 Detail Tables<a class="headerlink" href="#312-detail-tables" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Columns</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>M_Attribute</code></td>
+<td>M_Attribute_ID, Name, ValueType (NUM/TEXT/LIST), IsInstanceAttribute, DefaultValue</td>
+<td>Individual attribute definition</td>
+</tr>
+<tr>
+<td><code>M_AttributeUse</code></td>
+<td>M_AttributeSet_ID, M_Attribute_ID, SeqNo</td>
+<td>Which attributes belong to which set</td>
+</tr>
+<tr>
+<td><code>M_AttributeValue</code></td>
+<td>M_Attribute_ID, Value, Name, SeqNo</td>
+<td>Valid values for LIST-type attributes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="313-seed-data-summary">31.3 Seed Data Summary<a class="headerlink" href="#313-seed-data-summary" title="Permanent link">&para;</a></h3>
+<p><strong>18 attributes</strong> seeded from §28.7 field resolution matrix:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Attributes</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geometric (§28.7)</td>
+<td>length_mm, height_mm, span_mm, area_m2, thickness_mm, angle_deg, elevation, cross_section, sill_height_mm, material, finish, swing_side, face_anchor</td>
+<td>13</td>
+</tr>
+<tr>
+<td>Verb parameters</td>
+<td>trim_action, trim_tolerance_mm, joint_type, connection_type, fire_rating_min</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<p><strong>29 attribute-use mappings</strong> across 9 attribute sets (BIM_Component and BIM_Fitting
+have no attributes — IsInstanceAttribute=0).</p>
+<p><strong>15 list values</strong> across 4 LIST-type attributes:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>trim_action</td>
+<td>DEFAULT, SKIP, CUT_ONLY, CUT_FILL</td>
+</tr>
+<tr>
+<td>joint_type</td>
+<td>BUTT, MITRE, LAP</td>
+</tr>
+<tr>
+<td>connection_type</td>
+<td>SOCKET, FLANGE, WELD</td>
+</tr>
+<tr>
+<td>fire_rating_min</td>
+<td>0, 30, 60, 90, 120</td>
+</tr>
+</tbody>
+</table>
+<h3 id="314-user-interaction-the-orderline-is-the-workspace">31.4 User Interaction — The OrderLine Is the Workspace<a class="headerlink" href="#314-user-interaction-the-orderline-is-the-workspace" title="Permanent link">&para;</a></h3>
+<p>The user never edits catalog tables (M_Product, M_AttributeSet, M_Attribute).
+Those are set up once by the implementor and define the vocabulary.</p>
+<p>The user works on <strong>C_OrderLine</strong>. When they place a wall and want to
+control how it interacts with the roof, they edit the order line's ASI:</p>
+<ol>
+<li><strong>Place wall</strong> → C_OrderLine created, M_Product_ID set</li>
+<li><strong>Callout fires</strong> → detects roof overlap, presents suggestion</li>
+<li><strong>User opens ASI</strong> → sees available attributes from M_AttributeSet
+   (trim_action, trim_tolerance_mm, joint_type — constrained by product type)</li>
+<li><strong>User sets override</strong> → e.g., trim_action = SKIP (chimney wall)</li>
+<li><strong>Callout re-evaluates</strong> → respects the override</li>
+</ol>
+<p>Most order lines have <strong>no ASI</strong> — the callout uses AD_Rule defaults and
+the user accepts the automatic behaviour. ASI only appears when the user
+actively customises. This matches §28.5 (BOM Drop context): "No ASI needed
+— template dimensions are correct."</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>ASI needed?</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Standard wall under flat roof</td>
+<td>No</td>
+<td>Callout auto-trims, defaults are correct</td>
+</tr>
+<tr>
+<td>Glass curtain wall under barrel vault</td>
+<td>Maybe</td>
+<td>User might set CUT_FILL explicitly</td>
+</tr>
+<tr>
+<td>Chimney wall penetrating roof</td>
+<td>Yes</td>
+<td>User sets SKIP to prevent trimming</td>
+</tr>
+<tr>
+<td>Load-bearing wall at junction</td>
+<td>Yes</td>
+<td>User sets joint_type = LAP</td>
+</tr>
+<tr>
+<td>Standard partition wall</td>
+<td>No</td>
+<td>No roof overlap, callout doesn't fire</td>
+</tr>
+</tbody>
+</table>
+<h3 id="315-interaction-with-existing-asi-pump">31.5 Interaction with Existing ASI Pump<a class="headerlink" href="#315-interaction-with-existing-asi-pump" title="Permanent link">&para;</a></h3>
+<p>The existing ASI authoring pump (WorkOutputDAO, ASIAuthoringTest) creates
+M_AttributeInstance rows with free-form names. With ASI_002:</p>
+<ol>
+<li><strong>Schema enforcement:</strong> M_AttributeUse defines which attribute Names are valid
+   for a given M_AttributeSet. The pump can validate before INSERT.</li>
+<li><strong>List enforcement:</strong> M_AttributeValue defines valid values for LIST-type
+   attributes. The pump can validate trim_action ∈ {DEFAULT, SKIP, CUT_ONLY, CUT_FILL}.</li>
+<li><strong>Default resolution:</strong> M_Attribute.DefaultValue provides fallback when no
+   M_AttributeInstance row exists for a given attribute.</li>
+<li><strong>Product binding:</strong> M_Product.M_AttributeSet_ID eliminates the
+   <code>resolveAttributeSetForProduct(familyRef)</code> prefix-matching heuristic — the FK
+   is authoritative.</li>
+</ol>
+<h3 id="316-migration">31.6 Migration<a class="headerlink" href="#316-migration" title="Permanent link">&para;</a></h3>
+<p>File: <code>migration/ASI_002_attribute_detail.sql</code></p>
+<p>Independently committable. Requires ASI_001 (M_AttributeSet table) to exist first.
+Does not modify any existing table except adding M_AttributeSet_ID column to M_Product.</p>
+<p><em>Cross-references: BBC.md §3.5.1–3.5.2 (ASI pattern + verb routing),
+DocValidate.md §1.5 (Column.Callout wiring), §28.5–28.7 (ASI in BOM Drop).</em></p>
 <hr />
 <p><em>References:
 <a href="../BIM_Designer/">BIM_Designer.md</a> (architecture, §17 Design Mode, §18 UI Strategy) |

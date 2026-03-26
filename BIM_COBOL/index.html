@@ -6451,8 +6451,8 @@ MEP (CURRENT — IMPLICIT)
 <td>56</td>
 <td><code>TRIM WALLS TO ROOF</code></td>
 <td>§17</td>
-<td>W-TRIM-1..6</td>
-<td>Wall-roof clip: tent model, flat/pitched, 50mm tolerance</td>
+<td>W-TRIM-1..7</td>
+<td>Wall-roof clip: measure roof AABB surface, 50mm tolerance</td>
 </tr>
 <tr>
 <td>57</td>
@@ -8026,9 +8026,9 @@ Step 3: Pipeline replacement
 <tbody>
 <tr>
 <td><code>TRIM WALLS TO ROOF</code></td>
-<td><code>pitch:N</code> (optional, degrees; default: auto-detect)</td>
-<td>Clip wall heights to roof surface profile. Tent model estimates roof Z at each wall centroid. Walls exceeding roof surface by &gt;50mm flagged for trimming. Flat roofs (dz&lt;0.1m) → surface=maxZ, no trim.</td>
-<td>W-TRIM-1 through W-TRIM-6</td>
+<td>(none)</td>
+<td>Measure roof AABB surface at each wall centroid. Ridge along longer axis, linear slope from eave (minZ) to crown (maxZ). Walls exceeding roof surface by &gt;50mm flagged for trimming. Flat roofs (minZ≈maxZ) → slope≈0 naturally. Returns slope angle, direction, and profile type per entry.</td>
+<td>W-TRIM-1 through W-TRIM-7</td>
 </tr>
 </tbody>
 </table>
