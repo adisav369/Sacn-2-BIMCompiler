@@ -83,7 +83,7 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [BONSAI_EXTENSIONS.md](BONSAI_EXTENSIONS.md) | **Federation Addon**: nD platform (4D–8D), NLP queries, Color Studio, River IoT, HTML UI |
+| [Enterprise.md](Enterprise.md) | **FederatedModel Enterprise Platform**: nD dimensions (4D–8D), NLP queries, Color Studio, River IoT, HTML UI |
 | [PDF_TERRAIN.md](PDF_TERRAIN.md) | Survey to 3D terrain: PDF → elevation points → IFC. Site topology for plot placement |
 | [2D_LAYOUT.md](2D_LAYOUT.md) | Architectural drawings from compiled BOM: floor plans, elevations, sections as SVG |
 

@@ -3083,7 +3083,7 @@ This belongs in the **HTML UI** (port 9878), not in Blender panels, because:
 | **Duration** | Element quantity × labor productivity rates (CIDB Malaysia 2024) |
 | **Predecessors** | Implicit from BOM tree: parent completes before children start |
 | **Per-storey** | Each storey is a phase group — bottom-up construction sequence |
-| **Animation** | Optional: push phase timestamps to Bonsai timeline via [webui_sync](BONSAI_EXTENSIONS.md) |
+| **Animation** | Optional: push phase timestamps to Bonsai timeline via [webui_sync](Enterprise.md) |
 
 **How it differs from Bonsai 4D:**
 

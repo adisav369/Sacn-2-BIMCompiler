@@ -149,6 +149,14 @@ The HTML web UI (port 9878) provides 10 tabs: spatial views, geometry inspection
 
 ---
 
+## **The Last Mile**
+
+The compiler works. The gates prove it. But construction has edge cases that no compiler handles on day one — [the last mile](LAST_MILE_PROBLEM.md) tracks every gap between "it compiles" and "it ships." Open gaps invite contribution. [Test architecture](TestArchitecture.md) defines the proof standard.
+
+[:octicons-arrow-right-24: See the open gaps](LAST_MILE_PROBLEM.md)
+
+---
+
 ## **Quick Start**
 
 ```bash
@@ -179,6 +187,6 @@ mvn compile -q                              # Compile all modules
 | Navigate the code | [Source Code Guide](SourceCodeGuide.md) |
 | Onboard a new IFC | [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) |
 | See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) |
-| Explore the extensions | [**Federation Addon** — 4D through 8D](BONSAI_EXTENSIONS.md) |
+| Explore the enterprise platform | [**FederatedModel — 4D through 8D**](Enterprise.md) |
 
 <div style="clear: right;"></div>
