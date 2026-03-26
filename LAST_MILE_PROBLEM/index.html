@@ -2975,6 +2975,29 @@ squareness  = S / M    &quot;cross-section&quot;  → furniture, terminals
 <p>Implementation: <code>GeometricFingerprint.java</code>. Thresholds: planarity 0.15/0.20, elongation 0.40, epsilon 5%.</p>
 <hr />
 <h2 id="pipeline-debug-log-based-proofing">Pipeline Debug — Log-Based Proofing<a class="headerlink" href="#pipeline-debug-log-based-proofing" title="Permanent link">&para;</a></h2>
+<p>Following the Compiere/iDempiere convention, the pipeline uses Java's <code>java.util.logging</code> levels. Set the level to see more:</p>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>What you see</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>INFO</strong></td>
+<td>Pipeline stages, gate verdicts, summary counts</td>
+</tr>
+<tr>
+<td><strong>WARN</strong></td>
+<td>Non-fatal anomalies (non-zero origins, assembly stubs)</td>
+</tr>
+<tr>
+<td><strong>FINE</strong></td>
+<td>Per-verb detail — which verbs fire, element counts, expansion results</td>
+</tr>
+</tbody>
+</table>
 <p>Every drift point is diagnosable from log output alone — no viewer needed:</p>
 <table>
 <thead>
