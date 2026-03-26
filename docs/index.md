@@ -149,14 +149,6 @@ The HTML web UI (port 9878) provides 10 tabs: spatial views, geometry inspection
 
 ---
 
-## **The Last Mile**
-
-The compiler works. The gates prove it. But construction has edge cases that no compiler handles on day one — [the last mile](LAST_MILE_PROBLEM.md) tracks every gap between "it compiles" and "it ships." Open gaps invite contribution. [Test architecture](TestArchitecture.md) defines the proof standard.
-
-[:octicons-arrow-right-24: See the open gaps](LAST_MILE_PROBLEM.md)
-
----
-
 ## **Quick Start**
 
 ```bash
