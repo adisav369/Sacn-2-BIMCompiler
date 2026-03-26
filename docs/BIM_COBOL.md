@@ -149,7 +149,7 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 53 | `FILL BUFFERS IN BOM` | H2 | W-H2-7..9 | Interstitial filler computation |
 | 54 | `REGISTER BUILDING` | H2 | W-H2-10..12 | c_order creation (DocStatus=IP) |
 | 55 | `COMPLETE BUILDING` | H2 | W-H2-13..15 | c_order promotion (IP→CO) |
-| 56 | `TRIM WALLS TO ROOF` | §17 | W-TRIM-1..6 | Wall-roof clip: tent model, flat/pitched, 50mm tolerance |
+| 56 | `TRIM WALLS TO ROOF` | §17 | W-TRIM-1..7 | Wall-roof clip: measure roof AABB surface, 50mm tolerance |
 | 57 | `EN-BLOC` | original | — | Bulk element operation |
 | 58 | `WALK THRU` | original | — | BOM tree traversal verb |
 | 59 | `VOID EMPTY_SPACE FOR BUILDING` | original | — | Empty space allocation for building |
@@ -1227,7 +1227,7 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 
 | Keyword | Args | What it does | Witnesses |
 |---------|------|-------------|-----------|
-| `TRIM WALLS TO ROOF` | `pitch:N` (optional, degrees; default: auto-detect) | Clip wall heights to roof surface profile. Tent model estimates roof Z at each wall centroid. Walls exceeding roof surface by >50mm flagged for trimming. Flat roofs (dz<0.1m) → surface=maxZ, no trim. | W-TRIM-1 through W-TRIM-6 |
+| `TRIM WALLS TO ROOF` | (none) | Measure roof AABB surface at each wall centroid. Ridge along longer axis, linear slope from eave (minZ) to crown (maxZ). Walls exceeding roof surface by >50mm flagged for trimming. Flat roofs (minZ≈maxZ) → slope≈0 naturally. Returns slope angle, direction, and profile type per entry. | W-TRIM-1 through W-TRIM-7 |
 
 ### 17.2 Proposed (Not Yet Implemented)
 

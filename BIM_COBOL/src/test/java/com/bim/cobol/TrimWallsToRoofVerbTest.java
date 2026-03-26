@@ -14,8 +14,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * Witness tests for TRIM WALLS TO ROOF verb.
  * // Implementing BIM_COBOL.md §17.3 — Witness: W-TRIM-*
  *
- * <p>Tests against SampleHouse extracted DB (flat roof) and a synthetic
- * pitched roof scenario to prove both trim and no-trim paths.
+ * <p>Tests against SampleHouse extracted DB (barrel vault roof — measures
+ * roof surface from AABB, no pitch parameter) and a synthetic pitched roof
+ * scenario.
  */
 @DisplayName("TRIM WALLS TO ROOF — verb proof")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -27,27 +28,27 @@ class TrimWallsToRoofVerbTest {
     private final TrimWallsToRoofVerb verb = new TrimWallsToRoofVerb();
 
     // ═══════════════════════════════════════════════════════════════════
-    //  SampleHouse: flat roof — no walls should be trimmed
+    //  SampleHouse: barrel vault — walls at eave edges flagged for trim
     // ═══════════════════════════════════════════════════════════════════
 
     @Test @Order(1)
-    @DisplayName("W-TRIM-1: SH flat roof — verb passes, 0 walls trimmed")
-    void w_trim_1_sh_flat_roof() throws Exception {
+    @DisplayName("W-TRIM-1: SH barrel vault — verb passes, walls at eave edges trimmed")
+    void w_trim_1_sh_barrel_vault() throws Exception {
         Assumptions.assumeTrue(new File(SH_DB).exists(),
                 "SH extracted DB missing — skip");
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + SH_DB)) {
-            // SH has pitch:0deg in DSL — pass explicitly to avoid tent-model
-            // misinterpreting the thick roof slab (1.73m structure) as pitched.
             VerbResult<TrimPayload> r = verb.execute(
-                    VerbContext.withOutput(null, null, conn), "pitch:0");
+                    VerbContext.withOutput(null, null, conn));
 
             assertTrue(r.pass(), r.summary());
             TrimPayload p = r.payload();
             assertNotNull(p, "payload must not be null");
             assertTrue(p.wallsUnderRoof() > 0,
                     "SH has walls under roof: " + p.wallsUnderRoof());
-            assertEquals(0, p.wallsTrimmed(),
-                    "flat roof: no walls should need trimming — " + describeTrims(p));
+            // SH barrel vault: exterior walls near eave edges exceed the
+            // linearly-interpolated roof surface → flagged for trimming.
+            assertTrue(p.wallsTrimmed() >= 2,
+                    "barrel vault: exterior walls at eave edges need trimming — " + describeTrims(p));
         }
     }
 
@@ -58,7 +59,7 @@ class TrimWallsToRoofVerbTest {
                 "SH extracted DB missing — skip");
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + SH_DB)) {
             VerbResult<TrimPayload> r = verb.execute(
-                    VerbContext.withOutput(null, null, conn), "pitch:0");
+                    VerbContext.withOutput(null, null, conn));
 
             assertTrue(r.pass(), r.summary());
             TrimPayload p = r.payload();
@@ -157,15 +158,56 @@ class TrimWallsToRoofVerbTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    //  New: SH walls at eave edges ARE flagged (the visible bug fix)
+    // ═══════════════════════════════════════════════════════════════════
+
+    @Test @Order(30)
+    @DisplayName("W-TRIM-7: SH exterior walls at eave edges flagged for trimming")
+    void w_trim_7_sh_eave_walls_flagged() throws Exception {
+        Assumptions.assumeTrue(new File(SH_DB).exists(),
+                "SH extracted DB missing — skip");
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + SH_DB)) {
+            VerbResult<TrimPayload> r = verb.execute(
+                    VerbContext.withOutput(null, null, conn));
+
+            assertTrue(r.pass(), r.summary());
+            TrimPayload p = r.payload();
+
+            // At least one exterior wall near the eave edge should be flagged.
+            // The barrel vault roof slopes from eave (minZ≈1.74) to crown
+            // (maxZ≈3.48). Exterior walls near the eave extend above the
+            // linearly-interpolated roof surface at their Y position.
+            long trimmedExterior = p.entries().stream()
+                    .filter(TrimEntry::needsTrim)
+                    .filter(e -> e.elementName().contains("Ext"))
+                    .count();
+            assertTrue(trimmedExterior >= 1,
+                    "at least one exterior wall at eave edge should be flagged: "
+                    + describeTrims(p));
+
+            // Verify slope metadata is populated
+            TrimEntry anyTrimmed = p.entries().stream()
+                    .filter(TrimEntry::needsTrim)
+                    .findFirst().orElseThrow();
+            assertTrue(anyTrimmed.roofSlopeAngle() > 0,
+                    "barrel vault slope angle should be > 0°");
+            assertNotNull(anyTrimmed.roofSlopeDirection(),
+                    "slope direction must not be null");
+            assertEquals("ANGLED", anyTrimmed.trimProfileType(),
+                    "barrel vault approximated as ANGLED (linear slope from AABB)");
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     //  Scenario seeder
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * Seeds an in-memory DB with a pitched gable roof (25° pitch, ridge E-W)
+     * Seeds an in-memory DB with a pitched gable roof (ridge E-W)
      * and 3 walls: tall (at eave), short (at ridge), curtain (mid-slope).
      *
      * <pre>
-     *   Roof: X[0,12] Y[0,10] Z[3.0, 4.6] — gable, ridge along X, pitch 25°
+     *   Roof: X[0,12] Y[0,10] Z[3.0, 4.6] — gable, ridge along X
      *   WALL_TALL:    Y≈0    (near south eave), maxZ=4.0 → should be trimmed
      *   WALL_SHORT:   Y≈5    (near ridge), maxZ=3.5 → should NOT be trimmed
      *   CURTAIN_WALL: Y≈2    (quarter span), maxZ=4.5 → should be trimmed
@@ -182,7 +224,6 @@ class TrimWallsToRoofVerbTest {
                     id, minX, maxX, minY, maxY, minZ, maxZ)""");
 
             // Pitched gable roof — ridge along X, eave Z=3.0, ridge Z=4.6
-            // tan(25°)*5 ≈ 2.33 → but we'll use 1.6m rise for simplicity
             st.execute("""
                 INSERT INTO elements_meta VALUES (1,'ROOF_GABLE','IfcRoof','Test Roof','Roof')""");
             st.execute("""
@@ -212,8 +253,10 @@ class TrimWallsToRoofVerbTest {
         StringBuilder sb = new StringBuilder();
         for (TrimEntry e : p.entries()) {
             if (e.needsTrim()) {
-                sb.append("\n  %s: maxZ=%.3f, roofZ=%.3f, trim=%.3f"
-                    .formatted(e.wallGuid(), e.originalMaxZ(), e.roofSurfaceZ(), e.trimAmount()));
+                sb.append("\n  %s: maxZ=%.3f, roofZ=%.3f, trim=%.3f, slope=%.1f° %s %s"
+                    .formatted(e.wallGuid(), e.originalMaxZ(), e.roofSurfaceZ(),
+                               e.trimAmount(), e.roofSlopeAngle(),
+                               e.roofSlopeDirection(), e.trimProfileType()));
             }
         }
         return sb.isEmpty() ? "(none)" : sb.toString();
