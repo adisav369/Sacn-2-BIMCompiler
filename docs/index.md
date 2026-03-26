@@ -8,18 +8,18 @@ hide:
 
 ## Construction is manufacturing. A building IS its Bill of Materials.
 
-A metadata-driven, deterministic compiler that reads BOM data and produces verified 3D building coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders, that can then be further edited in [Bonsai](https://bonsaibim.org/) (Blender BIM).
+A deterministic compiler that reads [BOM](BOMBasedCompilation.md) (Bill of Materials) recipes and produces verified 3D building coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output can then be edited live in [Bonsai](https://bonsaibim.org/) (Blender BIM).
 
-The [Rosetta Stone strategy](TheRosettaStoneStrategy.md) takes 35 real buildings and recompiles them after their [BOMs](BOMBasedCompilation.md) (Bill of Materials), converted from their flat [IFC](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/) format — if every element lands at the same coordinates as the original, the grammar is certified. Every output element traces to a library input. Nothing is invented. No AI inside. Pure arithmetic. The same 9-stage pipeline compiles a 55-element house and a 48,428-element airport terminal. [6 mathematical gates](TestArchitecture.md) prove every output correct — not sampled, proven. 
+**The proof:** [35 real buildings](TheRosettaStoneStrategy.md) recompiled from their BOMs. If every element lands at the same coordinates as the original [IFC](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/) model, the grammar is certified. Nothing is invented. No AI inside. Pure arithmetic. [6 mathematical gates](TestArchitecture.md) prove every output — not sampled, proven.
 
-Thereupon, we test it on generic [Construction Orders](ProjectOrderBlueprint.md) to validate the [vocabulary](BIM_COBOL.md) — 64 domain verbs (TILE, ROUTE, FRAME, CLUSTER) generating geometry from [2,475 products](DATA_MODEL.md) in the library.
+**The vocabulary:** [75 domain verbs](BIM_COBOL.md) (TILE, ROUTE, FRAME, CLUSTER) generate geometry from [2,475 products](DATA_MODEL.md). The same 9-stage pipeline compiles a 55-element house and a [48,428-element airport terminal](TerminalAnalysis.md). The engine is [domain-agnostic](ShipYard.md) — buildings, bridges, ships, tunnels.
 
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-top: 4px solid #ffc107; border-bottom: 4px solid #ffc107; text-align: center;">
 <span style="font-size: 1.35em; line-height: 1.7; color: #263238; letter-spacing: 0.3px;">"What <b>AUTODESK</b>, <b>PRIMAVERA</b> and <b>SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
 <br><span style="font-size: 0.8em; letter-spacing: 1.5px; text-transform: uppercase; color: #90a4ae; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
 </div>
 
-Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://www.sqlite.org/), and the [Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/) open-source 3D viewport - upgraded with the [FederatedModel Spatial Database](https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation) and [PDF Terrain](PDF_TERRAIN.md) survey-to-3D — querying geometry that IFC files can only serialize. From Kuala Lumpur, Malaysia — where BIM is [mandated](StrategicIndustryPositioning.md) for all projects >= RM10M from July 2025. It is the Creator, [Redhuan D. Oon](mailto:red1org@gmail.com)'s gift to the world.
+Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://www.sqlite.org/), and the [Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/) open-source 3D viewport — upgraded with the [FederatedModel Spatial Database](https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation) and [PDF Terrain](PDF_TERRAIN.md) survey-to-3D. From Kuala Lumpur, Malaysia — where BIM is [mandated](StrategicIndustryPositioning.md) for all projects >= RM10M from July 2025. It is the Creator, [Redhuan D. Oon](mailto:red1org@gmail.com)'s gift to the world.
 
 <div style="clear: right;"></div>
 
@@ -73,11 +73,28 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
 ---
 
+## **Key Terms**
+
+| Term | Meaning |
+|------|---------|
+| **Tack** | Parent-relative offset (dx, dy, dz) on a BOM line — where a child sits inside its parent |
+| **Stone** | A Rosetta Stone — a real building used as ground truth for verification |
+| **Verb** | A named BOM mutation (TILE, ROUTE, FRAME, CLUSTER) that generates geometry from a formula |
+| **Gate** | One of 6 mathematical verification checks (G1-G6) that prove a compiled output correct |
+| **Witness** | A machine-checkable assertion (e.g. "sprinkler spacing >= 3000mm") — 202 total |
+| **BOM Drop** | Exploding a parent product into its child placements — the core compilation act |
+
+---
+
 ## **How It Works**
 
 ```
+INPUT: IFC file (from Revit, ArchiCAD, Bonsai — any BIM authoring tool)
+                ↓
 IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
+                                                                                      ↓
+OUTPUT: Verified 3D coordinates + procurement BOM (what to buy, where it goes, proven correct)
 ```
 
 A product catalog ([M_Product](DATA_MODEL.md)) becomes building elements. A Bill of Materials ([M_BOM](BOMBasedCompilation.md)) becomes assembly recipes. A work order ([C_Order](ProjectOrderBlueprint.md)) becomes a construction project. The same [ERP](MANIFESTO.md) tables that run a factory floor now compile a building.

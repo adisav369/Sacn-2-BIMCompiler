@@ -75,7 +75,7 @@ Claims without proof are marketing. This system is built on proof.
 
 **Rosetta Stone buildings** — real IFC models compiled as reproducible benchmarks:
 
-| Building | Elements | Gates Passing | Domain |
+| Building | Elements | Checks Passing | Domain |
 |----------|----------|---------------|--------|
 | Sample House (SH) | 55 | 9/10 | Residential |
 | Duplex (DX) | 1,099 | 7/10 | Multi-unit residential |
@@ -83,6 +83,8 @@ Claims without proof are marketing. This system is built on proof.
 | Bridge (BR) | 48 | 10/10 | Infrastructure |
 | Road (RD) | 53 | 4/4 | Infrastructure |
 | Rail (RL) | 73 | 4/4 | Infrastructure |
+
+*Checks = 6 gates (G1-G6) plus gate-specific sub-checks (e.g. G5-PROVENANCE has 7 internal checks). A building with 6/6 gates passing may still have sub-check debt. See `docs/TestArchitecture.md` for per-gate breakdown.*
 
 These numbers are not cherry-picked. DX scores 7/10 because the MIRROR verb (for mirrored duplex halves) is incomplete. TE's G2-VOLUME tolerance is 13.7%, not zero, because CLUSTER verb offset tables use +/-10% tolerance for semi-regular grids. We publish the failures alongside the successes (see `docs/PROGRESS.md`).
 

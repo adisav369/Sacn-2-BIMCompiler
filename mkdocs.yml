@@ -58,8 +58,8 @@ nav:
   - Start Here:
       - Home: index.md
       - The ERP World View: MANIFESTO.md
+      - Beyond Buildings (Domain-Agnostic): ShipYard.md
       - Documentation Index: INDEX.md
-      #- Current State: ../PROGRESS.md  # outside docs_dir — link from landing page instead
 
   # ─── "I want to understand the system" ──────────────────
   - Specs:
@@ -70,7 +70,7 @@ nav:
 
   # ─── DOMAIN: Compilation engine ─────────────────────────
   - Verb Engine:
-      - BIM COBOL (64 Verbs): BIM_COBOL.md
+      - BIM COBOL (75 Verbs): BIM_COBOL.md
       - Test Architecture (6 Gates): TestArchitecture.md
       - EYES (Geometric Proofs): EYES_SRS.md
       - Last Mile Gaps: LAST_MILE_PROBLEM.md
@@ -111,6 +111,7 @@ nav:
       - Action Roadmap: ACTION_ROADMAP.md
       - Strategic Positioning: StrategicIndustryPositioning.md
       - BIM-ERP Paper: BIMERPPaper.md
+
 
   # ─── Proven buildings ──────────────────────────────────
   - Buildings:

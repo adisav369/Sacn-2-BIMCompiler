@@ -465,10 +465,9 @@ compiler with witness verification at every step.
 After this manifesto:
 
 1. **[BBC.md](BOMBasedCompilation.md) §1** — the entity mapping table and technical detail
-2. **[MANIFESTO.md](MANIFESTO.md)** — entity registry, three-concern matrix, gap register
-3. **[DATA_MODEL.md](DATA_MODEL.md)** — schema, 4-DB architecture
-4. **[TestArchitecture.md](TestArchitecture.md)** — verification gates, tamper seal
-5. **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — what's next (exception ordering, inheritance, C_Project)
-6. **[SourceCodeGuide.md](SourceCodeGuide.md)** — where the code is
+2. **[DATA_MODEL.md](DATA_MODEL.md)** — schema, 5-DB architecture
+3. **[TestArchitecture.md](TestArchitecture.md)** — verification gates, tamper seal
+4. **[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md)** — what's next (exception ordering, inheritance, C_Project)
+5. **[SourceCodeGuide.md](SourceCodeGuide.md)** — where the code is
 
 For the full academic treatment: **[BIMERPPaper.md](BIMERPPaper.md)**

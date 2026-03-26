@@ -17,13 +17,14 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) | R1-R30 gap tracking, session checklist — the distance between "it compiles" and "it ships" |
 | [TestArchitecture.md](TestArchitecture.md) | G1-G6 gates, tamper seal, traceability matrix, 35 Rosetta Stones |
+| [ShipYard.md](ShipYard.md) | **Domain-agnostic treatise:** marine hulls, tunnels, earthworks, industrial plant — same engine, different data |
 
 ## T1 Foundation — Master References
 
 | Doc | What |
 |-----|------|
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, gospel |
-| [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 4-DB architecture |
+| [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 5-DB architecture |
 | [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 75 verbs, TILE/CLUSTER/ROUTE/FRAME |
 | [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
@@ -58,7 +59,6 @@ Single-page entry point. All active docs by tier.
 | [ACInstituteAnalysis.md](ACInstituteAnalysis.md) | IN (AC Institute) 699-element institutional |
 | [DemoHouseAnalysis.md](DemoHouseAnalysis.md) | DM guardrails: 3-OrderLine compilation, SH base + FK roof + FP discipline |
 | [InfrastructureAnalysis.md](InfrastructureAnalysis.md) | Infrastructure IFC4X3, FACILITY/SEGMENT mapping |
-| [ShipYard.md](ShipYard.md) | Domain-agnostic treatise: marine hulls, tunnels, earthworks, industrial plant — 4 verticals, same engine |
 | [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) | M1/M4/M5/M6/M12 distributions (V004 seed data) |
 
 ## T4 Guides — User-Facing

@@ -22,7 +22,7 @@ SQLite, and the Bonsai/BlenderBIM open-source 3D viewport.
 | BOM Drop + product swap + compile in BIM Designer | bomDrop(SH) + swapProduct(roof) + compile = 95 elements, gates pass |
 | HTML UI (10 tabs) + Bonsai 3D viewport, bidirectional sync | DocAction buttons: Draft → Approve → Complete → Promote |
 | Federation addon: work packages, equipment, labour breakdown | Visual BI over SQLite — click to query |
-| 392 unit tests, 28 proof assertions, all GREEN | BIMBackOffice 5/5, BonsaiBIMDesigner 392/392 |
+| 408+ unit tests, 202 witness assertions, all GREEN | BIMBackOffice 5/5, BonsaiBIMDesigner 408/408 (42 classes) |
 | Scorecard: 31/36 (nearest competitor: 9) | 4D/5D live DAOs, 6D/7D/3D/CR/Audit scored |
 
 **What is on the way (this document).**
