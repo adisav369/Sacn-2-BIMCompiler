@@ -13,6 +13,10 @@
       
       
       
+        <link rel="prev" href="../MANIFESTO/">
+      
+      
+        <link rel="next" href="../INDEX/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>ShipYard — A Deterministic Engine for Any Manufactured Assembly - BIM Intent Compiler</title>
+        <title>Beyond Buildings (Domain-Agnostic) - BIM Intent Compiler</title>
       
     
     
@@ -118,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              ShipYard — A Deterministic Engine for Any Manufactured Assembly
+              Beyond Buildings (Domain-Agnostic)
             
           </span>
         </div>
@@ -229,10 +233,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href=".." class="md-tabs__link">
           
   
@@ -494,6 +500,8 @@
       
   
   
+    
+  
   
   
     
@@ -507,20 +515,25 @@
       
         
       
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
         
           
           <div class="md-nav__link md-nav__container">
@@ -542,13 +555,13 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -584,6 +597,502 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings (Domain-Agnostic)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings (Domain-Agnostic)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#0-thesis-why-the-engine-is-domain-agnostic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        0. Thesis — Why the Engine Is Domain-Agnostic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-marine-the-bom-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Marine — The BOM Mapping
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-verb-reuse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Verb Reuse
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-component-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Component Library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-yaml-taxonomy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. YAML Taxonomy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-exception-ordering-configure-to-order-for-ships" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Exception Ordering — Configure-to-Order for Ships
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-whats-new-lofted_surface-phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. What's New — LOFTED_SURFACE (Phase 2)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-implementation-phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Implementation Phases
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Implementation Phases">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1-flat-tile-hull-1-session-pre-release-proof" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1 — Flat-Tile Hull (1 session, pre-release proof)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2-curved-surface-2-3-sessions-post-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2 — Curved Surface (2-3 sessions, post-release)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3-full-marine-vocabulary-future" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3 — Full Marine Vocabulary (future)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-gate-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Gate Verification
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8b-the-authoring-flow-bom-drop-asi-verbs-approve-new-domain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8b. The Authoring Flow — BOM Drop → ASI Verbs → Approve → New Domain
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8b. The Authoring Flow — BOM Drop → ASI Verbs → Approve → New Domain">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#8b1-the-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8b.1 The Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8b2-trim-as-spatial-predicate-the-dm-glass-wall-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8b.2 TRIM as Spatial Predicate — The DM Glass Wall Example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8b3-why-this-has-no-equivalent-in-blender-or-any-3d-authoring-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8b.3 Why This Has No Equivalent in Blender or Any 3D Authoring Tool
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-tunnels-prefab-rings-as-bom-segments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Tunnels — Prefab Rings as BOM Segments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Tunnels — Prefab Rings as BOM Segments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-the-bom-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 The BOM Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#92-what-the-engine-already-handles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.2 What the Engine Already Handles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#93-whats-new-alignment-following-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.3 What's New — Alignment-Following Placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#94-ifc-source-data-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.4 IFC Source Data Available
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-earthworks-volumetric-boms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Earthworks — Volumetric BOMs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Earthworks — Volumetric BOMs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#101-the-bom-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.1 The BOM Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#102-what-the-engine-already-handles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.2 What the Engine Already Handles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#103-ifc-source-data-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.3 IFC Source Data Available
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-industrial-plant-process-as-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Industrial Plant — Process as BOM
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="11. Industrial Plant — Process as BOM">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#111-the-bom-mapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.1 The BOM Mapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#112-what-the-engine-already-handles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.2 What the Engine Already Handles
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#113-whats-new-minimal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.3 What's New — Minimal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#114-ifc-gap-industry-uses-different-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11.4 IFC Gap — Industry Uses Different Standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-the-design-framework-whats-already-addressed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. The Design Framework — What's Already Addressed
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. The Design Framework — What&#39;s Already Addressed">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#121-engine-patterns-that-transfer-without-modification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.1 Engine Patterns That Transfer Without Modification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#122-new-capabilities-required-bounded-extensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.2 New Capabilities Required (Bounded Extensions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#123-the-design-framework-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12.3 The Design Framework Inventory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -885,7 +1394,7 @@
   <span class="md-ellipsis">
     
   
-    BIM COBOL (64 Verbs)
+    BIM COBOL (75 Verbs)
   
 
     
