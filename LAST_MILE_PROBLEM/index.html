@@ -2731,7 +2731,11 @@
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
-<p>Vibe Programming under strict architectural supervision built this compiler — but AI cannot see spatial geometry. It doesn't know a wall must sit on a slab, or that two columns can't overlap. Months of frustration revealed a pattern: the code drifts from spec precisely where spatial reasoning is required. This document tracks every known drift point between "it compiles" and "it ships."</p>
+<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fce4ec, #fff3e0, #fce4ec); border-left: 4px solid #d32f2f; border-right: 4px solid #d32f2f;">
+<b>AI cannot repeat an outcome. Determinism is our religion here.</b>
+</div>
+
+<p>Vibe Programming under strict architectural supervision built this compiler — but AI cannot see spatial geometry. It doesn't know a wall must sit on a slab, or that two columns can't overlap. Months of frustration revealed a pattern: the code drifts from spec precisely where spatial reasoning is required. This document tracks every known drift point between "it compiles" and "it ships with no AI inside."</p>
 <p>See <a href="../EYES_SRS/">BIMEyes</a> for how we taught the compiler to see. Below is the way we harness in Claude Code AI.</p>
 <hr />
 <h2 id="drift-gate">Drift Gate<a class="headerlink" href="#drift-gate" title="Permanent link">&para;</a></h2>
@@ -2797,47 +2801,52 @@
 <p>Hosted elements (doors, windows) must reference their host wall via <code>host_element_ref</code>. Rotation must match the host face. No overlapping elements within the same product class (P06 proof).</p>
 <p><strong>Verdict:</strong> PASS — rotation witness (W-ROT) proven, P05/P06 zero violations.</p>
 <h3 id="5-spec-fidelity">5. Spec Fidelity?<a class="headerlink" href="#5-spec-fidelity" title="Permanent link">&para;</a></h3>
-<p><strong>Spec:</strong> All 7 sources that dictate output — are they the RIGHT sources?</p>
+<p><strong>Spec:</strong> All sources that dictate output — are they the RIGHT sources?</p>
+<p>The real input is a <a href="../ProjectOrderBlueprint/">Construction Order</a> (<a href="../MANIFESTO/#the-order-configure-to-order">C_Order</a> → <a href="../MANIFESTO/#the-order-configure-to-order">C_OrderLine</a>). The order references products from the BOM dictionary, and the compiler explodes it into placed elements. Everything else is supporting data.</p>
 <table>
 <thead>
 <tr>
 <th>Source</th>
 <th>What it dictates</th>
+<th>Entry path</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>classify_*.yaml</code></td>
-<td>Storeys, scope spaces, products, composition</td>
+<td><strong>C_Order → C_OrderLine</strong></td>
+<td>What to build — the construction order with exceptions</td>
+<td><a href="../BIM_Designer_UserGuide/">BIM Designer</a> (interactive) or YAML (test harness)</td>
 </tr>
 <tr>
-<td><code>dsl_*.bim</code></td>
-<td>Building definition: grid, rooms, openings, roof</td>
+<td><code>{PREFIX}_BOM.db</code></td>
+<td>Assembly recipes — the BOM dictionary the order references</td>
+<td><a href="../DATA_MODEL/">IFCtoBOM pipeline</a> (once per building type)</td>
+</tr>
+<tr>
+<td><code>component_library.db</code></td>
+<td>Product geometry, meshes, materials, orientation</td>
+<td>Extraction + curation</td>
+</tr>
+<tr>
+<td><code>ERP.db</code></td>
+<td>Validation rules — fire protection, MEP spacing, jurisdiction</td>
+<td><a href="../DocValidate/">DocValidate</a> rule packs</td>
 </tr>
 <tr>
 <td><code>*.bimcobol</code></td>
 <td>Verb recipes: PLACE BOM, ROUTE, WIRE, TRIM</td>
+<td><a href="../BIM_COBOL/">BIM COBOL</a> scripts</td>
 </tr>
 <tr>
 <td><code>BIMConstants.java</code></td>
-<td>Dimensional defaults</td>
-</tr>
-<tr>
-<td><code>ERP.db</code></td>
-<td>Rule tables: fire protection, MEP, placement</td>
-</tr>
-<tr>
-<td><code>component_library.db</code></td>
-<td>Geometry meshes, orientation</td>
-</tr>
-<tr>
-<td>User design (promote)</td>
-<td>C_OrderLine spatial edits</td>
+<td>Dimensional defaults (ceiling height, slab thickness)</td>
+<td>Code constants</td>
 </tr>
 </tbody>
 </table>
-<p>The BOM walker must read products from the compile connection, not from extraction. If any value in the output cannot be traced to one of these 7 sources, that's drift.</p>
-<p><strong>Verdict:</strong> PASS — 7 sources audited.</p>
+<p><strong>Note:</strong> <code>classify_*.yaml</code> is how the test harness represents a C_Order — it seeds the order and BOM for Rosetta Stone verification. In production, the <a href="../BIM_Designer_UserGuide/">BIM Designer</a> creates the C_Order interactively via <a href="../BOMBasedCompilation/#34-bom-drop">BOM Drop</a>.</p>
+<p>The BOM walker must read products from the compile connection, not from extraction. If any value in the output cannot be traced to one of these sources, that's drift.</p>
+<p><strong>Verdict:</strong> PASS — all sources audited.</p>
 <h3 id="6-output-path">6. Output Path?<a class="headerlink" href="#6-output-path" title="Permanent link">&para;</a></h3>
 <p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §3.3</a> — single path: C_OrderLine → BOM explosion → placed elements.</p>
 <p>There must be exactly ONE code path that writes elements to <code>output.db</code>. No side-channel insertions, no bulk copies, no shortcut SQL. Element counts verified for all 35 buildings.</p>
