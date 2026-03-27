@@ -925,7 +925,7 @@
   <span class="md-ellipsis">
     
   
-    BIM COBOL (75 Verbs)
+    BIM COBOL (76 Verbs)
   
 
     
@@ -1651,6 +1651,8 @@
       
         
       
+        
+      
     
     
     
@@ -1711,6 +1713,34 @@
     
   
     Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
   
 
     
@@ -2599,9 +2629,9 @@ cp<span class="w"> </span>-r<span class="w"> </span>addon/bonsai_bim_designer<sp
 <li>Connect</li>
 </ol>
 <div class="highlight"><pre><span></span><code><span class="c1"># In operator.py connect handler:</span>
-<span class="kn">import</span> <span class="nn">subprocess</span><span class="o">,</span> <span class="nn">socket</span><span class="o">,</span> <span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="o">,</span><span class="w"> </span><span class="nn">socket</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
 
-<span class="k">def</span> <span class="nf">ensure_server</span><span class="p">():</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">ensure_server</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Start server if not running.&quot;&quot;&quot;</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">((</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="mi">9876</span><span class="p">),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>

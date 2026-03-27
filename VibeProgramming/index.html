@@ -13,24 +13,28 @@
       
       
       
+        <link rel="prev" href="../ACTION_ROADMAP/">
+      
+      
+        <link rel="next" href="../StrategicIndustryPositioning/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Refactor: Sealed Types and Pipeline Hardening - BIM Intent Compiler</title>
+        <title>Vibe Programming - BIM Intent Compiler</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,9 +53,9 @@
       
     
     
-      <link rel="stylesheet" href="../../stylesheets/custom.css">
+      <link rel="stylesheet" href="../stylesheets/custom.css">
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
   
@@ -86,7 +90,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#refactor-sealed-types-and-pipeline-hardening" class="md-skip">
+        <a href="#vibe-programming-how-this-compiler-was-built" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +104,7 @@
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -120,7 +124,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Refactor: Sealed Types and Pipeline Hardening
+              Vibe Programming
             
           </span>
         </div>
@@ -235,7 +239,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../.." class="md-tabs__link">
+        <a href=".." class="md-tabs__link">
           
   
   
@@ -257,7 +261,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../LAST_MILE_PROBLEM/" class="md-tabs__link">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
           
   
   
@@ -279,7 +283,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../BOMBasedCompilation/" class="md-tabs__link">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
           
   
   
@@ -301,7 +305,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../BIM_Designer_SRS/" class="md-tabs__link">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
           
   
   
@@ -323,7 +327,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../Enterprise/" class="md-tabs__link">
+        <a href="../Enterprise/" class="md-tabs__link">
           
   
   
@@ -341,11 +345,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../ACTION_ROADMAP/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
           
   
   
@@ -367,7 +373,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../SampleHouseAnalysis/" class="md-tabs__link">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
           
   
   
@@ -389,7 +395,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../WorkOrderGuide/" class="md-tabs__link">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
           
   
   
@@ -425,7 +431,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -482,7 +488,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../.." class="md-nav__link ">
+            <a href=".." class="md-nav__link ">
               
   
   
@@ -526,7 +532,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../MANIFESTO/" class="md-nav__link">
+      <a href="../MANIFESTO/" class="md-nav__link">
         
   
   
@@ -554,7 +560,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ShipYard/" class="md-nav__link">
+      <a href="../ShipYard/" class="md-nav__link">
         
   
   
@@ -651,7 +657,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../LAST_MILE_PROBLEM/" class="md-nav__link">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
         
   
   
@@ -679,7 +685,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../TestArchitecture/" class="md-nav__link">
+      <a href="../TestArchitecture/" class="md-nav__link">
         
   
   
@@ -707,7 +713,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../EYES_SRS/" class="md-nav__link">
+      <a href="../EYES_SRS/" class="md-nav__link">
         
   
   
@@ -735,7 +741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../CALIBRATION_SRS/" class="md-nav__link">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
         
   
   
@@ -834,7 +840,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BOMBasedCompilation/" class="md-nav__link">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
         
   
   
@@ -862,7 +868,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DATA_MODEL/" class="md-nav__link">
+      <a href="../DATA_MODEL/" class="md-nav__link">
         
   
   
@@ -890,7 +896,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../TheRosettaStoneStrategy/" class="md-nav__link">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
         
   
   
@@ -918,7 +924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BIM_COBOL/" class="md-nav__link">
+      <a href="../BIM_COBOL/" class="md-nav__link">
         
   
   
@@ -946,7 +952,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../SourceCodeGuide/" class="md-nav__link">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
         
   
   
@@ -1045,7 +1051,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BIM_Designer_SRS/" class="md-nav__link">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
         
   
   
@@ -1073,7 +1079,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DocAction_SRS/" class="md-nav__link">
+      <a href="../DocAction_SRS/" class="md-nav__link">
         
   
   
@@ -1101,7 +1107,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DocValidate/" class="md-nav__link">
+      <a href="../DocValidate/" class="md-nav__link">
         
   
   
@@ -1129,7 +1135,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
         
   
   
@@ -1157,7 +1163,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BlenderBridge/" class="md-nav__link">
+      <a href="../BlenderBridge/" class="md-nav__link">
         
   
   
@@ -1272,7 +1278,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../Enterprise/" class="md-nav__link">
+      <a href="../Enterprise/" class="md-nav__link">
         
   
   
@@ -1300,7 +1306,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BACK_OFFICE_SRS/" class="md-nav__link">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
         
   
   
@@ -1328,7 +1334,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../TIER1_SRS/" class="md-nav__link">
+      <a href="../TIER1_SRS/" class="md-nav__link">
         
   
   
@@ -1356,7 +1362,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
         
   
   
@@ -1384,7 +1390,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../REPORTING_ENGINE_SRS/" class="md-nav__link">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
         
   
   
@@ -1412,7 +1418,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../INFRA_DESIGNER_SRS/" class="md-nav__link">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
         
   
   
@@ -1440,7 +1446,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PDF_TERRAIN/" class="md-nav__link">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
         
   
   
@@ -1468,7 +1474,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../2D_LAYOUT/" class="md-nav__link">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
         
   
   
@@ -1496,7 +1502,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DISC_VALIDATE_SRS/" class="md-nav__link">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
         
   
   
@@ -1524,7 +1530,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
         
   
   
@@ -1552,7 +1558,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
         
   
   
@@ -1580,7 +1586,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
         
   
   
@@ -1608,7 +1614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../PREFAB_ARCHITECTURE/" class="md-nav__link">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
         
   
   
@@ -1640,8 +1646,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1657,19 +1665,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -1687,7 +1698,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1705,7 +1716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ACTION_ROADMAP/" class="md-nav__link">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
         
   
   
@@ -1730,10 +1741,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../VibeProgramming/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1749,6 +1787,142 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-vibe-programming" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Is Vibe Programming?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-industry-numbers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Industry Numbers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-it-works-here-and-fails-elsewhere" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why It Works Here (And Fails Elsewhere)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why It Works Here (And Fails Elsewhere)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-a-domain-expert-who-knows-what-correct-looks-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. A domain expert who knows what correct looks like
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-deterministic-verification-no-looks-right" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Deterministic verification (no "looks right")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-the-drift-is-tracked-not-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The Drift is tracked, not hidden
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-toolchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Toolchain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-sceptics-get-right" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Sceptics Get Right
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-honest-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Honest Ledger
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-the-bonsaiblenderbim-community" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For the Bonsai/BlenderBIM Community
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1761,7 +1935,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../StrategicIndustryPositioning/" class="md-nav__link">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
         
   
   
@@ -1789,7 +1963,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BIMERPPaper/" class="md-nav__link">
+      <a href="../BIMERPPaper/" class="md-nav__link">
         
   
   
@@ -1892,7 +2066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../SampleHouseAnalysis/" class="md-nav__link">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
         
   
   
@@ -1920,7 +2094,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../FZKHausAnalysis/" class="md-nav__link">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
         
   
   
@@ -1948,7 +2122,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DuplexAnalysis/" class="md-nav__link">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
         
   
   
@@ -1976,7 +2150,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../ACInstituteAnalysis/" class="md-nav__link">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
         
   
   
@@ -2004,7 +2178,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../TerminalAnalysis/" class="md-nav__link">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
         
   
   
@@ -2032,7 +2206,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../InfrastructureAnalysis/" class="md-nav__link">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
         
   
   
@@ -2060,7 +2234,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../DemoHouseAnalysis/" class="md-nav__link">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
         
   
   
@@ -2163,7 +2337,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../WorkOrderGuide/" class="md-nav__link">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
         
   
   
@@ -2191,7 +2365,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../USER_GUIDE/" class="md-nav__link">
+      <a href="../USER_GUIDE/" class="md-nav__link">
         
   
   
@@ -2219,7 +2393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BIM_Designer_UserGuide/" class="md-nav__link">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
         
   
   
@@ -2247,7 +2421,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../BackOfficeUserGuide/" class="md-nav__link">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
         
   
   
@@ -2275,7 +2449,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
         
   
   
@@ -2303,7 +2477,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
         
   
   
@@ -2331,7 +2505,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../INDEX/" class="md-nav__link">
+      <a href="../INDEX/" class="md-nav__link">
         
   
   
@@ -2386,10 +2560,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prompt-for-code" class="md-nav__link">
+  <a href="#what-is-vibe-programming" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prompt for Code
+        What Is Vibe Programming?
       
     </span>
   </a>
@@ -2397,10 +2571,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#watchdog-constraints" class="md-nav__link">
+  <a href="#the-industry-numbers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Watchdog Constraints
+        The Industry Numbers
       
     </span>
   </a>
@@ -2408,10 +2582,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verification" class="md-nav__link">
+  <a href="#why-it-works-here-and-fails-elsewhere" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verification
+        Why It Works Here (And Fails Elsewhere)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why It Works Here (And Fails Elsewhere)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-a-domain-expert-who-knows-what-correct-looks-like" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. A domain expert who knows what correct looks like
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-deterministic-verification-no-looks-right" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Deterministic verification (no "looks right")
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-the-drift-is-tracked-not-hidden" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. The Drift is tracked, not hidden
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-toolchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Toolchain
       
     </span>
   </a>
@@ -2419,10 +2643,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#after-this-refactor" class="md-nav__link">
+  <a href="#what-the-sceptics-get-right" class="md-nav__link">
     <span class="md-ellipsis">
       
-        After This Refactor
+        What the Sceptics Get Right
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-honest-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Honest Ledger
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#for-the-bonsaiblenderbim-community" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        For the Bonsai/BlenderBIM Community
       
     </span>
   </a>
@@ -2449,108 +2695,217 @@
   
 
 
-<h1 id="refactor-sealed-types-and-pipeline-hardening">Refactor: Sealed Types and Pipeline Hardening<a class="headerlink" href="#refactor-sealed-types-and-pipeline-hardening" title="Permanent link">&para;</a></h1>
-<p><strong>When to use:</strong> After RM-5 (flat table becomes computed cache) is complete and all tests green.<br />
-<strong>Prerequisites:</strong> Registry-driven pipeline (RM-8), CompilerContractTest (40+ tests), BuildingRegistryTest passing for all active buildings.<br />
-<strong>Next after this:</strong> REFACTOR_METADATA_INTEGRITY.md</p>
+<h1 id="vibe-programming-how-this-compiler-was-built">Vibe Programming — How This Compiler Was Built<a class="headerlink" href="#vibe-programming-how-this-compiler-was-built" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Foundation:</strong> <a href="../LAST_MILE_PROBLEM/">The Drift</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../MANIFESTO/">MANIFESTO</a></p>
+</blockquote>
+<div class="bim-banner">
+<p><b>76 verbs. 2,475 products. 408 tests. 55 specs. One human. Zero traditional coding.</b> This compiler was built by a Java-literate ERP architect using AI as a force multiplier — domain expertise steers, AI types at the speed of thought.</p>
+</div>
 <hr />
-<h2 id="prompt-for-code">Prompt for Code<a class="headerlink" href="#prompt-for-code" title="Permanent link">&para;</a></h2>
-<p><strong>Refactor: Apply iDempiere-strength Java patterns across the compiler. The codebase has grown organically — methods do too much, contracts are enforced by convention instead of types, and the same lookup-or-guess pattern keeps recurring. Time to harden.</strong></p>
-<p><strong>Pattern 1: Sealed types for placement modes.</strong> Currently placement mode is likely a string or enum that code can ignore. Make it a sealed interface:</p>
-<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">sealed</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">Placement</span>
-<span class="w">    </span><span class="n">permits</span><span class="w"> </span><span class="n">GridPlacement</span><span class="p">,</span><span class="w"> </span><span class="n">FractionPlacement</span><span class="p">,</span><span class="w"> </span><span class="n">AbsolutePlacement</span><span class="p">,</span><span class="w"> </span><span class="n">BayPlacement</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">BoundingBox</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">RoomContext</span><span class="w"> </span><span class="n">room</span><span class="p">,</span><span class="w"> </span><span class="n">MetadataStore</span><span class="w"> </span><span class="n">meta</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>Each placement type carries only the fields it needs. <code>FractionPlacement</code> has <code>fraction</code> and <code>wallFace</code>. <code>GridPlacement</code> has <code>row</code> and <code>col</code>. No invalid combinations possible. The <code>resolve()</code> method returns a <code>BoundingBox</code> or throws — no null, no default.</p>
-<p><strong>Pattern 2: Context objects that eliminate parameter passing.</strong> Stop passing 8 parameters through 5 methods. Create:</p>
-<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">RoomContext</span><span class="p">(</span>
-<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">storeyId</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">floorLevel</span><span class="p">,</span><span class="w"> </span><span class="n">BoundingBox</span><span class="w"> </span><span class="n">roomBounds</span><span class="p">,</span>
-<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">WallFace</span><span class="o">&gt;</span><span class="w"> </span><span class="n">walls</span><span class="p">,</span><span class="w"> </span><span class="n">MetadataStore</span><span class="w"> </span><span class="n">meta</span>
-<span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">WallFace</span><span class="w"> </span><span class="nf">wallOrThrow</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">faceName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">walls</span><span class="p">.</span><span class="na">stream</span><span class="p">()</span>
-<span class="w">            </span><span class="p">.</span><span class="na">filter</span><span class="p">(</span><span class="n">w</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">w</span><span class="p">.</span><span class="na">face</span><span class="p">().</span><span class="na">equals</span><span class="p">(</span><span class="n">faceName</span><span class="p">))</span>
-<span class="w">            </span><span class="p">.</span><span class="na">findFirst</span><span class="p">()</span>
-<span class="w">            </span><span class="p">.</span><span class="na">orElseThrow</span><span class="p">(()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MetadataMissingException</span><span class="p">(</span>
-<span class="w">                </span><span class="s">&quot;No wall face &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">faceName</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; in room &quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">roomBounds</span><span class="p">));</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
-<p>Every resolver method takes <code>RoomContext</code> — it can't forget the floor level or lose the room bounds between calls.</p>
-<p><strong>Pattern 3: Builder with mandatory fields (iDempiere's MOrder/MInvoice pattern).</strong> For elements that need many fields, use a builder that refuses to build until all required fields are set:</p>
-<div class="highlight"><pre><span></span><code><span class="n">BIMElement</span><span class="w"> </span><span class="n">element</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">BIMElement</span><span class="p">.</span><span class="na">builder</span><span class="p">()</span>
-<span class="w">    </span><span class="p">.</span><span class="na">guid</span><span class="p">(</span><span class="n">guid</span><span class="p">)</span><span class="w">                    </span><span class="c1">// required</span>
-<span class="w">    </span><span class="p">.</span><span class="na">ifcClass</span><span class="p">(</span><span class="s">&quot;IfcSanitaryTerminal&quot;</span><span class="p">)</span><span class="w"> </span><span class="c1">// required</span>
-<span class="w">    </span><span class="p">.</span><span class="na">bounds</span><span class="p">(</span><span class="n">resolvedBounds</span><span class="p">)</span><span class="w">        </span><span class="c1">// required</span>
-<span class="w">    </span><span class="p">.</span><span class="na">material</span><span class="p">(</span><span class="n">material</span><span class="p">)</span><span class="w">            </span><span class="c1">// required</span>
-<span class="w">    </span><span class="p">.</span><span class="na">rotation</span><span class="p">(</span><span class="n">rotation</span><span class="p">)</span><span class="w">            </span><span class="c1">// required</span>
-<span class="w">    </span><span class="p">.</span><span class="na">provenance</span><span class="p">(</span><span class="n">EXTRACTED_TERMINAL</span><span class="p">)</span><span class="w"> </span><span class="c1">// required</span>
-<span class="w">    </span><span class="p">.</span><span class="na">build</span><span class="p">();</span><span class="w">  </span><span class="c1">// throws if ANY required field is null</span>
-</code></pre></div>
-<p><strong>Pattern 4: Pipeline as typed chain, not method calls.</strong> The compilation pipeline should be a <code>List&lt;CompilerStage&gt;</code> that runs in order, not a sequence of method calls that Code can reorder or skip:</p>
-<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">interface</span> <span class="nc">CompilerStage</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">StageResult</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span><span class="n">CompilationContext</span><span class="w"> </span><span class="n">ctx</span><span class="p">);</span>
-<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="nf">stageName</span><span class="p">();</span>
-<span class="p">}</span>
-
-<span class="c1">// Pipeline is declared once, immutable:</span>
-<span class="n">List</span><span class="o">&lt;</span><span class="n">CompilerStage</span><span class="o">&gt;</span><span class="w"> </span><span class="n">PIPELINE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">GridResolver</span><span class="p">(),</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">RoomResolver</span><span class="p">(),</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">WallResolver</span><span class="p">(),</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">MEPResolver</span><span class="p">(),</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">SanityChecker</span><span class="p">(),</span><span class="w">      </span><span class="c1">// can&#39;t be skipped</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">WitnessValidator</span><span class="p">(),</span><span class="w">   </span><span class="c1">// can&#39;t be skipped</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">OutputWriter</span><span class="p">()</span>
-<span class="p">);</span>
-</code></pre></div>
-<p>Adding a new resolver = adding one entry to the list. Can't forget Witness because it's in the list, not called by hand.</p>
-<p><strong>Pattern 5: MetadataStore as single source of truth with no fallbacks.</strong></p>
-<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">MetadataStore</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="cm">/** Returns value or throws. NEVER returns null. NEVER defaults. */</span>
-<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">getRotationOrThrow</span><span class="p">(</span><span class="n">String</span><span class="w"> </span><span class="n">productType</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">context</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="n">Integer</span><span class="w"> </span><span class="n">val</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">lookupRotation</span><span class="p">(</span><span class="n">productType</span><span class="p">,</span><span class="w"> </span><span class="n">context</span><span class="p">);</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">val</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="p">)</span><span class="w"> </span><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">MetadataMissingException</span><span class="p">(</span>
-<span class="w">            </span><span class="n">productType</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;/&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">context</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; — add to ad_product_dim&quot;</span><span class="p">);</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">val</span><span class="p">;</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="w">    </span><span class="c1">// No getRotationOrDefault() method exists. Don&#39;t create one.</span>
-<span class="p">}</span>
-</code></pre></div>
-<p><strong>Apply systematically: audit every resolver class. For each one, extract placement logic into the sealed Placement type, wrap parameters into RoomContext, replace raw constructors with builder-with-mandatory-fields, and ensure all metadata access goes through MetadataStore.getXxxOrThrow(). Run CompilerContractTest after each class. Commit per class — small refactors, each green.</strong></p>
+<h2 id="what-is-vibe-programming">What Is Vibe Programming?<a class="headerlink" href="#what-is-vibe-programming" title="Permanent link">&para;</a></h2>
+<p>In February 2025, Andrej Karpathy (co-founder of OpenAI, former Tesla AI director) coined the term:</p>
+<blockquote>
+<p><em>"There's a new kind of coding I call 'vibe coding', where you fully give in to the vibes, embrace exponentials, and forget that the code even exists."</em></p>
+</blockquote>
+<p>He described accepting LLM suggestions without fully reading the code, running the app, seeing if it works, and iterating. He noted this works for throwaway weekend projects, not production code.</p>
+<p><strong>This project disagrees with half of that statement.</strong> The BIM Compiler is production-grade — 35 buildings compiled, 6 mathematical gates, deterministic output. But it was built entirely through AI-assisted programming. The difference: <strong>domain expertise is the guard rail, not the code.</strong></p>
 <hr />
-<h2 id="watchdog-constraints">Watchdog Constraints<a class="headerlink" href="#watchdog-constraints" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Run all tests before starting. All must be green.</li>
-<li>SpatialDigest for all buildings must not change. This is a pure refactor — behaviour stays identical.</li>
-<li>BoundElement null rejection tests in CompilerContractTest must still pass.</li>
-<li>BuildingRegistryTest must still pass for all active buildings.</li>
-<li>No new <code>getOrDefault()</code> methods anywhere. Only <code>getOrThrow()</code>.</li>
-<li>No <code>if (building.name().equals("..."))</code> anywhere in pipeline code.</li>
-<li>Commit per class. Tests green throughout, not just at the end.</li>
-<li>If a test fails, fix the code, not the test.</li>
-</ul>
+<h2 id="the-industry-numbers">The Industry Numbers<a class="headerlink" href="#the-industry-numbers" title="Permanent link">&para;</a></h2>
+<p>The shift is real. These are the numbers the sceptics should weigh:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Figure</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Developers using or planning to use AI tools</td>
+<td>76%</td>
+<td>Stack Overflow Developer Survey 2024</td>
+</tr>
+<tr>
+<td>GitHub Copilot paid users</td>
+<td>2M+</td>
+<td>GitHub, late 2024</td>
+</tr>
+<tr>
+<td>Code suggestions accepted (Copilot)</td>
+<td>~30%</td>
+<td>GitHub Blog, 2023-2024</td>
+</tr>
+<tr>
+<td>Developer task completion speed with AI</td>
+<td>55% faster</td>
+<td>GitHub/Microsoft Research, 2023</td>
+</tr>
+<tr>
+<td>AI-generated code share in enabled repos</td>
+<td>~46%</td>
+<td>GitHub Octoverse 2024</td>
+</tr>
+<tr>
+<td>Code churn increase with AI assistants</td>
+<td>+39%</td>
+<td>GitClear "Code Quality in 2024"</td>
+</tr>
+</tbody>
+</table>
+<p>That last number is the one that matters. <strong>39% more churn</strong> means AI-generated code gets written and then rewritten. The code drifts. The architecture erodes. This is the central risk — and the central problem this project solved.</p>
 <hr />
-<h2 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="c1"># Before starting</span>
-mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>DAGCompiler<span class="w"> </span>-q
-<span class="c1"># Should show: 44+ tests, all green</span>
-
-<span class="c1"># After each class refactored</span>
-mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>DAGCompiler<span class="w"> </span>-q
-<span class="c1"># Should show: same test count, all green, same SpatialDigests</span>
-
-<span class="c1"># After completion</span>
-mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-pl<span class="w"> </span>DAGCompiler<span class="w"> </span>-q
-<span class="c1"># Should show: same test count, all green, all SpatialDigests unchanged</span>
+<h2 id="why-it-works-here-and-fails-elsewhere">Why It Works Here (And Fails Elsewhere)<a class="headerlink" href="#why-it-works-here-and-fails-elsewhere" title="Permanent link">&para;</a></h2>
+<p>Most vibe-coded projects fail because the human doesn't know what correct looks like. They accept whatever the AI produces because they can't evaluate it. The AI is both the author and the reviewer — a closed loop with no external ground truth.</p>
+<p>This project has three things most don't:</p>
+<h3 id="1-a-domain-expert-who-knows-what-correct-looks-like">1. A domain expert who knows what correct looks like<a class="headerlink" href="#1-a-domain-expert-who-knows-what-correct-looks-like" title="Permanent link">&para;</a></h3>
+<p>The creator, <a href="mailto:red1org@gmail.com">Redhuan D. Oon</a>, has two decades in ERP systems — <a href="https://adempiere.net/">ADempiere</a> (2006), <a href="https://idempiere.org/">iDempiere</a> (2010), and the BIM Compiler (2025). He helped start the ADempiere fork that led to iDempiere, wrote plugins and core improvements in Java, and knows the language and the ERP internals. But vibe programming changes the role: instead of typing Java line by line, he <strong>supervises at the speed of thought</strong> — his Java insight provides the key questions that steer the AI, while the AI handles the typing at a pace no human can match.</p>
+<p>He writes <strong>specifications</strong>: what M_BOM means, how C_Order flows, why a wall must sit on a slab. The AI writes the Java. The domain expert evaluates whether the output is correct — not just by reading the compiled building, but by asking the precise Java questions that expose whether the AI's implementation actually honours the spec.</p>
+<p>This is not a non-programmer hoping AI gets it right. This is a <strong>Java-literate ERP architect using AI as a force multiplier for his domain expertise</strong>.</p>
+<h3 id="2-deterministic-verification-no-looks-right">2. Deterministic verification (no "looks right")<a class="headerlink" href="#2-deterministic-verification-no-looks-right" title="Permanent link">&para;</a></h3>
+<p>Every compiled building passes through <a href="../TestArchitecture/">6 mathematical gates</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>What it proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G1 COUNT</td>
+<td>Input BOM quantity = output element count</td>
+</tr>
+<tr>
+<td>G2 VOLUME</td>
+<td>Compiled bounding volume matches reference</td>
+</tr>
+<tr>
+<td>G3 DIGEST</td>
+<td>Byte-level hash of output matches known-good baseline</td>
+</tr>
+<tr>
+<td>G4 TAMPER</td>
+<td>No file was modified outside the compilation pipeline</td>
+</tr>
+<tr>
+<td>G5 PROVENANCE</td>
+<td>Every output element traces back to a BOM line</td>
+</tr>
+<tr>
+<td>G6 ISOLATION</td>
+<td>No cross-building contamination between compilations</td>
+</tr>
+</tbody>
+</table>
+<p>The AI cannot cheat these gates. G3 alone — a cryptographic digest of the entire output — means a single wrong coordinate in a 48,428-element building fails the build. There is no "close enough."</p>
+<h3 id="3-the-drift-is-tracked-not-hidden">3. The Drift is tracked, not hidden<a class="headerlink" href="#3-the-drift-is-tracked-not-hidden" title="Permanent link">&para;</a></h3>
+<p>When AI-generated code drifts from spec — and it does, consistently — the drift is documented. <a href="../LAST_MILE_PROBLEM/">The Drift</a> tracks every known failure mode: walls that don't sit on slabs, columns that overlap, coordinates that shift by millimetres. 11 drift points, each citing the spec section it violates.</p>
+<p>The project doesn't pretend AI code is perfect. It assumes AI code will drift and builds the infrastructure to catch it.</p>
+<hr />
+<h2 id="the-toolchain">The Toolchain<a class="headerlink" href="#the-toolchain" title="Permanent link">&para;</a></h2>
+<p>This project uses <a href="https://claude.ai/">Claude Code</a>, Anthropic's CLI agent, as the primary development environment. The tools that make it work:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Agent</strong> (parallel subprocesses)</td>
+<td>4 research threads simultaneously — codebase search, spec verification, test runs in parallel</td>
+</tr>
+<tr>
+<td><strong>Bash</strong> (unrestricted shell)</td>
+<td><code>mvn compile</code>, <code>git</code>, <code>sqlite3</code>, pipeline scripts — the AI runs the full build chain</td>
+</tr>
+<tr>
+<td><strong>Grep + Glob</strong> (ripgrep-speed search)</td>
+<td>Pattern matching across 400+ Java files in milliseconds</td>
+</tr>
+<tr>
+<td><strong>Edit</strong> (surgical diff)</td>
+<td>One exact string replacement — not whole-file rewrites</td>
+</tr>
+<tr>
+<td><strong>Read</strong> (multimodal file access)</td>
+<td>Code, images, PDFs, screenshots — the AI reads the same artefacts the architect reads</td>
+</tr>
+</tbody>
+</table>
+<p>The workflow:</p>
+<div class="highlight"><pre><span></span><code>Architect writes spec (what to build, why, constraints)
+     ↓
+AI reads spec + existing code + test architecture
+     ↓
+AI writes code (Java, SQL, YAML)
+     ↓
+AI runs tests (mvn test, Rosetta Stone gates)
+     ↓
+Gates pass? → commit. Gates fail? → AI reads drift doc, fixes, retries.
+     ↓
+Architect reviews compiled building in Bonsai viewport
+     ↓
+Building correct? → next task. Building wrong? → new drift point logged.
 </code></pre></div>
+<p><strong>Session discipline:</strong> One bounded task per session. The AI reads the spec before writing code. Every code change cites the spec section it implements. Pre-flight citation is mandatory:
+<div class="highlight"><pre><span></span><code><span class="c1">// Implementing BBC.md §3.5.2 — Witness: W-FORGE-1</span>
+</code></pre></div></p>
 <hr />
-<h2 id="after-this-refactor">After This Refactor<a class="headerlink" href="#after-this-refactor" title="Permanent link">&para;</a></h2>
-<p>Next session uses REFACTOR_METADATA_INTEGRITY.md which builds on:
-- <code>MetadataStore.getXxxOrThrow()</code> methods created here
-- <code>CompilerStage</code> interface and <code>List&lt;CompilerStage&gt;</code> pipeline created here
-- <code>MetadataValidator</code> will become the first stage in that pipeline</p>
+<h2 id="what-the-sceptics-get-right">What the Sceptics Get Right<a class="headerlink" href="#what-the-sceptics-get-right" title="Permanent link">&para;</a></h2>
+<p>The concerns are valid. This project has lived through all of them:</p>
+<p><strong>"AI code drifts from architecture."</strong> Yes. Relentlessly. The AI will invent shortcuts, merge concerns that should be separate, and silently change assumptions. <a href="../LAST_MILE_PROBLEM/">The Drift</a> exists because this happened dozens of times. The solution is not to stop using AI — it's to build gates that catch the drift before it ships.</p>
+<p><strong>"AI code has more bugs."</strong> The GitClear study found 39% more code churn in AI-assisted codebases. This project's answer: 6 gates, 408 tests, 35 reference buildings. The bug rate per shipped line is lower than most hand-written projects because the verification is more rigorous, not because the AI writes better code.</p>
+<p><strong>"You don't understand your own codebase."</strong> Partially true. The architect understands the <em>architecture</em> — what each module does, how data flows, what correct output looks like. He does not memorise every Java method signature. This is a feature, not a bug: the spec is the source of truth, not the code. If the code drifts from spec, the code is wrong — regardless of what it says internally.</p>
+<p><strong>"It won't scale."</strong> 48,428 elements in the Terminal building. 76 verbs. 9 pipeline stages. 5 databases. 55 specification documents. The project is larger than most startups' entire codebases. It scales because the architecture scales — not because the AI understands scale.</p>
+<hr />
+<h2 id="the-honest-ledger">The Honest Ledger<a class="headerlink" href="#the-honest-ledger" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>What works</th>
+<th>What doesn't</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spec → code → test → ship pipeline</td>
+<td>AI cannot see spatial geometry — walls, slabs, collisions</td>
+</tr>
+<tr>
+<td>Parallel agent research (4 threads)</td>
+<td>AI invents plausible-looking code that violates spec</td>
+</tr>
+<tr>
+<td>Deterministic gates catch all regressions</td>
+<td>AI cannot evaluate aesthetic quality of compiled buildings</td>
+</tr>
+<tr>
+<td>Domain expert catches architectural drift</td>
+<td>AI forgets constraints from earlier in the conversation</td>
+</tr>
+<tr>
+<td>100 sessions, each bounded and verified</td>
+<td>Long sessions degrade — quality drops past ~80% context</td>
+</tr>
+</tbody>
+</table>
+<p>The project succeeds not because AI is reliable, but because the verification infrastructure assumes AI is unreliable and proves correctness independently.</p>
+<hr />
+<h2 id="for-the-bonsaiblenderbim-community">For the Bonsai/BlenderBIM Community<a class="headerlink" href="#for-the-bonsaiblenderbim-community" title="Permanent link">&para;</a></h2>
+<p>If you're evaluating this project and wondering whether vibe-programmed code can be trusted:</p>
+<ol>
+<li><strong>Clone it.</strong> <code>git clone https://github.com/red1oon/BIMCompiler.git</code></li>
+<li><strong>Run the gates.</strong> <code>./scripts/run_RosettaStones.sh classify_sh.yaml</code> — watch a building compile and pass 6 mathematical proofs.</li>
+<li><strong>Read <a href="../LAST_MILE_PROBLEM/">The Drift</a>.</strong> Every known failure is documented. Nothing is hidden.</li>
+<li><strong>Check the tests.</strong> <code>mvn test</code> — 408+ tests, not mocked, not stubbed, running against real SQLite databases with real BOM data.</li>
+</ol>
+<p>The code was written by AI. The architecture was not. The proofs are mathematical. The buildings compile deterministically. Judge by the output, not the author.</p>
+<hr />
+<p><em>Built with <a href="https://claude.ai/">Claude Code</a> (Anthropic) in ~100 sessions over 4 months. Kuala Lumpur, 2025.</em></p>
 
 
 
@@ -2637,10 +2992,10 @@ mvn<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
