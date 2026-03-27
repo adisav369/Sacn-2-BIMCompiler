@@ -1870,6 +1870,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#4-build-on-known-frameworks-never-from-scratch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build on known frameworks, never from scratch
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2626,6 +2637,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#4-build-on-known-frameworks-never-from-scratch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Build on known frameworks, never from scratch
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2803,6 +2825,53 @@
 <h3 id="3-the-drift-is-tracked-not-hidden">3. The Drift is tracked, not hidden<a class="headerlink" href="#3-the-drift-is-tracked-not-hidden" title="Permanent link">&para;</a></h3>
 <p>When AI-generated code drifts from spec — and it does, consistently — the drift is documented. <a href="../LAST_MILE_PROBLEM/">The Drift</a> tracks every known failure mode: walls that don't sit on slabs, columns that overlap, coordinates that shift by millimetres. 11 drift points, each citing the spec section it violates.</p>
 <p>The project doesn't pretend AI code is perfect. It assumes AI code will drift and builds the infrastructure to catch it.</p>
+<h3 id="4-build-on-known-frameworks-never-from-scratch">4. Build on known frameworks, never from scratch<a class="headerlink" href="#4-build-on-known-frameworks-never-from-scratch" title="Permanent link">&para;</a></h3>
+<p>This may be the most important lesson after months of vibe programming: <strong>LLMs extrapolate well from established patterns. They hallucinate when there is no pattern to follow.</strong></p>
+<p>Every major module in this project is built on a framework the LLM already knows:</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Framework it builds on</th>
+<th>Why the AI gets it right</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data model</td>
+<td><a href="https://idempiere.org/">iDempiere</a> ERP tables (M_Product, M_BOM, C_Order)</td>
+<td>20 years of open-source ERP code in training data</td>
+</tr>
+<tr>
+<td>Compilation pipeline</td>
+<td><a href="https://en.wikipedia.org/wiki/Bill_of_materials">Bill of Materials</a> explosion — standard MRP pattern</td>
+<td>Textbook manufacturing algorithm, widely documented</td>
+</tr>
+<tr>
+<td>Geometry verbs</td>
+<td>Trigonometry, linear algebra, coordinate transforms</td>
+<td>Maths doesn't drift — <code>cos(30°)</code> is <code>cos(30°)</code> in every language</td>
+</tr>
+<tr>
+<td>Validation rules</td>
+<td><a href="https://wiki.idempiere.org/">iDempiere AD_Val_Rule</a> pattern</td>
+<td>Same validation framework used across the ERP ecosystem</td>
+</tr>
+<tr>
+<td>3D viewport</td>
+<td><a href="https://bonsaibim.org/">Bonsai</a> / Blender Python API</td>
+<td>Massive open-source codebase, heavily represented in training data</td>
+</tr>
+<tr>
+<td>Test architecture</td>
+<td>JUnit 5 + SQLite assertions</td>
+<td>Standard Java testing — the AI writes these fluently</td>
+</tr>
+</tbody>
+</table>
+<p>When the AI is asked to "write a BOM explosion algorithm," it draws on thousands of MRP implementations it has seen. When asked to "compute a rafter length from pitch and span," it applies trigonometry it has been trained on extensively. When asked to "create a Blender panel with property fields," it follows Bonsai patterns it has seen in the IfcOpenShell codebase.</p>
+<p>The failures come when the AI is asked to do something with <strong>no framework precedent</strong> — spatial reasoning about whether a wall sits on a slab, or whether two columns overlap in 3D space. These are the <a href="../LAST_MILE_PROBLEM/">drift points</a>. The pattern: <strong>known framework = reliable code. Novel spatial reasoning = drift.</strong></p>
+<p>The practical rule: if you can frame your problem as an instance of a pattern the LLM has seen before, vibe programming works. If you're inventing a new pattern, write the spec first and supervise every line.</p>
 <hr />
 <h2 id="the-toolchain">The Toolchain<a class="headerlink" href="#the-toolchain" title="Permanent link">&para;</a></h2>
 <p>This project uses <a href="https://claude.ai/">Claude Code</a>, Anthropic's CLI agent, as the primary development environment. The tools that make it work:</p>
