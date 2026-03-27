@@ -487,6 +487,219 @@ only to the FP trade. Shared infrastructure (`AD_Org = '*'`) is visible to all.
 This enables per-discipline BOM views, validation scoping, and trade-specific
 product catalogs — all from a single FK.
 
+### 10.4.1 Spatial Model — Space + Occupant + Verb + Rule
+
+> *A discipline is a contractor with a checklist, not a room with walls.*
+
+**TE finding (S99):** `DisciplineBomBuilder` created DISCIPLINE SET BOMs as
+spatial containers between FLOOR and LEAF. This forced each discipline into
+its own AABB — but disciplines are not spatial containers. A fire protection
+pipe network spans the entire floor. Result: 471 tack overflows, 36
+unbalanced BOMs. Root cause: discipline modelled as a tree level instead of
+a line attribute. See [TerminalAnalysis.md §Compilation Status](TerminalAnalysis.md#te-compilation-status--honesty-report-s99-2026-03-27).
+
+The BOM hierarchy is recursive and abstract:
+
+```
+SPACE (M_Product, IsBOM=Y)
+  └── OCCUPANT line (M_BOM_Line, with AD_Org_ID + verb_ref)
+```
+
+A SPACE has an AABB (extent) and an M_Product_Category (what kind of space).
+An OCCUPANT has an AD_Org_ID (who), a verb_ref (how), and AD_Val_Rule (checklist).
+
+The compiler resolves placement from metadata:
+
+```
+for each BOM line in parent:
+    verb  = line.verb_ref        → Strategy (GoF)
+    rule  = AD_Val_Rule.lookup(child.product.AD_Org_ID, parent.M_Product_Category)
+    verb.place(child, parent.space, rule)
+```
+
+**Anti-pattern: `shouldSkip()`.** There is ONE compile path, not two paths
+with a skip. The walker always walks the BOM tree. The verb determines what
+happens at each line — PLACE emits at tack offset, ROUTE generates from
+rules, FRAME generates structural grid. A `shouldSkip()` that produces an
+empty BuildingSpec and falls through to a separate emit path is the same
+structural cheat as `if ("CO".equals(...))` — just checking verbs instead
+of category. The fix is one walker, verb-dispatched, no skip.
+
+No `if ("CO".equals(...))`. No `if (discipline == "FP")`. Behaviour from
+metadata, not from code — same as iDempiere's DocAction pattern.
+
+**Covering vs Inside — two spatial relationships, both just BOM lines:**
+
+| Relationship | Verb family | Example |
+|-------------|-------------|---------|
+| **INSIDE** | PLACE | Sofa at (dx,dy,dz) in living room |
+| **COVERING** | ROUTE, TILE, FRAME, WIRE | Sprinklers covering a floor per NFPA 13 |
+
+INSIDE: child sits AT a point within the parent space (tack offset = position).
+COVERING: child SPANS the parent space (verb determines pattern, rule determines density).
+
+### 10.4.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement
+
+Each discipline has a **recipe** (products + topology) and a **rule set**
+(constraints). The parent space determines quantity and placement.
+
+| AD_Org | Verb | Rule table | Spatial | Recipe |
+|--------|------|-----------|---------|--------|
+| ARC (1) | PLACE, TILE | Architect's design | INSIDE | Walls, doors, windows, plates, furniture |
+| STR (2) | FRAME | Structural grid | COVERING | Column + Beam + Slab |
+| FP (3) | ROUTE | ad_fp_coverage (NFPA 13) | COVERING | Main pipe + branches + fittings + heads |
+| ELEC (4) | WIRE | ad_space_type_mep | COVERING | Light fixtures (ceiling grid) |
+| ACMV (5) | ROUTE DUCTS | ad_acmv_sizing | COVERING | Duct segments + fittings + terminals |
+| CW (6) | ROUTE | Per-discipline AD | COVERING | Pipe segments + fittings + valves |
+| SP (7) | ROUTE | Per-discipline AD | COVERING | Drainage pipes + fixtures |
+| LPG (8) | ROUTE | Per-discipline AD | COVERING | Gas piping + meters |
+
+The recipe is abstract — "cover this zone with sprinklers per NFPA 13."
+The compiler takes recipe + space + rule → concrete positions. Quantity and
+placement are derived from the parent space extent + the validation rule.
+
+### 10.4.3 The Contractor's Checklist — AD_Val_Rule as Scope of Work
+
+| Checklist item | ERP concept | Example |
+|---------------|-------------|---------|
+| **WHO** | AD_Org_ID | FP contractor |
+| **WHERE to** | M_Product_Category filter | GF, L1, L2 (not Foundation) |
+| **WHERE NOT to** | Category exclusion | FN excluded — no MEP below grade |
+| **HOW** | Rule parameters | max_spacing=4600mm, routing=TREE |
+| **HOW MANY** | Rule + parent space | coverage_area=12.1 m² per head |
+| **WHAT WITH** | M_Product reference | SPRINKLER_K80, PIPE_CW_50MM |
+| **CHECK AGAINST** | Cross-discipline rule | 150mm clearance from ELEC |
+
+M_Product_Category bridges disciplines to spaces. A category like `GF` is
+shared across all disciplines. The validation rule is scoped to category:
+
+```sql
+SELECT * FROM ad_fp_coverage
+WHERE m_product_category = 'GF' AND hazard_class = 'ORDINARY'
+```
+
+Different disciplines, same space, different rules — all from metadata.
+
+### 10.4.4 Impact on the BOM Tree
+
+**Before (wrong):** `BUILDING → FLOOR → DISCIPLINE SET → LEAF` — discipline
+as tree level with own AABB → 471 tack overflows.
+
+**After (correct):** `BUILDING → FLOOR → LEAF` — same depth as SH/DX.
+Tack is `element.minX - floor.minX`. Always positive. Discipline resolves
+from the child product, not from the line: `m_bom_line.child_product_id →
+M_Product → M_Product_Category → AD_Org_ID`. This is standard iDempiere —
+every record carries AD_Org, the line is just a relationship.
+
+| Component | Change |
+|-----------|--------|
+| `DisciplineBomBuilder` | Remove DISCIPLINE SET BOM. LEAF lines directly under FLOOR |
+| `BomValidator` | W-TACK-1/W-BUFFER-1 check FLOOR→LEAF, not SET→LEAF |
+| `CompilationPipeline` | Delete CO skip hack (line 352-354) |
+| `PlacementCollectorVisitor` | Resolve AD_Org_ID from child product, not discipline stack |
+
+### 10.4.5 bom_type — Tree Structure and M_Product_Category
+
+iDempiere has no `bom_type` column. It uses `M_Product.IsBOM` (Y/N) and
+tree structure. The BOM model is self-describing:
+
+- **Root:** the BOM with no parent m_bom_line. No string match needed.
+- **Tier:** determined by M_Product_Category at each level. The category
+  IS the swap pool — `M_Product_Category='LIVING'` means "room-level
+  candidate in the living room swap pool."
+- **Leaf:** `IsBOM=N` on the child product. No children to recurse into.
+
+The `bom_type` column (BUILDING/FLOOR/ROOM/SET/ITEM) carries legacy
+residential vocabulary. Code should read tree structure and category,
+not `bom_type` strings. This makes the model universal:
+
+| Query | Tree-based (correct) | String-based (legacy) |
+|-------|---------------------|----------------------|
+| Find root | BOM with no parent m_bom_line | `WHERE bom_type='BUILDING'` |
+| Find children | m_bom_line rows under root | `WHERE bom_type='FLOOR'` |
+| Tier selection | `WHERE m_product_category_id IN (?)` | `WHERE bom_type='ROOM'` |
+| Origin | Root BOM's origin_x/y/z | `WHERE bom_type='BUILDING'` |
+
+**VIEW_CONTRACTS.md `v_qualified_bom`** currently uses `bom_type` as
+mandatory bind parameter (Rule 6: "never mix tiers"). The same rule
+applies with M_Product_Category: never mix category levels in one query.
+
+**Infrastructure compatibility:**
+
+| Domain | Root category | Child categories | bom_type (legacy) |
+|--------|--------------|-----------------|-------------------|
+| Residential | RE | GF, L1, RF → LIVING, KT, BD | BUILDING, FLOOR, ROOM |
+| Commercial | CO | GF, L1, RF (no rooms) | BUILDING, FLOOR |
+| Bridge | IN | SPAN, PIER, ABUTMENT | BUILDING (!), FLOOR (!) |
+| Road | IN | SEGMENT, LAYER | BUILDING (!), FLOOR (!) |
+
+With category-based queries, bridge SPANs are found by
+`M_Product_Category='SPAN'`, not by `bom_type='FLOOR'`. Clean.
+
+### 10.4.6 Shared Discipline Recipes in ERP.db
+
+Discipline BOMs are **shared across all buildings.** FP is FP — one recipe,
+all buildings, same rules. ACMV is ACMV. The recipe does not change; the
+space and rules determine the result.
+
+**ERP.db** holds the shared recipes alongside AD_Org and AD_Val_Rule:
+
+```
+ERP.db
+├── AD_Org                    (WHO: FP, ACMV, ELEC, CW, SP, LPG)
+├── AD_Val_Rule               (HOW: NFPA 13, duct sizing, grid rules)
+├── M_Product                 (WHAT: sprinklers, pipes, ducts, fittings)
+├── M_Product_Category        (TIER: product taxonomy per discipline)
+└── M_BOM — shared discipline recipes:
+    ├── FP_SPRINKLER_RECIPE   (verb=ROUTE, AD_Org=FP)
+    ├── ACMV_AHU_RECIPE       (verb=PLACE, AD_Org=ACMV — needs plant room)
+    ├── ACMV_DUCT_RECIPE      (verb=ROUTE, AD_Org=ACMV)
+    ├── ACMV_TERMINAL_RECIPE  (verb=TILE,  AD_Org=ACMV — per-room ceiling grid)
+    ├── ELEC_LIGHTING_RECIPE  (verb=TILE,  AD_Org=ELEC)
+    └── CW_PIPE_RECIPE        (verb=ROUTE, AD_Org=CW)
+```
+
+component_library.db is strictly **leaf geometry** (meshes, LODs). It never
+holds BOMs or recipes — only what things look like, not how they assemble.
+
+**Implication for future IFCs:** Extract ARC+STR only (spaces and structure).
+MEP disciplines are generative — the compiler applies shared recipes from
+ERP.db to extracted spaces using AD_Val_Rule. One order line per discipline:
+
+```
+C_OrderLine 1: BUILDING_X     (extracted ARC+STR — defines spaces)
+C_OrderLine 2: add FP         (shared recipe → ROUTE verb → NFPA 13)
+C_OrderLine 3: add ACMV       (shared recipe → ROUTE/TILE → sizing rules)
+C_OrderLine 4: add ELEC       (shared recipe → TILE → ceiling grid rules)
+```
+
+Four thin lines. No re-extraction of pipes and fittings. Same FP recipe
+whether it's a terminal, duplex, or warehouse. The space determines quantity,
+the rule determines layout, the product determines what gets placed.
+
+For **extracted buildings** (TE, DX), the designer already applied these
+recipes manually. The extraction captured the result. The compiler emits
+at tack offsets (PLACE verb). For **generative buildings**, the compiler
+applies the shared recipes using verb Strategy + AD_Val_Rule Specification.
+
+### 10.4.7 GoF Design Patterns
+
+| Pattern | Application |
+|---------|-------------|
+| **Composite** | BOM tree: SPACE contains OCCUPANT lines, recursively |
+| **Visitor** | BOMWalker visits each line |
+| **Strategy** | Verb determines placement method |
+| **Specification** | AD_Val_Rule determines constraints |
+
+### 10.4.8 Cross-References
+
+| Building | Disciplines | Concern |
+|----------|-------------|---------|
+| **TE** | 8 (ARC,STR,FP,ACMV,ELEC,CW,SP,LPG) | SET as tree level → tack overflow. [TerminalAnalysis.md](TerminalAnalysis.md) |
+| **DM** | 3 (ARC,STR,FP) | First FP trial — addDiscipline(). [DemoHouseAnalysis.md](DemoHouseAnalysis.md) |
+| **FK** | 2 (ARC,STR) + ROOF debate | [FZKHausAnalysis.md](FZKHausAnalysis.md) |
+| **Infrastructure** | ROAD,RAIL,GEO,LAND,SIGN | Extended codes. [InfrastructureAnalysis.md](InfrastructureAnalysis.md) |
+
 ### 10.5 Investigation Tasks
 
 1. Count Java files that read M_Product from component_library.db vs ERP.db

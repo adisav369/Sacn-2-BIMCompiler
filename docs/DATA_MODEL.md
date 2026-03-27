@@ -97,7 +97,7 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | Field | Value | Source |
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
-| bom_type | BUILDING | Fixed (abstract root — used for both buildings and infrastructure facilities) |
+| bom_type | BUILDING | Legacy label. Root is the BOM with no parent m_bom_line — tree structure, not string matching |
 | m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification axis |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
@@ -210,7 +210,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 |--------|------|-------|
 | bom_id | TEXT PK | e.g. BUILDING_SH_STD, SH_GF_STR, BED_SET |
 | bom_name | TEXT | Display name |
-| bom_type | TEXT | CHECK: BUILDING/FLOOR/ROOM/SET/ITEM |
+| bom_type | TEXT | Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type-deprecation) |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
 | doc_base_type | TEXT | Domain classification (RE/CO/IN) — see m_product_category_id |
 | doc_sub_type | TEXT | Building prefix (SH/DX/TE) — derived from bom_id |

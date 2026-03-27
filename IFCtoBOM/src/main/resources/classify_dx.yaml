@@ -3,7 +3,7 @@
 # Everything else (extraction, BOM, compilation) is deterministic code.
 # See docs/WorkOrderGuide.md for the markup rules and field dictionary.
 # ────────────────────────────────────────────────────────────────────
-schema_version: 1
+schema_version: 2
 
 building:
   building_type: Ifc2x3_Duplex             # matches I_Element_Extraction.building_type
@@ -59,9 +59,12 @@ building:
       position: 4.4              # world-coord party wall center on that axis
       rotation: 3.141592653589793  # B-side rotation (pi = 180°)
 
-  # ── Future: schema_version 2 — multi-discipline classification ──────
-  # DX has MEP elements (SH does not). For Terminal (8 disciplines), same map scales.
-  # disciplines:
-  #   ARC: [IfcWall, IfcDoor, IfcWindow, IfcFurnishingElement, IfcCovering]
-  #   STR: [IfcBeam, IfcMember, IfcPlate, IfcSlab, IfcStairFlight, IfcRailing]
-  #   MEP: [IfcFlowController, IfcFlowFitting, IfcFlowSegment, IfcFlowTerminal]
+  # ── Discipline classification (schema_version 2) ──────────────────
+  # Fallback: IFC class → discipline. Authoritative discipline comes from
+  # the federated source file (Architecture.ifc → ARC, Mechanical.ifc → MEP).
+  # Must match reference DB. ARC and STR are parallel orgs — not merged.
+  # DX: architect modelled slabs/stairs/railings, so they are ARC per source.
+  disciplines:
+    ARC: [IfcWall, IfcDoor, IfcWindow, IfcFurnishingElement, IfcCovering, IfcSlab, IfcStairFlight, IfcRailing]
+    STR: [IfcBeam, IfcMember, IfcPlate]
+    MEP: [IfcFlowController, IfcFlowFitting, IfcFlowSegment, IfcFlowTerminal]

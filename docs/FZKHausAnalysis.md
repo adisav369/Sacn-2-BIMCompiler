@@ -1,5 +1,5 @@
 # FZK-Haus Analysis — FZK_Haus_IFC4.ifc Guardrails
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.6 (ROOF sub-discipline)
 
 <div class="bim-banner" markdown>
 <b>82-element German residential with pitched roof — IFC4 ArchiCAD proof.</b> Two-storey house validates European authoring tool interoperability and roof geometry extraction.

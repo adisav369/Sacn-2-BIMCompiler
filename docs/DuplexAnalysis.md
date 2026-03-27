@@ -281,6 +281,21 @@ SH 7/7 PASS, 55 enbloc=walkthru, 0 delta, 0 geometry divergences.
 DX full delta test: 13 IFC classes, all enbloc=walkthru counts match,
 0 geometry divergences, Rule 8 PASS (all coordinates parent-relative).
 
+### 5. C9 Axis Dimension — Matching Artifact (Not a Geometry Error)
+
+C9 reports 89 wall/slab axis mismatches. Root cause: C9 matches elements by
+position-sorted rank (`ROW_NUMBER` partitioned by `ifc_class`), not by GUID.
+For mirrored buildings, elements near the party wall (X ≈ 4.4) have similar
+positions, causing rank shuffles that pair different element types together.
+
+Evidence: element counts match exactly (1099 ref = 1099 out), walker rotation
+verified (§Resolved #4: 0 divergences), and the "mismatched" pairs show different
+element names (e.g., ref `Exterior Brick` vs output `Interior Partition`).
+
+**Status:** Non-issue. C9 matching needs GUID-based pairing to work correctly
+for MIRRORED_PAIR buildings. Filed as future enhancement — does not affect
+compilation correctness.
+
 ## Remaining
 
 ### Scope Space Origins for DX

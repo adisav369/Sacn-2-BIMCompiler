@@ -1,5 +1,5 @@
 # Infrastructure IFC Analysis
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.6 (infra discipline codes)
 
 <div class="bim-banner" markdown>
 <b>Same hierarchy, different vocabulary — infrastructure is not a new problem.</b> 9 IFC4X3 files (bridges, roads, rails) mapped to existing pipeline abstractions.
@@ -97,7 +97,7 @@ before any code changes** (per `memory/feedback_srs_before_code.md`).
 |---|------|---------|----------|----------|
 | **G1** | BBC.md §1 | "A building is a manufactured product" | Infrastructure is a **linear asset**, not a manufactured product. Road sections are poured layers, not assembled components. The manufacturing metaphor breaks for in-situ work. | **Conceptual — does not block extraction pipeline**. M_Product_Category=IN covers infrastructure (see MANIFESTO.md §Category Cascade) |
 | **G2** | DATA_MODEL.md §1.3 | "Storey-to-Floor BOM Mapping" | Infrastructure has no storeys. Segments are functional (pier, deck, carriageway), not spatial (ground floor, level 1). | **Naming only** — the mapping logic is generic, just the column name `storey` and YAML key `storeys:` are misleading |
-| **G3** | DATA_MODEL.md §1.4 | `bom_type = 'BUILDING'`, `doc_base_type = 'RE'` | Infrastructure needs `bom_type = 'FACILITY'` (or keep BUILDING as abstract root) and new `doc_base_type` values | **Schema vocabulary** — m_bom schema already stores bom_type as TEXT, no migration needed |
+| **G3** | DATA_MODEL.md §1.4 | `bom_type = 'BUILDING'`, `doc_base_type = 'RE'` | Infrastructure needs different vocabulary | **RESOLVED** — root identified by tree structure (no parent), not `bom_type` string. Tier selection uses M_Product_Category. `doc_base_type` replaced by M_Product_Category (S84). See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type--tree-structure-and-m_product_category) |
 | **G4** | WorkOrderGuide.md §Schema v1 | `doc_base_type: RE` "always RE for residential" | Infrastructure is not residential. M_Product_Category=IN covers infrastructure. | **Spec text corrected (S71)** — doc_base_type deprecated, M_Product_Category carries classification |
 | **G5** | WorkOrderGuide.md §storeys | "required" | Infrastructure has no storeys. The key should accept `segments:` as alias. | **Parser change needed** — ClassificationYaml.java reads hardcoded key `"storeys"` |
 | **G6** | BomValidator.java:49 | `WORLD_COORD_THRESHOLD_M = 500` | Infrastructure elements within a facility span max ~80m (these demo files). The 500m guard applies to **parent-relative offsets**, not absolute coords. **Actually safe** — but needs explicit documentation. | **No conflict** — the guard is correct as-is (checks dx/dy/dz on m_bom_line, which are parent-relative). Document this explicitly. |

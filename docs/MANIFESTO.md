@@ -165,23 +165,37 @@ lines (M_BOM_Line) that point to its children.
 
 **This is the entire model.** Products all the way down. BOMs are not a
 separate entity — they are a property of a product. A building is a product.
-A floor is a product. A room is a product. A door is a product.
+A floor is a product. A room is a product. A door is a product. A bridge
+span is a product. A road segment is a product. The tree is universal.
+
+The root product has no parent. Every other product is a child of something.
+M_Product_Category determines what kind of thing it is — not a hardcoded
+type string, but the category cascade. The tree structure tells you
+nesting. The category tells you domain meaning. The compiler doesn't need
+to know if it's walking a building or a bridge — it walks products.
 
 ```
-BUILDING (M_Product, IsBOM=Y, M_Product_Category=RE)
-  └─ FLOOR (M_Product, IsBOM=Y, M_Product_Category=GF)
-       └─ ROOM (M_Product, IsBOM=Y, M_Product_Category=LIVING)
-            ├─ WALL_PANEL (M_Product, IsBOM=N → geometry from component library)
-            ├─ DOOR (M_Product, IsBOM=N → geometry from component library)
-            └─ FURNITURE_SET (M_Product, IsBOM=Y, M_Product_Category=FR)
-                 ├─ TABLE (M_Product, IsBOM=N → leaf)
-                 └─ CHAIR × 4 (M_Product, IsBOM=N → leaf)
+Residential:
+  SH (M_Product, IsBOM=Y, M_Product_Category=RE)       ← root (no parent)
+    └─ GF (M_Product, IsBOM=Y, M_Product_Category=GF)   ← child of root
+         └─ LIVING (M_Product, IsBOM=Y, M_Product_Category=LIVING)
+              ├─ WALL_PANEL (M_Product, IsBOM=N → geometry from component library)
+              ├─ DOOR (M_Product, IsBOM=N → geometry from component library)
+              └─ FURNITURE_SET (M_Product, IsBOM=Y, M_Product_Category=FR)
+                   ├─ TABLE (M_Product, IsBOM=N → leaf)
+                   └─ CHAIR × 4 (M_Product, IsBOM=N → leaf)
+
+Infrastructure (same model, different categories):
+  BR (M_Product, IsBOM=Y, M_Product_Category=IN)        ← root (no parent)
+    └─ SPAN_01 (M_Product, IsBOM=Y, M_Product_Category=SPAN)
+         └─ PILE_001 (M_Product, IsBOM=N → leaf)
 ```
 
 When the compiler encounters a BOM product, it **explodes** (recurses into
 children). When it encounters a leaf product, it **resolves** (looks up geometry
 in the component library). This is the same operation an ERP system performs
-when it explodes a manufacturing BOM into work orders.
+when it explodes a manufacturing BOM into work orders. The walker doesn't
+branch on domain vocabulary — it follows the tree.
 
 ---
 

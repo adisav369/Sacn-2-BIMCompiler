@@ -1,6 +1,6 @@
 # DemoHouse Analysis — 3-OrderLine Compilation
 
-> **Foundation:** [GENERATIVE_HOUSE_SRS.md §10](GENERATIVE_HOUSE_SRS.md#10-demohouse-implementation-tasks-s59) · [BBC](BOMBasedCompilation.md) §3.4-3.6 · [TestArchitecture](TestArchitecture.md) §Traceability
+> **Foundation:** [GENERATIVE_HOUSE_SRS.md §10](GENERATIVE_HOUSE_SRS.md#10-demohouse-implementation-tasks-s59) · [BBC](BOMBasedCompilation.md) §3.4-3.6 · [TestArchitecture](TestArchitecture.md) §Traceability · [DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.2 (FP discipline profile)
 > **Session:** S59. **Building:** DemoHouse (SH base + FK roof + FP discipline).
 
 <div class="bim-banner" markdown>
