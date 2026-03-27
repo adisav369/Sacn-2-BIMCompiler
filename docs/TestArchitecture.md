@@ -225,8 +225,8 @@ SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of
 2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Sealed:** 2026-03-28 (v44: S100-p66 CO passthrough removed)
-**Super-hash:** `fc529279ee0d1f5830dbfb0c0d0a639679ddcb8c7d1fb17b09bfb6b43b825460`
+**Sealed:** 2026-03-28 (v45: S100-p67 G0-COMPILED gate + script fail-loud)
+**Super-hash:** `e08533bcd90009c98a79c0225e9ba5b324d66c470e9978e40441254905ecd374`
 
 ```
 bash scripts/verify_test_seal.sh            # quick check
@@ -252,7 +252,7 @@ b9d57454  contract/OutputTemplateTest.java
 9709b84b  contract/StructuralCrossCheckTest.java
 e9b6bcbc  arch/DriftGuardTest.java
 ead7c516  contract/CompilerContractTest.java
-2af523c6  contract/RosettaStoneGateTest.java
+26eb8b47  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
 0e21e5e5  contract/BomChainIntegrityTest.java
 46e2e2f2  contract/BOMChainMathTest.java
@@ -317,7 +317,7 @@ af068cf9  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
 38f498ae  run_tests.sh
-8bb5f537  run_RosettaStones.sh
+c92fd30c  run_RosettaStones.sh
 39839729  pre-commit
 ```
 

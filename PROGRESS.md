@@ -45,6 +45,7 @@
 
 ## Session Log (recent first)
 
+**S100-p67** — G0-COMPILED gate + script fail-loud (prompt 67). New G0 gate in RosettaStoneGateTest checks c_order > 0. TE FAILs G0 (extraction-only, c_order=0). Script: BOM.db missing = loud FAIL + verdict. c_order=0 warning after compile. R25 gap entry in LAST_MILE_PROBLEM.md. Seal v45. SH 7/7 PASS.
 **S100-p66** — TE flatten DISCIPLINE SET → FLOOR→LEAF (prompt 66). Removed SET BOM level from DisciplineBomBuilder — LEAF lines write directly under FLOOR. W-TACK-1: 471→0 overflows. BOM count: 58→8 (1 BUILDING + 7 FLOOR). CO passthrough hack deleted from CompilationPipeline. Seal v44. Verified: SH 7/7, FK 7/7, TE 7/7.
 **S100-p65** — TE IFCtoBOM mechanical fixes (prompt 65). M_Product catalog: wired `ensureProducts()` — leaf products now copied to BOM DB. Non-zero origin QA: excludes BUILDING (world anchor per BBC §4.1), non-BUILDING violations now FAIL+FINE-logged. DocType already PASS (S96-p0). Verified: SH 7/7, FK 8/8, WL 8/8, WT 8/8, WA 8/8 — zero regressions. TE: 2 HIGH remain (W-TACK-1, W-BUFFER-1 → prompt 66).
 **S99-forge** — Geometry Forge scaffolding + 5 starter pieces (SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT). ForgeVerb (76th verb). W-FORGE-1..8 8/8 PASS. ParametricMesh deprecated.

@@ -143,8 +143,10 @@ prepare_compile_db() {
     # Per-building compile DB — strongly typed name
     COMPILE_DB="library/_${prefix}_compile.db"
 
-    if [ ! -f "$bom_db" ]; then
-        echo "  [WARN] ${bom_db} not found — IFCtoBOM pipeline not yet run for ${prefix}"
+    if [ ! -f "$bom_db" ] || [ ! -s "$bom_db" ]; then
+        echo "  [FAIL] ${bom_db} not found or empty — IFCtoBOM pipeline failed for ${prefix}"
+        echo "         Check logs/pipeline_*${prefix}* for QA report"
+        verdict "BOM_${prefix}" "FAIL" "BOM.db not found or empty"
         return 1
     fi
 
@@ -726,6 +728,12 @@ for yaml_file in "${YAML_FILES[@]}"; do
             # Run compilation — passes -Dbom.db to Maven
             compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB" "$DOC_BASE_TYPE"
             cleanup_compile_db
+
+            # G0 check: verify output has c_order rows (not extraction-only)
+            order_count=$(sqlite3 "${OUTPUT_BASE}.db" "SELECT COUNT(*) FROM c_order" 2>/dev/null || echo "0")
+            if [ "$order_count" -eq 0 ]; then
+                echo "  [WARN] ${PREFIX}: output.db has 0 c_order rows — compilation may not have run"
+            fi
         fi
     fi
 

@@ -28,9 +28,10 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
  * @Traces BBC.md §7 — Verification: Rosetta Stone Gate
  * @Traces TestArchitecture.md §Traceability Matrix — G1-G6 gates
  *
- * <p>Six gates proving the compiler extracts and compiles, never invents:
+ * <p>Seven gates proving the compiler extracts and compiles, never invents:
  *
  * <pre>
+ *   G0-COMPILED   Output has c_order rows (not extraction-only)[TerminalAnalysis.md]
  *   G1-COUNT      Element count: reference = output          [BBC.md §2.1.6]
  *   G2-VOLUME     Total AABB volume: reference ≈ output      [BBC.md §4.2 BUFFER]
  *   G3-DIGEST     Per-element spatial SHA256: ref vs compiled [BBC.md §4.1]
@@ -83,6 +84,48 @@ class RosettaStoneGateTest {
             System.out.println("  ROSETTA STONE GATE — Compilation Integrity Report");
             System.out.println(HEADER);
         }
+    }
+
+    // =====================================================================
+    // G0-COMPILED: Output DB must contain at least 1 c_order row
+    // =====================================================================
+
+    /**
+     * G0-COMPILED: Output DB must contain at least 1 c_order row.
+     * Prevents extraction-only outputs from silently passing G1-G6.
+     * @Traces TerminalAnalysis.md §Compilation Status — blind spot #2
+     */
+    @TestFactory
+    @Order(0)
+    @DisplayName("G0-COMPILED")
+    Collection<DynamicTest> g0_compiled() {
+        List<DynamicTest> tests = new ArrayList<>();
+        for (BuildingEntry b : buildings) {
+            tests.add(dynamicTest("G0-COMPILED " + b.docTypeId(),
+                () -> runG0(b)));
+        }
+        return tests;
+    }
+
+    private void runG0(BuildingEntry b) throws Exception {
+        String tag = b.docTypeId();
+        assumeTrue(GATE_SCOPE.contains(tag), tag + " outside gate scope");
+        String dbPath = b.outputDbPath();
+        int orderCount = 0;
+        if (Files.exists(Path.of(dbPath))) {
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath)) {
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM c_order")) {
+                    if (rs.next()) orderCount = rs.getInt(1);
+                }
+            }
+        }
+        String status = (orderCount > 0) ? "PASS" : "FAIL";
+        String detail = String.format("c_order=%d", orderCount);
+        report("G0-COMPILED", tag, status, detail);
+        assertTrue(orderCount > 0,
+            String.format("[G0-COMPILED] %s: output is extraction-only, not compiled (c_order = %d)",
+                tag, orderCount));
     }
 
     // =====================================================================

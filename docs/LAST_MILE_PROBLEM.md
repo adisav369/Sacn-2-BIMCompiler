@@ -147,6 +147,15 @@ Two pre-existing issues that are accepted, not ignored:
 | DX MIRROR | G2 volume -0.16%, 87 axis swaps (width↔depth in some walls) | S25 | MIRROR verb is incomplete — tracked in [ACTION_ROADMAP](ACTION_ROADMAP.md) CP-2 |
 | TE CLUSTER | 1015/48428 elements differ by 1mm at float rounding boundary | S39c | CLUSTER uses ±10% tolerance for semi-regular grids — by design |
 
+### R25 — IFCtoBOM QA Failure Not Propagated to Gate Results
+
+**Status:** CLOSED (S100-p67)
+**Root cause:** IFCtoBOM pipeline ABORTs to log file. Rosetta script
+treats missing BOM.db as "skip" not "fail." G1-G6 gates don't check
+whether output was compiled or extracted.
+**Fix:** G0-COMPILED gate (checks c_order > 0) + script fail-loud.
+**Buildings affected:** TE (CO_TE). Extraction passes, BOM compilation blocked.
+
 ---
 
 ## Verb Fidelity — Approximate vs Exact
