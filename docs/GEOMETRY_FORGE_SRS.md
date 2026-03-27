@@ -349,6 +349,46 @@ traceability, same EYES verification.
 
 ---
 
+## 9b. Prior Art in This Codebase
+
+The forge pattern was designed twice before under different names:
+
+**Mesh2Library** (`docs/Mesh2Library.txt`) — parametric mesh generation for
+roofs, stairs, tanks. Defines:
+- `ParametricMesh` sealed interface: `GableRoofMesh`, `HipRoofMesh`,
+  `StairFlightMesh`, `CylindricalTankMesh`
+- `ad_parametric_mesh` + `ad_parametric_mesh_param` tables — formula
+  parameters as metadata rows with provenance
+- `MeshResult generate(MeshParameters params)` — same contract as ForgeEngine
+- `ad_roof_preset` — region × building_type → mesh_type (smart defaults)
+- BOM leaf integration: fabricated mesh sits in GGF→GF→Parent→Child→Leaf hierarchy
+
+**TopologyMaker** (`TopologyMaker/docs/TOPOLOGY_MAKER.md`) — site layout
+generation from brief. `GridStrategy.subdivide()` + `UbblValidator` +
+`DocStatus DR→IP→CO` lifecycle. Batch process, not a verb.
+
+**Relationship to ForgeEngine:**
+
+| | Mesh2Library | TopologyMaker | Geometry Forge |
+|---|---|---|---|
+| **What** | Roof/stair mesh from params | Site layout from brief | Any piece from params |
+| **Interface** | `ParametricMesh.generate()` | `TopologyBatchProcess.complete()` | `ForgeEngine.compute()` |
+| **Metadata** | `ad_parametric_mesh_param` | `ad_typology_pattern` | `ad_forge_formula` |
+| **Compliance** | BBC §2.2.1 (sealed types) | `UbblValidator` | `ComplianceChecker` |
+| **Lifecycle** | BOM leaf (LOD promotion) | `DocStatus DR→IP→CO` | `ForgeResult.promotable` |
+
+**Decision: Forge absorbs Mesh2Library (Option B).**
+
+ForgeEngine is the single interface. `ad_forge_formula` is the single
+metadata table. `Mesh2Library.txt` is archived as prior art — its design
+is correct, just renamed. `ParametricMesh` (if it exists in code) is
+either deprecated in favour of ForgeEngine or wrapped by a ForgeEngine
+adapter. TopologyMaker stays separate (batch process, not verb-level).
+
+One name, one interface, one table. No confusion for future sessions.
+
+---
+
 ## 10. Formula-as-Metadata — Table-Driven Forge
 
 The forge formulas should not be hardcoded Java. They should be
