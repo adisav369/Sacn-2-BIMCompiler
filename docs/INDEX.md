@@ -25,7 +25,7 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, gospel |
 | [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 5-DB architecture |
-| [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 75 verbs, TILE/CLUSTER/ROUTE/FRAME |
+| [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 76 verbs, TILE/CLUSTER/ROUTE/FRAME/FORGE |
 | [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
 
@@ -46,6 +46,8 @@ Single-page entry point. All active docs by tier.
 | [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) | BackOffice HTTP server, SessionManager, portfolio |
 | [INSTALLER_SPEC.md](INSTALLER_SPEC.md) | Installation and deployment specification |
 | [EYES_SRS.md](EYES_SRS.md) | BIMEyes geometric comprehension engine, 26 proofs, shape/compare/diff |
+| [FORGE_SUITE_SRS.md](FORGE_SUITE_SRS.md) | **Forge Suite:** parametric computation (5 parts), proprietary gap analysis, fabrication data, compliance-as-you-design |
+| [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) | ForgeEngine detail: interface, 5 starter pieces, formula-as-metadata |
 | [GENERATIVE_HOUSE_SRS.md](GENERATIVE_HOUSE_SRS.md) | Generative compilation: BOM explosion, selection cascade, DemoHouse |
 
 ## T3 Analysis — Rosetta Stone Guardrails
