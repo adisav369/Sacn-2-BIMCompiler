@@ -29,6 +29,9 @@ import com.bim.designer.validation.PlacementValidator;
 import com.bim.designer.validation.PlacementValidatorImpl;
 import com.bim.designer.validation.TerrainSnap;
 import com.bim.designer.validation.ValidationVerdict;
+import com.bim.cobol.VerbContext;
+import com.bim.cobol.VerbRegistry;
+import com.bim.cobol.VerbResult;
 import com.bim.orm.BIMLogger;
 
 import java.io.File;
@@ -2811,57 +2814,23 @@ public class DesignerAPIImpl implements DesignerAPI {
 
     // ── Verb dispatch ───────────────────────────────────────────────
 
+    // Implementing BBC.md §6 — Witness: W-VERB-DISPATCH-1
     @Override
     public VerbResponse executeVerb(String buildingId, String verbLine) {
         try {
-            // TODO: Wire to VerbRegistry.createDefault().dispatch(VerbContext.ofBom(bomConn), verbLine)
-            // For now, return a structured stub.
+            VerbRegistry registry = VerbRegistry.createDefault();
+            VerbContext ctx = VerbContext.ofBom(bomConn);
+            VerbResult<?> result = registry.dispatch(ctx, verbLine);
 
-            // Parse verb keyword (first 1-2 words) from the line
-            String verb = extractVerbKeyword(verbLine);
+            BIMLogger.fine(TAG, "Designer dispatch: {} → {}",
+                    verbLine, result.summary());
 
-            LOG.info(() -> String.format("VERB %s on %s (stub)", verb, buildingId));
-
-            return new VerbResponse(true, verb,
-                    "Stub execution of " + verb + " on " + buildingId, null);
+            return new VerbResponse(result.pass(), result.verb(),
+                    result.summary(), result.pass() ? null : result.summary());
         } catch (Exception e) {
-            LOG.log(Level.WARNING, "Verb execution failed", e);
+            LOG.log(Level.WARNING, "Verb execution failed: " + verbLine, e);
             return new VerbResponse(false, null, null, e.getMessage());
         }
-    }
-
-    /**
-     * Extracts the BIM COBOL verb keyword from a verb line.
-     *
-     * <p>Convention: verbs are 1-3 uppercase words (CHECK BOM, SNAP TO GRID).
-     * Arguments follow and may also be uppercase (BUILDING_SH, 10000).
-     *
-     * <p>Known multi-word verb prefixes (from VerbRegistry):
-     * CHECK BOM, SNAP TO, COVER WITH, COMPOSE BUILDING, ADD ROOM, etc.
-     * This stub uses a known-prefix table; the real dispatch goes through
-     * VerbRegistry.dispatch() which does longest-prefix match.
-     */
-    private static final java.util.Set<String> KNOWN_VERB_PREFIXES = java.util.Set.of(
-            "CHECK BOM", "SNAP TO GRID", "SNAP TO", "COVER WITH",
-            "COMPOSE BUILDING", "ADD ROOM", "REMOVE ROOM", "RESIZE ROOM",
-            "FURNISH ROOM", "STRIP ROOM", "CREATE ROOM", "SET ROTATION",
-            "SET TACK", "VARY BUILDING", "CLONE BOM", "EXTRACT AABB",
-            "VALIDATE AABB", "PARTITION AABB", "PLACE AT", "PLACE BOM",
-            "ROUTE SPRINKLERS", "HELLO WORLD"
-    );
-
-    private String extractVerbKeyword(String line) {
-        if (line == null || line.isBlank()) return "UNKNOWN";
-        String trimmed = line.trim();
-
-        // Try longest match first (3 words, then 2, then 1)
-        String[] tokens = trimmed.split("\\s+");
-        for (int n = Math.min(3, tokens.length); n >= 1; n--) {
-            String candidate = String.join(" ", java.util.Arrays.copyOf(tokens, n));
-            if (KNOWN_VERB_PREFIXES.contains(candidate)) return candidate;
-        }
-        // Fallback: first word
-        return tokens[0];
     }
 
     // ── WF-BB §26 — Wireframe-First Interaction Protocol ──────────────
