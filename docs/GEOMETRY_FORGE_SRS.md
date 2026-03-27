@@ -510,4 +510,4 @@ No new compliance infrastructure needed.
 
 ---
 
-*Status: SPEC ONLY. All phases pending.*
+*Status: Phase 1 DONE (S99-forge). ForgeEngine + 5 starter pieces + ForgeVerb + W-FORGE-1..8. Phases 2-5 pending.*

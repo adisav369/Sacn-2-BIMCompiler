@@ -175,6 +175,8 @@ public class VerbRegistry {
         reg.register(new TrimWallsToRoofVerb());
         // HELLO WORLD — permanent dual-path proof
         reg.register(new HelloWorldVerb());
+        // Geometry Forge — formula-driven construction pieces (GEOMETRY_FORGE_SRS.md §10)
+        reg.register(new ForgeVerb());
         return reg;
     }
 

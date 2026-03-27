@@ -1,6 +1,8 @@
 package com.bim.compiler.mesh;
 
 /**
+ * @deprecated Superseded by {@code com.bim.cobol.forge.ForgeEngine} — see GEOMETRY_FORGE_SRS.md §9b.
+ *
  * Sealed interface for all parametric mesh generators.
  *
  * <p><strong>Contract (Mesh2Library.txt):</strong>

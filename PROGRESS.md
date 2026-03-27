@@ -18,7 +18,7 @@
 | G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
 | G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
 
-**Pipeline:** 9 stages. 75 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
+**Pipeline:** 9 stages. 76 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 5/5. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
@@ -43,6 +43,7 @@
 
 ## Session Log (recent first)
 
+**S99-forge** — Geometry Forge scaffolding + 5 starter pieces (SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT). ForgeVerb (76th verb). W-FORGE-1..8 8/8 PASS. ParametricMesh deprecated.
 **S96-docs** — Docs tightening + 2D layout images + ShipYard spec.
 **S96-p0** — Fix DocType null regression: DisciplineBomBuilder null→config.docBaseType(). seed_dm_bom.sql aligned. Unblocks 11 CO/IN buildings.
 **S95-trim** — Rewrite TRIM WALLS TO ROOF: roofSurfaceZ() replaces tent model. SH barrel vault: 2 walls trimmed. W-TRIM-7 added. 7/7 PASS.
