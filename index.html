@@ -2426,12 +2426,59 @@
 
 <h1 id="bim-intent-compiler">BIM Intent Compiler<a class="headerlink" href="#bim-intent-compiler" title="Permanent link">&para;</a></h1>
 <p><strong>Construction = BOM + (x, y, z).</strong> One formula that unifies geometry, procurement, scheduling, compliance, and cost — the way E=mc² unified mass and energy. Five domains that the industry treats as separate tools, separate vendors, separate budgets — unified in a formula an inch long.</p>
-<p>It reads a <a href="BOMBasedCompilation/">BOM</a> and produces verified 3D coordinates — the same way an <a href="MANIFESTO/">ERP system</a> explodes a manufacturing BOM into work orders. The output can then be edited live in <a href="https://bonsaibim.org/">Bonsai</a> (Blender BIM). <a href="ShipYard/">Domain-agnostic</a> — buildings, bridges, <a href="ShipYard/">ships</a>, tunnels. Nothing invented. No AI inside. Pure arithmetic.</p>
+<p>It reads a <a href="BOMBasedCompilation/">BOM</a> and produces verified 3D coordinates — the same way an <a href="MANIFESTO/">ERP system</a> explodes a manufacturing BOM into work orders. The output can then be edited live in <a href="https://bonsaibim.org/">Bonsai</a> (Blender BIM). <a href="ShipYard/">Domain-agnostic</a> — buildings, bridges, <a href="ShipYard/">ships</a>, tunnels. Nothing invented. No AI inside. Pure arithmetic. Deterministic.</p>
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-top: 4px solid #ffc107; border-bottom: 4px solid #ffc107; text-align: center;">
 <span style="font-size: 1.35em; line-height: 1.7; color: #263238; letter-spacing: 0.3px;">"What <b>AUTODESK</b>, <b>PRIMAVERA</b> and <b>SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
 <br><span style="font-size: 0.8em; letter-spacing: 1.5px; text-transform: uppercase; color: #90a4ae; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
 </div>
 
+<p>Every existing tool starts with geometry and extracts quantities downstream — draw first, count second. This compiler inverts the direction: the <a href="BOMBasedCompilation/">Bill of Materials</a> is the source of truth, and geometry is the compiled output. Procurement doesn't follow design. Design follows procurement.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Draw first, count second</th>
+<th>Count first, draw second</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Source of truth</strong></td>
+<td>3D model (Revit, ArchiCAD)</td>
+<td>Bill of Materials</td>
+</tr>
+<tr>
+<td><strong>Quantities</strong></td>
+<td>Extracted after design</td>
+<td>Inherent — the BOM IS the quantity</td>
+</tr>
+<tr>
+<td><strong>Change a wall</strong></td>
+<td>Redraw → re-extract QTO → re-estimate</td>
+<td>Change one BOM line → recompile</td>
+</tr>
+<tr>
+<td><strong>Compliance</strong></td>
+<td>Separate checker (Solibri)</td>
+<td>Same rule engine (<a href="DocValidate/">AD_Val_Rule</a>)</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>Separate estimator</td>
+<td>Same BOM × price list</td>
+</tr>
+<tr>
+<td><strong>Schedule</strong></td>
+<td>Separate tool (Primavera)</td>
+<td>BOM tree <a href="ProjectOrderBlueprint/">topological sort</a></td>
+</tr>
+<tr>
+<td><strong>Proof</strong></td>
+<td>Visual inspection</td>
+<td><a href="TestArchitecture/">6 mathematical gates</a> — deterministic</td>
+</tr>
+</tbody>
+</table>
 <p>Built on <a href="https://idempiere.org/">iDempiere</a> ERP conventions, <a href="https://www.sqlite.org/">SQLite</a>, and the <a href="https://www.blender.org/">Blender</a>/<a href="https://bonsaibim.org/">Bonsai</a> open-source 3D viewport — upgraded with the <a href="https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation">FederatedModel Spatial Database</a> and <a href="PDF_TERRAIN/">PDF Terrain</a> survey-to-3D. From Kuala Lumpur, Malaysia — where BIM is <a href="StrategicIndustryPositioning/">mandated</a> for all projects &gt;= RM10M from July 2025. It is the Creator, <a href="mailto:red1org@gmail.com">Redhuan D. Oon</a>'s gift to the world.</p>
 <div style="clear: right;"></div>
 
@@ -2484,7 +2531,7 @@ Same compiled output produces <a href="REPORTING_ENGINE_SRS/">BOM schedules, com
 <p>A product catalog (<a href="DATA_MODEL/">M_Product</a>) becomes building elements. A Bill of Materials (<a href="BOMBasedCompilation/">M_BOM</a>) becomes assembly recipes. A work order (<a href="ProjectOrderBlueprint/">C_Order</a>) becomes a construction project. The same <a href="MANIFESTO/">ERP</a> tables that run a factory floor now compile a building.</p>
 <hr />
 <h2 id="the-rosetta-stone-strategy"><strong>The Rosetta Stone Strategy</strong><a class="headerlink" href="#the-rosetta-stone-strategy" title="Permanent link">&para;</a></h2>
-<p>AI cannot see spatial geometry — it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The <a href="TheRosettaStoneStrategy/">Rosetta Stone strategy</a> sidesteps AI entirely: real buildings become the ground truth, and every compiled output is verified against that truth with pure arithmetic.</p>
+<p>AI cannot see spatial geometry — been LLM based, it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The <a href="TheRosettaStoneStrategy/">Rosetta Stone strategy</a> sidesteps AI entirely: real buildings become the ground truth, and every compiled output is verified against that truth with pure arithmetic.</p>
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">
   <figcaption style="font-size: 0.75em; color: #666; margin-top: 4px;">48,428 elements. 8 disciplines. Compiled from BOM.</figcaption>
