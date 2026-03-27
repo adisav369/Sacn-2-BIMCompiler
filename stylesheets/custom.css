@@ -1,0 +1,85 @@
+/* BIM Compiler — theme overrides (blue grey + orange accent) */
+
+/* ── Doc banner: one-liner thesis at top of every spec ── */
+.bim-banner {
+  max-width: 620px;
+  margin: 24px auto;
+  padding: 18px 28px;
+  background: #263238;
+  border-left: 4px solid #ff9800;
+  border-radius: 4px;
+  color: #cfd8dc;
+  font-size: 0.95em;
+  line-height: 1.6;
+}
+.bim-banner b {
+  color: #eceff1;
+}
+.bim-banner a {
+  color: #ff9800;
+}
+[data-md-color-scheme="slate"] .bim-banner {
+  background: #1a2327;
+  border-left-color: #ff9800;
+}
+
+/* Grid cards: blue grey border, orange hover accent */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li {
+  border: 1px solid #b0bec5;
+  border-left: 4px solid #455a64;
+  border-radius: 4px;
+  transition: border-color 0.2s;
+}
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > ol > li:hover {
+  border-left-color: #ff9800;
+}
+
+/* Card title (bold first line) */
+.md-typeset .grid.cards > ul > li > strong:first-child,
+.md-typeset .grid.cards > ol > li > strong:first-child {
+  color: #263238;
+}
+
+/* Card separator line */
+.md-typeset .grid.cards > ul > li hr,
+.md-typeset .grid.cards > ol > li hr {
+  border-color: #cfd8dc;
+}
+
+/* Comparison table: alternate row tint, orange header accent */
+.md-typeset table:not([class]) thead th {
+  background: #263238;
+  color: #eceff1;
+}
+.md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background: #f5f7f8;
+}
+.md-typeset table:not([class]) tbody td:first-child {
+  font-weight: 600;
+  color: #37474f;
+}
+
+/* Figure captions */
+.md-typeset figcaption {
+  color: #78909c;
+  font-size: 0.78em;
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li,
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ol > li {
+  border-color: #455a64;
+  border-left-color: #78909c;
+}
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li:hover,
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ol > li:hover {
+  border-left-color: #ff9800;
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) thead th {
+  background: #37474f;
+}
+[data-md-color-scheme="slate"] .md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background: #2e3b43;
+}

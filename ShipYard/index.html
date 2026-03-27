@@ -53,6 +53,8 @@
       
     
     
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
     <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -3247,10 +3249,9 @@
 <blockquote>
 <p><strong>Foundation:</strong> <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../BOMBasedCompilation/">BBC</a> §3.5 · <a href="../ProjectOrderBlueprint/">ProjectOrderBlueprint</a> §3 (Abstract Category Tree) · <a href="../BIM_COBOL/">BIM_COBOL</a> §TILE</p>
 </blockquote>
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e0f2f1, #e8f5e9, #e0f2f1); border-left: 4px solid #00695c; border-right: 4px solid #00695c;">
-<b>Roof tiles as hull plates. Tunnel linings as prefab rings. Earthworks as volumetric BOMs.</b> The engine does not compile buildings. It compiles recursive Bills of Materials with spatial coordinates. Construction was the first proof. This document demonstrates why it is not the last.
+<div class="bim-banner">
+<p><b>Roof tiles as hull plates. Tunnel linings as prefab rings. Earthworks as volumetric BOMs.</b> The engine does not compile buildings. It compiles recursive Bills of Materials with spatial coordinates. Construction was the first proof. This document demonstrates why it is not the last.</p>
 </div>
-
 <hr />
 <h2 id="0-thesis-why-the-engine-is-domain-agnostic">0. Thesis — Why the Engine Is Domain-Agnostic<a class="headerlink" href="#0-thesis-why-the-engine-is-domain-agnostic" title="Permanent link">&para;</a></h2>
 <p>The BIM Intent Compiler has no concept of "building." Its core loop is:</p>

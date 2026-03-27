@@ -51,6 +51,8 @@
       
     
     
+      <link rel="stylesheet" href="stylesheets/custom.css">
+    
     <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
@@ -2427,9 +2429,9 @@
 <h1 id="bim-intent-compiler">BIM Intent Compiler<a class="headerlink" href="#bim-intent-compiler" title="Permanent link">&para;</a></h1>
 <p><strong>Construction = BOM + (x, y, z).</strong> One formula that unifies geometry, procurement, scheduling, compliance, and cost — the way E=mc² unified mass and energy. Five domains that the industry treats as separate tools, separate vendors, separate budgets — unified in a formula an inch long.</p>
 <p>It reads a <a href="BOMBasedCompilation/">BOM</a> and produces verified 3D coordinates — the same way an <a href="MANIFESTO/">ERP system</a> explodes a manufacturing BOM into work orders. The output can then be edited live in <a href="https://bonsaibim.org/">Bonsai</a> (Blender BIM). <a href="ShipYard/">Domain-agnostic</a> — buildings, bridges, <a href="ShipYard/">ships</a>, tunnels. Nothing invented. No AI inside. Pure arithmetic. Deterministic.</p>
-<div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-top: 4px solid #ffc107; border-bottom: 4px solid #ffc107; text-align: center;">
-<span style="font-size: 1.35em; line-height: 1.7; color: #263238; letter-spacing: 0.3px;">"What <b>AUTODESK</b>, <b>PRIMAVERA</b> and <b>SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
-<br><span style="font-size: 0.8em; letter-spacing: 1.5px; text-transform: uppercase; color: #90a4ae; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
+<div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
+<span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">"What <b style="color: #ff9800;">AUTODESK</b>, <b style="color: #ff9800;">PRIMAVERA</b> and <b style="color: #ff9800;">SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
+<br><span style="font-size: 0.75em; letter-spacing: 1.5px; text-transform: uppercase; color: #78909c; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
 </div>
 
 <p>Every existing tool starts with geometry and extracts quantities downstream — draw first, count second. This compiler inverts the direction: the <a href="BOMBasedCompilation/">Bill of Materials</a> is the source of truth, and geometry is the compiled output. Procurement doesn't follow design. Design follows procurement.</p>
@@ -2455,7 +2457,7 @@
 <tr>
 <td><strong>Change a wall</strong></td>
 <td>Redraw → re-extract QTO → re-estimate</td>
-<td>Change one BOM line → recompile</td>
+<td>Change one BOM line → <a href="BOMBasedCompilation/">recompile</a></td>
 </tr>
 <tr>
 <td><strong>Compliance</strong></td>
