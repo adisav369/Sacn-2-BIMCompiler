@@ -74,7 +74,7 @@ The real input is a [Construction Order](ProjectOrderBlueprint.md) ([C_Order](MA
 | `*.bimcobol` | Verb recipes: PLACE BOM, ROUTE, WIRE, TRIM | [BIM COBOL](BIM_COBOL.md) scripts |
 | `BIMConstants.java` | Dimensional defaults (ceiling height, slab thickness) | Code constants |
 
-**Note:** `classify_*.yaml` is how the test harness represents a C_Order — it seeds the order and BOM for Rosetta Stone verification. In production, the [BIM Designer](BIM_Designer_UserGuide.md) creates the C_Order interactively via [BOM Drop](BOMBasedCompilation.md#34-bom-drop).
+**Note:** `classify_*.yaml` is how the test harness represents a C_Order — it seeds the order and BOM for Rosetta Stone verification. In production, the [BIM Designer](BIM_Designer_UserGuide.md) creates the C_Order interactively via [BOM Drop](BOMBasedCompilation.md#34-bom-drop--interactive-modification).
 
 The BOM walker must read products from the compile connection, not from extraction. If any value in the output cannot be traced to one of these sources, that's drift.
 
@@ -192,19 +192,68 @@ Following the Compiere/iDempiere convention, the pipeline uses Java's `java.util
 | Level | What you see |
 |-------|-------------|
 | **INFO** | Pipeline stages, gate verdicts, summary counts |
-| **WARN** | Non-fatal anomalies (non-zero origins, assembly stubs) |
-| **FINE** | Per-verb detail — which verbs fire, element counts, expansion results |
+| **WARN** | Non-fatal anomalies (non-zero origins, assembly stubs, proof violations) |
+| **FINE** | Stage timings, per-element proofs, automated Drift checklist |
 
-Every drift point is diagnosable from log output alone — no viewer needed:
+### INFO — what always shows
 
-| Log message | What it proves |
-|-------------|---------------|
-| `[verb] ARC/Ground Floor: 12 verb patterns...` | Verb detection ran per-discipline |
-| `=== BOM QA Validation ===` | 9 BomValidator checks + 2 pre-flight guards ran |
-| `[PASS] Count reconciliation` | SUM(qty) matches extraction count |
-| `── Verb Expansion Fidelity ──` | Round-trip centroid diff vs extraction |
-| `[VIOLATED] P06...` / `[PROVEN] P06...` | Per-element overlap proof with names + volume |
+```
+[INFO ] PIPELINE     PIPELINE: Sample House [EXTRACTED]
+[INFO ] PIPELINE     STEP 1: METADATA VALIDATION — starting
+[INFO ] PIPELINE     STEP 3: COMPILE TO BUILDINGSPEC — starting
+[INFO ] PIPELINE     STEP 6: VERB STAGE (BIM COBOL) — starting
+[INFO ] PIPELINE     PIPELINE COMPLETE: Sample House — 58 elements
+```
+
+IFCtoBOM (extraction) logs verb detection and BOM QA at INFO:
+
+```
+[verb] Ground Floor STR: 1 verb patterns (4 instances), 12 unfactored
+[ASI] SH_CW_STR seq=20: 3/6 instances have dimension variants (BIM_Slab)
+=== BOM QA Validation ===
+  [PASS] BOM count                                9 (BUILDING=1, FLOOR=4, SET=4)
+  [PASS] Extraction reconciliation                58 extraction LEAFs vs 58 extracted (delta=+0)
+```
+
+### WARN — anomalies and proof violations
+
+```
+[WARN ] QA           [FAIL] Non-zero BOM origins — 1
+[WARN ] PROVER       [VIOLATED] P27_WALL_ROOF_INTERSECTION — Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P
+                     — wall.maxZ=2.821 exceeds roofZ=2.071 by 0.750m at (1.64,-1.25)
+```
+
+### FINE — per-element proofs + Drift checklist
+
+FINE adds three things: **stage timings**, **per-element mathematical proofs**, and an **automated Drift checklist** that runs the 11 drift points from this document.
+
+Per-element proofs (4 proofs × 58 elements = 232 lines for SH):
+
+```
+[FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — Compound Ceiling:Plain — dx=9.3075 dy=5.6550 dz=0.0570
+[FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — Doors_IntSgl:810x2110mm — Z[0.000,2.145] within [0.0,3.5]±0.5
+[FINE ] PROVER       [PROVEN] P05_NO_DUPLICATE_POSITION — GLOBAL — 58 placements, no duplicate centroids
+[FINE ] PROVER       [PROVEN] P06_NO_SAME_CLASS_OVERLAP — GLOBAL — 58 placements, no same-class overlaps
+[FINE ] PROVER       [PROVEN] P28_ROOF_COVERAGE — GLOBAL — roof covers walls
+```
+
+Automated Drift checklist (runs after PIPELINE COMPLETE):
+
+```
+[FINE ] DRIFT        LAST MILE CHECK: Sample House (LAST_MILE_PROBLEM.md §Session Checklist)
+[FINE ] DRIFT        §1  Input=Output: expected=58, actual=58 → PASS
+[FINE ] DRIFT        §2  LOD400 Geometry: 58/58 OK, 0 warn, 0 fail → PASS
+[FINE ] DRIFT        §3  Compiler Only: T18/T19/T20 guard (checked at gate)
+[FINE ] DRIFT        §6  Output Path: C_OrderLine → BOM explosion → elements (structural)
+[FINE ] DRIFT        §7  Separate From Input: bom.db=library/_SH_compile.db
+[FINE ] DRIFT        §11 Factorization: BOM line guards (checked at extraction)
+[FINE ] DRIFT        SUMMARY: 6 pass, 0 fail, 2 deferred
+```
+
+### Quick commands
 
 ```bash
 grep VIOLATED logs/pipeline_*.log    # Find any proof failures
+grep DRIFT logs/pipeline_*.log       # Automated drift checklist results
+grep "Stage.*completed" logs/pipeline_*.log  # Stage timings
 ```
