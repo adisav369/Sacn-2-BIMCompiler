@@ -3083,7 +3083,7 @@
 <tr>
 <td>H7</td>
 <td>Re-enable default Maven test phase</td>
-<td>OPEN</td>
+<td>DONE — <code>pipeline.tests.skip</code> property; <code>mvn test</code> runs BIMBackOffice (20/20). BonsaiBIMDesigner needs component_library.db — skipped from default phase</td>
 </tr>
 </tbody>
 </table>
@@ -3626,7 +3626,7 @@ To cheat D-1 through D-5, you'd have to fake the IFC source files themselves.</p
 1. <strong>Hash seal (L1)</strong> — any byte change = SEAL BROKEN
 2. <strong>Structural guards (L2)</strong> — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. <strong>Git diff review (L3)</strong> — every <code>[SEAL]</code> commit shows exact diff</p>
-<p><strong>Sealed:</strong> 2026-03-26 (v42: S94 C_Order pipeline fix)
+<p><strong>Sealed:</strong> 2026-03-27 (v43: S98 FINE logging + drift check)
 <strong>Super-hash:</strong> <code>5ddcd79e4735c9f020b42614f3b66cb2f9ac73af4316db25110416ec1964ed2c</code></p>
 <div class="highlight"><pre><span></span><code>bash scripts/verify_test_seal.sh            # quick check
 bash scripts/verify_test_seal.sh --detail   # show which files changed
@@ -3707,7 +3707,7 @@ a1909001  EnBlocVerb.java
 af068cf9  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
-8e266f19  run_tests.sh
+38f498ae  run_tests.sh
 8bb5f537  run_RosettaStones.sh
 39839729  pre-commit
 </code></pre></div>
