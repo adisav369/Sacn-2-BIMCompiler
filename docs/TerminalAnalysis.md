@@ -2,7 +2,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>48,428 elements across 8 disciplines — the stress test.</b> Terminal proves the compiler scales from residential to commercial-institutional with full multi-discipline coverage.
+<b>48,428 elements across 8 disciplines — extraction proven, compilation blocked.</b> Extraction pipeline complete (9 disciplines, 7 storeys, full spatial index). IFCtoBOM BOM tree computes in memory (58 BOMs, 1,572 lines, 95.9× factorization) but QA blocks persistence: 471/1,515 tack overflows. See §Compilation Status below.
 </div>
 
 ## CTFL Review Status (session 31-34, 2026-03-19)
@@ -1446,6 +1446,141 @@ independent BOMs are correct and 42.8:1 is the natural compression limit.
 
 **This is a future investigation** — does not block current compilation. The spec
 (BOMBasedCompilation.md §3.3) supports recurrence via M_Product_Category_Line templates.
+
+---
+
+---
+
+## TE Compilation Status — Honesty Report (S99, 2026-03-27)
+
+> **TE gates (G1-G6) are extraction-only, not BOM-compiled.** The output DB
+> is the federation extraction, not the output of the 9-stage compiler.
+> Gates compare extraction-vs-extraction. This section documents what works,
+> what doesn't, and the fix path.
+
+### What Works (extraction pipeline)
+
+The Python IfcOpenShell extraction pipeline produced a complete, discipline-tagged,
+spatially-indexed federation database (`sjtii_terminal.db`):
+
+| Asset | Count | Status |
+|-------|-------|--------|
+| elements_meta | 48,428 | All 8 disciplines tagged |
+| base_geometries | 48,410 | Mesh data from IFC |
+| element_instances | 48,428 | Geometry references |
+| elements_rtree | 48,428 | Spatial index (74m × 59m × 60m envelope) |
+| spatial_structure | 8 | 7 storeys + building |
+| Disciplines | 9 | ARC(36,508) MEP(4,084) ACMV(1,621) CW(1,431) STR(1,429) ELEC(1,172) FP(995) SP(979) LPG(209) |
+
+This is real, correct, and valuable. It is the reference that future compilation
+will be verified against.
+
+### What Works (IFCtoBOM Step 1-4)
+
+The Java IFCtoBOM pipeline runs 4 of 5 steps successfully. The BOM tree is
+**computed in memory** but never persisted because Step 5 (QA) gates it:
+
+| Step | Status | Detail |
+|------|--------|--------|
+| 1. LoadYAML | PASS | classify_te.yaml: 7 storeys, 8 disciplines |
+| 2. CreateSchema | PASS | schema_snapshot_bom.sql applied |
+| 3. ReadExtraction | PASS | 48,428 elements loaded, 68,022 dim advisories, 34,433 shape advisories |
+| 4. BuildBOMs | PASS | **58 BOMs** (1 BUILDING + 7 FLOOR + 50 SET), **1,572 lines**, **48,485 instances** |
+| 5. QAValidation | **FAIL** | 5 checks fail → ABORT → TE_BOM.db not written |
+
+### IFCtoBOM QA — Pass/Fail Detail
+
+**14 checks PASS:**
+
+| Check | Result |
+|-------|--------|
+| BOM count | 58 (1 BUILDING, 7 FLOOR, 50 SET) |
+| BOM lines | 1,572 lines → 48,485 instances |
+| BOM categories | All 15 populated (ARC=7, STR=7, FP=7, ACMV=6, CW=7, ELEC=6, SP=7, LPG=3, plus storey cats) |
+| Duplicate bom_ids | 0 |
+| Orphan lines | 0 |
+| Duplicate positions | 0 |
+| World-coord offsets (>500m) | 0 |
+| AABB W containment | Floor max 68,930 ≤ building 73,670 |
+| AABB D containment | Floor max 56,359 ≤ building 59,124 |
+| AABB H envelope | Building 59,818, floor sum 121,249 (103% overlap — multi-storey expected) |
+| Assembly refs | 7 valid storey refs |
+| Element refs on LEAFs | 1,515/1,515 |
+| Product-linked LEAFs | 1,515/1,515 |
+| Factorization ratio | 95.9× reuse (505 products → 48,428 instances) |
+| Extraction reconciliation | 48,428 = 48,428 (zero delta) |
+| Shape consistency (CP-4) | 1,515 LEAFs classified |
+
+**5 checks FAIL:**
+
+| Check | Severity | Detail | Root Cause | Fix |
+|-------|----------|--------|------------|-----|
+| DocType CAT/DST | LOW | `-_TE` instead of `CO_TE` | String concat bug in IFCtoBOM C_DocType writer — missing `doc_base_type` prefix | One-line fix in IFCtoBOMPipeline |
+| M_Product catalog | MED | 0 catalog products (58 assembly stubs only) | Leaf products reference extraction elements but aren't registered in M_Product with library geometry | Wire `registerLeafProducts()` for CO building path |
+| Non-zero BOM origins | LOW | 1 BOM has non-zero origin | BBC §4.1: only BUILDING BOM should have non-zero origin | Identify the BOM, zero its origin |
+| W-TACK-1 LBD | **HIGH** | 471/1,515 lines overshoot parent AABB | ScopeBomBuilder tack offsets use element centroids that fall outside the parent AABB for multi-discipline rooms with MEP extending beyond room boundaries | Same root cause as S43 centroid drift (fixed for SH). TE's deeper nesting exposes more edge cases |
+| W-BUFFER-1 balance | **HIGH** | 14/50 SET BOMs balanced (36 unbalanced) | SUM(children.allocated_width) ≠ parent.width — MEP runs span beyond room boundaries, structural elements cross room/storey boundaries | Need: parent AABB = union of children, or children must be clipped to parent |
+
+### What Doesn't Work (blocked by QA)
+
+| Gap | Current State | What it Means |
+|-----|---------------|---------------|
+| TE_BOM.db | **Empty** (0 bytes) | No BOM tree persisted — QA gate blocks it |
+| _TE_compile.db | Schema only, 0 C_DocType, 0 m_bom | No compile DB prepared |
+| c_order | **0 rows** in output DB | BomDropper never ran |
+| c_orderline | **0 rows** in output DB | BomDropper never ran |
+| ASI data | **None** | No compilation → no instance attributes |
+| FINE logging | Not captured | No BOM compilation to log |
+| Designer access | **Would show nothing** | No order data to browse |
+
+### Why This Wasn't Flagged Earlier
+
+Three structural blind spots in the verification pipeline:
+
+1. **Silent skip, not loud fail.** `run_RosettaStones.sh` line 146-148:
+   `if [ ! -f "$bom_db" ]; return 1` — returns "skip," not "FAIL." The script
+   continues to the next building. No test failure. No CI red. The user sees
+   "7/7 PASS" for SH and assumes TE compiled too.
+
+2. **No "was it compiled?" gate.** G1-G6 compare reference vs output. They
+   don't check whether the output was produced by the compiler or is the
+   extraction itself. If the output DB exists from a prior extraction, all
+   gates pass without compilation ever running.
+
+3. **LAST_MILE_PROBLEM.md doesn't track per-building IFCtoBOM status.**
+   LMP tracks compilation pipeline gaps (R21-R24), not extraction-to-BOM
+   conversion failures. The IFCtoBOM QA failure lives only in `logs/` —
+   no spec, no gap register, no PROGRESS.md entry until now.
+
+### Fix Path — Priority Order
+
+**Phase 1 — Mechanical fixes (1 session, unblocks QA):**
+
+| # | Fix | Effort | Impact |
+|---|-----|--------|--------|
+| 1 | DocType format: `-_TE` → `CO_TE` | One-line string fix | Clears 1 QA fail |
+| 2 | Non-zero BOM origin: identify + zero | SQL query + one fix | Clears 1 QA fail |
+| 3 | M_Product catalog: register leaf products for CO path | Wire existing `registerLeafProducts()` | Clears 1 QA fail |
+
+**Phase 2 — Tack convention (1-2 sessions, the real work):**
+
+| # | Fix | Approach |
+|---|-----|----------|
+| 4 | W-TACK-1: 471 tack overflows | Start with one storey (Ground Floor, 3,513 elements). Debug which disciplines overflow. MEP elements that span beyond room boundaries need either: (a) parent AABB expanded to union-of-children, or (b) MEP tack offsets computed relative to storey, not room |
+| 5 | W-BUFFER-1: 36 unbalanced SET BOMs | Same root cause as #4. Once tack offsets are correct, parent AABB = union(children) should balance |
+
+**Phase 3 — Verification hardening (1 session, prevents recurrence):**
+
+| # | Fix | Approach |
+|---|-----|----------|
+| 6 | Rosetta script: fail loudly when BOM.db missing | Change `return 1` to `verdict FAIL` + `echo "[ERROR] ${prefix} BOM.db not found"` |
+| 7 | Add G0-COMPILED gate | New gate: `SELECT COUNT(*) FROM c_order WHERE C_Order_ID IS NOT NULL` > 0. Fails if output is extraction-only |
+| 8 | FINE logging for IFCtoBOM | Add `-Djava.util.logging.config.file` with FINE level on `com.bim.ifctobom` package to capture tack computation detail |
+
+**After Phase 2 completes:** TE_BOM.db is populated → BomDrop runs →
+48,428 C_OrderLine rows with disciplines → compile produces real output.db →
+G1-G6 compare compiled vs reference → TE gates become real. Designer can
+open TE's order tree and browse all 8 disciplines.
 
 ---
 
