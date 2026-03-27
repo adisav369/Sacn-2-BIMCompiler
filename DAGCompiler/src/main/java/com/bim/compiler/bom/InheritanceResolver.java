@@ -76,7 +76,13 @@ public class InheritanceResolver {
             List<OrderException> lines = loadExceptionLines(conn, orderId);
             for (OrderException ex : lines) {
                 if (ex.locatorRef != null && !ex.locatorRef.isEmpty()) {
-                    resolved.put(ex.locatorRef, new ExceptionLine(ex.qty, ex.isReferenceClass));
+                    // Reconstruct mutation type from persisted fields
+                    // Future: Replace/Add will need replacement_product_id column on C_OrderLine
+                    BomDropper.MutationType type = ex.qty == 0
+                            ? BomDropper.MutationType.REMOVE
+                            : (ex.isReferenceClass ? BomDropper.MutationType.COMPRESS
+                                                   : BomDropper.MutationType.REMOVE);
+                    resolved.put(ex.locatorRef, new ExceptionLine(ex.qty, ex.isReferenceClass, null, type));
                 }
             }
         }

@@ -199,6 +199,7 @@ public class OrderInheritanceTest {
             stmt.execute("""
                 CREATE TABLE m_bom (
                     bom_id TEXT PRIMARY KEY,
+                    Value TEXT,
                     bom_name TEXT NOT NULL,
                     description TEXT,
                     target_ifc_class TEXT DEFAULT 'IfcElementAssembly',
@@ -242,16 +243,18 @@ public class OrderInheritanceTest {
                 )
             """);
 
+            // Tier 2: C_Order_ID is INTEGER PK, Value holds text key
             stmt.execute("""
                 CREATE TABLE C_Order (
-                    C_Order_ID TEXT PRIMARY KEY,
+                    C_Order_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Value TEXT,
                     C_DocType_ID TEXT NOT NULL,
                     Name TEXT NOT NULL,
                     DocStatus TEXT NOT NULL DEFAULT 'DR',
                     aabb_width_mm REAL NOT NULL DEFAULT 0,
                     aabb_depth_mm REAL NOT NULL DEFAULT 0,
                     aabb_height_mm REAL NOT NULL DEFAULT 0,
-                    Ref_Order_ID TEXT REFERENCES C_Order(C_Order_ID),
+                    Ref_Order_ID TEXT,
                     IsActive INTEGER NOT NULL DEFAULT 1,
                     created TEXT NOT NULL DEFAULT (datetime('now')),
                     updated TEXT NOT NULL DEFAULT (datetime('now'))
@@ -276,6 +279,7 @@ public class OrderInheritanceTest {
                     aabb_height_mm REAL,
                     M_Product_ID TEXT,
                     Discipline TEXT DEFAULT 'ARC',
+                    AD_Org_ID INTEGER DEFAULT 0,
                     Qty INTEGER NOT NULL DEFAULT 1,
                     locator_ref TEXT,
                     is_reference_class INTEGER NOT NULL DEFAULT 0,
@@ -301,23 +305,23 @@ public class OrderInheritanceTest {
     private static void seedBomData(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("""
-                INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, m_product_category_id,
+                INSERT INTO m_bom (bom_id, Value, bom_name, group_by, bom_type, m_product_category_id,
                     doc_sub_type, is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                VALUES ('DX_BUILDING', 'DX Building', 'BUILDING', 'BUILDING', 'RE',
+                VALUES ('DX_BUILDING', 'DX_BUILDING', 'DX Building', 'BUILDING', 'BUILDING', 'RE',
                     'DX', 1, 12000, 10000, 8000)
             """);
 
             stmt.execute("""
-                INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, m_product_category_id,
+                INSERT INTO m_bom (bom_id, Value, bom_name, group_by, bom_type, m_product_category_id,
                     is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                VALUES ('FLOOR_GF', 'Ground Floor', 'BUILDING', 'FLOOR', 'GF',
+                VALUES ('FLOOR_GF', 'FLOOR_GF', 'Ground Floor', 'BUILDING', 'FLOOR', 'GF',
                     1, 12000, 10000, 3000)
             """);
 
             stmt.execute("""
-                INSERT INTO m_bom (bom_id, bom_name, group_by, bom_type, m_product_category_id,
+                INSERT INTO m_bom (bom_id, Value, bom_name, group_by, bom_type, m_product_category_id,
                     is_active, aabb_width_mm, aabb_depth_mm, aabb_height_mm)
-                VALUES ('ROOM_LI', 'Living Room', 'ROOM', 'SET', 'LI',
+                VALUES ('ROOM_LI', 'ROOM_LI', 'Living Room', 'ROOM', 'SET', 'LI',
                     1, 5000, 4000, 3000)
             """);
 
@@ -371,13 +375,13 @@ public class OrderInheritanceTest {
         try (Statement stmt = conn.createStatement()) {
             // DX_BASE — base order (no parent)
             stmt.execute("""
-                INSERT INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('DX_BASE', 'RE_DX', 'DX Base', NULL)
             """);
 
             // DX_SOLAR — child of DX_BASE
             stmt.execute("""
-                INSERT INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('DX_SOLAR', 'RE_DX', 'DX Solar', 'DX_BASE')
             """);
             // DX_SOLAR exception: Remove TABLE_001
@@ -390,7 +394,7 @@ public class OrderInheritanceTest {
 
             // DX_SOLAR_PREMIUM — child of DX_SOLAR (grandchild of DX_BASE)
             stmt.execute("""
-                INSERT INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('DX_SOLAR_PREMIUM', 'RE_DX', 'DX Solar Premium', 'DX_SOLAR')
             """);
             // DX_SOLAR_PREMIUM exception: Remove SOFA_001
@@ -411,11 +415,11 @@ public class OrderInheritanceTest {
     private static void seedConflictChain(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("""
-                INSERT OR IGNORE INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT OR IGNORE INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('DX_CONFLICT_BASE', 'RE_DX', 'Conflict Base', NULL)
             """);
             stmt.execute("""
-                INSERT OR IGNORE INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT OR IGNORE INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('DX_CONFLICT_PARENT', 'RE_DX', 'Conflict Parent', 'DX_CONFLICT_BASE')
             """);
             // Parent: Remove SOFA_001 (qty=0)
@@ -427,7 +431,7 @@ public class OrderInheritanceTest {
             """);
 
             stmt.execute("""
-                INSERT OR IGNORE INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT OR IGNORE INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('DX_CONFLICT_CHILD', 'RE_DX', 'Conflict Child', 'DX_CONFLICT_PARENT')
             """);
             // Child: Compress SOFA_001 (qty=3, is_reference_class=1) — overrides parent's Remove
@@ -446,11 +450,11 @@ public class OrderInheritanceTest {
     private static void seedCyclicOrders(Connection conn) throws SQLException {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute("""
-                INSERT OR IGNORE INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT OR IGNORE INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('CYCLE_A', 'RE_DX', 'Cycle A', 'CYCLE_B')
             """);
             stmt.execute("""
-                INSERT OR IGNORE INTO C_Order (C_Order_ID, C_DocType_ID, Name, Ref_Order_ID)
+                INSERT OR IGNORE INTO C_Order (Value, C_DocType_ID, Name, Ref_Order_ID)
                 VALUES ('CYCLE_B', 'RE_DX', 'Cycle B', 'CYCLE_A')
             """);
         }

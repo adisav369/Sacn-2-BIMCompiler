@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Properties;
 
 /**
  * Logging utility for BIM Compiler — iDempiere-style levelled logger.
@@ -42,14 +43,38 @@ public class BIMLogger {
     private static PrintWriter logFile = null;
     private static String logFilePath = null;
 
-    /** Resolve initial level from -Dbim.log.level system property (default: INFO). */
+    /**
+     * Resolve initial level — iDempiere convention: external properties, not hardcoded.
+     *
+     * <p>Priority (highest wins):
+     * <ol>
+     *   <li>{@code -Dbim.log.level} system property (CLI override)</li>
+     *   <li>{@code BIM.properties} file in working directory</li>
+     *   <li>Default: INFO</li>
+     * </ol>
+     */
     private static Level resolveInitialLevel() {
+        // 1. System property (CLI override, highest priority)
         String prop = System.getProperty("bim.log.level");
         if (prop != null && !prop.isEmpty() && !prop.startsWith("$")) {
             try { return Level.valueOf(prop.toUpperCase()); }
-            catch (IllegalArgumentException badLevel) { /* unrecognised level string — fall through to INFO */ }
+            catch (IllegalArgumentException ignored) { /* fall through */ }
         }
-        return Level.FINE;  // default FINE — heavy debugging phase
+        // 2. BIM.properties file in working directory
+        Path propsFile = Paths.get("BIM.properties");
+        if (Files.exists(propsFile)) {
+            try (InputStream in = Files.newInputStream(propsFile)) {
+                Properties props = new Properties();
+                props.load(in);
+                String fileProp = props.getProperty("bim.log.level");
+                if (fileProp != null && !fileProp.isEmpty()) {
+                    try { return Level.valueOf(fileProp.trim().toUpperCase()); }
+                    catch (IllegalArgumentException ignored) { /* fall through */ }
+                }
+            } catch (IOException ignored) { /* file unreadable — fall through */ }
+        }
+        // 3. Default
+        return Level.INFO;
     }
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");

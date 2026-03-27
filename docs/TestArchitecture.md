@@ -18,6 +18,7 @@
 6. **No Weak Assertions.** No `assertNotNull` as sole verification, no `assumeTrue(false)` (use `@Disabled("TICKET:")`), no digest "not empty" checks — compare to golden value or expected reference.
 7. **No Silent Failures.** No `catch (Exception ignored) {}` — log or fail. No `|| true` in scripts — capture exit codes. No write-then-read-back as sole proof — cross-check against reference.
 8. **No Silent Re-seal.** Every `[SEAL]` commit must explain WHY the test changed. Review the diff before accepting.
+9. **No `System.err` for debug.** Use `BIMLogger.fine()` for rejection messages, constraint violations, and diagnostic output. `System.err` bypasses log-level filtering and is invisible to the FINE drift checklist. Easy to grep: `System\.err` in Java source = drift.
 
 ---
 

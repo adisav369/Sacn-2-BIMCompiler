@@ -78,7 +78,7 @@ public class BomDropper {
             throws SQLException {
         Map<String, ExceptionLine> inherited = InheritanceResolver.resolveExceptions(compileDb, orderId);
         if (!inherited.isEmpty()) {
-            System.out.printf("[BomDropper] Inheritance chain resolved: %d exception(s) for order %s%n",
+            BIMLogger.fine("BOMDROP", "Inheritance chain resolved: {} exception(s) for order {}",
                     inherited.size(), orderId);
         }
         return drop(compileDb, entry, orderId, inherited);
@@ -101,7 +101,7 @@ public class BomDropper {
         // Find the BUILDING BOM for this entry via m_product_category_id + doc_sub_type
         String buildingBomId = findBuildingBom(compileDb, entry);
         if (buildingBomId == null) {
-            System.err.printf("[BomDropper] No BUILDING BOM for %s (%s/%s) — skipping%n",
+            BIMLogger.fine("BOMDROP", "No BUILDING BOM for {} ({}/{}) — skipping",
                     entry.id(), entry.mProductCategoryId(), entry.docSubType());
             return 0;
         }
@@ -115,37 +115,65 @@ public class BomDropper {
         explode(compileDb, orderId, buildingBomId, 0, "BUILDING",
                 null, 0, leafCount, lineSeq, "", exceptions);
 
-        // Future: Add mutation for discipline recipes (ProjectOrderBlueprint §1.1).
-        // "add FP" order line → resolve FP_RECIPE from ERP.db → apply ROUTE verb
-        // to building spaces using AD_Val_Rule. Discipline resolves from child
-        // product's AD_Org_ID, not from order line.
-        // See DISC_VALIDATION_DB_SRS.md §10.4.6 (shared recipes in ERP.db).
-        //
-        // Connection point: after explode() produces the structural tree, Add
-        // mutations append discipline recipe C_OrderLines. Each recipe line
-        // carries a generative verb_ref (ROUTE/FRAME/TILE/WIRE) that the
-        // compile path expands via Strategy + AD_Val_Rule Specification.
+        // Implementing ProjectOrderBlueprint.md §1.1 + DISC_VALIDATION_DB_SRS.md §10.4.6 — Witness: W-ADD-1
+        // Add mutations: append discipline recipe C_OrderLines as siblings of root BUILDING line.
+        // Each Add line's replacementProductId holds the shared recipe product (e.g., FP_SYSTEM).
+        // Generative verb execution (ROUTE/FRAME/TILE/WIRE) is future work — the lines exist
+        // in the order tree but produce 0 compiled elements until verb Strategy is wired.
+        for (Map.Entry<String, ExceptionLine> ex : exceptions.entrySet()) {
+            if (ex.getValue().type() == MutationType.ADD && ex.getValue().replacementProductId() != null) {
+                String recipeProductId = ex.getValue().replacementProductId();
+                String addLocator = ex.getKey();
+                Discipline disc = resolveDiscipline(addLocator);  // locator key = discipline code
+                lineSeq[0] += 10;
+                insertLine(compileDb, orderId, null, lineSeq[0],
+                        recipeProductId, "DISCIPLINE", addLocator, 0,
+                        0, 0, 0, 0, 0, 0, 1, addLocator, false);
+                BIMLogger.fine("BOMDROP", "ADD: {} (discipline={}, AD_Org={}) at locator_ref={}",
+                        recipeProductId, disc.name(), disc.getAD_Org_ID(), addLocator);
+            }
+        }
 
         BIMLogger.fine("BOMDROP", "{} → {} leaves (order={}, bom={})",
-                entry.id(), leafCount[0], orderId, buildingBomId);
-        System.out.printf("[BomDropper] %s → %d leaves (order=%s, bom=%s)%n",
                 entry.id(), leafCount[0], orderId, buildingBomId);
         return leafCount[0];
     }
 
+    /** Mutation type for the four-operation exception algebra (ProjectOrderBlueprint §1.1). */
+    public enum MutationType { REMOVE, COMPRESS, REPLACE, ADD }
+
     /**
-     * Exception line for Remove/Compress mutations on a specific locator_ref.
+     * Exception line for Remove/Compress/Replace/Add mutations on a specific locator_ref.
      *
-     * @param qty              0 = Remove (skip subtree), N = override quantity
-     * @param isReferenceClass true = Compress (instantiate qty copies at computed offsets)
+     * @param qty                  0 = Remove (skip subtree), N = override quantity
+     * @param isReferenceClass     true = Compress (instantiate qty copies at computed offsets)
+     * @param replacementProductId non-null for Replace (swap) and Add (recipe product)
+     * @param type                 which of the four mutations this represents
      */
-    // Implementing ProjectOrderBlueprint.md §14.3 Session D — Witness: W-EXCEPTION-1
-    public record ExceptionLine(int qty, boolean isReferenceClass) {
+    // Implementing ProjectOrderBlueprint.md §1.1 — Witness: W-REPLACE-1, W-ADD-1
+    public record ExceptionLine(int qty, boolean isReferenceClass,
+                                String replacementProductId, MutationType type) {
         /** Remove mutation: qty=0 skips the entire subtree at the targeted locator_ref. */
-        public static ExceptionLine remove() { return new ExceptionLine(0, false); }
+        public static ExceptionLine remove() {
+            return new ExceptionLine(0, false, null, MutationType.REMOVE);
+        }
 
         /** Compress mutation: is_reference_class + qty=N instantiates N copies at computed offsets. */
-        public static ExceptionLine compress(int qty) { return new ExceptionLine(qty, true); }
+        public static ExceptionLine compress(int qty) {
+            return new ExceptionLine(qty, true, null, MutationType.COMPRESS);
+        }
+
+        /** Replace mutation: swap product at locator_ref. Category-constrained (same shelf). */
+        // Implementing ProjectOrderBlueprint.md §1.1 — Witness: W-REPLACE-1
+        public static ExceptionLine replace(String replacementProductId) {
+            return new ExceptionLine(1, false, replacementProductId, MutationType.REPLACE);
+        }
+
+        /** Add mutation: append discipline recipe C_OrderLine (sibling of root BUILDING line). */
+        // Implementing ProjectOrderBlueprint.md §1.1 + DISC_VALIDATION_DB_SRS.md §10.4.6 — Witness: W-ADD-1
+        public static ExceptionLine add(String recipeProductId) {
+            return new ExceptionLine(1, false, recipeProductId, MutationType.ADD);
+        }
     }
 
     /**
@@ -217,7 +245,7 @@ public class BomDropper {
                                 String parentLocator, Map<String, ExceptionLine> exceptions)
             throws SQLException {
         if (depth > MAX_DEPTH) {
-            System.err.printf("[BomDropper] MAX_DEPTH exceeded at BOM %s%n", bomId);
+            BIMLogger.fine("BOMDROP", "MAX_DEPTH exceeded at BOM {}", bomId);
             return 0;
         }
 
@@ -233,7 +261,7 @@ public class BomDropper {
         // Check for Remove exception (qty=0 → skip entire subtree)
         ExceptionLine exception = exceptions.get(locatorRef);
         if (exception != null && exception.qty() == 0) {
-            System.out.printf("[BomDropper] REMOVE: skipping subtree at locator_ref=%s%n", locatorRef);
+            BIMLogger.fine("BOMDROP", "REMOVE: skipping subtree at locator_ref={}", locatorRef);
             return 0;
         }
 
@@ -251,7 +279,7 @@ public class BomDropper {
 
         // If reference class, don't explode children — they'll be instantiated at walk time
         if (isRefClass) {
-            System.out.printf("[BomDropper] COMPRESS: locator_ref=%s, qty=%d (reference class)%n",
+            BIMLogger.fine("BOMDROP", "COMPRESS: locator_ref={}, qty={} (reference class)",
                     locatorRef, overrideQty);
             return lineId;
         }
@@ -267,10 +295,36 @@ public class BomDropper {
             boolean isBom = childBom.load(childProductId);
 
             if (isBom) {
-                // Sub-assembly — recurse
+                // Build locator_ref for this child to check Replace exception
+                String childLocator = buildLocatorRef(locatorRef, childBom.getProductCategory(), childProductId);
+                ExceptionLine childEx = exceptions.get(childLocator);
+
+                // Implementing ProjectOrderBlueprint.md §1.1 — Witness: W-REPLACE-1
+                String actualChildId = childProductId;
+                MBOM actualChildBom = childBom;
+                if (childEx != null && childEx.type() == MutationType.REPLACE
+                        && childEx.replacementProductId() != null) {
+                    MBOM replacementBom = new MBOM(conn);
+                    if (replacementBom.load(childEx.replacementProductId())) {
+                        // Category constraint: replacement must be same shelf
+                        String origCat = childBom.getProductCategory();
+                        String replCat = replacementBom.getProductCategory();
+                        if (origCat != null && origCat.equals(replCat)) {
+                            actualChildId = childEx.replacementProductId();
+                            actualChildBom = replacementBom;
+                            BIMLogger.fine("BOMDROP", "REPLACE: {} → {} at locator_ref={} (category={})",
+                                    childProductId, actualChildId, childLocator, origCat);
+                        } else {
+                            BIMLogger.fine("BOMDROP", "REPLACE REJECTED: category mismatch at {} ({} ≠ {})",
+                                    childLocator, origCat, replCat);
+                        }
+                    }
+                }
+
+                // Sub-assembly — recurse (into original or replacement)
                 String childHostType = deriveHostType(depth + 1);
-                explodeAssembly(conn, orderId, childProductId,
-                        lineId, childHostType, childBom.getProductCategory(),
+                explodeAssembly(conn, orderId, actualChildId,
+                        lineId, childHostType, actualChildBom.getProductCategory(),
                         depth + 1, leafCount, lineSeq, line.getBomChildId(),
                         locatorRef, exceptions);
 
@@ -285,14 +339,24 @@ public class BomDropper {
                 // Check for Remove on leaf
                 ExceptionLine leafEx = exceptions.get(leafLocator);
                 if (leafEx != null && leafEx.qty() == 0) {
-                    System.out.printf("[BomDropper] REMOVE: skipping leaf at locator_ref=%s%n", leafLocator);
+                    BIMLogger.fine("BOMDROP", "REMOVE: skipping leaf at locator_ref={}", leafLocator);
                     continue;
+                }
+
+                // Check for Replace on leaf (swap product ID)
+                // Implementing ProjectOrderBlueprint.md §1.1 — Witness: W-REPLACE-1
+                String actualLeafId = childProductId;
+                if (leafEx != null && leafEx.type() == MutationType.REPLACE
+                        && leafEx.replacementProductId() != null) {
+                    actualLeafId = leafEx.replacementProductId();
+                    BIMLogger.fine("BOMDROP", "REPLACE: {} → {} at locator_ref={}",
+                            childProductId, actualLeafId, leafLocator);
                 }
 
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
-                        childProductId, "LEAF", productCategory, line.getBomChildId(),
+                        actualLeafId, "LEAF", productCategory, line.getBomChildId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(), qty, leafLocator, false);
@@ -326,7 +390,7 @@ public class BomDropper {
         // Check for Remove exception
         ExceptionLine exception = exceptions.get(locatorRef);
         if (exception != null && exception.qty() == 0) {
-            System.out.printf("[BomDropper] REMOVE: skipping subtree at locator_ref=%s%n", locatorRef);
+            BIMLogger.fine("BOMDROP", "REMOVE: skipping subtree at locator_ref={}", locatorRef);
             return 0;
         }
 
@@ -344,12 +408,12 @@ public class BomDropper {
 
         // If reference class, don't explode children
         if (isRefClass) {
-            System.out.printf("[BomDropper] COMPRESS: locator_ref=%s, qty=%d (reference class)%n",
+            BIMLogger.fine("BOMDROP", "COMPRESS: locator_ref={}, qty={} (reference class)",
                     locatorRef, overrideQty);
             return lineId;
         }
 
-        // Walk children (same logic as explode)
+        // Walk children (same logic as explode, with Replace support)
         List<MBOMLine> lines = MBOMLine.getByBom(conn, bomId);
         for (MBOMLine line : lines) {
             String childProductId = line.getChildProductId();
@@ -359,9 +423,34 @@ public class BomDropper {
             boolean isBom = childBom.load(childProductId);
 
             if (isBom) {
+                // Build locator_ref for this child to check Replace exception
+                String childLocator = buildLocatorRef(locatorRef, childBom.getProductCategory(), childProductId);
+                ExceptionLine childEx = exceptions.get(childLocator);
+
+                // Implementing ProjectOrderBlueprint.md §1.1 — Witness: W-REPLACE-1
+                String actualChildId = childProductId;
+                MBOM actualChildBom = childBom;
+                if (childEx != null && childEx.type() == MutationType.REPLACE
+                        && childEx.replacementProductId() != null) {
+                    MBOM replacementBom = new MBOM(conn);
+                    if (replacementBom.load(childEx.replacementProductId())) {
+                        String origCat = childBom.getProductCategory();
+                        String replCat = replacementBom.getProductCategory();
+                        if (origCat != null && origCat.equals(replCat)) {
+                            actualChildId = childEx.replacementProductId();
+                            actualChildBom = replacementBom;
+                            BIMLogger.fine("BOMDROP", "REPLACE: {} → {} at locator_ref={} (category={})",
+                                    childProductId, actualChildId, childLocator, origCat);
+                        } else {
+                            BIMLogger.fine("BOMDROP", "REPLACE REJECTED: category mismatch at {} ({} ≠ {})",
+                                    childLocator, origCat, replCat);
+                        }
+                    }
+                }
+
                 String childHostType = deriveHostType(depth + 1);
-                explodeAssembly(conn, orderId, childProductId, lineId,
-                        childHostType, childBom.getProductCategory(),
+                explodeAssembly(conn, orderId, actualChildId, lineId,
+                        childHostType, actualChildBom.getProductCategory(),
                         depth + 1, leafCount, lineSeq, line.getBomChildId(),
                         locatorRef, exceptions);
 
@@ -373,14 +462,24 @@ public class BomDropper {
 
                 ExceptionLine leafEx = exceptions.get(leafLocator);
                 if (leafEx != null && leafEx.qty() == 0) {
-                    System.out.printf("[BomDropper] REMOVE: skipping leaf at locator_ref=%s%n", leafLocator);
+                    BIMLogger.fine("BOMDROP", "REMOVE: skipping leaf at locator_ref={}", leafLocator);
                     continue;
+                }
+
+                // Check for Replace on leaf (swap product ID)
+                // Implementing ProjectOrderBlueprint.md §1.1 — Witness: W-REPLACE-1
+                String actualLeafId = childProductId;
+                if (leafEx != null && leafEx.type() == MutationType.REPLACE
+                        && leafEx.replacementProductId() != null) {
+                    actualLeafId = leafEx.replacementProductId();
+                    BIMLogger.fine("BOMDROP", "REPLACE: {} → {} at locator_ref={}",
+                            childProductId, actualLeafId, leafLocator);
                 }
 
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
-                        childProductId, "LEAF", productCategory, line.getBomChildId(),
+                        actualLeafId, "LEAF", productCategory, line.getBomChildId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(), qty, leafLocator, false);

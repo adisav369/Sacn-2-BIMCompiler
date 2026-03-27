@@ -205,6 +205,8 @@ Following the Compiere/iDempiere convention, the pipeline uses Java's `java.util
 | **WARN** | Non-fatal anomalies (non-zero origins, assembly stubs, proof violations) |
 | **FINE** | Stage timings, per-element proofs, automated Drift checklist |
 
+**Rule:** All diagnostic output (rejected mutations, constraint violations, category mismatches) MUST use `BIMLogger.fine()`, never `System.err`. This ensures rejection messages appear in the FINE drift checklist and can be grepped from logs. `System.err` bypasses log filtering and is invisible to auditors reviewing FINE output.
+
 ### INFO — what always shows
 
 ```
