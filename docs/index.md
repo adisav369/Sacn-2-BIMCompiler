@@ -38,6 +38,7 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
     34 extracted from real [IFC](https://www.buildingsmart.org/standards/bsi-standards/industry-foundation-classes/) files + 1 generative.
     19 pass all [6 mathematical gates](TestArchitecture.md).
+    16 in progress — geometry coverage and verb gaps tracked in [TestArchitecture](TestArchitecture.md).
     Largest: [48,428 elements](TerminalAnalysis.md) (airport terminal).
 
     [:octicons-arrow-right-24: See the buildings](SampleHouseAnalysis.md)
@@ -111,7 +112,7 @@ Real IFC buildings are decomposed into reference databases. The compiler reads a
 
 The compiler can see. [BIMEyes](EYES_SRS.md) reduces every element's shape to three dimensionless ratios — planarity, elongation, squareness. A wall *must* be planar. A column *must* be elongated. A slab *must* be flat. These are mathematical facts, not heuristics.
 
-Three verification tiers: **per-element** (each element is geometrically sane), **pairwise** (doors inside walls, furniture inside rooms), and **aggregate** (every room has walls, floor, ceiling, and a door). 28 proof classes across 90,310 elements. 97% pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic.
+Three verification tiers: **per-element** (each element is geometrically sane), **pairwise** (doors inside walls, furniture inside rooms), and **aggregate** (every room has walls, floor, ceiling, and a door). 28 proof classes across 90,310 elements. 97% pass both shape AND position proof. No AI. No tolerance tuning. Pure arithmetic. No trained models — thresholds are derived from geometric definitions (a wall IS planar by IFC class definition, not by statistical inference).
 
 [:octicons-arrow-right-24: EYES specification](EYES_SRS.md)
 
@@ -166,6 +167,7 @@ mvn compile -q                              # Compile all modules
 | Navigate the code | [Source Code Guide](SourceCodeGuide.md) |
 | Onboard a new IFC | [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) |
 | See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) |
+| Compare to other approaches | [Prior Art — Why Not Parametric?](StrategicIndustryPositioning.md) |
 | Explore the enterprise platform | [**FederatedModel — 4D through 8D**](Enterprise.md) |
 
 <div style="clear: right;"></div>

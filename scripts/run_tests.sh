@@ -57,7 +57,7 @@ run_suite() {
     echo "  Expect : ${expected_pass} PASS / ${expected_red} intentional RED"
     echo ""
 
-    OUTPUT=$(mvn test -pl "$module" 2>&1) || true
+    OUTPUT=$(mvn test -pl "$module" -Dpipeline.tests.skip=false 2>&1) || true
 
     # Sum across ALL surefire executions (each prints its own "Tests run:" summary).
     # Per-class lines contain "Time elapsed" or "-- in"; execution summaries don't.

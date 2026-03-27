@@ -42,7 +42,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.2.5</version>
+                <!-- Pipeline tests: run via scripts/run_tests.sh -->
                 <configuration>
+                    <skipTests>${pipeline.tests.skip}</skipTests>
                     <!-- Run from project root so library/component_library.db resolves -->
                     <workingDirectory>${project.parent.basedir}</workingDirectory>
                 </configuration>

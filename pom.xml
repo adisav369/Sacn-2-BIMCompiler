@@ -36,6 +36,8 @@
         <choco.version>4.10.14</choco.version>
         <snakeyaml.version>2.2</snakeyaml.version>
         <poi.version>5.2.5</poi.version>
+        <!-- Pipeline modules need compiled DBs; skip by default, run_tests.sh overrides -->
+        <pipeline.tests.skip>true</pipeline.tests.skip>
     </properties>
 
     <dependencyManagement>

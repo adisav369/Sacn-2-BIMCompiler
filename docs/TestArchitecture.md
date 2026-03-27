@@ -51,7 +51,7 @@
 | H4 | Remove building type string checks | OPEN |
 | H5 | Fix error suppression | DONE — all log `[WARN]`, resource leak fixed |
 | H6 | Semantic witness verification (AABB vs extraction envelope) | OPEN |
-| H7 | Re-enable default Maven test phase | OPEN |
+| H7 | Re-enable default Maven test phase | DONE — `pipeline.tests.skip` property; `mvn test` runs BIMBackOffice (20/20). BonsaiBIMDesigner needs component_library.db — skipped from default phase |
 
 ### MEDIUM Fixes (M1–M6)
 
@@ -316,7 +316,7 @@ a1909001  EnBlocVerb.java
 af068cf9  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
-8e266f19  run_tests.sh
+38f498ae  run_tests.sh
 8bb5f537  run_RosettaStones.sh
 39839729  pre-commit
 ```

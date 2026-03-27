@@ -235,6 +235,7 @@ class WebUISyncTest {
     // Launch & Compile hooks
     // ══════════════════════════════════════════════════════════════════
 
+    @Disabled("Launches real Bonsai process — run manually, not in CI")
     @Test
     @Order(11)
     @DisplayName("W-S57-11: launchBonsai returns response (success or error)")
