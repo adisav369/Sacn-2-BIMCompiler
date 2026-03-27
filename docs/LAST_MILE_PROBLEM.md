@@ -5,7 +5,7 @@
 <b>AI cannot repeat an outcome. Determinism is our religion here.</b>
 </div>
 
-Vibe Programming under strict architectural supervision built this compiler — but AI cannot see spatial geometry. It doesn't know a wall must sit on a slab, or that two columns can't overlap. Months of frustration revealed a pattern: the code drifts from spec precisely where spatial reasoning is required. This document tracks every known drift point between "it compiles" and "it ships with no AI inside."
+[Vibe Programming](VibeProgramming.md) under strict architectural supervision built this compiler — but AI cannot see spatial geometry. It doesn't know a wall must sit on a slab, or that two columns can't overlap. Months of frustration revealed a pattern: the code drifts from spec precisely where spatial reasoning is required. This document tracks every known drift point between "it compiles" and "it ships with no AI inside."
 
 See [BIMEyes](EYES_SRS.md) for how we taught the compiler to see. Below is the way we harness in Claude Code AI.
 

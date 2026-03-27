@@ -51,7 +51,7 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
     [:octicons-arrow-right-24: See the buildings](SampleHouseAnalysis.md)
 
--   **75 Verbs, 2,475 Products**
+-   **76 Verbs, 2,475 Products**
 
     ---
 
@@ -173,6 +173,7 @@ mvn compile -q                              # Compile all modules
 | Onboard a new IFC | [IFC Onboarding Runbook](IFC_ONBOARDING_RUNBOOK.md) |
 | See the frontier | [Project Order Blueprint](ProjectOrderBlueprint.md) |
 | Compare to other approaches | [Prior Art — Why Not Parametric?](StrategicIndustryPositioning.md) |
+| Understand how it was built | [Vibe Programming — AI + Domain Expertise](VibeProgramming.md) |
 | Explore the enterprise platform | [**FederatedModel — 4D through 8D**](Enterprise.md) |
 
 <div style="clear: right;"></div>

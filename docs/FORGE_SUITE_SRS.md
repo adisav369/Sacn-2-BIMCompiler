@@ -250,12 +250,12 @@ From OSArch community forums, Bonsai GitHub issues, and AEC industry surveys:
 
 | Request | Source | Forge Suite relevance |
 |---------|--------|----------------------|
-| **Parametric rebar tool** | OSArch discussion #2173 — explicit community ask | Federation has it. Port to Java verbs for integration. |
-| **Boolean/union modelling** | OSArch #2453 — "major missing modelling capability" | Not forge territory — Bonsai core issue |
-| **Better asset import UX** | OSArch #2453 — library browsing pain | ForgePanel could surface library search alongside forge |
-| **Sheet management / drawing production** | OSArch #2453 — ISO 19650 naming, eliminate Inkscape | Not forge territory — `2D_LAYOUT.md` addresses this |
-| **Partial file loading** | OSArch #2453 — filter large IFC by spatial hierarchy | Not forge territory — IfcOpenShell core |
-| **Faster mesh handling** | OSArch — bypass OCC for tessellations | Not forge territory — Bonsai renderer optimization |
+| **Parametric rebar tool** | OSArch community discussions — explicit ask, no native tool | Federation has it. Port to Java verbs for integration. |
+| **Boolean/union modelling** | OSArch community discussions — "major missing modelling capability" | Not forge territory — Bonsai core issue |
+| **Better asset import UX** | OSArch community discussions — library browsing pain | ForgePanel could surface library search alongside forge |
+| **Sheet management / drawing production** | OSArch community discussions — ISO 19650 naming, eliminate Inkscape | Not forge territory — `2D_LAYOUT.md` addresses this |
+| **Partial file loading** | OSArch community discussions — filter large IFC by spatial hierarchy | Not forge territory — IfcOpenShell core |
+| **Faster mesh handling** | OSArch community discussions — bypass OCC for tessellations | Not forge territory — Bonsai renderer optimization |
 | **Quantity takeoff → cost** | NBS report, JBK ConTech — gap across ALL tools | **YES — this is our core differentiator.** 5D native. |
 | **Construction sequencing (4D)** | NBS report — "bolted on" in all proprietary tools | **YES — native 4D from BOM compilation.** |
 | **Live compliance feedback** | AEC hackathon themes, student projects | **YES — ForgePanel + AD_Val_Rule.** |
