@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- FK: FZK-Haus (Ifc4_FZKHaus)
 -- Source: DAGCompiler/lib/output/ifc4_fzkhaus.db
--- Generated: 2026-03-26 20:19
+-- Generated: 2026-03-27 23:52
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

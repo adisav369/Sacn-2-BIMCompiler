@@ -236,15 +236,13 @@ public class IFCtoBOMPipeline {
                 throw new SQLException(msg);
             }
 
-            // 5c. REMOVED (R7): BOMWalker reads M_Product from compConn (component_library.db).
-            // No M_Product copy to BOM DB needed. Count from catalog for reporting only.
-            int products;
-            try (Statement pStmt = compConn.createStatement();
-                 ResultSet pRs = pStmt.executeQuery(
-                         "SELECT COUNT(*) FROM M_Product WHERE extracted_from = '"
-                                 + config.buildingType() + "'")) {
-                products = pRs.next() ? pRs.getInt(1) : 0;
-            }
+            // 5c. Copy leaf products from component_library.db to BOM DB.
+            // BOMWalker reads from compConn (R7), but the BOM DB needs a local
+            // M_Product catalog so QA validation and downstream tools can verify
+            // product coverage without requiring component_library.db access.
+            // Implementing BBC.md §2.2 — Witness: W-R7-CATALOG
+            int products = ProductRegistrar.ensureProducts(bomConn, compConn, allElements);
+            BIMLogger.fine("PIPELINE", "M_Product catalog: {} leaf products copied to BOM DB from component_library.db", products);
 
             // 6-8. Build BOMs — dispatch based on m_product_category_id (was doc_base_type)
             BIMLogger.stage(4, "BuildBOMs", config.docBaseType() + " path");

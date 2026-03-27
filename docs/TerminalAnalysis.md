@@ -639,6 +639,13 @@ specified positions. Needed for ARC walls (~330) + openings (~236 windows,
 formula patterns — furniture, equipment, proxies (~2,123 elements, 4.2%).
 These get flat per-element BOM lines (qty=1 each).
 
+## Discipline Model — See Org_Disc_Model.md
+
+> **Discipline is a line attribute, not a tree level.** The per-discipline
+> BOM model (verb profiles, validation rules, spatial relationships) is
+> documented in [Org_Disc_Model.md](Org_Disc_Model.md). That spec governs
+> all buildings, not just TE. TE is the ground truth that proves it works.
+
 ## ERP Model Architecture — Terminal as Third Stone
 
 > **Interactive ERD:** `docs/terminal_erd.html` — 5-tab visualization with
@@ -1486,7 +1493,7 @@ The Java IFCtoBOM pipeline runs 4 of 5 steps successfully. The BOM tree is
 | 2. CreateSchema | PASS | schema_snapshot_bom.sql applied |
 | 3. ReadExtraction | PASS | 48,428 elements loaded, 68,022 dim advisories, 34,433 shape advisories |
 | 4. BuildBOMs | PASS | **58 BOMs** (1 BUILDING + 7 FLOOR + 50 SET), **1,572 lines**, **48,485 instances** |
-| 5. QAValidation | **FAIL** | 5 checks fail → ABORT → TE_BOM.db not written |
+| 5. QAValidation | **WARN** | 3 mechanical fixes applied (S100-p65), 2 HIGH remain (W-TACK-1, W-BUFFER-1 → prompt 66) |
 
 ### IFCtoBOM QA — Pass/Fail Detail
 
@@ -1511,15 +1518,15 @@ The Java IFCtoBOM pipeline runs 4 of 5 steps successfully. The BOM tree is
 | Extraction reconciliation | 48,428 = 48,428 (zero delta) |
 | Shape consistency (CP-4) | 1,515 LEAFs classified |
 
-**5 checks FAIL:**
+**5 checks FAIL → 3 fixed (S100-p65), 2 remain (prompt 66):**
 
-| Check | Severity | Detail | Root Cause | Fix |
-|-------|----------|--------|------------|-----|
-| DocType CAT/DST | LOW | `-_TE` instead of `CO_TE` | String concat bug in IFCtoBOM C_DocType writer — missing `doc_base_type` prefix | One-line fix in IFCtoBOMPipeline |
-| M_Product catalog | MED | 0 catalog products (58 assembly stubs only) | Leaf products reference extraction elements but aren't registered in M_Product with library geometry | Wire `registerLeafProducts()` for CO building path |
-| Non-zero BOM origins | LOW | 1 BOM has non-zero origin | BBC §4.1: only BUILDING BOM should have non-zero origin | Identify the BOM, zero its origin |
-| W-TACK-1 LBD | **HIGH** | 471/1,515 lines overshoot parent AABB | ScopeBomBuilder tack offsets use element centroids that fall outside the parent AABB for multi-discipline rooms with MEP extending beyond room boundaries | Same root cause as S43 centroid drift (fixed for SH). TE's deeper nesting exposes more edge cases |
-| W-BUFFER-1 balance | **HIGH** | 14/50 SET BOMs balanced (36 unbalanced) | SUM(children.allocated_width) ≠ parent.width — MEP runs span beyond room boundaries, structural elements cross room/storey boundaries | Need: parent AABB = union of children, or children must be clipped to parent |
+| Check | Severity | Detail | Root Cause | Status |
+|-------|----------|--------|------------|--------|
+| DocType CAT/DST | LOW | `-_TE` instead of `CO_TE` | `m_product_category_id` already written correctly by DisciplineBomBuilder — was stale log from pre-S99 run | **FIXED** (S99) — `CO_TE` confirmed |
+| M_Product catalog | MED | 0 catalog products (58 assembly stubs only) | `ensureProducts()` not called — leaf products not copied from component_library.db to BOM DB | **FIXED** (S100-p65) — wired `ProductRegistrar.ensureProducts()`. FINE log: `M_Product catalog: N leaf products copied` |
+| Non-zero BOM origins | LOW | 1 BOM has non-zero origin (the BUILDING BOM) | QA counted BUILDING in non-zero check. BBC §4.1: BUILDING is the world anchor, non-zero is correct | **FIXED** (S100-p65) — QA excludes `bom_type='BUILDING'`. Non-BUILDING violations now FAIL+FINE-logged |
+| W-TACK-1 LBD | **HIGH** | 471/1,515 lines overshoot parent AABB | Tack offsets exceed parent AABB for multi-discipline rooms with MEP extending beyond room boundaries | **OPEN** — prompt 66. Resolution: [Org_Disc_Model.md](Org_Disc_Model.md) |
+| W-BUFFER-1 balance | **HIGH** | 14/50 SET BOMs balanced (36 unbalanced) | SUM(children) ≠ parent — MEP/structural elements cross room/storey boundaries | **OPEN** — prompt 66. Resolution: [Org_Disc_Model.md](Org_Disc_Model.md) |
 
 ### What Doesn't Work (blocked by QA)
 
@@ -1530,7 +1537,7 @@ The Java IFCtoBOM pipeline runs 4 of 5 steps successfully. The BOM tree is
 | c_order | **0 rows** in output DB | BomDropper never ran |
 | c_orderline | **0 rows** in output DB | BomDropper never ran |
 | ASI data | **None** | No compilation → no instance attributes |
-| FINE logging | Not captured | No BOM compilation to log |
+| FINE logging | **Captured** (S100-p65) | M_Product catalog copy + non-zero origin diagnostics logged at FINE |
 | Designer access | **Would show nothing** | No order data to browse |
 
 ### Why This Wasn't Flagged Earlier
@@ -1551,6 +1558,186 @@ Three structural blind spots in the verification pipeline:
    LMP tracks compilation pipeline gaps (R21-R24), not extraction-to-BOM
    conversion failures. The IFCtoBOM QA failure lives only in `logs/` —
    no spec, no gap register, no PROGRESS.md entry until now.
+
+4. **LMP §1 (Input=Output) has no compilation prerequisite.** The count
+   check (48428/48428 PASS) runs on whatever output exists — compiled or
+   extracted. If compilation never ran, the count still matches because the
+   output IS the extraction. The test passes but proves nothing. **Fix:**
+   LMP §1 now requires §3 (Compiler Only) PASS first — otherwise the
+   verdict is a **draft**. Tracked as CP-5.
+
+### Code Flow — How TE Passes Through Unchallenged
+
+The full class.method path showing exactly how TE's extraction coordinates
+reach output.db without compilation. Each step shows the Java/shell entry
+point, what TE produces at that step, and where the failure or bypass occurs.
+
+```
+STEP 1: EXTRACT (Python — external, not our code)
+────────────────────────────────────────────────────
+  Entry:  IfcOpenShell federation/extract.py
+  Reads:  SJTII_Terminal.ifc (9 federated discipline models)
+  Writes: component_library.db
+          → I_Element_Extraction: 48,428 rows (active)
+          → I_Geometry_Map: mesh vertices + faces
+          → M_Product: 505 unique dimensional signatures
+  TE:     ✅ PASS — complete, correct, the reference truth
+
+STEP 2: CLASSIFY (YAML — human-authored)
+────────────────────────────────────────────────────
+  File:   IFCtoBOM/src/main/resources/classify_te.yaml
+  Reads:  nothing (pure declaration)
+  Declares: building_type=SJTII_Terminal, m_product_category=CO,
+            8 disciplines, 7 storey bands, dsl_file
+  TE:     ✅ PASS — correct
+
+STEP 3: POPULATE (Java)
+────────────────────────────────────────────────────
+  Entry:  IFCtoBOMMain.main("--populate", "--classify", yaml)
+          → ExtractionPopulator.populate(compConn, buildingType)
+  Reads:  component_library.db (I_Element_Extraction)
+  Writes: component_library.db (enriched: Z-band storey, is_active,
+          M_Product_ID linkage)
+  TE:     ✅ PASS — 48,428 active elements, REBAR deactivated
+
+STEP 4: BUILD BOM (Java IFCtoBOM)
+────────────────────────────────────────────────────
+  Shell:  run_RosettaStones.sh:710
+          → mvn exec:java -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain"
+  Entry:  IFCtoBOMMain.main("--classify", yaml, "--bom-db", "library/TE_BOM.db")
+          → IFCtoBOMPipeline.run(yamlPath, bomDbPath, compDbPath, schemaPath)
+
+  Step 4a — ClassificationYaml.load(yamlPath)                    → ✅ PASS
+  Step 4b — ExtractionPopulator.populate(compConn, buildingType)  → ✅ PASS (48,428)
+  Step 4c — IFCtoBOMPipeline:258
+            if ("CO".equals(config.docBaseType()))
+              → DisciplineBomBuilder.build(bomConn, config, storeyElements)
+            58 BOMs, 1,572 lines, 48,485 instances                → ✅ PASS (in memory)
+  Step 4d — BomValidator.validateAndReport(bomConn, ...)          → ❌ FAIL (5 checks)
+            DocType: "-_TE" (format bug)                            → prompt 65
+            M_Product catalog: 0 (CO path skips registration)      → prompt 65
+            Non-zero origin: 1 BOM                                 → prompt 65
+            W-TACK-1: 471/1,515 overflows                          → prompt 66
+            W-BUFFER-1: 36/50 unbalanced                           → prompt 66
+  Step 4e — bomConn.rollback() + throw SQLException               → TE_BOM.db = EMPTY
+
+STEP 5: PREPARE COMPILE DB (Shell)
+────────────────────────────────────────────────────
+  Entry:  run_RosettaStones.sh:133 prepare_compile_db()
+  Line 146: if [ ! -f "$bom_db" ]; then return 1
+  TE:     ⚠️ SILENT SKIP — TE_BOM.db missing, returns 1
+          Script continues. No verdict logged. No FAIL.
+
+STEP 5b: BOM DROP (Java — NEVER REACHED for TE)
+────────────────────────────────────────────────────
+  Entry:  BuildingRegistryTest.java:78
+          → BomDropper.drop(compileDb, entry)
+  What it does: Walks m_bom/m_bom_line → creates C_Order + C_OrderLine tree
+  TE:     ❌ NEVER RUNS — no compile DB → no test invocation
+          c_order = 0, c_orderline = 0
+
+STEP 6: COMPILE (Java DAGCompiler — 9-stage pipeline)
+────────────────────────────────────────────────────
+  Shell:  run_RosettaStones.sh:210 compile_building()
+          → mvn test -Dtest="BuildingRegistryTest" -Dbom.db="${compile_db}"
+  Entry:  BuildingRegistryTest → CompilationPipeline.run(entry)
+
+  The 9 stages (CompilationPipeline.java:56-66):
+    Stage 1: MetadataValidator    — referential integrity
+    Stage 2: ParseStage           — DSL → BuildingDefinition
+    Stage 3: CompileStage         — compile → BuildingSpec
+    ┌─────────────────────────────────────────────────────────────┐
+    │ ❌ ILLICIT CODE — CompilationPipeline.java:352-354          │
+    │                                                             │
+    │   if ("CO".equals(ctx.entry().mProductCategoryId())) {      │
+    │       ctx.setSpec(new BuildingSpec(name, List.of(), null));  │
+    │       return true;  // SKIP                                 │
+    │   }                                                         │
+    │                                                             │
+    │ Creates EMPTY BuildingSpec (0 storeys, no roof).             │
+    │ Violations:                                                 │
+    │   Anti-Drift §1 — magic coordinates                        │
+    │   DriftGuardTest D6 — hardcoded category branch             │
+    │   LMP §7 — input = output                                  │
+    │ Fix: DELETE this block (prompt 66 Step 6)                   │
+    └─────────────────────────────────────────────────────────────┘
+    Stage 4: TemplateStage        — ST mode only (skipped)
+    Stage 5: WriteStage           — write to output.db
+    ┌─────────────────────────────────────────────────────────────┐
+    │ ❌ PASSTHROUGH — BuildingWriter.java:865                    │
+    │   emitGlobalPlacementElements(spec)                         │
+    │                                                             │
+    │ PlacementLoader.load()                                      │
+    │   → hasOrderLineData() = false (c_order=0)                  │
+    │   → loadFromBOM()                                           │
+    │     → MBOM.getByType(conn, "BUILDING")                      │
+    │     → BOMWalker.walkSelf(bomId, visitors, buildingType)     │
+    │     → PlacementCollectorVisitor.getPlacements()              │
+    │       → 48,428 Placement records with extraction coords     │
+    │                                                             │
+    │ BuildingSpec has 0 storeys → nothing consumed by             │
+    │ StoreyCompiler → PlacementLoader.isConsumed() = false       │
+    │ for ALL elements → emitGlobalPlacementElements() emits      │
+    │ ALL 48,428 as-is → extraction coords copied to output       │
+    └─────────────────────────────────────────────────────────────┘
+    Stage 6: VerbStage            — BIM COBOL (runs but no effect)
+    Stage 7: DigestStage          — spatial digest
+    Stage 8: GeometryStage        — geometry integrity
+    Stage 9: ProveStage           — placement proofs
+
+  TE output: 48,428 elements with extraction coordinates.
+  No BOM compilation occurred. Output = input.
+
+STEP 7: VERIFY (Shell + Java gates)
+────────────────────────────────────────────────────
+  Shell:  run_RosettaStones.sh:732 run_integrity()
+  Java:   RosettaStoneGateTest (G1-G6)
+
+  G1-COUNT:      48,428 output = 48,428 reference  → PASS (trivially)
+  G2-VOLUME:     same AABB as extraction            → PASS (trivially)
+  G3-DIGEST:     same hash as extraction            → PASS (trivially)
+  G4-TAMPER:     source scan (no DB dependency)     → PASS (real)
+  G5-PROVENANCE: checks geometry resolution         → PASS (trivially)
+  G6-ISOLATION:  cross-DB join guard                → PASS (real)
+
+  TE:     ⚠️ All PASS — but G1/G2/G3/G5 are comparing a thing to itself.
+          No G0-COMPILED gate exists to check c_order > 0.
+          Fix: prompt 67
+```
+
+### FINE Logging Recommendation
+
+Once the fix prompts are applied, add FINE-level guards that would have
+caught this earlier:
+
+```java
+// In CompilationPipeline.CompileStage.execute():
+BIMLogger.fine("COMPILE", "CompileStage: category={}, storeys={}, hasRoof={}",
+    ctx.entry().mProductCategoryId(),
+    ctx.spec().storeys().size(),
+    ctx.spec().roof() != null);
+
+// In BuildingWriter.emitGlobalPlacementElements():
+int totalPlacements = allPlacements.size();
+int consumed = (int) allPlacements.stream()
+    .filter(p -> PlacementLoader.getInstance().isConsumed(p.buildingType(), p.elementRef()))
+    .count();
+BIMLogger.fine("EMIT", "emitGlobal: total={}, consumed={}, emitting={}",
+    totalPlacements, consumed, totalPlacements - consumed);
+if (consumed == 0 && totalPlacements > 100) {
+    BIMLogger.warn("EMIT", "[SUSPECT] 0/{} consumed — entire output is passthrough. "
+        + "Was CompileStage skipped?", totalPlacements);
+}
+
+// In PlacementLoader.load():
+BIMLogger.fine("PLACEMENT", "PlacementLoader: hasOrderLineData={}, path={}",
+    hasOrderLineData() ? "OrderLine" : "BOM-direct",
+    System.getProperty("bom.db"));
+```
+
+The `[SUSPECT]` warning at FINE level would flag any future building where
+`emitGlobalPlacementElements()` emits everything and nothing was consumed —
+the exact signature of the TE passthrough.
 
 ### Fix Path — Priority Order
 

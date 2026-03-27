@@ -145,6 +145,7 @@ From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VA
 | CP-2: DX MIRROR verb | DEFERRED → Phase F | [DuplexAnalysis.md](DuplexAnalysis.md) — 85 axis mismatches |
 | CP-3: IFC onboarding pipeline | **DONE** (S42) | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) |
 | CP-4: Geometric archetype | **DONE** (S46-S50) | [TerminalAnalysis.md](TerminalAnalysis.md) — 23 geometric + 20 semantic switches |
+| CP-5: Compilation prerequisite guard | OPEN (S99) | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) §1 — Input=Output is a draft if §3 (Compiler Only) not proven. Extraction-only output bypasses test safety net |
 
 ## Completed Tracks
 

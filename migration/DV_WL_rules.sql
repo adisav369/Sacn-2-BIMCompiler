@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WL: BimWhale Large Building (BimWhale_Large)
 -- Source: DAGCompiler/lib/output/bimwhale_large.db
--- Generated: 2026-03-22 08:21
+-- Generated: 2026-03-27 23:52
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

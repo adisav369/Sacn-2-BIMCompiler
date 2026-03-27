@@ -16,7 +16,7 @@ See [BIMEyes](EYES_SRS.md) for how we taught the compiler to see. Below is the w
 Before writing code that implements a spec section, the AI MUST:
 
 1. **Quote the spec section** it is implementing
-2. **Follow the spec mechanism**, not invent a shortcut — same output via a different path = drift
+2. **Follow the spec mechanism**, not invent a shortcut — same output via a different path = draft
 3. **Ask** if the spec is unclear — never guess
 4. **Log a new drift point** before deviating from spec
 
@@ -28,6 +28,7 @@ Every session ends by checking these 11 areas where AI-generated code is known t
 
 ### 1. Input = Output?
 **Spec:** [BBC §2.2.1](BOMBasedCompilation.md) count invariant — SUM(non-PHANTOM qty) = output count.
+**Prerequisite:** §3 (Compiler Only) must PASS first. If output was not compiled — only extracted — this count is a **draft**, not a verdict. (CP-5)
 
 The compiler must produce exactly the same number of elements as the BOM specifies. Not more (over-production = splitting when it shouldn't), not fewer (lost elements = broken walker).
 

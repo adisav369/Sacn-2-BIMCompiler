@@ -221,11 +221,25 @@ public class BomValidator {
                     worldCoords == 0 ? "PASS" : "FAIL");
             if (worldCoords > 0) fails++;
 
+            // BBC §4.1: only BUILDING BOM carries non-zero origin (world anchor).
+            // Non-BUILDING BOMs with non-zero origin = spatial offset bug.
             rs = stmt.executeQuery(
-                    "SELECT COUNT(*) FROM m_bom WHERE origin_x != 0 OR origin_y != 0 OR origin_z != 0");
+                    "SELECT COUNT(*) FROM m_bom WHERE (origin_x != 0 OR origin_y != 0 OR origin_z != 0) AND bom_type != 'BUILDING'");
             int nonZeroOrigins = rs.next() ? rs.getInt(1) : 0;
             report("Non-zero BOM origins", String.valueOf(nonZeroOrigins),
-                    nonZeroOrigins == 0 ? "PASS" : "WARN");
+                    nonZeroOrigins == 0 ? "PASS" : "FAIL");
+            if (nonZeroOrigins > 0) {
+                fails++;
+                // Log offending BOMs at FINE for auditor diagnostics
+                rs = stmt.executeQuery(
+                        "SELECT bom_id, bom_type, origin_x, origin_y, origin_z FROM m_bom "
+                        + "WHERE (origin_x != 0 OR origin_y != 0 OR origin_z != 0) AND bom_type != 'BUILDING'");
+                while (rs.next()) {
+                    BIMLogger.fine("QA", "Non-zero origin: {} (type={}) origin=({},{},{})",
+                            rs.getString(1), rs.getString(2),
+                            rs.getDouble(3), rs.getDouble(4), rs.getDouble(5));
+                }
+            }
         }
         return fails;
     }
