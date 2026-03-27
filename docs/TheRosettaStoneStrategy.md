@@ -179,6 +179,31 @@ Once the default path is proven, everything else rides on it:
 
 ---
 
+## Prior Art — Why Not Parametric BIM?
+
+Dynamo, Grasshopper, and OpenBIM scripting are parametric — they generate geometry
+from parameters via visual programming. The BIM Compiler is not parametric. It is
+**compilative**: a BOM recipe is compiled into verified coordinates, the same way
+an ERP system explodes a manufacturing BOM into work orders. The distinction:
+
+| | Parametric BIM | BIM Compiler |
+|---|---|---|
+| **Input** | Parameters + visual graph | BOM recipe (M_BOM rows) |
+| **Output** | Geometry (no proof) | Geometry + arithmetic proof chain |
+| **Verification** | Manual inspection | 6 mathematical gates (automated) |
+| **Reproducibility** | Depends on plugin version + graph state | Deterministic — same BOM + library = same output |
+| **ERP integration** | None (geometry tool) | Native — C_Order, M_Product, M_BOM |
+
+Speckle solves data transport (BIM ↔ cloud). It does not compile or verify.
+IFC.js and IfcOpenShell parse IFC files. They do not produce geometry from BOMs.
+The BIM Compiler is the only tool that takes a 1D BOM and produces verified 3D
+coordinates with a machine-checkable proof chain.
+
+See [Strategic Industry Positioning](StrategicIndustryPositioning.md) for the full
+competitive analysis and market positioning.
+
+---
+
 > **Full historical record:** Terminal decomposition phases (TE-1 through TE-8),
 > score history, benchmark baselines, known gaps (resolved), testing code
 > description, and synthetic Rosetta Stone details are preserved in

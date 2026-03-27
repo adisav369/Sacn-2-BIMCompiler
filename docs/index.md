@@ -6,18 +6,26 @@ hide:
 
 # BIM Intent Compiler
 
-## Construction is manufacturing. A building IS its Bill of Materials.
+**Construction = BOM + (x, y, z).** One formula that unifies geometry, procurement, scheduling, compliance, and cost — the way E=mc² unified mass and energy. Five domains that the industry treats as separate tools, separate vendors, separate budgets — unified in a formula an inch long.
 
-### Problem Statement
+It reads a [BOM](BOMBasedCompilation.md) and produces verified 3D coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output can then be edited live in [Bonsai](https://bonsaibim.org/) (Blender BIM). [Domain-agnostic](ShipYard.md) — buildings, bridges, [ships](ShipYard.md), tunnels. Nothing invented. No AI inside. Pure arithmetic. Deterministic.
 
-Design tools produce geometry. ERP systems manage procurement. Between them sits a manual gap where quantity surveyors extract [Bills of Materials](https://en.wikipedia.org/wiki/Bill_of_materials) from drawings by hand — billions lost annually in rework and over-ordering. No tool bridges this deterministically.
-
-This compiler does. It reads a [BOM](BOMBasedCompilation.md) and produces verified 3D coordinates — the same way an [ERP system](MANIFESTO.md) explodes a manufacturing BOM into work orders. The output can then be edited live in [Bonsai](https://bonsaibim.org/) (Blender BIM). The engine is [domain-agnostic](ShipYard.md) — buildings, bridges, ships, tunnels. Nothing is invented. No AI inside. Pure arithmetic.
-
-<div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-top: 4px solid #ffc107; border-bottom: 4px solid #ffc107; text-align: center;">
-<span style="font-size: 1.35em; line-height: 1.7; color: #263238; letter-spacing: 0.3px;">"What <b>AUTODESK</b>, <b>PRIMAVERA</b> and <b>SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
-<br><span style="font-size: 0.8em; letter-spacing: 1.5px; text-transform: uppercase; color: #90a4ae; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
+<div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: #263238; border-left: 4px solid #ff9800; text-align: center; border-radius: 4px;">
+<span style="font-size: 1.3em; line-height: 1.7; color: #eceff1; letter-spacing: 0.3px;">"What <b style="color: #ff9800;">AUTODESK</b>, <b style="color: #ff9800;">PRIMAVERA</b> and <b style="color: #ff9800;">SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
+<br><span style="font-size: 0.75em; letter-spacing: 1.5px; text-transform: uppercase; color: #78909c; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
 </div>
+
+Every existing tool starts with geometry and extracts quantities downstream — draw first, count second. This compiler inverts the direction: the [Bill of Materials](BOMBasedCompilation.md) is the source of truth, and geometry is the compiled output. Procurement doesn't follow design. Design follows procurement.
+
+| | Draw first, count second | Count first, draw second |
+|---|---|---|
+| **Source of truth** | 3D model (Revit, ArchiCAD) | Bill of Materials |
+| **Quantities** | Extracted after design | Inherent — the BOM IS the quantity |
+| **Change a wall** | Redraw → re-extract QTO → re-estimate | Change one BOM line → [recompile](BOMBasedCompilation.md) |
+| **Compliance** | Separate checker (Solibri) | Same rule engine ([AD_Val_Rule](DocValidate.md)) |
+| **Cost** | Separate estimator | Same BOM × price list |
+| **Schedule** | Separate tool (Primavera) | BOM tree [topological sort](ProjectOrderBlueprint.md) |
+| **Proof** | Visual inspection | [6 mathematical gates](TestArchitecture.md) — deterministic |
 
 Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://www.sqlite.org/), and the [Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/) open-source 3D viewport — upgraded with the [FederatedModel Spatial Database](https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation) and [PDF Terrain](PDF_TERRAIN.md) survey-to-3D. From Kuala Lumpur, Malaysia — where BIM is [mandated](StrategicIndustryPositioning.md) for all projects >= RM10M from July 2025. It is the Creator, [Redhuan D. Oon](mailto:red1org@gmail.com)'s gift to the world.
 
@@ -52,23 +60,24 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 
     [:octicons-arrow-right-24: Read the verb grammar](BIM_COBOL.md)
 
--   **6 Mathematical Gates**
+-   **6 Gates + Standards Compliance**
 
     ---
 
-    Count, Volume, Digest, Tamper, Provenance, Isolation.
-    Every compiled building is proven correct — not sampled, proven.
+    Count, Volume, Digest, Tamper, Provenance, Isolation —
+    [6 gates](TestArchitecture.md) prove geometry. [Jurisdiction rules](STANDARDS_COMPLIANCE_SRS.md)
+    prove code compliance — MY UBBL, US IBC, EU Eurocode.
 
-    [:octicons-arrow-right-24: Test architecture](TestArchitecture.md)
+    [:octicons-arrow-right-24: Test architecture](TestArchitecture.md) · [:octicons-arrow-right-24: Compliance](STANDARDS_COMPLIANCE_SRS.md)
 
--   **ERP-Native Data Model**
+-   **ERP-Native + Reports**
 
     ---
 
     [C_Order, C_OrderLine, M_Product, M_BOM](DATA_MODEL.md) — [iDempiere](https://idempiere.org/) patterns.
-    A compiled building IS a manufacturing work order.
+    Same compiled output produces [BOM schedules, compliance certificates, cost reports](REPORTING_ENGINE_SRS.md).
 
-    [:octicons-arrow-right-24: Read the ERP world view](MANIFESTO.md) · [:octicons-arrow-right-24: Data model](DATA_MODEL.md)
+    [:octicons-arrow-right-24: ERP world view](MANIFESTO.md) · [:octicons-arrow-right-24: Reporting](REPORTING_ENGINE_SRS.md)
 
 </div>
 
@@ -77,12 +86,8 @@ Built on [iDempiere](https://idempiere.org/) ERP conventions, [SQLite](https://w
 ## **How It Works**
 
 ```
-INPUT: IFC file (from Revit, ArchiCAD, Bonsai — any BIM authoring tool)
-                ↓
 IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
-                                                                                      ↓
-OUTPUT: Verified 3D coordinates + procurement BOM (what to buy, where it goes, proven correct)
 ```
 
 A product catalog ([M_Product](DATA_MODEL.md)) becomes building elements. A Bill of Materials ([M_BOM](BOMBasedCompilation.md)) becomes assembly recipes. A work order ([C_Order](ProjectOrderBlueprint.md)) becomes a construction project. The same [ERP](MANIFESTO.md) tables that run a factory floor now compile a building.
@@ -91,7 +96,7 @@ A product catalog ([M_Product](DATA_MODEL.md)) becomes building elements. A Bill
 
 ## **The Rosetta Stone Strategy**
 
-AI cannot see spatial geometry — it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The [Rosetta Stone strategy](TheRosettaStoneStrategy.md) sidesteps AI entirely: real buildings become the ground truth, and every compiled output is verified against that truth with pure arithmetic.
+AI cannot see spatial geometry — been LLM based, it has no native understanding of where a wall ends, how a slab sits, or whether two elements collide. The [Rosetta Stone strategy](TheRosettaStoneStrategy.md) sidesteps AI entirely: real buildings become the ground truth, and every compiled output is verified against that truth with pure arithmetic.
 
 <figure style="float: right; margin: -8px 0 8px 20px; max-width: 480px; text-align: center;">
   <img src="assets/images/TerminalExternal.jpeg" alt="Terminal complex — 48,428 elements" width="480">

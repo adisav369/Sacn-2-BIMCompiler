@@ -200,7 +200,7 @@ To cheat D-1 through D-5, you'd have to fake the IFC source files themselves.
 
 SpotBugs + PMD. Advisory, not blocking.
 - SpotBugs HIGH: 2 FIXED (FileWriter encoding)
-- PMD: 507 findings deferred (mostly dead code, empty catches from prior sprints)
+- PMD: 507 findings deferred — legacy style debt from early sprint iterations (mostly dead code, empty catches), deferred in favour of architectural correctness. Not blocking. Contributions welcome.
 
 ---
 
