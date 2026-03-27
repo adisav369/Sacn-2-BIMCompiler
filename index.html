@@ -2337,34 +2337,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#construction-is-manufacturing-a-building-is-its-bill-of-materials" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Construction is manufacturing. A building IS its Bill of Materials.
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Construction is manufacturing. A building IS its Bill of Materials.">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#problem-statement" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Problem Statement
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#how-it-works" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2453,10 +2425,8 @@
 
 
 <h1 id="bim-intent-compiler">BIM Intent Compiler<a class="headerlink" href="#bim-intent-compiler" title="Permanent link">&para;</a></h1>
-<h2 id="construction-is-manufacturing-a-building-is-its-bill-of-materials">Construction is manufacturing. A building IS its Bill of Materials.<a class="headerlink" href="#construction-is-manufacturing-a-building-is-its-bill-of-materials" title="Permanent link">&para;</a></h2>
-<h3 id="problem-statement">Problem Statement<a class="headerlink" href="#problem-statement" title="Permanent link">&para;</a></h3>
-<p>Design tools produce geometry. ERP systems manage procurement. Between them sits a manual gap where quantity surveyors extract <a href="https://en.wikipedia.org/wiki/Bill_of_materials">Bills of Materials</a> from drawings by hand — billions lost annually in rework and over-ordering. No tool bridges this deterministically.</p>
-<p>This compiler does. It reads a <a href="BOMBasedCompilation/">BOM</a> and produces verified 3D coordinates — the same way an <a href="MANIFESTO/">ERP system</a> explodes a manufacturing BOM into work orders. The output can then be edited live in <a href="https://bonsaibim.org/">Bonsai</a> (Blender BIM). The engine is <a href="ShipYard/">domain-agnostic</a> — buildings, bridges, ships, tunnels. Nothing is invented. No AI inside. Pure arithmetic.</p>
+<p><strong>Construction = BOM + (x, y, z).</strong> One formula that unifies geometry, procurement, scheduling, compliance, and cost — the way E=mc² unified mass and energy. Five domains that the industry treats as separate tools, separate vendors, separate budgets — unified in a formula an inch long.</p>
+<p>It reads a <a href="BOMBasedCompilation/">BOM</a> and produces verified 3D coordinates — the same way an <a href="MANIFESTO/">ERP system</a> explodes a manufacturing BOM into work orders. The output can then be edited live in <a href="https://bonsaibim.org/">Bonsai</a> (Blender BIM). <a href="ShipYard/">Domain-agnostic</a> — buildings, bridges, <a href="ShipYard/">ships</a>, tunnels. Nothing invented. No AI inside. Pure arithmetic.</p>
 <div style="max-width: 620px; margin: 32px auto; padding: 24px 40px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-top: 4px solid #ffc107; border-bottom: 4px solid #ffc107; text-align: center;">
 <span style="font-size: 1.35em; line-height: 1.7; color: #263238; letter-spacing: 0.3px;">"What <b>AUTODESK</b>, <b>PRIMAVERA</b> and <b>SAP</b> should have done<br>together long ago — <i>but I couldn't wait.</i>"</span>
 <br><span style="font-size: 0.8em; letter-spacing: 1.5px; text-transform: uppercase; color: #90a4ae; margin-top: 12px; display: inline-block;">Redhuan D. Oon · ADempiere 2006 · iDempiere 2010 · BIM Compiler 2025</span>
@@ -2508,12 +2478,8 @@ Same compiled output produces <a href="REPORTING_ENGINE_SRS/">BOM schedules, com
 </div>
 <hr />
 <h2 id="how-it-works"><strong>How It Works</strong><a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>INPUT: IFC file (from Revit, ArchiCAD, Bonsai — any BIM authoring tool)
-                ↓
-IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
+<div class="highlight"><pre><span></span><code>IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → output.db → gates
            (once)    (human intent)    (once)     (recipe)   (repeat)  (elements)   (proof)
-                                                                                      ↓
-OUTPUT: Verified 3D coordinates + procurement BOM (what to buy, where it goes, proven correct)
 </code></pre></div>
 <p>A product catalog (<a href="DATA_MODEL/">M_Product</a>) becomes building elements. A Bill of Materials (<a href="BOMBasedCompilation/">M_BOM</a>) becomes assembly recipes. A work order (<a href="ProjectOrderBlueprint/">C_Order</a>) becomes a construction project. The same <a href="MANIFESTO/">ERP</a> tables that run a factory floor now compile a building.</p>
 <hr />
