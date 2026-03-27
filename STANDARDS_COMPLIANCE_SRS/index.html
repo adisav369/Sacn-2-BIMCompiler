@@ -13,6 +13,10 @@
       
       
       
+        <link rel="prev" href="../TIER1_SRS/">
+      
+      
+        <link rel="next" href="../REPORTING_ENGINE_SRS/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>Standards Compliance — Regulatory Proof Engine - BIM Intent Compiler</title>
+        <title>Standards Compliance - BIM Intent Compiler</title>
       
     
     
@@ -118,7 +122,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Standards Compliance — Regulatory Proof Engine
+              Standards Compliance
             
           </span>
         </div>
@@ -317,10 +321,12 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../Enterprise/" class="md-tabs__link">
           
   
@@ -1187,8 +1193,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1212,23 +1220,30 @@
       
         
       
+        
+      
+        
+      
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1246,7 +1261,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1328,6 +1343,402 @@
     
   
     6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-problem-this-solves" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Problem This Solves
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-where-this-sits-in-the-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §1 Where This Sits in the Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-what-already-exists-do-not-rebuild" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §2 What Already Exists (Do Not Rebuild)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-the-proof-chain-what-makes-this-different" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §3 The Proof Chain — What Makes This Different
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4 Data Model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§4 Data Model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-new-tables-compliance_proofdb-one-per-building-like-output-dbs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.1 New Tables (compliance_proof.db — one per building, like output DBs)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-classify-yaml-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.2 Classify YAML Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-ad_val_rule-seeding-validationdb-v001-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.3 AD_Val_Rule Seeding (validation.db — V001 schema)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-implementation-exact-java" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5 Implementation — Exact Java
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§5 Implementation — Exact Java">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-compliancestagejava" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.1 ComplianceStage.java
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-compliancereport-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.2 ComplianceReport Record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-compilationcontext-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.3 CompilationContext Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-buildingentry-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.4 BuildingEntry Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-pipeline-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.5 Pipeline Registration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rule-provenance-sourced-not-invented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Rule Provenance — SOURCED, not Invented
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-inferenceengine-integration-exact-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §7 InferenceEngine Integration — Exact Wiring
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-submission-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §8 Submission Package
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-witness-pattern-following-proofresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §9 Witness Pattern — Following ProofResult
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-phase-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §10 Phase Sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§10 Phase Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-sc-1-foundation-1-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase SC-1 — Foundation (1 session)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-sc-2-per-space-evaluation-1-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase SC-2 — Per-Space Evaluation (1 session)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-sc-3-multi-jurisdiction-2-sessions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase SC-3 — Multi-Jurisdiction (2 sessions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-sc-4-submission-package-1-session" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase SC-4 — Submission Package (1 session)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-sc-5-infrastructure-codes-deferred" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase SC-5 — Infrastructure Codes (deferred)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-open-gaps-honest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §11 Open Gaps (Honest)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
   
 
     
@@ -2275,10 +2686,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#where-this-sits-in-the-pipeline" class="md-nav__link">
+  <a href="#1-where-this-sits-in-the-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Where This Sits in the Pipeline
+        §1 Where This Sits in the Pipeline
       
     </span>
   </a>
@@ -2286,10 +2697,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-already-exists-do-not-rebuild" class="md-nav__link">
+  <a href="#2-what-already-exists-do-not-rebuild" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Already Exists (Do Not Rebuild)
+        §2 What Already Exists (Do Not Rebuild)
       
     </span>
   </a>
@@ -2297,10 +2708,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-proof-chain-what-makes-this-different" class="md-nav__link">
+  <a href="#3-the-proof-chain-what-makes-this-different" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Proof Chain — What Makes This Different
+        §3 The Proof Chain — What Makes This Different
       
     </span>
   </a>
@@ -2308,22 +2719,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#data-model" class="md-nav__link">
+  <a href="#4-data-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Data Model
+        §4 Data Model
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Data Model">
+    <nav class="md-nav" aria-label="§4 Data Model">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#new-tables-compliance_proofdb-separate-from-erpdb-and-outputdb" class="md-nav__link">
+  <a href="#41-new-tables-compliance_proofdb-one-per-building-like-output-dbs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New Tables (compliance_proof.db — separate from ERP.db and output.db)
+        §4.1 New Tables (compliance_proof.db — one per building, like output DBs)
       
     </span>
   </a>
@@ -2331,10 +2742,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#existing-tables-extended-erpdb-no-new-tables-only-new-rows" class="md-nav__link">
+  <a href="#42-classify-yaml-extension" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Existing Tables Extended (ERP.db — no new tables, only new rows)
+        §4.2 Classify YAML Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-ad_val_rule-seeding-validationdb-v001-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §4.3 AD_Val_Rule Seeding (validation.db — V001 schema)
       
     </span>
   </a>
@@ -2347,10 +2769,82 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rule-provenance-sourced-not-invented" class="md-nav__link">
+  <a href="#5-implementation-exact-java" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rule Provenance — SOURCED, not Invented
+        §5 Implementation — Exact Java
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="§5 Implementation — Exact Java">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-compliancestagejava" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.1 ComplianceStage.java
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-compliancereport-record" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.2 ComplianceReport Record
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-compilationcontext-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.3 CompilationContext Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-buildingentry-extension" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.4 BuildingEntry Extension
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-pipeline-registration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §5.5 Pipeline Registration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-rule-provenance-sourced-not-invented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §6 Rule Provenance — SOURCED, not Invented
       
     </span>
   </a>
@@ -2358,10 +2852,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-inference-engine-integration" class="md-nav__link">
+  <a href="#7-inferenceengine-integration-exact-wiring" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Inference Engine Integration
+        §7 InferenceEngine Integration — Exact Wiring
       
     </span>
   </a>
@@ -2369,10 +2863,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#docaction-integration-the-promote-gate" class="md-nav__link">
+  <a href="#8-submission-package" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DocAction Integration — The Promote Gate
+        §8 Submission Package
       
     </span>
   </a>
@@ -2380,10 +2874,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#submission-package" class="md-nav__link">
+  <a href="#9-witness-pattern-following-proofresult" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Submission Package
+        §9 Witness Pattern — Following ProofResult
       
     </span>
   </a>
@@ -2391,37 +2885,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#witness-classes" class="md-nav__link">
+  <a href="#10-phase-sequence" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Witness Classes
+        §10 Phase Sequence
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#jurisdiction-activation-configuration-not-code" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Jurisdiction Activation — Configuration, Not Code
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#phase-sequence" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Phase Sequence
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Phase Sequence">
+    <nav class="md-nav" aria-label="§10 Phase Sequence">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -2436,10 +2908,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-sc-2-promote-gate-1-session" class="md-nav__link">
+  <a href="#phase-sc-2-per-space-evaluation-1-session" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase SC-2 — Promote Gate (1 session)
+        Phase SC-2 — Per-Space Evaluation (1 session)
       
     </span>
   </a>
@@ -2458,10 +2930,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#phase-sc-4-inference-chain-1-session" class="md-nav__link">
+  <a href="#phase-sc-4-submission-package-1-session" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase SC-4 — Inference Chain (1 session)
+        Phase SC-4 — Submission Package (1 session)
       
     </span>
   </a>
@@ -2485,21 +2957,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#open-gaps-honest" class="md-nav__link">
+  <a href="#11-open-gaps-honest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Open Gaps (Honest)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-this-unlocks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What This Unlocks
+        §11 Open Gaps (Honest)
       
     </span>
   </a>
@@ -2558,79 +3019,132 @@ not a drawn line. That arithmetic is already in the database. The Standards
 Compliance module turns that arithmetic into a proof — one that a regulator
 can verify in minutes, not months.</p>
 <hr />
-<h2 id="where-this-sits-in-the-pipeline">Where This Sits in the Pipeline<a class="headerlink" href="#where-this-sits-in-the-pipeline" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>INPUT: C_Order + C_OrderLine (compiled building)
-       + AD_Val_Rule (jurisdiction rules, already seeded in ERP.db)
-       + AD_Org_ID (active jurisdiction — MY, UK, SG, AU, UAE)
-                ↓
-Stage 1: COLLECT — query all elements from output.db by type
-Stage 2: EVALUATE — apply AD_Val_Rule SQL against each element/space
-Stage 3: CHAIN — topological sort (Kahn&#39;s algorithm, existing Inference Engine)
-Stage 4: CERTIFY — emit ComplianceCertificate per space, per storey, per building
-Stage 5: SIGN — spatial digest hash ties certificate to specific compilation
-                ↓
-OUTPUT: compliance_proof.db + compliance_report.json + submission_package/
+<h2 id="1-where-this-sits-in-the-pipeline">§1 Where This Sits in the Pipeline<a class="headerlink" href="#1-where-this-sits-in-the-pipeline" title="Permanent link">&para;</a></h2>
+<p>The pipeline in <code>CompilationPipeline.java</code> runs 9 stages via a static
+<code>List&lt;CompilerStage&gt;</code>. The compliance stage inserts as <strong>Stage 10</strong> — a new
+stage appended after ProveStage (Stage 9), not wedged between existing stages.</p>
+<div class="highlight"><pre><span></span><code>Existing pipeline (CompilationPipeline.STAGES):
+  1  MetadataValidator
+  2  ParseStage
+  3  CompileStage
+  4  TemplateStage
+  5  WriteStage
+  6  VerbStage          — shouldSkip() if no .bimcobol file
+  7  DigestStage
+  8  GeometryStage
+  9  ProveStage
+ 10  ComplianceStage    ← NEW — shouldSkip() if no jurisdiction in classify YAML
 </code></pre></div>
-<p>This is <strong>Stage 8.5</strong> in the 9-stage pipeline — after ProveStage (Stage 8,
-which handles geometric proof) and before output packaging (Stage 9). It reads
-output.db. It writes compliance_proof.db. It never modifies the building.</p>
+<p><strong>Design:</strong> ComplianceStage implements <code>CompilerStage</code> (not "PipelineStage").
+It reads from <code>CompilationContext</code> and the output DB written by prior stages.
+It writes <code>compliance_proof.db</code>. It never mutates the building.</p>
+<div class="highlight"><pre><span></span><code>INPUT:  ctx.proofReport()           — from ProveStage (Stage 9)
+        ctx.digestReport()          — from DigestStage (Stage 7)
+        classify.yaml → jurisdiction, code_edition
+        validation.db → AD_Val_Rule (COMPLIANCE rules, jurisdiction-scoped)
+                ↓
+Step A: LOAD — query AD_Val_Rule WHERE rule_type = &#39;COMPLIANCE&#39;
+              AND jurisdiction = ctx.jurisdiction
+Step B: SORT — InferenceEngine.evaluate() with Kahn&#39;s topological sort
+Step C: EMIT — write SC_Proof_Line rows to compliance_proof.db
+Step D: CERT — if all mandatory PASS → write SC_Run + certificate_id
+                ↓
+OUTPUT: compliance_proof.db (new file, per-building)
+        ctx.setComplianceReport(ComplianceReport)   ← new setter on ctx
+</code></pre></div>
 <hr />
-<h2 id="what-already-exists-do-not-rebuild">What Already Exists (Do Not Rebuild)<a class="headerlink" href="#what-already-exists-do-not-rebuild" title="Permanent link">&para;</a></h2>
-<p>The DocValidate spec already defines the infrastructure this module rides on.
-<strong>Read <a href="DocValidate/#3-validation-rule-database-erpdb">DocValidate §3</a> before
-implementing anything here.</strong></p>
+<h2 id="2-what-already-exists-do-not-rebuild">§2 What Already Exists (Do Not Rebuild)<a class="headerlink" href="#2-what-already-exists-do-not-rebuild" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Existing Component</th>
+<th>Actual Location</th>
 <th>What It Provides</th>
-<th>Reference</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>AD_Val_Rule</code></td>
-<td>SQL-pattern rule table, jurisdiction-tagged</td>
-<td><a href="DocValidate/#12-ad_val_rule-the-sql-validation-pattern">DocValidate §1.2</a></td>
+<td><code>CompilerStage</code> interface</td>
+<td><code>DAGCompiler/.../dsl/CompilerStage.java</code></td>
+<td><code>execute(ctx)</code>, <code>name()</code>, <code>shouldSkip(ctx)</code></td>
 </tr>
 <tr>
-<td><code>AD_Org_ID</code> jurisdiction FK</td>
-<td>Active jurisdiction per compilation</td>
-<td><a href="DocValidate/#5-jurisdiction-and-code-editions">DocValidate §5</a></td>
+<td><code>CompilationContext</code></td>
+<td><code>DAGCompiler/.../dsl/CompilationContext.java</code></td>
+<td>Mutable carrier — <code>setXxx()</code>/<code>getXxx()</code> per stage</td>
 </tr>
 <tr>
-<td>Multi-jurisdiction seed data</td>
-<td>MY/UK/SG/AU room minimums</td>
-<td><a href="DocValidate/#11-world-construction-standards-ad_val_rule-seed-data">DocValidate §11</a></td>
+<td><code>CompilationPipeline</code></td>
+<td><code>DAGCompiler/.../dsl/CompilationPipeline.java</code></td>
+<td>Static <code>List&lt;CompilerStage&gt; STAGES</code> + for-loop executor</td>
 </tr>
 <tr>
-<td>3-tier cascade</td>
-<td>Per-discipline → cross-discipline → vertical</td>
-<td><a href="DocValidate/#13-rule-application-order-the-three-tier-cascade">DocValidate §13</a></td>
+<td><code>InferenceEngine</code></td>
+<td><code>BonsaiBIMDesigner/.../validation/InferenceEngine.java</code></td>
+<td><code>evaluate(List&lt;CachedRuleExt&gt;, PlacementRequest)</code> → <code>List&lt;RuleResult&gt;</code></td>
 </tr>
 <tr>
-<td>Inference Engine</td>
-<td>Dependency DAG + proof tree + SKIP propagation</td>
-<td><a href="BIM_Designer_SRS/#14">BIM_Designer_SRS §14</a></td>
+<td><code>InferenceEngine.RuleResult</code></td>
+<td>same file</td>
+<td><code>record(ruleId, ruleName, standardRef, result, actualValue, requiredValue, dependsOn, skipReason)</code></td>
 </tr>
 <tr>
-<td><code>PlacementValidator</code></td>
-<td>63 rules (33 building + 30 infra), already firing</td>
-<td><a href="DocValidate/#4-clash-detection-cross-discipline-spatial-rules">DocValidate §4</a></td>
+<td><code>InferenceEngine.ProofTree</code></td>
+<td>same file</td>
+<td><code>record(conclusion, List&lt;ProofNode&gt;)</code> — dependency DAG output</td>
 </tr>
 <tr>
-<td><code>ModelValidator</code> pattern</td>
-<td>beforeSave/afterSave hooks</td>
-<td><a href="DocValidate/#13-modelvalidator-beforesave-aftersave-hooks">DocValidate §1.3</a></td>
+<td><code>PlacementValidatorImpl</code></td>
+<td><code>BonsaiBIMDesigner/.../validation/PlacementValidatorImpl.java</code></td>
+<td><code>activate(jurisdiction, valConn)</code>, <code>validate(PlacementRequest)</code> → <code>ValidationVerdict</code></td>
+</tr>
+<tr>
+<td><code>PlacementRequest</code></td>
+<td><code>BonsaiBIMDesigner/.../validation/PlacementRequest.java</code></td>
+<td><code>record(productCategory, ifcClass, discipline, widthMm, depthMm, heightMm, ...)</code> with <code>areaSqM()</code>, <code>minDimMm()</code></td>
+</tr>
+<tr>
+<td><code>ValidationVerdict</code></td>
+<td><code>BonsaiBIMDesigner/.../validation/ValidationVerdict.java</code></td>
+<td><code>record(result, ruleName, standardRef, actualValue, requiredValue, message, adjustedValue)</code></td>
+</tr>
+<tr>
+<td><code>FacilityType</code></td>
+<td><code>BonsaiBIMDesigner/.../validation/FacilityType.java</code></td>
+<td><code>BUILDING</code>, <code>BRIDGE</code>, <code>ROAD</code>, etc. — <code>isInfrastructure()</code></td>
+</tr>
+<tr>
+<td><code>ProofResult</code></td>
+<td><code>BIMEyes/.../proof/ProofResult.java</code></td>
+<td><code>record(proofId, status, element, evidence, measuredValue)</code> — PROVEN/VIOLATED/SKIPPED</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule</code> table</td>
+<td><code>migration/V001_validation_schema.sql</code></td>
+<td><code>rule_type</code>, <code>discipline</code>, <code>standard_ref</code>, <code>jurisdiction</code>, <code>provenance</code></td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule_Param</code> table</td>
+<td>same migration</td>
+<td><code>name</code> (threshold key), <code>value</code>, <code>value_type</code>, <code>condition_expr</code></td>
+</tr>
+<tr>
+<td><code>BOMDigestVerifyTest</code></td>
+<td><code>DAGCompiler/.../contract/BOMDigestVerifyTest.java</code></td>
+<td>Spatial digest tamper-seal pattern</td>
+</tr>
+<tr>
+<td><code>RoomValidityProof</code></td>
+<td><code>BIMEyes/.../proof/tier3/RoomValidityProof.java</code></td>
+<td>Witness pattern: prove() → <code>ProofResult</code></td>
 </tr>
 </tbody>
 </table>
 <p><strong>The Standards Compliance module is an orchestrator and certificate emitter,
-not a new rule engine.</strong> It calls <code>AD_Val_Rule</code> evaluations through the existing
-Inference Engine and packages the results into a submission-grade proof document.
-Do not duplicate rule evaluation logic.</p>
+not a new rule engine.</strong> It calls existing <code>InferenceEngine.evaluate()</code> and
+packages <code>RuleResult</code> lists into a submission-grade proof document.</p>
 <hr />
-<h2 id="the-proof-chain-what-makes-this-different">The Proof Chain — What Makes This Different<a class="headerlink" href="#the-proof-chain-what-makes-this-different" title="Permanent link">&para;</a></h2>
+<h2 id="3-the-proof-chain-what-makes-this-different">§3 The Proof Chain — What Makes This Different<a class="headerlink" href="#3-the-proof-chain-what-makes-this-different" title="Permanent link">&para;</a></h2>
 <p>A DocValidate pass is a database flag: <code>val_result = PASS</code>. Useful internally.
 Useless to a regulator.</p>
 <p>A compliance proof chain is a traceable record:</p>
@@ -2638,7 +3152,7 @@ Useless to a regulator.</p>
 JURISDICTION:  MY (UBBL 1984, Amendment 2007)
 COMPILED:  2026-03-27T14:32:01Z
 LIBRARY_HASH:  a3f9c2...  (component_library.db)
-SPATIAL_DIGEST:  5ddcd7...  (output.db tamper seal)
+SPATIAL_DIGEST:  5ddcd7...  (output.db tamper seal from DigestStage)
 
 SPACE: BD_01 (Master Bedroom)
   Rule: UBBL s.43(1) — Habitable room minimum floor area
@@ -2649,32 +3163,23 @@ SPACE: BD_01 (Master Bedroom)
   Result:  PASS  (margin: +5.52 m²)
   Proof:  W-SC-ROOM-AREA-BD_01
 
-SPACE: KT_01 (Kitchen)
-  Rule: UBBL s.43(2) — Minimum kitchen dimension
-  Clause: &quot;No kitchen shall be less than 1.8 metres in any direction&quot;
-  Measured:  min_dimension = 2.1 m   [EXTRACTED from output.db]
-  Threshold:  1.8 m                  [SOURCED from AD_Val_Rule id=103]
-  Result:  PASS  (margin: +0.3 m)
-  Proof:  W-SC-KITCHEN-DIM-KT_01
-
 BUILDING RESULT: 47/47 rules PASS
 CERTIFICATE:  SC-DemoHouse_MY_001-2026-03-27
-REPRODUCIBLE: recompile from semantic file + library hash → same certificate
+REPRODUCIBLE: recompile from classify YAML + library hash → same certificate
 </code></pre></div>
 <p>Every value is extracted from output.db. Every threshold is sourced from
-<code>AD_Val_Rule</code>. Every citation names the statute, section, and clause verbatim.
-The margin is stated so reviewers know how close the edge case is. The spatial
-digest ties this certificate to exactly this compilation — change the building,
-the certificate is invalidated.</p>
+<code>AD_Val_Rule</code> + <code>AD_Val_Rule_Param</code>. Every citation names the statute,
+section, and clause verbatim. The spatial digest ties this certificate to
+exactly this compilation.</p>
 <hr />
-<h2 id="data-model">Data Model<a class="headerlink" href="#data-model" title="Permanent link">&para;</a></h2>
-<h3 id="new-tables-compliance_proofdb-separate-from-erpdb-and-outputdb">New Tables (compliance_proof.db — separate from ERP.db and output.db)<a class="headerlink" href="#new-tables-compliance_proofdb-separate-from-erpdb-and-outputdb" title="Permanent link">&para;</a></h3>
+<h2 id="4-data-model">§4 Data Model<a class="headerlink" href="#4-data-model" title="Permanent link">&para;</a></h2>
+<h3 id="41-new-tables-compliance_proofdb-one-per-building-like-output-dbs">§4.1 New Tables (compliance_proof.db — one per building, like output DBs)<a class="headerlink" href="#41-new-tables-compliance_proofdb-one-per-building-like-output-dbs" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">-- One row per evaluated rule per space</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">SC_Proof_Line</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">sc_proof_line_id</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
 <span class="w">    </span><span class="n">sc_run_id</span><span class="w">         </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">SC_Run</span><span class="p">(</span><span class="n">sc_run_id</span><span class="p">),</span>
 <span class="w">    </span><span class="n">space_id</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">         </span><span class="c1">-- links to output.db element GUID</span>
-<span class="w">    </span><span class="n">ad_val_rule_id</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- links to ERP.db AD_Val_Rule</span>
+<span class="w">    </span><span class="n">ad_val_rule_id</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- links to validation.db AD_Val_Rule</span>
 <span class="w">    </span><span class="n">rule_code</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- e.g. &quot;UBBL-S43-1&quot;</span>
 <span class="w">    </span><span class="n">statute_ref</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- e.g. &quot;UBBL 1984 s.43(1)&quot;</span>
 <span class="w">    </span><span class="n">clause_text</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- verbatim clause (≤200 chars)</span>
@@ -2682,7 +3187,7 @@ the certificate is invalidated.</p>
 <span class="w">    </span><span class="n">measured_unit</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- mm, m2, count, ratio</span>
 <span class="w">    </span><span class="n">threshold_value</span><span class="w">   </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">threshold_dir</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- MIN or MAX</span>
-<span class="w">    </span><span class="k">result</span><span class="w">            </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- PASS | FAIL | EXEMPT | PENDING</span>
+<span class="w">    </span><span class="k">result</span><span class="w">            </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- PASS | BLOCK | WARN | SKIP</span>
 <span class="w">    </span><span class="n">margin</span><span class="w">            </span><span class="nb">REAL</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- measured - threshold (signed)</span>
 <span class="w">    </span><span class="n">proof_witness</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- W-SC-* witness ID</span>
 <span class="w">    </span><span class="n">skip_reason</span><span class="w">       </span><span class="nb">TEXT</span><span class="w">                    </span><span class="c1">-- if upstream rule failed (SKIP)</span>
@@ -2691,58 +3196,204 @@ the certificate is invalidated.</p>
 <span class="c1">-- One row per compliance run (one run = one compilation + one jurisdiction)</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">SC_Run</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">sc_run_id</span><span class="w">         </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
-<span class="w">    </span><span class="n">c_order_id</span><span class="w">        </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- the compiled building</span>
-<span class="w">    </span><span class="n">ad_org_id</span><span class="w">         </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- jurisdiction (FK to ERP.db)</span>
-<span class="w">    </span><span class="n">jurisdiction_code</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- MY | UK | SG | AU | UAE</span>
+<span class="w">    </span><span class="n">building_id</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- classify prefix, e.g. &quot;SH&quot;, &quot;DM&quot;</span>
+<span class="w">    </span><span class="n">jurisdiction</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- MY | UK | SG | AU | UAE</span>
 <span class="w">    </span><span class="n">code_edition</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- e.g. &quot;UBBL_1984_AMD2007&quot;</span>
 <span class="w">    </span><span class="n">compiled_at</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- ISO8601 timestamp</span>
 <span class="w">    </span><span class="n">library_hash</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- component_library.db SHA256</span>
-<span class="w">    </span><span class="n">spatial_digest</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- output.db tamper seal hash</span>
+<span class="w">    </span><span class="n">spatial_digest</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- from ctx.digestReport().digest()</span>
 <span class="w">    </span><span class="n">total_rules</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">pass_count</span><span class="w">        </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
-<span class="w">    </span><span class="n">fail_count</span><span class="w">        </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
-<span class="w">    </span><span class="n">exempt_count</span><span class="w">      </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">block_count</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">warn_count</span><span class="w">        </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">skip_count</span><span class="w">        </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
-<span class="w">    </span><span class="n">overall_result</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- PASS | FAIL | PARTIAL</span>
+<span class="w">    </span><span class="n">overall_result</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- PASS | BLOCK | PARTIAL</span>
 <span class="w">    </span><span class="n">certificate_id</span><span class="w">    </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w">             </span><span class="c1">-- SC-{building}-{date} on PASS</span>
 <span class="p">);</span>
 
-<span class="c1">-- Jurisdiction registry — what codes are loaded, their authority and edition</span>
+<span class="c1">-- Jurisdiction registry</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">SC_Jurisdiction</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">sc_jurisdiction_id</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
-<span class="w">    </span><span class="n">jurisdiction_code</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="c1">-- MY | UK | SG | AU | UAE | US_IBC</span>
+<span class="w">    </span><span class="n">jurisdiction_code</span><span class="w">   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="c1">-- MY | UK | SG | AU | UAE</span>
 <span class="w">    </span><span class="n">full_name</span><span class="w">           </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
-<span class="w">    </span><span class="n">authority</span><span class="w">           </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">        </span><span class="c1">-- CIDB | HSE | BCA | ABCB | MBAM</span>
+<span class="w">    </span><span class="n">authority</span><span class="w">           </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">        </span><span class="c1">-- CIDB | HSE | BCA | ABCB</span>
 <span class="w">    </span><span class="n">primary_code</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">        </span><span class="c1">-- UBBL 1984 | Building Regs 2010</span>
 <span class="w">    </span><span class="n">current_edition</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">effective_date</span><span class="w">      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">        </span><span class="c1">-- ISO date</span>
 <span class="w">    </span><span class="n">rule_count</span><span class="w">          </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">status</span><span class="w">              </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w">         </span><span class="c1">-- ACTIVE | DRAFT | PENDING</span>
 <span class="p">);</span>
-
-<span class="c1">-- Rule-to-building-type applicability (not all rules apply to all types)</span>
-<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">SC_Rule_Applicability</span><span class="w"> </span><span class="p">(</span>
-<span class="w">    </span><span class="n">sc_rule_app_id</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
-<span class="w">    </span><span class="n">ad_val_rule_id</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
-<span class="w">    </span><span class="n">building_type</span><span class="w">     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- RE | CO | IN | IN (infrastructure)</span>
-<span class="w">    </span><span class="n">space_type</span><span class="w">        </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                   </span><span class="c1">-- BD | KT | LR | WC | null=all</span>
-<span class="w">    </span><span class="n">min_storeys</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
-<span class="w">    </span><span class="n">max_storeys</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">99</span><span class="p">,</span>
-<span class="w">    </span><span class="n">mandatory</span><span class="w">         </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="w">  </span><span class="c1">-- 1=mandatory, 0=advisory</span>
-<span class="p">);</span>
 </code></pre></div>
-<h3 id="existing-tables-extended-erpdb-no-new-tables-only-new-rows">Existing Tables Extended (ERP.db — no new tables, only new rows)<a class="headerlink" href="#existing-tables-extended-erpdb-no-new-tables-only-new-rows" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1">-- New columns on AD_Val_Rule (already exists)</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">statute_ref</span><span class="w">    </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- &quot;UBBL 1984 s.43(1)&quot;</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">clause_text</span><span class="w">    </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- verbatim ≤200 chars</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">measured_unit</span><span class="w">  </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- mm | m2 | count</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">threshold_dir</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;MIN&#39;</span><span class="p">;</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">building_type</span><span class="w">  </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- RE | CO | IN | null=all</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">space_type</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">;</span><span class="w">  </span><span class="c1">-- BD | KT | null=all</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">mandatory</span><span class="w">      </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<p><strong>Result vocabulary:</strong> Uses <code>PASS | BLOCK | WARN | SKIP</code> — matching
+<code>RuleResult.Result</code> and <code>ValidationVerdict.Result</code> enums exactly.
+The old spec used FAIL/EXEMPT/PENDING which do not exist in the codebase.</p>
+<h3 id="42-classify-yaml-extension">§4.2 Classify YAML Extension<a class="headerlink" href="#42-classify-yaml-extension" title="Permanent link">&para;</a></h3>
+<p>Add <code>jurisdiction</code> and <code>code_edition</code> to the <code>building:</code> block in classify YAML.
+These are optional — if absent, <code>ComplianceStage.shouldSkip()</code> returns true.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># classify_demohouse_my.yaml</span>
+<span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span>
+
+<span class="nt">building</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">building_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DemoHouse_MY</span>
+<span class="w">  </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DM</span>
+<span class="w">  </span><span class="nt">building_bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BUILDING_DM_STD</span>
+<span class="w">  </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DM</span>
+<span class="w">  </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Demo House (Malaysia)</span>
+<span class="w">  </span><span class="nt">dsl_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="w">  </span><span class="nt">jurisdiction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MY</span><span class="w">                    </span><span class="c1"># ← NEW — activates ComplianceStage</span>
+<span class="w">  </span><span class="nt">code_edition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UBBL_1984_AMD2007</span><span class="w">     </span><span class="c1"># ← NEW — selects rule set version</span>
+
+<span class="w">  </span><span class="nt">storeys</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">Ground Floor</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> code</span><span class="p">:</span><span class="w"> </span><span class="nv">GF</span><span class="p p-Indicator">,</span><span class="nt"> bom_category</span><span class="p">:</span><span class="w"> </span><span class="nv">GF</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">GROUND_FLOOR</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">1010</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">First Floor</span><span class="p">:</span><span class="w">  </span><span class="p p-Indicator">{</span><span class="nt"> code</span><span class="p">:</span><span class="w"> </span><span class="nv">FF</span><span class="p p-Indicator">,</span><span class="nt"> bom_category</span><span class="p">:</span><span class="w"> </span><span class="nv">FF</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">UPPER_FLOOR</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">1020</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">    </span><span class="nt">Roof</span><span class="p">:</span><span class="w">         </span><span class="p p-Indicator">{</span><span class="nt"> code</span><span class="p">:</span><span class="w"> </span><span class="nv">ROOF</span><span class="p p-Indicator">,</span><span class="nt"> bom_category</span><span class="p">:</span><span class="w"> </span><span class="nv">RF</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">ROOF</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">1030</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">  </span><span class="c1"># ... rest of classify unchanged</span>
+</code></pre></div>
+<h3 id="43-ad_val_rule-seeding-validationdb-v001-schema">§4.3 AD_Val_Rule Seeding (validation.db — V001 schema)<a class="headerlink" href="#43-ad_val_rule-seeding-validationdb-v001-schema" title="Permanent link">&para;</a></h3>
+<p>Compliance rules are seeded as <code>rule_type = 'COMPLIANCE'</code> rows in the existing
+<code>AD_Val_Rule</code> table. No schema ALTER needed — the V001 schema already has
+<code>standard_ref</code>, <code>jurisdiction</code>, and <code>provenance</code> columns. Thresholds go in
+<code>AD_Val_Rule_Param</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Example: UBBL s.43(1) Habitable room minimum floor area</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="p">(</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">,</span><span class="w"> </span><span class="n">rule_type</span><span class="p">,</span><span class="w"> </span><span class="n">discipline</span><span class="p">,</span><span class="w"> </span><span class="n">standard_ref</span><span class="p">,</span>
+<span class="w">    </span><span class="n">jurisdiction</span><span class="p">,</span><span class="w"> </span><span class="n">provenance</span><span class="p">,</span><span class="w"> </span><span class="n">is_active</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;UBBL_S43_1_ROOM_AREA&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="s1">&#39;Habitable room min floor area per UBBL 1984 s.43(1)&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="s1">&#39;COMPLIANCE&#39;</span><span class="p">,</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;UBBL 1984 s.43(1)&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;MY&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="s1">&#39;EXTRACTED:UBBL_1984&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="p">(</span><span class="n">ad_val_rule_id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">value_type</span><span class="p">,</span><span class="w"> </span><span class="n">condition_expr</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="n">last_insert_rowid</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;min_area_m2&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;9.3&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;NUM&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;productCategory IN (BD,LR,DR)&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="p">(</span><span class="n">ad_val_rule_id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">value_type</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="n">last_insert_rowid</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;clause_text&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="s1">&#39;No room used for habitation shall have a floor area of less than 9.3 square metres&#39;</span><span class="p">,</span>
+<span class="w">        </span><span class="s1">&#39;TEXT&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="p">(</span><span class="n">ad_val_rule_id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">value_type</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="n">last_insert_rowid</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;measured_unit&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;m2&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TEXT&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">AD_Val_Rule_Param</span><span class="w"> </span><span class="p">(</span><span class="n">ad_val_rule_id</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">value</span><span class="p">,</span><span class="w"> </span><span class="n">value_type</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="n">last_insert_rowid</span><span class="p">(),</span><span class="w"> </span><span class="s1">&#39;threshold_dir&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;MIN&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;TEXT&#39;</span><span class="p">);</span>
 </code></pre></div>
 <hr />
-<h2 id="rule-provenance-sourced-not-invented">Rule Provenance — SOURCED, not Invented<a class="headerlink" href="#rule-provenance-sourced-not-invented" title="Permanent link">&para;</a></h2>
+<h2 id="5-implementation-exact-java">§5 Implementation — Exact Java<a class="headerlink" href="#5-implementation-exact-java" title="Permanent link">&para;</a></h2>
+<h3 id="51-compliancestagejava">§5.1 ComplianceStage.java<a class="headerlink" href="#51-compliancestagejava" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// DAGCompiler/src/main/java/com/bim/compiler/compliance/ComplianceStage.java</span>
+<span class="c1">// Implementing BBC.md §10 Standards Gate — Witness: W-SC-BUILDING-CERT</span>
+<span class="kn">package</span><span class="w"> </span><span class="nn">com.bim.compiler.compliance</span><span class="p">;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.compiler.dsl.CompilerStage</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.compiler.dsl.CompilationContext</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.designer.validation.InferenceEngine</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.designer.validation.InferenceEngine.CachedRuleExt</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.designer.validation.InferenceEngine.RuleResult</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.designer.validation.PlacementRequest</span><span class="p">;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">java.sql.*</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">java.time.Instant</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">java.util.*</span><span class="p">;</span>
+
+<span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ComplianceStage</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">CompilerStage</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="nd">@Override</span><span class="w"> </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">name</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;ComplianceStage&quot;</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Override</span><span class="w"> </span><span class="kd">public</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">shouldSkip</span><span class="p">(</span><span class="n">CompilationContext</span><span class="w"> </span><span class="n">ctx</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Skip if classify YAML has no jurisdiction field</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">entry</span><span class="p">().</span><span class="na">jurisdiction</span><span class="p">()</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="kc">null</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="nd">@Override</span><span class="w"> </span><span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="n">CompilationContext</span><span class="w"> </span><span class="n">ctx</span><span class="p">)</span><span class="w"> </span><span class="kd">throws</span><span class="w"> </span><span class="n">Exception</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">jurisdiction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">entry</span><span class="p">().</span><span class="na">jurisdiction</span><span class="p">();</span>
+<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">codeEdition</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">entry</span><span class="p">().</span><span class="na">codeEdition</span><span class="p">();</span>
+<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">buildingId</span><span class="p">();</span>
+<span class="w">        </span><span class="n">String</span><span class="w"> </span><span class="n">spatialDigest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">digestReport</span><span class="p">()</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">null</span>
+<span class="w">                             </span><span class="o">?</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">digestReport</span><span class="p">().</span><span class="na">digest</span><span class="p">()</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;NO_DIGEST&quot;</span><span class="p">;</span>
+
+<span class="w">        </span><span class="c1">// Step A: Load COMPLIANCE rules for this jurisdiction</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">CachedRuleExt</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rules</span><span class="p">;</span>
+<span class="w">        </span><span class="k">try</span><span class="w"> </span><span class="p">(</span><span class="n">Connection</span><span class="w"> </span><span class="n">valConn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">openValidationDb</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">loadComplianceRules</span><span class="p">(</span><span class="n">valConn</span><span class="p">,</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rules</span><span class="p">.</span><span class="na">isEmpty</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">BIMLogger</span><span class="p">.</span><span class="na">info</span><span class="p">(</span><span class="s">&quot;COMPLIANCE&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;No COMPLIANCE rules for jurisdiction={}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="c1">// Step B: Evaluate via InferenceEngine (Kahn&#39;s sort + SKIP propagation)</span>
+<span class="w">        </span><span class="n">InferenceEngine</span><span class="w"> </span><span class="n">engine</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">InferenceEngine</span><span class="p">();</span>
+<span class="w">        </span><span class="n">PlacementRequest</span><span class="w"> </span><span class="n">dummyRequest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">buildingLevelRequest</span><span class="p">(</span><span class="n">ctx</span><span class="p">);</span>
+<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">RuleResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">results</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="na">evaluate</span><span class="p">(</span><span class="n">rules</span><span class="p">,</span><span class="w"> </span><span class="n">dummyRequest</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// Step C: Persist to compliance_proof.db</span>
+<span class="w">        </span><span class="n">ComplianceReport</span><span class="w"> </span><span class="n">report</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">persist</span><span class="p">(</span><span class="n">buildingId</span><span class="p">,</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">,</span><span class="w"> </span><span class="n">codeEdition</span><span class="p">,</span>
+<span class="w">                                          </span><span class="n">spatialDigest</span><span class="p">,</span><span class="w"> </span><span class="n">results</span><span class="p">);</span>
+
+<span class="w">        </span><span class="c1">// Step D: Set on context for downstream (reporting, submission)</span>
+<span class="w">        </span><span class="n">ctx</span><span class="p">.</span><span class="na">setComplianceReport</span><span class="p">(</span><span class="n">report</span><span class="p">);</span>
+
+<span class="w">        </span><span class="n">BIMLogger</span><span class="p">.</span><span class="na">stage</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">(),</span>
+<span class="w">            </span><span class="s">&quot;jurisdiction=%s rules=%d pass=%d block=%d skip=%d → %s&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="n">jurisdiction</span><span class="p">,</span><span class="w"> </span><span class="n">report</span><span class="p">.</span><span class="na">totalRules</span><span class="p">(),</span><span class="w"> </span><span class="n">report</span><span class="p">.</span><span class="na">passCount</span><span class="p">(),</span>
+<span class="w">            </span><span class="n">report</span><span class="p">.</span><span class="na">blockCount</span><span class="p">(),</span><span class="w"> </span><span class="n">report</span><span class="p">.</span><span class="na">skipCount</span><span class="p">(),</span><span class="w"> </span><span class="n">report</span><span class="p">.</span><span class="na">overallResult</span><span class="p">());</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="52-compliancereport-record">§5.2 ComplianceReport Record<a class="headerlink" href="#52-compliancereport-record" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1">// DAGCompiler/src/main/java/com/bim/compiler/compliance/ComplianceReport.java</span>
+<span class="kn">package</span><span class="w"> </span><span class="nn">com.bim.compiler.compliance</span><span class="p">;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">com.bim.designer.validation.InferenceEngine.RuleResult</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">java.util.List</span><span class="p">;</span>
+
+<span class="kd">public</span><span class="w"> </span><span class="kd">record</span> <span class="nc">ComplianceReport</span><span class="p">(</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">buildingId</span><span class="p">,</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">jurisdiction</span><span class="p">,</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">codeEdition</span><span class="p">,</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">spatialDigest</span><span class="p">,</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">certificateId</span><span class="p">,</span><span class="w">       </span><span class="c1">// null if BLOCK</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">overallResult</span><span class="p">,</span><span class="w">       </span><span class="c1">// PASS | BLOCK | PARTIAL</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">totalRules</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">passCount</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">blockCount</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">warnCount</span><span class="p">,</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">skipCount</span><span class="p">,</span>
+<span class="w">    </span><span class="n">List</span><span class="o">&lt;</span><span class="n">RuleResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">results</span>
+<span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kt">boolean</span><span class="w"> </span><span class="nf">passed</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="n">overallResult</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="53-compilationcontext-extension">§5.3 CompilationContext Extension<a class="headerlink" href="#53-compilationcontext-extension" title="Permanent link">&para;</a></h3>
+<p>Add to existing <code>CompilationContext.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// New field + getter/setter (same pattern as digestReport, proofReport, etc.)</span>
+<span class="kd">private</span><span class="w"> </span><span class="n">ComplianceReport</span><span class="w"> </span><span class="n">complianceReport</span><span class="p">;</span>
+<span class="kd">public</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">setComplianceReport</span><span class="p">(</span><span class="n">ComplianceReport</span><span class="w"> </span><span class="n">r</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">complianceReport</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+<span class="kd">public</span><span class="w"> </span><span class="n">ComplianceReport</span><span class="w"> </span><span class="nf">complianceReport</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">complianceReport</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<h3 id="54-buildingentry-extension">§5.4 BuildingEntry Extension<a class="headerlink" href="#54-buildingentry-extension" title="Permanent link">&para;</a></h3>
+<p>Add to existing <code>BuildingEntry</code> record (or wherever classify YAML is parsed):</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// New optional fields from classify YAML</span>
+<span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">jurisdiction</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">}</span><span class="w">   </span><span class="c1">// &quot;MY&quot;, &quot;UK&quot;, null if absent</span>
+<span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">codeEdition</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">}</span><span class="w">    </span><span class="c1">// &quot;UBBL_1984_AMD2007&quot;, null if absent</span>
+</code></pre></div>
+<h3 id="55-pipeline-registration">§5.5 Pipeline Registration<a class="headerlink" href="#55-pipeline-registration" title="Permanent link">&para;</a></h3>
+<p>In <code>CompilationPipeline.java</code>, append to STAGES list:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">private</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="n">List</span><span class="o">&lt;</span><span class="n">CompilerStage</span><span class="o">&gt;</span><span class="w"> </span><span class="n">STAGES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">MetadataValidator</span><span class="p">(),</span><span class="w">      </span><span class="c1">// Step 1</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ParseStage</span><span class="p">(),</span><span class="w">             </span><span class="c1">// Step 2</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">CompileStage</span><span class="p">(),</span><span class="w">           </span><span class="c1">// Step 3</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">TemplateStage</span><span class="p">(),</span><span class="w">          </span><span class="c1">// Step 4</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">WriteStage</span><span class="p">(),</span><span class="w">             </span><span class="c1">// Step 5</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">VerbStage</span><span class="p">(),</span><span class="w">              </span><span class="c1">// Step 6</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">DigestStage</span><span class="p">(),</span><span class="w">            </span><span class="c1">// Step 7</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">GeometryStage</span><span class="p">(),</span><span class="w">          </span><span class="c1">// Step 8</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ProveStage</span><span class="p">(),</span><span class="w">             </span><span class="c1">// Step 9</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ComplianceStage</span><span class="p">()</span><span class="w">         </span><span class="c1">// Step 10 — skips if no jurisdiction</span>
+<span class="p">);</span>
+</code></pre></div>
+<hr />
+<h2 id="6-rule-provenance-sourced-not-invented">§6 Rule Provenance — SOURCED, not Invented<a class="headerlink" href="#6-rule-provenance-sourced-not-invented" title="Permanent link">&para;</a></h2>
 <p><strong>PRIME RULE applies here with extra force.</strong> Every threshold value must cite
 its source. No invented minimums.</p>
 <table>
@@ -2845,155 +3496,99 @@ its source. No invented minimums.</p>
 extracted and verified. Mark as <code>status = DRAFT</code> in <code>SC_Jurisdiction</code> until
 verified against the source document.</p>
 <hr />
-<h2 id="the-inference-engine-integration">The Inference Engine Integration<a class="headerlink" href="#the-inference-engine-integration" title="Permanent link">&para;</a></h2>
-<p>The Inference Engine (<a href="BIM_Designer_SRS/#14">BIM_Designer_SRS §14</a>) already
-implements dependency DAG + Kahn's topological sort. Standards compliance
-rules have the same dependency structure:</p>
+<h2 id="7-inferenceengine-integration-exact-wiring">§7 InferenceEngine Integration — Exact Wiring<a class="headerlink" href="#7-inferenceengine-integration-exact-wiring" title="Permanent link">&para;</a></h2>
+<p>The <code>InferenceEngine.evaluate()</code> method already does Kahn's topological sort
+with SKIP propagation. Compliance rules use the same <code>depends_on</code> FK in
+<code>AD_Val_Rule</code> for dependency ordering:</p>
 <div class="highlight"><pre><span></span><code>ROOM_AREA (Rule 102) must PASS before
   OCCUPANT_LOAD (Rule 201) can evaluate, because
     EGRESS_CAPACITY (Rule 301) depends on OCCUPANT_LOAD.
 
-If ROOM_AREA FAILS → OCCUPANT_LOAD is SKIPPED (not FAIL).
-The proof chain records:
-  Rule 201: SKIP — upstream Rule 102 FAILED (room area below minimum)
-  Rule 301: SKIP — upstream Rule 201 SKIPPED
+If ROOM_AREA result = BLOCK → OCCUPANT_LOAD result = SKIP (skipReason = &quot;upstream BLOCK&quot;)
 </code></pre></div>
-<p>This is not new code. <code>ComplianceStageImpl</code> calls <code>InferenceEngine.evaluate()</code>
-with a <code>ComplianceRuleSet</code> — the same interface DocValidate uses, filtered
-to jurisdiction-active rules and building-type-applicable rules only.</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// ComplianceStageImpl.java  — implementing BBC.md §8.5 Standards Gate</span>
-<span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">ComplianceStageImpl</span><span class="w"> </span><span class="kd">implements</span><span class="w"> </span><span class="n">PipelineStage</span><span class="w"> </span><span class="p">{</span>
-
-<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">StageResult</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="n">CompilationContext</span><span class="w"> </span><span class="n">ctx</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="n">AD_Org_ID</span><span class="w"> </span><span class="n">jurisdiction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">getJurisdiction</span><span class="p">();</span><span class="w">   </span><span class="c1">// from classify.yaml</span>
-<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">AD_Val_Rule</span><span class="o">&gt;</span><span class="w"> </span><span class="n">rules</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ruleDAO</span>
-<span class="w">            </span><span class="p">.</span><span class="na">findActiveRules</span><span class="p">(</span><span class="n">jurisdiction</span><span class="p">,</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">getBuildingType</span><span class="p">());</span>
-
-<span class="w">        </span><span class="c1">// Topological sort — existing InferenceEngine</span>
-<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">AD_Val_Rule</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ordered</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">inferenceEngine</span><span class="p">.</span><span class="na">sort</span><span class="p">(</span><span class="n">rules</span><span class="p">);</span>
-
-<span class="w">        </span><span class="n">List</span><span class="o">&lt;</span><span class="n">SC_Proof_Line</span><span class="o">&gt;</span><span class="w"> </span><span class="n">proofs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ArrayList</span><span class="o">&lt;&gt;</span><span class="p">();</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">AD_Val_Rule</span><span class="w"> </span><span class="n">rule</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ordered</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">inferenceEngine</span><span class="p">.</span><span class="na">isSkipped</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">proofs</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
-<span class="w">                </span><span class="n">proofs</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">SC_Proof_Line</span><span class="p">.</span><span class="na">skipped</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;upstream FAIL&quot;</span><span class="p">));</span>
-<span class="w">                </span><span class="k">continue</span><span class="p">;</span>
-<span class="w">            </span><span class="p">}</span>
-<span class="w">            </span><span class="kt">double</span><span class="w"> </span><span class="n">measured</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ruleEvaluator</span><span class="p">.</span><span class="na">measure</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">ctx</span><span class="p">.</span><span class="na">getOutputDb</span><span class="p">());</span>
-<span class="w">            </span><span class="n">ProofLine</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ProofLine</span><span class="p">.</span><span class="na">evaluate</span><span class="p">(</span><span class="n">rule</span><span class="p">,</span><span class="w"> </span><span class="n">measured</span><span class="p">);</span>
-<span class="w">            </span><span class="n">proofs</span><span class="p">.</span><span class="na">add</span><span class="p">(</span><span class="n">line</span><span class="p">);</span>
-<span class="w">        </span><span class="p">}</span>
-
-<span class="w">        </span><span class="n">SC_Run</span><span class="w"> </span><span class="n">run</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SC_Run</span><span class="p">.</span><span class="na">from</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span><span class="w"> </span><span class="n">proofs</span><span class="p">);</span>
-<span class="w">        </span><span class="n">proofDAO</span><span class="p">.</span><span class="na">persist</span><span class="p">(</span><span class="n">run</span><span class="p">,</span><span class="w"> </span><span class="n">proofs</span><span class="p">);</span>
-
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">run</span><span class="p">.</span><span class="na">overall_result</span><span class="p">.</span><span class="na">equals</span><span class="p">(</span><span class="s">&quot;FAIL&quot;</span><span class="p">))</span>
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">StageResult</span><span class="p">.</span><span class="na">BLOCK</span><span class="p">(</span><span class="s">&quot;Compliance gate FAILED — &quot;</span><span class="w"> </span><span class="o">+</span>
-<span class="w">                </span><span class="n">run</span><span class="p">.</span><span class="na">fail_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot; rules. Promote blocked.&quot;</span><span class="p">);</span>
-
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">StageResult</span><span class="p">.</span><span class="na">PASS</span><span class="p">(</span><span class="n">run</span><span class="p">.</span><span class="na">certificate_id</span><span class="p">);</span>
-<span class="w">    </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div>
+<p><strong>Key detail:</strong> <code>InferenceEngine.evaluate()</code> takes <code>List&lt;CachedRuleExt&gt;</code> +
+<code>PlacementRequest</code>. For building-level compliance, the <code>PlacementRequest</code> is
+constructed from the building's overall dimensions (from <code>CompilationContext</code>),
+not per-element. Per-space evaluation iterates rooms from output.db, constructing
+a <code>PlacementRequest</code> per room with <code>productCategory</code> = room type code (BD, KT, etc.)
+and dimensions from the spatial structure.</p>
+<p><code>RuleResult.Result</code> enum: <code>PASS</code>, <code>WARN</code>, <code>BLOCK</code>, <code>SKIP</code> — these map directly
+to <code>SC_Proof_Line.result</code>. No translation layer needed.</p>
 <hr />
-<h2 id="docaction-integration-the-promote-gate">DocAction Integration — The Promote Gate<a class="headerlink" href="#docaction-integration-the-promote-gate" title="Permanent link">&para;</a></h2>
-<p>Compliance is a <strong>Promote gate</strong>, not a Save gate. The lifecycle:</p>
-<div class="highlight"><pre><span></span><code>DRAFT       → user edits freely, no compliance check
-IN_PROGRESS → DocValidate fires (geometric correctness, clash detection)
-APPROVED    → Standards Compliance fires (regulatory proof chain)
-COMPLETE    → Certificate issued, building locked
-PROMOTE     → Certificate + semantic file + library hash submitted to authority
-</code></pre></div>
-<p>A building <strong>cannot be Promoted</strong> without <code>SC_Run.overall_result = PASS</code>.
-This is enforced in <code>DocActionImpl.canPromote()</code>, not in UI validation.
-The compiler blocks at the data layer.</p>
-<div class="highlight"><pre><span></span><code>APPROVED but compliance FAIL → PROMOTE button disabled
-APPROVED and compliance PASS → PROMOTE button enabled
-Certificate_ID stamped on C_Order.compliance_cert_id
-</code></pre></div>
-<p>This mirrors how iDempiere blocks invoice posting without matching purchase order.
-The governance pattern is the same. The domain is different.</p>
-<hr />
-<h2 id="submission-package">Submission Package<a class="headerlink" href="#submission-package" title="Permanent link">&para;</a></h2>
-<p>On PASS, the compiler assembles a submission package — a directory that a
-contractor hands to CIDB, HSE, BCA, or whichever authority:</p>
-<div class="highlight"><pre><span></span><code>submission/
+<h2 id="8-submission-package">§8 Submission Package<a class="headerlink" href="#8-submission-package" title="Permanent link">&para;</a></h2>
+<p>On PASS, the compiler assembles a submission directory:</p>
+<div class="highlight"><pre><span></span><code>output/{prefix}_submission/
 ├── certificate.json          # SC_Run row — machine-readable
 ├── proof_chain.json          # All SC_Proof_Line rows — full evidence
-├── building_semantic.yaml    # 10 KB source of truth (YAML + Order reference)
+├── classify_{prefix}.yaml    # Source of truth (the classify YAML)
 ├── library_manifest.txt      # component_library.db hash + version
-├── spatial_digest.txt        # output.db tamper seal
-├── compliance_summary.pdf    # Human-readable — one page per jurisdiction
-└── ifc_export.ifc            # Optional: IFC4 export for authority&#39;s own viewer
+├── spatial_digest.txt        # from ctx.digestReport().digest()
+└── compliance_summary.txt    # Human-readable — one line per rule
 </code></pre></div>
-<p>The authority does not need to review the IFC. They verify the proof chain:
-1. Take <code>building_semantic.yaml</code> + <code>library_manifest.txt</code>
-2. Run the compiler
-3. Check their output <code>spatial_digest</code> matches <code>spatial_digest.txt</code>
-4. Rerun the compliance stage
-5. Verify their <code>certificate.json</code> matches the submitted one</p>
-<p><strong>Reproducible compliance.</strong> The authority becomes a verifier, not a reviewer.
-This is the regulatory workflow inversion described in
-<a href="StrategicIndustryPositioning/#what-this-enables">StrategicIndustryPositioning §Machine-Provable Compliance</a>.</p>
+<p>The authority verifies by:
+1. Taking <code>classify_{prefix}.yaml</code> + <code>library_manifest.txt</code>
+2. Running the compiler pipeline
+3. Comparing their <code>spatial_digest</code> with <code>spatial_digest.txt</code>
+4. Rerunning ComplianceStage
+5. Verifying their <code>certificate.json</code> matches the submitted one</p>
 <hr />
-<h2 id="witness-classes">Witness Classes<a class="headerlink" href="#witness-classes" title="Permanent link">&para;</a></h2>
+<h2 id="9-witness-pattern-following-proofresult">§9 Witness Pattern — Following ProofResult<a class="headerlink" href="#9-witness-pattern-following-proofresult" title="Permanent link">&para;</a></h2>
+<p>Each compliance proof follows the existing <code>ProofResult</code> pattern from
+<code>BIMEyes/.../proof/ProofResult.java</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// ComplianceProof.java — follows RoomValidityProof pattern exactly</span>
+<span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="n">ProofResult</span><span class="w"> </span><span class="nf">prove</span><span class="p">(</span><span class="n">RuleResult</span><span class="w"> </span><span class="n">rr</span><span class="p">,</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="n">spaceId</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">proofId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;W-SC-&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">ruleName</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">&quot;-&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">spaceId</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">rr</span><span class="p">.</span><span class="na">isSkipped</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ProofResult</span><span class="p">(</span><span class="n">proofId</span><span class="p">,</span><span class="w"> </span><span class="n">ProofResult</span><span class="p">.</span><span class="na">Status</span><span class="p">.</span><span class="na">SKIPPED</span><span class="p">,</span>
+<span class="w">            </span><span class="n">spaceId</span><span class="p">,</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">skipReason</span><span class="p">(),</span><span class="w"> </span><span class="mf">0.0</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">ProofResult</span><span class="p">.</span><span class="na">Status</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">isPassed</span><span class="p">()</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">isWarning</span><span class="p">()</span>
+<span class="w">        </span><span class="o">?</span><span class="w"> </span><span class="n">ProofResult</span><span class="p">.</span><span class="na">Status</span><span class="p">.</span><span class="na">PROVEN</span>
+<span class="w">        </span><span class="p">:</span><span class="w"> </span><span class="n">ProofResult</span><span class="p">.</span><span class="na">Status</span><span class="p">.</span><span class="na">VIOLATED</span><span class="p">;</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">evidence</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;actual=%.4f required=%.4f margin=%.4f&quot;</span>
+<span class="w">        </span><span class="p">.</span><span class="na">formatted</span><span class="p">(</span><span class="n">rr</span><span class="p">.</span><span class="na">actualValue</span><span class="p">(),</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">requiredValue</span><span class="p">(),</span>
+<span class="w">                   </span><span class="n">rr</span><span class="p">.</span><span class="na">actualValue</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">requiredValue</span><span class="p">());</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">ProofResult</span><span class="p">(</span><span class="n">proofId</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="n">spaceId</span><span class="p">,</span><span class="w"> </span><span class="n">evidence</span><span class="p">,</span><span class="w"> </span><span class="n">rr</span><span class="p">.</span><span class="na">actualValue</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre></div>
 <table>
 <thead>
 <tr>
 <th>Witness</th>
 <th>What It Proves</th>
-<th>Gate</th>
+<th>Scope</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>W-SC-ROOM-AREA-{space_id}</code></td>
+<td><code>W-SC-UBBL_S43_1_ROOM_AREA-{space}</code></td>
 <td>Floor area ≥ jurisdiction minimum</td>
 <td>Per space</td>
 </tr>
 <tr>
-<td><code>W-SC-ROOM-DIM-{space_id}</code></td>
-<td>Minimum dimension ≥ jurisdiction minimum</td>
+<td><code>W-SC-UBBL_S43_2_KITCHEN_DIM-{space}</code></td>
+<td>Min dimension ≥ jurisdiction minimum</td>
 <td>Per space</td>
 </tr>
 <tr>
-<td><code>W-SC-CEILING-HT-{space_id}</code></td>
+<td><code>W-SC-UBBL_S31_CEILING_HT-{space}</code></td>
 <td>Ceiling height ≥ minimum for room type</td>
 <td>Per space</td>
 </tr>
 <tr>
-<td><code>W-SC-EGRESS-{storey_id}</code></td>
-<td>Egress path ≤ maximum travel distance</td>
+<td><code>W-SC-UBBL_S162_EGRESS-{storey}</code></td>
+<td>Egress path ≤ max travel distance</td>
 <td>Per storey</td>
 </tr>
 <tr>
-<td><code>W-SC-CORRIDOR-{id}</code></td>
+<td><code>W-SC-UBBL_S38_CORRIDOR-{id}</code></td>
 <td>Corridor width ≥ minimum</td>
-<td>Per corridor element</td>
+<td>Per element</td>
 </tr>
 <tr>
-<td><code>W-SC-FP-SPACING-{zone_id}</code></td>
-<td>Sprinkler spacing ≤ maximum (FP discipline)</td>
+<td><code>W-SC-NFPA13_SPACING-{zone}</code></td>
+<td>Sprinkler spacing ≤ maximum</td>
 <td>Per FP zone</td>
-</tr>
-<tr>
-<td><code>W-SC-STAIR-WIDTH-{id}</code></td>
-<td>Staircase width ≥ minimum</td>
-<td>Per stair element</td>
-</tr>
-<tr>
-<td><code>W-SC-DISABLED-{id}</code></td>
-<td>Ramp gradient ≤ maximum, landing ≥ minimum</td>
-<td>Per ramp</td>
-</tr>
-<tr>
-<td><code>W-SC-VENTILATION-{space_id}</code></td>
-<td>Ventilation rate ≥ ASHRAE/UBBL minimum</td>
-<td>Per space</td>
-</tr>
-<tr>
-<td><code>W-SC-OCCUPANT-LOAD-{storey}</code></td>
-<td>Occupant load within egress capacity</td>
-<td>Per storey</td>
 </tr>
 <tr>
 <td><code>W-SC-BUILDING-CERT</code></td>
@@ -3002,56 +3597,50 @@ This is the regulatory workflow inversion described in
 </tr>
 </tbody>
 </table>
-<p>Each witness follows the existing pattern: <code>ProofClass</code> → <code>evaluate()</code> →
-<code>WitnessRecord</code> persisted to <code>compliance_proof.db</code>. Same infrastructure as
-<code>BOMDigestVerifyTest</code> and <code>RoomValidityProof</code>. No new witness machinery.</p>
+<p>Witness IDs are derived from <code>RuleResult.ruleName()</code> — no separate naming scheme.</p>
 <hr />
-<h2 id="jurisdiction-activation-configuration-not-code">Jurisdiction Activation — Configuration, Not Code<a class="headerlink" href="#jurisdiction-activation-configuration-not-code" title="Permanent link">&para;</a></h2>
-<p>The active jurisdiction is set in <code>classify.yaml</code> — the same file that
-defines building type and discipline scope:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># classify_demohouse_my.yaml</span>
-<span class="nt">building_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DM</span>
-<span class="nt">building_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span>
-<span class="nt">jurisdiction</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MY</span>
-<span class="nt">code_edition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">UBBL_1984_AMD2007</span>
-<span class="nt">disciplines</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ARC</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">STR</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ELEC</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">FP</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">ACMV</span><span class="p p-Indicator">]</span>
-</code></pre></div>
-<p>Changing <code>jurisdiction: MY</code> to <code>jurisdiction: UK</code> loads UK Building Regs
-rules from <code>AD_Val_Rule</code> where <code>ad_org_id = UK</code>. Zero code change.
-The rule set is data. The evaluator is the same.</p>
-<p>The same building, compiled twice with different jurisdictions, produces
-two certificates that can be compared. This is how a developer building
-in both Malaysia and the UK runs a single BOM against both code sets.</p>
-<hr />
-<h2 id="phase-sequence">Phase Sequence<a class="headerlink" href="#phase-sequence" title="Permanent link">&para;</a></h2>
+<h2 id="10-phase-sequence">§10 Phase Sequence<a class="headerlink" href="#10-phase-sequence" title="Permanent link">&para;</a></h2>
 <h3 id="phase-sc-1-foundation-1-session">Phase SC-1 — Foundation (1 session)<a class="headerlink" href="#phase-sc-1-foundation-1-session" title="Permanent link">&para;</a></h3>
-<p>Extend <code>AD_Val_Rule</code> schema with <code>statute_ref</code>, <code>clause_text</code>, <code>measured_unit</code>,
-<code>threshold_dir</code>. Seed UBBL 1984 rules (15 residential rules, values EXTRACTED).
-Create <code>compliance_proof.db</code> schema. Wire <code>ComplianceStageImpl</code> into pipeline
-at Stage 8.5. Gate: W-SC-BUILDING-CERT fires for DemoHouse_MY, all 15 rules
-evaluated, proof chain written to <code>compliance_proof.db</code>.</p>
-<h3 id="phase-sc-2-promote-gate-1-session">Phase SC-2 — Promote Gate (1 session)<a class="headerlink" href="#phase-sc-2-promote-gate-1-session" title="Permanent link">&para;</a></h3>
-<p>Wire <code>DocActionImpl.canPromote()</code> to check <code>SC_Run.overall_result</code>. Assemble
-submission package directory. Generate <code>compliance_summary.pdf</code> (tabular,
-one row per rule). Gate: DemoHouse_MY Promote blocked on FAIL, unblocked
-on PASS. Certificate ID stamped on <code>C_Order</code>.</p>
+<ol>
+<li>Add <code>jurisdiction</code> + <code>code_edition</code> to classify YAML parser (BuildingEntry)</li>
+<li>Add <code>complianceReport</code> field to <code>CompilationContext</code></li>
+<li>Create <code>ComplianceStage implements CompilerStage</code> in <code>DAGCompiler/.../compliance/</code></li>
+<li>Append <code>new ComplianceStage()</code> to <code>CompilationPipeline.STAGES</code></li>
+<li>Create <code>compliance_proof.db</code> schema migration (<code>SC_Run</code>, <code>SC_Proof_Line</code>, <code>SC_Jurisdiction</code>)</li>
+<li>Seed 8 EXTRACTED UBBL rules as <code>rule_type='COMPLIANCE'</code> in V001 migration</li>
+<li><strong>Gate:</strong> <code>./scripts/run_tests.sh</code> passes. ComplianceStage fires for classify
+   YAML with <code>jurisdiction: MY</code>. Proof chain written to <code>compliance_proof.db</code>.</li>
+</ol>
+<h3 id="phase-sc-2-per-space-evaluation-1-session">Phase SC-2 — Per-Space Evaluation (1 session)<a class="headerlink" href="#phase-sc-2-per-space-evaluation-1-session" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Iterate rooms from output.db spatial structure</li>
+<li>Construct <code>PlacementRequest</code> per room (productCategory, dimensions)</li>
+<li>Run <code>InferenceEngine.evaluate()</code> per room</li>
+<li>Emit <code>ProofResult</code> per rule per room following RoomValidityProof pattern</li>
+<li><strong>Gate:</strong> DemoHouse_MY produces W-SC-* witnesses per room. SKIP propagation
+   works: force room area BLOCK → occupant load SKIP in proof chain.</li>
+</ol>
 <h3 id="phase-sc-3-multi-jurisdiction-2-sessions">Phase SC-3 — Multi-Jurisdiction (2 sessions)<a class="headerlink" href="#phase-sc-3-multi-jurisdiction-2-sessions" title="Permanent link">&para;</a></h3>
-<p>Seed UK Building Regs Part A/B/M (20 rules, RESEARCHED). Seed SG BCA (15
-rules, RESEARCHED). Extend <code>SC_Jurisdiction</code> table. Wire jurisdiction
-switching via <code>classify.yaml</code>. Gate: same DemoHouse compiled against MY, UK,
-SG produces three independent certificates.</p>
-<h3 id="phase-sc-4-inference-chain-1-session">Phase SC-4 — Inference Chain (1 session)<a class="headerlink" href="#phase-sc-4-inference-chain-1-session" title="Permanent link">&para;</a></h3>
-<p>Wire <code>InferenceEngine.sort()</code> for compliance rules. Implement SKIP propagation
-where upstream FAIL causes downstream SKIP. Emit <code>skip_reason</code> on each
-skipped proof line. Gate: force a room area FAIL, verify occupant load and
-egress capacity are SKIPPED in the proof chain, not independently FAILED.</p>
+<ol>
+<li>Seed UK Building Regs rules (20 rules, RESEARCHED status)</li>
+<li>Seed SG BCA rules (15 rules, RESEARCHED status)</li>
+<li>Populate <code>SC_Jurisdiction</code> table</li>
+<li><strong>Gate:</strong> Same building compiled with <code>jurisdiction: MY</code> vs <code>jurisdiction: UK</code>
+   produces two independent certificates with different rule sets.</li>
+</ol>
+<h3 id="phase-sc-4-submission-package-1-session">Phase SC-4 — Submission Package (1 session)<a class="headerlink" href="#phase-sc-4-submission-package-1-session" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Assemble <code>output/{prefix}_submission/</code> directory on PASS</li>
+<li>Write <code>certificate.json</code>, <code>proof_chain.json</code>, <code>compliance_summary.txt</code></li>
+<li><strong>Gate:</strong> Submission directory self-consistent — recompile produces same digest.</li>
+</ol>
 <h3 id="phase-sc-5-infrastructure-codes-deferred">Phase SC-5 — Infrastructure Codes (deferred)<a class="headerlink" href="#phase-sc-5-infrastructure-codes-deferred" title="Permanent link">&para;</a></h3>
-<p>IFC4X3 infrastructure compliance: bridge load codes (Eurocode 1), road
-geometry standards (JKR Standard Specifications for Road Works), rail
-clearance gauges (KTMB standards). Follows same pattern — <code>AD_Val_Rule</code> rows,
-<code>SC_Rule_Applicability</code> for infra facility types. No engine changes required.</p>
+<p>IFC4X3 infrastructure: uses <code>FacilityType.BRIDGE</code>, <code>.ROAD</code>, etc.
+Same pattern — AD_Val_Rule rows with <code>provenance = 'Infra_Bridge'</code> etc.
+No engine changes. <code>PlacementValidatorImpl.activate(jurisdiction, facilityType, valConn)</code>
+already supports this via the second <code>activate()</code> overload.</p>
 <hr />
-<h2 id="open-gaps-honest">Open Gaps (Honest)<a class="headerlink" href="#open-gaps-honest" title="Permanent link">&para;</a></h2>
+<h2 id="11-open-gaps-honest">§11 Open Gaps (Honest)<a class="headerlink" href="#11-open-gaps-honest" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -3067,7 +3656,7 @@ clearance gauges (KTMB standards). Follows same pattern — <code>AD_Val_Rule</c
 <td>Standard not freely available. Source from JKR or SPAN directly.</td>
 </tr>
 <tr>
-<td>UBBL Part VII fire egress travel distance (sprinkler-protected)</td>
+<td>UBBL Part VII fire egress (sprinkler-protected)</td>
 <td>PENDING</td>
 <td>Two values: 30m unprotected, 45m sprinkler-protected. Verify against 2007 amendment.</td>
 </tr>
@@ -3077,41 +3666,27 @@ clearance gauges (KTMB standards). Follows same pattern — <code>AD_Val_Rule</c
 <td>Different from Vol.1. Needed for IN building type.</td>
 </tr>
 <tr>
-<td>Occupant load calculation (assembly vs office vs residential)</td>
+<td>Occupant load by occupancy class</td>
 <td>PENDING</td>
-<td>IBC Table 1004.5 — three different load factors. Needs <code>space_type</code> mapping.</td>
+<td>IBC Table 1004.5 — three load factors. Needs <code>condition_expr</code> on AD_Val_Rule_Param.</td>
 </tr>
 <tr>
-<td>Dynamic egress graph (actual path length, not Euclidean)</td>
+<td>Dynamic egress graph (actual path length)</td>
 <td>SPEC</td>
-<td>Requires I_Element_Connectivity (R22 in Open Gaps). Euclidean distance is a valid approximation until R22 is built.</td>
+<td>Requires I_Element_Connectivity. Euclidean distance valid until then.</td>
 </tr>
 <tr>
 <td>Digital signature on certificate</td>
 <td>DEFERRED</td>
-<td>PKI infrastructure. Certificate is tamper-evident via spatial digest today.</td>
+<td>PKI infrastructure. Spatial digest is tamper-evident for now.</td>
+</tr>
+<tr>
+<td>Per-space PlacementRequest construction</td>
+<td>DESIGN</td>
+<td>Need mapping from output.db spatial_structure → PlacementRequest fields.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Rule:</strong> All PENDING items must be resolved against the primary source document
-before being moved from <code>DRAFT</code> to <code>ACTIVE</code> in <code>SC_Jurisdiction</code>. No threshold
-value enters production as an assumption.</p>
-<hr />
-<h2 id="what-this-unlocks">What This Unlocks<a class="headerlink" href="#what-this-unlocks" title="Permanent link">&para;</a></h2>
-<p>Once SC-1 through SC-4 are complete:</p>
-<p><strong>For the Malaysia pilot:</strong> A DemoHouse compiled against UBBL produces a
-one-page compliance summary and a machine-verifiable certificate. A CIDB
-reviewer receives the submission package, runs three commands, and independently
-confirms the building passes 47 UBBL rules. Review time: minutes, not months.</p>
-<p><strong>For the academic paper:</strong> The proof chain is a novel contribution — no
-prior BIM system produces machine-reproducible regulatory compliance evidence.
-The Inference Engine's SKIP propagation means failures are localised, not
-cascaded. The submission package is the artefact that justifies the
-<em>"machine-provable compliance"</em> claim in StrategicIndustryPositioning with
-concrete implementation evidence.</p>
-<p><strong>For the competitive moat:</strong> Once one jurisdiction accepts a BIM Compiler
-submission package as a valid permit application, every contractor in that
-jurisdiction needs this pipeline. That is the adoption physics bypass.</p>
 <hr />
 <p><em>Cross-references:</em>
 <em><a href="DocValidate/">DocValidate</a> — rule engine and AD_Val_Rule schema (read first)</em>
@@ -3120,6 +3695,100 @@ jurisdiction needs this pipeline. That is the adoption physics bypass.</p>
 <em><a href="StrategicIndustryPositioning/#what-this-enables">StrategicIndustryPositioning §Machine-Provable Compliance</a></em>
 <em><a href="ACTION_ROADMAP/#open-gaps">ACTION_ROADMAP §Open Gaps</a> — GAP-DA-2, GAP-DA-3, PRED-1</em>
 <em><a href="TestArchitecture/#anti-drift-policy-read-first">TestArchitecture §Anti-Drift Policy</a></em></p>
+<hr />
+<h1 id="appendix-codebase-reality-check-2026-03-27">APPENDIX — Codebase Reality Check (2026-03-27)<a class="headerlink" href="#appendix-codebase-reality-check-2026-03-27" title="Permanent link">&para;</a></h1>
+<p>Audited by Claude against current <code>master</code>. Each claim rated:
+<strong>EXISTS</strong> = found in code, <strong>PARTIAL</strong> = concept exists but details differ,
+<strong>MISSING</strong> = spec-only, not implemented.</p>
+<h2 id="java-classes">Java Classes<a class="headerlink" href="#java-classes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Claimed</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ComplianceStage</code></td>
+<td>MISSING</td>
+<td>To be created in Phase SC-1</td>
+</tr>
+<tr>
+<td><code>InferenceEngine</code></td>
+<td>EXISTS</td>
+<td><code>BonsaiBIMDesigner/.../validation/InferenceEngine.java</code> — topological sort + DAG</td>
+</tr>
+<tr>
+<td><code>CompilerStage</code> interface</td>
+<td>EXISTS</td>
+<td><code>DAGCompiler/.../dsl/CompilerStage.java</code></td>
+</tr>
+<tr>
+<td><code>CompilationContext</code></td>
+<td>EXISTS</td>
+<td><code>DAGCompiler/.../dsl/CompilationContext.java</code> — needs <code>complianceReport</code> field added</td>
+</tr>
+<tr>
+<td><code>PlacementValidator</code></td>
+<td>EXISTS</td>
+<td>Two variants (DAGCompiler + BonsaiBIMDesigner)</td>
+</tr>
+<tr>
+<td><code>BOMDigestVerifyTest</code></td>
+<td>EXISTS</td>
+<td><code>DAGCompiler/.../contract/BOMDigestVerifyTest.java</code></td>
+</tr>
+<tr>
+<td><code>RoomValidityProof</code></td>
+<td>EXISTS</td>
+<td><code>BIMEyes/.../proof/tier3/RoomValidityProof.java</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="database-schema">Database / Schema<a class="headerlink" href="#database-schema" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Claimed</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AD_Val_Rule</code> table</td>
+<td>EXISTS</td>
+<td><code>migration/V001_validation_schema.sql</code> — has <code>jurisdiction</code>, <code>standard_ref</code> columns</td>
+</tr>
+<tr>
+<td><code>AD_Val_Rule_Param</code> table</td>
+<td>EXISTS</td>
+<td>Same migration — threshold storage</td>
+</tr>
+<tr>
+<td><code>compliance_proof.db</code></td>
+<td>MISSING</td>
+<td>To be created in Phase SC-1</td>
+</tr>
+<tr>
+<td><code>SC_Proof_Line</code> / <code>SC_Run</code> / <code>SC_Jurisdiction</code> tables</td>
+<td>MISSING</td>
+<td>To be created in Phase SC-1</td>
+</tr>
+<tr>
+<td><code>jurisdiction</code> in classify YAML</td>
+<td>MISSING</td>
+<td>To be added in Phase SC-1</td>
+</tr>
+</tbody>
+</table>
+<h2 id="verdict">Verdict<a class="headerlink" href="#verdict" title="Permanent link">&para;</a></h2>
+<p><strong>Spec is now aligned to real codebase interfaces.</strong> All code samples use actual
+class names, method signatures, and record types from the current codebase.
+Implementation requires: 1 new stage class, 1 new record, 2 fields added to
+existing classes, 1 migration file, and seed data rows.</p>
 
 
 
