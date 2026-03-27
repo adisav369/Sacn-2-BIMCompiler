@@ -1109,6 +1109,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#prior-art-why-not-parametric-bim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prior Art — Why Not Parametric BIM?
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1400,6 +1411,8 @@
   
     
     
+      
+        
       
         
       
@@ -1765,6 +1778,34 @@
     
   
     Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
   
 
     
@@ -2681,6 +2722,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#prior-art-why-not-parametric-bim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prior Art — Why Not Parametric BIM?
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2983,6 +3035,54 @@ route from intent to 3D output.</p>
    resolutions to the dictionary</li>
 <li><strong>Compile-once-copy-many</strong> — proven arrangements become single lookups</li>
 </ol>
+<hr />
+<h2 id="prior-art-why-not-parametric-bim">Prior Art — Why Not Parametric BIM?<a class="headerlink" href="#prior-art-why-not-parametric-bim" title="Permanent link">&para;</a></h2>
+<p>Dynamo, Grasshopper, and OpenBIM scripting are parametric — they generate geometry
+from parameters via visual programming. The BIM Compiler is not parametric. It is
+<strong>compilative</strong>: a BOM recipe is compiled into verified coordinates, the same way
+an ERP system explodes a manufacturing BOM into work orders. The distinction:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Parametric BIM</th>
+<th>BIM Compiler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Input</strong></td>
+<td>Parameters + visual graph</td>
+<td>BOM recipe (M_BOM rows)</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Geometry (no proof)</td>
+<td>Geometry + arithmetic proof chain</td>
+</tr>
+<tr>
+<td><strong>Verification</strong></td>
+<td>Manual inspection</td>
+<td>6 mathematical gates (automated)</td>
+</tr>
+<tr>
+<td><strong>Reproducibility</strong></td>
+<td>Depends on plugin version + graph state</td>
+<td>Deterministic — same BOM + library = same output</td>
+</tr>
+<tr>
+<td><strong>ERP integration</strong></td>
+<td>None (geometry tool)</td>
+<td>Native — C_Order, M_Product, M_BOM</td>
+</tr>
+</tbody>
+</table>
+<p>Speckle solves data transport (BIM ↔ cloud). It does not compile or verify.
+IFC.js and IfcOpenShell parse IFC files. They do not produce geometry from BOMs.
+The BIM Compiler is the only tool that takes a 1D BOM and produces verified 3D
+coordinates with a machine-checkable proof chain.</p>
+<p>See <a href="../StrategicIndustryPositioning/">Strategic Industry Positioning</a> for the full
+competitive analysis and market positioning.</p>
 <hr />
 <blockquote>
 <p><strong>Full historical record:</strong> Terminal decomposition phases (TE-1 through TE-8),

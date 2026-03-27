@@ -3009,6 +3009,8 @@
       
         
       
+        
+      
     
     
     
@@ -3349,6 +3351,34 @@
     
   
     Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
   
 
     
@@ -7749,6 +7779,10 @@ Step 3: Pipeline replacement
 </table>
 <h3 id="172-proposed-not-yet-implemented">17.2 Proposed (Not Yet Implemented)<a class="headerlink" href="#172-proposed-not-yet-implemented" title="Permanent link">&para;</a></h3>
 <p>Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.</p>
+<p><strong>FORGE verb</strong> (spec only): <code>FORGE &lt;piece_type&gt; [key:value ...]</code> — computes
+construction pieces from parameters via <a href="../GEOMETRY_FORGE_SRS/">Geometry Forge</a>.
+Same verb architecture, same VerbResult output. Shell registered, no piece types
+implemented yet.</p>
 <hr />
 <h2 id="18-synthetic-bom-creation-the-composition-language">18. Synthetic BOM Creation — The Composition Language<a class="headerlink" href="#18-synthetic-bom-creation-the-composition-language" title="Permanent link">&para;</a></h2>
 <p><em>Added v0.11 — Phase F0.2. This section defines the verb suite for creating new BOM assemblies from the catalog. Where §4–5 define verbs that PLACE and CHECK elements, and §15–17 define verbs that operate on compiled output, this section defines verbs that CREATE the BOM data itself — the input to compilation.</em></p>

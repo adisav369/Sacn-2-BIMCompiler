@@ -1853,6 +1853,8 @@
       
         
       
+        
+      
     
     
     
@@ -2193,6 +2195,34 @@
     
   
     Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
   
 
     
@@ -3686,7 +3716,9 @@ classes buried in 845-line files.</p>
 <h2 id="3-type-specifications">3. Type Specifications<a class="headerlink" href="#3-type-specifications" title="Permanent link">&para;</a></h2>
 <h3 id="31-shapearchetype-enum">3.1 ShapeArchetype (enum)<a class="headerlink" href="#31-shapearchetype-enum" title="Permanent link">&para;</a></h3>
 <p>Geometric invariant classification from AABB dimensionless ratios.
-Source: GeometricFingerprint.java lines 57-66.</p>
+Source: GeometricFingerprint.java lines 57-66.
+No trained models — thresholds are derived from geometric definitions (a wall IS planar
+by IFC class definition, not by statistical inference). No tolerance tuning, no heuristics.</p>
 <table>
 <thead>
 <tr>
@@ -4045,6 +4077,9 @@ Detects gaps where the building has no roof overhead.</p>
 <p><strong>Algorithm:</strong> Compare roof AABB (union of all IfcRoof/IfcRoofSlab) against wall AABB
 (union of all IfcWall/IfcCurtainWall/IfcWallStandardCase) with 50mm overhang tolerance.</p>
 <p><strong>Witness:</strong> W-DH-ROOF-2.</p>
+<p>P27/P28 are verification proofs — they prove compiled geometry is correct. The same
+maths running in reverse can <em>produce</em> geometry. See <a href="../GEOMETRY_FORGE_SRS/">Geometry Forge</a>
+§4 and §8 for how EYES verification extends to formula-computed pieces.</p>
 <h3 id="43-tier-3-aggregateconservation-12-proofs">4.3 Tier 3 — Aggregate/Conservation (12 proofs)<a class="headerlink" href="#43-tier-3-aggregateconservation-12-proofs" title="Permanent link">&para;</a></h3>
 <p>Require global state: all walls on a floor, all rooms in a building, etc.</p>
 <table>

@@ -1224,6 +1224,8 @@
       
         
       
+        
+      
     
     
     
@@ -1564,6 +1566,34 @@
     
   
     Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
   
 
     
@@ -3697,6 +3727,12 @@ through it. Measured: 2.9km winding road with R=17m–1037m curves, heading swee
 63°→-158°→-23°. No commercial BIM tool does contour-following infrastructure design
 with validation against IFC4X3 rules.
 See <a href="../INFRA_DESIGNER_SRS/"><code>INFRA_DESIGNER_SRS.md</code></a> §1 + §5 for full spec.</p>
+<p><strong>1b. Geometry Forge — formula-driven construction pieces.</strong>
+Domain-specific tools (MiTek for timber, Tekla for steel, NAPA for hulls) have
+computed geometry from parameters for decades — but each is locked to one material
+system. The <a href="../GEOMETRY_FORGE_SRS/">Geometry Forge</a> generalises this: same
+ForgeEngine interface, any piece type, full BOM traceability, same EYES
+verification. See GEOMETRY_FORGE_SRS.md §9 for industry precedent matrix.</p>
 <p><strong>2. DB/ERP integration is a bigger moat than GUI.</strong>
 Converting IFC to a relational database with ERP semantics (M_Product, M_BOM,
 C_Order) requires deep manufacturing domain knowledge. A startup can hire UI

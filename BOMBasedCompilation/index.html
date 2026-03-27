@@ -1896,6 +1896,8 @@
       
         
       
+        
+      
     
     
     
@@ -2236,6 +2238,34 @@
     
   
     Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
   
 
     
@@ -3933,7 +3963,9 @@ See <code>DocValidate.md</code> §15.6 (decision tree), <code>LAST_MILE_PROBLEM.
 (LOD_ hash prefix). The pipeline MUST NOT generate parametric bounding boxes (GEO_
 hash prefix). ASI controls per-instance sizing; the compiler scales library LODs,
 never creates geometry. <code>G5-PROVENANCE</code> Check 6 enforces zero GEO_ hashes.
-<code>createBoxGeometry</code> and <code>bindParametric</code> must not exist in any compilation code path.</p>
+<code>createBoxGeometry</code> and <code>bindParametric</code> must not exist in any compilation code path.
+The <a href="../GEOMETRY_FORGE_SRS/">Geometry Forge</a> extends this rule: formula-driven
+pieces carry full BOM traceability (§6), unlike parametric mesh which has none.</p>
 <p><strong>IFC already solves geometry.</strong> The IFC schema carries relational structure
 (<code>IfcRelAggregates</code>, <code>IfcRelVoidsElement</code>, <code>IfcRelConnectsElements</code>, <code>IfcRelDefinesByType</code>)
 pre-digested into SQLite by the FederatedModel DB. The BOM layer adds manufacturing
