@@ -9,6 +9,7 @@ import com.bim.compiler.validation.SpatialDigest;
 import com.bim.ormsandbox.po.BomTemplateComposer;
 
 import java.sql.*;
+import java.util.List;
 
 /**
  * Mutable carrier for pipeline state — each stage reads what it needs and writes its output.
@@ -31,6 +32,7 @@ public class CompilationContext {
     private PlacementProver.ProofReport proofReport;
     private boolean proverSkipped;
     private BomTemplateComposer.CompositionReport compositionReport;
+    private List<PlacementLoader.Placement> walkedPlacements;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -78,6 +80,7 @@ public class CompilationContext {
     public PlacementProver.ProofReport proofReport() { return proofReport; }
     public boolean proverSkipped() { return proverSkipped; }
     public BomTemplateComposer.CompositionReport compositionReport() { return compositionReport; }
+    public List<PlacementLoader.Placement> walkedPlacements() { return walkedPlacements; }
 
     // --- Setters (called by stages) ---
     public void setDefinition(BuildingDefinition definition) { this.definition = definition; }
@@ -88,4 +91,5 @@ public class CompilationContext {
     public void setProofReport(PlacementProver.ProofReport proofReport) { this.proofReport = proofReport; }
     public void setProverSkipped(boolean proverSkipped) { this.proverSkipped = proverSkipped; }
     public void setCompositionReport(BomTemplateComposer.CompositionReport r) { this.compositionReport = r; }
+    public void setWalkedPlacements(List<PlacementLoader.Placement> p) { this.walkedPlacements = p; }
 }

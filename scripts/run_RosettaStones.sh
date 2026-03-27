@@ -225,6 +225,7 @@ compile_building() {
         -Dtest="BuildingRegistryTest" \
         -Dbom.db="${compile_db}" \
         -Ddoc.base.type="${doc_base_type}" \
+        -Dpipeline.tests.skip=false \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && CC_RC=0 || CC_RC=$?
     echo "$CC_OUTPUT" | tail -3

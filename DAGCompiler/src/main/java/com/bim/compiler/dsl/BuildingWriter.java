@@ -858,6 +858,174 @@ public class BuildingWriter {
         printLibraryUsageSummary();
     }
 
+    // ── BOM Walk output path ──────────────────────────────────────────────
+    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-WALK-1
+    //
+    // Single path: BOM walk produces placements → writeFromBomWalk writes
+    // elements to output DB via MeshBinder. No StoreyCompiler, no DSL.
+    // Replaces emitGlobalPlacementElements for the BOM walk compilation path.
+
+    /**
+     * Write elements from BOM walk placements to output DB.
+     *
+     * <p>Called by WriteStage when CompileStage produces walked placements.
+     * Uses the same MeshBinder + dimensional contract as emitGlobalPlacementElements
+     * but without the consumed/unconsumed distinction — all elements come from
+     * the BOM walk, so every placement is a first-class compiled element.
+     *
+     * @param buildingName building identifier (for spatial structure root)
+     * @param placements   world-positioned placements from PlacementCollectorVisitor
+     */
+    public void writeFromBomWalk(String buildingName,
+            List<PlacementLoader.Placement> placements) throws SQLException {
+        this.currentBuildingName = buildingName;
+
+        // Spatial structure root (IfcBuilding)
+        String buildingGuid = "BUILDING_" + buildingName.toUpperCase().replace(" ", "_");
+        ep.writeSpatialStructure(buildingGuid, "IfcBuilding", buildingName, null);
+
+        // Open component library for LOD400 geometry resolution
+        ComponentLibrary library = null;
+        try {
+            library = new ComponentLibrary("library/component_library.db");
+        } catch (Exception e) {
+            System.err.printf("[BOM-WALK] WARN: Component library not available: %s%n", e.getMessage());
+        }
+
+        MeshBinder binder = null;
+        if (library != null && libraryMapper != null) {
+            boolean closestFit = CompilerConfig.getInstance().isClosestFitEnabled();
+            binder = new MeshBinder(library, libraryMapper, conn, ep, closestFit);
+        }
+
+        int written = 0;
+        for (PlacementLoader.Placement p : placements) {
+            // GUID: use element_ref (IFC GUID from MA rows or generated)
+            String guid = p.elementRef();
+            if (guid == null || guid.isEmpty()) {
+                guid = "BOM_" + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal();
+            }
+
+            // Discipline-aware GUID prefix (same logic as emitGlobalPlacementElements)
+            String discPrefix = p.discipline() == null ? "" : switch (p.discipline()) {
+                case FP   -> "FP_MD_";
+                case ELEC -> "ELEC_MD_";
+                case ACMV -> "ACMV_MD_";
+                case SP   -> "SP_MD_";
+                case CW   -> "CW_MD_";
+                case LPG  -> "LPG_MD_";
+                case STR  -> "STR_MD_";
+                default -> "";
+            };
+            String guidPrefix;
+            if (!discPrefix.isEmpty()) {
+                guidPrefix = discPrefix + p.ifcClass().replace("Ifc", "").toUpperCase() + "_";
+            } else {
+                double wMm = (p.maxX() - p.minX()) * 1000;
+                double dMm = (p.maxY() - p.minY()) * 1000;
+                double hMm = (p.maxZ() - p.minZ()) * 1000;
+                var arch = ShapeClassifier.classifyArchetype(wMm, dMm, hMm);
+                guidPrefix = switch (arch) {
+                    case ELONGATED -> "FRAME_MD_";
+                    case PLANAR    -> "SLAB_MD_";
+                    case COMPACT   -> "COMPACT_MD_";
+                    default        -> "MD_";
+                };
+            }
+            guid = guidPrefix + p.storey().replace(" ", "_").toUpperCase() + "_" + p.ordinal()
+                + (p.elementRef() != null && p.elementRef().startsWith("A_") ? "_A"
+                 : p.elementRef() != null && p.elementRef().startsWith("B_") ? "_B" : "");
+
+            // Element type from archetype
+            double wMm2 = (p.maxX() - p.minX()) * 1000;
+            double dMm2 = (p.maxY() - p.minY()) * 1000;
+            double hMm2 = (p.maxZ() - p.minZ()) * 1000;
+            var arch2 = ShapeClassifier.classifyArchetype(wMm2, dMm2, hMm2);
+            var band2 = ShapeClassifier.classifyScaleBand(wMm2, dMm2, hMm2);
+            String type = switch (arch2) {
+                case PLANAR -> band2 == ScaleBand.ARCHITECTURAL ? "FLOOR" : "CURTAIN_PANEL";
+                case ELONGATED -> "FRAME";
+                case COMPACT -> "FITTING";
+                default -> p.ifcClass();
+            };
+
+            if (binder != null) {
+                BoundElement be;
+                try {
+                    be = binder.bind(p, guid, type);
+                    if (be == null) {
+                        // familyRef fallback: resolve LOD from component_definitions
+                        if (p.familyRef() != null && library != null && libraryMapper != null) {
+                            try {
+                                var cd = library.getByName(p.familyRef());
+                                if (cd != null) {
+                                    double[] lb = libraryMapper.getLocalBounds(cd.geometryHash());
+                                    if (lb != null) {
+                                        double meshW = lb[1] - lb[0];
+                                        double meshD = lb[3] - lb[2];
+                                        double meshH = lb[5] - lb[4];
+                                        if (meshW > 0.001 && meshD > 0.001 && meshH > 0.001) {
+                                            double sX = (p.maxX() - p.minX()) / meshW;
+                                            double sY = (p.maxY() - p.minY()) / meshD;
+                                            double sZ = (p.maxZ() - p.minZ()) / meshH;
+                                            double tx = p.minX() - lb[0] * sX;
+                                            double ty = p.minY() - lb[2] * sY;
+                                            double tz = p.minZ() - lb[4] * sZ;
+                                            String geoHash = libraryMapper.transformAndWriteGeometryScaled(
+                                                conn, cd.geometryHash(), tx, ty, tz, 0.0, sX, sY, sZ);
+                                            if (geoHash != null) {
+                                                ep.writeElementMeta(guid, p.ifcClass(), p.familyRef(), type,
+                                                    p.storey(), p.minX(), p.maxX(), p.minY(), p.maxY(),
+                                                    p.minZ(), p.maxZ(), null, p.materialName(), p.materialRgba(),
+                                                    p.elementRef());
+                                                ep.writeInstance(guid, geoHash);
+                                                written++;
+                                                continue;
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (SQLException ex) { /* best-effort familyRef LOD lookup */ }
+                        }
+                        throw new MetadataMissingException(
+                            "No geometry for " + p.ifcClass()
+                            + " element_ref=" + p.elementRef()
+                            + " familyRef=" + p.familyRef()
+                            + " discipline=" + p.discipline()
+                            + " [NO FALLBACK — add component_definitions + component_geometries in component_library.db]");
+                    }
+                } catch (DimensionalContractViolation e) {
+                    throw new MetadataMissingException(
+                        "DimensionalContractViolation for " + p.ifcClass()
+                        + " element_ref=" + p.elementRef()
+                        + " " + e.getMessage()
+                        + " [NO FALLBACK — fix library mesh or ASI, not parametric box]");
+                }
+                writeBoundElement(be);
+                written++;
+            } else {
+                throw new MetadataMissingException(
+                    "Component library unavailable for " + p.ifcClass()
+                    + " element_ref=" + p.elementRef()
+                    + " [NO FALLBACK — component_library.db must be present and readable]");
+            }
+        }
+
+        if (library != null) {
+            try { library.close(); } catch (Exception e) { /* best-effort */ }
+        }
+
+        System.out.printf("[BOM-WALK] Written %d elements to output DB%n", written);
+
+        // Post-processing: spatial structure from dependencies, assembly links, styles, QTO
+        buildMEPSystemFromDependencies(buildingName, buildingGuid);
+        linkOpeningsToWallAssemblies();
+        applyADBOMRecipes();
+        copySurfaceStyles();
+        generateSimpleQTO();
+        printLibraryUsageSummary();
+    }
+
     /**
      * Phase B2: Emit elements from placement metadata for non-compiled storeys.
      * Handles Roof position override, roof-storey slabs, curtain wall panels, etc.

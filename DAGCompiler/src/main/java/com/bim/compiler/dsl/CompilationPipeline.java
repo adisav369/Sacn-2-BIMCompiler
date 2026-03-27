@@ -1,5 +1,7 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.bom.walker.BOMWalker;
+import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.validation.GeometryIntegrityChecker;
@@ -323,41 +325,62 @@ public class CompilationPipeline {
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
-            BuildingDefinition def = BuildingParser.parse(ctx.entry().dslContent());
+            String dsl = ctx.entry().dslContent();
+            if (dsl == null || dsl.isBlank()) {
+                // No DSL — BOM walk handles compilation in CompileStage
+                BIMLogger.info("PARSE", "No DSL content — BOM walk path");
+                return;
+            }
+            BuildingDefinition def = BuildingParser.parse(dsl);
             ctx.setDefinition(def);
             System.out.println("Building: " + def.name());
         }
     }
 
     private static class CompileStage implements CompilerStage {
-        @Override public String name() { return "COMPILE TO BUILDINGSPEC"; }
+        @Override public String name() { return "BOM WALK COMPILE"; }
 
-        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-VERB-1
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-WALK-1
         //
-        // NO shouldSkip(). CompileStage always runs. LMP §3 + §6: single path,
-        // no passthrough. Creating an empty BuildingSpec to skip compilation
-        // triggers emitGlobalPlacementElements() which copies extraction → output
-        // (the S99 honesty violation). G0-COMPILED catches this downstream.
+        // Single BOM walk path for all buildings. Walker reads BOM tree
+        // (BUILDING → FLOOR → LEAF), accumulates tack offsets through the
+        // hierarchy, expands verbs (CLUSTER/TILE/ROUTE/FRAME/SPRAY), and
+        // produces world-positioned placements. No StoreyCompiler, no DSL.
         //
-        // Future: when generative verbs (ROUTE/FRAME/TILE/WIRE) exist on
-        // m_bom_line, CompileStage will dispatch to verb Strategy + AD_Val_Rule:
-        //   verb.place(child, parent.space, AD_Val_Rule.lookup(child.product.AD_Org_ID, parent.category))
+        // PLACE/null/CLUSTER: emit at origin + Σ(tack)
+        // ROUTE/FRAME/TILE/WIRE: future — generative verbs via AD_Val_Rule
+        //
         // See DISC_VALIDATION_DB_SRS.md §10.4.3 for rule table design.
-        //   ROUTE → ad_fp_coverage (NFPA 13), ad_acmv_sizing, per-discipline AD
-        //   FRAME → structural grid rules
-        //   TILE  → coverage pattern rules
-        //   WIRE  → ceiling grid / circuit rules
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
-            CompilationResult result = BuildingCompiler.compileWithValidation(ctx.definition());
-            BuildingSpec spec = result.spec();
-            ctx.setSpec(spec);
+            try (Connection bomConn = DriverManager.getConnection(
+                    "jdbc:sqlite:" + System.getProperty("bom.db"));
+                 Connection compConn = DriverManager.getConnection(
+                    "jdbc:sqlite:library/ERP.db")) {
 
-            for (StoreySpec storey : spec.storeys()) {
-                System.out.printf("Storey '%s': rooms=%d, walls=%d, doors=%d, windows=%d%n",
-                    storey.name(), storey.rooms().size(), storey.walls().size(),
-                    storey.doors().size(), storey.windows().size());
+                MBOM root = MBOM.getRootByDocSubType(bomConn, ctx.entry().docSubType());
+                if (root == null) {
+                    throw new IllegalStateException(
+                        "No root BOM for doc_sub_type=" + ctx.entry().docSubType());
+                }
+
+                double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
+                PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
+                    bomConn, ctx.entry().projectName(), worldOrigin);
+
+                BOMWalker walker = new BOMWalker(bomConn, compConn);
+                walker.walk(root.getBomId(), List.of(visitor), ctx.entry().projectName());
+
+                List<PlacementLoader.Placement> placements = visitor.getPlacements();
+                ctx.setWalkedPlacements(placements);
+
+                // Minimal BuildingSpec for downstream stages (spatial structure, room slots)
+                ctx.setSpec(new BuildingSpec(ctx.entry().name(),
+                    List.of(), null, List.of(), null, null));
+
+                BIMLogger.info("COMPILE", "BOM walk: {} → {} elements from {} sub-assemblies",
+                    root.getBomId(), placements.size(), visitor.getSubAssemblyCount());
             }
         }
     }
@@ -385,7 +408,16 @@ public class CompilationPipeline {
                 // Copy BOM tree C_OrderLine from compile DB → output DB (was discarded before S91)
                 copyCOrderLineToOutput(conn, ctx);
 
-                writer.write(ctx.spec());
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-WALK-1
+                // BOM walk path: write elements from walked placements via MeshBinder.
+                // Single path for all buildings — no StoreyCompiler, no DSL.
+                List<PlacementLoader.Placement> walkedPlacements = ctx.walkedPlacements();
+                if (walkedPlacements != null && !walkedPlacements.isEmpty()) {
+                    writer.writeFromBomWalk(ctx.entry().name(), walkedPlacements);
+                } else {
+                    BIMLogger.info("WRITE", "No walked placements — 0 elements");
+                }
+
                 conn.commit();
                 System.out.println("Database written: " + outputDbPath);
 

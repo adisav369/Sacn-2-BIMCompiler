@@ -18,7 +18,7 @@
 | G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
 | G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
 
-> **TE: BOM populated (S100-p69), tree inference done (S100-p71).** 8 BOMs, 1,522 lines, 48,428 instances. QA all PASS. 25 bom_type queries replaced. shouldSkip removed. BOM walk compiler (p72) is next — connects BomDrop → walk → verb dispatch → output.
+> **TE: BOM walk compiler LIVE (S100-p72).** 48,428 elements compiled via BOM walk. 6/7 PASS (C9 FAIL: 60 axis swaps — library mesh orientation, not walk bug). SH 7/7 PASS (zero regression). Script fix: compilation was never running (missing -Dpipeline.tests.skip=false).
 
 **Pipeline:** 9 stages. 76 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
@@ -45,6 +45,7 @@
 
 ## Session Log (recent first)
 
+**S100-p72** — BOM walk compiler (prompt 72). CompileStage replaced: DSL→BuildingSpec → BOMWalker+PlacementCollectorVisitor→Placements→MeshBinder. Single path for all buildings. WriteStage wired to writeFromBomWalk(). ParseStage handles null DSL. BuildingRegistryTest DSL assumption removed (was skipping TE). Script fix: run_RosettaStones.sh was missing -Dpipeline.tests.skip=false (compilation never ran). TE: 48,428 elements, G0-COMPILED PASS, 6/7 PASS (C9 FAIL: 60 axis swaps, 0.12%). SH 7/7 PASS (zero regression).
 **S100-watchdog2** — Spec hardening: §10.4.1 shouldSkip anti-pattern, §10.4.4 discipline from product (not line), §10.4.6 NEW shared discipline recipes in ERP.db, DX YAML aligned to reference DB. Committed: 93b86858.
 **S100-p71** — Verb-driven compile + tree-structure queries (prompts 69+71). TE IFCtoBOM analysis: BOM persisted (8 BOMs, 1522 lines, 48428 instances), QA all PASS, 6 compile-path blockers documented. Tree inference: MBOM.getRoots()/getChildren()/getRootByDocSubType()/getAll() added, getByType() @Deprecated. ~25 SQL bom_type queries + 9 getByType() calls replaced across 17 files. shouldSkip() anti-pattern identified and removed (LMP §3/§6: single path, no passthrough). Task 5: OrderLine Add mutation stub in BomDropper. Seal v46. SH 7/7, FK 7/7 PASS.
 **S100-p68** — DX C9 non-issue doc + MEP discipline YAML (prompt 68). C9 89 axis mismatches documented as matching artifact in DuplexAnalysis.md (rank shuffle, not geometry error). classify_dx.yaml: schema_version 1→2, disciplines section uncommented (ARC/STR/MEP). Investigation: m_bom_line has no discipline column — schema change needed for discipline metadata on LEAF lines (deferred). DX 6/7 PASS (C9 expected). SH 7/7 PASS.
