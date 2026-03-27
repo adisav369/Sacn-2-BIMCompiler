@@ -255,9 +255,10 @@ public class PlacementLoader {
             Map<String, String> docSubTypeToProject = loadDocSubTypeMap(conn);
             BOMWalker walker = new BOMWalker(conn, compConn);
 
-            // Load all BUILDING BOMs — the top-level finished goods BOM per building type
-            List<MBOM> roots = MBOM.getByType(conn, "BUILDING");
-            System.out.printf("[PlacementLoader] %d BUILDING BOMs%n", roots.size());
+            // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+            // Root = BOM with no parent m_bom_line (replaces getByType("BUILDING"))
+            List<MBOM> roots = MBOM.getRoots(conn);
+            System.out.printf("[PlacementLoader] %d root BOMs%n", roots.size());
 
             for (MBOM bom : roots) {
                 String docSubType = bom.getDocSubType();

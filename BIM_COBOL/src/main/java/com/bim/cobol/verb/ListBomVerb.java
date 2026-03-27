@@ -37,17 +37,12 @@ public class ListBomVerb implements Verb<ListBomVerb.ListBomPayload> {
         Connection conn = ctx.bomConn();
         String prefix = args.length > 0 ? args[0] : null;
 
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
         List<MBOM> boms;
         if (prefix != null) {
             boms = MBOM.getByBomIdPrefix(conn, prefix);
         } else {
-            boms = MBOM.getByType(conn, "BUILDING");
-            // Also get FLOOR, SET, ITEM — merge all types
-            List<MBOM> all = new ArrayList<>(boms);
-            for (String type : List.of("FLOOR", "SET", "ITEM", "ROOM")) {
-                all.addAll(MBOM.getByType(conn, type));
-            }
-            boms = all;
+            boms = MBOM.getAll(conn);
         }
 
         List<BomEntry> entries = new ArrayList<>();

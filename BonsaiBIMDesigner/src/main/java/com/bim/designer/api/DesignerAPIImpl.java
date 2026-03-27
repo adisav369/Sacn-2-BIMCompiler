@@ -213,9 +213,10 @@ public class DesignerAPIImpl implements DesignerAPI {
                        COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm,
                        COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm,
                        COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
-                  AND b.bom_type = 'BUILDING' AND b.is_active = 1
+                  AND b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1
                 WHERE d.ProjectName = ?
                 """;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);

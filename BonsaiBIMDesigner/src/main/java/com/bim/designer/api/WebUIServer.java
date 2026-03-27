@@ -323,10 +323,11 @@ public class WebUIServer implements AutoCloseable {
                     detail.put("elementCount", rs.getInt("ExpectedElements"));
                 }
             }
+            // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
             try (ResultSet rs = stmt.executeQuery(
-                    "SELECT bom_type, COUNT(*) AS cnt FROM m_bom WHERE is_active=1 GROUP BY bom_type")) {
+                    "SELECT m_product_category_id, COUNT(*) AS cnt FROM m_bom WHERE is_active=1 GROUP BY m_product_category_id")) {
                 Map<String, Integer> bomStats = new LinkedHashMap<>();
-                while (rs.next()) bomStats.put(rs.getString("bom_type"), rs.getInt("cnt"));
+                while (rs.next()) bomStats.put(rs.getString("m_product_category_id"), rs.getInt("cnt"));
                 detail.put("bomStats", bomStats);
             } catch (Exception ignored) {}
             try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) AS cnt FROM m_bom_line")) {
@@ -537,7 +538,8 @@ public class WebUIServer implements AutoCloseable {
                              "SELECT Value AS bom_id, bom_name, m_product_category_id, " +
                              "aabb_width_mm, aabb_depth_mm, aabb_height_mm, " +
                              "(SELECT COUNT(*) FROM m_bom_line bl WHERE bl.M_BOM_ID = b.M_BOM_ID) AS element_count " +
-                             "FROM m_bom b WHERE b.bom_type = 'BUILDING' AND b.is_active = 1")) {
+                             // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+                             "FROM m_bom b WHERE b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1")) {
                     while (rs.next()) {
                         Map<String, Object> entry = new LinkedHashMap<>();
                         entry.put("bomId", rs.getString("bom_id"));

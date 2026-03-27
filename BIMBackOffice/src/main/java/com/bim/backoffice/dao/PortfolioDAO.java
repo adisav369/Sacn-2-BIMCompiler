@@ -264,8 +264,9 @@ public class PortfolioDAO {
         try (PreparedStatement ps = bomConn.prepareStatement(
                 "SELECT d.Name, b.m_product_category_id, d.doc_sub_type, d.ProjectName, d.ExpectedElements " +
                 "FROM C_DocType d " +
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 "LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type " +
-                "  AND b.bom_type = 'BUILDING' AND b.is_active = 1 " +
+                "  AND b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1 " +
                 "WHERE d.IsActive = 1 LIMIT 1")) {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

@@ -332,8 +332,21 @@ public class CompilationPipeline {
     private static class CompileStage implements CompilerStage {
         @Override public String name() { return "COMPILE TO BUILDINGSPEC"; }
 
-        // S100-p66: CO passthrough hack deleted. CO buildings compile through
-        // the same path as RE. Ref: DISC_VALIDATION_DB_SRS.md §10.4.1–§10.4.4.
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-VERB-1
+        //
+        // NO shouldSkip(). CompileStage always runs. LMP §3 + §6: single path,
+        // no passthrough. Creating an empty BuildingSpec to skip compilation
+        // triggers emitGlobalPlacementElements() which copies extraction → output
+        // (the S99 honesty violation). G0-COMPILED catches this downstream.
+        //
+        // Future: when generative verbs (ROUTE/FRAME/TILE/WIRE) exist on
+        // m_bom_line, CompileStage will dispatch to verb Strategy + AD_Val_Rule:
+        //   verb.place(child, parent.space, AD_Val_Rule.lookup(child.product.AD_Org_ID, parent.category))
+        // See DISC_VALIDATION_DB_SRS.md §10.4.3 for rule table design.
+        //   ROUTE → ad_fp_coverage (NFPA 13), ad_acmv_sizing, per-discipline AD
+        //   FRAME → structural grid rules
+        //   TILE  → coverage pattern rules
+        //   WIRE  → ceiling grid / circuit rules
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
@@ -463,7 +476,7 @@ public class CompilationPipeline {
                 String docSubType = ctx.entry().docSubType();
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                     if (docSubType != null) {
-                        MBOM bldgBom = MBOM.getBuildingBom(libConn, docSubType);
+                        MBOM bldgBom = MBOM.getRootByDocSubType(libConn, docSubType);
                         if (bldgBom != null) bldgBomId = bldgBom.getBomId();
                     }
                     if (bldgBomId == null && "ST".equals(ctx.entry().mProductCategoryId())) {
@@ -582,9 +595,13 @@ public class CompilationPipeline {
                 ps.setString(1, floorBomId);
                 try (ResultSet rs = ps.executeQuery()) { hasRoomChildren = rs.next(); }
             }
+            // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+            // Children of root (replaces getByType("FLOOR"))
             if (!hasRoomChildren && docSubType != null) {
                 try {
-                    List<MBOM> floorBoms = MBOM.getByType(bomConn, "FLOOR");
+                    List<MBOM> roots = MBOM.getRoots(bomConn);
+                    MBOM root = roots.isEmpty() ? null : roots.get(0);
+                    List<MBOM> floorBoms = root != null ? MBOM.getChildren(bomConn, root.getBomId()) : List.of();
                     resolvedFloorBomId = floorBoms.stream()
                         .filter(b -> docSubType.equals(b.getDocSubType())
                                   && b.getProductCategory() != null)

@@ -88,10 +88,13 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
                                              String docSubType) throws SQLException {
         List<SpatialStructureBuilder.RoomSlot> slots = new ArrayList<>();
 
-        // 1. Get the BUILDING BOM (Tier 2: use M_BOM_ID INTEGER PK)
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+        // 1. Get the tree-root BOM (Tier 2: use M_BOM_ID INTEGER PK)
         int buildingBomId;
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT M_BOM_ID FROM m_bom WHERE bom_type = 'BUILDING' AND doc_sub_type = ?")) {
+                "SELECT M_BOM_ID FROM m_bom "
+                + "WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
+                + "AND doc_sub_type = ?")) {
             ps.setString(1, docSubType);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return slots;

@@ -76,12 +76,14 @@ public class HelloWorldVerb implements Verb<HelloWorldVerb.HelloWorldPayload> {
 
     private SingularityCheck checkSingularity(Connection bomConn, String docSubType)
             throws SQLException {
-        // Find BUILDING BOMs matching doc_sub_type
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+        // Find tree-root BOMs matching doc_sub_type (root = not a child of any other BOM)
         String buildingBomId = null;
         int buildingCount = 0;
         try (PreparedStatement ps = bomConn.prepareStatement(
                 "SELECT Value FROM m_bom "
-                + "WHERE bom_type = 'BUILDING' AND doc_sub_type = ?")) {
+                + "WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
+                + "AND doc_sub_type = ?")) {
             ps.setString(1, docSubType);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

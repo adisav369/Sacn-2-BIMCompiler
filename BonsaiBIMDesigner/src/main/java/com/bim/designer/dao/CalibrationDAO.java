@@ -149,8 +149,9 @@ public class CalibrationDAO {
      */
     public Map<String, double[]> floorAABB(Connection bomConn) throws SQLException {
         String sql = """
+                -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 SELECT Value AS bom_id, aabb_width_mm, aabb_depth_mm, aabb_height_mm
-                FROM m_bom WHERE bom_type = 'FLOOR'
+                FROM m_bom WHERE bom_id IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND is_active = 1
                 ORDER BY Value
                 """;
         Map<String, double[]> result = new LinkedHashMap<>();
@@ -175,8 +176,8 @@ public class CalibrationDAO {
                 SELECT mb.Value AS bom_id, mb.m_product_category_id, SUM(ml.qty) as total_qty
                 FROM m_bom_line ml
                 JOIN m_bom mb ON ml.M_BOM_ID = mb.M_BOM_ID
+                -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 WHERE mb.m_product_category_id IN ('FP','ELEC','CW','SP','ACMV')
-                  AND mb.bom_type = 'SET'
                 GROUP BY mb.Value, mb.m_product_category_id
                 ORDER BY mb.Value
                 """;

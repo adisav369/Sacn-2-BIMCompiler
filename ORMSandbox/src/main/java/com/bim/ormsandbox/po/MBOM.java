@@ -38,7 +38,33 @@ public class MBOM extends X_M_BOM {
         return bom.load(bomId) && bom.isActive() ? bom : null;
     }
 
-    /** All active BOMs of a given type (UNIT, FLOOR, ROOM, SET, ITEM). */
+    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+    /** Root = BOM with no parent m_bom_line pointing to it. */
+    public static List<MBOM> getRoots(Connection conn) throws SQLException {
+        return new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_is_active + " = 1 AND " + COLUMNNAME_bom_id
+                 + " NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1)")
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
+            .list();
+    }
+
+    /** Children = BOMs pointed to by m_bom_line entries under a parent BOM. */
+    public static List<MBOM> getChildren(Connection conn, String parentBomId) throws SQLException {
+        return new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_bom_id + " IN "
+                 + "(SELECT child_product_id FROM m_bom_line "
+                 + " WHERE bom_id = ? AND is_active = 1)", parentBomId)
+            .andWhere(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
+            .list();
+    }
+
+    /**
+     * All active BOMs of a given type (UNIT, FLOOR, ROOM, SET, ITEM).
+     * @deprecated Use {@link #getRoots(Connection)} for BUILDING, {@link #getChildren(Connection, String)} for tree walk,
+     *             or {@link #getByCategory(Connection, String)} for category queries.
+     */
+    @Deprecated
     public static List<MBOM> getByType(Connection conn, String bomType) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
             .where(COLUMNNAME_bom_type + " = ?", bomType)
@@ -57,18 +83,35 @@ public class MBOM extends X_M_BOM {
     }
 
     /**
-     * Find the top-level BUILDING BOM for a given DocSubType (e.g. "SH" → BUILDING_SH_STD).
-     * In iDempiere Mfg, this is the finished goods BOM — one per building type.
-     * Returns null if not found.
+     * Find the root BOM for a given DocSubType (e.g. "SH" → BUILDING_SH_STD).
+     * // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+     * Root = no parent m_bom_line. Returns null if not found.
      */
-    public static MBOM getBuildingBom(Connection conn, String docSubType) throws SQLException {
-        List<MBOM> bldgs = new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_type + " = ?", "BUILDING")
+    public static MBOM getRootByDocSubType(Connection conn, String docSubType) throws SQLException {
+        List<MBOM> roots = new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_is_active + " = 1 AND " + COLUMNNAME_bom_id
+                 + " NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1)")
             .andWhere(COLUMNNAME_doc_sub_type + " = ?", docSubType)
-            .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
-        return bldgs.isEmpty() ? null : bldgs.get(0);
+        return roots.isEmpty() ? null : roots.get(0);
+    }
+
+    /**
+     * Find the top-level BUILDING BOM for a given DocSubType (e.g. "SH" → BUILDING_SH_STD).
+     * @deprecated Use {@link #getRootByDocSubType(Connection, String)} for tree-based root finding.
+     */
+    @Deprecated
+    public static MBOM getBuildingBom(Connection conn, String docSubType) throws SQLException {
+        return getRootByDocSubType(conn, docSubType);
+    }
+
+    /** All active BOMs (no type filter). */
+    public static List<MBOM> getAll(Connection conn) throws SQLException {
+        return new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_is_active + " = ?", 1)
+            .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
+            .list();
     }
 
     /** All active BOMs whose Value starts with the given prefix. */

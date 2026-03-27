@@ -115,6 +115,17 @@ public class BomDropper {
         explode(compileDb, orderId, buildingBomId, 0, "BUILDING",
                 null, 0, leafCount, lineSeq, "", exceptions);
 
+        // Future: Add mutation for discipline recipes (ProjectOrderBlueprint §1.1).
+        // "add FP" order line → resolve FP_RECIPE from ERP.db → apply ROUTE verb
+        // to building spaces using AD_Val_Rule. Discipline resolves from child
+        // product's AD_Org_ID, not from order line.
+        // See DISC_VALIDATION_DB_SRS.md §10.4.6 (shared recipes in ERP.db).
+        //
+        // Connection point: after explode() produces the structural tree, Add
+        // mutations append discipline recipe C_OrderLines. Each recipe line
+        // carries a generative verb_ref (ROUTE/FRAME/TILE/WIRE) that the
+        // compile path expands via Strategy + AD_Val_Rule Specification.
+
         BIMLogger.fine("BOMDROP", "{} → {} leaves (order={}, bom={})",
                 entry.id(), leafCount[0], orderId, buildingBomId);
         System.out.printf("[BomDropper] %s → %d leaves (order=%s, bom=%s)%n",
@@ -138,12 +149,14 @@ public class BomDropper {
     }
 
     /**
-     * Find the BUILDING BOM matching this entry's M_Product_Category + doc_sub_type.
-     * // Implementing DATA_MODEL.md §7 — M_Product_Category alignment (W018)
+     * Find the root BOM matching this entry's M_Product_Category + doc_sub_type.
+     * // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+     * Root = BOM with no parent m_bom_line (replaces bom_type = 'BUILDING' query).
      */
     private static String findBuildingBom(Connection conn, BuildingEntry entry) throws SQLException {
         String sql = "SELECT Value FROM m_bom "
-                   + "WHERE bom_type = 'BUILDING' AND m_product_category_id = ? AND doc_sub_type = ? "
+                   + "WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
+                   + "AND m_product_category_id = ? AND doc_sub_type = ? "
                    + "AND is_active = 1 ORDER BY seq_no LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, entry.mProductCategoryId());

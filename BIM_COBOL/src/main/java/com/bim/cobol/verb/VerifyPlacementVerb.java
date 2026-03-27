@@ -82,15 +82,16 @@ public class VerifyPlacementVerb implements Verb<VerifyPlacementVerb.PlacementVe
                 new PlacementVerifyPayload(0, 0, 0, gaps));
         }
 
-        // L0: BUILDING BOM exists
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+        // L0: Tree-root BOM exists (root = not a child of any other BOM)
         int l0 = scalarCount(bomConn,
-            "SELECT COUNT(*) FROM m_bom WHERE bom_type = 'BUILDING'");
+            "SELECT COUNT(*) FROM m_bom WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1)");
 
-        // L1: BUILDING BOM children (floor lines)
+        // L1: Tree-root BOM children (floor lines)
         int l1 = 0;
         List<Integer> buildingBomIds = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT m_bom_id FROM m_bom WHERE bom_type = 'BUILDING'")) {
+                "SELECT m_bom_id FROM m_bom WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1)")) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) buildingBomIds.add(rs.getInt(1));
             }

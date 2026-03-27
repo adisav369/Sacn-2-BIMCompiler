@@ -51,12 +51,14 @@ public class MCDocType extends X_C_DocType {
      * Resolve M_Product_Category from m_bom BUILDING record via doc_sub_type FK.
      * Returns RE/CO/IN/ST, or null if no BUILDING BOM found.
      */
+    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
     public String resolveProductCategory() throws SQLException {
         String dst = getDocSubType();
         if (dst == null) return null;
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT m_product_category_id FROM m_bom " +
-                "WHERE bom_type = 'BUILDING' AND doc_sub_type = ? AND is_active = 1 LIMIT 1")) {
+                "WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) " +
+                "AND doc_sub_type = ? AND is_active = 1 LIMIT 1")) {
             ps.setString(1, dst);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString(1) : null;

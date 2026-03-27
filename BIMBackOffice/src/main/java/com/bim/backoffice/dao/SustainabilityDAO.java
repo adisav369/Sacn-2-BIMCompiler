@@ -205,12 +205,13 @@ public class SustainabilityDAO {
         return map;
     }
 
+    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
     private double computeFloorArea(Connection bomConn) throws SQLException {
         // Sum floor AABB areas (width × depth in mm → m²)
         String sql = """
                 SELECT SUM(aabb_width_mm * aabb_depth_mm / 1000000.0)
                 FROM m_bom
-                WHERE bom_type = 'FLOOR' AND is_active = 1
+                WHERE bom_id IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND is_active = 1
                 """;
         try (PreparedStatement ps = bomConn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {

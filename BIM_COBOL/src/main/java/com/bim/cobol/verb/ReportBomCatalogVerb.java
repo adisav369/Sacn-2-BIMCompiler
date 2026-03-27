@@ -47,27 +47,26 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
 
         Connection conn = ctx.bomConn();
 
-        // Collect all active BOMs across all types
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+        // Collect all active BOMs (type-agnostic)
         List<CatalogRow> rows = new ArrayList<>();
-        for (String type : List.of("BUILDING", "FLOOR", "ROOM", "SET", "ITEM")) {
-            for (MBOM bom : MBOM.getByType(conn, type)) {
-                List<MBOMLine> children = MBOMLine.getByBom(conn, bom.getBomId());
-                int buyCount = 0, makeCount = 0, phantomCount = 0;
-                for (MBOMLine line : children) {
-                    switch (line.getComponentType()) {
-                        case "BUY"     -> buyCount++;
-                        case "MAKE"    -> makeCount++;
-                        case "PHANTOM" -> phantomCount++;
-                    }
+        for (MBOM bom : MBOM.getAll(conn)) {
+            List<MBOMLine> children = MBOMLine.getByBom(conn, bom.getBomId());
+            int buyCount = 0, makeCount = 0, phantomCount = 0;
+            for (MBOMLine line : children) {
+                switch (line.getComponentType()) {
+                    case "BUY"     -> buyCount++;
+                    case "MAKE"    -> makeCount++;
+                    case "PHANTOM" -> phantomCount++;
                 }
-                rows.add(new CatalogRow(
-                    bom.getBomId(), bom.getBomName(),
-                    bom.getBomType(), bom.getProductCategory(),
-                    bom.getDocSubType() != null ? bom.getDocSubType() : "",
-                    bom.getEntityType() != null ? bom.getEntityType() : "D",
-                    children.size(), buyCount, makeCount, phantomCount
-                ));
             }
+            rows.add(new CatalogRow(
+                bom.getBomId(), bom.getBomName(),
+                bom.getBomType(), bom.getProductCategory(),
+                bom.getDocSubType() != null ? bom.getDocSubType() : "",
+                bom.getEntityType() != null ? bom.getEntityType() : "D",
+                children.size(), buyCount, makeCount, phantomCount
+            ));
         }
         rows.sort((a, b) -> a.bomId().compareTo(b.bomId()));
 

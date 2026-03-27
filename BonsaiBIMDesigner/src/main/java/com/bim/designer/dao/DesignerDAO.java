@@ -58,9 +58,10 @@ public class DesignerDAO {
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
                        COALESCE(b.aabb_depth_mm, 0)  AS aabb_depth_mm,
                        COALESCE(b.aabb_height_mm, 0) AS aabb_height_mm
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
-                  AND b.bom_type = 'BUILDING' AND b.is_active = 1
+                  AND b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1
                 WHERE d.IsActive = 1
                 ORDER BY d.SeqNo
                 """;
@@ -94,9 +95,10 @@ public class DesignerDAO {
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
                        COALESCE(b.aabb_depth_mm, 0)  AS aabb_depth_mm,
                        COALESCE(b.aabb_height_mm, 0) AS aabb_height_mm
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
-                  AND b.bom_type = 'BUILDING' AND b.is_active = 1
+                  AND b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1
                 WHERE d.ProjectName = ?
                 """;
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
@@ -125,11 +127,12 @@ public class DesignerDAO {
     /** Distinct BOM categories for a given DocSubType. */
     public List<CategoryRow> listCategories(String docSubType) throws SQLException {
         String sql = """
-                SELECT m_product_category_id, bom_type, COUNT(*) AS bom_count
+                -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+                SELECT m_product_category_id, COUNT(*) AS bom_count
                 FROM m_bom
                 WHERE doc_sub_type = ? AND is_active = 1
                   AND m_product_category_id IS NOT NULL
-                GROUP BY m_product_category_id, bom_type
+                GROUP BY m_product_category_id
                 ORDER BY m_product_category_id
                 """;
         List<CategoryRow> rows = new ArrayList<>();
@@ -139,7 +142,7 @@ public class DesignerDAO {
                 while (rs.next()) {
                     rows.add(new CategoryRow(
                             rs.getString("m_product_category_id"),
-                            rs.getString("bom_type"),
+                            null,
                             rs.getInt("bom_count")
                     ));
                 }
@@ -164,7 +167,8 @@ public class DesignerDAO {
                        (SELECT COUNT(*) FROM m_bom_line fl
                         WHERE fl.M_BOM_ID IN (
                             SELECT s.M_BOM_ID FROM m_bom s
-                            WHERE s.bom_type = 'SET' AND s.is_active = 1
+                            -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+                            WHERE s.is_active = 1
                               AND EXISTS (SELECT 1 FROM m_bom_line sl
                                           WHERE sl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
                                             AND sl.child_product_id = f.Value)
@@ -172,7 +176,8 @@ public class DesignerDAO {
                 FROM m_bom f
                 JOIN m_bom_line bl ON bl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
                   AND bl.child_product_id = f.Value
-                WHERE f.bom_type = 'FLOOR' AND f.is_active = 1
+                -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+                WHERE f.is_active = 1
                 ORDER BY f.Value
                 """;
         List<SegmentRow> rows = new ArrayList<>();
@@ -200,7 +205,8 @@ public class DesignerDAO {
                 FROM m_bom s
                 JOIN m_bom_line bl ON bl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
                   AND bl.child_product_id = s.Value
-                WHERE s.bom_type = 'SET' AND s.is_active = 1
+                -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
+                WHERE s.is_active = 1
                 ORDER BY s.m_product_category_id
                 """;
         List<String> disciplines = new ArrayList<>();
@@ -467,8 +473,8 @@ public class DesignerDAO {
                         WHERE l.M_BOM_ID = b.M_BOM_ID AND l.is_active = 1
                           AND l.component_type != 'PHANTOM') AS child_count
                 FROM m_bom b
+                -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 WHERE b.m_product_category_id = ?
-                  AND b.bom_type = 'SET'
                   AND b.is_active = 1
                   AND (b.aabb_width_mm <= ? OR b.aabb_width_mm = 0)
                   AND (b.aabb_depth_mm <= ? OR b.aabb_depth_mm = 0)
