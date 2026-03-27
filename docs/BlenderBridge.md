@@ -1,6 +1,10 @@
 # BlenderBridge — Thin Pipe Between Compiler and Viewport
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Jakarta Velocity for BIM — simple API over complex bpy internals.</b> Incremental viewport updates without reloading 48,000 elements, via Java/Python TCP bridge.
+</div>
+
 **Version:** 1.0 (2026-03-18)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §11-§12, IfcOpenShell Federation addon
 

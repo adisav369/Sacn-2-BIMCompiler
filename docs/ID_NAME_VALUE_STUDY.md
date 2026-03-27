@@ -4,6 +4,10 @@
 > Reference: https://wiki.idempiere.org/en/Columns#Standard_Columns
 > Date: 2026-03-26
 
+<div class="bim-banner" markdown>
+<b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Analysis-only study mapping the 4-DB split against standard iDempiere column patterns.
+</div>
+
 ## Summary
 
 iDempiere convention: every table has three identity columns:

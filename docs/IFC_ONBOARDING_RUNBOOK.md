@@ -5,6 +5,10 @@
 >
 > **Prerequisite:** Build passes (`mvn compile -q`). See [SYSTEMS_INSTALLER_GUIDE.md](SYSTEMS_INSTALLER_GUIDE.md) §1–2.
 
+<div class="bim-banner" markdown>
+<b>8 steps to onboard any IFC file — zero code changes.</b> Self-service pipeline from raw IFC to compiled Rosetta Stone, proven on 12 buildings.
+</div>
+
 ---
 
 ## One-Command Onboarding

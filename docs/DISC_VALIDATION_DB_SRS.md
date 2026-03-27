@@ -1,6 +1,10 @@
 # ERP.db SRS — Discipline Validation Database
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>ERP.db holds discipline metadata separate from products and BOMs.</b> Schedules, placement rules, alias cascades, and mined dimension rules — the HOW concern of the 5-DB split.
+</div>
+
 **Version:** 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
 **Depends on:** [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocAction_SRS.md](DocAction_SRS.md) §1.3, [CALIBRATION_SRS.md](CALIBRATION_SRS.md)
 

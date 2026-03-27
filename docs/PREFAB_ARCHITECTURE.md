@@ -1,6 +1,10 @@
 # Prefab Assembly Architecture
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Assembly hierarchy from building down to leaf product.</b> BOM-tier dispatch, MRP BOM Drop pattern, and the three-way resolver (MAKE/BUY/PHANTOM).
+</div>
+
 *Supersedes: runtime spatial resolution for standard buildings (FloorPlateBOMResolver fill_remaining path)*
 *Extends: `MANIFESTO.md` (C_Order model), `SourceCodeGuide.md` (pipeline stages)*
 *Dimension model: [BBC.md](BOMBasedCompilation.md) §1 — Category (M_Product_Category) + Owner (M_Product identity) + SpaceSize (AABB)*

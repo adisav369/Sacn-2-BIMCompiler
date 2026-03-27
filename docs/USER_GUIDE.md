@@ -1,6 +1,10 @@
 # BIM Compiler User Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>From YAML to verified 3D building — the complete user reference.</b> DSL syntax, room types, BOM resolution, LOD400 library, fire protection, and output formats.
+</div>
+
 **Version:** 1.1.0
 **Updated:** March 2026
 

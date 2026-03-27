@@ -1,5 +1,9 @@
 # Strategic Industry Positioning — BIM Intent Compiler
 
+<div class="bim-banner" markdown>
+<b>The gap between visual editors and Spatial MRP is an opportunity.</b> Competitive landscape, scorecard, and market positioning against Revit, Tekla, and Trimble.
+</div>
+
 *Why the gap between visual design editors and a Spatial MRP compiler is an
 opportunity, not a deficit.*
 

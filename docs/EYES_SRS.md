@@ -1,6 +1,10 @@
 # BIMEyes SRS — Geometric Comprehension Engine
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>The compiler's ability to see shapes and verify spatial relationships.</b> Unifies geometric intelligence from 8 classes into one module — 97% of 90,310 elements pass shape and position proof.
+</div>
+
 **Version:** 1.0 (2026-03-21, session 49)
 **Depends on:** [LAST_MILE_PROBLEM](LAST_MILE_PROBLEM.md) §Geometric Fingerprint, [DISC_VALIDATE_SRS](DISC_VALIDATE_SRS.md) §DV010, [TestArchitecture](TestArchitecture.md) §Traceability Matrix
 **Pre-requisite:** CP-4 (ProductCategory.java, GeometricFingerprint.java — both DONE session 48)

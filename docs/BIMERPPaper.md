@@ -1,5 +1,9 @@
 # The Construction Economy Is About To Get Hit By an ERP Expert
 
+<div class="bim-banner" markdown>
+<b>Academic paper — applying 30 years of ERP to construction.</b> What Autodesk and Primavera should have done together, from the architect of ADempiere and iDempiere.
+</div>
+
 *What Autodesk and Primavera should have done together, but i can't wait.*
 
 **Redhuan D. Oon**

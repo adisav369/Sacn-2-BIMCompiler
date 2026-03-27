@@ -1,6 +1,10 @@
 # BIM Intent Compiler — Systems Installer Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Full platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for sysadmins and developers.
+</div>
+
 **Audience:** Systems administrators, DevOps engineers, and developers setting up the full BIM Compiler platform from source.
 
 **For end-user desktop installation**, see [INSTALLER_SPEC.md](INSTALLER_SPEC.md).

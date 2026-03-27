@@ -1,7 +1,7 @@
 # Multi-Discipline BOM Design
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e3f2fd, #e1f5fe, #e3f2fd); border-left: 4px solid #0277bd; border-right: 4px solid #0277bd;">
+<div class="bim-banner" markdown>
 <b>9 disciplines, one compiler.</b> Architectural, structural, plumbing, electrical, fire — each discipline brings its own BOM sub-tree and rules. The compiler enforces all of them through the same pipeline. Same grammar, different vocabularies.
 </div>
 

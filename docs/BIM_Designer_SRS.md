@@ -1,6 +1,10 @@
 # BIM Designer SRS — UX Requirements & User Journeys
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>50 testable UX requirements for the BIM Designer.</b> Acceptance criteria, latency contracts, and user journeys — HOW TO VERIFY what [BIM_Designer.md](BIM_Designer.md) specifies.
+</div>
+
 **Version:** 1.1 (2026-03-20)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §17-18, [G4_SRS.md](G4_SRS.md), [DocValidate.md](DocValidate.md) §15,
 [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md), [ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md), [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md)

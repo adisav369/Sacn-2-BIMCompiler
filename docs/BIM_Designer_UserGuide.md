@@ -1,6 +1,10 @@
 # BIM Designer — User Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Set up and use the BIM Designer addon in Blender/Bonsai.</b> Covers the DesignerServer, validation engine, and two-tier architecture with [Back Office](BackOfficeUserGuide.md).
+</div>
+
 **Version:** 1.0 (2026-03-23, session 60)
 **Status:** Draft — updated each session as features are built and tested.
 

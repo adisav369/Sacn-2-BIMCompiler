@@ -6,6 +6,10 @@
 > Runs inside [Bonsai](https://bonsaibim.org/) (the open-source IFC addon)
 > which runs inside [Blender](https://www.blender.org/) (the open-source 3D platform).
 
+<div class="bim-banner" markdown>
+<b>Bonsai/Blender as a spatial ERP viewport, not just a BIM viewer.</b> Python addon replacing IFC file access with a FederatedModel Spatial Database for queryable geometry.
+</div>
+
 ---
 
 ## What Is the Federation Addon

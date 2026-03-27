@@ -1,6 +1,10 @@
 # Infrastructure IFC Analysis
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Same hierarchy, different vocabulary — infrastructure is not a new problem.</b> 9 IFC4X3 files (bridges, roads, rails) mapped to existing pipeline abstractions.
+</div>
+
 **Date:** 2026-03-16 | **Updated:** 2026-03-19 (deep review: file probe, spec gap audit, LOD plan)
 **Source files:** `reference/infrastructure/` (9 IFC4X3_ADD2 files, ~7.5 MB)
 **Purpose:** Understand how infrastructure IFCs map to the existing pipeline, identify spec gaps, and plan the Rosetta Stone path for infrastructure

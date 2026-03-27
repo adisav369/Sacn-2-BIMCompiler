@@ -2,7 +2,7 @@
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e8eaf6, #ede7f6, #e8eaf6); border-left: 4px solid #5c6bc0; border-right: 4px solid #5c6bc0;">
+<div class="bim-banner" markdown>
 <b>5 databases, 120+ tables, zero ambiguity.</b> Every element traces from a library product through a BOM recipe to a placed instance. The split is deliberate — catalog, compliance rules, discipline metadata, recipe, and output never share a database, so each concern scales independently.
 </div>
 

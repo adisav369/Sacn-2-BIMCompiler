@@ -1,6 +1,10 @@
 # G-4 SRS — Compile DB (output.db) + Validation Engine
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>output.db is the single compiled artifact.</b> ConstructionModelSpawner populates it from BOM templates; WorkOutputDAO persists Save/Recall/Promote.
+</div>
+
 **Version:** 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §17.10, [DocValidate.md](DocValidate.md) §15, [MANIFESTO.md](MANIFESTO.md) §2
 **Pre-requisite:** TACK-FIX (see [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md))

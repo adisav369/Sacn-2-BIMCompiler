@@ -2,7 +2,7 @@
 
 > **Foundation:** [MANIFESTO](MANIFESTO.md) · [BBC](BOMBasedCompilation.md) §3.5 · [ProjectOrderBlueprint](ProjectOrderBlueprint.md) §3 (Abstract Category Tree) · [BIM_COBOL](BIM_COBOL.md) §TILE
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e0f2f1, #e8f5e9, #e0f2f1); border-left: 4px solid #00695c; border-right: 4px solid #00695c;">
+<div class="bim-banner" markdown>
 <b>Roof tiles as hull plates. Tunnel linings as prefab rings. Earthworks as volumetric BOMs.</b> The engine does not compile buildings. It compiles recursive Bills of Materials with spatial coordinates. Construction was the first proof. This document demonstrates why it is not the last.
 </div>
 

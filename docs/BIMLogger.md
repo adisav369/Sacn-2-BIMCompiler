@@ -1,6 +1,10 @@
 # BIMLogger — Structured Pipeline Logging
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Timestamped, levelled logging for every pipeline run.</b> Greppable log files that track compilation without requiring human visual inspection.
+</div>
+
 **Module:** `orm-core` (`com.bim.orm.BIMLogger`)
 **DAGCompiler extension:** `com.bim.compiler.util.BIMLogger` (adds Point3D-aware methods)
 

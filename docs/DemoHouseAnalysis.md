@@ -3,6 +3,10 @@
 > **Foundation:** [GENERATIVE_HOUSE_SRS.md §10](GENERATIVE_HOUSE_SRS.md#10-demohouse-implementation-tasks-s59) · [BBC](BOMBasedCompilation.md) §3.4-3.6 · [TestArchitecture](TestArchitecture.md) §Traceability
 > **Session:** S59. **Building:** DemoHouse (SH base + FK roof + FP discipline).
 
+<div class="bim-banner" markdown>
+<b>Generative proof — SH base + FK roof swap + FP discipline add.</b> Three OrderLines exercise BOM Drop, component swap, and discipline addition in a single compilation.
+</div>
+
 ---
 
 ## 1. Scenario Summary

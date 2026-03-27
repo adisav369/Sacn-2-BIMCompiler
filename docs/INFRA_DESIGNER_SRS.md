@@ -1,6 +1,10 @@
 # Infrastructure Designer SRS
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Bridge, road, rail, tunnel — same compiler, terrain-following placement.</b> Designer UX for infrastructure with IFC4X3 vocabulary and alignment context.
+</div>
+
 **Version:** 2.0 | **Date:** 2026-03-20
 **Scope:** Designer UX for infrastructure (bridge/road/rail/tunnel) + terrain-following placement
 **Companion:** `StrategicIndustryPositioning.md` (gap matrix), `InfrastructureAnalysis.md` §8 (terrain model)

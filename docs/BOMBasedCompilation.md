@@ -2,8 +2,8 @@
 
 > *If you can draw it, you can build it. If you can BOM it, you can compile it.*
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e3f2fd, #e8eaf6, #e3f2fd); border-left: 4px solid #1565c0; border-right: 4px solid #1565c0;">
-<b>Everything is a BOM.</b> <a href="SampleHouseAnalysis.md">Houses</a>, <a href="TerminalAnalysis.md">terminals</a>, <a href="InfrastructureAnalysis.md">bridges</a>, <a href="ShipYard.md">ships</a> — same pipeline, different data.
+<div class="bim-banner" markdown>
+<b>Everything is a BOM.</b> [Houses](SampleHouseAnalysis.md), [terminals](TerminalAnalysis.md), [bridges](InfrastructureAnalysis.md), [ships](ShipYard.md) — same pipeline, different data.
 </div>
 
 A [Bill of Materials](https://en.wikipedia.org/wiki/Bill_of_materials) is a

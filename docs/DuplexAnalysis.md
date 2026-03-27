@@ -1,6 +1,10 @@
 # Duplex Mirror Analysis — IFC2x3_Duplex Forensics
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Mirror algorithm proof — two units reflected across a party wall.</b> DX exercises the MIRROR verb and multi-storey BOM structure with 1,099 elements.
+</div>
+
 **Spec alignment (2026-03-18):** DX BOM uses centroid-floorMin offsets — same
 tack convention drift as SH and TE. Must implement `BOMBasedCompilation.md` §4
 (parent LBD to child LBD, BUFFER lines, SUM invariant). Code changes spec in

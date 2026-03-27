@@ -1,6 +1,6 @@
 # The Rosetta Stone Strategy
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fff8e1, #fff3e0, #fff8e1); border-left: 4px solid #e65100; border-right: 4px solid #e65100;">
+<div class="bim-banner" markdown>
 <b>35 real buildings, recompiled from their BOMs.</b> If every element lands at the same coordinates as the original, the grammar is certified. No tolerance tuning, no heuristics — pure coordinate equality is the only proof that matters.
 </div>
 

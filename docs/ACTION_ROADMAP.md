@@ -4,6 +4,10 @@
 > [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md) (session plan) ·
 > [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) (iDempiere conformance)
 
+<div class="bim-banner" markdown>
+<b>Navigation hub — where we are and what's next.</b> Pipeline status, gate results, regressions, and quick links to every active work item.
+</div>
+
 ---
 
 ## Where We Are (S96, 2026-03-26)

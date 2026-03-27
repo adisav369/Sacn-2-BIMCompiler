@@ -1,6 +1,10 @@
 # BIM Designer — Installer Specification
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>One download, five minutes, working BIM Designer.</b> End-user installer spec — no terminal commands, no manual Java setup, no database configuration.
+</div>
+
 **Version:** 1.0 (2026-03-20)
 **Status:** SPEC — to be implemented after multi-server service is stable
 

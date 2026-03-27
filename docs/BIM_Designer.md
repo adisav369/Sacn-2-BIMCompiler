@@ -1,6 +1,10 @@
 # BIM Designer — GUI Architecture from Existing Infrastructure
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>The GUI is a parameter chooser that triggers compilation.</b> Every concept the Designer needs already exists — tack convention, BOM cascade, verbs, EntityType governance.
+</div>
+
 **Version:** 1.1 (2026-03-17)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md), [MANIFESTO.md](MANIFESTO.md), [BIM_COBOL.md](BIM_COBOL.md)
 

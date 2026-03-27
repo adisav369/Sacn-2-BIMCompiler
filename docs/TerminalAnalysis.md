@@ -1,6 +1,10 @@
 # Terminal Recomposition — SJTII_Terminal Forensics
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>48,428 elements across 8 disciplines — the stress test.</b> Terminal proves the compiler scales from residential to commercial-institutional with full multi-discipline coverage.
+</div>
+
 ## CTFL Review Status (session 31-34, 2026-03-19)
 
 **Last reviewed:** 2026-03-19 session 34 — CTFL static review + SRS gap analysis.

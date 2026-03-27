@@ -2,6 +2,10 @@
 
 > **Foundation:** [MANIFESTO](MANIFESTO.md) · [BBC](BOMBasedCompilation.md) · [BIM_Designer_SRS](BIM_Designer_SRS.md)
 
+<div class="bim-banner" markdown>
+<b>A building is a C_Order — rooms, floors, walls are M_Products in a BOM.</b> Executive blueprint covering what is proven today and the roadmap to production.
+</div>
+
 ## Executive Brief
 
 **What this is.** A BIM compiler that treats buildings as manufactured

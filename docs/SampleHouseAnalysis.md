@@ -1,6 +1,10 @@
 # SampleHouse Analysis — Ifc4_SampleHouse Guardrails
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>55 elements, one storey — the hello-world proof.</b> Smallest Rosetta Stone validates the full pipeline end-to-end with ARC + STR disciplines.
+</div>
+
 **Stone:** 1 of 3 (smallest — hello-world proof)
 **Updated:** 2026-03-19 (session 24)
 

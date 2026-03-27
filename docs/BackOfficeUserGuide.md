@@ -1,6 +1,10 @@
 # BIM Back Office — User Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Multi-user ERP server — all projects, all users, all reports.</b> HTTP API on port 9877 for portfolio management, cost reports, and project administration.
+</div>
+
 **Version:** 2.0 (2026-03-20, session 39d)
 **Module:** `BIMBackOffice` (`com.bim.backoffice`)
 

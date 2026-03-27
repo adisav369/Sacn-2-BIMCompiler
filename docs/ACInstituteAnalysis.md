@@ -1,6 +1,10 @@
 # AC11 Institute Analysis — AC11_Institute_IFC2x3.ifc Guardrails
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>699-element institutional building — 5 storeys, IFC2x3.</b> German office/lab complex validates multi-storey institutional extraction with ArchiCAD 11.
+</div>
+
 **Stone:** candidate #5 (German institutional — IFC2x3 ArchiCAD export)
 **Created:** 2026-03-20 (session 38b preparation)
 

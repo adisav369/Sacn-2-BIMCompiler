@@ -3,7 +3,7 @@
 > **Read this first.** Before any spec, any code, any schema. This is the lens
 > through which every design decision in this project makes sense.
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fff8e1, #fffde7, #fff8e1); border-left: 4px solid #ff8f00; border-right: 4px solid #ff8f00;">
+<div class="bim-banner" markdown>
 <b>A building is a manufactured product with coordinates.</b> ERP already knows how to explode a BOM, track orders, and validate rules. This project applies that 30-year-old pattern to construction — same tables, same logic, spatial output instead of shop-floor output.
 </div>
 

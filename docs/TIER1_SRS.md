@@ -1,6 +1,10 @@
 # Tier 1 SRS — 4D, 5D, 6D, 7D, Audit Trail, 3D Native
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>4D scheduling, 5D costing, 6D carbon, 7D facilities management.</b> Six bounded items built on Java DAOs with thin ndjson bridge to Bonsai panels.
+</div>
+
 **Version:** 1.1 | **Date:** 2026-03-20
 **Scope:** Six bounded items, +4 scorecard points (27→31/36) + live 4D/5D DAOs
 **Architecture:** Java DAO backend + thin bridge (ndjson TCP) + light Bonsai panel

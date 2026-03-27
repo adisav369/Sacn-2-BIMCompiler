@@ -1,7 +1,7 @@
 # Work Order Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #e0f2f1, #e8f5e9, #e0f2f1); border-left: 4px solid #00897b; border-right: 4px solid #00897b;">
+<div class="bim-banner" markdown>
 <b>From a 30-line YAML to a verified 3D building in one command.</b> This is how you run the compiler. The YAML is a human-readable stand-in for ERP order data — each section maps to an iDempiere table.
 </div>
 

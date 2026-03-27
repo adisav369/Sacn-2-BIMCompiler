@@ -1,6 +1,10 @@
 # BIM BackOffice — Deployment Guide
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Build, run, deploy — local, LAN, or Docker.</b> Quick start commands and WAN deployment procedures for the BackOffice server.
+</div>
+
 ## Quick Start (Local / LAN)
 
 ```bash

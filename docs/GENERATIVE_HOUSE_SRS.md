@@ -3,6 +3,10 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) §1 (Three BOM Dimensions) · §3.4 (BOM Explosion) · §3.5 (Selection Cascade)
 > **Traces:** BBC.md §3.6 (Rosetta Stone proves machinery, generative uses it)
 
+<div class="bim-banner" markdown>
+<b>Generative buildings need data, not new code.</b> BOM category, product category, and space size select from the library — the same pipeline compiles both extracted and generative buildings.
+</div>
+
 *Date: 2026-03-21. Session: S51. Replaces: GenerativeRoomPopulator (deleted — wrong architecture).*
 
 ---

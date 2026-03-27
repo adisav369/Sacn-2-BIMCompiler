@@ -1,6 +1,10 @@
 # TACK-FIX Method Specification
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Fix three code paths that compute dx/dy/dz wrong.</b> Centroid-relative offsets must become LBD-to-LBD (minCorner-to-minCorner) per [BBC.md §4](BOMBasedCompilation.md).
+</div>
+
 **Version:** 1.0 (2026-03-18, session 21)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §4, [DATA_MODEL.md](DATA_MODEL.md) §1.2
 **Status:** IMPLEMENTED — FIX-1 (ScopeBomBuilder LBD offsets) and FIX-3 (VerbDetector minX/minY/minZ) confirmed in code. FIX-2 (FloorRoomBomBuilder zero offsets) partially implemented.

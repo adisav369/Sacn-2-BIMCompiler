@@ -1,6 +1,10 @@
 # BIM Back Office — Software Requirements Specification
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>Multi-user, multi-project ERP server for construction management.</b> HTTP JSON API for portfolio views, reports, and project administration alongside the single-user BIM Designer.
+</div>
+
 **Version:** 1.0
 **Date:** 2026-03-20
 **Module:** `BIMBackOffice` (`com.bim.backoffice`)

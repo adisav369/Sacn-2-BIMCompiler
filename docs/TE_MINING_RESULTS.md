@@ -1,6 +1,10 @@
 # Terminal Mining Results — §7.4 AD_Val_Rule Seed Data
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
+<div class="bim-banner" markdown>
+<b>48,428 elements mined for validation rule seed data.</b> Discipline distributions, element densities, and spacing patterns extracted from the Terminal as ground truth.
+</div>
+
 **Date:** 2026-03-18 (session 21)
 **Source:** `component_library.db` / `I_Element_Extraction` WHERE building_type='SJTII_Terminal'
 **Element count:** 48,428

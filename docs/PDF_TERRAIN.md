@@ -3,6 +3,10 @@
 > **Part of:** [FederatedModel Spatial Database](https://github.com/red1oon/IfcOpenShell/tree/feature/IFC4_DB/src/bonsai/bonsai/bim/module/federation) ·
 > [Bonsai](https://bonsaibim.org/) addon for [Blender](https://www.blender.org/)
 
+<div class="bim-banner" markdown>
+<b>Paper survey plans become 3D terrain meshes via OCR.</b> 689 elevation points extracted from real civil survey — the bridge between land survey and spatial MRP.
+</div>
+
 **Status:** POC complete. 689 elevation points extracted from real civil survey.
 
 ---

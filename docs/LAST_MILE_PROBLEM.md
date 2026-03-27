@@ -1,7 +1,7 @@
 # The Drift
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fce4ec, #fff3e0, #fce4ec); border-left: 4px solid #d32f2f; border-right: 4px solid #d32f2f;">
+<div class="bim-banner" markdown>
 <b>AI cannot repeat an outcome. Determinism is our religion here.</b>
 </div>
 

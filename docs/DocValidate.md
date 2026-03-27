@@ -1,7 +1,7 @@
 # DocValidate — Construction Validation Engine
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
-<div style="max-width: 620px; margin: 24px auto; padding: 20px 32px; background: linear-gradient(to right, #fff3e0, #fff8e1, #fff3e0); border-left: 4px solid #ef6c00; border-right: 4px solid #ef6c00;">
+<div class="bim-banner" markdown>
 <b>Spatial rules from real buildings + regulatory rules from building codes.</b> Together they validate every placement. Rules are external to the BOM — swap jurisdiction without touching products, swap products without touching rules.
 </div>
 

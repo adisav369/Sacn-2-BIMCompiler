@@ -3,6 +3,10 @@
 > **Module:** `2D_Layout/` (Maven sibling of DAGCompiler) ·
 > **Source spec:** `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md`
 
+<div class="bim-banner" markdown>
+<b>The 3D model IS the drawing — no separate drafting tool.</b> Section cuts through compiled output.db produce SVG floor plans, elevations, and roof plans automatically.
+</div>
+
 **Status:** POC complete on Sample House. Java stubs + Python prototype. Floor plan SVG generated.
 
 ---
