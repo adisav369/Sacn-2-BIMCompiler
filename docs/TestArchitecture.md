@@ -325,13 +325,19 @@ ef278ec6  MBOM.java
 
 **Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN.
 
-| Gate | SH | FK | IN | DX | TE | DM |
-|------|----|----|----|----|----|----|
-| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS (48428) | PASS (60) |
-| G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
-| G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
+| Gate | SH | FK | IN | DX | TE † | DM |
+|------|----|----|----|----|-------|------|
+| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS† (48428) | PASS (60) |
+| G2-VOLUME | PASS | PASS | PASS | PASS | PASS† | — |
+| G3-DIGEST | PASS | PASS | PASS | PASS | PASS† | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
-| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
-| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
+| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS† | PASS |
+| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS† | PASS |
 
-**Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM).
+> **†TE: extraction-only, not BOM-compiled.** IFCtoBOM QA blocked: 471/1515
+> tack overflows (W-TACK-1), 14/50 SET BOMs unbalanced (W-BUFFER-1). TE_BOM.db
+> empty → BomDrop never runs → c_order=0, c_orderline=0 in output. Gates pass
+> because output DB IS the federation extraction (same as reference). SH/FK/DM
+> are real BOM compilations. See `logs/pipeline_SJTII_Terminal_ifctobom_*.log`.
+
+**Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM). TE BOM compilation (IFCtoBOM tack fix).

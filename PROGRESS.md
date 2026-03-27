@@ -9,14 +9,16 @@
 
 **Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN (pre-S96). S96-p0 unblocked 11 DocType-blocked buildings — recount pending. 3 regressions open: DX (severe coordinate failure), IN (44 windows shifted), RM (stair miscompilation).
 
-| Gate | SH | FK | IN | DX | TE | DM |
-|------|----|----|----|----|----|----|
-| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS (48428) | PASS (60) |
-| G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
-| G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
+| Gate | SH | FK | IN | DX | TE † | DM |
+|------|----|----|----|----|-------|------|
+| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS† (48428) | PASS (60) |
+| G2-VOLUME | PASS | PASS | PASS | PASS | PASS† | — |
+| G3-DIGEST | PASS | PASS | PASS | PASS | PASS† | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
-| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
-| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
+| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS† | PASS |
+| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS† | PASS |
+
+> **†TE: extraction-only, not compiled.** IFCtoBOM QA blocked (471/1515 tack overflows, 14/50 SET BOMs unbalanced). TE_BOM.db empty. Output = federation extraction (c_order=0, c_orderline=0). Gates compare extraction-vs-extraction.
 
 **Pipeline:** 9 stages. 76 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
