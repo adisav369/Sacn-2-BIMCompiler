@@ -226,6 +226,13 @@ through it. Measured: 2.9km winding road with R=17m–1037m curves, heading swee
 with validation against IFC4X3 rules.
 See [`INFRA_DESIGNER_SRS.md`](INFRA_DESIGNER_SRS.md) §1 + §5 for full spec.
 
+**1b. Geometry Forge — formula-driven construction pieces.**
+Domain-specific tools (MiTek for timber, Tekla for steel, NAPA for hulls) have
+computed geometry from parameters for decades — but each is locked to one material
+system. The [Geometry Forge](GEOMETRY_FORGE_SRS.md) generalises this: same
+ForgeEngine interface, any piece type, full BOM traceability, same EYES
+verification. See GEOMETRY_FORGE_SRS.md §9 for industry precedent matrix.
+
 **2. DB/ERP integration is a bigger moat than GUI.**
 Converting IFC to a relational database with ERP semantics (M_Product, M_BOM,
 C_Order) requires deep manufacturing domain knowledge. A startup can hire UI

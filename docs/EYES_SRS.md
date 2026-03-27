@@ -150,6 +150,8 @@ BIMEyes/
 
 Geometric invariant classification from AABB dimensionless ratios.
 Source: GeometricFingerprint.java lines 57-66.
+No trained models — thresholds are derived from geometric definitions (a wall IS planar
+by IFC class definition, not by statistical inference). No tolerance tuning, no heuristics.
 
 | Archetype | Condition | Examples |
 |-----------|-----------|---------|
@@ -301,6 +303,10 @@ Detects gaps where the building has no roof overhead.
 (union of all IfcWall/IfcCurtainWall/IfcWallStandardCase) with 50mm overhang tolerance.
 
 **Witness:** W-DH-ROOF-2.
+
+P27/P28 are verification proofs — they prove compiled geometry is correct. The same
+maths running in reverse can *produce* geometry. See [Geometry Forge](GEOMETRY_FORGE_SRS.md)
+§4 and §8 for how EYES verification extends to formula-computed pieces.
 
 ### 4.3 Tier 3 — Aggregate/Conservation (12 proofs)
 

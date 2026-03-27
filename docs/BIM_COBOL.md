@@ -1233,6 +1233,11 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 
 Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.
 
+**FORGE verb** (spec only): `FORGE <piece_type> [key:value ...]` — computes
+construction pieces from parameters via [Geometry Forge](GEOMETRY_FORGE_SRS.md).
+Same verb architecture, same VerbResult output. Shell registered, no piece types
+implemented yet.
+
 ---
 
 ## 18. Synthetic BOM Creation — The Composition Language

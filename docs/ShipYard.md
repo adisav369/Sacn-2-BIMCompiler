@@ -201,6 +201,10 @@ terrain-following for infrastructure. Same pattern — a surface provider that m
 
 **Scope:** 2-3 sessions. Not blocking Phase 1 or public release.
 
+**Generalisation:** The lofted surface pattern — parameters + formula → placement
+coordinates — is the same computation used by TRIM, TILE, ROUTE, and ARRAY verbs.
+See [Geometry Forge](GEOMETRY_FORGE_SRS.md) §3 for the unified treatment.
+
 ---
 
 ## 7. Implementation Phases

@@ -158,6 +158,8 @@ See `DocValidate.md` §15.6 (decision tree), `LAST_MILE_PROBLEM.md` R21-R24 (sch
 hash prefix). ASI controls per-instance sizing; the compiler scales library LODs,
 never creates geometry. `G5-PROVENANCE` Check 6 enforces zero GEO_ hashes.
 `createBoxGeometry` and `bindParametric` must not exist in any compilation code path.
+The [Geometry Forge](GEOMETRY_FORGE_SRS.md) extends this rule: formula-driven
+pieces carry full BOM traceability (§6), unlike parametric mesh which has none.
 
 **IFC already solves geometry.** The IFC schema carries relational structure
 (`IfcRelAggregates`, `IfcRelVoidsElement`, `IfcRelConnectsElements`, `IfcRelDefinesByType`)

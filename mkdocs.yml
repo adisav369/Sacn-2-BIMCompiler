@@ -43,6 +43,9 @@ markdown_extensions:
   - toc:
       permalink: true
 
+extra_css:
+  - stylesheets/custom.css
+
 extra:
   analytics:
     provider: google
@@ -88,12 +91,15 @@ nav:
       - FederatedModel Platform: Enterprise.md
       - Back Office: BACK_OFFICE_SRS.md
       - 6D/7D/Audit: TIER1_SRS.md
+      - Standards Compliance: STANDARDS_COMPLIANCE_SRS.md
+      - Reporting Engine: REPORTING_ENGINE_SRS.md
       - Infrastructure Designer: INFRA_DESIGNER_SRS.md
       - PDF Terrain: PDF_TERRAIN.md
       - 2D Layout: 2D_LAYOUT.md
       - Disciplines: DISC_VALIDATE_SRS.md
       - ERP Database: DISC_VALIDATION_DB_SRS.md
       - Generative House: GENERATIVE_HOUSE_SRS.md
+      - Geometry Forge: GEOMETRY_FORGE_SRS.md
       - Prefab Architecture: PREFAB_ARCHITECTURE.md
 
   # ─── Roadmap & Papers ─────────────────────────────────
