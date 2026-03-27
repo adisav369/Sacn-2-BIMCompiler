@@ -9,16 +9,16 @@
 
 **Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN (pre-S96). S96-p0 unblocked 11 DocType-blocked buildings — recount pending. 3 regressions open: DX (severe coordinate failure), IN (44 windows shifted), RM (stair miscompilation).
 
-| Gate | SH | FK | IN | DX | TE † | DM |
-|------|----|----|----|----|-------|------|
-| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS† (48428) | PASS (60) |
-| G2-VOLUME | PASS | PASS | PASS | PASS | PASS† | — |
-| G3-DIGEST | PASS | PASS | PASS | PASS | PASS† | — (GENERATIVE) |
+| Gate | SH | FK | IN | DX | TE | DM |
+|------|----|----|----|----|------|------|
+| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS (48428) | PASS (60) |
+| G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
+| G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
-| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS† | PASS |
-| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS† | PASS |
+| G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
+| G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
 
-> **†TE: extraction-only, not compiled.** IFCtoBOM QA blocked (471/1515 tack overflows, 14/50 SET BOMs unbalanced). TE_BOM.db empty. Output = federation extraction (c_order=0, c_orderline=0). Gates compare extraction-vs-extraction.
+> **TE: 7/7 PASS (S100-p66).** DISCIPLINE SET removed. BOM: 8 (1 BUILDING + 7 FLOOR). W-TACK-1: 0/1515 overflows. CO passthrough deleted.
 
 **Pipeline:** 9 stages. 76 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
@@ -45,6 +45,7 @@
 
 ## Session Log (recent first)
 
+**S100-p66** — TE flatten DISCIPLINE SET → FLOOR→LEAF (prompt 66). Removed SET BOM level from DisciplineBomBuilder — LEAF lines write directly under FLOOR. W-TACK-1: 471→0 overflows. BOM count: 58→8 (1 BUILDING + 7 FLOOR). CO passthrough hack deleted from CompilationPipeline. Seal v44. Verified: SH 7/7, FK 7/7, TE 7/7.
 **S100-p65** — TE IFCtoBOM mechanical fixes (prompt 65). M_Product catalog: wired `ensureProducts()` — leaf products now copied to BOM DB. Non-zero origin QA: excludes BUILDING (world anchor per BBC §4.1), non-BUILDING violations now FAIL+FINE-logged. DocType already PASS (S96-p0). Verified: SH 7/7, FK 8/8, WL 8/8, WT 8/8, WA 8/8 — zero regressions. TE: 2 HIGH remain (W-TACK-1, W-BUFFER-1 → prompt 66).
 **S99-forge** — Geometry Forge scaffolding + 5 starter pieces (SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT). ForgeVerb (76th verb). W-FORGE-1..8 8/8 PASS. ParametricMesh deprecated.
 **S96-docs** — Docs tightening + 2D layout images + ShipYard spec.

@@ -15,7 +15,7 @@ import java.util.*;
  *
  * <p>Used by:
  * <ul>
- *   <li>{@link DisciplineBomBuilder} — CO/IN path (discipline sub-BOMs)</li>
+ *   <li>{@link DisciplineBomBuilder} — CO/IN path (flat FLOOR→LEAF)</li>
  *   <li>{@link StructuralBomBuilder} — RE path (storey-level structural BOMs)</li>
  *   <li>{@link ScopeBomBuilder} — RE path (scope space SET BOMs)</li>
  * </ul>

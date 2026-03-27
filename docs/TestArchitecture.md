@@ -225,8 +225,8 @@ SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of
 2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Sealed:** 2026-03-27 (v43: S98 FINE logging + drift check)
-**Super-hash:** `5ddcd79e4735c9f020b42614f3b66cb2f9ac73af4316db25110416ec1964ed2c`
+**Sealed:** 2026-03-28 (v44: S100-p66 CO passthrough removed)
+**Super-hash:** `fc529279ee0d1f5830dbfb0c0d0a639679ddcb8c7d1fb17b09bfb6b43b825460`
 
 ```
 bash scripts/verify_test_seal.sh            # quick check
@@ -309,7 +309,7 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-42944c70  CompilationPipeline.java
+88dfd94f  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
 e455d42a  PlaceBomVerb.java
 a1909001  EnBlocVerb.java

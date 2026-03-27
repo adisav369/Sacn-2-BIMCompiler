@@ -1,7 +1,6 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
-import com.bim.ifctobom.ClassificationYaml.DisciplineConfig;
 import com.bim.ifctobom.ClassificationYaml.StoreyConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.ifctobom.StructuralBomBuilder.BuildResult;
@@ -10,23 +9,21 @@ import java.sql.*;
 import java.util.*;
 
 /**
- * Creates discipline-stratified BOMs for CO (Commercial) buildings.
+ * Creates flat BOMs for CO (Commercial) buildings.
  *
- * <p>Hierarchy: BUILDING → FLOOR → DISCIPLINE → LEAF
+ * <p>Hierarchy: BUILDING → FLOOR → LEAF (each line carries discipline via grouping)
  * <ul>
  *   <li>BUILDING BOM — whole-building AABB, m_product_category_id=CO</li>
  *   <li>FLOOR BOMs — one per storey (7 for TE)</li>
- *   <li>DISCIPLINE SET BOMs — one per discipline per floor (e.g., TE_GF_ARC)</li>
- *   <li>LEAF lines — factored recipe lines with verb_ref + qty</li>
+ *   <li>LEAF lines — factored recipe lines with verb_ref + qty, grouped by discipline</li>
  * </ul>
  *
  * <p>Discipline assignment is authoritative from I_Element_Extraction.discipline
  * (populated from federated model metadata). The YAML disciplines section
  * declares what disciplines exist; it does NOT assign elements.
  *
- * <p>Offset chain (R16): BUILDING_origin + TACK_dx + 0 + LEAF_dx = element LBD.
- * Only BUILDING carries world origin; FLOOR/DISCIPLINE origins are (0,0,0).
- * DISCIPLINE is a logical grouping with zero spatial offset.
+ * <p>Offset chain (R16): BUILDING_origin + MAKE_dx + LEAF_dx = element LBD.
+ * Only BUILDING carries world origin; FLOOR origins are (0,0,0).
  * All dx/dy/dz are LBD-to-LBD (BOMBasedCompilation.md §4). Centroid =
  * LBD + (width/2, depth/2, height/2) — recovered at compile time.
  *
@@ -46,7 +43,7 @@ import java.util.*;
 public class DisciplineBomBuilder {
 
     /**
-     * Build discipline-stratified BOMs for a CO building.
+     * Build flat BOMs for a CO building (BUILDING → FLOOR → LEAF).
      * Returns the same {@link BuildResult} as {@link StructuralBomBuilder}
      * for pipeline compatibility.
      */
@@ -128,49 +125,21 @@ public class DisciplineBomBuilder {
                 byDiscipline.computeIfAbsent(disc, k -> new ArrayList<>()).add(e);
             }
 
-            // ── Create DISCIPLINE sub-BOMs ────────────────────────────────
+            // ── Flat LEAF writes under FLOOR (discipline = grouping only) ──
+            // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-TACK-1
+            // Discipline is AD_Org on the line, not a BOM level. LEAF lines
+            // write directly under FLOOR; discipline grouping is for verb
+            // factorization only (same-product grouping per discipline).
             int discSeq = 100;
             for (Map.Entry<String, List<ExtractionElement>> discEntry : byDiscipline.entrySet()) {
                 String discCode = discEntry.getKey();
                 List<ExtractionElement> discElems = discEntry.getValue();
 
-                String discBomId = floorBomId + "_" + discCode;
-
-                // Discipline AABB
-                double dMinX = discElems.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
-                double dMaxX = discElems.stream().mapToDouble(ExtractionElement::maxX).max().orElse(0);
-                double dMinY = discElems.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
-                double dMaxY = discElems.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
-                double dMinZ = discElems.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
-                double dMaxZ = discElems.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
-
-                double discW = (dMaxX - dMinX) * 1000;
-                double discD = (dMaxY - dMinY) * 1000;
-                double discH = (dMaxZ - dMinZ) * 1000;
-
-                ProductRegistrar.ensureAssemblyStub(bomConn, discBomId, "SET");
-                insertBomHeader(bomConn, discBomId,
-                        prefix + " " + storeyName + " " + discCode,
-                        "SET", discCode,
-                        null, null,
-                        discW, discD, discH,
-                        discCode,
-                        0, 0, 0);  // R16: child origin = 0; logical grouping
-
-                // MAKE child: FLOOR → DISCIPLINE (zero offset — logical grouping)
-                insertBomLine(bomConn, floorBomId, discBomId, "MAKE",
-                        discCode, discSeq, "0",
-                        0, 0, 0,
-                        0, 0, 0,
-                        null, null, 0, null, null, null);
-                discSeq += 10;
-
-                // ── F-2: Factored LEAF writes under discipline sub-BOM ────
-                // FACTORIZE-v2: delegated to VerbFactorizer (reusable across all builders).
-                // Group by product → VerbDetector cascade → factored or unfactored.
+                // F-2: Factored LEAF writes directly under FLOOR BOM
                 VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
-                        bomConn, discBomId, discElems, fMinX, fMinY, fMinZ, 10, true);
+                        bomConn, floorBomId, discElems, fMinX, fMinY, fMinZ, discSeq, true);
                 totalLines += fr.linesWritten();
+                discSeq = discSeq + fr.linesWritten() * 10 + 10;
                 if (fr.verbMatched() > 0 || fr.unfactored() > 0) {
                     System.out.printf("  [verb] %s/%s: %d verb patterns (%d instances), %d unfactored%n",
                             storeyName, discCode, fr.verbMatched(), fr.verbInstances(), fr.unfactored());
