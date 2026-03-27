@@ -1850,6 +1850,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#9b-prior-art-in-this-codebase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9b. Prior Art in This Codebase
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#10-formula-as-metadata-table-driven-forge" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2906,6 +2917,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#9b-prior-art-in-this-codebase" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9b. Prior Art in This Codebase
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#10-formula-as-metadata-table-driven-forge" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3504,6 +3526,71 @@ compliance rules pass. The Approve action is gated on this flag.</p>
 domain-specific compiler. The forge aims to be the general case — same
 ForgeEngine interface, different piece-type implementations, same BOM
 traceability, same EYES verification.</p>
+<hr />
+<h2 id="9b-prior-art-in-this-codebase">9b. Prior Art in This Codebase<a class="headerlink" href="#9b-prior-art-in-this-codebase" title="Permanent link">&para;</a></h2>
+<p>The forge pattern was designed twice before under different names:</p>
+<p><strong>Mesh2Library</strong> (<code>docs/Mesh2Library.txt</code>) — parametric mesh generation for
+roofs, stairs, tanks. Defines:
+- <code>ParametricMesh</code> sealed interface: <code>GableRoofMesh</code>, <code>HipRoofMesh</code>,
+  <code>StairFlightMesh</code>, <code>CylindricalTankMesh</code>
+- <code>ad_parametric_mesh</code> + <code>ad_parametric_mesh_param</code> tables — formula
+  parameters as metadata rows with provenance
+- <code>MeshResult generate(MeshParameters params)</code> — same contract as ForgeEngine
+- <code>ad_roof_preset</code> — region × building_type → mesh_type (smart defaults)
+- BOM leaf integration: fabricated mesh sits in GGF→GF→Parent→Child→Leaf hierarchy</p>
+<p><strong>TopologyMaker</strong> (<code>TopologyMaker/docs/TOPOLOGY_MAKER.md</code>) — site layout
+generation from brief. <code>GridStrategy.subdivide()</code> + <code>UbblValidator</code> +
+<code>DocStatus DR→IP→CO</code> lifecycle. Batch process, not a verb.</p>
+<p><strong>Relationship to ForgeEngine:</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Mesh2Library</th>
+<th>TopologyMaker</th>
+<th>Geometry Forge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>What</strong></td>
+<td>Roof/stair mesh from params</td>
+<td>Site layout from brief</td>
+<td>Any piece from params</td>
+</tr>
+<tr>
+<td><strong>Interface</strong></td>
+<td><code>ParametricMesh.generate()</code></td>
+<td><code>TopologyBatchProcess.complete()</code></td>
+<td><code>ForgeEngine.compute()</code></td>
+</tr>
+<tr>
+<td><strong>Metadata</strong></td>
+<td><code>ad_parametric_mesh_param</code></td>
+<td><code>ad_typology_pattern</code></td>
+<td><code>ad_forge_formula</code></td>
+</tr>
+<tr>
+<td><strong>Compliance</strong></td>
+<td>BBC §2.2.1 (sealed types)</td>
+<td><code>UbblValidator</code></td>
+<td><code>ComplianceChecker</code></td>
+</tr>
+<tr>
+<td><strong>Lifecycle</strong></td>
+<td>BOM leaf (LOD promotion)</td>
+<td><code>DocStatus DR→IP→CO</code></td>
+<td><code>ForgeResult.promotable</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Decision: Forge absorbs Mesh2Library (Option B).</strong></p>
+<p>ForgeEngine is the single interface. <code>ad_forge_formula</code> is the single
+metadata table. <code>Mesh2Library.txt</code> is archived as prior art — its design
+is correct, just renamed. <code>ParametricMesh</code> (if it exists in code) is
+either deprecated in favour of ForgeEngine or wrapped by a ForgeEngine
+adapter. TopologyMaker stays separate (batch process, not verb-level).</p>
+<p>One name, one interface, one table. No confusion for future sessions.</p>
 <hr />
 <h2 id="10-formula-as-metadata-table-driven-forge">10. Formula-as-Metadata — Table-Driven Forge<a class="headerlink" href="#10-formula-as-metadata-table-driven-forge" title="Permanent link">&para;</a></h2>
 <p>The forge formulas should not be hardcoded Java. They should be
