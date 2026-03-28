@@ -717,13 +717,13 @@ The compiler checks every pipe/duct segment against all beams and all other MEP 
 
 ## 6. Type System
 
-**SPEC ONLY — no witnesses.** BIM COBOL has a domain-specific type system where types correspond to construction entities, not programming primitives. Five type families: Spatial (BUILDING, STOREY, ROOM, ZONE, SHAFT, CORE), Element (WALL, SLAB, BEAM, COLUMN, OPENING, ROOF, STAIR, RAILING), MEP System (SPRINKLER/DUCT/DRAINAGE/WATER/ELECTRICAL/GAS_SYSTEM), BOM (UNIT, FLOOR, ROOM_BOM, SET, ITEM), and Type Relationships (containment/hosting/spanning/connecting). The type system enforces construction logic at compile time — you cannot `ROUTE DUCTS IN wall` or `OPEN slab WITH door`. These constraints are type errors, caught before geometry is generated.
+**SPEC ONLY — no witnesses.** BIM COBOL has a domain-specific type system where types correspond to construction entities, not programming primitives. Four type families: Spatial (BUILDING, STOREY, ROOM, ZONE, SHAFT, CORE), Element (WALL, SLAB, BEAM, COLUMN, OPENING, ROOF, STAIR, RAILING), MEP System (SPRINKLER/DUCT/DRAINAGE/WATER/ELECTRICAL/GAS_SYSTEM), and Type Relationships (containment/hosting/spanning/connecting). BOM hierarchy is self-describing (BBC.md §1) — no fixed vocabulary. The type system enforces construction logic at compile time — you cannot `ROUTE DUCTS IN wall` or `OPEN slab WITH door`. These constraints are type errors, caught before geometry is generated.
 
 ---
 
 ## 7. Compilation Targets
 
-**SPEC ONLY — no witnesses.** BIM COBOL compiles to three simultaneous outputs: **(1) IFC Geometry** — exact coordinates, meshes, materials, spatial containment for Bonsai/Blender rendering; **(2) Procurement BOM** — `m_bom` hierarchy (UNIT->FLOOR->DISCIPLINE->SET->ITEM), complete bill of materials with quantities (no manual take-off); **(3) Compliance Witnesses** — machine-readable per-rule pass/fail proofs with measured values and code citations. If any of the three is missing, compilation is incomplete.
+**SPEC ONLY — no witnesses.** BIM COBOL compiles to three simultaneous outputs: **(1) IFC Geometry** — exact coordinates, meshes, materials, spatial containment for Bonsai/Blender rendering; **(2) Procurement BOM** — `m_bom` self-describing tree (BBC.md §1), complete bill of materials with quantities (no manual take-off); **(3) Compliance Witnesses** — machine-readable per-rule pass/fail proofs with measured values and code citations. If any of the three is missing, compilation is incomplete.
 
 ---
 

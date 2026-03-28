@@ -51,7 +51,8 @@ public class CompositionBomBuilder {
      * Build composition BOMs from extraction data.
      */
     public static CompositionResult build(Connection bomConn, BuildingConfig config,
-                                          Map<String, List<ExtractionElement>> storeyElements)
+                                          Map<String, List<ExtractionElement>> storeyElements,
+                                          CategoryLookup catLookup)
             throws SQLException {
 
         // ASSUMPTION: Only MIRRORED_PAIR composition is implemented. Other
@@ -168,7 +169,8 @@ public class CompositionBomBuilder {
         insertBomHeader(bomConn, halfUnitBomId,
                 config.prefix() + " Single Unit",
                 "FLOOR", "STOREY", "HU",
-                (huMaxX - huMinX) * 1000, (huMaxY - huMinY) * 1000, (huMaxZ - huMinZ) * 1000);
+                (huMaxX - huMinX) * 1000, (huMaxY - huMinY) * 1000, (huMaxZ - huMinZ) * 1000,
+                catLookup);
 
         // Insert half-unit LEAF lines with offset relative to half-unit LFD origin
         int halfUnitLines = 0;
@@ -202,7 +204,7 @@ public class CompositionBomBuilder {
                 config.prefix() + " Pair Container",
                 "SET", "BUILDING", "PR",
                 (allMaxX - allMinX) * 1000, (allMaxY - allMinY) * 1000,
-                (allMaxZ - allMinZ) * 1000);
+                (allMaxZ - allMinZ) * 1000, catLookup);
 
         // UNIT_A: half-unit origin offset from building origin, rot=0
         double unitADx = huMinX - allMinX;
@@ -291,7 +293,8 @@ public class CompositionBomBuilder {
 
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
                                         String bomType, String groupBy, String productCategory,
-                                        double aabbW, double aabbD, double aabbH)
+                                        double aabbW, double aabbD, double aabbH,
+                                        CategoryLookup catLookup)
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
@@ -306,7 +309,9 @@ public class CompositionBomBuilder {
             stmt.setString(3, bomName);
             stmt.setString(4, bomType);
             stmt.setString(5, groupBy);
-            stmt.setString(6, productCategory);
+            int catId = catLookup.getId(productCategory);
+            if (catId > 0) stmt.setInt(6, catId);
+            else stmt.setNull(6, java.sql.Types.INTEGER);
             stmt.setDouble(7, aabbW);
             stmt.setDouble(8, aabbD);
             stmt.setDouble(9, aabbH);

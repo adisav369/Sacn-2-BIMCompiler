@@ -210,8 +210,8 @@ GRID_DERIVED_MM          Hand-approximated grid (excluded)          NO
 ### 3.1 Governing Principle
 
 A BOM is a Product. DINING_SET is a product. BEDROOM_STD is a product. The same cascade
-logic applies at every nesting level — only the space envelope and bom_type bind parameter
-change between levels. This is the GardenWorld Patio Furniture Set model applied to
+logic applies at every nesting level — only the space envelope and M_Product_Category context
+change between levels. *(Note: legacy `bom_type` bind parameter deprecated — see §4.3.)* This is the GardenWorld Patio Furniture Set model applied to
 buildings.
 
 **Tier order:**
@@ -305,12 +305,12 @@ The compiler's job is a **sane, non-embarrassing starting state**. The user make
 
 ### 4.3 Phase 1c — Add bom_type to m_bom
 
-> **TARGET STATE — not current DB vocabulary.**
-> The bom_ids listed below (BEDROOM_STD, LIVING_STD, DINING_SET etc.) are the
-> intended assembly vocabulary for the generative BOM cascade. They do not yet exist
-> in `m_bom`. The actual highest-tier assemblies in the DB are `FLOOR_*/BUILDING_*`
-> (confirmed in §4.7 migration record). These sections describe the data model target —
-> the SQL below is correct as a future seed, not a rerunnable migration against current data.
+> **DEPRECATED — `bom_type` column removed.**
+> BBC.md §1 rejects fixed `UNIT/FLOOR/ROOM/SET/ITEM` vocabulary. Hierarchy is
+> self-describing via `getParentBOM()/getChildren()`. M_Product_Category determines
+> grouping at each level. The SQL below is a historical artifact from the pre-S100
+> design. `v_qualified_bom` migration to M_Product_Category is pending
+> (DISC_VALIDATION_DB_SRS.md §10.4.5).
 
 ```sql
 ALTER TABLE m_bom

@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS AD_DocEvent_Rule (
                                               -- REQUIRED_HOST, COUNT_PER_AREA,
                                               -- MIN_DIMENSION, MAX_COVERAGE, DIMENSION_RANGE
     ifc_class            TEXT,                -- target element (NULL=all in discipline)
-    m_product_category_id TEXT,               -- target category (NULL=all)
+    m_product_category_id INTEGER,             -- FK to M_Product_Category(M_Product_Category_ID), NULL=all
     severity             TEXT NOT NULL DEFAULT 'WARN',
     firing_event         TEXT NOT NULL DEFAULT 'BEFORE_PLACE',
     is_active            INTEGER NOT NULL DEFAULT 1,

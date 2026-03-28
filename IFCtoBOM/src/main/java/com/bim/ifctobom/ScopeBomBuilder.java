@@ -51,7 +51,8 @@ public class ScopeBomBuilder {
      * @return scope result with exclude sets and counts
      */
     public static ScopeResult build(Connection bomConn, BuildingConfig config,
-                                    Map<String, List<ExtractionElement>> storeyElements)
+                                    Map<String, List<ExtractionElement>> storeyElements,
+                                    CategoryLookup catLookup)
             throws SQLException {
 
         Map<String, Set<String>> excludeByStorey = new LinkedHashMap<>();
@@ -72,7 +73,7 @@ public class ScopeBomBuilder {
             for (SpaceConfig space : fr.spaces()) {
                 if (!space.hasScopeBox()) {
                     // No scope box (e.g. BATHROOM with no sanitary in SH) — create empty SET BOM
-                    createEmptySetBom(bomConn, space);
+                    createEmptySetBom(bomConn, space, catLookup);
                     setBomIds.add(space.templateBom());
                     continue;
                 }
@@ -108,7 +109,7 @@ public class ScopeBomBuilder {
 
                 if (assigned.isEmpty()) {
                     // Create empty SET BOM header (e.g. BATHROOM with no sanitary)
-                    createEmptySetBom(bomConn, space);
+                    createEmptySetBom(bomConn, space, catLookup);
                     setBomIds.add(space.templateBom());
                     continue;
                 }
@@ -137,7 +138,7 @@ public class ScopeBomBuilder {
                 ProductRegistrar.ensureAssemblyStub(bomConn, space.templateBom(), "SET");
 
                 // Create SET BOM header
-                insertSetBomHeader(bomConn, space, setAabbW, setAabbD, setAabbH);
+                insertSetBomHeader(bomConn, space, setAabbW, setAabbD, setAabbH, catLookup);
                 setBomIds.add(space.templateBom());
 
                 // Insert leaf children with LBD offset relative to SET BOM LBD (§4 tack convention)
@@ -188,7 +189,8 @@ public class ScopeBomBuilder {
 
     // Implementing BBC.md §4.2 — Witness: W-AABB-QUAL-1, W-PHANTOM-1
     private static void insertSetBomHeader(Connection conn, SpaceConfig space,
-                                           double aabbW, double aabbD, double aabbH)
+                                           double aabbW, double aabbD, double aabbH,
+                                           CategoryLookup catLookup)
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
@@ -203,7 +205,9 @@ public class ScopeBomBuilder {
             stmt.setString(1, space.templateBom());
             stmt.setString(2, space.templateBom());  // Value = bom_id
             stmt.setString(3, space.name() + " SET");
-            stmt.setString(4, space.role());
+            int catId = catLookup.getId(space.role());
+            if (catId > 0) stmt.setInt(4, catId);
+            else stmt.setNull(4, java.sql.Types.INTEGER);
             stmt.setDouble(5, aabbW);
             stmt.setDouble(6, aabbD);
             stmt.setDouble(7, aabbH);
@@ -211,7 +215,8 @@ public class ScopeBomBuilder {
         }
     }
 
-    private static void createEmptySetBom(Connection conn, SpaceConfig space)
+    private static void createEmptySetBom(Connection conn, SpaceConfig space,
+                                          CategoryLookup catLookup)
             throws SQLException {
         ProductRegistrar.ensureAssemblyStub(conn, space.templateBom(), "SET");
         // Empty SET = full INNER volume available (YAML aabb_mm).
@@ -230,7 +235,9 @@ public class ScopeBomBuilder {
             stmt.setString(1, space.templateBom());
             stmt.setString(2, space.templateBom());  // Value = bom_id
             stmt.setString(3, space.name() + " SET");
-            stmt.setString(4, space.role());
+            int catId = catLookup.getId(space.role());
+            if (catId > 0) stmt.setInt(4, catId);
+            else stmt.setNull(4, java.sql.Types.INTEGER);
             stmt.setInt(5, space.hasScopeBox() ? space.aabbW() : 0);
             stmt.setInt(6, space.hasScopeBox() ? space.aabbD() : 0);
             stmt.setInt(7, space.hasScopeBox() ? space.aabbH() : 0);

@@ -61,8 +61,9 @@ class PrimeRuleWitnessTest {
     void w_prime_1_buildingBomsHaveDocKeys() throws SQLException {
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(
-                     "SELECT bom_id, m_product_category_id, doc_sub_type "
-                     + "FROM m_bom WHERE bom_type = 'BUILDING'")) {
+                     "SELECT b.bom_id, mpc.Value AS m_product_category_id, b.doc_sub_type "
+                     + "FROM m_bom b LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID "
+                     + "WHERE b.bom_type = 'BUILDING'")) {
 
             int count = 0;
             while (rs.next()) {

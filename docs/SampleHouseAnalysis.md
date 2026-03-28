@@ -39,7 +39,7 @@
 | Setting | Value | Source |
 |---------|-------|--------|
 | Compilation mode | EN-BLOC (singularity) | BBC.md §3.3 |
-| BOM hierarchy | BUILDING → FLOOR → ROOM → SET → ITEM | RE pattern |
+| BOM tree shape | Self-describing (BBC.md §1): BUILDING → FLOOR → ROOM → SET → LEAF for SH | RE pattern |
 | Origin convention | BUILDING has world LBD; FLOOR/ROOM zeroed (R16) | BBC.md §4.1 |
 | YAML | `classify_sh.yaml` | Single storey, 5 rooms |
 | Mirror | None (single unit) | — |

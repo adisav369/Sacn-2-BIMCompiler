@@ -200,7 +200,8 @@ public class BomDropper {
         // Implementing BBC.md §14.3 IDV-1 — Witness: W-PK-MBOM
         String sql = "SELECT Value FROM m_bom "
                    + "WHERE Value NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
-                   + "AND m_product_category_id = ? AND doc_sub_type = ? "
+                   + "AND m_product_category_id = (SELECT M_Product_Category_ID FROM M_Product_Category WHERE Value = ?) "
+                   + "AND doc_sub_type = ? "
                    + "AND is_active = 1 ORDER BY seq_no LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, entry.mProductCategoryId());

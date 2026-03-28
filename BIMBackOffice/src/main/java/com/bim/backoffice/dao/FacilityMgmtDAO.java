@@ -63,9 +63,10 @@ public class FacilityMgmtDAO {
         Map<String, ProductFM> fmMap = loadFMMap(compLibConn);
 
         String sql = """
-                SELECT bl.child_product_id, bl.qty, b.m_product_category_id, b.bom_name
+                SELECT bl.child_product_id, bl.qty, mpc.Value AS m_product_category_id, b.bom_name
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
                 """;
 
@@ -175,11 +176,12 @@ public class FacilityMgmtDAO {
 
         String sql = """
                 SELECT bl.child_product_id, bl.bom_id, bl.storey,
-                       b.m_product_category_id, b.bom_name
+                       mpc.Value AS m_product_category_id, b.bom_name
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
-                ORDER BY bl.storey, b.m_product_category_id
+                ORDER BY bl.storey, mpc.Value
                 """;
 
         List<AssetRecord> records = new ArrayList<>();

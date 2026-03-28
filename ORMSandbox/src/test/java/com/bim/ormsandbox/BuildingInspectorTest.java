@@ -270,12 +270,13 @@ class BuildingInspectorTest {
     @DisplayName("W-CATEGORY-1: no building codes (SH/DX/TB/MY) in m_bom.m_product_category_id")
     void w_category_1_noBuildingCodesInCategory() throws SQLException {
         String sql = """
-            SELECT bom_id, m_product_category_id FROM m_bom
-            WHERE m_product_category_id IN ('SH', 'DX', 'TB', 'MY', 'TL')
+            SELECT b.bom_id, mpc.Value AS category_value FROM m_bom b
+            LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
+            WHERE mpc.Value IN ('SH', 'DX', 'TB', 'MY', 'TL')
             """;
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
-            while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("m_product_category_id"));
+            while (rs.next()) bad.add(rs.getString("bom_id") + "=" + rs.getString("category_value"));
         }
         assertTrue(bad.isEmpty(),
             "W-CATEGORY-1: building codes found in m_product_category_id (must be functional): " + bad);

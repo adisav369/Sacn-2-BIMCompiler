@@ -205,7 +205,7 @@ public class DesignerAPIImpl implements DesignerAPI {
     private static BuildingEntry loadBuildingEntry(String bomDbPath, String buildingId) {
         String sql = """
                 SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
-                       b.m_product_category_id AS MProductCategoryId,
+                       mpc.Value AS MProductCategoryId,
                        COALESCE(d.doc_sub_type, b.doc_sub_type) AS DocSubType,
                        d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo,
                        d.ExpectedElements, d.Provenance, d.Description,
@@ -217,6 +217,7 @@ public class DesignerAPIImpl implements DesignerAPI {
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
                   AND b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE d.ProjectName = ?
                 """;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath);
@@ -1309,7 +1310,9 @@ public class DesignerAPIImpl implements DesignerAPI {
                         bom_type, group_by, m_product_category_id, entity_type,
                         aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                         doc_sub_type, origin_x, origin_y, origin_z)
-                    VALUES (?, ?, ?, 'GENERATIVE', ?, ?, ?, 'U', ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, 'GENERATIVE', ?, ?,
+                        (SELECT M_Product_Category_ID FROM M_Product_Category WHERE Value = ?),
+                        'U', ?, ?, ?, ?, ?, ?, ?)
                     """;
             try (PreparedStatement ps = bomConn.prepareStatement(insertBom)) {
                 for (DesignBBox bb : bboxes) {

@@ -42,7 +42,9 @@ public class WorkPackageSelector {
 
         // Read BOM header
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT bom_name, m_product_category_id FROM m_bom WHERE Value = ? AND is_active = 1")) {
+                "SELECT bom_name, mpc.Value AS m_product_category_id FROM m_bom b " +
+                "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                "WHERE b.Value = ? AND b.is_active = 1")) {
             ps.setString(1, bomId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -93,7 +95,9 @@ public class WorkPackageSelector {
     public List<WorkPackage> selectByDiscipline(Connection bomConn, Connection compLibConn,
                                                  String discipline) {
         List<WorkPackage> packages = new ArrayList<>();
-        String sql = "SELECT Value FROM m_bom WHERE is_active = 1 AND UPPER(m_product_category_id) = ?";
+        String sql = "SELECT b.Value FROM m_bom b " +
+                "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                "WHERE b.is_active = 1 AND UPPER(mpc.Value) = ?";
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, discipline.toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {

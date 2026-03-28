@@ -1134,7 +1134,7 @@ CREATE TABLE IF NOT EXISTS "m_bom" (
     bom_level         TEXT DEFAULT 'SET',
     bom_type          TEXT NOT NULL DEFAULT 'SET'
         CHECK(bom_type IN ('BUILDING', 'FLOOR', 'ROOM', 'SET', 'ITEM')),
-    m_product_category_id TEXT DEFAULT NULL,
+    m_product_category_id INTEGER DEFAULT NULL,
     doc_sub_type      TEXT DEFAULT NULL, -- STRUCTURAL: building identity (SH/DX/TE), FK to C_DocType.doc_sub_type
     seq_no            INTEGER DEFAULT 10,
     origin_x          REAL DEFAULT 0.0,
@@ -1226,6 +1226,16 @@ CREATE TABLE IF NOT EXISTS C_OrderLine (
 CREATE INDEX IF NOT EXISTS idx_orderline_order ON C_OrderLine(C_Order_ID);
 CREATE INDEX IF NOT EXISTS idx_orderline_parent ON C_OrderLine(Parent_OrderLine_ID);
 CREATE INDEX IF NOT EXISTS idx_orderline_family ON C_OrderLine(family_ref);
+-- Phase B (DV027): M_Product_Category lookup table for INTEGER FK resolution
+CREATE TABLE IF NOT EXISTS M_Product_Category (
+    M_Product_Category_ID INTEGER PRIMARY KEY,
+    Value                 TEXT NOT NULL UNIQUE,
+    Name                  TEXT NOT NULL,
+    Description           TEXT,
+    IFC_Class             TEXT,
+    SeqNo                 INTEGER DEFAULT 10,
+    IsActive              INTEGER DEFAULT 1
+);
 -- Tier 2: UNIQUE indexes for dual-key lookup (INTEGER PK tables)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_m_product_product_id ON M_Product(product_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_m_product_value ON M_Product(Value);

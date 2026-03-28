@@ -88,8 +88,9 @@ public class ColorSchemeEngine {
      */
     public ColorMap colorByDiscipline(Connection bomConn, String buildingId) {
         Map<String, String> colors = new LinkedHashMap<>();
-        String sql = "SELECT bl.child_product_id, b.m_product_category_id " +
+        String sql = "SELECT bl.child_product_id, mpc.Value AS m_product_category_id " +
                      "FROM m_bom_line bl JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID " +
+                     "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
                      "WHERE bl.is_active = 1";
         try (var stmt = bomConn.prepareStatement(sql);
              var rs = stmt.executeQuery()) {

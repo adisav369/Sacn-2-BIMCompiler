@@ -115,6 +115,9 @@ public class IFCtoBOMPipeline {
                 System.out.println("[IFCtoBOM] Schema created from " + schemaPath.getFileName());
             }
 
+            // 3a. Copy M_Product_Category from ERP.db to BOM.db (Phase B: DV027)
+            copyCategoryLookup(bomConn, discConn);
+
             // 3b. Read extraction in-memory (R13: no persistent I_Element_Extraction table)
             BIMLogger.stage(3, "ReadExtraction", "in-memory from component_library.db");
             Map<String, List<ExtractionElement>> storeyElements =
@@ -244,6 +247,11 @@ public class IFCtoBOMPipeline {
             int products = ProductRegistrar.ensureProducts(bomConn, compConn, allElements);
             BIMLogger.fine("PIPELINE", "M_Product catalog: {} leaf products copied to BOM DB from component_library.db", products);
 
+            // 5d. Load category Value→INTEGER lookup from ERP.db (Phase B: DV027)
+            // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 — Witness: W-DV-CAT-PK
+            CategoryLookup catLookup = CategoryLookup.load(discConn);
+            BIMLogger.fine("PIPELINE", "CategoryLookup loaded: {} categories from ERP.db", catLookup.size());
+
             // 6-8. Build BOMs — dispatch based on m_product_category_id (was doc_base_type)
             BIMLogger.stage(4, "BuildBOMs", config.docBaseType() + " path");
             //   RE → Scope + Composition + Structural + FloorRoom
@@ -255,7 +263,7 @@ public class IFCtoBOMPipeline {
 
             if ("CO".equals(config.docBaseType()) || "IN".equals(config.docBaseType())) {
                 // CO/IN path: discipline-stratified hierarchy (IN = infrastructure)
-                structural = DisciplineBomBuilder.build(bomConn, config, storeyElements);
+                structural = DisciplineBomBuilder.build(bomConn, config, storeyElements, catLookup);
                 scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0);
                 composition = new CompositionResult(Map.of(), 0, 0);
                 roomLines = 0;
@@ -268,12 +276,12 @@ public class IFCtoBOMPipeline {
                         structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
             } else {
                 // RE path: scope + composition + structural + rooms
-                scope = ScopeBomBuilder.build(bomConn, config, storeyElements);
+                scope = ScopeBomBuilder.build(bomConn, config, storeyElements, catLookup);
                 System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines (%d PHANTOM)%n",
                         scope.setBomIds().size(), scope.totalSetLines(), scope.phantomLines());
 
                 composition = CompositionBomBuilder.build(
-                        bomConn, config, storeyElements);
+                        bomConn, config, storeyElements, catLookup);
                 if (composition.halfUnitLines() > 0) {
                     System.out.printf("[IFCtoBOM] Composition: %d half-unit lines, %d pair children%n",
                             composition.halfUnitLines(), composition.pairLines());
@@ -282,7 +290,7 @@ public class IFCtoBOMPipeline {
                 Map<String, Set<String>> allExclude = mergeExcludes(
                         scope.excludeByStorey(), composition.excludeByStorey());
                 structural = StructuralBomBuilder.build(
-                        bomConn, config, storeyElements, allExclude);
+                        bomConn, config, storeyElements, allExclude, catLookup);
                 BIMLogger.fine("EXTRACTION", "{}: {} structural + {} scope + {} composition lines, AABB={}x{}x{}mm",
                         config.buildingType(), structural.totalLines(),
                         scope.totalSetLines(), composition.halfUnitLines() + composition.pairLines(),
@@ -315,7 +323,7 @@ public class IFCtoBOMPipeline {
 
                 roomLines = FloorRoomBomBuilder.build(bomConn, config,
                         floorLbdWorld, scope.setLbdPositions(),
-                        bldgMinX, bldgMinY, bldgMinZ);
+                        bldgMinX, bldgMinY, bldgMinZ, catLookup);
                 System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
             }
 
@@ -546,7 +554,7 @@ public class IFCtoBOMPipeline {
                     component_id      INTEGER,
                     bom_id            TEXT,
                     ifc_class         TEXT,
-                    M_Product_Category_ID TEXT
+                    M_Product_Category_ID INTEGER
                 )
                 """);
 
@@ -563,7 +571,7 @@ public class IFCtoBOMPipeline {
                     is_active         INTEGER DEFAULT 1,
                     bom_level         TEXT DEFAULT 'SET',
                     bom_type          TEXT NOT NULL,
-                    m_product_category_id TEXT,
+                    m_product_category_id INTEGER,
                     doc_sub_type      TEXT,
                     seq_no            INTEGER DEFAULT 10,
                     origin_x          REAL DEFAULT 0.0,
@@ -672,6 +680,46 @@ public class IFCtoBOMPipeline {
                     SalesRep_ID          INTEGER
                 )
                 """);
+
+            // Phase B (DV027): M_Product_Category lookup table in BOM.db
+            // Enables downstream JOINs to resolve INTEGER FK → TEXT Value
+            // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 — Witness: W-DV-CAT-PK
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS M_Product_Category (
+                    M_Product_Category_ID INTEGER PRIMARY KEY,
+                    Value                 TEXT NOT NULL UNIQUE,
+                    Name                  TEXT NOT NULL,
+                    Description           TEXT,
+                    IFC_Class             TEXT,
+                    SeqNo                 INTEGER DEFAULT 10,
+                    IsActive              INTEGER DEFAULT 1
+                )
+                """);
+        }
+    }
+
+    /**
+     * Copy M_Product_Category rows from ERP.db to BOM.db for local JOINs.
+     * Called after schema creation so downstream code can resolve INTEGER
+     * category FKs back to TEXT Value codes.
+     */
+    private static void copyCategoryLookup(Connection bomConn, Connection erpConn) throws SQLException {
+        String ins = "INSERT OR IGNORE INTO M_Product_Category "
+                   + "(M_Product_Category_ID, Value, Name, Description, IFC_Class, SeqNo, IsActive) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Statement st = erpConn.createStatement();
+             ResultSet rs = st.executeQuery("SELECT M_Product_Category_ID, Value, Name, Description, IFC_Class, SeqNo, IsActive FROM M_Product_Category");
+             PreparedStatement ps = bomConn.prepareStatement(ins)) {
+            while (rs.next()) {
+                ps.setInt(1, rs.getInt(1));
+                ps.setString(2, rs.getString(2));
+                ps.setString(3, rs.getString(3));
+                ps.setString(4, rs.getString(4));
+                ps.setString(5, rs.getString(5));
+                ps.setInt(6, rs.getInt(6));
+                ps.setInt(7, rs.getInt(7));
+                ps.executeUpdate();
+            }
         }
     }
 

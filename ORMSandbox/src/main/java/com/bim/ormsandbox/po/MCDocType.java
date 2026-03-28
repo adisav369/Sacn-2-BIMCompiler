@@ -56,9 +56,10 @@ public class MCDocType extends X_C_DocType {
         String dst = getDocSubType();
         if (dst == null) return null;
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT m_product_category_id FROM m_bom " +
-                "WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) " +
-                "AND doc_sub_type = ? AND is_active = 1 LIMIT 1")) {
+                "SELECT mpc.Value FROM m_bom b " +
+                "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                "WHERE b.bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) " +
+                "AND b.doc_sub_type = ? AND b.is_active = 1 LIMIT 1")) {
             ps.setString(1, dst);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString(1) : null;

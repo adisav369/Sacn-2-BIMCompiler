@@ -131,7 +131,7 @@ public class BuildingRegistry {
         // ST_SH/ST_DX (m_product_category_id='ST') resolve AABB from M_BomCategory, not BUILDING BOM.
         // Tier 2: C_DocType_ID is INTEGER PK. Value holds old TEXT key (e.g., 'RE_SH').
         String sql = "SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, "
-                   + "b.m_product_category_id AS MProductCategoryId, "
+                   + "mpc.Value AS MProductCategoryId, "
                    + "COALESCE(d.doc_sub_type, b.doc_sub_type) AS DocSubType, "
                    + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
                    + "d.ExpectedElements, d.Provenance, d.Description, "
@@ -145,6 +145,7 @@ public class BuildingRegistry {
                    + "LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type "
                    + "  AND b.Value NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
                    + "  AND b.is_active = 1 "
+                   + "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID "
                    + qualifyWhereClause(whereClause);
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -187,7 +188,7 @@ public class BuildingRegistry {
             .replace("ProjectName", "d.ProjectName")
             .replace("Value", "d.Value")
             .replace("SeqNo", "d.SeqNo")
-            .replace("MProductCategoryId", "b.m_product_category_id");
+            .replace("MProductCategoryId", "mpc.Value");
     }
 
 }

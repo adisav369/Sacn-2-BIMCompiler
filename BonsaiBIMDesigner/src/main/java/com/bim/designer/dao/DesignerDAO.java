@@ -52,7 +52,7 @@ public class DesignerDAO {
     public List<BuildingTypeRow> listBuildingTypes() throws SQLException {
         String sql = """
                 SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
-                       b.m_product_category_id AS MProductCategoryId,
+                       mpc.Value AS MProductCategoryId,
                        COALESCE(d.doc_sub_type, b.doc_sub_type) AS doc_sub_type,
                        d.ExpectedElements,
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
@@ -62,6 +62,7 @@ public class DesignerDAO {
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
                   AND b.Value NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE d.IsActive = 1
                 ORDER BY d.SeqNo
                 """;
@@ -89,7 +90,7 @@ public class DesignerDAO {
     public BuildingTypeRow getBuildingType(String buildingId) throws SQLException {
         String sql = """
                 SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name,
-                       b.m_product_category_id AS MProductCategoryId,
+                       mpc.Value AS MProductCategoryId,
                        COALESCE(d.doc_sub_type, b.doc_sub_type) AS doc_sub_type,
                        d.ExpectedElements,
                        COALESCE(b.aabb_width_mm, 0)  AS aabb_width_mm,
@@ -99,6 +100,7 @@ public class DesignerDAO {
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
                   AND b.Value NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) AND b.is_active = 1
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE d.ProjectName = ?
                 """;
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
@@ -128,12 +130,13 @@ public class DesignerDAO {
     public List<CategoryRow> listCategories(String docSubType) throws SQLException {
         String sql = """
                 -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
-                SELECT m_product_category_id, COUNT(*) AS bom_count
-                FROM m_bom
-                WHERE doc_sub_type = ? AND is_active = 1
-                  AND m_product_category_id IS NOT NULL
-                GROUP BY m_product_category_id
-                ORDER BY m_product_category_id
+                SELECT mpc.Value AS m_product_category_id, COUNT(*) AS bom_count
+                FROM m_bom b
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
+                WHERE b.doc_sub_type = ? AND b.is_active = 1
+                  AND b.m_product_category_id IS NOT NULL
+                GROUP BY mpc.Value
+                ORDER BY mpc.Value
                 """;
         List<CategoryRow> rows = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
@@ -163,7 +166,7 @@ public class DesignerDAO {
     public List<SegmentRow> listSegments(String buildingBomId) throws SQLException {
         // Step 1: find FLOOR-level BOMs that are children of the BUILDING BOM
         String floorSQL = """
-                SELECT f.Value AS bom_id, f.bom_name, f.m_product_category_id,
+                SELECT f.Value AS bom_id, f.bom_name, mpc.Value AS m_product_category_id,
                        (SELECT COUNT(*) FROM m_bom_line fl
                         WHERE fl.M_BOM_ID IN (
                             SELECT s.M_BOM_ID FROM m_bom s
@@ -176,6 +179,7 @@ public class DesignerDAO {
                 FROM m_bom f
                 JOIN m_bom_line bl ON bl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
                   AND bl.child_product_id = f.Value
+                LEFT JOIN M_Product_Category mpc ON f.m_product_category_id = mpc.M_Product_Category_ID
                 -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 WHERE f.is_active = 1
                 ORDER BY f.Value
@@ -201,13 +205,14 @@ public class DesignerDAO {
     /** Load SET-level m_product_category_ids (disciplines) for a FLOOR bom_id. */
     private List<String> loadDisciplines(String floorBomId) throws SQLException {
         String sql = """
-                SELECT DISTINCT s.m_product_category_id
+                SELECT DISTINCT mpc.Value AS m_product_category_id
                 FROM m_bom s
                 JOIN m_bom_line bl ON bl.M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?)
                   AND bl.child_product_id = s.Value
+                LEFT JOIN M_Product_Category mpc ON s.m_product_category_id = mpc.M_Product_Category_ID
                 -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 WHERE s.is_active = 1
-                ORDER BY s.m_product_category_id
+                ORDER BY mpc.Value
                 """;
         List<String> disciplines = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
@@ -231,10 +236,12 @@ public class DesignerDAO {
     /** BOM header by bom_id. */
     public BomHeaderRow getBomHeader(String bomId) throws SQLException {
         String sql = """
-                SELECT Value AS bom_id, bom_name, bom_type, m_product_category_id,
-                       aabb_width_mm, aabb_depth_mm, aabb_height_mm,
-                       entity_type
-                FROM m_bom WHERE Value = ?
+                SELECT b.Value AS bom_id, b.bom_name, b.bom_type, mpc.Value AS m_product_category_id,
+                       b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm,
+                       b.entity_type
+                FROM m_bom b
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
+                WHERE b.Value = ?
                 """;
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, bomId);
@@ -467,14 +474,15 @@ public class DesignerDAO {
     public List<SetMatchRow> findMatchingSets(String category,
             int slotWidthMm, int slotDepthMm, int slotHeightMm) throws SQLException {
         String sql = """
-                SELECT b.Value AS bom_id, b.bom_name, b.m_product_category_id,
+                SELECT b.Value AS bom_id, b.bom_name, mpc.Value AS m_product_category_id,
                        b.aabb_width_mm, b.aabb_depth_mm, b.aabb_height_mm,
                        (SELECT COUNT(*) FROM m_bom_line l
                         WHERE l.M_BOM_ID = b.M_BOM_ID AND l.is_active = 1
                           AND l.component_type != 'PHANTOM') AS child_count
                 FROM m_bom b
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
-                WHERE b.m_product_category_id = ?
+                WHERE mpc.Value = ?
                   AND b.is_active = 1
                   AND (b.aabb_width_mm <= ? OR b.aabb_width_mm = 0)
                   AND (b.aabb_depth_mm <= ? OR b.aabb_depth_mm = 0)

@@ -35,7 +35,8 @@ public class DimensionQuery {
         List<String> ids = new ArrayList<>();
         String sql = "SELECT bl.child_product_id FROM m_bom_line bl " +
                      "JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID " +
-                     "WHERE bl.is_active = 1 AND UPPER(b.m_product_category_id) = ?";
+                     "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                     "WHERE bl.is_active = 1 AND UPPER(mpc.Value) = ?";
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
             ps.setString(1, discipline.toUpperCase());
             try (ResultSet rs = ps.executeQuery()) {

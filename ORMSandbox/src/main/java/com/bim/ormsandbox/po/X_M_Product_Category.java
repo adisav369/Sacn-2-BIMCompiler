@@ -13,9 +13,10 @@ import java.sql.Connection;
  *
  * <p>Table: {@code M_Product_Category} (ERP.db)
  * <pre>
- *   M_Product_Category_ID  TEXT PRIMARY KEY  ('STR', 'MEP', 'ARC', 'ASM', 'IFC_WALL', ...)
- *   Name                   TEXT NOT NULL     ('Wall', 'Pipe / Duct Segment', 'Door', ...)
- *   Description            TEXT              (human-readable explanation)
+ *   M_Product_Category_ID  INTEGER PRIMARY KEY AUTOINCREMENT  (opaque surrogate)
+ *   Value                  TEXT NOT NULL UNIQUE                (search key — 'STR', 'MEP', ...)
+ *   Name                   TEXT NOT NULL                      ('Structural', 'MEP', ...)
+ *   Description            TEXT
  *   IFC_Class              TEXT              (IFC4 class name — leaf nodes only)
  *   SeqNo                  INTEGER           (display order)
  *   IsActive               INTEGER DEFAULT 1
@@ -25,6 +26,7 @@ public class X_M_Product_Category extends BasePO {
 
     public static final String Table_Name                           = "M_Product_Category";
     public static final String COLUMNNAME_M_Product_Category_ID     = "M_Product_Category_ID";
+    public static final String COLUMNNAME_Value                     = "Value";
     public static final String COLUMNNAME_Name                      = "Name";
     public static final String COLUMNNAME_Description               = "Description";
     public static final String COLUMNNAME_IFC_Class                 = "IFC_Class";
@@ -36,17 +38,19 @@ public class X_M_Product_Category extends BasePO {
     @Override protected String getTableName()    { return Table_Name; }
     @Override protected String getPKColumnName() { return COLUMNNAME_M_Product_Category_ID; }
 
-    public String  getCategoryId()       { return get_ValueAsString(COLUMNNAME_M_Product_Category_ID); }
+    public int     getCategoryId()       { return get_ValueAsInt(COLUMNNAME_M_Product_Category_ID); }
+    public String  getValue()            { return get_ValueAsString(COLUMNNAME_Value); }
     public String  getName()             { return get_ValueAsString(COLUMNNAME_Name); }
     public String  getDescription()      { return get_ValueAsString(COLUMNNAME_Description); }
     public String  getIfcClass()         { return get_ValueAsString(COLUMNNAME_IFC_Class); }
     public int     getSeqNo()            { return get_ValueAsInt(COLUMNNAME_SeqNo); }
     public boolean isActive()            { return get_ValueAsBoolean(COLUMNNAME_IsActive); }
 
-    public void setCategoryId(String v)       { set_Value(COLUMNNAME_M_Product_Category_ID, v); }
-    public void setName(String v)             { set_Value(COLUMNNAME_Name, v); }
-    public void setDescription(String v)      { set_Value(COLUMNNAME_Description, v); }
-    public void setIfcClass(String v)         { set_Value(COLUMNNAME_IFC_Class, v); }
-    public void setSeqNo(int v)               { set_Value(COLUMNNAME_SeqNo, v); }
-    public void setIsActive(boolean v)        { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
+    public void setCategoryId(int v)            { set_Value(COLUMNNAME_M_Product_Category_ID, v); }
+    public void setValue(String v)              { set_Value(COLUMNNAME_Value, v); }
+    public void setName(String v)               { set_Value(COLUMNNAME_Name, v); }
+    public void setDescription(String v)        { set_Value(COLUMNNAME_Description, v); }
+    public void setIfcClass(String v)           { set_Value(COLUMNNAME_IFC_Class, v); }
+    public void setSeqNo(int v)                 { set_Value(COLUMNNAME_SeqNo, v); }
+    public void setIsActive(boolean v)          { set_Value(COLUMNNAME_IsActive, v ? 1 : 0); }
 }

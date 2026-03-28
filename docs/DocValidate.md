@@ -1749,7 +1749,7 @@ public class ConstructionModelSpawner {
 
 2. Walk BOM tree (same BOMWalker used for compilation)
    For each m_bom encountered during walk:
-     → Create C_OrderLine (family_ref = bom_id, host_type = bom_type)
+     → Create C_OrderLine (family_ref = Value, host_type = M_Product_Category)
      → Spatial slot from M_BOM_Line dx/dy/dz (co_empty_space removed S74)
      → Create default M_AttributeSetInstance (from M_Product.M_AttributeSet_ID)
 

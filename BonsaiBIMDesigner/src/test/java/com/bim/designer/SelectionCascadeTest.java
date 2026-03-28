@@ -116,8 +116,9 @@ class SelectionCascadeTest {
     void w_gen_1a_library_has_sets() throws Exception {
         try (Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT m_product_category_id, source, COUNT(*) AS cnt " +
-                     "FROM m_bom GROUP BY m_product_category_id, source ORDER BY source, m_product_category_id")) {
+                     "SELECT mpc.Value AS m_product_category_id, b.source, COUNT(*) AS cnt " +
+                     "FROM m_bom b LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                     "GROUP BY mpc.Value, b.source ORDER BY b.source, mpc.Value")) {
             int total = 0;
             System.out.println("  Library SET BOMs:");
             while (rs.next()) {
@@ -249,8 +250,9 @@ class SelectionCascadeTest {
         // Check if any SET has AABB=0 and matches a slot
         try (Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
-                     "SELECT bom_id, m_product_category_id FROM m_bom " +
-                     "WHERE aabb_width_mm = 0 AND aabb_depth_mm = 0 AND aabb_height_mm = 0")) {
+                     "SELECT b.bom_id, mpc.Value AS m_product_category_id FROM m_bom b " +
+                     "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                     "WHERE b.aabb_width_mm = 0 AND b.aabb_depth_mm = 0 AND b.aabb_height_mm = 0")) {
             boolean foundZero = false;
             while (rs.next()) {
                 String bomId = rs.getString("bom_id");

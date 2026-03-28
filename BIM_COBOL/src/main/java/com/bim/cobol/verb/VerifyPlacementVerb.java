@@ -168,11 +168,12 @@ public class VerifyPlacementVerb implements Verb<VerifyPlacementVerb.PlacementVe
         }
 
         // For each floor BOM, count room-category children
-        String inClause = "'" + String.join("','", ROOM_CATEGORIES) + "'";
         for (int floorBomId : floorBomIds) {
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT COUNT(*) FROM m_bom_line WHERE m_bom_id = ? AND m_product_category_id IN ("
-                    + inClause + ")")) {
+                    "SELECT COUNT(*) FROM m_bom_line mbl "
+                    + "JOIN m_bom mb2 ON mb2.Value = mbl.child_product_id "
+                    + "JOIN M_Product_Category mpc ON mb2.m_product_category_id = mpc.M_Product_Category_ID "
+                    + "WHERE mbl.m_bom_id = ? AND mpc.Value IN ('LI','BD','KT','BT','DN')")) {
                 ps.setInt(1, floorBomId);
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) total += rs.getInt(1);

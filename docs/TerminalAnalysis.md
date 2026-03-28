@@ -46,17 +46,18 @@ sections below. Code changes spec in `ACTION_ROADMAP.md` §Pre-Code Specs.
 
 ## Why Terminal Is Different From SH/DX
 
-SH/DX are residential. Their BOM hierarchy is:
+SH/DX are residential. Their BOM tree shape (self-describing per BBC.md §1) is:
 ```
-UNIT → FLOOR → ROOM → SET → ITEM
+BUILDING → FLOOR → ROOM → SET → LEAF
 ```
 
 Terminal is institutional. There are no "rooms" in the residential sense.
 Instead there are ZONES: departure hall, check-in counters, boarding gates,
-retail areas, mechanical rooms, roof structure. The BOM hierarchy must be:
+retail areas, mechanical rooms, roof structure. The BOM tree shape is:
 ```
-BUILDING → STOREY → DISCIPLINE → ASSEMBLY → COMPONENT
+BUILDING → STOREY → DISCIPLINE → ASSEMBLY → LEAF
 ```
+The tree walker (`getParentBOM()/getChildren()`) handles both shapes — no vocabulary or level labels needed.
 
 Also: SH/DX had 1-2 IFC source files. Terminal was federated from 9
 discipline-specific models. The discipline boundaries are authoritative —
@@ -749,8 +750,8 @@ The top-level M_Product_Category determines the **hierarchy shape**:
 
 | M_Product_Category | Hierarchy | L2 Axis | Compilation Path |
 |-------------------|-----------|---------|-----------------|
-| RE (Residential) | BUILDING → FLOOR → **ROOM** → SET → ITEM | Room type (LI, KT, BD) | EN-BLOC (singularity) |
-| CO (Commercial) | BUILDING → FLOOR → **DISCIPLINE** → ASSEMBLY → COMPONENT | Discipline (ARC, FP, STR) | WALK THRU (discipline-driven) |
+| RE (Residential) | BUILDING → FLOOR → **ROOM** → SET → LEAF | Room type (LI, KT, BD) | EN-BLOC (singularity) |
+| CO (Commercial) | BUILDING → FLOOR → **DISCIPLINE** → ASSEMBLY → LEAF | Discipline (ARC, FP, STR) | WALK THRU (discipline-driven) |
 
 The RE path expects `floor_rooms` in YAML (Living, Kitchen, Bedroom) and walks
 rooms to find furniture sets. The CO path expects `disciplines` and never looks

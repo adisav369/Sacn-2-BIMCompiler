@@ -108,9 +108,10 @@ public class NlpQueryParser {
         // "Cost of ARC discipline"
         addPattern("cost",
                 "(?:cost|price) (?:of |for )?(\\w+) (?:discipline|system|work)",
-                "SELECT b.m_product_category_id AS discipline, COUNT(*) AS count, SUM(bl.qty) AS total_qty " +
+                "SELECT mpc.Value AS discipline, COUNT(*) AS count, SUM(bl.qty) AS total_qty " +
                 "FROM m_bom_line bl JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID " +
-                "WHERE bl.is_active = 1 AND UPPER(b.m_product_category_id) = UPPER('{discipline}') " +
+                "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                "WHERE bl.is_active = 1 AND UPPER(mpc.Value) = UPPER('{discipline}') " +
                 "GROUP BY discipline",
                 "Cost of {discipline} discipline",
                 new String[]{"discipline"});
@@ -121,15 +122,17 @@ public class NlpQueryParser {
                 "(?:show|list) (\\w+) (?:elements|items)",
                 "SELECT bl.child_product_id, bl.qty FROM m_bom_line bl " +
                 "JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID " +
-                "WHERE bl.is_active = 1 AND UPPER(b.m_product_category_id) = UPPER('{discipline}')",
+                "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                "WHERE bl.is_active = 1 AND UPPER(mpc.Value) = UPPER('{discipline}')",
                 "Elements in {discipline} discipline",
                 new String[]{"discipline"});
 
         // "What disciplines are there?"
         addPattern("discipline",
                 "(?:what|which) disciplines (?:are|exist)",
-                "SELECT m_product_category_id AS discipline, COUNT(*) AS bom_count " +
-                "FROM m_bom WHERE is_active = 1 GROUP BY m_product_category_id",
+                "SELECT mpc.Value AS discipline, COUNT(*) AS bom_count " +
+                "FROM m_bom b LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID " +
+                "WHERE b.is_active = 1 GROUP BY mpc.Value",
                 "Discipline breakdown",
                 new String[]{});
 

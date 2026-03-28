@@ -183,10 +183,11 @@ singularity_check() {
 
     local BLDG_BOMID
     BLDG_BOMID=$(sqlite3 "$bom_db" "
-        SELECT bom_id FROM m_bom
-        WHERE bom_type = 'BUILDING' AND m_product_category_id = '${doc_base_type}'
-          AND doc_sub_type = '${label}' AND is_active = 1
-        ORDER BY seq_no LIMIT 1
+        SELECT b.bom_id FROM m_bom b
+        LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
+        WHERE b.bom_type = 'BUILDING' AND mpc.Value = '${doc_base_type}'
+          AND b.doc_sub_type = '${label}' AND b.is_active = 1
+        ORDER BY b.seq_no LIMIT 1
     " 2>/dev/null)
 
     local BOM_W BOM_D BOM_H

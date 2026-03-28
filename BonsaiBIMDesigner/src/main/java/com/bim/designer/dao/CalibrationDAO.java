@@ -173,12 +173,13 @@ public class CalibrationDAO {
      */
     public Map<String, Integer> bomDisciplineCounts(Connection bomConn) throws SQLException {
         String sql = """
-                SELECT mb.Value AS bom_id, mb.m_product_category_id, SUM(ml.qty) as total_qty
+                SELECT mb.Value AS bom_id, mpc.Value AS m_product_category_id, SUM(ml.qty) as total_qty
                 FROM m_bom_line ml
                 JOIN m_bom mb ON ml.M_BOM_ID = mb.M_BOM_ID
+                LEFT JOIN M_Product_Category mpc ON mb.m_product_category_id = mpc.M_Product_Category_ID
                 -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
-                WHERE mb.m_product_category_id IN ('FP','ELEC','CW','SP','ACMV')
-                GROUP BY mb.Value, mb.m_product_category_id
+                WHERE mpc.Value IN ('FP','ELEC','CW','SP','ACMV')
+                GROUP BY mb.Value, mpc.Value
                 ORDER BY mb.Value
                 """;
         Map<String, Integer> result = new LinkedHashMap<>();

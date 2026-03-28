@@ -240,7 +240,7 @@ Three-step process: (1) Query output DB for patterns, (2) Write append-only `mig
 
 ## §5 — The BOM Tree
 
-A building BOM is a hierarchy: BUILDING → FLOOR → ROOM/SET → ITEM (LEAF).
+A building BOM is a self-describing tree (BBC.md §1). No fixed vocabulary — the hierarchy is whatever the products make it. Root = `getParentBOM()` null; leaf = `getChildren()` empty. For SH, the tree looks like:
 
 ```
 BUILDING_SH_STD              ← Finished good

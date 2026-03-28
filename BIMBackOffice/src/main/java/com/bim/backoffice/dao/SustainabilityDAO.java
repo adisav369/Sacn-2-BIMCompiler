@@ -58,9 +58,10 @@ public class SustainabilityDAO {
         // Phase 2: iterate BOM lines, join in memory
         String sql = """
                 SELECT bl.bom_id, bl.child_product_id, bl.qty,
-                       b.m_product_category_id
+                       mpc.Value AS m_product_category_id
                 FROM m_bom_line bl
                 JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
+                LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE bl.child_product_id IS NOT NULL
                   AND bl.is_active = 1
                 ORDER BY bl.bom_child_id

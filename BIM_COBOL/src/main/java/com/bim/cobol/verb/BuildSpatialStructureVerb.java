@@ -142,16 +142,17 @@ public class BuildSpatialStructureVerb implements Verb<BuildSpatialStructureVerb
 
             // Query room-category children of floor BOM — Tier 2: JOIN via M_BOM_ID
             try (PreparedStatement ps = bomConn.prepareStatement(
-                    "SELECT mbl.role, mb2.m_product_category_id " +
+                    "SELECT mbl.role, mpc.Value AS category_value " +
                     "FROM m_bom_line mbl " +
                     "LEFT JOIN m_bom mb2 ON mb2.Value = mbl.child_product_id " +
+                    "LEFT JOIN M_Product_Category mpc ON mb2.m_product_category_id = mpc.M_Product_Category_ID " +
                     "WHERE mbl.M_BOM_ID = ? AND mbl.is_active = 1 " +
-                    "AND mb2.m_product_category_id IN ('LI','BD','KT','BT','DN')")) {
+                    "AND mpc.Value IN ('LI','BD','KT','BT','DN')")) {
                 ps.setInt(1, floorBomId);
                 try (ResultSet rs = ps.executeQuery()) {
                     while (rs.next()) {
                         String bomLineRole = rs.getString("role");
-                        String category = rs.getString("m_product_category_id");
+                        String category = rs.getString("category_value");
                         String roomType = CATEGORY_TO_ROOM_TYPE.get(category);
                         if (roomType == null) continue;
 

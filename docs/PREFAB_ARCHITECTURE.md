@@ -97,7 +97,7 @@ iDempiere MFG captures this for manufacturing. The same model applies here witho
 > You cannot say BUILDING_SH_STD has a Ground Floor without saying where the Ground Floor sits.
 > You cannot say FLOOR_SH_GF_STD has a Living Room without saying where the Living Room is."*
 
-The BOM Drop is not a one-time room-level event. It must fire at **every layer** — UNIT, FLOOR, ROOM, SET — each layer producing Orderlines that declare the position of its children relative to its own space bbox.
+The BOM Drop is not a one-time room-level event. It must fire at **every tree level** — each parent producing Orderlines that declare the position of its children relative to its own space bbox. The tree walker (`getParentBOM()/getChildren()`) handles all depths; no fixed vocabulary needed (BBC.md §1).
 
 ### The Chain — SH (Ifc4_SampleHouse, actual data)
 
@@ -225,7 +225,7 @@ BOM IDs follow module-prefix discipline, matching iDempiere's `AD_`, `C_`, `M_` 
 Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
 `ad_room_boundary` (world XY hardcoded from Revit extraction). The relational chain is
 broken at the top two levels. Adding FLOOR Orderlines restores the cascade:
-`UNIT_abs + FLOOR_rel_dZ + ROOM_rel_xy = correct world position`.
+`parent_abs + child_rel_dZ + grandchild_rel_xy = correct world position` (tack offsets compose at every level).
 
 ### Building-Specific Room Topologies
 
@@ -250,7 +250,7 @@ distinct entry in the catalog with its own name prefix:
 do not modify an existing one. The existing SH and DX rooms are the Rosetta Stones:
 their arrangements are extracted, not invented. New topologies derive from new Stones.
 
-Building-specific naming applies at the UNIT, FLOOR, and ROOM topology levels — where
+Building-specific naming applies at the upper tree levels (root, floor, room) — where
 the spatial arrangement genuinely differs per building. It does **not** propagate down
 to the leaf items. The lower the level, the more generic and reusable:
 
@@ -1466,8 +1466,8 @@ Given a BOM level + space envelope:
     return List<PlacedElement> — absolute XYZ for all levels
 ```
 
-`BOMTierResolver.TIERS = { UNIT, FLOOR, ROOM, SET, ITEM }` — the full ALB cascade.
-`BOMTierResolver.expandBOMNode()` — handles ROOM→SET→ITEM tail (unified from former `FurnitureBOMResolver`).
+`BOMTierResolver` — dispatches on M_Product_Category context, not fixed tier vocabulary (BBC.md §1).
+`BOMTierResolver.expandBOMNode()` — recursive tree walk (unified from former `FurnitureBOMResolver`).
 `BOMWalker` + `AssemblyStructureVisitor` — BOM traversal (replaced `BOMAssemblerAD` + `RelationalResolver`).
 
 These are now unified in `BOMTierResolver` (Phase G-1 complete).
@@ -1478,7 +1478,7 @@ These are now unified in `BOMTierResolver` (Phase G-1 complete).
 // Shared record — combines what all three walkers need
 record BOMChild(
     String   bomId,           // this child's BOM (for sub-BOM recursion)
-    String   tier,            // UNIT / FLOOR / ROOM / SET / ITEM
+    String   categoryId,      // M_Product_Category context (BBC.md §1 — no fixed tier vocabulary)
     double   minSpaceMm,      // fit gate — was BomTierResolver only
     String   locatorRef,      // NORTH_WALL, CENTRE, FLOAT (Phase 4c)
     String   layoutStrategy,  // LINEAR / SURROUND / FLOAT (Phase 4c)
@@ -1525,7 +1525,7 @@ BOMCascadeResolver.resolve(tier, anchor, envelope, bomId)
 
 ### 9.5 Migration Path
 
-The cascade will initially skip Levels 2/3 (UNIT/FLOOR Orderlines still missing) and operate over the same ROOM→SET→ITEM range as today — so no regression. When UNIT/FLOOR Orderlines land (Phase BOM-2c), the cascade naturally extends upward without code change.
+The cascade initially operates over the lower tree levels (room → set → leaf) and naturally extends to upper levels as parent Orderlines land — so no regression. The tree walker is depth-agnostic (BBC.md §1).
 
 **Three compilation modes (§ "Three Compilation Modes") do not change** — `BOMCascadeResolver` operates on the same `ad_room_boundary` coordinate_frame signals. The data determines the mode; the resolver is mode-agnostic.
 

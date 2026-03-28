@@ -87,7 +87,8 @@ public class MBOM extends X_M_BOM {
     /** All active BOMs of a given functional category (LI, BD, KT, FR, ST, ...). */
     public static List<MBOM> getByCategory(Connection conn, String productCategory) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
+            .where(COLUMNNAME_m_product_category_id
+                 + " = (SELECT M_Product_Category_ID FROM M_Product_Category WHERE Value = ?)", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
@@ -303,7 +304,8 @@ public class MBOM extends X_M_BOM {
             : COLUMNNAME_doc_sub_type + " IS NULL";
 
         ModelQuery<MBOM> query = new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
+            .where(COLUMNNAME_m_product_category_id
+                 + " = (SELECT M_Product_Category_ID FROM M_Product_Category WHERE Value = ?)", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1);
 
         if (docSubType != null) {
@@ -375,7 +377,8 @@ public class MBOM extends X_M_BOM {
             throws SQLException {
 
         List<MBOM> candidates = new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_m_product_category_id + " = ?", productCategory)
+            .where(COLUMNNAME_m_product_category_id
+                 + " = (SELECT M_Product_Category_ID FROM M_Product_Category WHERE Value = ?)", productCategory)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();

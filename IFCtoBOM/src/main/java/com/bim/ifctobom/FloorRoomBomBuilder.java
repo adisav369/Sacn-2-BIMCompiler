@@ -33,7 +33,8 @@ public class FloorRoomBomBuilder {
     public static int build(Connection bomConn, BuildingConfig config,
                             Map<String, double[]> floorLbdWorld,
                             Map<String, double[]> setLbdPositions,
-                            double bldgMinX, double bldgMinY, double bldgMinZ) throws SQLException {
+                            double bldgMinX, double bldgMinY, double bldgMinZ,
+                            CategoryLookup catLookup) throws SQLException {
         String buildingBomId = config.buildingBomId();
         int lineCount = 0;
 
@@ -49,7 +50,7 @@ public class FloorRoomBomBuilder {
             // Create FLOOR room BOM header
             insertBomHeader(bomConn, floorBomId,
                     config.prefix() + " " + storeyName + " Rooms",
-                    "FLOOR", "ROOM", fr.productCategory());
+                    "FLOOR", "ROOM", fr.productCategory(), catLookup);
 
             // Floor world LBD for computing SET-in-FLOOR offsets
             double[] floorLbd = floorLbdWorld.get(storeyName);
@@ -102,7 +103,8 @@ public class FloorRoomBomBuilder {
 
     // Implementing BBC.md §4.2 — Witness: W-AABB-QUAL-1
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
-                                        String bomType, String groupBy, String productCategory)
+                                        String bomType, String groupBy, String productCategory,
+                                        CategoryLookup catLookup)
             throws SQLException {
         // FLOOR ROOM BOMs contain YAML-sourced room dimensions → INNER qualifier.
         // The room's AABB is the architect's intended clear volume (finish-to-finish).
@@ -119,7 +121,9 @@ public class FloorRoomBomBuilder {
             stmt.setString(3, bomName);
             stmt.setString(4, bomType);
             stmt.setString(5, groupBy);
-            stmt.setString(6, productCategory);
+            int catId = catLookup.getId(productCategory);
+            if (catId > 0) stmt.setInt(6, catId);
+            else stmt.setNull(6, java.sql.Types.INTEGER);
             stmt.executeUpdate();
         }
     }

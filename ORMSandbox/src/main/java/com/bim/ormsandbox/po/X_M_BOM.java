@@ -3,7 +3,7 @@ package com.bim.ormsandbox.po;
 import com.bim.orm.BasePO;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.Connection;
+import java.sql.*;
 
 /**
  * Generated-structure layer for {@code m_bom} (iDempiere: M_BOM + M_Product merged).
@@ -27,7 +27,7 @@ import java.sql.Connection;
  *   is_active        INTEGER DEFAULT 1
  *   bom_level        TEXT DEFAULT 'SET'
  *   bom_type         TEXT NOT NULL CHECK(UNIT|FLOOR|ROOM|SET|ITEM)
- *   m_product_category_id TEXT      FK → M_Product_Category(M_Product_Category_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
+ *   m_product_category_id INTEGER   FK → M_Product_Category(M_Product_Category_ID)  (LI|BD|KT|BT|DN|FR|ST|L1|L2|UN)
  *   doc_sub_type     TEXT           C_DocType.DocSubType (SH|DX|TB|TE), NULL = generic — STRUCTURAL variant scoping
  *   seq_no           INTEGER DEFAULT 10  display/tiebreaker order (lower = preferred)
  *   origin_x         REAL DEFAULT 0.0   tack point world X (§3.4)
@@ -95,6 +95,8 @@ public class X_M_BOM extends BasePO {
     /** True if GodMode.txt is present — EntityType guards bypassed. */
     public static boolean isGodMode() { return GOD_MODE; }
 
+    private transient String cachedCategoryValue;
+
     public X_M_BOM(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
@@ -109,7 +111,22 @@ public class X_M_BOM extends BasePO {
     public boolean isActive()           { return get_ValueAsBoolean(COLUMNNAME_is_active); }
     public String  getBomLevel()        { return get_ValueAsString(COLUMNNAME_bom_level); }
     public String  getBomType()         { return get_ValueAsString(COLUMNNAME_bom_type); }
-    public String  getProductCategory()     { return get_ValueAsString(COLUMNNAME_m_product_category_id); }
+    /** Returns the raw INTEGER FK to M_Product_Category. */
+    public int     getProductCategoryId()   { return get_ValueAsInt(COLUMNNAME_m_product_category_id); }
+    /** Returns the TEXT Value code (e.g. "RE", "LI") by resolving INTEGER FK via M_Product_Category. */
+    public String  getProductCategory() {
+        if (cachedCategoryValue != null) return cachedCategoryValue;
+        int catId = get_ValueAsInt(COLUMNNAME_m_product_category_id);
+        if (catId == 0) return null;
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT Value FROM M_Product_Category WHERE M_Product_Category_ID = ?")) {
+            ps.setInt(1, catId);
+            try (ResultSet rs = ps.executeQuery()) {
+                cachedCategoryValue = rs.next() ? rs.getString(1) : null;
+            }
+        } catch (SQLException e) { cachedCategoryValue = null; }
+        return cachedCategoryValue;
+    }
     public String  getDocSubType()      { return get_ValueAsString(COLUMNNAME_doc_sub_type); }
     public int     getSeqNo()           { return get_ValueAsInt(COLUMNNAME_seq_no); }
     public double  getOriginX()         { return get_ValueAsDouble(COLUMNNAME_origin_x); }
@@ -124,7 +141,19 @@ public class X_M_BOM extends BasePO {
     public void setIsActive(boolean v)      { set_Value(COLUMNNAME_is_active, v ? 1 : 0); }
     public void setBomLevel(String v)       { set_Value(COLUMNNAME_bom_level, v); }
     public void setBomType(String v)        { set_Value(COLUMNNAME_bom_type, v); }
-    public void setProductCategory(String v)    { set_Value(COLUMNNAME_m_product_category_id, v); }
+    /** Sets category by TEXT Value code — resolves to INTEGER FK via M_Product_Category. */
+    public void setProductCategory(String v) {
+        cachedCategoryValue = v;
+        if (v == null) { set_Value(COLUMNNAME_m_product_category_id, null); return; }
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT M_Product_Category_ID FROM M_Product_Category WHERE Value = ?")) {
+            ps.setString(1, v);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) { set_Value(COLUMNNAME_m_product_category_id, rs.getInt(1)); return; }
+            }
+        } catch (SQLException ignored) { }
+        set_Value(COLUMNNAME_m_product_category_id, v); // fallback: store as-is
+    }
     public void setDocSubType(String v)     { set_Value(COLUMNNAME_doc_sub_type, v); }
     public void setSeqNo(int v)             { set_Value(COLUMNNAME_seq_no, v); }
     public void setOriginX(double v)       { set_Value(COLUMNNAME_origin_x, v); }

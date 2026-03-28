@@ -665,11 +665,12 @@ public class CompilationPipeline {
                 double widthMm, double depthMm, double heightMm) throws SQLException {
 
             String SQL_ROOM_CHILDREN = """
-                SELECT mbl.child_product_id, mbl.role, mbl.sequence, mb2.m_product_category_id
+                SELECT mbl.child_product_id, mbl.role, mbl.sequence, mpc.Value AS category_value
                 FROM m_bom_line mbl
                 LEFT JOIN m_bom mb2 ON mb2.Value = mbl.child_product_id
+                LEFT JOIN M_Product_Category mpc ON mb2.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE mbl.bom_id = ? AND mbl.is_active = 1
-                  AND mb2.m_product_category_id IN ('LI','BD','KT','BT','DN')
+                  AND mpc.Value IN ('LI','BD','KT','BT','DN')
                 ORDER BY mbl.sequence
                 """;
 
@@ -708,7 +709,7 @@ public class CompilationPipeline {
                 try (ResultSet rsRoom = psRoom.executeQuery()) {
                     while (rsRoom.next()) {
                         String role   = rsRoom.getString("role");
-                        String bomCat = rsRoom.getString("m_product_category_id");
+                        String bomCat = rsRoom.getString("category_value");
 
                         String roomType = categoryToRoomType(bomCat);
                         double rMinX = originXMm, rMaxX = originXMm + widthMm;

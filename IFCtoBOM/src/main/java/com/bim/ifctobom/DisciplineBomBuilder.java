@@ -48,7 +48,8 @@ public class DisciplineBomBuilder {
      * for pipeline compatibility.
      */
     public static BuildResult build(Connection bomConn, BuildingConfig config,
-                                    Map<String, List<ExtractionElement>> storeyElements)
+                                    Map<String, List<ExtractionElement>> storeyElements,
+                                    CategoryLookup catLookup)
             throws SQLException {
 
         String prefix = config.prefix();
@@ -80,7 +81,7 @@ public class DisciplineBomBuilder {
                 "BUILDING", "BUILDING",
                 config.docSubType(), config.docBaseType(),
                 aabbW, aabbD, aabbH, config.docBaseType(),
-                allMinX, allMinY, allMinZ);
+                allMinX, allMinY, allMinZ, catLookup);
 
         // ── Process each storey ───────────────────────────────────────────
         int totalLines = 0;
@@ -116,7 +117,7 @@ public class DisciplineBomBuilder {
                     null, null,
                     floorW, floorD, floorH,
                     storeyInfo.productCategory(),
-                    0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
+                    0, 0, 0, catLookup);  // R16: child origin = 0; offset lives in MAKE line dx
 
             // ── Group elements by discipline ──────────────────────────────
             Map<String, List<ExtractionElement>> byDiscipline = new LinkedHashMap<>();
@@ -168,7 +169,8 @@ public class DisciplineBomBuilder {
                                         String docSubType, String docBaseType,
                                         double aabbW, double aabbD, double aabbH,
                                         String productCategory,
-                                        double originX, double originY, double originZ)
+                                        double originX, double originY, double originZ,
+                                        CategoryLookup catLookup)
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
@@ -187,7 +189,9 @@ public class DisciplineBomBuilder {
             stmt.setString(4, bomType);
             stmt.setString(5, groupBy);
             stmt.setString(6, docSubType);
-            stmt.setString(7, productCategory);
+            int catId = catLookup.getId(productCategory);
+            if (catId > 0) stmt.setInt(7, catId);
+            else stmt.setNull(7, java.sql.Types.INTEGER);
             stmt.setDouble(8, aabbW);
             stmt.setDouble(9, aabbD);
             stmt.setDouble(10, aabbH);

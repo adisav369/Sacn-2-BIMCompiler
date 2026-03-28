@@ -1,11 +1,10 @@
 # iDempiere _ID / Name / Value Convention — Impact Study
 
-> **Analysis only. No code changes.**
 > Reference: https://wiki.idempiere.org/en/Columns#Standard_Columns
-> Date: 2026-03-26
+> Date: 2026-03-26 · **Updated:** 2026-03-28 (§6 migration status added)
 
 <div class="bim-banner" markdown>
-<b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Analysis-only study mapping the 4-DB split against standard iDempiere column patterns.
+<b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Study mapping the 5-DB split against standard iDempiere column patterns. Tiers 1–2 now migrated (§6).
 </div>
 
 ## Summary
@@ -15,11 +14,13 @@ iDempiere convention: every table has three identity columns:
 - `Name` (TEXT NOT NULL) — human-readable label
 - `Value` (TEXT NOT NULL) — SearchKey, unique business identifier
 
-Our 4-DB split uses a mix of conventions. Most tables use **TEXT primary keys** (business identifiers as PK) and lack a separate `_ID` surrogate. Only a few tables follow iDempiere convention closely.
+Our 5-DB split uses a mix of conventions. Most tables use **TEXT primary keys** (business identifiers as PK) and lack a separate `_ID` surrogate. Only a few tables follow iDempiere convention closely.
 
 ---
 
 ## 1. Column Inventory by Database
+
+> **Snapshot note:** §1–§5 reflect the pre-migration state (2026-03-26). See [§6 Migration Status](#6-migration-status) for what has been migrated since.
 
 ### 1.1 BOM DB (`{PREFIX}_BOM.db` — e.g., SH_BOM.db)
 
@@ -308,19 +309,19 @@ No formal iDempiere-style PO (Persistent Object) classes exist. The project uses
 
 The iDempiere-named tables (`M_Product`, `m_bom`, `m_bom_line`, `C_Order`, `C_OrderLine`, `C_DocType`, `M_AttributeSet*`, `W_Verb_Node*`) are the ones that would be migrated. The `ad_*` and output tables use their own convention.
 
-### 3.4 Migrations Needed
+### 3.4 Migrations Needed *(partially completed — see §6)*
 
-If TEXT PKs were converted to INTEGER `_ID` + `Value TEXT` SearchKey:
+Original assessment (pre-migration). Rows marked ✅ are now DONE:
 
-| Table | Migration | Risk |
-|-------|-----------|------|
-| M_Product | Add `M_Product_ID INTEGER`, keep `product_id` as `Value` | **EXTREME** — 29 Java files, all BOM DBs, all output DBs |
-| m_bom | Add `M_BOM_ID INTEGER`, keep `bom_id` as `Value` | **EXTREME** — 37 Java files, all BOM DBs |
-| m_bom_line | Already has `bom_child_id INTEGER` PK | Rename to `M_BOM_Line_ID` only |
-| c_order | Change `C_Order_ID TEXT` → `C_Order_ID INTEGER` + `Value TEXT` | **HIGH** — 19 Java files |
-| C_DocType | Change `C_DocType_ID TEXT` → `C_DocType_ID INTEGER` + `Value TEXT` | **HIGH** — 14 Java files |
-| M_Product_Category | Add `_ID INTEGER`, keep current as `Value` | Medium — 6 files |
-| M_AttributeSet | Change TEXT → INTEGER | Low — 4 files |
+| Table | Migration | Risk | Status |
+|-------|-----------|------|--------|
+| M_Product | Add `M_Product_ID INTEGER`, keep `product_id` as `Value` | **EXTREME** — 29 Java files | ✅ S91 (IFCtoBOM DDL), Phase B deferred (135 refs) |
+| m_bom | Add `M_BOM_ID INTEGER`, keep `bom_id` as `Value` | **EXTREME** — 37 Java files | ✅ S91 DDL + S100-p86 Java ORM (30+ files) |
+| m_bom_line | Already has `bom_child_id INTEGER` PK | Rename to `M_BOM_Line_ID` only | ✅ S91 (M_BOM_ID FK added) |
+| c_order | Change `C_Order_ID TEXT` → `C_Order_ID INTEGER` + `Value TEXT` | **HIGH** — 19 Java files | ✅ S91 (IFCtoBOM DDL) |
+| C_DocType | Change `C_DocType_ID TEXT` → `C_DocType_ID INTEGER` + `Value TEXT` | **HIGH** — 14 Java files | ✅ S91 (IFCtoBOM DDL) |
+| M_Product_Category | Add `_ID INTEGER`, keep current as `Value` | Medium — 6 files | ✅ S90 schema + S92 sidecar drop |
+| M_AttributeSet | Change TEXT → INTEGER | Low — 4 files | Deferred |
 
 ### 3.5 Test Assertions at Risk
 
@@ -411,37 +412,71 @@ These are joined via shared TEXT keys across databases at runtime:
 | **Migration SQL files needed** | ~15-20 (ALTER TABLE + data migration) |
 | **Test files with hardcoded schema** | 3-4 contract tests + RosettaStoneGateTest |
 
-### Migration tiers
+### Migration tiers *(see §6 for current status)*
 
-**Tier 1 — Quick wins (Name/Value on tables that already have INTEGER PKs):**
-- Add `Name TEXT` and `Value TEXT` where missing on INTEGER PK tables
-- ~30 ALTER TABLE statements
-- Low risk, no FK changes
+**Tier 1 — Name/Value on INTEGER PK tables:** ✅ DONE (S83)
+- 5 migrations, 43 tables. Name/Value columns added.
 
-**Tier 2 — Core ERP tables (TEXT PK → INTEGER PK):**
-- `M_Product`, `m_bom`, `c_order`, `C_DocType`, `M_Product_Category`
-- Requires FK cascade changes across all 4 DBs + 34 BOM DBs
-- ~50+ Java files to update
-- **HIGH RISK** — touches Sacred Files (X_M_BOM.java, X_M_BOMLine.java)
+**Tier 2 — Core ERP tables (TEXT PK → INTEGER PK):** ✅ Phases A–D DONE (S90–S92, S100-p86)
+- `m_bom`, `C_DocType`, `C_Order`, `M_Product_Category` — INTEGER PK in IFCtoBOM DDL + Java ORM
+- `M_Product` — INTEGER PK in DDL, Phase B (135 consumer refs) deferred
+- Sidecar `_int` columns dropped (S92)
 
 **Tier 3 — Config tables (ad_* TEXT PK → INTEGER PK):**
-- ~40 `ad_*` tables
+- ~40 `ad_*` tables — not yet started
 - Lower Java impact (mostly read-only from Java)
 - Medium risk — mostly migration SQL + seed data updates
 
 ### Recommendation
 
-The current TEXT-PK convention is **functional but non-standard**. The TEXT PKs act as both surrogate key and SearchKey, which is simpler but prevents integer-based FK joins and violates iDempiere conventions.
-
-A full migration would be a multi-session effort touching 50+ Java files, 34+ BOM databases, and all migration SQL. The safest approach would be Tier 1 first (add Name/Value to existing INTEGER PK tables), then Tier 2 for core tables in a dedicated branch with comprehensive test coverage.
+Tier 1 and Tier 2 core tables are migrated. The remaining gaps are:
+- **M_Product Phase B:** 135 consumer references still use `product_id TEXT` lookups
+- **M_Product_Category Phase B:** Java refs still use TEXT lookups in some paths
+- **M_AttributeSet:** TEXT PK, low priority
+- **Tier 3:** ~40 `ad_*` config tables, deferred indefinitely (functional as-is)
 
 ---
 
-## Appendix: Conformance Scorecard
+## 6. Migration Status
+
+This study was written as analysis-only (2026-03-26). Migration began the same week. Current state:
+
+### Tier 1 — Name/Value columns ✅ DONE
+
+**Session:** S83-tier1 · **Migrations:** 5 SQL files · **Scope:** 43 INTEGER PK tables
+
+Added `Name TEXT` and `Value TEXT` columns where missing on all tables that already had INTEGER primary keys. Low risk, no FK changes. All 43 tables now have the iDempiere triple (_ID, Name, Value).
+
+### Tier 2 — Core table INTEGER PK ✅ Phases A–D DONE
+
+| Phase | Session | What |
+|-------|---------|------|
+| A+B (schema) | S90-tier2 | 8 migration SQL files. INTEGER PK on 5 core tables: M_Product, m_bom, C_DocType, C_Order, M_Product_Category. BOM DB via `prepare_compile_db` ALTER TABLE (IFCtoBOM DDL was hardcoded). ERP.db + CL applied directly. |
+| C (Java) | S91-tier2c | IFCtoBOM DDL nativized: `M_Product_ID`, `M_BOM_ID`, `C_DocType_ID` all `INTEGER PRIMARY KEY AUTOINCREMENT`. Value/Name backfill in pipeline. C_OrderLine persisted (37 rows for SH — was 0). ORM accessors added (X_M_BOM, X_M_BOMLine). All `_int` sidecar columns eliminated from snapshot. |
+| D (cleanup) | S92-tier2d | `M_Product_Category_ID_int` sidecar column + index dropped (DV024 + CL005 migrations). TEXT FK audit: 6 TEXT FK columns still actively used (deferred to Phase E). |
+| m_bom ORM | S100-p86 | `M_BOM_ID` nativized in Java ORM. `X_M_BOM.getPKColumnName()` → `M_BOM_ID`. `BasePO.loadByValue()` added. All `getBomId()` → `getValue()` across 30+ files (BomDropper, BOMWalker, PlacementCollectorVisitor, CompilationPipeline, BuildingRegistry, DesignerDAO, 10 BIM_COBOL verbs, BomTemplateComposer, BuildingInspector, DesignerAPIImpl). |
+
+### Remaining gaps
+
+| Gap | Scope | Priority |
+|-----|-------|----------|
+| M_Product Phase B | 135 Java refs still use `product_id TEXT` lookups | Medium — functional, deferred |
+| M_Product_Category Phase B | Some Java paths still use TEXT lookups | Low |
+| M_AttributeSet | TEXT PK, 4 files | Low |
+| Tier 3 (ad_* config) | ~40 tables, TEXT PKs | Deferred indefinitely — functional as-is |
+| Phase E (TEXT FK audit) | 6 TEXT FK columns identified in S92 | Deferred |
+
+### Verification
+
+All migration phases verified with zero regression: `SH 7/7 PASS`, `FK 7/7 PASS`, `mvn compile -q` PASS. Fresh BOM DB extraction verified (SH_BOM.db deleted + rebuilt after S100-p86).
+
+---
+
+## Appendix: Conformance Scorecard *(updated 2026-03-28)*
 
 | Convention | Conformant | Partial | Non-conformant |
 |------------|-----------|---------|----------------|
-| INTEGER PK | 4 tables (AD_Org, M_Attr*, PP_*) | ~30 (INTEGER PK, missing Name/Value) | ~70 (TEXT PK) |
-| Name column | ~20 tables | — | ~100 tables |
-| Value/SearchKey | 4 tables | — | ~116 tables |
-| INTEGER FK joins | ~8 FK refs | — | ~40 FK refs |
+| INTEGER PK | ~10 tables (core ERP + BOM tables post-Tier 2) | ~25 (INTEGER PK, missing Name/Value) | ~65 (TEXT PK, mostly ad_* config) |
+| Name column | ~63 tables (post-Tier 1) | — | ~57 tables |
+| Value/SearchKey | ~47 tables (post-Tier 1) | — | ~73 tables |
+| INTEGER FK joins | ~15 FK refs (post-Tier 2 BOM DB) | — | ~33 FK refs |

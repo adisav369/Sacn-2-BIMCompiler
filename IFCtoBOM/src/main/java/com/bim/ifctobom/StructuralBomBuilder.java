@@ -41,7 +41,8 @@ public class StructuralBomBuilder {
      */
     public static BuildResult build(Connection bomConn, BuildingConfig config,
                                     Map<String, List<ExtractionElement>> storeyElements,
-                                    Map<String, Set<String>> excludeByStorey)
+                                    Map<String, Set<String>> excludeByStorey,
+                                    CategoryLookup catLookup)
             throws SQLException {
 
         String prefix = config.prefix();
@@ -75,7 +76,7 @@ public class StructuralBomBuilder {
                 "BUILDING", "BUILDING",
                 config.docSubType(), config.docBaseType(),
                 aabbW, aabbD, aabbH,
-                allMinX, allMinY, allMinZ);
+                allMinX, allMinY, allMinZ, catLookup);
 
         // ── Process each storey ──────────────────────────────────────────────
         int totalLines = 0;
@@ -112,9 +113,9 @@ public class StructuralBomBuilder {
                     "FLOOR", "STOREY",
                     null, null,  // floor BOMs don't carry doc type
                     floorAabbW, floorAabbD, floorAabbH,
-                    0, 0, 0);  // R16: child origin = 0; offset lives in MAKE line dx
+                    0, 0, 0, catLookup);  // R16: child origin = 0; offset lives in MAKE line dx
             // Set m_product_category_id separately
-            updateBomCategory(bomConn, floorBomId, storeyInfo.productCategory());
+            updateBomCategory(bomConn, floorBomId, storeyInfo.productCategory(), catLookup);
 
             // ── Insert element lines (skip scope-assigned elements) ──────────
             // FACTORIZE-v2: verb-compressed LEAF writes via VerbFactorizer.
@@ -182,7 +183,8 @@ public class StructuralBomBuilder {
                                         String bomType, String groupBy,
                                         String docSubType, String docBaseType,
                                         double aabbW, double aabbD, double aabbH,
-                                        double originX, double originY, double originZ)
+                                        double originX, double originY, double originZ,
+                                        CategoryLookup catLookup)
             throws SQLException {
         String sql = """
                 INSERT OR REPLACE INTO m_bom
@@ -201,7 +203,9 @@ public class StructuralBomBuilder {
             stmt.setString(4, bomType);
             stmt.setString(5, groupBy);
             stmt.setString(6, docSubType);
-            stmt.setString(7, docBaseType);  // m_product_category_id = docBaseType (RE/CO/IN)
+            int catId = catLookup.getId(docBaseType);
+            if (catId > 0) stmt.setInt(7, catId);
+            else stmt.setNull(7, java.sql.Types.INTEGER);
             stmt.setDouble(8, aabbW);
             stmt.setDouble(9, aabbD);
             stmt.setDouble(10, aabbH);
@@ -212,11 +216,14 @@ public class StructuralBomBuilder {
         }
     }
 
-    private static void updateBomCategory(Connection conn, String bomId, String productCategory)
+    private static void updateBomCategory(Connection conn, String bomId, String productCategory,
+                                          CategoryLookup catLookup)
             throws SQLException {
         String sql = "UPDATE m_bom SET m_product_category_id = ? WHERE Value = ?";
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, productCategory);
+            int catId = catLookup.getId(productCategory);
+            if (catId > 0) stmt.setInt(1, catId);
+            else stmt.setNull(1, java.sql.Types.INTEGER);
             stmt.setString(2, bomId);
             stmt.executeUpdate();
         }
