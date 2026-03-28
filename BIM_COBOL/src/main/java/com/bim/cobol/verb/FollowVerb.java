@@ -3,11 +3,17 @@ package com.bim.cobol.verb;
 import com.bim.cobol.Verb;
 import com.bim.cobol.VerbContext;
 import com.bim.cobol.VerbResult;
+import com.bim.cobol.geometry.CrawlOp;
+import com.bim.cobol.geometry.CrawlRouter;
+import com.bim.cobol.geometry.CrawlState;
+import com.bim.cobol.geometry.FollowOp;
+import com.bim.compiler.geometry.Point3D;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 
 /**
  * FOLLOW &lt;surface_type&gt; &lt;room_ref&gt; [STOCK_LENGTH &lt;mm&gt;] [DIAMETER &lt;mm&gt;]
@@ -15,7 +21,8 @@ import java.sql.SQLException;
  * <p>Traces along a surface and produces PipeSegment × N where
  * N = ceil(run_length / stock_length). Straight run only — no fittings.
  *
- * <p>Read-only — no DB writes. BomWriter handles persistence.
+ * <p>Thin wrapper over {@link CrawlRouter} + {@link FollowOp}.
+ * Read-only — no DB writes. BomWriter handles persistence.
  */
 // Implementing DISC_VALIDATION_DB_SRS §10.4.10 FOLLOW — Witness: W-FOLLOW-1
 // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T0.4
@@ -81,17 +88,25 @@ public class FollowVerb implements Verb<FollowVerb.FollowPayload> {
             return VerbResult.fail(keyword(),
                     "room '" + roomRef + "' has zero dimensions", null);
 
-        // N = ceil(run_length / stock_length)
-        int segmentCount = (int) Math.ceil((double) runLengthMm / stockLengthMm);
-        int totalLengthMm = segmentCount * stockLengthMm;
+        // Delegate to CrawlRouter via FollowOp
+        CrawlState initial = new CrawlState(
+                new Point3D(0, 0, 0), new Point3D(1, 0, 0),
+                diameterMm, "PipeSegment", "FP");
+        CrawlRouter.RouteResult route = CrawlRouter.execute(
+                initial, List.of(new FollowOp(runLengthMm, stockLengthMm)));
+
+        int segmentCount = route.segments().size();
+        int totalLengthMm = (int) route.totalLengthMm();
 
         FollowPayload payload = new FollowPayload(
                 surfaceType, roomRef, runLengthMm, stockLengthMm,
-                diameterMm, segmentCount, totalLengthMm, 0);
+                diameterMm, segmentCount, totalLengthMm,
+                route.fittings().size());
 
         return VerbResult.ok(keyword(),
-                String.format("FOLLOW %s %s: %d segments × %dmm (run=%dmm, fittings=0)",
-                        surfaceType, roomRef, segmentCount, stockLengthMm, runLengthMm),
+                String.format("FOLLOW %s %s: %d segments × %dmm (run=%dmm, fittings=%d)",
+                        surfaceType, roomRef, segmentCount, stockLengthMm, runLengthMm,
+                        route.fittings().size()),
                 payload);
     }
 
