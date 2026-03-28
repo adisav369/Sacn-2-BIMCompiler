@@ -1,7 +1,7 @@
 # BIM Compiler — Project Roadmap
 
 <div class="bim-banner" markdown>
-<center><b>Beta release target: July 2026</b></center>
+<center><b>Beta release on Oracle Cloud by July 2026</b></center>
 </div>
 
 ---
@@ -121,7 +121,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 
 | Deliverable | Est. | Detail |
 |-------------|------|--------|
-| Cloud deployment | 5d | Multi-user server, auth, project storage |
+| Cloud deployment | 5d | Oracle Cloud — self-service signup, private project workspace per user, DIY building design |
 | API documentation | 3d | OpenAPI/Swagger for BackOffice endpoints |
 | Fleet hardening | 5d | Edge cases across all 35 building types |
 | Localization | 3d | English, Malay, Mandarin (minimum for ASEAN) |
@@ -142,6 +142,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 | Self-orienting BOMs | Phantom spatial children (WALL_BACK, FACE_TOWARD, CLEARANCE) — fixture rotation from data, not heuristics |
 | Domain extension | Marine hulls, tunnels, earthworks, industrial plant — same engine, different products. [ShipYard](ShipYard.md) |
 | Dimensional tolerance fit | ±10% catalog match with scale transform — door/window fitting across buildings |
+| Oracle DB port | SQLite → Oracle Database for enterprise deployment. iDempiere-native table conventions already aligned |
 | Community vocabulary addons | Third-party product catalogs and rule packs |
 
 ---
@@ -151,7 +152,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 | Phase | Target | Key Actions |
 |-------|--------|-------------|
 | **Q2 2026** | GitHub public beta | 34+ Rosetta Stones GREEN, docs site, Bonsai demo video |
-| **Q3 2026** | Malaysia pilot | CIDB BIM lab, affordable housing showcase, UBBL compliance demo |
+| **Q3 2026** | Malaysia pilot | CIDB BIM lab, affordable housing showcase, UBBL compliance demo, Oracle Cloud hosted |
 | **Q3 2026** | Strategic partnerships | Blender/Bonsai ecosystem, iDempiere community, ConTech investors |
 | **Q4 2026** | Academic + industry | Automation in Construction journal, buildingSMART summit |
 | **2027** | Scale | Enterprise multi-user, infrastructure + marine domains, training programs |
