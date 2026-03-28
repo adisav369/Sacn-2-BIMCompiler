@@ -7,7 +7,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — 24/34 ALL GREEN (post-S100-p85 fleet audit). 7 C9 WARN (rank-match artifact). 3 FAIL (CA, CL, WA — recently unblocked). 1 GENERATIVE FAIL (DM). 2 empty (RD, RL — infra walker gap).
+**Gate:** `./scripts/run_RosettaStones.sh` — Post-p89: SH 7/7, FK 7/7, IN 7/7, TE 6/7+WARN (C9), DX script-dies (grep -c bug, compilation OK). Full fleet re-run pending: need `rm library/*_BOM.db` + fix grep -c exit-code bug in run_RosettaStones.sh validation rules path.
 
 | Gate | SH | FK | IN | DX | TE | DM |
 |------|----|----|----|----|------|------|

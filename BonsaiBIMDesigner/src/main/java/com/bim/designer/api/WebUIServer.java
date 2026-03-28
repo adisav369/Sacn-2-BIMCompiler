@@ -240,6 +240,10 @@ public class WebUIServer implements AutoCloseable {
                 case "nlpQuery" -> handleNlpQuery(obj);
                 case "switchVisualization" -> handleSwitchVisualization(obj);
                 case "getSubmission" -> handleGetSubmission(obj);
+                // ── Forge bridge commands (prompt 90) ─────────────
+                case "forgeCompute" -> handleForgeCompute(obj);
+                case "forgeCost" -> handleForgeCost(obj);
+                case "forgeList" -> handleForgeList(obj);
                 default -> designer.dispatch(jsonLine);
             };
 
@@ -702,6 +706,113 @@ public class WebUIServer implements AutoCloseable {
         } catch (Exception e) {
             return "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}";
         }
+    }
+
+    // ── Forge bridge commands (prompt 90) ─────────────────────────────────
+    // Implementing BlenderBridge.md §3.2 — Witness: W-FORGE-BRIDGE-1
+
+    /** Shared forge engine registry — same set as ForgeVerb. */
+    private final Map<String, com.bim.cobol.forge.ForgeEngine> forgeEngines = buildForgeRegistry();
+
+    private static Map<String, com.bim.cobol.forge.ForgeEngine> buildForgeRegistry() {
+        Map<String, com.bim.cobol.forge.ForgeEngine> map = new LinkedHashMap<>();
+        for (com.bim.cobol.forge.ForgeEngine e : List.of(
+                new com.bim.cobol.forge.SlopeCutForge(),
+                new com.bim.cobol.forge.StairFlightForge(),
+                new com.bim.cobol.forge.PipeBendForge(),
+                new com.bim.cobol.forge.DomeSectionForge(),
+                new com.bim.cobol.forge.BarrelVaultForge(),
+                new com.bim.cobol.forge.RebarCageForge())) {
+            map.put(e.pieceType(), e);
+        }
+        return Map.copyOf(map);
+    }
+
+    /**
+     * forgeCompute — look up ForgeEngine by pieceType, compute geometry.
+     * JSON in: {"action":"forgeCompute","pieceType":"SLOPE_CUT","params":{"pitch":30,"span":5200,...}}
+     */
+    private String handleForgeCompute(JsonObject obj) {
+        String pieceType = obj.has("pieceType") ? obj.get("pieceType").getAsString().toUpperCase() : "";
+        if (pieceType.isBlank())
+            return "{\"success\":false,\"error\":\"Missing pieceType\"}";
+
+        com.bim.cobol.forge.ForgeEngine engine = forgeEngines.get(pieceType);
+        if (engine == null)
+            return "{\"success\":false,\"error\":\"Unknown pieceType: " + pieceType
+                    + ". Registered: " + forgeEngines.keySet() + "\"}";
+
+        Map<String, String> params = new LinkedHashMap<>();
+        if (obj.has("params") && obj.get("params").isJsonObject()) {
+            for (var entry : obj.getAsJsonObject("params").entrySet()) {
+                params.put(entry.getKey(), entry.getValue().getAsString());
+            }
+        }
+
+        // Forge engines don't need DB connections — pass null VerbContext
+        com.bim.cobol.forge.ForgeResult result = engine.compute(null, params);
+        return JsonProtocol.toJson(result);
+    }
+
+    /**
+     * forgeCost — forge compute + cost breakdown from component_library.db.
+     * Returns combined JSON: forge result + cost (null if no cost data available).
+     */
+    private String handleForgeCost(JsonObject obj) {
+        // First compute the forge result
+        String forgeJson = handleForgeCompute(obj);
+
+        // Parse the forge result to check success
+        JsonObject forgeObj = JsonParser.parseString(forgeJson).getAsJsonObject();
+        boolean pass = forgeObj.has("pass") && forgeObj.get("pass").getAsBoolean();
+
+        if (!pass) return forgeJson;  // return forge failure as-is
+
+        // Attempt cost lookup via CostDAO
+        Map<String, Object> combined = new LinkedHashMap<>();
+        combined.put("forge", forgeObj);
+
+        try (Connection compConn = DriverManager.getConnection(
+                "jdbc:sqlite:" + libDir.resolve("component_library.db"))) {
+            String pieceType = obj.has("pieceType") ? obj.get("pieceType").getAsString().toUpperCase() : "";
+            com.bim.backoffice.dao.CostDAO costDao = new com.bim.backoffice.dao.CostDAO();
+            com.bim.backoffice.dao.CostDAO.CostLine costLine =
+                    costDao.elementCost(compConn, pieceType, 1);
+            combined.put("cost", costLine);
+        } catch (Exception e) {
+            LOG.log(Level.FINE, "forgeCost: cost lookup unavailable", e);
+            combined.put("cost", null);
+        }
+        return JsonProtocol.toJson(combined);
+    }
+
+    /**
+     * forgeList — enumerate registered piece types and their parameter names.
+     * Metadata-driven: lets UI build parameter forms dynamically.
+     */
+    private String handleForgeList(JsonObject obj) {
+        // Parameter schemas per piece type (extracted from ForgeEngine implementations)
+        Map<String, List<String>> paramSchemas = Map.of(
+                "SLOPE_CUT", List.of("pitch", "span", "width", "depth", "birdsmouth"),
+                "STAIR_FLIGHT", List.of("height", "tread", "riser", "width"),
+                "PIPE_BEND", List.of("angle", "radius", "diameter"),
+                "DOME_SECTION", List.of("radius", "rings", "segments", "base_z"),
+                "BARREL_VAULT", List.of("span", "length", "rise"),
+                "REBAR_CAGE", List.of("type", "grade", "exposure", "width", "depth", "thickness", "height", "length")
+        );
+
+        List<Map<String, Object>> pieceTypes = new ArrayList<>();
+        for (var entry : forgeEngines.entrySet()) {
+            Map<String, Object> pt = new LinkedHashMap<>();
+            pt.put("type", entry.getKey());
+            pt.put("params", paramSchemas.getOrDefault(entry.getKey(), List.of()));
+            pieceTypes.add(pt);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("pieceTypes", pieceTypes);
+        result.put("count", pieceTypes.size());
+        return JsonProtocol.toJson(result);
     }
 
     // ── Post-compile: notify browser only ───────────────────────────────

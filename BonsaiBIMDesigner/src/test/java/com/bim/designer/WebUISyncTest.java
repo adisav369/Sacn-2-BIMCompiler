@@ -346,6 +346,70 @@ class WebUISyncTest {
         assertFalse(resp2.contains("Wall_A"), "Old selection must be gone");
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // Forge Bridge Commands (prompt 90)
+    // ══════════════════════════════════════════════════════════════════
+
+    @Test
+    @Order(30)
+    @DisplayName("W-FORGE-BRIDGE-1: forgeCompute SLOPE_CUT returns geometry records")
+    void w_forge_bridge_1_compute_slope_cut() throws Exception {
+        String resp = post("{\"action\":\"forgeCompute\",\"pieceType\":\"SLOPE_CUT\"," +
+                "\"params\":{\"pitch\":\"30\",\"span\":\"5200\",\"width\":\"90\",\"depth\":\"45\"}}");
+        assertNotNull(resp);
+        assertTrue(resp.contains("\"pass\":true"), "SLOPE_CUT must pass: " + resp);
+        assertTrue(resp.contains("\"pieceType\":\"SLOPE_CUT\""), "Must echo pieceType");
+        assertTrue(resp.contains("\"records\""), "Must contain geometry records");
+        assertTrue(resp.contains("PASS"), "Must contain compliance checks");
+    }
+
+    @Test
+    @Order(31)
+    @DisplayName("W-FORGE-BRIDGE-2: forgeCompute unknown type returns error")
+    void w_forge_bridge_2_compute_unknown() throws Exception {
+        String resp = post("{\"action\":\"forgeCompute\",\"pieceType\":\"NONEXISTENT\"," +
+                "\"params\":{}}");
+        assertNotNull(resp);
+        assertTrue(resp.contains("\"success\":false") || resp.contains("Unknown pieceType"),
+                "Unknown type must return error: " + resp);
+    }
+
+    @Test
+    @Order(32)
+    @DisplayName("W-FORGE-BRIDGE-3: forgeCompute missing pieceType returns error")
+    void w_forge_bridge_3_compute_missing_type() throws Exception {
+        String resp = post("{\"action\":\"forgeCompute\",\"params\":{\"pitch\":\"30\"}}");
+        assertNotNull(resp);
+        assertTrue(resp.contains("Missing pieceType"), "Must report missing pieceType: " + resp);
+    }
+
+    @Test
+    @Order(33)
+    @DisplayName("W-FORGE-BRIDGE-4: forgeCost returns forge result + cost field")
+    void w_forge_bridge_4_cost() throws Exception {
+        String resp = post("{\"action\":\"forgeCost\",\"pieceType\":\"SLOPE_CUT\"," +
+                "\"params\":{\"pitch\":\"30\",\"span\":\"5200\",\"width\":\"90\",\"depth\":\"45\"}}");
+        assertNotNull(resp);
+        assertTrue(resp.contains("\"forge\""), "Must contain forge result: " + resp);
+        assertTrue(resp.contains("\"cost\""), "Must contain cost field (even if null): " + resp);
+    }
+
+    @Test
+    @Order(34)
+    @DisplayName("W-FORGE-BRIDGE-5: forgeList returns all 6 piece types")
+    void w_forge_bridge_5_list() throws Exception {
+        String resp = post("{\"action\":\"forgeList\"}");
+        assertNotNull(resp);
+        assertTrue(resp.contains("\"count\":6"), "Must list 6 piece types: " + resp);
+        assertTrue(resp.contains("SLOPE_CUT"), "Must contain SLOPE_CUT");
+        assertTrue(resp.contains("STAIR_FLIGHT"), "Must contain STAIR_FLIGHT");
+        assertTrue(resp.contains("PIPE_BEND"), "Must contain PIPE_BEND");
+        assertTrue(resp.contains("DOME_SECTION"), "Must contain DOME_SECTION");
+        assertTrue(resp.contains("BARREL_VAULT"), "Must contain BARREL_VAULT");
+        assertTrue(resp.contains("REBAR_CAGE"), "Must contain REBAR_CAGE");
+        assertTrue(resp.contains("\"params\""), "Must contain param schemas");
+    }
+
     // ── Helper ───────────────────────────────────────────────────────
 
     private String post(String json) throws Exception {
