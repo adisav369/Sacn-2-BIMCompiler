@@ -110,7 +110,7 @@ AD_SYSCONFIG = [
 M_BOMCATEGORY = [
     ('BD', 'Bedroom', 'Bedroom settings', 1, None, 'Bedroom', 0, 0, 0, 'RE', None),
     ('BT', 'Bathroom', 'Bathroom/toilet settings', 1, None, 'Bathroom', 0, 0, 0, 'RE', None),
-    ('CW', 'Curtain Wall', 'SH curtain wall / unknown storey extraction', 1, None, 'CurtainWall', 0, 0, 0, None, None),
+    ('CW', 'Cold Water', 'SH curtain wall / unknown storey extraction', 1, None, 'CurtainWall', 0, 0, 0, None, None),
     ('DN', 'Dining', 'Dining settings', 1, None, 'Dining', 0, 0, 0, 'RE', None),
     ('FN', 'Foundation', 'DX foundation / T-FDN storey extraction', 1, None, 'Foundation', 0, 0, 0, None, None),
     ('FR', 'Furniture', 'Leaf furniture items (~4th BOM layer)', 1, None, 'Furniture', 0, 0, 0, None, None),

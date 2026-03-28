@@ -4,6 +4,7 @@ import com.bim.compiler.topology.Discipline;
 import com.bim.orm.BIMLogger;
 
 import java.sql.*;
+import java.util.List;
 
 /**
  * OrderLine.Product callout — auto-insert discipline OrderLines for CO/IN buildings.
@@ -39,9 +40,22 @@ public class OrderLineProductCallout {
     // Implementing BBC.md §3.6.2a — Witness: W-DISC-CALLOUT-1
     public static int onProductChanged(Connection compileDb, Connection erpDb,
                                        String orderId, String productCategory) throws SQLException {
-        // 1. If category not CO or IN → return 0 (RE has subset, handled by YAML)
-        if (productCategory == null || (!"CO".equals(productCategory) && !"IN".equals(productCategory))) {
-            BIMLogger.fine("CALLOUT", "Skip discipline callout for category={} (RE/other)", productCategory);
+        return onProductChanged(compileDb, erpDb, orderId, productCategory, null);
+    }
+
+    /**
+     * Overload with mep_disciplines whitelist (§10.4.11 T3.4).
+     * When mepDisciplines is non-null, only the listed disciplines are created
+     * (works for any building type including RE). When null, CO/IN get all 6, RE gets 0.
+     */
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.4 Implementation — Witness: W-RE-SUBSET-1
+    public static int onProductChanged(Connection compileDb, Connection erpDb,
+                                       String orderId, String productCategory,
+                                       List<String> mepDisciplines) throws SQLException {
+        // 1. If no whitelist and category not CO or IN → return 0
+        if (mepDisciplines == null &&
+                (productCategory == null || (!"CO".equals(productCategory) && !"IN".equals(productCategory)))) {
+            BIMLogger.fine("CALLOUT", "Skip discipline callout for category={} (RE/other, no whitelist)", productCategory);
             return 0;
         }
 
@@ -66,6 +80,13 @@ public class OrderLineProductCallout {
                 Discipline disc = Discipline.fromAD_Org_ID(adOrgId);
                 if (disc == null) {
                     BIMLogger.fine("CALLOUT", "Unknown AD_Org_ID={} for BOM {} — skipping", adOrgId, bomValue);
+                    continue;
+                }
+
+                // §10.4.11 T3.4: whitelist filter — skip disciplines not in mep_disciplines
+                if (mepDisciplines != null && !mepDisciplines.contains(disc.name())) {
+                    BIMLogger.fine("CALLOUT", "Discipline {} not in whitelist {} — skipping",
+                            disc.name(), mepDisciplines);
                     continue;
                 }
 

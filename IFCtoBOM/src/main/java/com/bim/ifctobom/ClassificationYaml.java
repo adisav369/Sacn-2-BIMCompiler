@@ -65,7 +65,8 @@ public class ClassificationYaml {
             Map<String, DisciplineConfig> disciplines,
             String dslFile,
             int geometryFailThreshold,
-            String jurisdiction
+            String jurisdiction,
+            List<String> mepDisciplines
     ) {}
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -223,6 +224,17 @@ public class ClassificationYaml {
                     discCount, result.schemaVersion);
         }
 
+        // Parse mep_disciplines (§10.4.11 T3.4: RE subset whitelist)
+        @SuppressWarnings("unchecked")
+        List<String> mepDisciplines = null;
+        Object mepRaw = bldg.get("mep_disciplines");
+        if (mepRaw instanceof List<?> mepList) {
+            mepDisciplines = new ArrayList<>();
+            for (Object item : mepList) {
+                if (item != null) mepDisciplines.add(item.toString());
+            }
+        }
+
         result.building = new BuildingConfig(
                 getString(bldg, "building_type"),
                 getString(bldg, "prefix"),
@@ -235,7 +247,8 @@ public class ClassificationYaml {
                 disciplines,
                 getString(bldg, "dsl_file"),
                 getInt(bldg, "geometry_fail_threshold", 0),
-                getString(bldg, "jurisdiction")
+                getString(bldg, "jurisdiction"),
+                mepDisciplines
         );
 
         return result;

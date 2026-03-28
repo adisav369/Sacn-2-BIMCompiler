@@ -14,7 +14,7 @@ public enum Discipline {
     FP  (3, 6884),    // Fire Protection: Pipes, Sprinklers, Alarms
     REB (9, 2660),    // Reinforcement: Reinforcing Bars
     ACMV(5, 1621),    // HVAC: Ducts, Air Terminals
-    CW  (6, 1431),    // Curtain Wall services
+    CW  (6, 1431),    // Cold Water (potable)
     STR (2, 1429),    // Structural: Beams, Columns, Slabs
     ELEC(4, 1172),    // Electrical: Light Fixtures, Appliances
     SP  (7, 979),     // Sanitary/Plumbing

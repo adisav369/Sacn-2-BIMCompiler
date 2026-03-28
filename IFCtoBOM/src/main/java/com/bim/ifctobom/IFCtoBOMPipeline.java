@@ -419,6 +419,18 @@ public class IFCtoBOMPipeline {
                 ps.executeUpdate();
             }
 
+            // 10c-2. Store mep_disciplines whitelist (§10.4.11 T3.4: RE subset)
+            if (config.mepDisciplines() != null && !config.mepDisciplines().isEmpty()) {
+                String mepCsv = String.join(",", config.mepDisciplines());
+                try (PreparedStatement ps = bomConn.prepareStatement(
+                        "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
+                        "VALUES ('MEP_DISCIPLINES', ?, 'YAML mep_disciplines whitelist for discipline callout')")) {
+                    ps.setString(1, mepCsv);
+                    ps.executeUpdate();
+                }
+                BIMLogger.info("PIPELINE", "ad_sysconfig: MEP_DISCIPLINES={}", mepCsv);
+            }
+
             // 10d. Tier 2 backfill: populate Value/Name/M_BOM_ID on INTEGER PK tables.
             // Implementing BBC.md §14.3 IDV-1 Phase C — Witness: W-TIER2-BACKFILL
             // These columns are in the DDL but not written by individual builders.

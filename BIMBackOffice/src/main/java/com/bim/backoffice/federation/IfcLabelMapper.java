@@ -94,7 +94,7 @@ public final class IfcLabelMapper {
             Map.entry("SP",     "Sanitary & Plumbing"),
             Map.entry("ELEC",   "Electrical"),
             Map.entry("FP",     "Fire Protection"),
-            Map.entry("CW",     "Curtain Wall"),
+            Map.entry("CW",     "Cold Water"),
             Map.entry("ICT",    "Information & Communications Technology"),
             Map.entry("FURN",   "Furniture"),
             Map.entry("GAS",    "Gas"),

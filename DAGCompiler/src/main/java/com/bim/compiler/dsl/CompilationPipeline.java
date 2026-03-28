@@ -2,6 +2,7 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
+import com.bim.compiler.callout.OrderLineProductCallout;
 import com.bim.compiler.compliance.ComplianceReport;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.BuildingSpecs.*;
@@ -20,6 +21,7 @@ import com.bim.ormsandbox.po.MBOMLine;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.ServiceLoader;
 
@@ -33,16 +35,19 @@ import java.util.ServiceLoader;
  * <p>Before modifying, read the analysis doc for the target building:
  * SH → DATA_MODEL.md, DX → DuplexAnalysis.md, TE → TerminalAnalysis.md.
  *
- * <p>9-step pipeline as typed {@link CompilerStage} chain:
+ * <p>12-step pipeline as typed {@link CompilerStage} chain:
  *   1. Metadata validation (referential integrity)
  *   2. Parse DSL → BuildingDefinition
  *   3. Compile → BuildingSpec
- *   4. Template composition (ST mode only — M_BomCategoryLine walk)
- *   5. Write to output DB
- *   6. VerbStage (BIM COBOL script hook — skipped if no .bimcobol file)
- *   7. SpatialDigest
- *   8. Geometry integrity check
- *   9. PlacementProver (critical proofs gate — skipped for ST mode)
+ *   4. Discipline route (callout + RouteDocEvent.fireAll — §10.4.11 T3.1)
+ *   5. Template composition (ST mode only — M_BomCategoryLine walk)
+ *   6. Write to output DB (+ system_edges/system_nodes persistence)
+ *   7. VerbStage (BIM COBOL script hook — skipped if no .bimcobol file)
+ *   8. ValidationStage (iDempiere DocEvent + ASI + AD_Val_Rule)
+ *   9. SpatialDigest
+ *  10. Geometry integrity check
+ *  11. PlacementProver (critical proofs gate — skipped for ST mode)
+ *  12. ComplianceStage (jurisdiction proofs)
  *
  * Returns PipelineResult — caller decides pass/fail.
  */
@@ -61,14 +66,15 @@ public class CompilationPipeline {
         new MetadataValidator(),  // Step 1 — validate data before use
         new ParseStage(),         // Step 2
         new CompileStage(),       // Step 3
-        new TemplateStage(),      // Step 4 — ST mode only; skipped for all other DocSubTypes
-        new WriteStage(),         // Step 5
-        new VerbStage(),          // Step 6 — BIM COBOL script hook (skips if no .bimcobol file)
-        new ValidationStage(),    // Step 7 — iDempiere processing order: DocEvent + ASI + AD_Val_Rule (LOG mode)
-        new DigestStage(),        // Step 8
-        new GeometryStage(),      // Step 9
-        new ProveStage(),         // Step 10
-        new ComplianceStage()     // Step 11 — proof chain from Step 7 validation results
+        new RouteStage(),         // Step 4 — callout + RouteDocEvent.fireAll() (§10.4.11 T3.1)
+        new TemplateStage(),      // Step 5 — ST mode only; skipped for all other DocSubTypes
+        new WriteStage(),         // Step 6
+        new VerbStage(),          // Step 7 — BIM COBOL script hook (skips if no .bimcobol file)
+        new ValidationStage(),    // Step 8 — iDempiere processing order: DocEvent + ASI + AD_Val_Rule (LOG mode)
+        new DigestStage(),        // Step 9
+        new GeometryStage(),      // Step 10
+        new ProveStage(),         // Step 11
+        new ComplianceStage()     // Step 12 — proof chain from Step 8 validation results
     );
 
     /**
@@ -397,6 +403,112 @@ public class CompilationPipeline {
         }
     }
 
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.1 Implementation — Witness: W-ROUTE-STAGE-1
+    private static class RouteStage implements CompilerStage {
+        @Override public String name() { return "DISCIPLINE ROUTE"; }
+
+        @Override
+        public boolean shouldSkip(CompilationContext ctx) {
+            // Skip if no elements compiled (nothing to route against)
+            if (ctx.walkedPlacements() == null || ctx.walkedPlacements().isEmpty()) {
+                BIMLogger.fine("ROUTE", "No walked placements — RouteStage skipped");
+                return true;
+            }
+            // ST mode: template-driven, no discipline routing
+            if ("ST".equals(ctx.entry().docSubType())) {
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public void execute(CompilationContext ctx) throws Exception {
+            String compileDbPath = System.getProperty("bom.db");
+            if (compileDbPath == null) return;
+
+            try (Connection compileDb = DriverManager.getConnection("jdbc:sqlite:" + compileDbPath);
+                 Connection erpDb = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+
+                // 1. Read mep_disciplines whitelist from ad_sysconfig
+                List<String> mepDisciplines = readMepDisciplines(compileDb);
+
+                // 2. Get order ID and product category
+                String orderId = ctx.entry().docTypeId();
+                String productCategory = ctx.entry().mProductCategoryId();
+
+                // 3. Callout: insert discipline OrderLines
+                int inserted = OrderLineProductCallout.onProductChanged(
+                        compileDb, erpDb, orderId, productCategory, mepDisciplines);
+                BIMLogger.info("ROUTE", "Callout: {} discipline OrderLines inserted (category={}, whitelist={})",
+                        inserted, productCategory, mepDisciplines);
+
+                // 4. Parasitic qty walk: expand discipline OrderLines with BOM children
+                if (inserted > 0) {
+                    int expanded = OrderLineProductCallout.expandDisciplineLines(compileDb, erpDb, orderId);
+                    BIMLogger.info("ROUTE", "Parasitic qty: {} child lines expanded", expanded);
+                }
+
+                // 5. Query discipline list from c_orderline
+                List<String> disciplines = queryDisciplineList(compileDb, orderId);
+                BIMLogger.info("ROUTE", "Disciplines for routing: {}", disciplines);
+
+                if (disciplines.isEmpty()) {
+                    BIMLogger.info("ROUTE", "No discipline OrderLines — routing skipped");
+                    return;
+                }
+
+                // 6. Fire routing via SPI (RouteExecutor in BIM_COBOL)
+                RouteExecutor executor = ServiceLoader.load(RouteExecutor.class)
+                        .findFirst().orElse(null);
+                if (executor == null) {
+                    BIMLogger.info("ROUTE", "No RouteExecutor on classpath — routing deferred");
+                    return;
+                }
+
+                RouteExecutor.RouteReport report = executor.executeRoutes(compileDb, disciplines);
+                ctx.setRouteReport(report);
+
+                BIMLogger.info("ROUTE", "RouteStage done: {} routes, {} segments, {} edges",
+                        report.routeCount(), report.totalSegments(), report.edges().size());
+            }
+        }
+
+        /** Read MEP_DISCIPLINES from ad_sysconfig (§10.4.11 T3.4). */
+        private static List<String> readMepDisciplines(Connection compileDb) {
+            try (PreparedStatement ps = compileDb.prepareStatement(
+                    "SELECT config_value FROM ad_sysconfig WHERE config_key = 'MEP_DISCIPLINES'")) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        String csv = rs.getString(1);
+                        if (csv != null && !csv.isBlank()) {
+                            return Arrays.asList(csv.split(","));
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                BIMLogger.fine("ROUTE", "ad_sysconfig MEP_DISCIPLINES query failed: {}", e.getMessage());
+            }
+            return null;
+        }
+
+        /** Query discipline codes from DISCIPLINE OrderLines in compile DB. */
+        private static List<String> queryDisciplineList(Connection compileDb, String orderId) throws SQLException {
+            List<String> disciplines = new ArrayList<>();
+            try (PreparedStatement ps = compileDb.prepareStatement(
+                    "SELECT DISTINCT Discipline FROM C_OrderLine " +
+                    "WHERE C_Order_ID = ? AND host_type = 'DISCIPLINE' ORDER BY Discipline")) {
+                ps.setString(1, orderId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        String disc = rs.getString(1);
+                        if (disc != null) disciplines.add(disc);
+                    }
+                }
+            }
+            return disciplines;
+        }
+    }
+
     private static class WriteStage implements CompilerStage {
         @Override public String name() { return "WRITE TO DB"; }
 
@@ -429,6 +541,10 @@ public class CompilationPipeline {
                 } else {
                     BIMLogger.info("WRITE", "No walked placements — 0 elements");
                 }
+
+                // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.1 — Witness: W-ROUTE-STAGE-1
+                // Edge persistence: system_edges + system_nodes from RouteDocEvent results
+                persistRouteEdges(conn, ctx);
 
                 conn.commit();
                 System.out.println("Database written: " + outputDbPath);
@@ -881,6 +997,87 @@ public class CompilationPipeline {
                 BIMLogger.warn("WRITE", "C_OrderLineCopyFailure — {}", e.getMessage());
             }
         }
+
+        /**
+         * Persist system_edges + system_nodes from RouteDocEvent results.
+         * Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.1 — Witness: W-ROUTE-STAGE-1
+         */
+        /**
+         * Persist system_edges + system_nodes from RouteExecutor results.
+         * Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.1 — Witness: W-ROUTE-STAGE-1
+         */
+        private static void persistRouteEdges(Connection conn, CompilationContext ctx) {
+            RouteExecutor.RouteReport report = ctx.routeReport();
+            if (report == null || (report.edges().isEmpty() && report.nodes().isEmpty())) return;
+
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS system_edges (
+                        discipline   TEXT NOT NULL,
+                        from_index   INTEGER NOT NULL,
+                        to_index     INTEGER NOT NULL,
+                        from_xyz     TEXT NOT NULL,
+                        to_xyz       TEXT NOT NULL,
+                        edge_type    TEXT NOT NULL
+                    )
+                    """);
+                stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS system_nodes (
+                        discipline   TEXT NOT NULL,
+                        node_index   INTEGER NOT NULL,
+                        node_type    TEXT NOT NULL,
+                        xyz          TEXT NOT NULL,
+                        diameter_mm  REAL,
+                        product      TEXT,
+                        length_mm    REAL
+                    )
+                    """);
+            } catch (SQLException e) {
+                BIMLogger.warn("WRITE", "system_edges/system_nodes DDL failed: {}", e.getMessage());
+                return;
+            }
+
+            int edgeCount = 0;
+            int nodeCount = 0;
+
+            try (PreparedStatement edgePs = conn.prepareStatement(
+                    "INSERT INTO system_edges (discipline, from_index, to_index, from_xyz, to_xyz, edge_type) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)");
+                 PreparedStatement nodePs = conn.prepareStatement(
+                    "INSERT INTO system_nodes (discipline, node_index, node_type, xyz, diameter_mm, product, length_mm) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+
+                for (RouteExecutor.EdgeRow edge : report.edges()) {
+                    edgePs.setString(1, edge.discipline());
+                    edgePs.setInt(2, edge.fromIndex());
+                    edgePs.setInt(3, edge.toIndex());
+                    edgePs.setString(4, edge.fromXyz());
+                    edgePs.setString(5, edge.toXyz());
+                    edgePs.setString(6, edge.edgeType());
+                    edgePs.executeUpdate();
+                    edgeCount++;
+                }
+
+                for (RouteExecutor.NodeRow node : report.nodes()) {
+                    nodePs.setString(1, node.discipline());
+                    nodePs.setInt(2, node.nodeIndex());
+                    nodePs.setString(3, node.nodeType());
+                    nodePs.setString(4, node.xyz());
+                    nodePs.setDouble(5, node.diameterMm());
+                    nodePs.setString(6, node.product());
+                    nodePs.setDouble(7, node.lengthMm());
+                    nodePs.executeUpdate();
+                    nodeCount++;
+                }
+            } catch (SQLException e) {
+                BIMLogger.warn("WRITE", "system_edges/system_nodes INSERT failed: {}", e.getMessage());
+            }
+
+            if (edgeCount > 0 || nodeCount > 0) {
+                BIMLogger.info("WRITE", "Edge persistence: {} edges, {} nodes written", edgeCount, nodeCount);
+                System.out.printf("[EDGES] system_edges=%d system_nodes=%d%n", edgeCount, nodeCount);
+            }
+        }
     }
 
     private static class DigestStage implements CompilerStage {
@@ -1242,9 +1439,9 @@ public class CompilationPipeline {
                 System.out.printf("[WARN] BOM tree proofs: %d advisory warnings (non-blocking)%n", totalWarns);
             }
 
-            // EYES proofs — only when relational data exists (DM generative)
-            // Without relational data, EYES proofs generate noise (false violations)
-            if (ctx.hasRelationalData() || ctx.entry().isGenerative()) {
+            // EYES proofs — fire when relational data OR system_edges exist (§10.4.11 T3.1)
+            boolean hasEdges = hasSystemEdges(ctx.entry().outputDbPath());
+            if (ctx.hasRelationalData() || ctx.entry().isGenerative() || hasEdges) {
                 PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(
                     ctx.entry().outputDbPath(), ctx.entry().projectName());
                 ctx.setProofReport(proofReport);
@@ -1260,6 +1457,17 @@ public class CompilationPipeline {
             } else {
                 // Empty report satisfies test contract (proofReport must be non-null)
                 ctx.setProofReport(new PlacementProver.ProofReport(List.of(), 0, 0, 0));
+            }
+        }
+
+        /** Check if output.db has system_edges > 0 (§10.4.11 T3.1 gate relaxation). */
+        private static boolean hasSystemEdges(String outputDbPath) {
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + outputDbPath);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM system_edges")) {
+                return rs.next() && rs.getInt(1) > 0;
+            } catch (SQLException e) {
+                return false;  // table doesn't exist or empty
             }
         }
     }

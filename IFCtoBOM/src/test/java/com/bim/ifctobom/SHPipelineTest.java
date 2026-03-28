@@ -74,7 +74,7 @@ class SHPipelineTest {
         var ids = result.floorBomIds();
         assertTrue(ids.contains("SH_GF_STR"), "Must have Ground Floor STR");
         assertTrue(ids.contains("SH_ROOF_STR"), "Must have Roof STR");
-        assertTrue(ids.contains("SH_CW_STR"), "Must have Curtain Wall STR");
+        assertTrue(ids.contains("SH_CW_STR"), "Must have Cold Water STR");
         assertEquals(3, ids.size(), "SH has exactly 3 floor STR BOMs");
     }
 
