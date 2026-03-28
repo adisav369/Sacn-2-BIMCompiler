@@ -262,6 +262,15 @@ public class DesignerServer implements AutoCloseable {
                             bboxes));
                     yield JsonProtocol.toJson(resp);
                 }
+                case "placeSet" -> {
+                    var bboxes = JsonProtocol.parseDesignBBoxes(request.field("currentBboxes"));
+                    var resp = api.placeSet(new DesignerAPI.PlaceSetRequest(
+                            request.stringField("buildingId"),
+                            request.stringField("categoryValue"),
+                            request.stringField("roomBomId"),
+                            bboxes));
+                    yield JsonProtocol.toJson(resp);
+                }
                 case "clickToPlace" -> {
                     var bboxes = JsonProtocol.parseDesignBBoxes(request.field("currentBboxes"));
                     var resp = api.clickToPlace(new DesignerAPI.ClickToPlaceRequest(

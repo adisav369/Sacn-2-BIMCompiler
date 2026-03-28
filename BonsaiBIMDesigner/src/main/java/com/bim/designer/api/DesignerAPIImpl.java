@@ -212,7 +212,8 @@ public class DesignerAPIImpl implements DesignerAPI {
                        d.GeometryFailThreshold,
                        COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm,
                        COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm,
-                       COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm
+                       COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm,
+                       NULL AS Jurisdiction, NULL AS CodeEdition
                 -- Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                 FROM C_DocType d
                 LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type
@@ -242,7 +243,9 @@ public class DesignerAPIImpl implements DesignerAPI {
                             rs.getInt("GeometryFailThreshold"),
                             rs.getDouble("AabbWidthMm"),
                             rs.getDouble("AabbDepthMm"),
-                            rs.getDouble("AabbHeightMm")
+                            rs.getDouble("AabbHeightMm"),
+                            rs.getString("Jurisdiction"),
+                            rs.getString("CodeEdition")
                     );
                 }
             }
@@ -1988,6 +1991,64 @@ public class DesignerAPIImpl implements DesignerAPI {
         }
     }
 
+    // Implementing BIM_Designer_SRS.md §2 UX-F-25 — Witness: W-PLACE-SET
+    @Override
+    public PlaceSetResponse placeSet(PlaceSetRequest request) {
+        long t0 = System.currentTimeMillis();
+        try {
+            String cat = request.categoryValue();
+            if (cat == null || cat.isBlank()) {
+                return new PlaceSetResponse(false, 0, List.of(), List.of(),
+                        "categoryValue is required");
+            }
+
+            BIMLogger.info(TAG, "PLACE_SET category={} room={} building={}",
+                    cat, request.roomBomId(), request.buildingId());
+
+            // Query products by category (product_type = categoryValue)
+            var products = dao.browseProducts(null, cat, null, 0, Integer.MAX_VALUE);
+            if (products.isEmpty()) {
+                return new PlaceSetResponse(false, 0, List.of(), List.of(),
+                        "No products found for category: " + cat);
+            }
+
+            List<DesignBBox> placedBboxes = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+            List<DesignBBox> currentBboxes = request.currentBboxes() != null
+                    ? new ArrayList<>(request.currentBboxes()) : new ArrayList<>();
+
+            for (int i = 0; i < products.size(); i++) {
+                var product = products.get(i);
+                // Stagger items along X axis within the room
+                double offsetX = i * 500.0;  // 500mm spacing
+
+                PlaceItemResponse resp = placeItem(new PlaceItemRequest(
+                        request.buildingId(), request.roomBomId(),
+                        product.productId(),
+                        offsetX, 0, 0,
+                        currentBboxes));
+
+                if (resp.success() && resp.bbox() != null) {
+                    placedBboxes.add(resp.bbox());
+                    currentBboxes.add(resp.bbox());
+                } else {
+                    errors.add(product.productId() + ": " +
+                            (resp.error() != null ? resp.error() : "unknown"));
+                }
+            }
+
+            long elapsed = System.currentTimeMillis() - t0;
+            BIMLogger.info(TAG, "PLACE_SET → {} placed, {} errors in {}ms",
+                    placedBboxes.size(), errors.size(), elapsed);
+
+            return new PlaceSetResponse(true, placedBboxes.size(),
+                    placedBboxes, errors, null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "placeSet failed", e);
+            return new PlaceSetResponse(false, 0, List.of(), List.of(), e.getMessage());
+        }
+    }
+
     // ── Click-to-Place — G-8 Interactive Discipline Placement (§18.8) ──
 
     // Implementing BIM_Designer.md §18.8 — Witness: W-CTP-1, W-CTP-2, W-CTP-MEP-1, W-CTP-MULTI-1
@@ -2890,11 +2951,34 @@ public class DesignerAPIImpl implements DesignerAPI {
     @Override
     public CostOfChangeResponse costOfChange(com.google.gson.JsonObject rawRequest) {
         // Implementing BIM_Designer_SRS.md §26.12.3 — Witness: W-WF-COST
-        // Stub: zero delta (no cost engine wired yet)
-        BIMLogger.info(TAG, "costOfChange (stub)");
-        return new CostOfChangeResponse(
-                true, 0.0, 0, 0.0, 0.0, "MYR",
-                List.of(), List.of(), null);
+        try {
+            String buildingId = rawRequest != null && rawRequest.has("buildingId")
+                    ? rawRequest.get("buildingId").getAsString() : null;
+            if (buildingId == null || buildingId.isBlank()) {
+                return new CostOfChangeResponse(false, 0.0, 0, 0.0, 0.0, "MYR",
+                        List.of(), List.of(), "buildingId is required");
+            }
+
+            Connection clConn = getCompLibConn();
+            CostDAO costDao = new CostDAO();
+            CostDAO.CostSummary baseline = costDao.costBreakdown(bomConn, clConn, buildingId);
+
+            BIMLogger.info(TAG, "costOfChange buildingId={}, materialTotal={}, lines={}",
+                    buildingId, baseline.materialTotal(), baseline.lines().size());
+
+            return new CostOfChangeResponse(
+                    true,
+                    baseline.materialTotal(),
+                    baseline.lines().size(),
+                    baseline.laborTotal(),
+                    0.0,  // costDelta=0 — no diff yet (baseline only)
+                    "MYR",
+                    List.of(), List.of(), null);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "costOfChange failed", e);
+            return new CostOfChangeResponse(false, 0.0, 0, 0.0, 0.0, "MYR",
+                    List.of(), List.of(), e.getMessage());
+        }
     }
 
     @Override

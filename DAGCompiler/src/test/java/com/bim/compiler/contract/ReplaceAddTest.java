@@ -43,7 +43,8 @@ public class ReplaceAddTest {
             null, null, null,
             true, 10, 0,
             "GENERATIVE", "test", 0,
-            10000, 8000, 6000
+            10000.0, 8000.0, 6000.0,
+            null, null
     );
 
     @BeforeAll

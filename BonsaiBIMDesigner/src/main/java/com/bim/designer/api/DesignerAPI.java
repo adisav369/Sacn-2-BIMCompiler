@@ -239,6 +239,15 @@ public interface DesignerAPI extends AssemblyAPI {
      */
     PlaceItemResponse placeItem(PlaceItemRequest request);
 
+    /**
+     * Batch-place all products from a category into a room.
+     * Loops placeItem() for each matching product — thin bridge.
+     *
+     * @see PlaceSetRequest
+     * @see PlaceSetResponse
+     */
+    PlaceSetResponse placeSet(PlaceSetRequest request);
+
     // ── Click-to-Place — G-8 Interactive Discipline Placement (§18.8) ──
 
     /**
@@ -755,6 +764,23 @@ public interface DesignerAPI extends AssemblyAPI {
             boolean success,
             int orderLineId,
             DesignBBox bbox,
+            String error
+    ) {}
+
+    /** Place-set request — batch-place all products from a category into a room. */
+    record PlaceSetRequest(
+            String buildingId,
+            String categoryValue,   // M_Product_Category.Value (TEXT), e.g. "LI", "GF"
+            String roomBomId,
+            List<DesignBBox> currentBboxes
+    ) {}
+
+    /** Place-set response — aggregate result of batch placement. */
+    record PlaceSetResponse(
+            boolean success,
+            int placedCount,
+            List<DesignBBox> placedBboxes,
+            List<String> errors,
             String error
     ) {}
 
