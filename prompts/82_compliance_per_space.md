@@ -1,3 +1,4 @@
+# DONE f3c4d793
 # Per-Space Compliance + Submission Package
 
 **Priority:** Evaluate compliance rules per room (not just building-level).

@@ -1266,15 +1266,11 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 | Keyword | Args | What it does | Witnesses |
 |---------|------|-------------|-----------|
 | `TRIM WALLS TO ROOF` | (none) | Measure roof AABB surface at each wall centroid. Ridge along longer axis, linear slope from eave (minZ) to crown (maxZ). Walls exceeding roof surface by >50mm flagged for trimming. Flat roofs (minZ≈maxZ) → slope≈0 naturally. Returns slope angle, direction, and profile type per entry. | W-TRIM-1 through W-TRIM-7 |
+| `FORGE` | `<piece_type> [key:value ...]` | Formula-driven construction piece computation. 6 engines: SLOPE_CUT (rafter trig), STAIR_FLIGHT (rise-over-run + Blondel), PIPE_BEND (arc geometry), DOME_SECTION (ring×segment panels), BARREL_VAULT (rib arc), REBAR_CAGE (slab/beam/column reinforcement with exposure-class cover). Fabrication data persisted to `ad_forge_fabrication` in output.db. ParametricMesh deprecated. See [GEOMETRY_FORGE_SRS](GEOMETRY_FORGE_SRS.md), [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md). | W-FORGE-1..11 |
 
 ### 17.2 Proposed (Not Yet Implemented)
 
 Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.
-
-**FORGE verb** (spec only): `FORGE <piece_type> [key:value ...]` — computes
-construction pieces from parameters via [Geometry Forge](GEOMETRY_FORGE_SRS.md).
-Same verb architecture, same VerbResult output. Shell registered, no piece types
-implemented yet.
 
 ---
 

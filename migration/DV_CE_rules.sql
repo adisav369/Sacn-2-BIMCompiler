@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CE: Clinic Electrical (Clinic_Electrical)
 -- Source: DAGCompiler/lib/output/clinic_electrical.db
--- Generated: 2026-03-28 17:48
+-- Generated: 2026-03-28 21:39
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

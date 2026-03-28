@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WA: BimWhale Advanced Project (BimWhale_Advanced)
 -- Source: DAGCompiler/lib/output/bimwhale_advanced.db
--- Generated: 2026-03-28 17:54
+-- Generated: 2026-03-28 21:43
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

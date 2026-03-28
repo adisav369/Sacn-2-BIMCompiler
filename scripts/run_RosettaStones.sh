@@ -700,7 +700,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
                     -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
                     -Dexec.args="--populate --classify ${yaml_file}" \
                     -q 2>&1) && POP_RC=0 || POP_RC=$?
-                echo "$POP_OUTPUT" | grep -E '^\[populate\]'
+                echo "$POP_OUTPUT" | grep -E '^\[populate\]' || true
 
                 if [ "$POP_RC" -ne 0 ]; then
                     verdict "POPULATE_${PREFIX}" "FAIL" "populate failed"
@@ -719,7 +719,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
                 -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
                 -Dexec.args="--classify ${yaml_file} --bom-db ${BOM_DB}" \
                 -q 2>&1) && IFC_RC=0 || IFC_RC=$?
-            echo "$IFC_OUTPUT" | grep -E '^\[IFCtoBOM\]|^=== |^  \[|^\[QA\]|^  Floor'
+            echo "$IFC_OUTPUT" | grep -E '^\[IFCtoBOM\]|^=== |^  \[|^\[QA\]|^  Floor' || true
 
             if [ "$IFC_RC" -ne 0 ]; then
                 verdict "IFCTOBOM_${PREFIX}" "FAIL" "IFCtoBOM pipeline failed"
@@ -772,7 +772,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
     if [ -f "${OUTPUT_BASE}.db" ] && [ -f "scripts/extract_validation_rules.sh" ]; then
         RULES_FILE="migration/DV_${PREFIX}_rules.sql"
         ./scripts/extract_validation_rules.sh "$PREFIX" > "$RULES_FILE" 2>/dev/null
-        rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null)
+        rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null || true)
         rule_count=${rule_count:-0}
         if [ "$rule_count" -gt 0 ]; then
             sqlite3 library/ERP.db < "$RULES_FILE" 2>/dev/null || true

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WI: Wilfer PART02 (Wilfer)
 -- Source: DAGCompiler/lib/output/wilfer.db
--- Generated: 2026-03-28 17:54
+-- Generated: 2026-03-28 21:44
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

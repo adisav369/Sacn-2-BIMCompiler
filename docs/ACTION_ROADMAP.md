@@ -1,179 +1,147 @@
-# Action Roadmap — BIM Intent Compiler
+# BIM Compiler — Project Roadmap
 
-> **Governing documents:** [MANIFESTO.md](MANIFESTO.md) (ERP world view) ·
-> [ProjectOrderBlueprint.md §14](ProjectOrderBlueprint.md) (session plan) ·
-> [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) (iDempiere conformance)
+> **Construction is manufacturing with coordinates.** This compiler turns IFC
+> geometry into ERP-structured Bills of Materials — same tables, same logic that
+> manufacturing has used for 30 years, applied to construction.
 
 <div class="bim-banner" markdown>
-<b>Navigation hub — where we are and what's next.</b> Pipeline status, gate results, regressions, and quick links to every active work item.
+<b>One domain expert, AI-assisted. 913 commits in 62 days. ~948,000 lines landed. $550 in AI costs.</b>
 </div>
 
 ---
 
-## Where We Are (S96, 2026-03-26)
+## What Exists Today (March 2026)
 
-**Pipeline:** 9 stages. 75 verbs. 2,475 products. 35 buildings (34 extracted + 1 generative). 5-DB architecture.
-**Gates:** 19/34 ALL GREEN (pre-S96-p0). S96-p0 unblocked 11 DocType-blocked buildings — recount pending. 3 regressions: DX (severe), IN (windows), RM (stairs).
-**Tests:** 408 BonsaiBIMDesigner (42 classes) + 5 BackOffice. 202 witnesses.
-**iDempiere conformance:** Tier 1 done (Name/Value on INTEGER PK tables). Tier 2 Phase A–D done (S90–S92). Phase E queries migrated (S93), TEXT columns not yet dropped.
-
----
-
-## Quick Navigation
-
-| I need to... | Go to |
-|--------------|-------|
-| **Understand the system** | [MANIFESTO.md](MANIFESTO.md) (recursive BOM principle, entity registry) |
-| **Find a spec** | [INDEX.md](INDEX.md) (55 docs by tier) |
-| **See what's proven** | [PROGRESS.md](https://github.com/red1oon/BIMCompiler/blob/master/PROGRESS.md) (gate table, session log) |
-| **Navigate the code** | [SourceCodeGuide.md](SourceCodeGuide.md) (entry points, DAOs) |
-| **Run the pipeline** | [WorkOrderGuide.md](WorkOrderGuide.md) (step-by-step) |
-| **Onboard a new IFC** | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) (8-step recipe) |
-| **See the schema** | [DATA_MODEL.md](DATA_MODEL.md) + [DATABASE_SCHEMA.md](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md) |
+| Asset | Measure |
+|-------|---------|
+| **Compilation pipeline** | 9 stages, 76 verbs, BOM-walk compiler |
+| **Buildings proven** | 35 (24 ALL GREEN, 7 WARN, 3 FAIL, 2 pending) |
+| **Product library** | 2,475 products in component library |
+| **Database architecture** | 5-DB split (ERP, BOM, output, validation, component library) |
+| **Geometry Forge** | Formula-driven construction pieces — rafter, stair, pipe bend, dome, vault, rebar. 6 engines, 11 witnesses. [GEOMETRY_FORGE_SRS](GEOMETRY_FORGE_SRS.md) |
+| **Dimensional outputs** | 4D scheduling, 5D costing, 6D carbon (schema ready) |
+| **Report generators** | 18 templates — BOQ, schedules, takeoffs, financial, compliance. BackOffice + Web UI |
+| **Geometric comprehension** | BIMEyes — 28 proof classes, shape/compare/diff verification engine |
+| **Test infrastructure** | 261 test classes, 45 witness/proof classes, 6 gates (G0–G6), tamper seal |
+| **iDempiere conformance** | INTEGER PK on core tables (Tier 1–2 done). _ID/Name/Value triple. [Study](ID_NAME_VALUE_STUDY.md) |
+| **Documentation** | 61 published specs, docs site live |
+| **Federation addon** | Blender/Bonsai IFC viewer with NLP query, 80K lines Python |
+| **Jurisdictions** | Malaysia (UBBL) — rules seeded |
+| **Code** | 272K Java + 221K Python + 59K SQL |
 
 ---
 
-## Phase E — ERP Alignment (DONE)
+## Phase 1 — Fleet Convergence (April 2026)
 
-Blueprint Sessions 0, A–F complete. iDempiere entity model aligned.
+*Get every building to GREEN.*
 
-| Session | Deliverable | Gate |
-|---------|------------|------|
-| 0 | R-PROJ-3 fix (C_Order_ID collision) | GAP-SC-8 CLOSED. [Appendix K](AUDIT_S51_FOCUSED.md) |
-| A | addDiscipline() + OrderMutationService | AddDisciplineTest 4/4. [Appendix I](AUDIT_S51_FOCUSED.md) |
-| B | OrderLineMutation interface (Replace, Add, Remove, Compress) | OrderLineMutationTest 8/8. [Appendix L](AUDIT_S51_FOCUSED.md) |
-| C | Rule pack framing (pack_id on AD tables) | RulePackTest 6/6. [Appendix M](AUDIT_S51_FOCUSED.md) |
-| D | Remove + Compress mutations | RemoveCompressTest 5/5. [Appendix Q](AUDIT_S51_FOCUSED.md) |
-| E | Order inheritance (Ref_Order_ID) | OrderInheritanceTest 6/6. [Appendix S](AUDIT_S51_FOCUSED.md) |
-| F | DiffVerb + Callout (AD_Rule) | DiffVerbTest 5/5. [Appendix T](AUDIT_S51_FOCUSED.md) |
-
-AD Dictionary migration (S64–S79): TEXT discipline → `Discipline` enum + `AD_Org_ID` FK. 6 steps done. Remaining: drop vestigial TEXT columns.
+| Deliverable | Detail |
+|-------------|--------|
+| Fix CA, CL, WA failures | Recently unblocked — extraction pipeline fixes |
+| Resolve C9 axis warnings (7 buildings) | Library mesh orientation alignment, not compiler bug |
+| RD, RL infrastructure walker | Non-standard IFC hierarchy — extend walker for rail/road elements |
+| DM generative convergence | Generative path alignment to BOM-walk compiler |
+| **Exit criterion** | 34/34 ALL GREEN (DM tracked separately as generative) |
 
 ---
 
-## Phase F — Verb Wiring (NEXT)
+## Phase 2 — Multi-Jurisdiction Rules (April–May 2026)
 
-| Item | What | Blocker | Ref |
-|------|------|---------|-----|
-| TRIM-1 | Wire `TRIM WALLS TO ROOF` in pipeline | — | **DONE** (S89-trim1, adeaf75b) |
-| TRIM-2 | End-to-end witness: BOM Drop SH → swap roof → TRIM fires → curtain wall trimmed | TRIM-1 | [BBC.md §Selection](BOMBasedCompilation.md) |
-| CP-2 | DX MIRROR verb (85 axis mismatches) | Large effort | [DuplexAnalysis.md](DuplexAnalysis.md), [TestArchitecture.md](TestArchitecture.md) |
-| PRED-1 | Spatial Predicate verbs (DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST) | — | [BIM_COBOL.md §20](BIM_COBOL.md) — SPEC ONLY |
-| VERB-DOC | 19 registered verbs unlisted in scoreboard → add to §2.4 | — | Doc task, not code |
+*The compiler validates against any jurisdiction's building code. Add three more.*
 
----
+| Jurisdiction | Source | Copyright | Key Rules |
+|-------------|--------|-----------|-----------|
+| **Malaysia (UBBL)** | UBBL 1984 + amendments | Widely cited values | DONE — seeded in ad_val_rule |
+| **UK (Approved Documents)** | gov.uk — free download | Crown Copyright (open) | AD B (fire), AD K (stairs), AD M (access) |
+| **USA (ADA + IBC)** | ADA: ada.gov (public domain). IBC: published dimensional tables | ADA: zero risk. IBC: common-knowledge values | Room area, door width, stair geometry, egress |
+| **Singapore (BCA)** | BCA Approved Document | Government publication | Accessibility, fire safety, structural |
 
-## Phase G — Format Convergence (DEFERRED)
-
-| Item | What | Ref |
-|------|------|-----|
-| FMT-1 | Evaluate retiring DSL for generative buildings. GRID axis algebra must port to YAML first | — |
+The schema already supports multi-jurisdiction — `ad_val_rule.jurisdiction` partitions rules. This phase is **data entry**, not architecture.
 
 ---
 
-## Phase H — C_Project & Enterprise (DEFERRED)
+## Phase 3 — BIM Designer MVP (May 2026)
 
-| Item | What | Blocker |
-|------|------|---------|
-| GAP-SC-3 | Site grid generation — subdivide site_aabb into plots using [terrain](PDF_TERRAIN.md) topology | C_Project |
-| GAP-SC-6 | Compile-once-copy-many — reference class performance (qty=180) | C_Project at scale |
-| GAP-SC-7 | Output consolidation — per-building vs consolidated output.db | C_Project |
-| ENT-1 | ModelValidator alignment (processIt → beforeSave/afterSave hooks) | Enterprise multi-user |
-| ENT-2 | Federated Model spatial DB (93% memory reduction on 93K elements) | Enterprise scale |
+*Interactive building design inside Blender — create, edit, save, recall, compile.*
 
----
+| Deliverable | Detail |
+|-------------|--------|
+| Create New building | One-click with defaults, immediate 3D bbox feedback |
+| Room editing | Slider-driven resize, add/remove rooms, storey management |
+| Save / Recall / Approve | Immutable versioning (W_Variant), non-destructive recall |
+| Ambient compliance | Live status strip — "spell-checker for buildings" |
+| Promote to BOM | Approved design → BOM dictionary entry |
+| Assembly Builder | Layer-by-layer wall/roof/floor composition, U-value calculation. [ASSEMBLY_BUILDER_SRS](ASSEMBLY_BUILDER_SRS.md) |
+| Forge computation | Formula-driven pieces (rafters, stairs, rebar) integrated into compile. Forge UI panel + gizmo handles. [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md) |
+| Room-to-set matching | M_Product_Category drives room→furniture selection — bedroom gets bed set, not sofa set |
+| **Exit criterion** | User can design a house from scratch and compile it without touching SQL |
 
-## Open Gaps
-
-| # | Area | What's Missing | Status |
-|---|------|---------------|--------|
-| GAP-SC-1 | ASI mutation → recompile | Which verbs re-fire? Transaction flow spec. S89 BBC audit confirmed: extraction writes ASI, compilation does NOT consume ASI for generative path | HIGH (blocks viewport drag) |
-| GAP-SC-2 | Freehand drawing → BOM | How viewport geometry becomes a BOM mutation | MED (blocks freehand mode) |
-| GAP-SC-4 | Rule pack versioning | Effectivity dates, version precedence. pack_id done (S67c) | MED (partially addressed) |
-| R22 | I_Element_Connectivity | Extract linking table from IfcRelConnectsElements | TODO |
-| VPA-002 | ROUTE step-uniformity | 533 instances with non-uniform per-leg steps | KNOWN LIMIT |
-| IDV-1 | iDempiere _ID/Name/Value | Tier 2 Phase A–D DONE (S90–S92). Phase E queries migrated (S93). TEXT columns not yet dropped (ORM + 5 verb files still reference) | [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) |
-| GAP-DA-1 | processIt() orchestrator | Spec'd in [DocAction_SRS §1.3](DocAction_SRS.md) but no implementation. → ENT-1 | HIGH (cross-ref ENT-1) |
-| GAP-DA-2 | ClashDetector Phase 2 | AD_Clash_Rule-driven engine beyond current bbox check | MED. [DocAction_SRS §2.1](DocAction_SRS.md) |
-| GAP-DA-3 | VerticalContinuityChecker | Spec'd in [DocAction_SRS §2.1](DocAction_SRS.md), not built | LOW |
-| GAP-DA-4 | Dual ad_val_rule ecosystems | validation.db (63 rules) vs ERP.db (415 rules) — spec doesn't acknowledge 5-DB split | MED. [DocAction_SRS §5](DocAction_SRS.md) |
-| GAP-DS-1 | Set vs individual placement (UX-F-25) | No placeSet() in DesignerAPIImpl | MED. [BIM_Designer_SRS §2](BIM_Designer_SRS.md) |
-| GAP-DS-2 | Multi-view sync BBox↔ORDER↔3D (UX-F-26/27) | Three views not wired | MED. [BIM_Designer_SRS §2](BIM_Designer_SRS.md) |
-| GAP-DS-3 | Server error handling (UX-E-01..03) | Auto-launch, retry, crash recovery | LOW. [BIM_Designer_SRS §4](BIM_Designer_SRS.md) |
-| GAP-DS-4 | DesignerServer standalone launcher | No main() method | LOW. [BIM_Designer_SRS §23](BIM_Designer_SRS.md) |
-| GAP-DS-5 | Capacity contracts (UX-N-11..15) | Max rooms=100, storeys=10, variants=50 — not enforced | LOW. [BIM_Designer_SRS §3](BIM_Designer_SRS.md) |
-| GAP-C13 | No Parametric Mesh — 28 call sites | Sub-writers still emit parametric geometry | MED. [TestArchitecture §C13](TestArchitecture.md) |
-| GAP-PO-1 | BOM Mining via DocAction=Approve | Not tracked | MED. [ProjectOrderBlueprint §4](ProjectOrderBlueprint.md) |
+SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requirements specified)
 
 ---
 
-## Doc Debt
+## Phase 4 — Dimensional Outputs (May–June 2026)
 
-| # | Area | What | Priority |
-|---|------|------|----------|
-| DD-1 | BIM_COBOL §2.4 | 19 verbs registered but unlisted in scoreboard | LOW |
-| DD-2 | TestArchitecture | Ghost seal entry (WalkThruCompilationTest.java) — remove from manifest | LOW |
-| DD-3 | TestArchitecture | Seal version numbering diverged (v6 script vs v40 doc) — reconcile | LOW |
-| DD-4 | BOMBasedCompilation §4 | Typed coordinate hierarchy (LocalCoord/StoreyCoord/WorldCoord) undocumented | LOW |
-| DD-5 | ProjectOrderBlueprint §5/§6/§9/§10/§11/§13 | 6 stale "Future" labels — sections are IMPLEMENTED | LOW |
+*Complete the 4D–8D promise.*
 
----
-
-## Schema Migration Backlog
-
-From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md):
-
-| Step | What | Status |
-|------|------|--------|
-| 1. Seed AD_Org summary rows (MEP, ALL) | Grouped discipline hierarchy | PENDING |
-| 2. AD_Org_ID FK on m_bom, C_OrderLine | Integer FK for discipline | **DONE** (S78: W009) |
-| 3. Backfill AD_Org_ID from bom_category | Data migration | **DONE** (S78: W009) |
-| 4. Retire deriveDiscipline() from compile | Extraction-only fallback | **DONE** (S79) |
-| 5. Drop bom_category string columns | Schema cleanup | PENDING |
-| 6. Drop doc_base_type (DONE). doc_sub_type is structural — stays. | W012 migration (S84) | **DONE** (S84) |
-| 7. Drop Parent_Category_ID | Flat M_Product_Category (iDempiere standard) | DECIDED, PENDING |
-| 8. Tier 1: Name/Value on INTEGER PK tables | 43 tables, 5 migrations | **DONE** (S83) |
-| 9. Tier 2: TEXT→INTEGER PK on core tables | M_Product, m_bom, c_order, C_DocType, M_Product_Category | **Phase A+B DONE** (S90). **Phase C DONE** (S91). **Phase D DONE** (S92: _int sidecar dropped). Phase E: drop TEXT FK columns |
+| Dimension | Current State | Remaining Work |
+|-----------|--------------|----------------|
+| **3D Geometry** | LIVE — BOM-walk compiler, LOD400 | Native via Blender viewport |
+| **4D Schedule** | LIVE — topological sort of BOM tree | — |
+| **5D Cost** | LIVE — inherent in product data model | — |
+| **6D Carbon** | Schema exists (V010) | Wire SustainabilityDAO, carbon rollup, UI panel |
+| **7D Facility Mgmt** | Schema exists (V010) | Wire FacilityMgmtDAO, maintenance schedule, UI panel |
+| **8D ERP Integration** | iDempiere table alignment DONE | Live sync to iDempiere instance |
+| **2D Layout** | Specced | Floor plans, elevations, sections as SVG from compiled BOM. [2D_LAYOUT](2D_LAYOUT.md) |
+| **PDF Terrain** | Specced | Survey PDF → elevation points → IFC site topology. [PDF_TERRAIN](PDF_TERRAIN.md) |
+| **Audit trail** | Schema specced (V011) | ChangelogDAO, interceptor, history panel |
 
 ---
 
-## Critical Path (reference)
+## Phase 5 — Packaging & Deployment (June 2026)
 
-| Item | Status | Spec |
-|------|--------|------|
-| CP-1: TE per-element verification | **DONE** (S66) | [TestArchitecture.md](TestArchitecture.md) W-TOT 48428/48428 |
-| CP-2: DX MIRROR verb | DEFERRED → Phase F | [DuplexAnalysis.md](DuplexAnalysis.md) — 85 axis mismatches |
-| CP-3: IFC onboarding pipeline | **DONE** (S42) | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) |
-| CP-4: Geometric archetype | **DONE** (S46-S50) | [TerminalAnalysis.md](TerminalAnalysis.md) — 23 geometric + 20 semantic switches |
-| CP-5: Compilation prerequisite guard | OPEN (S99) | [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) §1 — Input=Output is a draft if §3 (Compiler Only) not proven. Extraction-only output bypasses test safety net |
+*From developer tool to installable product.*
 
-## Completed Tracks
-
-| Track | Sessions | Deliverable |
-|-------|----------|-------------|
-| Phases 0-A | s1-s22 | BOM walk, EN-BLOC, gate convergence, geometry fidelity |
-| Phase B | s23-s38 | Terminal 48K, verb factorization, [BIM_COBOL](BIM_COBOL.md) |
-| Phase G (Designer) | s15-s50 | G-1 through G-10 + FL-1/FL-2/FL-5 |
-| Phase SRS | s25-s30 | [BBC.md](BOMBasedCompilation.md), [TestArchitecture.md](TestArchitecture.md), [DocValidate.md](DocValidate.md), traceability |
-| S51 Audit | s51 | 8 P0, 9 P1, 9 P2. All P0 fixed. [AUDIT_S51_FOCUSED.md](AUDIT_S51_FOCUSED.md) |
-| S58-S60 | s58-s60 | 34 buildings, ERP alignment, [C_OrderLine](ProjectOrderBlueprint.md), construction orders |
-| S64-S79 | s64-s79 | [AD Dictionary](DISC_VALIDATION_DB_SRS.md) Steps 0-6, Discipline enum, AD_Org_ID FK |
-| S80-S83 | s80-s83 | Docs readability, stale ref cleanup, [Name/Value Tier 1](ID_NAME_VALUE_STUDY.md) |
-| S84-S88 | s84-s88 | Schema cleanup (W012 doc_base_type), callout boxes, CTFL review, mkdocs warnings, validation.db study |
-| S89-S92 | s89-s92 | BBC audit (6 stale fixes), TRIM-1 wired, Tier 2 INTEGER PK Phases A–D, _int sidecar drop |
-| S93-S96 | s93-s96 | Phase E queries, C_Order fix, ESLine removed, ASI detail tables, TRIM rewrite, DocType P0 fix, docs tightening |
+| Deliverable | Detail |
+|-------------|--------|
+| Blender addon packaging | Single ZIP install for Federation + Designer |
+| Java server packaging | Docker container or self-contained JAR |
+| Zero-config onboarding | "3 minutes to first building" — no manual DB setup |
+| PDF report export | 18 report templates already built — wire to PDF renderer |
+| IFC export | output.db → IFC 4.3 file (round-trip) |
+| Forge fabrication export | Cut lists, rebar schedules, work orders from ad_forge_fabrication |
+| **Exit criterion** | Non-developer can install, create a building, and export results |
 
 ---
 
-## Designer Gates
+## Phase 6 — Beta Release (June–July 2026)
 
-| Gate | Status |
-|------|--------|
-| G-1 through G-10, FL-1/FL-2/FL-5 | **ALL DONE** |
-| FL-4 (Relational mining) | NOT STARTED |
-| G-11 (ParametricMesh UI) | NOT STARTED |
-| G-12 (Text Mode) | NOT STARTED |
-| G-13 (Click-to-Place interactive) | NOT STARTED |
+*Public beta — real users, real buildings.*
+
+| Deliverable | Detail |
+|-------------|--------|
+| Cloud deployment | Multi-user server, auth, project storage |
+| API documentation | OpenAPI/Swagger for BackOffice endpoints |
+| Fleet hardening | Edge cases across all 35 building types |
+| Localization | English, Malay, Mandarin (minimum for ASEAN) |
+| **Exit criterion** | External users can run the full pipeline on their own IFC files |
+
+---
+
+## Phase 7 — Production & Scale (Q3–Q4 2026)
+
+| Deliverable | Detail |
+|-------------|--------|
+| C_Project multi-building | Site grid generation, compile-once-copy-many, consolidated output. [ProjectOrderBlueprint](ProjectOrderBlueprint.md) |
+| Click-to-place | Interactive 3D element placement via BlenderBridge |
+| Freehand drawing → BOM | Viewport geometry becomes BOM mutation |
+| MIRROR verb for duplex | Automated mirrored-unit compilation (DX: 85 axis mismatches) |
+| Spatial predicate verbs | DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST |
+| Infrastructure designer | Terrain, alignment, cut-and-fill for road/rail/bridge. [INFRA_DESIGNER_SRS](INFRA_DESIGNER_SRS.md) |
+| Self-orienting BOMs | Phantom spatial children (WALL_BACK, FACE_TOWARD, CLEARANCE) — fixture rotation from data, not heuristics |
+| Domain extension | Marine hulls, tunnels, earthworks, industrial plant — same engine, different products. [ShipYard](ShipYard.md) |
+| Dimensional tolerance fit | ±10% catalog match with scale transform — door/window fitting across buildings |
+| Community vocabulary addons | Third-party product catalogs and rule packs |
 
 ---
 
@@ -181,18 +149,34 @@ From [DISC_VALIDATION_DB_SRS.md §11](DISC_VALIDATION_DB_SRS.md) and [ID_NAME_VA
 
 | Phase | Target | Key Actions |
 |-------|--------|-------------|
-| **Q2 2026** | GitHub public release | 3+ Rosetta Stones, Challenge Paper, Bonsai demo |
-| **Q3 2026** | Malaysia pilot | CIDB BIM lab, affordable housing showcase |
-| **Q4 2026** | Academic | Automation in Construction journal, buildingSMART summit |
-| **2027** | Scale | Community vocabulary addons, infrastructure extension, training |
+| **Q2 2026** | GitHub public beta | 34+ Rosetta Stones GREEN, docs site, Bonsai demo video |
+| **Q3 2026** | Malaysia pilot | CIDB BIM lab, affordable housing showcase, UBBL compliance demo |
+| **Q3 2026** | Strategic partnerships | Blender/Bonsai ecosystem, iDempiere community, ConTech investors |
+| **Q4 2026** | Academic + industry | Automation in Construction journal, buildingSMART summit |
+| **2027** | Scale | Enterprise multi-user, infrastructure + marine domains, training programs |
 
 ---
 
-## WF-BB Roadmap (Wireframe-First)
+## The Moat
 
-| Phase | Status |
-|-------|--------|
-| Core (WF-01..05, 09, 10) + Peek (WF-07, 08) | CODE DONE |
-| Add-in-Phase2, Chain, Ghost Drag, Cost, CR, Audit | SPEC ONLY — post-launch |
+1. **BOM-as-recipe is the insight.** A building is a manufactured product with coordinates. iDempiere's 30-year-old M_Product / M_BOM / C_Order pattern handles procurement, scheduling, cost, and quality. We add the *where*.
 
-Full backlog: [BIM_Designer_SRS.md §26](BIM_Designer_SRS.md).
+2. **No one else has this stack.** BIM tools don't speak ERP. ERP tools don't speak IFC. This compiler is the bridge — and it took 20 years of iDempiere internals to know where to put it.
+
+3. **Proven at scale.** 48,428 elements compiled via BOM walk (Terminal building). 35 buildings across residential, commercial, infrastructure, and industrial. Not a prototype — a working compiler.
+
+4. **AI-assisted development.** A domain expert with 20 years of ERP and construction knowledge drives every decision — AI handles the volume. 15 commits/day, one person, specs-first discipline. The codebase is AI-maintainable by design — witnesses, tamper seals, anti-drift gates — but the architecture comes from the subject matter expert.
+
+---
+
+## Quick Links
+
+| Resource | URL |
+|----------|-----|
+| **Docs site** | [red1oon.github.io/BIMCompiler](https://red1oon.github.io/BIMCompiler/) |
+| **GitHub** | [github.com/red1oon/BIMCompiler](https://github.com/red1oon/BIMCompiler) |
+| **Manifesto** | [MANIFESTO.md](MANIFESTO.md) |
+| **Spec index** | [INDEX.md](INDEX.md) |
+| **Pipeline guide** | [WorkOrderGuide.md](WorkOrderGuide.md) |
+| **Source code guide** | [SourceCodeGuide.md](SourceCodeGuide.md) |
+| **Data model** | [DATA_MODEL.md](DATA_MODEL.md) |
