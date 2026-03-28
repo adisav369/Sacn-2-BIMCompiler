@@ -3,13 +3,13 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 <div class="bim-banner" markdown>
-<b>75 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.
+<b>76 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.
 </div>
 
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **75 verbs implemented, 202 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
+**Status:** ACTIVE — **76 verbs implemented, 202 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
 **Supplements:** MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (W_Verb_Node lineage)
@@ -119,7 +119,7 @@ These are all *high-level construction verbs* that currently require manual auth
 
 ### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **75 verbs implemented, 202 witnesses:**
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **76 verbs implemented, 202 witnesses:**
 
 | # | Verb | Layer | Witnesses | What it proves |
 |---|---|---|---|---|
@@ -136,14 +136,43 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 11 | `TILE SURFACE` | original | W-49..52 | 2D parametric grid fill |
 | 12 | `ARRAY` | original | W-53..56 | 1D linear repetition + code compliance |
 | 13 | `PLACE BOM` | data | — | BOM walk → output.db emission |
-| 14-21 | `SELECT`/`LIST`/`DESCRIBE`/`COUNT`/`AGGREGATE`/`EXPORT`/`CLONE`/`SUMMARIZE` | data | — | BOM query + export |
-| 22-29 | `CREATE BOM`/`ADD LINE`/`SET TACK`/`SET ROTATION`/`SET DIMENSIONS`/`REMOVE LINE`/`DELETE BOM`/`SET LINE PROPERTY` | L0 | W-SY-1..29 | Synthetic BOM primitives |
-| 30-32 | `EXTRACT AABB`/`SNAP TO GRID`/`VALIDATE AABB` | utility | W-SY-1..29 | Geometry planning |
-| 33-36 | `CREATE ROOM`/`FURNISH ROOM`/`RESIZE ROOM`/`STRIP ROOM` | L1 | W-SY-30..43 | Room-level convenience |
-| 37-41 | `PARTITION AABB`/`CREATE FLOOR`/`ADD ROOM`/`REMOVE ROOM`/`SWAP ROOM` | L2 | W-SY-44..56 | Floor-level composition |
-| 42-44 | `COMPOSE BUILDING`/`ADD FLOOR`/`STACK FLOORS` | L3 | W-SY-66..72 | Building-level composition |
-| 45-47 | `DEFINE CATEGORY`/`ADD TEMPLATE RULE`/`REGISTER BOM` | L4 | W-SY-57..65 | Catalog-level taxonomy |
-| 48-50 | `REPORT BOM CATALOG`/`REPORT PRODUCT CATALOG`/`REPORT BOM STRUCTURE` | H0 | W-H0-1..10 | XLSX report generation |
+| 14 | `SELECT BOM` | data | — | BOM selection by ID |
+| 15 | `LIST BOMS` | data | — | List available BOMs |
+| 16 | `DESCRIBE BOM` | data | — | BOM metadata summary |
+| 17 | `COUNT BOM` | data | — | BOM line count |
+| 18 | `AGGREGATE BOM` | data | — | BOM quantity roll-up |
+| 19 | `EXPORT BOM` | data | — | BOM export to file |
+| 20 | `CLONE BOM` | data | — | Deep-copy BOM tree |
+| 21 | `SUMMARIZE BUILDING` | data | — | Building-level BOM summary |
+| 22 | `CREATE BOM` | L0 | W-SY-1..29 | Synthetic BOM creation |
+| 23 | `ADD LINE` | L0 | W-SY-1..29 | Add child line to BOM |
+| 24 | `SET TACK` | L0 | W-SY-1..29 | Set BOM line tack point |
+| 25 | `SET ROTATION` | L0 | W-SY-1..29 | Set BOM line rotation |
+| 26 | `SET DIMENSIONS` | L0 | W-SY-1..29 | Set BOM line dimensions |
+| 27 | `REMOVE LINE` | L0 | W-SY-1..29 | Remove child line from BOM |
+| 28 | `DELETE BOM` | L0 | W-SY-1..29 | Delete entire BOM |
+| 29 | `SET LINE PROPERTY` | L0 | W-SY-1..29 | Set arbitrary line property |
+| 30 | `EXTRACT AABB` | utility | W-SY-1..29 | Extract axis-aligned bounding box |
+| 31 | `SNAP TO GRID` | utility | W-SY-1..29 | Snap coordinates to grid |
+| 32 | `VALIDATE AABB` | utility | W-SY-1..29 | Validate AABB consistency |
+| 33 | `CREATE ROOM` | L1 | W-SY-30..43 | Room BOM from category |
+| 34 | `FURNISH ROOM` | L1 | W-SY-30..43 | Add furniture to room BOM |
+| 35 | `RESIZE ROOM` | L1 | W-SY-30..43 | Adjust room dimensions |
+| 36 | `STRIP ROOM` | L1 | W-SY-30..43 | Remove furnishings from room |
+| 37 | `PARTITION AABB` | L2 | W-SY-44..56 | Split AABB into sub-volumes |
+| 38 | `CREATE FLOOR` | L2 | W-SY-44..56 | Floor BOM from room list |
+| 39 | `ADD ROOM` | L2 | W-SY-44..56 | Add room to floor BOM |
+| 40 | `REMOVE ROOM` | L2 | W-SY-44..56 | Remove room from floor BOM |
+| 41 | `SWAP ROOM` | L2 | W-SY-44..56 | Replace room in floor BOM |
+| 42 | `COMPOSE BUILDING` | L3 | W-SY-66..72 | Building BOM from floor list |
+| 43 | `ADD FLOOR` | L3 | W-SY-66..72 | Add floor to building BOM |
+| 44 | `STACK FLOORS` | L3 | W-SY-66..72 | Auto-stack floors with Z offsets |
+| 45 | `DEFINE CATEGORY` | L4 | W-SY-57..65 | Create product category |
+| 46 | `ADD TEMPLATE RULE` | L4 | W-SY-57..65 | Attach template rule to category |
+| 47 | `REGISTER BOM` | L4 | W-SY-57..65 | Register BOM in catalog |
+| 48 | `REPORT BOM CATALOG` | H0 | W-H0-1..10 | XLSX BOM catalog report |
+| 49 | `REPORT PRODUCT CATALOG` | H0 | W-H0-1..10 | XLSX product catalog report |
+| 50 | `REPORT BOM STRUCTURE` | H0 | W-H0-1..10 | XLSX BOM tree structure report |
 | 51 | `COMPOSE PREFAB BOM` | H2 | W-H2-1..3 | Idempotent m_bom + m_bom_line creation |
 | 52 | `CLEAR VARIANCE FROM BOM` | H2 | W-H2-4..6 | Delete variance/buffer rows |
 | 53 | `FILL BUFFERS IN BOM` | H2 | W-H2-7..9 | Interstitial filler computation |
@@ -152,15 +181,24 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 56 | `TRIM WALLS TO ROOF` | §17 | W-TRIM-1..7 | Wall-roof clip: measure roof AABB surface, 50mm tolerance |
 | 57 | `EN-BLOC` | original | — | Bulk element operation |
 | 58 | `WALK THRU` | original | — | BOM tree traversal verb |
-| 59 | `VOID EMPTY_SPACE FOR BUILDING` | original | — | Empty space allocation for building |
-| 60 | `OVERRIDE ROOF` | original | — | Roof parameter override |
-| 61 | `FIX OPENING BBOX` | original | — | Opening bounding box correction |
-| 62 | `BUILD SPATIAL STRUCTURE` | original | — | Spatial hierarchy construction |
-| 63-71 | `FIT`/`JOIN`/`ATTACH`/`MOUNT`/`HANG`/`BOLT`/`WELD`/`EMBED`/`CLAMP` | §4.6 | — | Joining verbs (how elements connect) |
-| 72 | `ALONG` | original | — | Path-following placement |
-| 73 | `CORNER` | original | — | Corner element placement |
+| 59 | `VOID EMPTY_SPACE FOR BUILDING` | H2+ | — | WMS empty space allocation |
+| 60 | `OVERRIDE ROOF` | H3 | — | Roof parameter override |
+| 61 | `FIX OPENING BBOX` | H3 | — | Opening bounding box correction |
+| 62 | `BUILD SPATIAL STRUCTURE` | H3 | — | Spatial hierarchy construction |
+| 63 | `FIT` | §4.6 | — | Joining: press-fit connection |
+| 64 | `JOIN` | §4.6 | — | Joining: general connection |
+| 65 | `ATTACH` | §4.6 | — | Joining: surface attachment |
+| 66 | `MOUNT` | §4.6 | — | Joining: bracket/frame mount |
+| 67 | `HANG` | §4.6 | — | Joining: suspended connection |
+| 68 | `BOLT` | §4.6 | — | Joining: bolted connection |
+| 69 | `WELD` | §4.6 | — | Joining: welded connection |
+| 70 | `EMBED` | §4.6 | — | Joining: embedded connection |
+| 71 | `CLAMP` | §4.6 | — | Joining: clamped connection |
+| 72 | `ALONG` | §4.6 | — | Surface: path-following placement |
+| 73 | `CORNER` | §4.6 | — | Surface: corner element placement |
 | 74 | `ROLLUP AABB` | utility | — | Recursive AABB aggregation |
 | 75 | `HELLO WORLD` | infra | — | Verb framework smoke test |
+| 76 | `FORGE` | §10 | — | Geometry Forge: formula-driven construction pieces |
 | — | *VerbRegistry + ScriptRunner* | infra | W-41..44 | Dispatch + script execution |
 | — | *F5IntegrationTest* | infra | W-F5-1..200 | **End-to-end cross-verb integration (30 verbs, 36 lines, 0 failures)** |
 
@@ -717,13 +755,13 @@ The compiler checks every pipe/duct segment against all beams and all other MEP 
 
 ## 6. Type System
 
-**SPEC ONLY — no witnesses.** BIM COBOL has a domain-specific type system where types correspond to construction entities, not programming primitives. Four type families: Spatial (BUILDING, STOREY, ROOM, ZONE, SHAFT, CORE), Element (WALL, SLAB, BEAM, COLUMN, OPENING, ROOF, STAIR, RAILING), MEP System (SPRINKLER/DUCT/DRAINAGE/WATER/ELECTRICAL/GAS_SYSTEM), and Type Relationships (containment/hosting/spanning/connecting). BOM hierarchy is self-describing (BBC.md §1) — no fixed vocabulary. The type system enforces construction logic at compile time — you cannot `ROUTE DUCTS IN wall` or `OPEN slab WITH door`. These constraints are type errors, caught before geometry is generated.
+**SPEC ONLY — no witnesses.** BIM COBOL has a domain-specific type system where types correspond to construction entities, not programming primitives. Five type families: Spatial (BUILDING, STOREY, ROOM, ZONE, SHAFT, CORE), Element (WALL, SLAB, BEAM, COLUMN, OPENING, ROOF, STAIR, RAILING), MEP System (SPRINKLER/DUCT/DRAINAGE/WATER/ELECTRICAL/GAS_SYSTEM), BOM (UNIT, FLOOR, ROOM_BOM, SET, ITEM), and Type Relationships (containment/hosting/spanning/connecting). The type system enforces construction logic at compile time — you cannot `ROUTE DUCTS IN wall` or `OPEN slab WITH door`. These constraints are type errors, caught before geometry is generated.
 
 ---
 
 ## 7. Compilation Targets
 
-**SPEC ONLY — no witnesses.** BIM COBOL compiles to three simultaneous outputs: **(1) IFC Geometry** — exact coordinates, meshes, materials, spatial containment for Bonsai/Blender rendering; **(2) Procurement BOM** — `m_bom` self-describing tree (BBC.md §1), complete bill of materials with quantities (no manual take-off); **(3) Compliance Witnesses** — machine-readable per-rule pass/fail proofs with measured values and code citations. If any of the three is missing, compilation is incomplete.
+**SPEC ONLY — no witnesses.** BIM COBOL compiles to three simultaneous outputs: **(1) IFC Geometry** — exact coordinates, meshes, materials, spatial containment for Bonsai/Blender rendering; **(2) Procurement BOM** — `m_bom` hierarchy (UNIT->FLOOR->DISCIPLINE->SET->ITEM), complete bill of materials with quantities (no manual take-off); **(3) Compliance Witnesses** — machine-readable per-rule pass/fail proofs with measured values and code citations. If any of the three is missing, compilation is incomplete.
 
 ---
 
@@ -1151,7 +1189,7 @@ Four workstreams that build language infrastructure without touching the pipelin
 
 **PREP-1: VerbRegistry + Dispatcher** ✅ DONE (W-COBOL-41..42)
 
-`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 75 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
+`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 76 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
 
 **PREP-2: ScriptRunner (Minimal)** ✅ DONE (W-COBOL-43..44)
 
@@ -2400,7 +2438,7 @@ DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.
 
 ---
 
-*BIM COBOL v0.15 — 75 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
+*BIM COBOL v0.15 — 76 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
 *48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*
