@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- JE: Jesse Residential (Jesse)
 -- Source: DAGCompiler/lib/output/jesse.db
--- Generated: 2026-03-28 21:46
+-- Generated: 2026-03-28 21:55
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SC: Schependomlaan Residential (Schependomlaan)
 -- Source: DAGCompiler/lib/output/schependomlaan.db
--- Generated: 2026-03-28 21:43
+-- Generated: 2026-03-28 22:02
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
