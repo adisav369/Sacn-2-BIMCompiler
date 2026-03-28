@@ -189,7 +189,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 | Column | Type | Notes |
 |--------|------|-------|
-| C_DocType_ID | TEXT PK | RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX |
+| C_DocType_ID | INTEGER PK | Opaque. Value = RE_SH, RE_DX, CO_TE, etc. See §8 PK convention |
 | Name | TEXT | Display name |
 | DocBaseType | TEXT | Domain classification (RE/CO/IN/ST) |
 | DocSubType | TEXT | Building prefix (SH/DX/TE) |
@@ -208,7 +208,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 | Column | Type | Notes |
 |--------|------|-------|
-| bom_id | TEXT PK | e.g. BUILDING_SH_STD, SH_GF_STR, BED_SET |
+| M_BOM_ID | INTEGER PK | Opaque. Value = BUILDING_SH_STD, SH_GF_STR, BED_SET. See §8 PK convention |
 | bom_name | TEXT | Display name |
 | bom_type | TEXT | Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type-deprecation) |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
@@ -263,7 +263,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 | ifc_class | TEXT | IFC entity type |
 | extracted_from | TEXT | Source building |
 | material_name, material_rgba | TEXT | Catalog material |
-| M_Product_Category_ID | TEXT FK | → M_Product_Category |
+| M_Product_Category_ID | TEXT FK | → M_Product_Category. Transitional: TEXT in component_library.db, INTEGER in ERP.db. Phase B unifies. See §8 |
 | is_active | INTEGER | |
 
 <!-- Implementing SpecsAnalysis.txt §1 -->
@@ -491,6 +491,42 @@ See [MANIFESTO.md](MANIFESTO.md) §Three Concerns for the WHAT/HOW/WHERE rationa
 |------|------|--------|
 | 8 | Drop Parent_Category_ID column | PENDING |
 | 9 | Drop vestigial TEXT discipline columns (bom_category, doc_base_type, doc_sub_type) | PENDING |
+
+---
+
+## 8. iDempiere PK Convention
+
+Every master table follows the iDempiere `TableName_ID` / `Value` / `Name` convention:
+
+- **`TableName_ID`** — `INTEGER PRIMARY KEY AUTOINCREMENT`. Opaque surrogate key. Never shown to users, never used in business logic.
+- **`Value`** — `TEXT NOT NULL UNIQUE`. The search key (what was previously the TEXT PK). Lookups by business key use `WHERE Value = ?`.
+- **`Name`** — `TEXT NOT NULL`. Display name for UI and reports.
+- **Foreign keys always reference `_ID`**, never `Value`. Joins are integer comparisons.
+
+This is standard iDempiere convention: every `X_` generated class has `getTableName_ID()`, `getValue()`, `getName()`. The migration from TEXT PKs to INTEGER PKs preserves the old TEXT identifier as `Value`.
+
+### 8.1 Migration Status
+
+| Table | Status | Since |
+|-------|--------|-------|
+| M_Product | INTEGER PK | S91 |
+| C_Order | INTEGER PK | S91 |
+| C_DocType | INTEGER PK | S91 |
+| AD_Org | INTEGER PK (manual) | pre-S90 |
+| ad_val_rule | INTEGER PK | S90 |
+| M_BOM (ERP.db) | INTEGER PK | DV025 |
+| m_bom (BOM.db) | INTEGER PK | S100-p86 Phase A |
+| M_Product_Category | TEXT PK → INTEGER PK | Phase B (prompt 87) |
+| 13 AD tables | TEXT PK → INTEGER PK | Phase C (deferred) |
+
+### 8.2 Convention Rules
+
+1. **New tables** must use `TableName_ID INTEGER PRIMARY KEY AUTOINCREMENT` from creation. No TEXT PKs for new tables.
+2. **Existing tables** migrate in phases: Phase A (m_bom DONE), Phase B (M_Product_Category NEXT), Phase C (remaining AD tables).
+3. **`_int` sidecar columns** (transitional pattern from S90-S92) are dropped as each table completes migration. Phase D dropped M_Product_Category_ID_int (S92).
+4. **`loadByValue(String)`** on BasePO enables `WHERE Value = ?` lookups — replaces the old TEXT PK pattern without changing caller semantics.
+
+See [DISC_VALIDATION_DB_SRS.md §11.6.5](DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable) for the full migration sequence.
 
 ---
 
