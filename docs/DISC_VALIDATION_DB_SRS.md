@@ -832,6 +832,145 @@ required, min 2 stairs. These rules + ASI (per-instance run length, landing widt
 resolve stair geometry without manual pattern recognition. See
 [TerminalAnalysis.md §Stair Validation Rules](TerminalAnalysis.md).
 
+### 10.4.10 Movement Verbs — Routing Linear Elements Through Buildings
+
+Linear MEP elements (pipes, ducts, cables) don't just get placed at points.
+They **move** through the building — following surfaces, bending at corners,
+branching at junctions, penetrating floors. Each direction change or connection
+produces a **joint fitting** product alongside the segment.
+
+TE extraction proves fittings outnumber segments in most disciplines:
+
+| Discipline | Segments | Fittings | Ratio | Implication |
+|-----------|----------|----------|-------|-------------|
+| FP | 2,672 | 3,146 | 1.18× | More joints than pipes |
+| ACMV | 568 | 713 | 1.26× | Every duct turn = fitting |
+| CW | 619 | 638 | 1.03× | Nearly 1:1 |
+| SP | 455 | 372 | 0.82× | Longer runs, fewer turns |
+| LPG | 75 | 87 | 1.16× | Small system, many valves |
+
+#### Movement Verb Catalogue
+
+Each movement verb produces **two BOM lines**: a segment (pipe/duct/cable)
+and a joint fitting (elbow/tee/reducer/sleeve). The fitting is an M_Product
+from the component library with its own LOD mesh.
+
+| Verb | Action | Joint product | Geometry |
+|------|--------|--------------|----------|
+| **FOLLOW** | Trace along surface (wall, ceiling, beam) | None — straight run | PipeSegment / DuctSegment, qty = length ÷ stock_size |
+| **BEND** | Change direction at angle | Elbow fitting (90°, 45°, custom) | ForgeEngine: PIPE_BEND (arc geometry, S99) |
+| **RISE / DROP** | Change elevation (through floor or along wall) | Elbow or offset fitting | Vertical segment + 2 elbows |
+| **BRANCH** | Split into sub-paths | Tee or Wye fitting | T-junction, diameters from parent + children |
+| **REDUCE** | Change diameter | Reducer fitting | Concentric or eccentric reducer |
+| **PENETRATE** | Pass through floor or wall | Sleeve + fire collar (if fire-rated) | Hole + sleeve product + sealant |
+
+#### Composition in BIM COBOL
+
+Movement verbs compose into a routing script. Each line in the script
+produces BOM lines (segments + fittings):
+
+```
+ROUTE FP FROM PUMP_ROOM
+  FOLLOW CEILING SPACING 4500        → PipeSegment × N
+  BEND 90 AT GRID_A                  → PipeFitting (elbow)
+  BRANCH TEE TO ROOM_101 ROOM_102    → PipeFitting (tee) + 2 sub-routes
+  REDUCE 50mm TO 25mm                → PipeFitting (reducer)
+  PENETRATE SLAB WITH FIRE_COLLAR    → Sleeve + FireCollar products
+```
+
+The BOM IS the routing. No graph data structure needed — parent-child
+with sequence controlling path order. Each fitting is a BOM child with
+qty=1 at the transition point.
+
+#### Joint Product Resolution
+
+When a movement verb needs a fitting, it resolves from the component library:
+
+```
+Inputs:  verb (BEND), angle (90°), parent_diameter (50mm), material (Poly Steel)
+Lookup:  M_Product WHERE ifc_class='IfcPipeFitting'
+           AND diameter=50 AND material='Poly Steel' AND angle=90
+Result:  Product_ID → LOD mesh from component_library.db
+```
+
+If no exact match: ForgeEngine computes the geometry (PIPE_BEND, S99).
+ASI carries per-instance overrides (actual angle, actual diameter).
+
+#### Movement Verbs per Discipline
+
+| Discipline | Primary verbs | Typical route | Standards governing routing |
+|-----------|--------------|--------------|---------------------------|
+| **FP** | FOLLOW ceiling, BRANCH tee, PENETRATE slab | Riser → floor header → branches → heads | NFPA 13 §8 (spacing), UBBL Part VII |
+| **ACMV** | FOLLOW ceiling void, BEND, BRANCH, REDUCE | AHU → main duct → branches → diffusers | MS 1525 (duct sizing), ASHRAE 62.1 |
+| **ELEC** | FOLLOW cable tray, BRANCH, PENETRATE | DB → riser → tray → outlets/lights | MS IEC 60364 (cable sizing), NEC 300.4 |
+| **CW** | FOLLOW wall/ceiling, RISE, BRANCH, REDUCE | Tank → riser → floor header → fixtures | MS 1228 (pipe sizing by fixture unit) |
+| **SP** | DROP (gravity), FOLLOW gradient, BRANCH wye | Fixtures → waste → stack → drain | MS 1228 (min gradient 1:40 / 1:60) |
+| **LPG** | FOLLOW ext wall, BRANCH, REDUCE | Meter → riser → kitchen → gas points | MS 830 (gas installation) |
+
+**SP is special:** all other disciplines flow outward/upward from a source.
+SP flows **downward by gravity**. FOLLOW must maintain minimum gradient
+(1:40 for 100mm pipe). The verb checks slope at each segment.
+
+### 10.4.11 Parasitic Discipline Implementation Tasks
+
+Implementation in 4 phases: POC first to prove assumptions, then build out.
+
+#### Phase 0 — POC: Prove the Wiring (2-3 prompts)
+
+Early proof-of-concept tasks that validate the architecture before
+committing to the full build. Each is a standalone Rosetta Stone test.
+
+| Task | What it proves | Deliverable | Gate |
+|------|---------------|-------------|------|
+| **T0.1** Service room categories | ARC rooms with discipline-typed M_Product_Category tack correctly; FP_SYSTEM origin resolves from ARC pump room | Seed 6 service room products (FP, ACMV, ELEC, CW, SP, LPG) in ERP.db M_Product. Add to SH YAML as dummy rooms. Verify category match query returns correct dx/dy/dz. | SH 7/7, query returns pump room coords |
+| **T0.2** OrderLine callout POC | Callout reads CO BOM children and auto-creates discipline OrderLines | Implement `OrderLineProductCallout.java`. Wire to C_OrderLine.M_Product_ID. Test: set product=BUILDING_TE_STD → verify 8 OrderLines created with correct AD_Org_ID and sequence. | Unit test: 8 lines, correct orgs |
+| **T0.3** Parasitic qty walk | Walker handles qty-only BOM lines (no dx/dy/dz) without crashing; produces container c_orderlines with correct qty | Add FP_SYSTEM as 2nd OrderLine on SH (qty=2 sprinklers, dummy). Verify walker produces c_orderline with qty=2, host_type=LEAF, AD_Org_ID=3. No placement — just qty passthrough. | SH 7/7 (no regression), FP orderline exists |
+| **T0.4** FOLLOW verb POC | ROUTE verb extended: FOLLOW a ceiling surface, lay N segments of stock length | Add FOLLOW as ROUTE sub-mode. Test: FOLLOW ceiling in SH living room → produces PipeSegment × ceil(room_length / stock_pipe_length). Fitting count = 0 (straight run). | Witness: W-FOLLOW-1 |
+
+#### Phase 1 — Movement Verbs (3-4 prompts)
+
+Core routing verbs, each tested independently on SH before fleet.
+
+| Task | Verb | Joint product | Test |
+|------|------|--------------|------|
+| **T1.1** BEND | Change direction, insert elbow | Elbow fitting from component library or ForgeEngine PIPE_BEND | W-BEND-1: angle + diameter → correct fitting product |
+| **T1.2** BRANCH | Split path, insert tee/wye | Tee fitting, parent + child diameters | W-BRANCH-1: main → 2 sub-routes, tee inserted |
+| **T1.3** REDUCE | Change diameter, insert reducer | Reducer fitting | W-REDUCE-1: 50mm→25mm, reducer product |
+| **T1.4** PENETRATE | Pass through slab/wall | Sleeve + fire collar (if fire-rated) | W-PENETRATE-1: sleeve inserted at floor crossing |
+
+#### Phase 2 — Discipline Routing (3-4 prompts)
+
+Wire movement verbs into discipline-specific DocEvent rules.
+
+| Task | Discipline | Route pattern | Standard |
+|------|-----------|--------------|----------|
+| **T2.1** FP routing | FP | Riser → floor header → branches → sprinkler grid | NFPA 13 §8 spacing, `ad_fp_coverage` hazard class |
+| **T2.2** ELEC routing | ELEC | DB → cable tray → light fixture grid per room | MS 1525 lighting power density, IES lux |
+| **T2.3** CW + SP routing | CW, SP | CW: tank → riser → fixtures. SP: fixtures → stack → drain (gravity) | MS 1228, UPC gradient rules |
+| **T2.4** ACMV routing | ACMV | AHU → main duct → branches → air terminals | MS 1525, ASHRAE 62.1 air changes |
+
+#### Phase 3 — Integration (2-3 prompts)
+
+| Task | What | Deliverable |
+|------|------|-------------|
+| **T3.1** Multi-discipline TE | All 8 OrderLines explode on TE with parasitic walk | TE discipline distribution matches extraction (§3.6.3 expected counts) |
+| **T3.2** Cross-discipline clearance | NEC_ELEC_SP_CLEARANCE fires after all disciplines placed | Detect 11 known overlaps from TE mining (M12) |
+| **T3.3** Infrastructure POC | BR (bridge) with zone-based anchors instead of rooms | BR 7/7 with STR + DRAIN discipline OrderLines |
+| **T3.4** RE subset | SH with ARC + ELEC + SP (3 disciplines, subset callout) | SH 7/7, 3 OrderLines, light fixtures + plumbing placed |
+
+#### Dependencies
+
+```
+T0.1 (service rooms) ──→ T0.3 (qty walk) ──→ T2.x (discipline routing)
+T0.2 (callout)       ──→ T3.1 (multi-disc TE)
+T0.4 (FOLLOW)        ──→ T1.x (movement verbs) ──→ T2.x
+P94  (BomWriter)     ──→ T1.x (new BOM lines need single write path)
+```
+
+**T0.1 is the critical first task.** If the category-match query doesn't
+return the right room coordinates, the entire parasitic model breaks.
+Prove it on SH first (small, fast, 7/7 GREEN).
+
 ### 10.5 Investigation Tasks
 
 1. Count Java files that read M_Product from component_library.db vs ERP.db

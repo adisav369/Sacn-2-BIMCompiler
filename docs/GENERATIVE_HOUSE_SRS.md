@@ -1,7 +1,7 @@
 # Generative Compilation — SRS
 
 > **Foundation:** [BBC](BOMBasedCompilation.md) §1 (Three BOM Dimensions) · §3.4 (BOM Explosion) · §3.5 (Selection Cascade)
-> **Traces:** BBC.md §3.6 (Rosetta Stone proves machinery, generative uses it)
+> **Traces:** BBC.md §3.7 (Rosetta Stone proves machinery, generative uses it)
 
 <div class="bim-banner" markdown>
 <b>Generative buildings need data, not new code.</b> BOM category, product category, and space size select from the library — the same pipeline compiles both extracted and generative buildings.
@@ -21,7 +21,7 @@ selected from the library by the same three dimensions that govern all compilati
 3. **SpaceSize** (HOW MUCH) — AABB on the slot determines which child BOM fits
 
 The BOM walker, tack convention, verb expansion, M_BOM_Line placement, and all 6 gates
-work identically for generative and extracted buildings. BBC.md §3.6:
+work identically for generative and extracted buildings. BBC.md §3.7:
 
 > *"The Rosetta Stone is a launch booster — it is abandoned once it has worked.
 > Its purpose is to calibrate and prove the compilation machinery. Once proven,

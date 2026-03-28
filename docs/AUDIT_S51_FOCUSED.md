@@ -2062,7 +2062,7 @@ Session E FAILS if any of:
 | 4 | BomDropper Compress mutation (reference class) | DONE — `ExceptionLine.compress(N)` → single node, qty=N, no children |
 | 5 | OrderLineWalker qty=0 skip | DONE — skips subtrees where Qty=0 |
 | 6 | OrderLineWalker reference class instantiation | DONE — fires N visitor events at computed dz offsets |
-| 7 | BBC.md §3.7 addendum (locator_ref spec) | DONE — syntax, stability guarantee, mutation table |
+| 7 | BBC.md §3.8 addendum (locator_ref spec) | DONE — syntax, stability guarantee, mutation table |
 | 8 | RemoveCompressTest.java (5 witnesses) | DONE — all 5 PASS |
 | 9 | WorkOutputDAO schema update | DONE — new columns in CREATE TABLE |
 
