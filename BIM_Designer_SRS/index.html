@@ -11895,17 +11895,17 @@ The cascade (building→floor→room→leaf) is expressed by the BOM tree (M_BOM
 not by a category tree. Categories stay flat per iDempiere standard.</p>
 </blockquote>
 <h4 id="3071-schema">30.7.1 Schema<a class="headerlink" href="#3071-schema" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="c1">-- component_library.db</span>
+<div class="highlight"><pre><span></span><code><span class="c1">-- iDempiere PK convention (DATA_MODEL.md §8)</span>
 <span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product_Category</span><span class="w"> </span><span class="p">(</span>
-<span class="w">    </span><span class="n">M_Product_Category_ID</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
-<span class="w">    </span><span class="n">Parent_Category_ID</span><span class="w">     </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">          </span><span class="c1">-- **DEPRECATED — to be dropped (see DATA_MODEL.md §7.6)**</span>
+<span class="w">    </span><span class="n">M_Product_Category_ID</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">Value</span><span class="w">                  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">UNIQUE</span><span class="p">,</span><span class="w">  </span><span class="c1">-- search key (was TEXT PK)</span>
 <span class="w">    </span><span class="n">Name</span><span class="w">                   </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
 <span class="w">    </span><span class="n">Description</span><span class="w">            </span><span class="nb">TEXT</span><span class="p">,</span>
 <span class="w">    </span><span class="n">IsActive</span><span class="w">               </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span>
 <span class="p">);</span>
 
-<span class="c1">-- Add FK column to existing M_Product</span>
-<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">M_Product_Category_ID</span><span class="w"> </span><span class="nb">TEXT</span>
+<span class="c1">-- FK references INTEGER _ID, lookups by Value</span>
+<span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">M_Product_Category_ID</span><span class="w"> </span><span class="nb">INTEGER</span>
 <span class="w">    </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">M_Product_Category</span><span class="p">(</span><span class="n">M_Product_Category_ID</span><span class="p">);</span>
 </code></pre></div>
 <h4 id="3072-category-hierarchy">30.7.2 Category Hierarchy<a class="headerlink" href="#3072-category-hierarchy" title="Permanent link">&para;</a></h4>

@@ -7604,18 +7604,18 @@ the exact signature of the TE passthrough.</p>
 <tbody>
 <tr>
 <td>11</td>
-<td>m_bom <code>bom_id TEXT</code> PK → <code>M_BOM_ID INTEGER</code> PK</td>
-<td>Phase A: 65 Java refs. <code>bom_id</code> → <code>Value</code> column. FKs on INTEGER.</td>
+<td>m_bom M_BOM_ID INTEGER PK</td>
+<td>Phase A: DONE (S100-p86). 65 Java refs migrated. <code>bom_id</code> → <code>Value</code>.</td>
 </tr>
 <tr>
 <td>12</td>
-<td>M_Product_Category TEXT PK → INTEGER PK</td>
-<td>Phase B: 135 Java refs. Category codes → <code>Value</code> column.</td>
+<td>M_Product_Category INTEGER PK</td>
+<td>Phase B: DONE. 135 Java refs migrated. Category codes → <code>Value</code>.</td>
 </tr>
 <tr>
 <td>13</td>
-<td>13 AD tables TEXT PKs → INTEGER PKs</td>
-<td>Phase C: Low impact. Composite PKs get surrogate <code>_ID</code>.</td>
+<td>13 AD tables INTEGER PKs</td>
+<td>Phase C: DONE. Composite PKs got surrogate <code>_ID</code>.</td>
 </tr>
 </tbody>
 </table>

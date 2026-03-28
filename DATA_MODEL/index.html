@@ -1271,17 +1271,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#72-remaining-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.2 Remaining Steps
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -3176,17 +3165,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#72-remaining-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7.2 Remaining Steps
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -3785,9 +3763,9 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 </thead>
 <tbody>
 <tr>
-<td>product_id</td>
-<td>TEXT PK</td>
-<td>Product identifier</td>
+<td>M_Product_ID</td>
+<td>INTEGER PK</td>
+<td>Opaque. Value = product identifier (e.g. SH_WALL_001). See §8</td>
 </tr>
 <tr>
 <td>product_type</td>
@@ -3816,8 +3794,8 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 </tr>
 <tr>
 <td>M_Product_Category_ID</td>
-<td>TEXT FK</td>
-<td>→ M_Product_Category. Transitional: TEXT in component_library.db, INTEGER in ERP.db. Phase B unifies. See §8</td>
+<td>INTEGER FK</td>
+<td>→ M_Product_Category. See §8 PK convention</td>
 </tr>
 <tr>
 <td>is_active</td>
@@ -3973,9 +3951,9 @@ copied to <code>{PREFIX}_BOM.db</code> for BOMWalker compatibility.</p>
 </thead>
 <tbody>
 <tr>
-<td>product_id</td>
-<td>TEXT PK</td>
-<td>= element_ref (deterministic)</td>
+<td>M_Product_ID</td>
+<td>INTEGER PK</td>
+<td>Value = element_ref (deterministic). See §8</td>
 </tr>
 <tr>
 <td>product_type</td>
@@ -4315,28 +4293,6 @@ See prompt 29 study for merge assessment (verdict: do not merge).</p>
 <li>S78: AD_Org_ID FK on m_bom, C_OrderLine (W009 migration)</li>
 <li>S79: Discipline enum replaces deriveDiscipline() in compile path</li>
 </ul>
-<h3 id="72-remaining-steps">7.2 Remaining Steps<a class="headerlink" href="#72-remaining-steps" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Step</th>
-<th>Task</th>
-<th>Status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>8</td>
-<td>Drop Parent_Category_ID column</td>
-<td>PENDING</td>
-</tr>
-<tr>
-<td>9</td>
-<td>Drop vestigial TEXT discipline columns (bom_category, doc_base_type, doc_sub_type)</td>
-<td>PENDING</td>
-</tr>
-</tbody>
-</table>
 <hr />
 <h2 id="8-idempiere-pk-convention">8. iDempiere PK Convention<a class="headerlink" href="#8-idempiere-pk-convention" title="Permanent link">&para;</a></h2>
 <p>Every master table follows the iDempiere <code>TableName_ID</code> / <code>Value</code> / <code>Name</code> convention:</p>
@@ -4394,20 +4350,20 @@ See prompt 29 study for merge assessment (verdict: do not merge).</p>
 </tr>
 <tr>
 <td>M_Product_Category</td>
-<td>TEXT PK → INTEGER PK</td>
-<td>Phase B (prompt 87)</td>
+<td>INTEGER PK</td>
+<td>Phase B</td>
 </tr>
 <tr>
 <td>13 AD tables</td>
-<td>TEXT PK → INTEGER PK</td>
-<td>Phase C (deferred)</td>
+<td>INTEGER PK</td>
+<td>Phase C</td>
 </tr>
 </tbody>
 </table>
 <h3 id="82-convention-rules">8.2 Convention Rules<a class="headerlink" href="#82-convention-rules" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>New tables</strong> must use <code>TableName_ID INTEGER PRIMARY KEY AUTOINCREMENT</code> from creation. No TEXT PKs for new tables.</li>
-<li><strong>Existing tables</strong> migrate in phases: Phase A (m_bom DONE), Phase B (M_Product_Category NEXT), Phase C (remaining AD tables).</li>
+<li><strong>Existing tables</strong> migrated in phases: Phase A (m_bom), Phase B (M_Product_Category), Phase C (remaining AD tables).</li>
 <li><strong><code>_int</code> sidecar columns</strong> (transitional pattern from S90-S92) are dropped as each table completes migration. Phase D dropped M_Product_Category_ID_int (S92).</li>
 <li><strong><code>loadByValue(String)</code></strong> on BasePO enables <code>WHERE Value = ?</code> lookups — replaces the old TEXT PK pattern without changing caller semantics.</li>
 </ol>

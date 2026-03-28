@@ -4002,7 +4002,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 - <code>X_</code> prefix — plain PO (column getters/setters, no business logic)
 - <code>M_</code> prefix — domain model (adds factory methods, lifecycle, validation)
 - Table_Name constant: <code>X_M_BOMLine.Table_Name = "m_bom_line"</code> (must match actual table)
-- PK field: TEXT PK must be set explicitly before <code>save()</code> — <code>BasePO.isNewRecord</code> flag determines INSERT vs UPDATE</p>
+- PK field: INTEGER <code>_ID</code> auto-generated on <code>save()</code>. Business key in <code>Value</code> column (<code>loadByValue()</code>). <code>BasePO.isNewRecord</code> flag determines INSERT vs UPDATE</p>
 <p><strong>BasePO trap:</strong> <code>isNewRecord</code> is an explicit flag — not derived from PK presence. Always <code>markAsNew()</code> for new objects:</p>
 <div class="highlight"><pre><span></span><code><span class="n">X_M_BOMLine</span><span class="w"> </span><span class="n">child</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">X_M_BOMLine</span><span class="p">(</span><span class="n">conn</span><span class="p">);</span>
 <span class="n">child</span><span class="p">.</span><span class="na">setBomId</span><span class="p">(</span><span class="s">&quot;SOFA_AREA&quot;</span><span class="p">);</span>
