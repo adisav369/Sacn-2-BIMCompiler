@@ -306,20 +306,46 @@ public class BackOfficeServer implements AutoCloseable {
         }
     }
 
-    /** GET /api/report?id=SH&type=bom|cost|schedule|compliance */
+    /** GET /api/report?id=SH&type=bom|cost|schedule|compliance|boq|contract|ibs|room-schedule|door-schedule|window-schedule|str-takeoff|fp-takeoff|acmv-takeoff|gantt|evm|pnl|cashflow|portfolio */
     private void handleReport(HttpExchange ex) throws IOException {
         if (requireSession(ex) == null) return;
         String buildingId = queryParam(ex, "id");
-        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
         String type = queryParam(ex, "type");
         if (type == null) type = "bom";
         String startDate = queryParam(ex, "start");
         if (startDate == null) startDate = "2026-04-01";
+        // Portfolio doesn't need a building ID
+        if ("portfolio".equals(type)) {
+            try {
+                Object result = new PortfolioDashboardReport().generate(libraryDir, compLibConn);
+                sendJson(ex, 200, result);
+            } catch (Exception e) { sendError(ex, e); }
+            return;
+        }
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
         try (Connection bomConn = openBom(buildingId)) {
             Object result = switch (type) {
+                // Existing (p77)
                 case "cost" -> new CostSummaryReport().generate(bomConn, compLibConn, buildingId);
                 case "schedule" -> new ScheduleReport().generate(bomConn, compLibConn, buildingId, startDate);
                 case "compliance" -> new ComplianceReport().generate(compLibConn, bomConn, buildingId);
+                // Malaysian standards (p78)
+                case "boq" -> new BOQReport().generate(bomConn, compLibConn, buildingId);
+                case "contract" -> new ContractSummaryReport().generate(bomConn, compLibConn, buildingId);
+                case "ibs" -> new IBSScoreReport().generate(bomConn, compLibConn, buildingId);
+                // Drawing schedules (p79) — read from output.db
+                case "room-schedule" -> new RoomScheduleReport().generate(openOutput(buildingId), buildingId);
+                case "door-schedule" -> new DoorScheduleReport().generate(openOutput(buildingId), buildingId);
+                case "window-schedule" -> new WindowScheduleReport().generate(openOutput(buildingId), buildingId);
+                // Discipline takeoffs (p80)
+                case "str-takeoff" -> new StrTakeoffReport().generate(bomConn, compLibConn, buildingId);
+                case "fp-takeoff" -> new FpTakeoffReport().generate(bomConn, compLibConn, buildingId);
+                case "acmv-takeoff" -> new AcmvTakeoffReport().generate(bomConn, compLibConn, buildingId);
+                // Financial (p83)
+                case "gantt" -> new GanttReport().generate(bomConn, compLibConn, buildingId, startDate);
+                case "evm" -> new EvmReport().generate(bomConn, compLibConn, buildingId, startDate);
+                case "pnl" -> new ProfitLossReport().generate(bomConn, compLibConn, buildingId);
+                case "cashflow" -> new CashFlowReport().generate(bomConn, compLibConn, buildingId, startDate);
                 default -> new BomScheduleReport().generate(bomConn, compLibConn, buildingId);
             };
             sendJson(ex, 200, result);
@@ -445,6 +471,15 @@ public class BackOfficeServer implements AutoCloseable {
         }
         String dbPath = safePath.toString();
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+    }
+
+    private Connection openOutput(String buildingId) throws Exception {
+        Path outputDir = Paths.get(libraryDir).getParent().resolve("output");
+        Path safePath = outputDir.resolve(buildingId.toUpperCase() + "_output.db").normalize();
+        if (!safePath.startsWith(outputDir.normalize())) {
+            throw new SecurityException("Invalid building ID");
+        }
+        return DriverManager.getConnection("jdbc:sqlite:" + safePath);
     }
 
     private String queryParam(HttpExchange ex, String name) {

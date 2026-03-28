@@ -555,9 +555,36 @@ public class WebUIServer implements AutoCloseable {
              Connection compConn = DriverManager.getConnection(
                      "jdbc:sqlite:" + libDir.resolve("ERP.db"))) {
             Object result = switch (type) {
+                // Existing (p77)
                 case "cost" -> new CostSummaryReport().generate(bomConn, compConn, buildingId);
                 case "schedule" -> new ScheduleReport().generate(bomConn, compConn, buildingId, startDate);
                 case "compliance" -> new ComplianceReport().generate(compConn, bomConn, buildingId);
+                // Malaysian standards (p78)
+                case "boq" -> new BOQReport().generate(bomConn, compConn, buildingId);
+                case "contract" -> new ContractSummaryReport().generate(bomConn, compConn, buildingId);
+                case "ibs" -> new IBSScoreReport().generate(bomConn, compConn, buildingId);
+                // Drawing schedules (p79) — need output.db
+                case "room-schedule", "door-schedule", "window-schedule" -> {
+                    Path outputPath = resolved.getParent().getParent().resolve("output")
+                            .resolve(buildingId.toUpperCase() + "_output.db");
+                    try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + outputPath)) {
+                        yield switch (type) {
+                            case "room-schedule" -> new RoomScheduleReport().generate(outConn, buildingId);
+                            case "door-schedule" -> new DoorScheduleReport().generate(outConn, buildingId);
+                            default -> new WindowScheduleReport().generate(outConn, buildingId);
+                        };
+                    }
+                }
+                // Discipline takeoffs (p80)
+                case "str-takeoff" -> new StrTakeoffReport().generate(bomConn, compConn, buildingId);
+                case "fp-takeoff" -> new FpTakeoffReport().generate(bomConn, compConn, buildingId);
+                case "acmv-takeoff" -> new AcmvTakeoffReport().generate(bomConn, compConn, buildingId);
+                // Financial (p83)
+                case "gantt" -> new GanttReport().generate(bomConn, compConn, buildingId, startDate);
+                case "evm" -> new EvmReport().generate(bomConn, compConn, buildingId, startDate);
+                case "pnl" -> new ProfitLossReport().generate(bomConn, compConn, buildingId);
+                case "cashflow" -> new CashFlowReport().generate(bomConn, compConn, buildingId, startDate);
+                case "portfolio" -> new PortfolioDashboardReport().generate(libDir.toString(), compConn);
                 default -> new BomScheduleReport().generate(bomConn, compConn, buildingId);
             };
             return JsonProtocol.toJson(result);
