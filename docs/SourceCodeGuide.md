@@ -503,6 +503,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 | `DimensionRangeValidator` | IFC quality gate: checks element dims against 415 mined rules |
 | `ExtractionPopulator` | Populates I_Element_Extraction from reference DB |
 | `ProductRegistrar` | M_Product master catalog |
+| `BomWriter` | Single write path for m_bom + m_bom_line (all builders delegate here) |
 | `VerbFactorizer` | Reusable verb compression: group→detect→factored/unfactored LEAF writes |
 | `VerbDetector` | Pattern cascade: TILE > ROUTE > FRAME > CLUSTER |
 | `StructuralBomBuilder` | BUILDING + FLOOR headers + verb-compressed LEAF lines |

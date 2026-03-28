@@ -149,6 +149,16 @@ data flow, and fidelity details.
 - Does not validate against regulations (see `DocValidate.md`)
 - Does not fill missing pipes or correct gaps (WYSIWYG — DX corners without connecting pipes are preserved as-is)
 
+### 2.1.9 BOM Write Path
+
+**Problem:** 18 INSERT statements (7 `m_bom`, 11 `m_bom_line`) spread across 6 builder files, each with a different column subset. DDL changes require N-file edits — P92 (AD_Org_ID) proved the drift.
+
+**Solution:** `BomWriter` — a static utility (same pattern as `ProductRegistrar`) with two core methods: `insertBom(conn, BomRow)` and `insertBomLine(conn, BomLineRow)`. Builder-pattern row objects (`BomRow`, `BomLineRow`) carry all columns with defaults so callers only set the fields they need.
+
+**Invariant:** Every `m_bom` and `m_bom_line` write in IFCtoBOM goes through `BomWriter`. No builder owns raw SQL for these tables.
+
+**Column truth:** `BomRow` mirrors the `m_bom` DDL in `IFCtoBOMPipeline.java`. `BomLineRow` mirrors the `m_bom_line` DDL. Adding a column = add to DDL + add to row class + add to `BomWriter` bind list. One place, not six.
+
 ---
 
 ## 2.2 BOM Compilation Model — Recursive Placement
@@ -393,14 +403,357 @@ The order line's ASI selects the actual values.
 *Schema: migration/ASI_002_attribute_detail.sql. Callout wiring: DocValidate.md §1.5.
 ASI field matrix: BIM_Designer_SRS.md §28.7 + §31.*
 
-### 3.6 Rosetta Stone
+### 3.6 Parasitic Discipline Compilation
+
+ARC and STR are **spatial disciplines** — they build from the ground up. Every
+child has a dx/dy/dz tack offset: wall sits on slab, column at grid intersection.
+The BOM walk produces fully-placed elements.
+
+MEP disciplines (FP, ACMV, ELEC, CW, SP, LPG) are **parasitic** — they
+attach to rooms and zones that ARC already placed. Their compilation model
+is fundamentally different.
+
+#### 3.6.1 Eight OrderLines, One Building
+
+Each discipline is a separate C_OrderLine. No merging, no shared lines.
+
+```
+C_Order: TE (Terminal)
+├── C_OrderLine seq=10: ARC_SYSTEM   (AD_Org_ID=1)  → shell: rooms, walls, finishes
+├── C_OrderLine seq=20: STR_SYSTEM   (AD_Org_ID=2)  → structure: columns, beams, slabs
+├── C_OrderLine seq=30: FP_SYSTEM    (AD_Org_ID=3)  → fire protection
+├── C_OrderLine seq=40: ACMV_SYSTEM  (AD_Org_ID=4)  → air conditioning / ventilation
+├── C_OrderLine seq=50: ELEC_SYSTEM  (AD_Org_ID=5)  → electrical
+├── C_OrderLine seq=60: CW_SYSTEM    (AD_Org_ID=6)  → cold water
+├── C_OrderLine seq=70: SP_SYSTEM    (AD_Org_ID=7)  → sanitary plumbing
+└── C_OrderLine seq=80: LPG_SYSTEM   (AD_Org_ID=8)  → gas
+```
+
+Sequence controls explosion order. ARC explodes first (produces rooms with
+positions). STR explodes second (DocEvent can verify columns align to beams).
+MEP disciplines explode after — they reference ARC rooms that already exist
+in the compiled output.
+
+#### 3.6.2 Service Point Discovery via M_Product_Category
+
+Each ARC room is a product with a category. Some rooms serve a specific
+discipline: pump room = category FP, AHU room = category ACMV, TNB room =
+category ELEC.
+
+Each discipline root BOM has the **same category** as its service rooms.
+FP_SYSTEM has `m_product_category = FP`. To find where FP tacks to, the
+compiler matches:
+
+```sql
+SELECT dx, dy, dz FROM c_orderline
+WHERE m_product_category_id = (SELECT M_Product_Category_ID
+                               FROM M_Product_Category WHERE Value = 'FP')
+  AND Discipline = 'ARC'
+```
+
+No new columns. No cross-references. The existing product taxonomy IS the
+wiring between ARC shell and MEP disciplines.
+
+**Root BOM tack origins** — where each discipline's root product attaches
+(TE reference data from SJTII_Terminal extraction, world coordinates):
+
+| OrderLine | Root BOM | Tacks to (ARC room) | M_Product_Category | Origin (world m) | Walk direction |
+|-----------|----------|--------------------|--------------------|-----------------|----------------|
+| seq=10 ARC | ARC_SYSTEM | Building LBD (world anchor) | ARC | (84.6, -51.2, -30.7) | Ground up ↑ |
+| seq=20 STR | STR_SYSTEM | Foundation level | STR | (84.6, -51.2, -30.7) | Ground up ↑ |
+| seq=30 FP | FP_SYSTEM | **Pump room** (GF) | FP | (~108, -17, 2.9) | Vertical riser ↑ then horizontal per floor → |
+| seq=40 ACMV | ACMV_SYSTEM | **AHU / plant room** (L1+) | ACMV | (~126, -12, 6.1) | Horizontal per floor from AHU → |
+| seq=50 ELEC | ELEC_SYSTEM | **DB room** (per floor) | ELEC | (~127, -19, 7.0) | Vertical riser ↑ then radial per floor → |
+| seq=60 CW | CW_SYSTEM | **Water tank / meter room** (below GF) | CW | (~103, -29, -1.2) | Ground up ↑ then horizontal to wet rooms → |
+| seq=70 SP | SP_SYSTEM | **Manhole / building drain** (below GF) | SP | (~115, -10, -1.1) | Top down ↓ (gravity drainage) |
+| seq=80 LPG | LPG_SYSTEM | **Gas meter room** (GF external) | LPG | (~92, -30, 1.8) | Horizontal from meter to kitchens → |
+
+**How it works:**
+
+1. ARC explodes → produces rooms. Some rooms carry discipline-specific categories
+   (pump room = FP, AHU room = ACMV, DB room = ELEC, etc.)
+2. When FP_SYSTEM explodes, the compiler queries ARC output for rooms with
+   `M_Product_Category = FP`. Those room positions become FP_SYSTEM's tack anchors.
+3. FP's children (riser, branch pipes, sprinkler heads) distribute from those
+   anchors using qty + DocEvent rules. No dx/dy/dz on the BOM line.
+
+**ARC rooms as discipline anchors:** The ARC shell must produce room products
+with categories matching each MEP discipline present in the building. If the
+YAML `floor_rooms` config has no pump room, FP_SYSTEM has nowhere to tack.
+The YAML author (or Designer user) ensures service rooms exist for each
+discipline OrderLine they add.
+
+**Compulsory service rooms in CO BOM:** For a CO (Commercial) building, the
+ARC root BOM includes service rooms as **compulsory children** — pump room
+(category FP), AHU room (category ACMV), DB room (category ELEC), water
+tank room (category CW), wet core (category SP), gas meter room (category LPG).
+These are the frame mounting points. Like a toy car chassis: certain
+attachment points are pre-moulded into the frame; the discipline modules
+snap onto them.
+
+```
+BUILDING_TE_STD (CO)
+└── ARC children (compulsory frame):
+    ├── ROOM_PUMP         (M_Product_Category = FP)     ← FP tacks here
+    ├── ROOM_AHU          (M_Product_Category = ACMV)   ← ACMV tacks here
+    ├── ROOM_DB           (M_Product_Category = ELEC)   ← ELEC tacks here
+    ├── ROOM_WATER_TANK   (M_Product_Category = CW)     ← CW tacks here
+    ├── ROOM_WET_CORE     (M_Product_Category = SP)     ← SP tacks here
+    ├── ROOM_GAS_METER    (M_Product_Category = LPG)    ← LPG tacks here
+    └── ... (other rooms: lobby, retail, office — no discipline anchor)
+```
+
+#### 3.6.2a OrderLine.Product Callout — Auto-Insert Discipline Lines
+
+When the user selects a CO product on the first C_OrderLine, a **Callout**
+automatically creates the sibling discipline OrderLines. This is the standard
+iDempiere `C_OrderLine.M_Product_ID` callout pattern — when product changes,
+callout fires.
+
+```
+User action:  C_OrderLine.M_Product_ID = BUILDING_TE_STD
+                ↓
+Callout:      OrderLine.Product.onProductChanged()
+                ↓
+Logic:        1. Read M_Product_Category → CO
+              2. Read CO BOM children → find discipline root products
+                 (each child with AD_Org_ID > 0 is a discipline)
+              3. For each discipline root: INSERT C_OrderLine
+                 - Product_ID = discipline root BOM (FP_SYSTEM, ACMV_SYSTEM, ...)
+                 - AD_Org_ID  = discipline org (3=FP, 4=ACMV, ...)
+                 - Sequence   = 30, 40, 50, 60, 70, 80
+                 - Qty        = from extraction peek, or 0 (fill-all)
+                ↓
+Result:       8 OrderLines created (ARC=10, STR=20, FP=30, ... LPG=80)
+```
+
+**No invention.** This is the same mechanism as iDempiere's Sales Order
+callout: select a product kit → callout auto-inserts component lines.
+The callout reads the BOM to discover what lines to create. The user can
+then edit quantities, remove disciplines they don't need, or add custom
+lines.
+
+**YAML equivalent:** For Rosetta Stone testing, the YAML `classify_te.yaml`
+lists the 8 discipline sections explicitly. The callout is the interactive
+(Designer GUI) equivalent of what YAML does declaratively.
+
+**Generalisation across building categories:** The callout is not CO-specific.
+It reads the BOM to discover discipline children. Different building categories
+have different discipline sets — the callout discovers them, not hardcodes them.
+
+| Category | Typical disciplines | Service anchor concept |
+|----------|--------------------|-----------------------|
+| **RE** (Residential) | ARC, STR, ELEC, CW+SP (maybe LPG) | Rooms — kitchen, bathroom, DB cupboard |
+| **CO** (Commercial) | All 8 — ARC, STR, FP, ACMV, ELEC, CW, SP, LPG | Rooms — pump room, AHU room, DB room, etc. |
+| **IN** (Infrastructure) | Varies by sub-type (see below) | **Zones** — spans, chainage segments, stations |
+
+**Infrastructure (IN) discipline mapping:**
+
+| Infra sub-type | Disciplines | Service zones (≈ rooms) |
+|----------------|-------------|------------------------|
+| **Bridge** (BR) | STR (piers, deck, girders), GEO (foundations), ROAD (approach), DRAIN, ELEC (lighting) | Span, pier, abutment — each a zone product |
+| **Road** (RD) | ROAD (pavement, markings), DRAIN (storm drains, culverts), ELEC (street lighting), TRAFFIC (signals) | Chainage segments (100m sections) |
+| **Rail** (RL) | RAIL (track, sleepers), STR (stations), ELEC (OHE, signalling), DRAIN | Track sections, station zones, signal locations |
+| **Industrial** (IP) | PROCESS (pipes, vessels), STR (steel frame), ELEC, INST (instrumentation) | Process units, pipe racks, control rooms |
+
+The mechanism is identical: the parent product (bridge, road, rail) has
+compulsory children (zones) with discipline-specific M_Product_Category.
+The callout reads them and creates OrderLines. A bridge pier has
+`M_Product_Category = STR`; the STR OrderLine tacks there — same pattern
+as a pump room having `M_Product_Category = FP`.
+
+**Room vs Zone:** For buildings (RE, CO), the service anchor is a **room** —
+an IfcSpace with walls, floor, ceiling, and a typed category. For infrastructure
+(IN), the service anchor is a **zone** — a spatial segment without enclosure.
+Both are M_Product entries with categories. The BOM walker treats them
+identically: a product with children that the walker recurses into.
+
+**RE is a subset, not an exception.** A house with only ARC + ELEC + SP
+simply has a BOM with 3 discipline children. The callout creates 3 OrderLines.
+No code change — the BOM is the configuration.
+
+*Callout architecture: [DocValidate.md](DocValidate.md) §1.5 (Column.Callout spec).
+Product → verb routing via ASI: BBC.md §3.5.2.
+Infrastructure buildings: BR 7/7, IP 7/7 PASS (standard elements).
+RD/RL: 0 elements (infra walker gap — non-standard IFC hierarchy).*
+
+#### 3.6.3 Per-Discipline Trace — Start, Walk, End
+
+Each discipline has a **service origin** (where it starts), a **walk pattern**
+(how it distributes), and **placement rules** (standards that govern spacing
+and coverage). The walker uses qty from the BOM line as its stop condition.
+
+##### ARC — Architecture (AD_Org_ID=1, seq=10)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | Building origin (0,0,0). Builds the spatial shell from ground up. |
+| **Walk** | Spatial tack. Every child has dx/dy/dz from extraction. Walls, windows, doors, finishes, furniture — each placed at its extracted world position relative to floor LBD. |
+| **End** | All rooms defined. Room containers (FLOOR, ROOM) have world positions in c_orderline. These become tack anchors for all parasitic disciplines. |
+| **Elements** | TE: 34,724 (72%). IfcPlate(33K), Wall(330), Window(236), Furniture(176). |
+| **Rules** | UBBL Part III (building dimensions). Room area/width/height per occupancy (AD_DocEvent_Rule, `check_method=MIN_DIMENSION`). |
+| **Key output** | Typed rooms with M_Product_Category: pump rooms (FP), AHU rooms (ACMV), DB rooms (ELEC), etc. These categories wire parasitic disciplines to their service points. |
+
+##### STR — Structure (AD_Org_ID=2, seq=20)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | Foundation level (FN). Columns, footings at grid intersections. |
+| **Walk** | Spatial tack. Columns at grid nodes, beams spanning between columns, slabs covering bays. Each has dx/dy/dz from extraction. |
+| **End** | Structural frame complete. Column grid defines the structural bays that ARC rooms sit within. |
+| **Elements** | TE: 1,429. Slab(614), Beam(432), Member(312), Column(68). |
+| **Rules** | MS 1195 / EC2 (concrete). Column vertical continuity: max XY drift ≤ 25mm across storeys (`STR_COLUMN_CONTINUITY`). Beam-column connectivity (DocEvent: REQUIRED_HOST). |
+| **DocEvent** | Verify columns align to beams. STR elements must sit within ARC structural grid — DocEvent checks that STR tacks fall on ARC grid nodes. |
+
+##### FP — Fire Protection (AD_Org_ID=3, seq=30)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | Pump room (M_Product_Category=FP in ARC output). FP_SYSTEM origin = pump room c_orderline position. |
+| **Walk** | **Parasitic.** BOM gives qty per floor, no dx/dy/dz. DocEvent distributes: risers through riser shafts (vertical, one per shaft), then branch pipes per floor, then sprinkler heads per room. |
+| **End** | Every room with occupancy requiring sprinklers has coverage. Walker stops at qty if set, or covers all eligible rooms if qty=0. |
+| **Elements** | TE: 6,863. PipeFitting(3,146), PipeSegment(2,672), FireSuppression(909), Alarm(80). |
+| **Rules** | **NFPA 13** (sprinkler spacing): min 3000mm, max 4600mm per Light Hazard §8.6.2.2.1. Coverage area per head: 9.3m² LH, 12.1m² OH1. **UBBL** Part VII (fire requirements by occupancy). `ad_fp_coverage` table (4 hazard classes). |
+| **Placement** | Grid distribution within each room. Spacing = `room_area / coverage_per_head`. TE mining confirms bimodal: 3000-4000mm (standard) and 4500mm (dominant grid). |
+
+##### ACMV — Air Conditioning & Mechanical Ventilation (AD_Org_ID=4, seq=40)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | AHU/plant room (M_Product_Category=ACMV in ARC output). ACMV_SYSTEM origin = AHU room position. |
+| **Walk** | **Parasitic.** Main ducts from AHU through ceiling void (horizontal per floor). Branch ducts to each room. Air terminals (diffusers/grilles) distributed per room by air change requirement. |
+| **End** | Every habitable room has supply + return air terminals. |
+| **Elements** | TE: 1,621. DuctFitting(713), DuctSegment(568), AirTerminal(289), Proxy(51). |
+| **Rules** | **MS 1525** (energy efficiency, air-conditioned buildings). **ASHRAE 62.1** (ventilation rates). Air changes per hour by occupancy: office 6-8 ACH, retail 8-12 ACH, toilet 15 ACH. Duct sizing by airflow (velocity method). |
+| **Placement** | Air terminals: grid within room, spacing derived from throw distance. Ducts: ROUTE verb along ceiling void, branch at room entry points. |
+
+##### ELEC — Electrical (AD_Org_ID=5, seq=50)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | TNB/main switchboard room (M_Product_Category=ELEC in ARC output). ELEC_SYSTEM origin = DB room position. |
+| **Walk** | **Parasitic.** Main distribution board → sub-DB per floor (vertical riser) → cable trays per floor (horizontal) → light fixtures + power outlets per room. |
+| **End** | Every room has lighting to required lux level + power outlets per occupancy. |
+| **Elements** | TE: 1,172. LightFixture(814), Proxy(339), Appliance(19). |
+| **Rules** | **MS 1525** (lighting power density). **IES** lighting levels: office 300-500 lux, corridor 100 lux, toilet 150 lux. Light fixture grid: max spacing ~5000mm (`IES_LIGHT_SPACING`, advisory). TE mining: avg grid pitch 4000mm, tight clustering per storey. |
+| **Placement** | Light fixtures: ceiling grid aligned (600mm module). Spacing = `room_area / (lux_target / lux_per_fixture)`. TE mining confirms per-storey consistency (Level 1-3: ±2mm Z variance). |
+| **Cross-discipline** | NEC 300.4: min 150mm clearance from SP pipes. TE mining: 11 true overlaps, 35 under 150mm on lower floors. `NEC_ELEC_SP_CLEARANCE` rule. |
+
+##### CW — Cold Water (AD_Org_ID=6, seq=60)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | Water tank room / meter room (M_Product_Category=CW in ARC output). CW_SYSTEM origin = tank room position. |
+| **Walk** | **Parasitic.** Rising main (vertical riser) → floor distribution (horizontal header) → branch pipes to each wet room → fixtures (taps, valves, flow terminals). |
+| **End** | Every wet room (kitchen, bathroom, toilet) has water supply points. |
+| **Elements** | TE: 1,431. PipeFitting(638), PipeSegment(619), FlowTerminal(106), Valve(57). |
+| **Rules** | **MS 1228** (water supply). Pipe sizing by fixture unit method. Min pressure at highest fixture. Riser: one per core/shaft. Branch: ROUTE verb following wall/ceiling. |
+| **Placement** | Fixtures at predefined wall positions (basin, sink, WC). Pipes ROUTE from riser to each fixture. Gravity-fed upper floors, pump-fed if pressure insufficient. |
+
+##### SP — Sanitary Plumbing (AD_Org_ID=7, seq=70)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | Each bathroom/toilet on each floor (M_Product_Category=SP in ARC output, or rooms with sanitary fixtures). SP works **top-down** — waste flows by gravity. |
+| **Walk** | **Parasitic, reversed.** Fixtures (WC, basin, floor trap) per wet room → waste pipes collecting per floor → soil stack (vertical, one per wet core) → ground floor manhole → building drain. |
+| **End** | Every sanitary fixture connected to drainage. Soil stacks extend to roof (vent). |
+| **Elements** | TE: 979. PipeSegment(455), PipeFitting(372), FlowTerminal(150), Valve(2). |
+| **Rules** | **MS 1228** (sanitary plumbing). **Uniform Plumbing Code (UPC)**. Min pipe gradient: 1:40 (100mm pipe), 1:60 (150mm pipe). Trap seal: min 50mm water depth. Vent pipe sizing by drainage fixture units. |
+| **Placement** | Fixtures at wet room positions. Waste pipes ROUTE with minimum gradient from fixture to stack. Soil stack at wet core position (vertical, full building height + vent above roof). |
+
+##### LPG — Liquefied Petroleum Gas (AD_Org_ID=8, seq=80)
+
+| Aspect | Detail |
+|--------|--------|
+| **Start** | Gas meter room / LPG storage (M_Product_Category=LPG in ARC output). Must be external or ventilated per DOSH regulations. LPG_SYSTEM origin = meter room position. |
+| **Walk** | **Parasitic.** Gas riser (if multi-storey) → floor header → branch to each kitchen/cooking area → gas points (hob connections, valves). |
+| **End** | Every kitchen/cooking area has gas supply with isolation valve. |
+| **Elements** | TE: 209. PipeFitting(87), PipeSegment(75), Valve(47). |
+| **Rules** | **MS 830** (gas installation). **DOSH** (Dept of Safety & Health) regulations. Emergency shut-off valve at entry to each floor. Isolation valve at each appliance. Min clearance from ignition sources. Gas detector in enclosed spaces. Pipe sizing by gas demand (MJ/h). |
+| **Placement** | Gas points at kitchen positions. Riser in dedicated shaft (never in electrical riser). Horizontal runs along external walls or ventilated ceiling voids. |
+
+#### 3.6.4 Two Walk Modes
+
+| | ARC / STR (spatial) | MEP (parasitic) |
+|---|---------------------|-----------------|
+| **BOM walk gives** | Positions (dx/dy/dz per child) | Quantities (qty per room type) |
+| **Placement by** | Compiler (deterministic tack accumulation) | DocEvent rules (distribute through ARC rooms) |
+| **User control** | Adjust tack offsets in Designer | Adjust qty or drag elements in Designer |
+
+**Spatial walk (ARC/STR):** Parent owns the attachment point (§3.2). The child's
+dx/dy/dz is a fixed offset. The walker accumulates: `world_pos = parent_LBD + offset`.
+Every element has a deterministic position.
+
+**Parasitic walk (MEP):** The child BOM line has **qty but no meaningful dx/dy/dz**.
+The walker produces: "this floor needs 47 sprinklers." DocEvent validation then
+distributes them across eligible ARC rooms by rule. The user can adjust in
+Designer after.
+
+**Note on SP:** Sanitary plumbing is the only discipline that walks **top-down**
+(waste flows by gravity from upper floors to ground). The BOM still lists
+fixtures per floor — but the DocEvent must connect them downward to soil stacks,
+verifying minimum pipe gradient at each segment.
+
+#### 3.6.5 Qty as Control Knob
+
+The M_BOM_Line qty on a parasitic child is the **user's intent**:
+
+| Qty | Meaning |
+|-----|---------|
+| `qty = 47` | Distribute exactly 47 items. Walker stops when count reached. |
+| `qty = 0` (or blank) | No limit — distribute until all eligible rooms are covered. |
+
+During YAML setup, the author peeks at the extracted DB to see what exists:
+`SELECT count(*) FROM i_element_extraction WHERE discipline = 'FP'` → 47.
+This becomes the qty on the FP OrderLine.
+
+In the Designer GUI, the user edits qty directly on the C_OrderLine.
+Recompile → different density. Same BOM recipe, different quantity.
+
+#### 3.6.6 The Pipeline for Parasitic Disciplines
+
+```
+1. BOM walk      → "Floor GF needs 12 sprinklers, 3 risers"     (WHAT + HOW MANY)
+2. DocEvent      → distribute into ARC rooms by jurisdiction     (WHERE — rule-based)
+                   rules: NFPA 13, UBBL, MS 1525, MS 1228, MS 830
+3. Designer GUI  → user drags/adjusts positions                  (WHERE — user override)
+4. Recompile     → final placed elements in output.db
+```
+
+Steps 1–2 are automatic. Step 3 is optional (user intervention). Step 4 is
+deterministic — same order produces same output.
+
+**iDempiere parallel:** BOM = bill of materials (recipe). DocEvent = business
+rules (routing/distribution). C_OrderLine = user execution (configure-to-order).
+The BOM never changes — only the order and the rules change.
+
+#### 3.6.7 Cross-Discipline Clearance
+
+After all 8 OrderLines explode, cross-discipline clash detection fires
+(DISC_VALIDATION_DB_SRS §10.4.3 stage 4). Uses ERP-maths centreline clearance
+(not mesh intersection):
+
+```
+clearance = centreline_2D_distance - radius_a - radius_b
+where radius = MIN(width, depth) / 2    ← pipe cross-section
+```
+
+TE mining (M12): 11 true overlaps ELEC×SP, 35 pairs under 150mm on lower floors.
+Rule: `NEC_ELEC_SP_CLEARANCE`, min 150mm, WARN severity.
+
+*Standards by jurisdiction and discipline: [DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.3.
+TE mining data: [TE_MINING_RESULTS](TE_MINING_RESULTS.md).
+Shared discipline recipes: DV025 migration in ERP.db (FP_SYSTEM seed, S100-p73).
+DocEvent rule schema: AD_DocEvent_Rule in ERP.db ([DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.3).*
+
+### 3.7 Rosetta Stone
 
 The Rosetta Stone exercise (SH/DX/TE) proves the pipeline is **lossless**:
 the Application Dictionary (BOMs + products + rules) compiles back to the
 original building with G1-G6 gates GREEN. See [TestArchitecture.md](TestArchitecture.md)
 for gate specification and coverage.
 
-### 3.7 locator_ref — Exception-Order Addressing (Session D)
+### 3.8 locator_ref — Exception-Order Addressing (Session D)
 
 Every C_OrderLine carries a `locator_ref`: a dot-separated path from the root
 that uniquely identifies WHERE in the exploded BOM tree this node sits.
