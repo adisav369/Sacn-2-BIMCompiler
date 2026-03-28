@@ -5,7 +5,7 @@
 <b>Same hierarchy, different vocabulary — infrastructure is not a new problem.</b> 9 IFC4X3 files (bridges, roads, rails) mapped to existing pipeline abstractions.
 </div>
 
-**Date:** 2026-03-16 | **Updated:** 2026-03-19 (deep review: file probe, spec gap audit, LOD plan)
+**Date:** 2026-03-16 | **Updated:** 2026-03-28 (S100-p85 fleet audit — first compilation results)
 **Source files:** `reference/infrastructure/` (9 IFC4X3_ADD2 files, ~7.5 MB)
 **Purpose:** Understand how infrastructure IFCs map to the existing pipeline, identify spec gaps, and plan the Rosetta Stone path for infrastructure
 
@@ -197,12 +197,10 @@ FACILITY (IfcBridge)                   BUILDING (IfcBuilding)
       └─ LEAF (IfcSlab, IfcRailing)        └─ LEAF (IfcRoof)
 ```
 
-**Decision point:** Should bom_type be `FACILITY`/`SEGMENT` (new vocabulary) or
-keep `BUILDING`/`FLOOR` (abstract, reused)? Recommendation: **keep BUILDING/FLOOR
-as abstract terms** — they are already in the BOM schema, all validators, all tests.
-Introducing new values requires touching every WHERE clause. Instead, add a
-`facility_domain` column to m_bom (values: BUILDING, ROAD, BRIDGE, RAILWAY) for
-downstream filtering. This is the iDempiere approach — AD_Ref_List, not new document types.
+**Resolved:** The BOM is self-describing — no level labels needed. A bridge
+root has children (spans, piers), each identified by M_Product_Category.
+`getParentBOM()` null = root, `getChildren()` empty = leaf. No vocabulary
+issue — the tree structure IS the hierarchy, same as manufacturing.
 
 ---
 
@@ -463,7 +461,7 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 | Critical blockers before code? | ~~G8 (REFERENCE_CLASSES)~~, ~~G10 (spatial structure extraction)~~, N4 (IfcMapConversion — deferred, not blocking) |
 | LOD library population? | **DONE** — all 9 files extracted, 33 infra products + geometries in component_library.db |
 | Rosetta Stone pipeline? | **DONE** — BR 10/10, RD 4/4, RL 4/4 with verb detection (CLUSTER) |
-| Recommended approach? | Extract per-facility, keep BUILDING/FLOOR as abstract bom_type, add facility_domain column |
+| Recommended approach? | Extract per-facility, tree structure is self-describing (root/children/leaf), M_Product_Category for domain classification |
 
 **Completed (2026-03-19):**
 1. SRS: Updated `WorkOrderGuide.md` §Schema — documented `segments:` alias, M_Product_Category=IN, pre-flight checklist
@@ -632,3 +630,56 @@ See also: [`WorkOrderGuide.md`](WorkOrderGuide.md) §Invention Boundary,
 [`DATA_MODEL.md`](DATA_MODEL.md) §Reference DB,
 [`BOMBasedCompilation.md`](BOMBasedCompilation.md) §4 Tack Convention,
 [`LAST_MILE_PROBLEM.md`](LAST_MILE_PROBLEM.md) §Gap 4 (spec sources).
+
+---
+
+## Compilation Results (S100-p85 Fleet Audit, 2026-03-28)
+
+First compilation of infrastructure buildings through the standard Rosetta Stone pipeline.
+
+### Summary
+
+| Building | Prefix | Elements | Gates | LMP §1 | LMP §2 | Verbs | Notes |
+|----------|--------|----------|-------|--------|--------|-------|-------|
+| Infra Bridge | BR | 48 | 7/7 PASS | PASS (48/48) | PASS (48/48) | 20 PLACE, 6 CLUSTER | Standard elements (slabs, beams) |
+| Infra Plumbing | IP | 27 | 7/7 PASS | PASS (27/27) | PASS (27/27) | 3 PLACE, 1 CLUSTER | Small file, standard elements |
+| Infra Road | RD | 0 | — | — | — | — | Compiles OK but 0 elements written |
+| Infra Rail | RL | 0 | — | — | — | — | Compiles OK but 0 elements written |
+
+### BR (Infra Bridge) — 7/7 PASS
+
+BomDropper finds root BOM (BUILDING_BR). BOM walk produces 48 elements from 26 LEAF lines.
+All elements classified as ARC discipline (bridge components use standard IfcSlab/IfcBeam/IfcColumn classes).
+LOD binding: 48 LOD, 0 fallback, 0 missing. LMP drift: 6 pass, 0 fail, 2 deferred.
+
+### IP (Infra Plumbing) — 7/7 PASS
+
+27 elements from 4 LEAF lines. All ARC discipline. Plumbing components extracted as standard
+IFC classes, not infrastructure-specific entities. LOD: 27/0/0. LMP: 6 pass, 0 fail, 2 deferred.
+
+### RD (Infra Road) — 0 Elements (Walker Gap)
+
+Compilation runs without error but the output DB has no `elements_meta` table.
+IFCtoBOM extraction produces 53 elements across 5 storeys (road segments), but the BOM walk
+path produces zero placements. Root cause: road elements use infrastructure-specific IFC
+entities (IfcCourse, IfcPavement, IfcAlignment) with a SEGMENT/SECTION/COURSE hierarchy
+that doesn't match the BUILDING→FLOOR→LEAF traversal the walker expects.
+
+### RL (Infra Rail) — 0 Elements (Walker Gap)
+
+Same pattern as RD. Rail elements use IfcRail, IfcTrackElement, IfcAlignment entities.
+IFCtoBOM extracts the geometry but the BOM walker cannot produce placements from the
+non-standard hierarchy.
+
+### Analysis
+
+The §1 core insight from this doc is partially validated: **BR and IP prove that infrastructure
+files with standard IFC entities (slabs, beams, columns) compile through the existing pipeline
+unchanged.** The BOM hierarchy abstraction works.
+
+However, **RD and RL prove that truly infrastructure-specific entities need additional walker
+support.** The gap is not in the BOM structure (IFCtoBOM extracts correctly) but in the
+BOMWalker's assumption that LEAF nodes under FLOOR BOMs produce placements. Infrastructure
+roads/rails have elements at different hierarchy levels.
+
+**No hardcoded RE/CO/IN assumptions found in the pipeline** — the issue is structural, not conditional.

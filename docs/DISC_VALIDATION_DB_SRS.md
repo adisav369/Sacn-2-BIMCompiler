@@ -60,7 +60,9 @@ ERP.db — WHERE things go + HOW they connect (discipline metadata)
 ├── IFC alias cascade:    ad_element_mep_alias (84 rows, DV003)
 ├── IFC class map:        ad_ifc_class_map (46 rows, DV005) — authority table for extract.py
 ├── Calibration results:  W_Calibration_Result (from CalibrationTest)
-└── Schema config:        AD_SysConfig
+├── Schema config:        AD_SysConfig
+├── Shared recipes:       M_BOM (1 FP_SYSTEM, DV025) — §10.4.6
+└── Recipe lines:         M_BOM_Line (3 FP children, DV025)
 
 validation.db — RULES + VERDICTS (compliance engine)
 ├── AD_Val_Rule + AD_Val_Rule_Param (thresholds)
@@ -508,14 +510,39 @@ SPACE (M_Product, IsBOM=Y)
 A SPACE has an AABB (extent) and an M_Product_Category (what kind of space).
 An OCCUPANT has an AD_Org_ID (who), a verb_ref (how), and AD_Val_Rule (checklist).
 
-The compiler resolves placement from metadata:
+The compiler resolves placement through three stages, matching how
+iDempiere processes documents:
 
 ```
+┌─────────────────────────────────────────────────────────────┐
+│ 1st: DocEvent per Org (discipline blanket + govt standards)  │
+│   AD_DocEvent_Rule fires top-down as the walker traverses    │
+│   root → leaf. AD_Org blanket-applies ALL rules for the      │
+│   discipline — spacing, connectivity, host, AND government   │
+│   standards (NFPA 13, UBBL). Jurisdiction-swappable here.    │
+│   Same as iDempiere ModelValidator per organization.          │
+│                                                              │
+│ 2nd: AttributeSet (per-product / per-instance)               │
+│   M_AttributeSet defines what CAN vary per product type.     │
+│   M_AttributeSetInstance carries actual values per instance.  │
+│   Resolved per line item — K-factor, dimensions, material.   │
+│                                                              │
+│ 3rd: AD_Val_Rule (user per-line override — last)             │
+│   User sees exploded sub-lines, adds/changes/waives rules.   │
+│   Same as iDempiere AD_Val_Rule — a lookup filter the user   │
+│   attaches to specific lines. Not automatic. Not blanket.    │
+└─────────────────────────────────────────────────────────────┘
+
 for each BOM line in parent:
-    verb  = line.verb_ref        → Strategy (GoF)
-    rule  = AD_Val_Rule.lookup(child.product.AD_Org_ID, parent.M_Product_Category)
-    verb.place(child, parent.space, rule)
+    verb    = line.verb_ref                → Strategy (GoF)
+    org     = child.product.AD_Org_ID      → 1st: DocEvent blanket + standards
+    asi     = orderline.ASI                → 2nd: per-instance attributes
+    verb.place(child, parent.space, asi)
+    // 3rd: AD_Val_Rule — only if user attached override to this line
 ```
+
+This is standard iDempiere processing order: ModelValidator (Org-scoped)
+→ line item resolution (ASI) → user validation rules (AD_Val_Rule).
 
 **Anti-pattern: `shouldSkip()`.** There is ONE compile path, not two paths
 with a skip. The walker always walks the BOM tree. The verb determines what
@@ -540,45 +567,125 @@ COVERING: child SPANS the parent space (verb determines pattern, rule determines
 
 ### 10.4.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement
 
-Each discipline has a **recipe** (products + topology) and a **rule set**
-(constraints). The parent space determines quantity and placement.
+Each discipline has a **recipe** (BOM cascade from its top-level Category)
+and **Org defaults** (discipline-wide practice). The parent space determines
+quantity and placement. Government standards validate the result post-hoc.
 
-| AD_Org | Verb | Rule table | Spatial | Recipe |
-|--------|------|-----------|---------|--------|
-| ARC (1) | PLACE, TILE | Architect's design | INSIDE | Walls, doors, windows, plates, furniture |
-| STR (2) | FRAME | Structural grid | COVERING | Column + Beam + Slab |
-| FP (3) | ROUTE | ad_fp_coverage (NFPA 13) | COVERING | Main pipe + branches + fittings + heads |
-| ELEC (4) | WIRE | ad_space_type_mep | COVERING | Light fixtures (ceiling grid) |
-| ACMV (5) | ROUTE DUCTS | ad_acmv_sizing | COVERING | Duct segments + fittings + terminals |
-| CW (6) | ROUTE | Per-discipline AD | COVERING | Pipe segments + fittings + valves |
-| SP (7) | ROUTE | Per-discipline AD | COVERING | Drainage pipes + fixtures |
-| LPG (8) | ROUTE | Per-discipline AD | COVERING | Gas piping + meters |
+| AD_Org | Top Category | Verb | Spatial | Recipe cascade |
+|--------|-------------|------|---------|----------------|
+| ARC (1) | ARC_DESIGN | PLACE, TILE | INSIDE | Walls, doors, windows, plates, furniture |
+| STR (2) | STR_FRAME | FRAME | COVERING | Column + Beam + Slab |
+| FP (3) | FP_MAIN_ROOM | ROUTE | COVERING | Riser → branches → fittings → heads |
+| ELEC (4) | ELEC_DISTRIBUTION | WIRE | COVERING | Panel → circuits → fixtures |
+| ACMV (5) | ACMV_PLANT | ROUTE | COVERING | AHU → ducts → fittings → terminals |
+| CW (6) | CW_SUPPLY | ROUTE | COVERING | Riser → pipe runs → fittings → valves |
+| SP (7) | SP_DRAINAGE | ROUTE | COVERING | Stack → drainage pipes → fixtures |
+| LPG (8) | LPG_SUPPLY | ROUTE | COVERING | Meter → gas piping → fittings |
 
-The recipe is abstract — "cover this zone with sprinklers per NFPA 13."
-The compiler takes recipe + space + rule → concrete positions. Quantity and
-placement are derived from the parent space extent + the validation rule.
+**OrderLine entry point:** `C_OrderLine.Product` has a Category (the top
+Category of that discipline). BomDrop explodes the product's BOM, cascading
+through the discipline's own BOM tree. Category at each tier = the product
+group (substitution shelf). The designer can swap any product for another
+in the same Category without changing the BOM structure.
 
-### 10.4.3 The Contractor's Checklist — AD_Val_Rule as Scope of Work
+The recipe is abstract — "cover this zone with sprinklers." Processing
+follows iDempiere order: DocEvent per Org (1st, discipline blanket +
+government standards) → ASI resolution per instance (2nd) → AD_Val_Rule
+user override on specific lines (3rd, on demand).
 
-| Checklist item | ERP concept | Example |
-|---------------|-------------|---------|
-| **WHO** | AD_Org_ID | FP contractor |
-| **WHERE to** | M_Product_Category filter | GF, L1, L2 (not Foundation) |
-| **WHERE NOT to** | Category exclusion | FN excluded — no MEP below grade |
-| **HOW** | Rule parameters | max_spacing=4600mm, routing=TREE |
-| **HOW MANY** | Rule + parent space | coverage_area=12.1 m² per head |
-| **WHAT WITH** | M_Product reference | SPRINKLER_K80, PIPE_CW_50MM |
-| **CHECK AGAINST** | Cross-discipline rule | 150mm clearance from ELEC |
+### 10.4.3 Three-Stage Validation — iDempiere Processing Order
 
-M_Product_Category bridges disciplines to spaces. A category like `GF` is
-shared across all disciplines. The validation rule is scoped to category:
+| Stage | iDempiere parallel | What it does | Fires | Example |
+|-------|-------------------|-------------|-------|---------|
+| **1st: DocEvent per Org** | ModelValidator.docValidate() | Blanket discipline rules INCLUDING government standards, top-down | Automatically during BOM walk, per AD_Org | FP: NFPA 13 spacing, UBBL fire rating, general pipe sizing rules |
+| **2nd: AttributeSet** | M_AttributeSetInstance | Per-product/per-instance resolution | Per line item during placement | K-factor=5.6, pipe_dia=50mm, material=copper |
+| **3rd: AD_Val_Rule** | AD_Val_Rule (lookup filter) | User-initiated per-line rule addition or override | On demand, after explosion, on specific sub-lines | User adds stricter spacing rule to a particular FP branch |
+| **Cross-discipline** | AD_Clash_Rule | Clearance between disciplines | After all disciplines placed | 150mm clearance FP vs ELEC |
 
-```sql
-SELECT * FROM ad_fp_coverage
-WHERE m_product_category = 'GF' AND hazard_class = 'ORDINARY'
+**Key distinction:** In iDempiere, AD_Val_Rule is a **lookup filter** — it
+narrows available choices per field, not a document validator. ModelValidator
+(DocEvent) is where real validation lives. Government standards (NFPA 13,
+UBBL, MS1183) are general enough to be 1st-stage blanket rules — they apply
+to EVERY element in the discipline. 3rd-stage AD_Val_Rule is for when the
+user sees specific exploded sub-lines and wants to add, change, or waive a
+rule on THOSE lines.
+
+```
+1st:  DocEvent(org)          → blanket discipline rules + government standards
+2nd:  ASI resolution         → per-instance attributes on each line
+3rd:  AD_Val_Rule            → user adds/changes/waives rule on specific lines
 ```
 
-Different disciplines, same space, different rules — all from metadata.
+**Jurisdiction-swappable:** Government standards live in 1st-stage DocEvent
+rules, scoped by `jurisdiction`. Same BOM, same Org, different jurisdiction
+→ different DocEvent rules fire. Malaysian building uses UBBL rules,
+US building uses NFPA/IBC rules. The BOM and ASI don't change.
+
+#### AD_DocEvent_Rule — 1st Stage Schema (ERP.db)
+
+DocEvent rules are shared across all buildings (like AD_Org, M_Product).
+They live in ERP.db. Each rule is scoped to an AD_Org (discipline) and
+optionally to a jurisdiction.
+
+```sql
+-- Ready-made discipline event rules in ERP.db
+-- Fires automatically during BOM walk when AD_Org matches
+CREATE TABLE IF NOT EXISTS AD_DocEvent_Rule (
+    ad_docevent_rule_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ad_org_id            INTEGER NOT NULL DEFAULT 0, -- 0=all, 3=FP, 4=ELEC, etc.
+    name                 TEXT NOT NULL,               -- 'NFPA13_LH_SPACING'
+    description          TEXT,
+    rule_type            TEXT NOT NULL,               -- SPACING, CONNECTIVITY, HOST,
+                                                      -- COMPLETENESS, DIMENSION, STANDARD
+    standard_ref         TEXT,                         -- 'NFPA 13 §8.6.2.2.1', 'UBBL s.43(1)'
+    jurisdiction         TEXT,                         -- MY, US, UK, SG, INTL, NULL=universal
+    check_method         TEXT NOT NULL,                -- MIN_DISTANCE, MAX_DISTANCE,
+                                                      -- REQUIRED_HOST, COUNT_PER_AREA,
+                                                      -- MIN_DIMENSION, MAX_COVERAGE, DIMENSION_RANGE
+    ifc_class            TEXT,                         -- target element (NULL=all in discipline)
+    m_product_category_id TEXT,                        -- target category (NULL=all)
+    severity             TEXT NOT NULL DEFAULT 'WARN', -- BLOCK, WARN
+    firing_event         TEXT NOT NULL DEFAULT 'BEFORE_PLACE',
+                                                      -- BEFORE_PLACE, AFTER_PLACE, AFTER_COMPLETE
+    is_active            INTEGER NOT NULL DEFAULT 1,
+    provenance           TEXT,                         -- EXTRACTED:UBBL_1984, MINED:TE, RESEARCHED
+    FOREIGN KEY (ad_org_id) REFERENCES AD_Org(ad_org_id)
+);
+
+CREATE TABLE IF NOT EXISTS AD_DocEvent_Rule_Param (
+    ad_docevent_rule_param_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ad_docevent_rule_id       INTEGER NOT NULL,
+    name                      TEXT NOT NULL,           -- max_spacing_mm, min_area_m2, min_count
+    value                     TEXT NOT NULL,           -- '4600', '9.3', '1'
+    value_type                TEXT DEFAULT 'NUM',      -- NUM, TEXT, BOOL
+    condition_expr            TEXT,                    -- 'productCategory IN (BD,LR,DR)'
+    FOREIGN KEY (ad_docevent_rule_id) REFERENCES AD_DocEvent_Rule(ad_docevent_rule_id)
+);
+
+CREATE INDEX idx_docevent_rule_org ON AD_DocEvent_Rule(ad_org_id);
+CREATE INDEX idx_docevent_rule_jurisdiction ON AD_DocEvent_Rule(jurisdiction);
+```
+
+**Existing ERP.db `ad_val_rule` (415 rows):** These are mined DIMENSION_RANGE
+observations from 34 buildings — they are effectively 1st-stage DocEvent rules.
+Migration path: copy qualifying rows into AD_DocEvent_Rule with
+`rule_type='DIMENSION'`, `check_method='DIMENSION_RANGE'`,
+`provenance='MINED:{building}'`.
+
+#### AD_Val_Rule — 3rd Stage (validation.db, unchanged)
+
+The V001 schema in validation.db stays as-is. Its purpose changes:
+
+- **Before (wrong):** Government standards, post-hoc compliance
+- **After (correct):** User-initiated per-line rule addition/change/waiver
+
+The user opens an exploded order, sees specific sub-lines, and attaches:
+- **ADD:** "Apply stricter 3000mm spacing to THIS branch" (new rule on line)
+- **CHANGE:** "Override threshold from 4600mm to 3800mm for THIS zone"
+- **WAIVE:** "Acknowledge and accept this deviation" (AD_Val_Rule_Exception)
+
+This is exactly how iDempiere's AD_Val_Rule works — a lookup filter that
+the user configures on a specific field/line to narrow or adjust what's valid.
 
 ### 10.4.4 Impact on the BOM Tree
 
@@ -598,43 +705,23 @@ every record carries AD_Org, the line is just a relationship.
 | `CompilationPipeline` | Delete CO skip hack (line 352-354) |
 | `PlacementCollectorVisitor` | Resolve AD_Org_ID from child product, not discipline stack |
 
-### 10.4.5 bom_type — Tree Structure and M_Product_Category
+### 10.4.5 The BOM Is Already Perfect
 
-iDempiere has no `bom_type` column. It uses `M_Product.IsBOM` (Y/N) and
-tree structure. The BOM model is self-describing:
+A BOM is a BOM — same as manufacturing a car. You don't label an engine
+assembly with a tier tag. It's a product with children. The tree
+structure IS the hierarchy:
 
-- **Root:** the BOM with no parent m_bom_line. No string match needed.
-- **Tier:** determined by M_Product_Category at each level. The category
-  IS the swap pool — `M_Product_Category='LIVING'` means "room-level
-  candidate in the living room swap pool."
-- **Leaf:** `IsBOM=N` on the child product. No children to recurse into.
+- **Root:** `getParentBOM()` returns null
+- **Any level:** `getChildren()` returns its children
+- **Leaf:** `getChildren()` returns empty
+- **Category:** `getProductCategory()` returns the substitution shelf
 
-The `bom_type` column (BUILDING/FLOOR/ROOM/SET/ITEM) carries legacy
-residential vocabulary. Code should read tree structure and category,
-not `bom_type` strings. This makes the model universal:
+No level labels. No vocabulary. A building, a car, a bridge, a ship —
+same three methods, different products. M_Product_Category groups
+interchangeable products at each level (same shelf = same swap pool).
 
-| Query | Tree-based (correct) | String-based (legacy) |
-|-------|---------------------|----------------------|
-| Find root | BOM with no parent m_bom_line | `WHERE bom_type='BUILDING'` |
-| Find children | m_bom_line rows under root | `WHERE bom_type='FLOOR'` |
-| Tier selection | `WHERE m_product_category_id IN (?)` | `WHERE bom_type='ROOM'` |
-| Origin | Root BOM's origin_x/y/z | `WHERE bom_type='BUILDING'` |
-
-**VIEW_CONTRACTS.md `v_qualified_bom`** currently uses `bom_type` as
-mandatory bind parameter (Rule 6: "never mix tiers"). The same rule
-applies with M_Product_Category: never mix category levels in one query.
-
-**Infrastructure compatibility:**
-
-| Domain | Root category | Child categories | bom_type (legacy) |
-|--------|--------------|-----------------|-------------------|
-| Residential | RE | GF, L1, RF → LIVING, KT, BD | BUILDING, FLOOR, ROOM |
-| Commercial | CO | GF, L1, RF (no rooms) | BUILDING, FLOOR |
-| Bridge | IN | SPAN, PIER, ABUTMENT | BUILDING (!), FLOOR (!) |
-| Road | IN | SEGMENT, LAYER | BUILDING (!), FLOOR (!) |
-
-With category-based queries, bridge SPANs are found by
-`M_Product_Category='SPAN'`, not by `bom_type='FLOOR'`. Clean.
+**VIEW_CONTRACTS.md `v_qualified_bom`** currently uses a legacy `bom_type`
+bind parameter. Migration pending to use M_Product_Category instead.
 
 ### 10.4.6 Shared Discipline Recipes in ERP.db
 
@@ -642,45 +729,63 @@ Discipline BOMs are **shared across all buildings.** FP is FP — one recipe,
 all buildings, same rules. ACMV is ACMV. The recipe does not change; the
 space and rules determine the result.
 
-**ERP.db** holds the shared recipes alongside AD_Org and AD_Val_Rule:
+**ERP.db** holds the shared recipes alongside AD_Org:
 
 ```
 ERP.db
 ├── AD_Org                    (WHO: FP, ACMV, ELEC, CW, SP, LPG)
-├── AD_Val_Rule               (HOW: NFPA 13, duct sizing, grid rules)
+├── AD_SysConfig              (discipline-wide defaults per Org)
 ├── M_Product                 (WHAT: sprinklers, pipes, ducts, fittings)
-├── M_Product_Category        (TIER: product taxonomy per discipline)
-└── M_BOM — shared discipline recipes:
-    ├── FP_SPRINKLER_RECIPE   (verb=ROUTE, AD_Org=FP)
-    ├── ACMV_AHU_RECIPE       (verb=PLACE, AD_Org=ACMV — needs plant room)
-    ├── ACMV_DUCT_RECIPE      (verb=ROUTE, AD_Org=ACMV)
-    ├── ACMV_TERMINAL_RECIPE  (verb=TILE,  AD_Org=ACMV — per-room ceiling grid)
-    ├── ELEC_LIGHTING_RECIPE  (verb=TILE,  AD_Org=ELEC)
-    └── CW_PIPE_RECIPE        (verb=ROUTE, AD_Org=CW)
+├── M_Product_Category        (TIER: product taxonomy = substitution shelf)
+└── M_BOM — shared discipline recipes (each a BOM cascade):
+    ├── FP_SYSTEM             (Category=FP_MAIN_ROOM, Org=FP)
+    │   ├── FP_RISER          (Category=FP_RISER, verb=ROUTE)
+    │   ├── FP_SPRINKLER_LAYOUT (Category=FP_DISTRIBUTION, verb=ROUTE)
+    │   └── FP_PUMP_LINK      (Category=FP_SUPPLY, verb=ROUTE)
+    ├── ACMV_SYSTEM           (Category=ACMV_PLANT, Org=ACMV)
+    ├── ELEC_SYSTEM           (Category=ELEC_DISTRIBUTION, Org=ELEC)
+    └── CW_SYSTEM             (Category=CW_SUPPLY, Org=CW)
+
+validation.db (separate — government standards only)
+├── AD_Val_Rule               (NFPA 13, UBBL, MS1183 — post-hoc checks)
+├── AD_Val_Rule_Param         (thresholds per rule)
+└── AD_Clash_Rule             (cross-discipline clearance)
 ```
 
 component_library.db is strictly **leaf geometry** (meshes, LODs). It never
 holds BOMs or recipes — only what things look like, not how they assemble.
 
-**Implication for future IFCs:** Extract ARC+STR only (spaces and structure).
-MEP disciplines are generative — the compiler applies shared recipes from
-ERP.db to extracted spaces using AD_Val_Rule. One order line per discipline:
+**OrderLine → top Category → BOM cascade:**
 
 ```
-C_OrderLine 1: BUILDING_X     (extracted ARC+STR — defines spaces)
-C_OrderLine 2: add FP         (shared recipe → ROUTE verb → NFPA 13)
-C_OrderLine 3: add ACMV       (shared recipe → ROUTE/TILE → sizing rules)
-C_OrderLine 4: add ELEC       (shared recipe → TILE → ceiling grid rules)
+C_Order: "Build TE"
+├── C_OrderLine #1: TE_ARC_STR     (Category=ARC, Org=ARC)  ← extracted BOM
+├── C_OrderLine #2: FP_SYSTEM      (Category=FP_MAIN_ROOM, Org=FP)
+├── C_OrderLine #3: ACMV_SYSTEM    (Category=ACMV_PLANT, Org=ACMV)
+├── C_OrderLine #4: ELEC_SYSTEM    (Category=ELEC_DISTRIBUTION, Org=ELEC)
+├── C_OrderLine #5: SP_SYSTEM      (Category=SP_DRAINAGE, Org=SP)
+├── C_OrderLine #6: CW_SYSTEM      (Category=CW_SUPPLY, Org=CW)
+├── C_OrderLine #7: LPG_SYSTEM     (Category=LPG_SUPPLY, Org=LPG)
+└── C_OrderLine #8: STR_SYSTEM     (Category=STR_FRAME, Org=STR)
 ```
 
-Four thin lines. No re-extraction of pipes and fittings. Same FP recipe
-whether it's a terminal, duplex, or warehouse. The space determines quantity,
-the rule determines layout, the product determines what gets placed.
+Eight lines. Each line's Product has a top Category — the entry point into
+that discipline's BOM cascade. BomDrop explodes recursively. At each tier,
+Category = the substitution shelf (designer can swap products within it).
+
+**Processing order (same as iDempiere document processing):**
+1. **DocEvent per Org** — discipline blanket rules + government standards (NFPA 13, UBBL, MS1183) apply top-down as walker traverses root→leaf. Jurisdiction-swappable at this stage.
+2. **ASI resolution** — per-product/per-instance attributes (K-factor, dimensions, capacity)
+3. **AD_Val_Rule** — user-initiated per-line override/addition on specific exploded sub-lines
+
+Jurisdiction-swappable: same BOM, same Org, different AD_DocEvent_Rule set
+for Malaysian (UBBL) vs US (NFPA) code. BOM and ASI don't change.
 
 For **extracted buildings** (TE, DX), the designer already applied these
 recipes manually. The extraction captured the result. The compiler emits
 at tack offsets (PLACE verb). For **generative buildings**, the compiler
-applies the shared recipes using verb Strategy + AD_Val_Rule Specification.
+applies the shared recipes using verb Strategy + DocEvent per Org + ASI.
+AD_Val_Rule validates the output.
 
 ### 10.4.7 GoF Design Patterns
 
@@ -688,8 +793,8 @@ applies the shared recipes using verb Strategy + AD_Val_Rule Specification.
 |---------|-------------|
 | **Composite** | BOM tree: SPACE contains OCCUPANT lines, recursively |
 | **Visitor** | BOMWalker visits each line |
-| **Strategy** | Verb determines placement method |
-| **Specification** | AD_Val_Rule determines constraints |
+| **Strategy** | Verb determines placement method (DocEvent + ASI) |
+| **Specification** | AD_DocEvent_Rule validates during walk (1st, blanket + standards). AD_Val_Rule = user override (3rd, per-line) |
 
 ### 10.4.8 Cross-References
 
@@ -699,6 +804,31 @@ applies the shared recipes using verb Strategy + AD_Val_Rule Specification.
 | **DM** | 3 (ARC,STR,FP) | First FP trial — addDiscipline(). [DemoHouseAnalysis.md](DemoHouseAnalysis.md) |
 | **FK** | 2 (ARC,STR) + ROOF debate | [FZKHausAnalysis.md](FZKHausAnalysis.md) |
 | **Infrastructure** | ROAD,RAIL,GEO,LAND,SIGN | Extended codes. [InfrastructureAnalysis.md](InfrastructureAnalysis.md) |
+
+### 10.4.9 Stair Validation Rules — Candidate AD Table Extensions (S100-p84)
+
+Existing infrastructure: `ad_stair_requirement` (7 rows in BOM.db, seeded by
+`scripts/create_ad_vertical_circulation.py`), `VerticalCirculationAD.java`,
+`VerticalCirculationValidator.java`, `StairwellCheck.java`.
+
+**Rules NOT yet in `ad_stair_requirement` — candidates for addition:**
+
+| Rule ID | Parameter | Value | Standard |
+|---------|-----------|-------|----------|
+| STAIR_COMFORT_2RG | 2R+G check | 550-700mm (ideal 630) | Blondel formula |
+| STAIR_HEADROOM | min_headroom_mm | 2000 | UBBL practice / BS 5395 |
+| STAIR_MAX_FLIGHT | max_flight_rise_mm | 3000 | UBBL By-Law 168 |
+| STAIR_RISER_UNIFORM | max_variance_mm | 9.5 | IBC s1011.5.4 |
+| STAIR_GUARD_HEIGHT | min_guard_mm | 1070 | IBC s1015.3 |
+| STAIR_GUARD_OPENING | max_sphere_mm | 100 | IBC s1015.4 (child safety) |
+| STAIR_NOSING_MAX | max_nosing_mm | 32 | IBC s1011.5.5 |
+| STAIR_PRESSURIZE | pressure_pa | 50-100 | UBBL By-Law 178 (>18m) |
+
+**TE relevance:** 178 unfactored stair components across GF-L4. Building height
+59.8m → >18m threshold → 2.0hr fire rating, min 1200mm width, pressurization
+required, min 2 stairs. These rules + ASI (per-instance run length, landing width)
+resolve stair geometry without manual pattern recognition. See
+[TerminalAnalysis.md §Stair Validation Rules](TerminalAnalysis.md).
 
 ### 10.5 Investigation Tasks
 

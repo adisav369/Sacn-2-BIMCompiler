@@ -212,7 +212,7 @@ Calibration: "rules produce reality" (active generation check).
 | Metric | Source | Formula |
 |--------|--------|---------|
 | TE head count per storey | `elements_meta WHERE ifc_class='IfcFireSuppressionTerminal'` | COUNT per storey |
-| TE floor area per storey | `m_bom WHERE bom_type='FLOOR'` | aabb_width_mm × aabb_depth_mm / 1e6 |
+| TE floor area per storey | `m_bom` children of root (getChildren) | aabb_width_mm × aabb_depth_mm / 1e6 |
 | TE density | head_count / floor_area | heads/m² |
 | DocEvent qty | `ceil(floor_area × per_area_normal)` | from ad_space_type_mep_bom (0.07/m²) |
 | DocEvent density | DocEvent_qty / floor_area | heads/m² |

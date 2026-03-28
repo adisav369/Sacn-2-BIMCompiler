@@ -45,23 +45,31 @@ can verify in minutes, not months.
 
 ## §1 Where This Sits in the Pipeline
 
-The pipeline in `CompilationPipeline.java` runs 9 stages via a static
-`List<CompilerStage>`. The compliance stage inserts as **Stage 10** — a new
-stage appended after ProveStage (Stage 9), not wedged between existing stages.
+The pipeline in `CompilationPipeline.java` runs 10 stages via a static
+`List<CompilerStage>`. ValidationStage (Step 7) runs AD_DocEvent_Rule
+blanket checks including government standards. ComplianceStage appends as
+**Stage 11** — it assembles the proof chain and certificate from
+ValidationStage results, not a separate rule evaluation.
 
 ```
-Existing pipeline (CompilationPipeline.STAGES):
+Current pipeline (CompilationPipeline.STAGES):
   1  MetadataValidator
   2  ParseStage
   3  CompileStage
   4  TemplateStage
   5  WriteStage
   6  VerbStage          — shouldSkip() if no .bimcobol file
-  7  DigestStage
-  8  GeometryStage
-  9  ProveStage
- 10  ComplianceStage    ← NEW — shouldSkip() if no jurisdiction in classify YAML
+  7  ValidationStage    — DocEvent: blanket discipline + govt standards (1st stage)
+  8  DigestStage
+  9  GeometryStage
+ 10  ProveStage
+ 11  ComplianceStage    ← NEW — assembles proof chain from Step 7 results
 ```
+
+**ComplianceStage does NOT re-evaluate rules.** It reads validation results
+from ValidationStage (Step 7), packages them into a signed proof chain
+(compliance_proof.db), and issues a certificate if all mandatory rules PASS.
+It is a **certificate emitter**, not a rule engine.
 
 **Design:** ComplianceStage implements `CompilerStage` (not "PipelineStage").
 It reads from `CompilationContext` and the output DB written by prior stages.
@@ -219,8 +227,7 @@ building:
   building_type: DemoHouse_MY
   prefix: DM
   building_bom_id: BUILDING_DM_STD
-  doc_sub_type: DM
-  doc_base_type: RE
+  doc_sub_type: DM                    # deprecated — redundant with prefix
   name: Demo House (Malaysia)
   dsl_file: null
   jurisdiction: MY                    # ← NEW — activates ComplianceStage

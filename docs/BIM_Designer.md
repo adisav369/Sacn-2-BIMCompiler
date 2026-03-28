@@ -305,7 +305,7 @@ violates a code rule, the compiler flags it.
 
 | Prefix | Source | GUI access |
 |--------|--------|------------|
-| BUILDING_* | Top-level building BOMs (bom_type=BUILDING) | Read-only reference |
+| BUILDING_* | Root BOMs (no parent m_bom_line) | Read-only reference |
 | SY_* | Synthetic (created by verbs) | Fully mutable |
 
 The GUI creates and modifies SY_* BOMs only. EntityType='D' guards protect
@@ -319,7 +319,7 @@ derived from BOM spatial data:
 
 - Each M_BOM_Line's dx/dy/dz defines the tack offset (where child sits in parent)
 - Structural tiers (unit, slab, floor, room) are BOM levels with spatial offsets
-- Empty filler space = BOM line with `bom_type = 'FILLER'`, queryable via SQL
+- Empty filler space = PHANTOM BOM line, queryable via SQL
 - The GUI presents these as visual room/wall slots for drag-and-drop placement
 
 > **Implementation note:** co_empty_space tables were removed S74 (W008).
@@ -786,7 +786,7 @@ Each level applies the same rule.
 CREATE TABLE ad_container_rule (
     id              INTEGER PRIMARY KEY,
     rule_name       TEXT NOT NULL,           -- 'CHILD_WITHIN_PARENT'
-    parent_bom_type TEXT,                    -- NULL = all, or 'FLOOR', 'ROOM'
+    parent_category TEXT,                    -- NULL = all, or M_Product_Category code
     axis            TEXT NOT NULL,           -- 'WIDTH', 'DEPTH', 'HEIGHT', 'ALL'
     operator        TEXT DEFAULT '<=',       -- '<=', '<', '=='
     margin_mm       REAL DEFAULT 0,          -- allow N mm tolerance

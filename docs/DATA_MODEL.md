@@ -97,7 +97,7 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | Field | Value | Source |
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
-| bom_type | BUILDING | Legacy label. Root is the BOM with no parent m_bom_line — tree structure, not string matching |
+| bom_type | *(deprecated)* | Root = BOM with no parent m_bom_line. Tier = M_Product_Category. See DISC_VALIDATION_DB_SRS.md §10.4.5 |
 | m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification axis |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
@@ -204,7 +204,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 
 ### m_bom (BOM headers)
 
-2 selection dimensions: [M_Product_Category](MANIFESTO.md#what-m_product_category-classification--ad_org-discipline) + SpaceSize (AABB fit).
+2 selection dimensions: [M_Product_Category](MANIFESTO.md#what-m_product_category-classification--ad_org-discipline) (substitution shelf) + AD_Org (discipline). AABB is spatial qualification only — envelope fit, not selection.
 
 | Column | Type | Notes |
 |--------|------|-------|

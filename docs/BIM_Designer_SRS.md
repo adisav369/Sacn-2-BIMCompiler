@@ -2198,7 +2198,7 @@ explodes a template into C_OrderLine rows; the user edits lines and attributes d
 YAML can be *generated* from the order state if needed for the backend pipeline.
 
 **Flow:**
-1. Building product dropdown: `scanBomProducts` — query `m_bom WHERE bom_type='BUILDING'`
+1. Building product dropdown: `scanBomProducts` — query root BOMs (no parent m_bom_line)
    from each `*_BOM.db`. User picks a template (e.g. `BUILDING_SH_STD`).
 2. **BOM Drop** (`bomDrop`): creates `C_Order` + `C_OrderLine`(s) from BOM tree explosion.
 3. **OrderLine table** (`listOrderLines`): editable grid — product, category, qty, status.
@@ -2477,7 +2477,7 @@ room area and computes dx/dy/dz from containing space at compile time.
 
 **S63 findings:** DM needs `FP_PIPE_ASSEMBLY` BOM + `m_attribute` seed. FP elements
 resolve as discipline='MEP' (fallback); finer FP discipline needs FP-specific SET
-BOMs or `C_OrderLine.Discipline='FPR'`. `m_bom.bom_type` has no 'ASSEMBLY' — use 'SET'.
+BOMs or `C_OrderLine.AD_Org_ID=3` (FP). BOM type is determined by tree structure, not bom_type string.
 
 #### 30.7.5 Two Browsing Modes — ARC vs MEP
 
@@ -2598,6 +2598,58 @@ Does not modify any existing table except adding M_AttributeSet_ID column to M_P
 
 *Cross-references: BBC.md §3.5.1–3.5.2 (ASI pattern + verb routing),
 DocValidate.md §1.5 (Column.Callout wiring), §28.5–28.7 (ASI in BOM Drop).*
+
+---
+
+---
+
+## 32. Integration Gap Register (S100-docs audit)
+
+Audited against current `master` (S100-p85). Phase 1 complete, backend
+strong (14 report templates, Federation ported, 76 verbs). Gaps below
+would block smooth daily use.
+
+### 32.1 Priority 1 — Blocking TE-Scale Iterative Design
+
+| Gap | Description | Spec | Status |
+|-----|-------------|------|--------|
+| **IG-1 Incremental viewport update** | User edits one BOM line → Java compiles in 2s → Blender reloads ALL 48K objects (30s freeze). BlenderBridge spec defines delta manifest (added/modified/removed GUIDs) + `apply_delta()` applicator. Neither Java nor Python side is wired. | [BlenderBridge.md](BlenderBridge.md) §delta | SPEC COMPLETE, CODE MISSING |
+| **IG-2 Real-time clash detection** | PlacementValidator checks dimensions but NOT spatial overlaps. User places item, passes validation, compiles, THEN discovers clash in 3D. `SpatialPredicates` class exists but used for snapping only. | §26.12 | PARTIAL — needs `ClashCheckPredicate` in PlacementValidator |
+| **IG-3 Python client threading race** | TCP socket listener and sync `_send()` share one socket with no mutex. If user edits while `COMPILE_COMPLETE` pushes, socket corrupts silently. Only protected by a code comment. | `client.py` lines 30–35 | BUG — needs Queue + lock or split socket |
+
+### 32.2 Priority 2 — Required for Daily Use
+
+| Gap | Description | Spec | Status |
+|-----|-------------|------|--------|
+| **IG-4 Design Mode Phase 2** | Can create new (wireframe), cannot edit existing geometry. Load → edit → move chain workflow is skeleton code (WF-11 STUB, WF-12 SPEC ONLY, WF-13 STUB). | §26.4–26.5 | SCAFFOLD ONLY |
+| **IG-5 Change Request workflow** | Non-compliant moves should spawn `R_Request` row with approval panel. API stubs exist (`moveChain()`, `costOfChange()`) but no R_Request creation or UI. | §26.13 | SPEC ONLY |
+| **IG-6 4D/5D/6D Web UI tabs** | 14 report generators exist in BackOffice (p78–p83). Web UI tabs 4D/5D/6D/7D are placeholder buttons — data layer complete, presentation not wired. | [BIM_Designer_UserGuide.md §30.3](BIM_Designer_UserGuide.md) | DATA READY, UI SKELETON |
+| **IG-7 Multi-user session locking** | Server supports 50+ concurrent connections (stateless) but no session tracking. No awareness of who's editing what. No soft locking per floor/building. | §26.14 | SPEC ONLY |
+
+### 32.3 Priority 3 — Competitive Edge
+
+| Gap | Description | Spec | Status |
+|-----|-------------|------|--------|
+| **IG-8 Embedding similarity** | `findSimilar()` API exists but ML pipeline deferred (no embeddings computed). BOM Chooser returns empty on "Find Similar". | §25 | API READY, ML MISSING |
+| **IG-9 NLP query panel** | `NlpQueryParser` + `NlpQueryExecutor` exist in Java backend (6 categories, regex→SQL). Web UI has no input field for natural language queries. | — | BACKEND READY, UI MISSING |
+| **IG-10 Variant comparison** | `listVariants()` API works. No side-by-side diff UI (element count, cost, compliance comparison). | §18.2 | API READY, UI MISSING |
+
+### 32.4 Known Fragility (not gaps, but pitfalls)
+
+- **Bbox JSON serialization tax** — `panel.py` parses JSON on every Blender panel redraw (1–50 Hz). Large designs (50+ rooms) will lag. Fix: cache parsed bboxes at module level, invalidate on property change.
+- **DesignerServer socket leak** — no timeout on client sockets. 100 Blender restarts → thread pool exhaustion. Fix: socket timeout + explicit close in `finally` block.
+- **BOM Chooser stale fit status** — user resizes room via slider, Chooser still shows old FITS/TIGHT badges. Fix: invalidate browse cache on `snap()` success.
+- **Web UI HTTP polling** — 0.5s poll interval, no WebSocket. Fine for <5 users. At 10+, thread pool (8 workers) saturates. WebSocketHandler exists (port 9879) but Web UI never upgraded.
+
+### 32.5 What's Solid (no gaps)
+
+- Java ↔ Blender TCP protocol (ndjson, stable)
+- Design Mode Phase 1 (wireframe, snap, validate, BOM chooser, jurisdiction switch)
+- Web UI tabs 1D/9/10 (Order, BOM, Colour — fully functional)
+- Bonsai ↔ Browser viewport sync (selection push, color schemes, bbox preview)
+- 76 verbs, 10-stage compilation pipeline, 24/34 ALL GREEN
+- 18 report generators (4 existing + 14 new from p78–p83)
+- Federation layer (ColorScheme, DimensionQuery, WorkPackage, NLP backend)
 
 ---
 

@@ -211,7 +211,7 @@ composition:
 ```
 BUILDING_DX_STD (BUILDING)
   ├── ... shared structural (MAKE/LEAF children) ...
-  └── DUPLEX_SET_STD (LEAF → recurses, bom_type=SET, bom_category=PR)
+  └── DUPLEX_SET_STD (has children → recurses, category=PR)
         ├── UNIT_A → DUPLEX_SINGLE_UNIT_STD (LEAF, rot=0,   dx=huA_offset)
         └── UNIT_B → DUPLEX_SINGLE_UNIT_STD (LEAF, rot=π,   dx=huB_offset)
               Both reference the SAME half-unit BOM.
@@ -249,6 +249,33 @@ class PlaneMirrorPartitioner implements MirrorPartitioner {
 
 Then the pairing (per product per storey, min(A,B) = paired,
 excess → shared) is completely independent of the axis.
+
+## Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+
+BOM walk recompilation via `CompileStage` → `writeFromBomWalk()`. **6/7 PASS, C9 WARN (89 axis mismatches — rank-match artifact).**
+
+| Metric | Value |
+|--------|-------|
+| Elements | 1099 |
+| Root BOM | BUILDING_DX_STD, origin=(-0.044, -35.392, -1.250) |
+| Verbs | 992 PLACE, 17 CLUSTER |
+| Disciplines | ARC=1011, STR=2 |
+| LOD binding | 1099 LOD, 0 fallback, 0 missing |
+| H6 WARNs | 57 (MEP schedule vs actual, 13 rooms) |
+
+**LMP Drift Check:** 6 pass, 0 fail, 2 deferred
+
+| § | Check | Verdict |
+|---|-------|---------|
+| §1 | Input=Output | PASS (1099/1099) |
+| §2 | LOD400 | PASS (1099/1099, 0 warn, 0 fail) |
+| §3 | Compiler Only | PASS |
+| §6 | Output Path | PASS |
+| §7 | Separate From Input | PASS |
+| §8 | Visual Fidelity | PASS (geometry OK) |
+| §4, §9 | Openings, Orientation | deferred (no proof aggregate) |
+
+**C9 WARN (89 mismatches):** Same rank-match artifact documented in §Resolved #5 below. Not a geometry error — position-sorted rank matching shuffles elements near the party wall. Element count is exact (1099=1099).
 
 ## Resolved Issues
 

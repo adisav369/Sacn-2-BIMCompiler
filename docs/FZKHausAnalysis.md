@@ -7,6 +7,7 @@
 
 **Stone:** candidate #4 (German residential — IFC4 ArchiCAD export)
 **Created:** 2026-03-20 (session 38 preparation)
+**Updated:** 2026-03-28 (S100-p85 fleet audit recompilation)
 
 ---
 
@@ -239,7 +240,34 @@ on structural timber — a new verb+material combination.
 | Storeys | 2 | 2 (EG=26, DG=56) | PASS |
 | Spaces | 7 | 7 | PASS |
 | BOM lines | ~82 | 93 (82 element + 11 structure) | PASS |
-| Pipeline | 9/10 | g4_tamper only (uncommitted changes) | PASS* |
+| Pipeline | 10/10 | All gates PASS (S100-p85 fleet audit) | PASS |
+
+## Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+
+BOM walk recompilation via `CompileStage` → `writeFromBomWalk()`. **7/7 PASS.**
+
+| Metric | Value |
+|--------|-------|
+| Elements | 82 |
+| Root BOM | BUILDING_FK_STD, origin=(-0.500, -0.500, -0.200) |
+| Verbs | 82 PLACE, 0 CLUSTER (flat — no factorization) |
+| Disciplines | ARC=82 (all architectural) |
+| LOD binding | 82 LOD, 0 fallback, 0 missing |
+| H6 WARNs | 38 (MEP schedule vs actual) |
+
+**LMP Drift Check:** 6 pass, 0 fail, 2 deferred
+
+| § | Check | Verdict |
+|---|-------|---------|
+| §1 | Input=Output | PASS (82/82) |
+| §2 | LOD400 | PASS (82/82, 0 warn, 0 fail) |
+| §3 | Compiler Only | PASS |
+| §6 | Output Path | PASS |
+| §7 | Separate From Input | PASS |
+| §8 | Visual Fidelity | PASS |
+| §4, §9 | Openings, Orientation | deferred (no proof aggregate) |
+
+**Note:** FK uses 82 PLACE verbs with zero CLUSTER — each element is unique (qty=1). The 36 rafter TILE pattern identified in mined data below has not yet been factorized into verb_ref (deferred to AD_Val_Rule table). All gates improved from session 38 (G4 now PASS with committed code).
 
 ### Mined Data
 

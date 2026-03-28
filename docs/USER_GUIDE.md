@@ -297,8 +297,8 @@ ROOM "kantin" [CANTEEN] 84.0m²
 New BOM recipes require only SQL — no Java changes:
 
 ```sql
-INSERT INTO m_bom (bom_id, bom_type, group_by, is_active)
-VALUES ('STUDY_DESK_SET', 'ASSEMBLY', 'ROOM', 1);
+INSERT INTO m_bom (bom_id, m_product_category_id, is_active)
+VALUES ('STUDY_DESK_SET', 'FR', 1);  -- FR = Furniture category
 
 INSERT INTO m_bom_line (bom_id, role, child_name_pattern, sequence, is_active)
 VALUES ('STUDY_DESK_SET', 'DESK', 'Desk%', 1, 1);

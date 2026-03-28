@@ -308,29 +308,58 @@ BUILDING "Ifc2x3_AC11Institute" type:SINGLE_UNIT profile:"DE_Institutional" {
 
 ### Step 6 — Delta checks
 
-**Actual results (session 39): 9/11 PASS**
+**Actual results (session 39): 9/11 PASS → Updated S100-p85: 7/7 PASS**
 
-| Gate | Result | Notes |
-|------|--------|-------|
-| IFCtoBOM Pipeline | PASS | 93 BOMs, 791 lines, 4.5x factorization |
-| EN-BLOC compile | PASS | 699 elements |
-| WALK-THRU compile | PASS | 699 elements |
-| Delta (EB vs WT) | PASS | 0 element count delta |
-| Geometry divergence | PASS | 0 hash mismatches |
-| Rule 8 (coords) | PASS | All coordinates parent-relative |
-| Clash check | PASS | 0 furniture clashes |
-| C9-AXISDIM | PASS | 0 axis dimension mismatches |
-| **C8-GEODIV** | **FAIL** | 6 IfcFurnishingElement mesh types (ref=6, out=0) — library gap |
-| **G4-TAMPER** | **FAIL** | Uncommitted code (expected, same as SH/FK) |
+| Gate | Result (S39) | Result (S100-p85) | Notes |
+|------|-------------|-------------------|-------|
+| IFCtoBOM Pipeline | PASS | PASS | 93 BOMs, 791 lines, 4.5x factorization |
+| EN-BLOC compile | PASS | PASS | 699 elements |
+| WALK-THRU compile | PASS | PASS | 699 elements |
+| Delta (EB vs WT) | PASS | PASS | 0 element count delta |
+| Geometry divergence | PASS | PASS | 0 hash mismatches |
+| Rule 8 (coords) | PASS | PASS | All coordinates parent-relative |
+| Clash check | PASS | PASS | 0 furniture clashes |
+| C9-AXISDIM | PASS | PASS | 0 axis dimension mismatches |
+| C8-GEODIV | ~~FAIL~~ | **PASS** | Library gap resolved — 699 LOD, 0 fallback |
+| G4-TAMPER | ~~FAIL~~ | **PASS** | Code committed |
 
-**C8 root cause:** Furnishing products (chairs, desks, lab tables) have 7 distinct
-geometries in the reference DB but no matching meshes in `component_library.db`.
-Same pattern as DX (12 lost types). Fix: import furnishing LOD geometry into library.
+**C8 history (resolved):** Session 39 reported C8 FAIL (6 IfcFurnishingElement mesh types lost).
+Furnishing LOD geometry was subsequently added to `component_library.db`. Fleet audit
+confirms 699/0/0 LOD binding (zero fallback).
 
 **BOM QA highlights:**
 - 93 BOMs: 1 BUILDING + 10 FLOOR + 82 SET
 - 786 product-linked LEAF lines (699 extraction + 87 template/static)
 - 174 distinct products → 4.5x factorization ratio
+
+## Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+
+BOM walk recompilation via `CompileStage` → `writeFromBomWalk()`. **7/7 PASS.**
+
+| Metric | Value |
+|--------|-------|
+| Elements | 699 |
+| Root BOM | via getRootByDocSubType(IN) |
+| Verbs | 264 PLACE, 18 CLUSTER, 4 ROUTE |
+| Disciplines | ARC=286 (all LEAF lines) |
+| LOD binding | 699 LOD, 0 fallback, 0 missing |
+| H6 WARNs | 280 (MEP schedule — large building, many rooms) |
+
+**LMP Drift Check:** 6 pass, 0 fail, 2 deferred
+
+| § | Check | Verdict |
+|---|-------|---------|
+| §1 | Input=Output | PASS (699/699) |
+| §2 | LOD400 | PASS (699/699, 0 warn, 0 fail) |
+| §3 | Compiler Only | PASS |
+| §6 | Output Path | PASS |
+| §7 | Separate From Input | PASS |
+| §8 | Visual Fidelity | PASS (geometry OK) |
+| §4, §9 | Openings, Orientation | deferred (no proof aggregate) |
+
+**C8 status update:** Session 39 reported C8 FAIL (6 IfcFurnishingElement mesh types lost). Fleet audit shows 7/7 PASS — C8 now passes. LOD binding is 699/0/0 (all elements have library geometry, zero fallback). The furnishing library gap from session 39 has been addressed by subsequent library updates.
+
+**G4 status update:** G4-TAMPER now PASS (code committed since session 39).
 
 ### Step 7 — Mine validation rules (deferred)
 
@@ -357,7 +386,7 @@ Key mining targets for future session:
 - [x] **S3:** `classify_in.yaml` — 216 lines, 82 spaces (largest YAML yet)
 - [x] **S4:** `dsl_in.bim` — 5 storeys, level:0-4, heights 3.0/3.0/3.0/3.0/2.669m
 - [x] **S5:** `RE_IN` added to GATE_SCOPE (BuildingRegistryTest + RosettaStoneGateTest), pipeline run
-- [x] **S6:** 9/11 PASS — C8 (furnishing library gap) + G4 (uncommitted) are known patterns
+- [x] **S6:** 9/11 PASS (session 39) → **7/7 PASS (S100-p85 fleet audit)** — C8 + G4 both resolved
 - [ ] **S7:** Mine rules — deferred to future session
 - [x] **S8:** Docs updated
 

@@ -223,7 +223,7 @@ decomposition layers that would add Level 3.
 
 | Table | Before factorization | After factorization | Notes |
 |-------|---------------------|---------------------|-------|
-| m_bom (tree nodes) | 58 | **58** | 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET |
+| m_bom (tree nodes) | 58 | **58** | 1 root + 7 floor-level + 50 leaf-group BOMs |
 | m_bom_line (edges) | 48,485 | **1,131** | 361 verb lines + 770 flat lines |
 | M_Product | 563 | **563** | 505 catalog + 58 assembly stubs |
 
@@ -339,7 +339,7 @@ Step 3: POPULATE — Java ExtractionPopulator enriches extraction
 
 Step 4: BUILD BOM — Java DisciplineBomBuilder creates BOM hierarchy
    ├── Reads extraction by storey + discipline
-   ├── Creates: BUILDING BOM → FLOOR BOMs → DISCIPLINE SET BOMs
+   ├── Creates: root BOM → floor BOMs → leaf-group BOMs
    ├── Each LEAF line: child_product_id, dx/dy/dz (parent-relative), element_ref
    ├── BomValidator: 9 checks + 2 pre-flights (abort on any failure)
    └── Output: {PREFIX}_BOM.db (m_bom + m_bom_line + M_Product)
@@ -571,6 +571,76 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.
 **Gap:** CLUSTER's 3.7m avg error is the G2-VOLUME 13.71% drift root cause.
 Promotion path: analyse each CLUSTER group for step-uniformity, reclassify
 groups with ≤1mm step variance as TILE/ROUTE/FRAME. Non-uniform residue stays CLUSTER.
+
+### Three-Layer Validation Resolution (S100-p84)
+
+The 1,163 unfactored elements are not a pattern-mining problem — they're a
+**standards application** problem. The iDempiere three-layer validation resolves
+most of them without manual pattern recognition:
+
+**Layer 1: DocEvent per Org** — blanket discipline rules. When AD_Org=FP, the
+org-scoped ModelValidator fires top-down during BOM walk. General placement
+rules (spacing, connectivity, host). Shared recipes in ERP.db (`FP_SYSTEM`,
+`ACMV_SYSTEM`, etc.) provide the abstract BOM templates.
+
+**Layer 2: ASI (AttributeSet Instance)** — per-product/per-instance attributes.
+K-factor, pipe length, duct size. Same as customer options in manufacturing —
+modifies placement without changing the recipe.
+
+**Layer 3: AD_Val_Rule** — same DocEvent engine, narrower scope. User adds a
+specific rule for a particular exploded C_OrderLine. Not a separate mechanism —
+a different granularity. Government standards (NFPA 13, UBBL, MS1183) are
+general rules (Layer 1). Layer 3 is for user-specific overrides.
+
+This mirrors iDempiere document processing: ModelValidator (Org-scoped) →
+line item resolution (ASI) → validation rules (AD_Val_Rule).
+
+**Resolution estimate (1,163 unfactored elements):**
+
+| Category | Count | Resolution | Layer |
+|----------|-------|-----------|-------|
+| SP/CW/LPG pipes | ~450 | Routing standards (branch length, riser sizing) | DocEvent |
+| FP devices (alarms, extinguishers) | ~30 | NFPA/UBBL spacing rules | DocEvent |
+| ELEC (switches, receptacles) | ~20 | Receptacle count per area | DocEvent |
+| Doors/windows | ~30 | Fire door placement per UBBL egress | DocEvent |
+| ACMV fittings | ~25 | Duct routing standards | DocEvent |
+| STR columns (irregular grid) | ~63 | ~50% by rules, rest human/AI pattern | DocEvent + manual |
+| **Stairs** | **~178** | **Stair rules (see below)** | **DocEvent + ASI** |
+| Walls | ~41 | Define space, not fill it — stays unfactored | Unfactored |
+| Furniture/fixtures | ~50 | Architect's choice — stays unfactored | Unfactored |
+| Remaining misc | ~276 | Mixed | Mixed |
+| **Total resolvable** | **~550 (47%)** | | |
+
+### Stair Validation Rules — Already Partially Implemented
+
+Infrastructure exists: `ad_stair_requirement` (7 rows, UBBL/IBC/NFPA),
+`VerticalCirculationAD.java` (StairRequirement record), `VerticalCirculationValidator.java`
+(count, width, travel distance), `StairwellCheck.java` (geometry-based UBBL check).
+
+The 178 unfactored stair components (runs, landings, stringers) across GF-L4 are
+inherently variable in geometry, but their dimensions are **rule-governed**:
+
+| Rule | Value | Standard | In ad_stair_requirement? |
+|------|-------|----------|------------------------|
+| Riser height | 100-175mm (public), 100-190mm (residential) | UBBL By-Law 172 | YES |
+| Tread depth | 250-300mm (public), min 225mm (residential) | UBBL By-Law 172 | YES |
+| 2R+G comfort | 550-700mm (ideal 630mm) | Blondel formula | **NO — add** |
+| Stairway width | min 1050mm (public), 1200mm (high-rise >18m) | UBBL By-Law 171 | YES |
+| Headroom | min 2000mm | UBBL practice / BS 5395 | **NO — add** |
+| Landing length | min = stair width | UBBL general | YES |
+| Max flight rise | 3.0m before landing | UBBL By-Law 168 | **NO — add** |
+| Riser uniformity | max 9.5mm variance between risers | IBC s1011.5.4 | **NO — add** |
+| Handrail height | 900mm (UBBL), 864-965mm (IBC) | UBBL / IBC s1014.2 | YES |
+| Guard height | min 1070mm (42") | IBC s1015.3 | **NO — add** |
+| Fire rating | 1.0hr (<18m), 2.0hr (>18m) | UBBL By-Law 166(3) | YES |
+
+**TE is >18m (59.8m tall) → requires 2.0hr fire-rated stairs, min 1200mm width,
+pressurization (50-100 Pa per UBBL By-Law 178), min 2 stairs.**
+
+These rules constrain stair geometry enough that ASI (per-instance run length,
+landing width) handles the remaining variance. The 178 stair components aren't
+"irregular" — they follow dimensional rules with per-instance variants.
+EYES geometric proofs (P04 Z-band, P01 positive extent) can verify the result.
 
 **ROUTE DUCTS** and **ROUTE PIPES** are variants of ROUTE SPRINKLERS — same
 path-following walker, different M_Product leaves and AD regulation tables.
@@ -894,31 +964,47 @@ L0: BUILDING_TE_STD (BUILDING, M_Product_Category=CO)
        └─ L2: [other disciplines at roof level]
 ```
 
-## Current State (2026-03-17)
+## Current State (2026-03-28, S100-p84 audit)
 
-- **TE-5 COMPLETE** — Gates wired, storey fix, surefire property forwarding
-- **TE_BOM.db** exists — 58 BOMs, 505 products, 48,428 unfactored placement rows
-- **Output DB produced** — enbloc == walkthru (48,428 elements, 0 delta, Spec 2 fix)
-- **Active elements:** 48,428 (51,088 - 2,660 REBAR deactivated)
-- **Gate status:** G1 FAIL (48,212 vs 48,428 expected), G2/G3/G4/G5 PASS
+- **BOM walk compiler LIVE (S100-p72).** All buildings compile via single BOM walk path.
+- **Gate: 6/7 PASS, 1 WARN (C9).** G0-COMPILED PASS. G1-G6 PASS. C8 PASS. C9 WARN (60 axis swaps).
+- **Output:** `DAGCompiler/lib/output/sjtii_terminal.db` — 48,428 elements, 251MB.
+- **No cheating detected (S100-p84 forensic audit).** Single write path, no extraction DB access, no TE-conditional logic in compilation, tamper seal INTACT (73 files).
 
-**Storey Distribution (active elements):**
+**Rosetta Stone (2026-03-28 08:50):** IFCtoBOM QA all PASS. BOM walk 339ms. Write 8.3s. Total pipeline 13s.
 
-| Storey | Count | Disciplines |
-|--------|-------|-------------|
-| Foundation | 703 | 6 |
-| Ground Floor | 3,513 | 8 |
-| Level 1 | 2,070 | 8 |
-| Level 2 | 2,609 | 7 |
-| Level 3 | 1,798 | 7 |
-| Level 4 | 2,307 | 7 |
-| Roof | 35,428 | 7 |
-| **Total** | **48,428** | **8** |
+### Audit Findings — S100-p84 Forensic
 
-- **CO_TE** in GATE_SCOPE of both RosettaStoneGateTest and BuildingRegistryTest
-- **Terminal_Extracted.db** exists (reference, 51,088 elements)
-- **G1-COUNT for TE:** exact match (48,428 = 48,428 — rebar + sensors removed as Federation addons)
-- Rosetta Stone sameness principle — coordinate match is the geometry guarantee
+**What the pipeline log tells us about BOM correction targets:**
+
+| Area | Finding | Fix Direction |
+|------|---------|---------------|
+| **C9 axis swap (60 walls)** | CLUSTER groups mix wall orientations. Rank-matcher assigns W↔D incorrectly when walls face different directions within the same group. | Split CLUSTER groups by orientation during IFCtoBOM verb detection. |
+| **Unfactored elements (1,163)** | 342 UPVC pipes, 57 rectangular columns, 44 HDPE pipes, 178 stair components, misc fixtures. IFCtoBOM couldn't find regular spatial patterns. | Human/AI-assisted pattern recognition → `recognised_patterns` in TerminalAnalysis → IFCtoBOM crafts by hand. Deterministic, reproducible. |
+| **P04 Z-band (87% violations)** | Airport spans Z=-30.6m (foundation) to Z=+22.6m (roof). Default P04 band [-8.5, 10.5] too narrow. | Per-building P04 calibration or derive from BOM storey Z ranges. |
+| **ProveStage 0ms** | Prover skips TE — "no proof aggregate." Zero P01-P28 mathematical proof coverage. | Wire prover for CO buildings (currently only fires for RE). |
+| **H6 "No rooms found"** | TE has no room-level BOM structure. ValidationStage completeness check skipped. | Expected for CO path. Room-level validation deferred until assembly sub-groupings added (Level 3). |
+
+**Unfactored element breakdown (mining targets):**
+
+| Product | Count | Floor(s) | Opportunity |
+|---------|-------|----------|-------------|
+| `Pipe Types:jkrME_pipe_UPVC` | 342 | All | Biggest win — branching pipe runs, candidate for ROUTE |
+| `M_Rectangular Column:600x300mm` | 57 | Multiple | Irregular grid — may need human-identified pattern |
+| `Pipe Types:jkrME_pipe_HDPE` | 44 | Multiple | Drainage pipes — routing networks |
+| Stair components (various) | 178 | GF-L4, RF | Inherently irregular — likely stays unfactored |
+| Walls (various) | 41 | L2, L3, GF | Small count, low priority |
+| Furniture/fixtures | 22 | GF, L3 | One-off placements — stays unfactored |
+
+**Discipline factorization quality (from IFCtoBOM log):**
+
+| Floor | Best factored | Worst factored | Notes |
+|-------|--------------|----------------|-------|
+| RF | ARC: 33,386 instances from 6 patterns | SP: 0 patterns, 11 unfactored | Roof is 69% of building |
+| GF | FP: 1,128 from 17 patterns | ARC: 99 unfactored (check-in hall) | Most complex floor |
+| L01 | FP: 1,182 from 7 patterns | SP: 113 unfactored pipes | Sanitary plumbing needs ROUTE |
+| L04 | FP: 1,065 from 6 patterns | SP: 4 from 1 pattern, 4 unfactored | Well factored |
+| FDN | STR: 427 from 4 patterns | SP: 128 unfactored pipes | Underground MEP irregular |
 
 ---
 
@@ -959,7 +1045,7 @@ BUILDING_TE_STD (73,670 x 59,124 x 59,818 mm)
   ├── TE_L04  [Level 4]      2,307 active, 7 disciplines
   └── TE_RF   [Roof]        35,428 active, 8 disciplines
                              ------
-                             48,428 placement instances in 50 DISCIPLINE SET BOMs
+                             48,428 placement instances in 50 leaf-group BOMs
                              (unfactored — each instance is a separate m_bom_line row)
 ```
 
@@ -985,7 +1071,7 @@ awning/canopy overhangs.
 
 ### BomCategory Structure
 
-58 BOMs total: 1 BUILDING + 7 FLOOR + 50 DISCIPLINE SET
+58 BOMs total: 1 root + 7 floor-level + 50 leaf-group BOMs
 
 | BomCategory | Count | Role |
 |-------------|-------|------|
@@ -1133,15 +1219,12 @@ computed). The `DisciplineBomBuilder` passes `e.elementRef()` through unchanged.
 **Guard:** After implementing, assert `COUNT(DISTINCT element_ref) = COUNT(*)`
 on `I_Element_Extraction WHERE is_active=1` in BomValidator.
 
-### Spec 2 (REVISED): Disable StoreyCompiler slab generation for CO mode — **DONE**
+### Spec 2 (REVISED → SUPERSEDED by S100-p72): BOM walk compiler
 
-**File:** `CompilationPipeline.java:234-241` — `CompileStage.shouldSkip()`
-
-Implemented Option A. `CompileStage.shouldSkip()` returns `true` when
-`ctx.entry().docBaseType().equals("CO")`, creating a minimal `BuildingSpec`
-(building name, empty storeys). StoreyCompiler never runs for CO buildings —
-no `markConsumed()` calls, all 48,428 BOM elements emitted via
-`emitGlobalPlacementElements()`.
+**S100-p72 replaced CompileStage entirely.** The old `shouldSkip()` +
+`emitGlobalPlacementElements()` path is gone. All buildings now compile
+via BOMWalker + PlacementCollectorVisitor — single path, no skip logic.
+See DISC_VALIDATION_DB_SRS.md §10.4.1 (shouldSkip is an anti-pattern).
 
 Result: G1-COUNT 48,428 = 48,428. IfcSlab 489 → 705. SH/DX zero regression.
 
@@ -1710,7 +1793,7 @@ STEP 6: COMPILE (Java DAGCompiler — 9-stage pipeline)
     │ PlacementLoader.load()                                      │
     │   → hasOrderLineData() = false (c_order=0)                  │
     │   → loadFromBOM()                                           │
-    │     → MBOM.getByType(conn, "BUILDING")                      │
+    │     → MBOM.getRoots(conn)                                    │
     │     → BOMWalker.walkSelf(bomId, visitors, buildingType)     │
     │     → PlacementCollectorVisitor.getPlacements()              │
     │       → 48,428 Placement records with extraction coords     │
@@ -1803,17 +1886,41 @@ the exact signature of the TE passthrough.
 | 6 | Script fail-loud on missing BOM.db | **DONE** (S100-p67) |
 | 7 | G0-COMPILED gate | **DONE** (S100-p67) — TE correctly FAILs (c_order=0) |
 
-**Phase 4 — Compile-path enablement (prompt 71):**
+**Phase 4 — Compile-path enablement: DONE (S100-p71/p72)**
+
+| # | Fix | Status |
+|---|-----|--------|
+| 8 | Discipline on LEAF lines | **DONE** (S100-p71) — AD_Org resolves from product, not line |
+| 9 | Remove CO passthrough | **DONE** (S100-p72) — BOM walk replaces shouldSkip |
+| 10 | BomDrop for CO buildings | **DONE** (S100-p72) — single path, verb-dispatched |
+
+**Phase 5 — iDempiere PK conformance (prompt 86):**
 
 | # | Fix | Approach |
 |---|-----|----------|
-| 8 | Discipline on LEAF lines | Add discipline column to m_bom_line, or derive via ad_ifc_class_map. Current `role` = IFC class, not discipline code |
-| 9 | Remove CO passthrough in CompilationPipeline | Delete the `if ("CO".equals(...))` empty BuildingSpec block |
-| 10 | BomDrop for CO buildings | Wire BomDropper to produce C_Order/C_OrderLine from flat BOM |
+| 11 | m_bom `bom_id TEXT` PK → `M_BOM_ID INTEGER` PK | Phase A: 65 Java refs. `bom_id` → `Value` column. FKs on INTEGER. |
+| 12 | M_Product_Category TEXT PK → INTEGER PK | Phase B: 135 Java refs. Category codes → `Value` column. |
+| 13 | 13 AD tables TEXT PKs → INTEGER PKs | Phase C: Low impact. Composite PKs get surrogate `_ID`. |
 
-**After Phase 4:** TE BOM → BomDrop → C_OrderLine with disciplines →
-compile produces real output.db → G0-COMPILED PASS → G1-G6 compare
-compiled vs reference → TE gates become real.
+**Why Phase 5 matters for TE:** TE's 48,428 elements traverse 8 BOMs
+via `bom_id` TEXT. Every BOMWalker.walk(), BomDropper.explode(), and
+PlacementCollectorVisitor.onSubAssembly() passes `bom_id` as String.
+Migrating to INTEGER FK will:
+- Flush hidden string-concatenation assumptions in walker code
+- Expose hardcoded category codes (`"RE"`, `"CO"`) that should be Value lookups
+- Verify IFCtoBOM DDL matches the new schema (re-extraction test)
+- Prove the pipeline is PK-type-agnostic (same output, different key type)
+
+**Verification exercise:** After each phase of prompt 86, run TE through
+the full pipeline. The FINE logs (prompt 85) will show whether INTEGER PKs
+flow correctly through BomDrop → BOM walk → WriteStage. SH is the canary
+(7/7 must hold). TE is the stress test (48K elements, 8 disciplines).
+Any TEXT/INTEGER mismatch will surface as a gate failure or exception in
+the FINE log — that's the point.
+
+**After Phase 5:** All tables follow iDempiere convention. `_ID` is opaque
+INTEGER (never shown to users). `Value` is the search key. `Name` is the
+display name. FKs reference `_ID`. DB integrity enforced at the schema level.
 
 ---
 

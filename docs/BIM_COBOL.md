@@ -1345,7 +1345,7 @@ Create a new `m_bom` row. The fundamental building block.
 
 ```bimcobol
 CREATE BOM SY_KITCHEN_A TYPE SET CATEGORY KT
-    -- Creates m_bom: bom_id=SY_KITCHEN_A, bom_type=SET, bom_category=KT
+    -- Creates m_bom: bom_id=SY_KITCHEN_A, m_product_category_id=KT
     -- No children yet — an empty container
 
 CREATE BOM SY_FLOOR_GF TYPE FLOOR CATEGORY L1
@@ -1641,7 +1641,7 @@ Create a new floor BOM from a room list. Allocates AABB to each room and creates
 CREATE FLOOR GF ROOMS LI DN KT BD BT WIDTH 10000 DEPTH 8000 HEIGHT 2800
     -- Partitions 10000x8000 into 5 rooms
     -- Each room: finds best-fit SET from catalog
-    -- Creates m_bom: bom_id=FLOOR_GF_10000x8000, bom_type=FLOOR
+    -- Creates m_bom: bom_id=FLOOR_GF_10000x8000, m_product_category_id=GF
     -- Creates m_bom_line per room with dx/dy/dz offsets
 
 CREATE FLOOR L2 ROOMS BD BD BD BT KT WIDTH 10000 DEPTH 8000 HEIGHT 2800

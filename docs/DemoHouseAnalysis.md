@@ -226,3 +226,21 @@ parent category, qualified name, and author/version metadata.
 ### Risks
 - FK roof AABB (13×11m) doesn't cover SH footprint (17×9m) — accepted, not a gate blocker
 - FP validateBatch() wiring is the largest remaining gap — Session 3 scope
+
+## Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+
+**FAIL — MetadataValidator error: `no such table: M_Product`**
+
+DM is a GENERATIVE building — it has no IFC extraction source. The compile DB
+(copied from SH_BOM.db) lacks the `M_Product` table that `MetadataValidator.checkPositiveDimensions()`
+queries. This is a pre-existing issue: DM works via the BomDropConfigureTest path (which
+seeds M_Product from the swap scenario) but not via the standard Rosetta Stone pipeline.
+
+| Metric | Value |
+|--------|-------|
+| Elements | 60 (from BomDropConfigureTest path, not pipeline) |
+| Pipeline result | FAIL (MetadataValidator pre-condition) |
+| C_Order | 0 rows in output.db |
+
+**Fix needed:** Either (a) seed M_Product in the DM compile DB preparation step,
+or (b) make MetadataValidator skip M_Product checks for GENERATIVE entries.
