@@ -551,13 +551,12 @@ building:
 
   storeys:
     # Keys = exact storey names from elements_meta.storey
-    Erdgeschoss:  { code: EG, bom_category: EG, role: GROUND_FLOOR, seq: 1010 }
-    Dachgeschoss: { code: DG, bom_category: DG, role: UPPER_FLOOR, seq: 1020 }
+    Erdgeschoss:  { code: EG, role: GROUND_FLOOR, seq: 1010 }
+    Dachgeschoss: { code: DG, role: UPPER_FLOOR, seq: 1020 }
 
   floor_rooms:
     Erdgeschoss:
       bom_id: FLOOR_FK_EG_STD
-      bom_category: EG
       spaces:
         # origins and AABBs come from Step 2c query — adjust after extraction
         - { name: FLUR,          template_bom: FK_CORRIDOR_SET,  role: CORRIDOR,  seq: 10,
@@ -574,7 +573,6 @@ building:
             aabb_mm: [TBD], origin_m: [TBD] }
     Dachgeschoss:
       bom_id: FLOOR_FK_DG_STD
-      bom_category: DG
       spaces:
         - { name: GALERIE,       template_bom: FK_GALLERY_SET,   role: GALLERY,   seq: 10,
             aabb_mm: [TBD], origin_m: [TBD] }

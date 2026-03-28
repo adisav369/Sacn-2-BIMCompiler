@@ -331,7 +331,7 @@ not invented — same mining approach as TE sprinkler spacing (see `TE_MINING_RE
 | `SEGMENT_Z_STACK_PIER_SUPER` | Pier z_max ≈ Superstructure z_min | pier max=3.29, super min=3.29 (0mm) | Rail pier tops meet rail superstructure |
 | `SEGMENT_Z_BELOW_GROUND` | Pier extends below Z=0 | road pier z_min=-3.5m, rail pier z_min=-1.49m | Piers are embedded in ground |
 
-**Next steps:** INSERT these as `AD_Val_Rule` rows in `validation.db` with
+**Next steps:** INSERT these as `AD_Val_Rule` rows in `ERP.db` with
 `mining_source='Infra_Bridge'`, then use them in `PlacementValidator` for
 infrastructure generative compilation. Same pattern as TE-mined NFPA13 spacing rules.
 
@@ -357,7 +357,6 @@ not an assembly of discrete objects. This maps to a vertical BOM:
 segments:
   Carriageway_01:
     code: CW01
-    bom_category: ROAD
     role: CARRIAGEWAY
     seq: 1010
     # Children are layers with dz offsets (subgrade at 0, base at +200mm, ...)

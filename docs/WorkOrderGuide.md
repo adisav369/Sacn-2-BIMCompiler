@@ -198,7 +198,6 @@ mvn exec:java -pl IFCtoBOM \
 | `prefix` | string | Short code (SH, DX, TE). Used for BOM DB name: `{prefix}_BOM.db` |
 | `building_bom_id` | string | Root BOM ID (e.g., `BUILDING_SH_STD`) |
 | `doc_sub_type` | string | Building prefix (SH/DX/TE) |
-| `doc_base_type` | string | Domain classification — matches [M_Product_Category](MANIFESTO.md#the-category-cascade-one-pattern-three-domains) (RE/CO/IN) |
 | `name` | string | Human-readable building name |
 | `dsl_file` | string | BIM COBOL script filename (e.g., `dsl_sh.bim`) |
 
@@ -509,7 +508,7 @@ VALUES ('MY_RULE', 'width_mm', '3499', 'mm', 'Column width');
 
 **7c. Apply:**
 ```bash
-sqlite3 library/validation.db < migration/DV00N_my_rules.sql
+sqlite3 library/ERP.db < migration/DV00N_my_rules.sql
 ```
 
 Rule types: `DIMENSION` (element W×D×H), `RATIO` (cross-element proportion),
@@ -835,7 +834,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.
 |-------|----------|
 | Source code walkthrough | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
 | DAO, ORM, build instructions | [`SourceCodeGuide.md`](SourceCodeGuide.md) |
-| BIM COBOL verbs (75 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
+| BIM COBOL verbs (76 verbs) | [`BIM_COBOL.md`](BIM_COBOL.md) |
 | Prefab architecture | [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 | Validation rules | [`DocValidate.md`](DocValidate.md) |
 

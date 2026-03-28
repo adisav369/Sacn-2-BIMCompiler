@@ -10,7 +10,7 @@
 **Last reviewed:** 2026-03-19 session 34 — CTFL static review + SRS gap analysis.
 Session 31: 10 defects found and fixed (D1-D10).
 Session 34: F1-F4 quick wins resolved, 4 SRS docs updated (12 new spec sections).
-**Action:** All numbers canonical. Cross-doc line counts unified (1,131).
+**Action:** All numbers canonical. Two line counts: **1,522** flat extraction lines (IFCtoBOM output), **1,131** factored recipe lines (post-CLUSTER verb optimization). Banner reports extraction; §BOM Catalog reports factored.
 
 **Resolved issues (session 34):**
 

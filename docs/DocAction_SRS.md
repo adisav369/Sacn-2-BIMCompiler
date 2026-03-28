@@ -15,7 +15,7 @@ BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
 > handles it), or absent (discipline does not exist). No ambiguity, no inference.
 
 > **Rules are DATA, not code.** The engine evaluates AD_Val_Rule rows loaded from
-> validation.db. Adding a new rule = SQL INSERT. Adding a new jurisdiction = SQL
+> ERP.db. Adding a new rule = SQL INSERT. Adding a new jurisdiction = SQL
 > INSERT. The Java code changes only when the ENGINE changes, not when RULES change.
 
 > **Terminal as oracle:** The SJTII_Terminal (48,428 elements, 8 disciplines, 7+ storeys)
@@ -149,7 +149,7 @@ processIt(compile DB):                               DocStatus: DR → IP
   │   └── IF value = DocEvent:
   │       │  DocEvent engine handles it (concern #2)
   │       │
-  │       ├── SELECT AD_Val_Rule FROM validation.db
+  │       ├── SELECT AD_Val_Rule FROM ERP.db
   │       │   WHERE discipline = ? AND jurisdiction IN (?, 'INTL')
   │       │
   │       ├── Read mined rule params:
@@ -304,7 +304,7 @@ approveIt(compile DB → {prefix}_BOM.db):              DocStatus: CO → AP
 | processIt | DR→IP | compile DB | C_OrderLine, spatial slots (M_BOM_Line dx/dy/dz), M_AttributeSetInstance, W_Validation_Result | Design decisions + all validation tiers |
 | processIt | DR→IP | component_library.db | *(read-only)* | LOD fetch: M_Product → component_definitions → component_geometries |
 | processIt | DR→IP | {prefix}_BOM.db | *(read-only)* | BOM tree source for `{prefix}_BOM` disciplines |
-| processIt | DR→IP | validation.db | *(read-only)* | AD_Val_Rule for `DocEvent` disciplines + shared rules |
+| processIt | DR→IP | ERP.db | *(read-only)* | AD_Val_Rule for `DocEvent` disciplines + shared rules |
 | completeIt | IP→CO | output.db | elements_meta, element_transforms, element_instances, base_geometries, spatial_structure, c_order, c_orderline | Compiled output |
 | completeIt | IP→CO | compile DB | W_Verb_Node, C_Order.DocStatus | Execution audit + status update |
 | approveIt | CO→AP | NEW {prefix}_BOM.db | m_bom, m_bom_line | Promoted catalog (governance gate, not common) |
@@ -498,8 +498,8 @@ practice from a real building — not a specific code. They serve as:
 
 ### 1.11 Architectural Simplification: work_output.db Removal (S61)
 
-**Decision:** `work_output.db` is removed from the architecture. The 5-DB split
-becomes a **4-DB split**: component_library / BOM / output / validation.
+**Decision:** `work_output.db` is removed from the architecture. The result is a
+**4-DB split**: component_library / ERP (incl. compliance rules) / BOM / output.
 
 **Rationale:** The BOM is read-only (EntityType D). The user cannot edit it — only
 promote it as a new BOM (approveIt). Save = Blender native save (.blend file).
@@ -563,7 +563,7 @@ Priority: **P0** = needed for generative path, **P1** = needed for ambient compl
 | `PlacementValidatorImpl` | DONE — Tier 1 COMPLIANCE only | `validation/PlacementValidatorImpl.java` |
 | `InferenceEngine` | DONE — Kahn's topo sort, proof tree | `validation/InferenceEngine.java` |
 | `PlacementRequest` / `ValidationVerdict` | DONE | `validation/` records |
-| AD_Val_Rule schema | DONE — in validation.db | `migration/V002_validation_schema.sql` |
+| AD_Val_Rule schema | DONE — in ERP.db | `migration/V002_validation_schema.sql` |
 | Mined rules M1-M17 seed data | DONE | `migration/V004_mined_rules.sql` |
 | UBBL/IRC/UK/AU/SG residential rules | DONE — seeded | `DocValidate.md §9-§11` |
 | Non-Disturbance analysis | DONE — documented | `TE_MINING_RESULTS.md` |
@@ -573,10 +573,10 @@ Priority: **P0** = needed for generative path, **P1** = needed for ambient compl
 | **ConstructionModelSpawner** | **NOT DONE** | Spec: DocValidate.md §14-§15.2 |
 | **Non-Disturbance automated test** | **NOT DONE** | Spec: DocValidate.md §7.2, §15.3 |
 
-> **Note: Two separate rule ecosystems.** validation.db (63 rules,
+> **Note: Two separate rule ecosystems.** ERP.db (63 rules,
 > jurisdiction/discipline/rule_type schema) and ERP.db (415 rules,
 > provenance/ifc_class/check_method schema) are separate ecosystems with
-> incompatible schemas. validation.db drives the DocEvent engine (this spec).
+> incompatible schemas. ERP.db drives the DocEvent engine (this spec).
 > ERP.db drives the extraction pipeline (see ConstructionAsERP.md).
 
 ---
@@ -617,7 +617,7 @@ richer `check_method` params that require dedicated evaluation logic.
 
 | ID | Requirement | Acceptance Criteria | Priority |
 |----|------------|-------------------|----------|
-| DV-F-13 | **ClashDetector class.** Reads AD_Clash_Rule from validation.db, evaluates element pairs across discipline boundaries on the same storey. | `ClashDetector.checkFloor(Connection bomConn, Connection valConn, String storeyId)` returns `List<ClashResult>`. Uses R-tree (`elements_rtree`) to narrow candidates, then applies AD_Clash_Rule filters. | P1 |
+| DV-F-13 | **ClashDetector class.** Reads AD_Clash_Rule from ERP.db, evaluates element pairs across discipline boundaries on the same storey. | `ClashDetector.checkFloor(Connection bomConn, Connection valConn, String storeyId)` returns `List<ClashResult>`. Uses R-tree (`elements_rtree`) to narrow candidates, then applies AD_Clash_Rule filters. | P1 |
 | DV-F-14 | **Clash types.** HARD (intersection), SOFT (close proximity), MATERIAL (penetration through rated assembly), CLEARANCE (min distance). | `AD_Clash_Rule.clash_type` drives check logic: HARD = AABB overlap, SOFT = overlap margin, MATERIAL = overlap + fire_rating check, CLEARANCE = min_distance_mm. | P1 |
 | DV-F-15 | **ALLOW_IF conditional verdicts.** When clash verdict = `ALLOW_IF`, check condition column. If condition met (e.g., fire_stop_product_id IS NOT NULL), pass. | `ClashResult` has `conditionMet` boolean. If ALLOW_IF and condition not met, return BLOCK with `resolution_note` from AD_Clash_Rule. | P2 |
 
@@ -712,7 +712,7 @@ Groups spanning 3+ storeys with <50mm drift = MEP risers.
 
 | ID | Scenario | Expected Behaviour | Priority |
 |----|---------|-------------------|----------|
-| DV-E-01 | validation.db missing or unreadable | `activate()` throws with clear message. BIM Designer shows "Validation rules unavailable" in ambient strip. Compilation proceeds without validation (DISABLED mode). | P0 |
+| DV-E-01 | ERP.db missing or unreadable | `activate()` throws with clear message. BIM Designer shows "Validation rules unavailable" in ambient strip. Compilation proceeds without validation (DISABLED mode). | P0 |
 | DV-E-02 | Rule has unknown `check_method` | Log WARN, skip rule. Do NOT block compilation for unimplemented check methods. Return SKIP in InferenceEngine results. | P0 |
 | DV-E-03 | Circular rule dependency | InferenceEngine already handles (Kahn's cycle detection). All cycle members → SKIP. Logged. | DONE |
 | DV-E-04 | Element has no M_Product match | ERP-maths checks require product dimensions. If product_id not in M_Product, skip element with WARN log. | P0 |

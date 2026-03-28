@@ -79,7 +79,7 @@ It writes `compliance_proof.db`. It never mutates the building.
 INPUT:  ctx.proofReport()           — from ProveStage (Stage 9)
         ctx.digestReport()          — from DigestStage (Stage 7)
         classify.yaml → jurisdiction, code_edition
-        validation.db → AD_Val_Rule (COMPLIANCE rules, jurisdiction-scoped)
+        ERP.db → AD_Val_Rule (COMPLIANCE rules, jurisdiction-scoped)
                 ↓
 Step A: LOAD — query AD_Val_Rule WHERE rule_type = 'COMPLIANCE'
               AND jurisdiction = ctx.jurisdiction
@@ -164,7 +164,7 @@ CREATE TABLE SC_Proof_Line (
     sc_proof_line_id  INTEGER PRIMARY KEY,
     sc_run_id         INTEGER NOT NULL REFERENCES SC_Run(sc_run_id),
     space_id          TEXT NOT NULL,         -- links to output.db element GUID
-    ad_val_rule_id    INTEGER NOT NULL,       -- links to validation.db AD_Val_Rule
+    ad_val_rule_id    INTEGER NOT NULL,       -- links to ERP.db AD_Val_Rule
     rule_code         TEXT NOT NULL,          -- e.g. "UBBL-S43-1"
     statute_ref       TEXT NOT NULL,          -- e.g. "UBBL 1984 s.43(1)"
     clause_text       TEXT NOT NULL,          -- verbatim clause (≤200 chars)
@@ -240,7 +240,7 @@ building:
   # ... rest of classify unchanged
 ```
 
-### §4.3 AD_Val_Rule Seeding (validation.db — V001 schema)
+### §4.3 AD_Val_Rule Seeding (ERP.db — V001 schema)
 
 Compliance rules are seeded as `rule_type = 'COMPLIANCE'` rows in the existing
 `AD_Val_Rule` table. No schema ALTER needed — the V001 schema already has

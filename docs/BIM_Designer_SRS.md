@@ -1149,7 +1149,7 @@ resources across multiple designers.**
                     ┌─────────────────────────────────┐
                     │        SHARED (read-only)        │
                     │  component_library.db  (catalog)  │
-                    │  validation.db         (rules)    │
+                    │  ERP.db         (rules)    │
                     │  {PREFIX}_BOM.db       (templates) │
                     └────────────┬────────────────────┘
                                  │
@@ -1180,7 +1180,7 @@ resources across multiple designers.**
 | Resource | Scope | Access | Write path |
 |----------|-------|--------|-----------|
 | `component_library.db` | **Shared** (all users) | Read-only during design | Extraction pipeline (offline) |
-| `validation.db` | **Shared** (all jurisdictions) | Read-only | Migration SQL (admin) |
+| `ERP.db` | **Shared** (all jurisdictions) | Read-only | Migration SQL (admin) |
 | `{PREFIX}_BOM.db` | **Shared** (curated templates) | Read-only during design | **Promote gate** (governance-controlled) |
 | `output.db` | **Per-building** (compile DB) | Read-write per session | Save/Recall/placeItem |
 | `PlacementValidator` state | **Per-session** | In-memory | setJurisdiction per user |
@@ -1313,7 +1313,7 @@ the server without Maven test infrastructure.
 public static void main(String[] args) {
     int port = args.length > 0 ? Integer.parseInt(args[0]) : 9876;
     String libraryPath = args.length > 1 ? args[1] : "library/component_library.db";
-    String valPath = args.length > 2 ? args[2] : "library/validation.db";
+    String valPath = args.length > 2 ? args[2] : "library/ERP.db";
 
     Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + libraryPath);
     PlacementValidatorImpl validator = new PlacementValidatorImpl();
@@ -1347,7 +1347,7 @@ java -jar bim-designer-server.jar 9876
 | Witness | Tests | Requirement |
 |---|---|---|
 | W-LAUNCH-1 | Server starts with default args and accepts TCP connections | Standalone launch |
-| W-LAUNCH-2 | Server loads validation.db rules on startup | Auto-configuration |
+| W-LAUNCH-2 | Server loads ERP.db rules on startup | Auto-configuration |
 | W-LAUNCH-3 | Ctrl+C gracefully shuts down server (shutdown hook) | Clean exit |
 
 ---

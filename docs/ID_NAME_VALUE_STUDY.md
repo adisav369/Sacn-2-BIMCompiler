@@ -4,7 +4,7 @@
 > Date: 2026-03-26 · **Updated:** 2026-03-28 (§6 migration status added)
 
 <div class="bim-banner" markdown>
-<b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Study mapping the 5-DB split against standard iDempiere column patterns. Tiers 1–2 now migrated (§6).
+<b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Study mapping the 4-DB split against standard iDempiere column patterns. Tiers 1–2 now migrated (§6).
 </div>
 
 ## Summary
@@ -14,7 +14,7 @@ iDempiere convention: every table has three identity columns:
 - `Name` (TEXT NOT NULL) — human-readable label
 - `Value` (TEXT NOT NULL) — SearchKey, unique business identifier
 
-Our 5-DB split uses a mix of conventions. Most tables use **TEXT primary keys** (business identifiers as PK) and lack a separate `_ID` surrogate. Only a few tables follow iDempiere convention closely.
+Our 4-DB split uses a mix of conventions. Most tables use **TEXT primary keys** (business identifiers as PK) and lack a separate `_ID` surrogate. Only a few tables follow iDempiere convention closely.
 
 ---
 
@@ -195,7 +195,7 @@ Our 5-DB split uses a mix of conventions. Most tables use **TEXT primary keys** 
 - `W_Verb_NodeProduct` is fully conformant (_ID INTEGER, Name, Value) ✓
 - `c_order` uses `C_Order_ID TEXT` — divergent from iDempiere `C_Order_ID INTEGER`
 
-### 1.5 Validation DB (`library/validation.db`)
+### 1.5 Validation DB (`library/ERP.db`)
 
 | Table | Has _ID | Has Name | Has Value | Current PK | PK Type |
 |-------|---------|----------|-----------|------------|---------|

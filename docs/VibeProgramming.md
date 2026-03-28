@@ -142,7 +142,7 @@ The concerns are valid. This project has lived through all of them:
 
 **"You don't understand your own codebase."** Partially true. The architect understands the *architecture* — what each module does, how data flows, what correct output looks like. He does not memorise every Java method signature. This is a feature, not a bug: the spec is the source of truth, not the code. If the code drifts from spec, the code is wrong — regardless of what it says internally.
 
-**"It won't scale."** 48,428 elements in the Terminal building. 76 verbs. 9 pipeline stages. 5 databases. 55 specification documents. The project is larger than most startups' entire codebases. It scales because the architecture scales — not because the AI understands scale.
+**"It won't scale."** 48,428 elements in the Terminal building. 76 verbs. 9 pipeline stages. 4 databases. 55 specification documents. The project is larger than most startups' entire codebases. It scales because the architecture scales — not because the AI understands scale.
 
 ---
 

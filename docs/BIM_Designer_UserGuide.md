@@ -157,15 +157,15 @@ Enable in Blender: Edit → Preferences → Add-ons → search "BIM Designer" �
 
 ```bash
 ls -la library/component_library.db   # Product catalog
-ls -la library/validation.db          # Validation rules (32 rules)
+ls -la library/ERP.db          # Validation rules (32 rules)
 ls -la library/DM_BOM.db              # DemoHouse BOM (generative POC)
 ls -la library/SH_BOM.db              # SampleHouse BOM (Rosetta Stone)
 ```
 
-If `validation.db` is missing:
+If `ERP.db` is missing:
 ```bash
-sqlite3 library/validation.db < migration/V001_validation_schema.sql
-sqlite3 library/validation.db < migration/V002_validation_seed.sql
+sqlite3 library/ERP.db < migration/V001_validation_schema.sql
+sqlite3 library/ERP.db < migration/V002_validation_seed.sql
 ```
 
 ---
@@ -447,7 +447,7 @@ Rules are **data, not code** — adding a jurisdiction = SQL INSERTs.
 ```
 User sets jurisdiction to MY (Malaysia)
   → PlacementValidator.activate("MY", valConn)
-  → Loads 10 UBBL rules from validation.db
+  → Loads 10 UBBL rules from ERP.db
 
 User creates BEDROOM 2800×3500mm
   → PlacementRequest(productCategory="BEDROOM", widthMm=2800, depthMm=3500, ...)
@@ -578,7 +578,7 @@ Location: `BIMBackOffice/src/main/java/com/bim/backoffice/`
 
 | File | What | Created by |
 |------|------|-----------|
-| `library/validation.db` | 32 rules, 6 occupancy classes | migration/V001 + V002 |
+| `library/ERP.db` | 32 rules, 6 occupancy classes | migration/V001 + V002 |
 | `library/DM_BOM.db` | DemoHouse BOM (25 lines) | DemoHouseTest / agent |
 | `library/component_library.db` | Product catalog (608 products) | ExtractionPopulator + agent |
 | `output.db` | Compile DB + design persistence (per-building) | WorkOutputDAO.initSchema() |
@@ -638,7 +638,7 @@ Run: `mvn test -pl BIMBackOffice` → **5/5 GREEN**
 - Check server log for stack trace
 
 ### Validation always returns PASS
-- Check `validation.db` exists and has rules: `sqlite3 library/validation.db "SELECT COUNT(*) FROM AD_Val_Rule"`
+- Check `ERP.db` exists and has rules: `sqlite3 library/ERP.db "SELECT COUNT(*) FROM AD_Val_Rule"`
 - Check jurisdiction is set (validator must be activated)
 - Extracted buildings skip validation by design
 

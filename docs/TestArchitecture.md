@@ -79,7 +79,7 @@ to. Without this mapping, spec changes silently orphan tests.
 |---|---|---|---|---|
 | §1 Three BOM dimensions | Category+Owner+SpaceSize govern selection | CompilerContractTest | G1-COUNT | PASS |
 | §1.1 Disciplines as metadata | No switch(docBaseType) in BOM path | DriftGuardTest D6 | G4-TAMPER | PASS |
-| §2 Gospel Principle | Every element traces to IFC or template | DataIntegrityTest D-1/D-4 | G5-PROVENANCE | PASS |
+| §2 Compilation Model | Every element traces to IFC or template | DataIntegrityTest D-1/D-4 | G5-PROVENANCE | PASS |
 | §2.1.6 Count invariant | SUM(non-PHANTOM qty) = output count | ExtractedBOMWalkTest | G1-COUNT | PASS |
 | §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
 | §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER | PASS |

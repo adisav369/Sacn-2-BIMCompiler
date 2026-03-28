@@ -11,9 +11,9 @@
 | Asset | Measure |
 |-------|---------|
 | **Compilation pipeline** | 9 stages, 76 verbs, BOM-walk compiler |
-| **Buildings proven** | 35 (24 ALL GREEN, 7 WARN, 3 FAIL, 2 pending) |
+| **Buildings proven** | 35 (20 ALL GREEN, 9 WARN, 3 FAIL, 2 stall, 1 generative) |
 | **Product library** | 2,475 products in component library |
-| **Database architecture** | 5-DB split (ERP, BOM, output, validation, component library) |
+| **Database architecture** | 4-DB split (ERP, BOM, output, component library) |
 | **Geometry Forge** | Formula-driven construction pieces — rafter, stair, pipe bend, dome, vault, rebar. 6 engines, 11 witnesses. [GEOMETRY_FORGE_SRS](GEOMETRY_FORGE_SRS.md) |
 | **Dimensional outputs** | 4D scheduling, 5D costing, 6D carbon (schema ready) |
 | **Report generators** | 18 templates — BOQ, schedules, takeoffs, financial, compliance. BackOffice + Web UI |
@@ -121,7 +121,11 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 
 | Deliverable | Est. | Detail |
 |-------------|------|--------|
-| Cloud deployment | 5d | Oracle Cloud — self-service signup, private project workspace per user, DIY building design |
+| Cloud deployment | 5d | Oracle Cloud Free Tier — ARM A1 + SQLite, revolving workspace, user saves Order set. [INSTALLER_SPEC.md §10](INSTALLER_SPEC.md#10-oracle-cloud-deployment) |
+| User identity | 2d | OCI Identity Domains — self-service signup, OAuth2, social login, MFA. [INSTALLER_SPEC.md §10.5](INSTALLER_SPEC.md#105-user-identity-and-access) |
+| Custom domain | 1d | `bomtree.io` → OCI Load Balancer + DNS Zone + Let's Encrypt SSL |
+| OCI Marketplace listing | 1d | First BIM-to-BOM tool on Oracle Cloud. [INSTALLER_SPEC.md §10.4](INSTALLER_SPEC.md#104-market-position) |
+| Context-sensitive help | 1d | F1 key → github.io docs, deep-linked per panel. [INSTALLER_SPEC.md §11](INSTALLER_SPEC.md#11-context-sensitive-help) |
 | API documentation | 3d | OpenAPI/Swagger for BackOffice endpoints |
 | Fleet hardening | 5d | Edge cases across all 35 building types |
 | Localization | 3d | English, Malay, Mandarin (minimum for ASEAN) |
@@ -165,9 +169,9 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 |--------|-------|
 | **Java** | 187K lines — compilation pipeline, 76 verbs, ORM, Forge engines |
 | **Python** | 31K lines — Blender/Bonsai Federation addon, IFC extraction |
-| **SQL** | 59K lines — 5 databases, migrations, seed data, validation rules |
+| **SQL** | 59K lines — 4 databases, migrations, seed data, validation rules |
 | **Specs** | 101K lines across 61 published docs |
-| **Databases** | 5-DB architecture: ERP, BOM (per-building), output, validation, component library |
+| **Databases** | 4-DB architecture: ERP (incl. compliance rules), BOM (per-building), output, component library |
 | **Commits** | 931 across 2 repos (AI-assisted, specs-first discipline) |
 | **Interactive ERD** | [bim_architecture_viz.html](bim_architecture_viz.html) — clickable tables, pipeline, BOM tree |
 

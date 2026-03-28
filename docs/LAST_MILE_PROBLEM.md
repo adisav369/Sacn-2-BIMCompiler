@@ -48,7 +48,7 @@ Zero `GEO_` fallback hashes in output. Every element's mesh traces to a real LOD
 **Verdict:** PASS — G5 provenance and C8 geometry diversity both GREEN.
 
 ### 3. Compiler Only?
-**Spec:** [BBC §2](BOMBasedCompilation.md) Gospel Principle — every element traces to IFC extraction or BOM template. Nothing invented.
+**Spec:** [BBC §2](BOMBasedCompilation.md) Compilation Model — every element traces to IFC extraction or BOM template. Nothing invented.
 
 The compiler must never connect to `*_extracted.db` during compilation. It reads only from `{PREFIX}_BOM.db` (the dictionary) and writes to `output.db`. Three tamper rules (T18/T19/T20) enforce zero references to extraction databases in compiler source code.
 

@@ -2,7 +2,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>ERP.db holds discipline metadata separate from products and BOMs.</b> Schedules, placement rules, alias cascades, and mined dimension rules — the HOW concern of the 5-DB split.
+<b>ERP.db holds discipline metadata AND compliance rules, separate from products and BOMs.</b> Schedules, placement rules, alias cascades, mined dimension rules, and validation rules (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — the HOW concern of the 4-DB split. validation.db merged into ERP.db.
 </div>
 
 **Version:** 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
@@ -10,20 +10,24 @@
 
 ---
 
-## 1. Problem — Three Databases, Confused Boundaries
+## 1. Problem — Confused Boundaries (Resolved)
 
-Current state mixes three concerns into two databases:
+Original state mixed three concerns into two databases. **Resolution:** discipline
+metadata migrated from component_library.db to ERP.db; validation.db merged into
+ERP.db. Architecture is now 4-DB (component_library / ERP / BOM / output).
 
 ```
 component_library.db (23,888 component_definitions + 23,901 geometries)
 ├── LOD concern:       M_Product, component_definitions, component_geometries  ← CORRECT
-├── Discipline concern: ad_space_type_mep_bom, ad_element_mep, ad_fp_coverage  ← WRONG DB
-├── Space concern:     ad_space_type, ad_wall_face, placement_rules            ← WRONG DB
-└── Assembly concern:  ad_assembly_connector, ad_assembly_manifest             ← WRONG DB
+├── Discipline concern: ad_space_type_mep_bom, ad_element_mep, ad_fp_coverage  ← MIGRATED → ERP.db
+├── Space concern:     ad_space_type, ad_wall_face, placement_rules            ← MIGRATED → ERP.db
+└── Assembly concern:  ad_assembly_connector, ad_assembly_manifest             ← MIGRATED → ERP.db
 
-validation.db (AD_Val_Rule + params)
-├── Rules concern:     AD_Val_Rule, AD_Val_Rule_Param, AD_Clash_Rule           ← CORRECT
-└── Results concern:   AD_Validation_Result                                     ← CORRECT
+ERP.db (consolidated — includes former validation.db)
+├── Discipline:   all ad_* discipline metadata tables                          ← DONE
+├── Rules (mined): ad_val_rule + ad_val_rule_param (415 mined dimension rules) ← DONE
+├── Rules (compliance): AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class         ← MERGED from validation.db
+└── Results:      AD_Validation_Result, ad_pattern_rule                        ← MERGED from validation.db
 ```
 
 **Problem:** `component_library.db` is 23,901 geometry rows — it's a product
@@ -64,20 +68,21 @@ ERP.db — WHERE things go + HOW they connect (discipline metadata)
 ├── Shared recipes:       M_BOM (1 FP_SYSTEM, DV025) — §10.4.6
 └── Recipe lines:         M_BOM_Line (3 FP children, DV025)
 
-validation.db — RULES + VERDICTS (compliance engine)
+ERP.db also contains (compliance — formerly validation.db, now merged):
 ├── AD_Val_Rule + AD_Val_Rule_Param (thresholds)
 ├── AD_Clash_Rule (cross-discipline pairs)
 ├── AD_Occupancy_Class (occupancy classification)
 └── AD_Validation_Result (pass/warn/block verdicts)
 ```
 
-### 2.1 Three Databases, Three Concerns
+### 2.1 Three Concerns, Two Shared Databases
+
+> **Note:** validation.db is now merged into ERP.db. All compliance rules live in ERP.db.
 
 | Database | Concern | Opened By | Read/Write | Size |
 |----------|---------|-----------|------------|------|
 | `component_library.db` | Product LOD (geometry, dimensions) | Compile pipeline, Designer LOD fetch | Read-only at runtime | ~5 MB (23K geometries) |
-| `ERP.db` | Discipline metadata (schedules, types, connectors) | DocEvent engine, CalibrationTest | Read at runtime, write at seed/migrate | ~50 KB (5K rows) |
-| `validation.db` | Compliance rules + verdicts | PlacementValidator, InferenceEngine | Read rules, write results | ~20 KB |
+| `ERP.db` | Discipline metadata + compliance rules + verdicts | DocEvent engine, CalibrationTest, PlacementValidator | Read at runtime, write at seed/migrate | ~70 KB |
 
 ### 2.2 Reference Pointers — No LOD Copies
 
@@ -155,7 +160,7 @@ SPRINKLER, it:
 | `I_Geometry_Map` | ~200 | Extraction geometry mapping |
 | `M_Product_Image` | ~10 | Product thumbnails |
 
-### 3.3 Tables STAYING in validation.db
+### 3.3 Compliance Tables in ERP.db
 
 | Table | Rows | Why It Stays |
 |-------|------|-------------|
@@ -272,8 +277,8 @@ it needs:
 // DocEvent placement: reads ERP.db + component_library.db
 void placeElements(Connection discConn, Connection compConn, ...)
 
-// Calibration: reads ERP.db + validation.db + TE reference DB
-void calibrate(Connection discConn, Connection valConn, Connection teConn, ...)
+// Calibration: reads ERP.db (discipline + compliance) + TE reference DB
+void calibrate(Connection discConn, Connection teConn, ...)
 
 // LOD fetch: reads component_library.db only
 Geometry fetchLOD(Connection compConn, String productName)
@@ -350,24 +355,23 @@ for the current table inventory.
 
 ## 7. Connection Map — Who Opens What
 
-### Current (4 DBs, Phase 3 complete)
+### Current (4 DBs)
 ```
 CompilationPipeline     → component_library.db (LOD only — 21 tables)
-PlacementValidator      → validation.db (rules)
-CalibrationDAO          → ERP.db + validation.db + TE_BOM.db
+PlacementValidator      → ERP.db (compliance rules)
+CalibrationDAO          → ERP.db + TE_BOM.db
 MEPAD/MEPBOMResolver    → ERP.db (discipline metadata)
 ManifestResolver        → ERP.db (discipline metadata)
 DocEvent (future)       → ERP.db (schedules) + component_library.db (LOD fetch)
-Handler cascade H1-H6  → ERP.db (connectors, schedules) + validation.db (rules)
+Handler cascade H1-H6  → ERP.db (discipline metadata + compliance rules)
 ```
 
 ### Connection parameter naming convention
 ```java
 Connection compConn;   // component_library.db — LOD catalog
-Connection discConn;   // ERP.db   — discipline metadata
-Connection valConn;    // validation.db         — compliance rules
+Connection discConn;   // ERP.db               — discipline metadata + compliance rules
 Connection bomConn;    // {prefix}_BOM.db       — building BOM
-Connection outConn;    // output.db              — compile output
+Connection outConn;    // output.db             — compile output
 Connection teConn;     // TE reference DB       — Terminal oracle (tests only)
 ```
 
@@ -378,18 +382,16 @@ Connection teConn;     // TE reference DB       — Terminal oracle (tests only)
 ```
 library/
 ├── component_library.db     ← LOD catalog (M_Product, geometries)
-├── ERP.db       ← NEW: discipline metadata (schedules, types, connectors)
-├── validation.db            ← compliance rules (AD_Val_Rule)
-├── work_*.db                ← per-building design workspaces
+├── ERP.db                   ← discipline metadata + compliance rules
 ├── SH_BOM.db                ← Sample House BOM
 ├── DX_BOM.db                ← Duplex BOM
 └── TE_BOM.db                ← Terminal BOM
 
 migration/
-├── DV001_ERP_schema.sql    ← schema DDL (19 tables)
-├── DV002_seed_from_component.sql       ← seed via ATTACH (17 tables)
-├── DV003_element_mep_alias.sql         ← IFC alias cascade (84 rows)
-├── V001..V006                          ← validation.db migrations
+├── DV001_ERP_schema.sql               ← schema DDL (19 tables)
+├── DV002_seed_from_component.sql      ← seed via ATTACH (17 tables)
+├── DV003_element_mep_alias.sql        ← IFC alias cascade (84 rows)
+├── V001..V006                         ← compliance rule migrations (now in ERP.db)
 ```
 
 ---
@@ -674,9 +676,9 @@ Migration path: copy qualifying rows into AD_DocEvent_Rule with
 `rule_type='DIMENSION'`, `check_method='DIMENSION_RANGE'`,
 `provenance='MINED:{building}'`.
 
-#### AD_Val_Rule — 3rd Stage (validation.db, unchanged)
+#### AD_Val_Rule — 3rd Stage (ERP.db, compliance rules)
 
-The V001 schema in validation.db stays as-is. Its purpose changes:
+The V001 schema stays as-is within ERP.db. Its purpose changes:
 
 - **Before (wrong):** Government standards, post-hoc compliance
 - **After (correct):** User-initiated per-line rule addition/change/waiver
@@ -748,8 +750,8 @@ ERP.db
     ├── ELEC_SYSTEM           (Category=ELEC_DISTRIBUTION, Org=ELEC)
     └── CW_SYSTEM             (Category=CW_SUPPLY, Org=CW)
 
-validation.db (separate — government standards only)
-├── AD_Val_Rule               (NFPA 13, UBBL, MS1183 — post-hoc checks)
+ERP.db also contains (government standards):
+├── AD_Val_Rule               (NFPA 13, UBBL, MS1183 — compliance checks)
 ├── AD_Val_Rule_Param         (thresholds per rule)
 └── AD_Clash_Rule             (cross-discipline clearance)
 ```
@@ -1131,8 +1133,8 @@ ELEC (1172), SP (979), LPG (209).
 | C_OrderLine.Discipline | compile DB | TEXT DEFAULT 'ARC' | String literal | YES — primary |
 | component_types.discipline | component_library.db | TEXT NOT NULL | 'ELEC', 'ACMV', 'FP' | YES |
 | m_bom.bom_category | BOM DB | TEXT | 'RF', 'STR', 'FP', 'MEP' | YES (proxy for discipline) |
-| AD_Val_Rule.discipline | validation.db | TEXT nullable | 'FPR', 'ELC', 'PLB' | YES |
-| AD_Clash_Rule.discipline_a/b | validation.db | TEXT NOT NULL | 'ELC' vs 'PLB' | YES |
+| AD_Val_Rule.discipline | ERP.db | TEXT nullable | 'FPR', 'ELC', 'PLB' | YES |
+| AD_Clash_Rule.discipline_a/b | ERP.db | TEXT NOT NULL | 'ELC' vs 'PLB' | YES |
 | ad_ifc_class_map.discipline | ERP.db | TEXT | 'ARC','STR','FP','ELEC','ACMV' etc. | YES |
 | ad_element_mep.discipline | ERP.db | TEXT | 'FP','ELEC','ACMV','CW','SP' | YES |
 | bad_discipline_priority.higher/lower | component_library.db | TEXT NOT NULL | Priority pairs | YES |
@@ -1158,7 +1160,7 @@ UPDATE C_OrderLine SET Discipline = CASE
 END;
 ```
 
-**Inconsistency:** validation.db uses 'FPR'/'ELC'/'PLB' (3-char codes) while
+**Inconsistency:** compliance rules use 'FPR'/'ELC'/'PLB' (3-char codes) while
 everywhere else uses 'FP'/'ELEC'/'SP' (variable-length). AD_Org would unify this.
 
 ---
@@ -1196,10 +1198,10 @@ ERP.db  — WHERE things go + WHO owns them (AD Dictionary, ~30 tables)
 ├── bad_discipline_priority   (MOVED from component_library.db)
 └── AD_SysConfig              (existing: version tracking)
 
-validation.db  — RULES + VERDICTS (compliance engine, unchanged)
-├── AD_Val_Rule + params      (existing)
-├── AD_Clash_Rule             (existing)
-└── AD_Validation_Result      (existing)
+ERP.db also contains — RULES + VERDICTS (compliance engine)
+├── AD_Val_Rule + params      (compliance rules)
+├── AD_Clash_Rule             (cross-discipline clearance)
+└── AD_Validation_Result      (runtime verdicts)
 ```
 
 #### 11.6.2 AD_Org Table Design
@@ -1242,13 +1244,13 @@ contexts). Same pattern as iDempiere: AD_Org is a central lookup table.
 | `m_bom.bom_category` = 'FP' | BOM DB | `m_bom.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
 | `C_OrderLine.Discipline` = 'FP' | compile DB | `C_OrderLine.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
 | `component_types.discipline` = 'FP' | component_library.db | `component_types.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
-| `AD_Val_Rule.discipline` = 'FPR' | validation.db | `AD_Val_Rule.AD_Org_ID` = 3 | ALTER + UPDATE (unify codes) |
-| `AD_Clash_Rule.discipline_a` = 'ELC' | validation.db | `AD_Clash_Rule.AD_Org_A_ID` = 4 | ALTER + UPDATE |
+| `AD_Val_Rule.discipline` = 'FPR' | ERP.db | `AD_Val_Rule.AD_Org_ID` = 3 | ALTER + UPDATE (unify codes) |
+| `AD_Clash_Rule.discipline_a` = 'ELC' | ERP.db | `AD_Clash_Rule.AD_Org_A_ID` = 4 | ALTER + UPDATE |
 | `ad_ifc_class_map.discipline` = 'FP' | ERP.db | `ad_ifc_class_map.AD_Org_ID` = 3 | ALTER + UPDATE |
 | `ad_element_mep.discipline` = 'FP' | ERP.db | `ad_element_mep.AD_Org_ID` = 3 | ALTER + UPDATE |
 | `bad_discipline_priority.higher_discipline` | component_library.db | `bad_discipline_priority.higher_AD_Org_ID` | MOVE table + ALTER |
 
-**Bonus: unifies the code inconsistency.** 'FPR' (validation.db) and 'FP' (everywhere
+**Bonus: unifies the code inconsistency.** 'FPR' (compliance rules) and 'FP' (everywhere
 else) both become `AD_Org_ID = 3`. 'ELC' and 'ELEC' both become `AD_Org_ID = 4`.
 
 #### 11.6.3a Design Note — Inference vs Data (deriveDiscipline retirement)

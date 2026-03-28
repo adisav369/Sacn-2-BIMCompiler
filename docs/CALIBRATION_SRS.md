@@ -106,7 +106,7 @@ and low-density zones (service areas) that skew the range.
 INPUT:
   - TE_BOM.db (extracted discipline BOMs — oracle)
   - TE reference DB (elements_meta + element_transforms — positions)
-  - validation.db (AD_Val_Rule — mined rules, the basis for DocEvent)
+  - ERP.db (AD_Val_Rule — mined rules, the basis for DocEvent)
   - ERP.db (ad_space_type_mep_bom, ad_fp_coverage, ad_element_mep)
   - component_library.db (M_Product dimensions, LOD geometry)
 
@@ -293,7 +293,7 @@ class CalibrationTest {
 
 ```java
 /**
- * DAO for calibration queries — reads from TE reference DB + validation.db.
+ * DAO for calibration queries — reads from TE reference DB + ERP.db.
  *
  * Two concerns:
  *   1. Oracle extraction: query TE for ground truth metrics
@@ -336,7 +336,7 @@ class CalibrationDAO {
 
 | Phase | What | Tolerance | Depends On |
 |-------|------|-----------|------------|
-| **Phase 1** (now) | Density + NN spacing comparison, wide bands [0.5, 2.0] | DRIFT acceptable | TE reference DB, validation.db, TE_BOM.db |
+| **Phase 1** (now) | Density + NN spacing comparison, wide bands [0.5, 2.0] | DRIFT acceptable | TE reference DB, ERP.db, TE_BOM.db |
 | **Phase 2** | Tighten to [0.8, 1.2], add coverage check | CALIBRATED required | Full ad_element_mep + ad_fp_coverage seed |
 | **Phase 3** | Position grid fidelity (DocEvent grid vs TE positions) | NN match per element | DocEvent placement engine implemented |
 
@@ -351,20 +351,20 @@ Phase 3 proves the PLACEMENT ENGINE produces correct positions.
 Three seed data issues were identified in session 33 during ERP.db
 creation. Each fix is scoped, testable, and does NOT touch existing passing tests.
 
-### 7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into validation.db
+### 7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db
 
 **Problem:** CalibrationTest §4.2 references `AD_Val_Rule 803` for ELEC spacing
-(`typical_spacing=3000mm, max=5000mm`), but no such rule exists in validation.db.
+(`typical_spacing=3000mm, max=5000mm`), but no such rule exists in ERP.db.
 DocEvent pitch computation returns 0 → UNCALIBRATED for ELEC discipline.
 
 **Fix:** INSERT one AD_Val_Rule row (id=803, name='IES_LIGHT_SPACING',
 discipline='ELC', rule_type='COMPLIANCE') + AD_Val_Rule_Param rows
 (typical_spacing_mm=3000, max_spacing_mm=5000).
 
-**Impact:** validation.db only (append). No Java changes. No existing test
+**Impact:** ERP.db only (append). No Java changes. No existing test
 references rule 803 — CalibrationTest is currently advisory for ELEC.
 
-**Migration:** `V007_elec_spacing_rule.sql` (append-only, validation.db).
+**Migration:** `V007_elec_spacing_rule.sql` (append-only, ERP.db).
 
 ### 7.2 Fix 2: LIGHT per_area_normal — UPDATE in ERP.db
 
@@ -403,7 +403,7 @@ result flips to UNCALIBRATED.
 
 | Fix | DB | File Changed | Existing Tests | Risk |
 |-----|-----|-------------|----------------|------|
-| Rule 803 | validation.db | V007 migration | None reference 803 | Zero |
+| Rule 803 | ERP.db | V007 migration | None reference 803 | Zero |
 | LIGHT per_area | ERP.db | DV004 migration | DiscValidationDBTest seed counts unchanged (UPDATE not INSERT) | Zero |
 | FP NN filter | — | CalibrationDAO.java | CalibrationTest FP spacing may shift verdict | Low — run before/after |
 

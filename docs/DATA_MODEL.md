@@ -3,7 +3,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 <div class="bim-banner" markdown>
-<b>5 databases, 120+ tables, zero ambiguity.</b> Every element traces from a library product through a BOM recipe to a placed instance. The split is deliberate — catalog, compliance rules, discipline metadata, recipe, and output never share a database, so each concern scales independently.
+<b>4 databases, 120+ tables, zero ambiguity.</b> Every element traces from a library product through a BOM recipe to a placed instance. The split is deliberate — catalog, ERP (discipline metadata + compliance), recipe, and output never share a database, so each concern scales independently.
 </div>
 
 **This specification governs the creation of `{PREFIX}_BOM.db` dictionaries.**
@@ -17,10 +17,9 @@ No hand-editing. No patching. Code produces data.
 - `BOMBasedCompilation.md` §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)
 
 **Updated:** 2026-03-26
-**Principle:** 5-DB split.
+**Principle:** 4-DB split (validation.db merged into ERP.db).
 - `component_library.db` = product LOD catalog (M_Product, geometry, orientation)
-- `ERP.db` = discipline metadata (schedules, types, placement rules, alias cascade, mined dimension rules)
-- `validation.db` = compliance rules + verdicts (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
+- `ERP.db` = discipline metadata + compliance rules (schedules, types, placement rules, AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — see [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md)
 - `{PREFIX}_BOM.db` = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz)
 - `output.db` = transactional (fresh each compile)
 
@@ -408,7 +407,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 
 ---
 
-## 6. AD Data Placement — The 5-DB Architecture
+## 6. AD Data Placement — The 4-DB Architecture
 
 ### 6.1 Current State — Where AD Tables Live
 
@@ -418,7 +417,7 @@ Created by CompilationPipeline. C_Order created from C_DocType at compile time.
 | **M_Product_Category** | IFC→discipline map | IFC→discipline map | 0 rows (DM only) | Product classification |
 | **AD_SysConfig** | 8 rows (schema versions) | — | 2 rows (integrity hash, expected elements) | Different schema, different purpose |
 | **ad_val_rule + param** (mined) | 415 + 1,245 rows | — | — | Mined dimension ranges |
-| **AD_Val_Rule + Param** (compliance) | — | — | — | Compliance rules (in validation.db, not shown) |
+| **AD_Val_Rule + Param** (compliance) | 63 + authored | — | — | Compliance rules (merged into ERP.db) |
 | **C_DocType** | — | — | 1 row per building | Building type classification |
 | **M_Product** | 2,477 rows | 2,475 rows (master) | 2–93 rows (transitional copy) | Product catalog |
 | **M_Attribute*** | — | — | per-building | Instance customization |
@@ -443,21 +442,20 @@ C_DocType is shared system configuration — it defines all document types centr
 written by `IFCtoBOMPipeline` per-building; at compile time, `schema_snapshot_bom.sql` enriches
 the compile DB with additional C_DocType rows.
 
-### 6.3 The 5-DB Split
+### 6.3 The 4-DB Split
 
 In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
-They live once, centrally — not per-product or per-order. ERP.db and validation.db
-serve this role for different concerns (renamed from disc_validation.db in S76).
+They live once, centrally — not per-product or per-order. ERP.db serves this role
+(renamed from disc_validation.db in S76; validation.db merged in — all compliance
+rules now live in ERP.db alongside mined dimension rules).
 
-**Note:** ERP.db and validation.db both contain `ad_val_rule` / `ad_val_rule_param`
-tables with **incompatible schemas** — ERP.db holds mined dimension ranges (415 rules),
-validation.db holds authored compliance rules (63 rules). Same name, different purpose.
-See prompt 29 study for merge assessment (verdict: do not merge).
+**Note:** ERP.db contains two sets of `ad_val_rule` / `ad_val_rule_param` rows with
+different provenance — mined dimension ranges (415 rules) and authored compliance
+rules (63 rules). Same table, different provenance. Distinguished by source column.
 
 | Layer | Database | Contains |
 |-------|----------|----------|
-| **ERP shared** | `ERP.db` | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule (mined), all ad_* discipline metadata |
-| **Compliance** | `validation.db` | AD_Val_Rule (compliance), AD_Clash_Rule, AD_Occupancy_Class, AD_Validation_Result, ad_pattern_rule |
+| **ERP shared** | `ERP.db` | AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule (mined + compliance), AD_Clash_Rule, AD_Occupancy_Class, all ad_* discipline metadata |
 | **Product catalog** | `component_library.db` | M_Product (master), M_Product_Image, LOD_Object, I_Element_Extraction, geometry |
 | **Per-building BOM** | `{PREFIX}_BOM.db` | m_bom, m_bom_line, M_Attribute*, ad_sysconfig (per-building integrity), C_DocType (compile-time copy) |
 | **Transactional** | `output.db` | c_order, c_orderline, elements_meta, W_Verb_Node |

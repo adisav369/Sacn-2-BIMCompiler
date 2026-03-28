@@ -153,7 +153,7 @@ DesignerAPIImpl.createNew(request)
 │      │
 │      ├── 3f. Run PlacementValidator (READONLY mode)
 │      │       │
-│      │       │ Open valConn → validation.db (read-only)
+│      │       │ Open valConn → ERP.db (read-only)
 │      │       │ For each C_OrderLine:
 │      │       │   Tier 1: validateLine(compileConn, valConn, line, jurisdiction)
 │      │       │   → INSERT W_Validation_Result (tier=1, result=PASS/WARN/BLOCK)

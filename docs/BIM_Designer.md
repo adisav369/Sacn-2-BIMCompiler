@@ -891,7 +891,7 @@ Two systems produce repeating elements. They are **separate concerns**:
 
 | Concern | Where | Provenance | Data |
 |---------|-------|-----------|------|
-| **Pattern rules** | `validation.db` → `ad_pattern_rule` | GENERATIVE | "Window every 2500mm" — designer intent |
+| **Pattern rules** | `ERP.db` → `ad_pattern_rule` | GENERATIVE | "Window every 2500mm" — designer intent |
 | **Extraction verbs** | `{PREFIX}_BOM.db` → `m_bom_line.verb_ref` | EXTRACTED | "SPRAY:3000:3000" — mined from real building |
 
 The compiler reads both. For extracted buildings, verb_ref drives expansion
@@ -1025,7 +1025,7 @@ adapter, not a compiler.
 |-----------|----------|-----|
 | **Compilation** | `CompilationPipeline.run(BuildingEntry)` | Wraps the 9-stage pipeline via `BuildingRegistry.loadById()` → `CompilationPipeline.run()`. Same code path as `run_RosettaStones.sh` |
 | **Building discovery** | `BuildingRegistry.loadActive()` | Reads `C_DocType` from BOM.db — YAML-opaque. Adding a building type = adding BOM data, not code |
-| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 75 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
+| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 76 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
 | **Product catalog** | `component_library.db` via existing `compConn` pattern | Same connection pooling as the pipeline. No new DB access layer |
 | **Output writing** | `WriteStage` → `FederatedModel` schema | Same output.db schema that Bonsai's FederatedDBReader already reads |
 | **Data governance** | `EntityType` guards on PO layer | D (dictionary) = read-only, U (user) = mutable. Same guards as pipeline |
@@ -1325,7 +1325,7 @@ Real projects would use the full component_library.db catalog.
      Absorbed into DocValidate.md: AD_Validation_Result schema (§3.1),
      AD_Val_Rule_Exception schema (§3.1), BomValidator integration (§4),
      ProjectContext/jurisdiction on C_Order (§4), R-tree performance (§4),
-     provenance column (added to validation.db migration V001).
+     provenance column (added to ERP.db migration V001).
 
      Written off: R-tree already exists (elements_rtree in BuildingWriter),
      DX element count wrong (1,099 not 1.1M), JavaScript/HTTP API doesn't
@@ -1552,7 +1552,7 @@ class BIM_OT_designer_create_new(Operator):
 | Viewport rendering | Federation addon (IfcOpenShell repo) | Full Load, materials, collections — already proven |
 | Spatial queries | Federation addon (R-tree, clash) | Already works at 48K scale |
 | Compilation | Java server (bim-compiler repo) | 9-stage pipeline, BOM validation |
-| Validation rules | validation.db + PlacementValidator (bim-compiler) | DocValidate OSGi component |
+| Validation rules | ERP.db + PlacementValidator (bim-compiler) | DocValidate OSGi component |
 | TCP protocol | client.py (bim-compiler) → DesignerServer (bim-compiler) | Both ends in same repo |
 | Panel UI | bonsai_bim_designer/ (bim-compiler) | Registers into Federation's panel tree |
 | Delta updates | BlenderBridge (bim-compiler, future) | Incremental viewport, rides on Federation's loader |

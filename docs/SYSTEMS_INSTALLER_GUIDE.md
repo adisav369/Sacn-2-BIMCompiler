@@ -71,7 +71,7 @@ The `library/` directory contains all SQLite databases. These ship with the repo
 |------|------|---------|
 | `component_library.db` | ~5 MB | Master product catalog: 608 products, 23.9K geometries, thermal properties |
 | `ERP.db` | ~1 MB | Discipline validation rules, IFC class mapping, MEP metadata (20 tables) |
-| `validation.db` | ~100 KB | Compliance thresholds and verdicts |
+| `ERP.db` | ~100 KB | Compliance thresholds and verdicts |
 
 ### 3.2 Per-Building BOM Databases (one per building)
 

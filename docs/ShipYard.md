@@ -42,7 +42,7 @@ component libraries, YAML mappings — never in the engine code.
 
 **The 35-building proof is not the point.** The point is that 35 buildings, 3
 infrastructure types (bridge, road, rail), and 1 generative house all compile
-through the same 9-stage pipeline, the same 75 verbs, the same 6 gates — and
+through the same 9-stage pipeline, the same 76 verbs, the same 6 gates — and
 the engine never asks what domain it's operating in.
 
 This section demonstrates the claim with four domains: marine (§1-§8), tunnel (§9),
@@ -630,7 +630,7 @@ but is structurally domain-independent:
 |---------------------|------|--------|-------------------|
 | Recursive BOM walker | BBC §2.2 | **PROVEN** (48K elements) | Any assembly decomposes recursively |
 | Tack convention (LBD) | BBC §4 | **PROVEN** (35 buildings) | Any physical object has a bounding box corner |
-| Verb algebra (75 verbs) | BIM_COBOL §6 | **PROVEN** (5 dominant) | Spatial patterns repeat across domains |
+| Verb algebra (76 verbs) | BIM_COBOL §6 | **PROVEN** (5 dominant) | Spatial patterns repeat across domains |
 | Category-constrained swap | BBC §3.5 | **IMPLEMENTED** | Any product catalog has type hierarchies |
 | 4-mutation exception ordering | POB §1.1 | **IMPLEMENTED** (Sessions A-E) | Any configured product has variants |
 | Reference class compression | POB §1.2 | **IMPLEMENTED** | Any repeated unit can be qty × template |

@@ -232,7 +232,7 @@ After a Rosetta Stone passes 10/10, observed patterns become `AD_Val_Rule` entri
 | `RATIO` | Footing/column width ≥ 1.78x |
 | `Z_CONTINUITY` | Pier top ≈ deck bottom (≤100mm gap) |
 
-Three-step process: (1) Query output DB for patterns, (2) Write append-only `migration/DV00N_*.sql`, (3) Apply to `validation.db`.
+Three-step process: (1) Query output DB for patterns, (2) Write append-only `migration/DV00N_*.sql`, (3) Apply to `ERP.db`.
 
 > **Mining methodology:** [`TE_MINING_RESULTS.md`](TE_MINING_RESULTS.md) | Bridge rules → [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §7.1
 
@@ -332,7 +332,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 
 Core interfaces: `Verb<T>` (execute → `VerbResult<T>`), `VerbContext` (3 connections: bom/component/output), `VerbRegistry` (longest-prefix dispatch).
 
-5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 75 verbs, 202 witnesses.
+5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 76 verbs, 202 witnesses.
 
 > **Full verb catalog, grammar, witnesses:** [`BIM_COBOL.md`](BIM_COBOL.md) §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)
 
@@ -528,7 +528,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 | Class | Role |
 |-------|------|
 | `Verb<T>` | Interface: keyword + execute → VerbResult |
-| `VerbRegistry` | Longest-prefix dispatch (75 verbs) |
+| `VerbRegistry` | Longest-prefix dispatch (76 verbs) |
 | `VerbContext` | 3 connections: bom/component/output |
 
 ### Java — ORM
@@ -545,7 +545,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 |----------|------|------|
 | SH/DX/FK/IN BOM | `library/{PREFIX}_BOM.db` | Per-building BOM dictionary |
 | Geometry oracle | `library/component_library.db` | Meshes, materials from IfcOpenShell |
-| Validation rules | `library/validation.db` | AD_Val_Rule + AD_Val_Rule_Param |
+| Validation rules | `library/ERP.db` | AD_Val_Rule + AD_Val_Rule_Param |
 | Discipline validation | `library/ERP.db` | Phase 2 CalibrationDAO, IFC class map |
 | SH/DX output | `DAGCompiler/lib/output/*.db` | Compiled output |
 | SH/DX reference | `DAGCompiler/lib/input/*_extracted.db` | IFC extraction oracle |

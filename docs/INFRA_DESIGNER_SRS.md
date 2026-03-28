@@ -713,7 +713,7 @@ VerbDetector cascade for all infrastructure.
 |----------|--------|
 | `InfrastructureAnalysis.md` | IFC4X3 file inventory, entity census, verb mapping |
 | `StrategicIndustryPositioning.md` | Gap matrix, Moat 5 (Infrastructure First-Mover) |
-| `DISC_VALIDATION_DB_SRS.md` | validation.db schema, 30 infra rules |
+| `DISC_VALIDATION_DB_SRS.md` | ERP.db schema, 30 infra rules |
 | `BIM_Designer.md §17` | snap(), jurisdiction, Design Mode |
 | `BlenderBridge.md` | Java-smart/Python-dumb pipe protocol |
 | `classify_rd.yaml` | Road Rosetta Stone: 4 carriageways, PAV/MARK/GEO disciplines |

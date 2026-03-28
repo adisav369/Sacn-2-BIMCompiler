@@ -715,9 +715,9 @@ Zero handler code exists. The cascade above is the target specification.
 | `ad_assembly_connector` | ERP.db | CREATED (DV001+DV002) | YES — 10 connector rows | H1 |
 | `ad_wall_face` | ERP.db | CREATED (DV001+DV002) | YES — 204 rows | H4 |
 | `placement_rules` | ERP.db | CREATED (DV001+DV002) | YES — 4801 rows | H4 |
-| `AD_Clash_Rule` | validation.db | **SCHEMA ONLY** | NO — 0 rows | **H2 blocked** |
-| `AD_Val_Rule` (SPACING) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type SPACING | **H3 blocked** |
-| `AD_Val_Rule` (CONTINUITY) | validation.db | **SCHEMA ONLY** | NO — 0 rows of type CONTINUITY | **H5 blocked** |
+| `AD_Clash_Rule` | ERP.db | **SCHEMA ONLY** | NO — 0 rows | **H2 blocked** |
+| `AD_Val_Rule` (SPACING) | ERP.db | **SCHEMA ONLY** | NO — 0 rows of type SPACING | **H3 blocked** |
+| `AD_Val_Rule` (CONTINUITY) | ERP.db | **SCHEMA ONLY** | NO — 0 rows of type CONTINUITY | **H5 blocked** |
 
 **H3 SPACING blocked:** H3 requires both `ad_fp_coverage` (seeded, 4 rows) AND
 `AD_Val_Rule WHERE rule_type='SPACING'` (0 rows). The coverage thresholds exist
