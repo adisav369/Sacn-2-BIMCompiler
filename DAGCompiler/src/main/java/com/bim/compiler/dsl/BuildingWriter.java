@@ -390,6 +390,23 @@ public class BuildingWriter {
                 )
             """);
 
+            // ── VALIDATION layer (HOW) — DocValidate §13 cascade results ──
+            // Implementing DocValidate.md §13 — Witness: W-CASCADE-1
+            stmt.execute("""
+                CREATE TABLE W_Validation_Result (
+                    w_validation_result_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    handler     TEXT NOT NULL,
+                    tier        INTEGER NOT NULL,
+                    severity    TEXT NOT NULL,
+                    element_ref TEXT,
+                    discipline  TEXT,
+                    rule_ref    TEXT,
+                    message     TEXT,
+                    floor_ref   TEXT,
+                    created_at  TEXT DEFAULT (datetime('now'))
+                )
+            """);
+
             // ── PRODUCTION layer (HOW) — iDempiere Manufacturing ──
             // W_Verb_Node: one verb invocation per row
             // W_Verb_NodeProduct: structured parameters per verb

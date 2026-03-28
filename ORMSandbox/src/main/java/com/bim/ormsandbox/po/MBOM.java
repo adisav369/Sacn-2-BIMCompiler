@@ -48,6 +48,17 @@ public class MBOM extends X_M_BOM {
             .list();
     }
 
+    // Implementing BBC.md §1 — Witness: W-BOM-API-1
+    /** Parent = the BOM whose m_bom_line points to this BOM as child_product_id. Null means root. */
+    public static MBOM getParentBOM(Connection conn, String bomId) throws SQLException {
+        return new ModelQuery<>(conn, MBOM::new, Table_Name)
+            .where(COLUMNNAME_bom_id + " IN "
+                 + "(SELECT bom_id FROM m_bom_line "
+                 + " WHERE child_product_id = ? AND is_active = 1)", bomId)
+            .first()
+            .orElse(null);  // null = root
+    }
+
     /** Children = BOMs pointed to by m_bom_line entries under a parent BOM. */
     public static List<MBOM> getChildren(Connection conn, String parentBomId) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)

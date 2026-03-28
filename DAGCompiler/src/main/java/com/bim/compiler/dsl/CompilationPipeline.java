@@ -62,9 +62,10 @@ public class CompilationPipeline {
         new TemplateStage(),      // Step 4 — ST mode only; skipped for all other DocSubTypes
         new WriteStage(),         // Step 5
         new VerbStage(),          // Step 6 — BIM COBOL script hook (skips if no .bimcobol file)
-        new DigestStage(),        // Step 7
-        new GeometryStage(),      // Step 8
-        new ProveStage()          // Step 9
+        new ValidationStage(),    // Step 7 — DocEvent §13 three-tier cascade (LOG mode)
+        new DigestStage(),        // Step 8
+        new GeometryStage(),      // Step 9
+        new ProveStage()          // Step 10
     );
 
     /**
@@ -902,6 +903,230 @@ public class CompilationPipeline {
             } else {
                 System.out.printf("[FAIL] Geometry integrity: %d failures%n", geoReport.failCount());
             }
+        }
+    }
+
+    // Implementing DocValidate.md §13 — Witness: W-CASCADE-1
+    // Three-tier validation cascade: tax → charges → posting (iDempiere analogy).
+    // Tier 1: Per-discipline rules (DocEvent beforeSave — H1,H3,H4,H6)
+    // Tier 2: Cross-discipline clash (prepareIt — H2)
+    // Tier 3: Cross-storey continuity (completeIt — H5)
+    // All handlers write to W_Validation_Result. LOG mode only (no BLOCK).
+    private static class ValidationStage implements CompilerStage {
+        @Override public String name() { return "VALIDATE (DocEvent §13)"; }
+
+        @Override
+        public boolean shouldSkip(CompilationContext ctx) {
+            // No elements written → nothing to validate
+            return ctx.elementCount() == 0;
+        }
+
+        @Override
+        public void execute(CompilationContext ctx) throws Exception {
+            String outputDbPath = ctx.entry().outputDbPath();
+            // All runs are LOG mode until rules proven against SH/DX/TE
+            // (DocValidate.md §13.4: ACTIVE only after Non-Disturbance proven)
+            String mode = ctx.entry().isGenerative() ? "ACTIVE" : "LOG";
+
+            try (Connection outConn = DriverManager.getConnection("jdbc:sqlite:" + outputDbPath);
+                 Connection erpConn = DriverManager.getConnection(
+                     "jdbc:sqlite:" + CompilerConfig.ERP_DB_PATH)) {
+
+                // Override: force LOG until rules proven (prompt 75 scope)
+                mode = "LOG";
+
+                int totalFindings = 0;
+
+                // ── Tier 1: Per-discipline handlers ──
+                // H6 COMPLETENESS — check MEP schedule vs actual placement
+                int h6Findings = runH6Completeness(outConn, erpConn, ctx.entry().projectName());
+                totalFindings += h6Findings;
+
+                // H1 CONNECTIVITY — future (needs ad_assembly_connector traversal)
+                // H3 SPACING — future (needs AD_Val_Rule SPACING rows)
+                // H4 HOST — future (needs host surface validation)
+
+                // ── Tier 2: Cross-discipline ──
+                // H2 NON-CLASH — future (AD_Clash_Rule: 0 rows, BLOCKED)
+
+                // ── Tier 3: Cross-storey ──
+                // H5 VERTICAL — future (AD_Val_Rule CONTINUITY: 0 rows, BLOCKED)
+
+                if (totalFindings == 0) {
+                    BIMLogger.info("VALIDATE", "[PASS] Validation: 0 findings (mode={})", mode);
+                } else {
+                    BIMLogger.info("VALIDATE", "[INFO] Validation: {} findings (mode={}, H6={})",
+                        totalFindings, mode, h6Findings);
+                }
+            }
+        }
+
+        /**
+         * H6 COMPLETENESS: For each room, check ad_space_type_mep_bom schedule
+         * against actual element count. Writes W_Validation_Result rows.
+         *
+         * Query pattern: rooms from spatial_structure, MEP schedule from ERP.db,
+         * actual counts from c_orderline (product under room's family_ref).
+         */
+        private int runH6Completeness(Connection outConn, Connection erpConn,
+                                       String projectName) throws SQLException {
+            int findings = 0;
+
+            // Get rooms from spatial_structure (storey → room mapping)
+            // Room = spatial_structure row with element_type = 'IfcSpace'
+            List<String[]> rooms = new ArrayList<>(); // [guid, name, storey]
+            try (Statement stmt = outConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT guid, name, parent_guid FROM spatial_structure " +
+                     "WHERE type = 'IfcSpace'")) {
+                while (rs.next()) {
+                    rooms.add(new String[]{
+                        rs.getString("guid"),
+                        rs.getString("name"),
+                        rs.getString("parent_guid")
+                    });
+                }
+            } catch (SQLException e) {
+                // spatial_structure may not have IfcSpace rows for all buildings
+                BIMLogger.fine("VALIDATE", "[H6] No IfcSpace rooms in spatial_structure — skipping");
+                return 0;
+            }
+
+            if (rooms.isEmpty()) {
+                // Try alternative: rooms from c_orderline with category matching room types
+                // For extracted buildings, rooms are BOM nodes in c_orderline
+                rooms = getRoomsFromOrderLine(outConn);
+            }
+
+            if (rooms.isEmpty()) {
+                BIMLogger.fine("VALIDATE", "[H6] No rooms found — skipping completeness check");
+                return 0;
+            }
+
+            // For each room, check MEP schedule against actual placement
+            try (PreparedStatement insertResult = outConn.prepareStatement(
+                     "INSERT INTO W_Validation_Result " +
+                     "(handler, tier, severity, element_ref, discipline, rule_ref, message, floor_ref) " +
+                     "VALUES ('H6', 1, 'WARN', ?, ?, ?, ?, ?)");
+                 PreparedStatement countElements = outConn.prepareStatement(
+                     "SELECT COUNT(*) FROM c_orderline " +
+                     "WHERE family_ref = ? AND M_Product_ID LIKE ?")) {
+
+                for (String[] room : rooms) {
+                    String roomGuid = room[0];
+                    String roomName = room[1];
+                    String storeyRef = room[2];
+
+                    // Derive space_type from room name (e.g. "BEDROOM_01" → "BEDROOM")
+                    String spaceType = deriveSpaceType(roomName);
+                    if (spaceType == null) continue;
+
+                    // Get MEP schedule for this space type from ERP.db
+                    List<String[]> schedule = getMepSchedule(erpConn, spaceType);
+
+                    for (String[] entry : schedule) {
+                        String mepProduct = entry[0];
+                        int qtyNormal = Integer.parseInt(entry[1]);
+
+                        // Count actual elements under this room
+                        countElements.setString(1, roomGuid);
+                        countElements.setString(2, "%" + mepProduct + "%");
+                        int actual;
+                        try (ResultSet rs = countElements.executeQuery()) {
+                            actual = rs.next() ? rs.getInt(1) : 0;
+                        }
+
+                        if (actual < qtyNormal) {
+                            String msg = String.format("%s missing %d %s (expected %d, found %d)",
+                                roomName, qtyNormal - actual, mepProduct, qtyNormal, actual);
+                            insertResult.setString(1, roomGuid);
+                            insertResult.setString(2, mepProduct);
+                            insertResult.setString(3, "ad_space_type_mep_bom");
+                            insertResult.setString(4, msg);
+                            insertResult.setString(5, storeyRef);
+                            insertResult.executeUpdate();
+                            findings++;
+                        }
+                    }
+                }
+            }
+
+            BIMLogger.info("VALIDATE", "[H6] COMPLETENESS: {} rooms checked, {} findings",
+                rooms.size(), findings);
+            return findings;
+        }
+
+        /** Get rooms from c_orderline — BOM nodes with host_type = 'ROOM'. */
+        private List<String[]> getRoomsFromOrderLine(Connection outConn) throws SQLException {
+            List<String[]> rooms = new ArrayList<>();
+            try (Statement stmt = outConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT family_ref, m_product_category_id, " +
+                     "  (SELECT family_ref FROM c_orderline p " +
+                     "   WHERE p.C_OrderLine_ID = c.Parent_OrderLine_ID) as storey_ref " +
+                     "FROM c_orderline c " +
+                     "WHERE host_type = 'ROOM'")) {
+                while (rs.next()) {
+                    rooms.add(new String[]{
+                        rs.getString("family_ref"),
+                        rs.getString("m_product_category_id"),
+                        rs.getString("storey_ref")
+                    });
+                }
+            }
+            return rooms;
+        }
+
+        /**
+         * Derive space_type from room category or name.
+         * Maps M_Product_Category codes to ad_space_type_mep_bom.space_type_id.
+         * E.g. "MASTER" → "MASTER_BEDROOM", "LIVING" → "LIVING", "BD" → "BEDROOM"
+         */
+        private String deriveSpaceType(String roomName) {
+            if (roomName == null) return null;
+            String upper = roomName.toUpperCase().replaceAll("[_\\s]*\\d+$", "").trim();
+            return switch (upper) {
+                case "LI", "LIVING", "LIVING_ROOM" -> "LIVING";
+                case "BD", "BEDROOM" -> "BEDROOM";
+                case "MASTER", "MASTER_BEDROOM" -> "MASTER_BEDROOM";
+                case "KT", "KITCHEN", "WET_KITCHEN" -> "KITCHEN";
+                case "BA", "BATHROOM" -> "BATHROOM";
+                case "WC", "TOILET", "TOILET_BLOCK" -> "TOILET_BLOCK";
+                case "DINING" -> "DINING";
+                case "ST", "STORE", "STORAGE" -> "STORAGE";
+                case "GA", "GARAGE" -> "GARAGE";
+                case "CR", "CORRIDOR" -> "CORRIDOR";
+                case "OF", "OFFICE" -> "OFFICE";
+                case "UT", "UTILITY" -> "UTILITY";
+                case "STUDY", "STUDY_NOOK" -> "STUDY_NOOK";
+                case "VERANDAH", "PORCH" -> "VERANDAH";
+                case "CAR_PORCH" -> "CAR_PORCH";
+                case "STAIR" -> "STAIR";
+                default -> {
+                    if (upper.isEmpty()) yield null;
+                    yield upper; // pass through — ad_space_type_mep_bom may match directly
+                }
+            };
+        }
+
+        /** Get MEP schedule entries from ad_space_type_mep_bom for a space type. */
+        private List<String[]> getMepSchedule(Connection erpConn, String spaceType)
+                throws SQLException {
+            List<String[]> schedule = new ArrayList<>();
+            try (PreparedStatement ps = erpConn.prepareStatement(
+                     "SELECT mep_product_id, qty_normal FROM ad_space_type_mep_bom " +
+                     "WHERE space_type_id = ? AND qty_normal > 0")) {
+                ps.setString(1, spaceType);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        schedule.add(new String[]{
+                            rs.getString("mep_product_id"),
+                            String.valueOf(rs.getInt("qty_normal"))
+                        });
+                    }
+                }
+            }
+            return schedule;
         }
     }
 
