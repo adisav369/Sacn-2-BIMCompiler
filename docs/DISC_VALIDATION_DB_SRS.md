@@ -616,6 +616,8 @@ rule on THOSE lines.
 3rd:  AD_Val_Rule            → user adds/changes/waives rule on specific lines
 ```
 
+**Per-space compliance (S100-p82, f3c4d793):** Room dimension evaluation (area, width, height) against AD_DocEvent_Rule is implemented. SKIP propagation cascades through the BOM walk.
+
 **Jurisdiction-swappable:** Government standards live in 1st-stage DocEvent
 rules, scoped by `jurisdiction`. Same BOM, same Org, different jurisdiction
 → different DocEvent rules fire. Malaysian building uses UBBL rules,

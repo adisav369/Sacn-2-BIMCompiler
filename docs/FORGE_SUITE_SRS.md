@@ -87,11 +87,11 @@ feedback, and fabrication data that no BIM tool provides live during editing.
 
 | Part | What | Status |
 |------|------|--------|
-| **① ForgeEngine** | Java: dimensions, angles, compliance, cost from parameters | **DONE** — 5 engines, W-FORGE-1..8 |
+| **① ForgeEngine** | Java: dimensions, angles, compliance, cost from parameters | **DONE** — 6 engines (incl. RebarCageForge), W-FORGE-1..11 |
 | **② ForgeMesh** | Python: calls Bonsai native tools to create/update 3D mesh | NOT DONE |
 | **③ ForgePanel** | Python: Bonsai sidebar — parameter form, compliance, cost | NOT DONE |
 | **④ ForgePromotion** | Approve → component_library.db as LOD | NOT DONE |
-| **⑤ ForgeFabrication** | Fabrication data → work order output | NOT DONE |
+| **⑤ ForgeFabrication** | Fabrication data → work order output | **DONE** — ForgeFabricationWriter → ad_forge_fabrication in output.db, S100-p59, W-FORGE-FAB-1..5 |
 | **⑥ ForgeGizmo** | Python + DB: drag handles on forged geometry, metadata-driven | NOT DONE |
 
 ---
@@ -412,8 +412,8 @@ step counts, pipe spool data, live compliance, live cost.
 **Location:** `BIM_COBOL/src/main/java/com/bim/cobol/forge/`
 **Spec:** [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) §5
 
-Five engines: SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT.
-ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..8 PASS.
+Six engines: SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT, REBAR_CAGE.
+ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..11 PASS.
 
 **Interface:** `ForgeEngine.compute(VerbContext, Map<String,String>) → ForgeResult`
 **Output:** `ForgeResult` (pass, promotable, pieceType, summary, records, compliance, error)
@@ -474,6 +474,11 @@ def forge_mesh_panels(result):
 - `FORGE_MESH_PANELS` — create panel array from ForgeResult
 - `FORGE_MESH_UPDATE` — regenerate after parameter change (gizmo drag)
 - `FORGE_MESH_CLEAR` — remove preview mesh (cancel)
+
+**WebUIServer bridge commands — DONE (S100-p90, W-FORGE-BRIDGE-1..5):**
+- `forgeCompute` — dispatches ForgeVerb with piece_type + params, returns ForgeResult as JSON
+- `forgeCost` — returns fabrication cost breakdown from ad_forge_fabrication
+- `forgeList` — lists available piece types and their required parameters
 
 ### Part ③ ForgePanel — Bonsai sidebar UI
 
@@ -592,11 +597,11 @@ BOM template promotion (ProjectOrderBlueprint.md §4).
 
 All phases are SPEC ONLY. No timelines.
 
-**Phase 1 — ForgeEngine.** DONE (S99-forge). 5 engines, 8 witnesses, FORGE
-verb registered (76th). [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) §5.
+**Phase 1 — ForgeEngine.** DONE (S99-forge + S100-forge). 6 engines, 11 witnesses,
+FORGE verb registered (76th). [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) §5.
 
-**Phase 2 — ForgeFabrication wiring.** Attach fabrication data to work order
-output. Small — column additions to output tables. Prompt: `59_forge_fabrication_wire`.
+**Phase 2 — ForgeFabrication wiring.** DONE (S100-p59). ForgeFabricationWriter
+writes to ad_forge_fabrication table in output.db. W-FORGE-FAB-1..5 PASS.
 
 **Phase 3 — ForgePanel.** Bonsai sidebar UI. Parameter form + compliance +
 cost. Depends on BlenderBridge forge commands + CostDAO wiring (prompt 53).
@@ -611,8 +616,9 @@ table + generic `ForgeGizmoGroup`. Prompt: `62_forge_gizmo`.
 **Phase 6 — ForgePromotion.** Approve → component_library.db. DocAction path.
 Prompt: `63_forge_promote_lod`.
 
-**Phase 7 — Rebar port.** Port Federation `rebar_generator.py` + standards
-to Java verbs. Standards tables are the asset. Prompt: `64_rebar_java_port`.
+**Phase 7 — Rebar port.** DONE (S100-forge). RebarCageForge — 6th engine,
+implements MS 1347:2020 + BS 8110 + EC2. SlabReinforcement, BeamReinforcement,
+ColumnReinforcement classes. W-FORGE-9..11 PASS.
 
 **Phase 8 — Formula-as-metadata.** Migrate hardcoded formulas to
 `ad_forge_formula` table. New piece types = SQL INSERTs. May not be needed
@@ -624,7 +630,7 @@ if piece type count stays small. [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) 
 
 | Spec | Relationship |
 |------|-------------|
-| [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) | Part ① detail — ForgeEngine interface, 5 engines |
+| [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) | Part ① detail — ForgeEngine interface, 6 engines |
 | [BlenderBridge.md](BlenderBridge.md) | Transport layer for Parts ②–⑥ |
 | [BIM_Designer_SRS.md](BIM_Designer_SRS.md) | UI patterns for Part ③ |
 | [BIM_Designer.md](BIM_Designer.md) | Design Mode interaction model |
@@ -636,4 +642,4 @@ if piece type count stays small. [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) 
 
 ---
 
-*Status: Phase 1 DONE (ForgeEngine). Phases 2–8 SPEC ONLY.*
+*Status: Phases 1, 2, 7 DONE (ForgeEngine, ForgeFabrication, RebarCageForge). Phases 3–6, 8 SPEC ONLY.*

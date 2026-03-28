@@ -1592,9 +1592,9 @@ Phase detection: `has_full_geometry = any(obj.type == 'MESH' for obj in designer
 | WF-11 | §26.12 | clash/visualization.py + design_bbox.py | W-WF-CHAIN | STUB (getChain verb) |
 | WF-12 | §26.12 | design_bbox.py | W-WF-GHOST | SPEC ONLY |
 | WF-13 | §26.12 | operator.py | W-WF-DRAG-COMMIT | STUB (moveChain verb) |
-| WF-14 | §26.12.3 | design_bbox.py + DesignerServer | W-WF-COST | STUB (costOfChange verb) |
+| WF-14 | §26.12.3 | design_bbox.py + DesignerServer | W-WF-COST | WIRED (costOfChange → CostDAO.costBreakdown, a75962f4) |
 | WF-15 | §26.12.3 | design_bbox.py | W-WF-COST | SPEC ONLY |
-| WF-16 | §26.12.3 | DesignerServer (costOfChange verb) | W-WF-COST-CANCEL | STUB (returns zero delta) |
+| WF-16 | §26.12.3 | DesignerServer (costOfChange verb) | W-WF-COST-CANCEL | WIRED (CostDAO, a75962f4) |
 | WF-17 | §26.13 | DesignerServer (moveChain → R_Request) | W-WF-CR-SPAWN | SPEC ONLY |
 | WF-18 | §26.13 | DesignerServer (discipline assignment) | W-WF-CR-IMPACT | SPEC ONLY |
 | WF-19 | §26.13 | DesignerServer (CR attachments) | W-WF-CR-FILES | SPEC ONLY |
@@ -2622,7 +2622,7 @@ would block smooth daily use.
 | Gap | Description | Spec | Status |
 |-----|-------------|------|--------|
 | **IG-4 Design Mode Phase 2** | Can create new (wireframe), cannot edit existing geometry. Load → edit → move chain workflow is skeleton code (WF-11 STUB, WF-12 SPEC ONLY, WF-13 STUB). | §26.4–26.5 | SCAFFOLD ONLY |
-| **IG-5 Change Request workflow** | Non-compliant moves should spawn `R_Request` row with approval panel. API stubs exist (`moveChain()`, `costOfChange()`) but no R_Request creation or UI. | §26.13 | SPEC ONLY |
+| **IG-5 Change Request workflow** | Non-compliant moves should spawn `R_Request` row with approval panel. API stubs exist (`moveChain()`, `costOfChange()`) but no R_Request creation or UI. `costOfChange` now wired to `CostDAO.costBreakdown` (was STUB returning zero). `placeSet` batch placement implemented. Capacity rules: DV029 migration (CAP-ROOMS-100, CAP-STOREYS-10, CAP-VARIANTS-50). Committed a75962f4. | §26.13 | PARTIAL |
 | **IG-6 4D/5D/6D Web UI tabs** | 14 report generators exist in BackOffice (p78–p83). Web UI tabs 4D/5D/6D/7D are placeholder buttons — data layer complete, presentation not wired. | [BIM_Designer_UserGuide.md §30.3](BIM_Designer_UserGuide.md) | DATA READY, UI SKELETON |
 | **IG-7 Multi-user session locking** | Server supports 50+ concurrent connections (stateless) but no session tracking. No awareness of who's editing what. No soft locking per floor/building. | §26.14 | SPEC ONLY |
 

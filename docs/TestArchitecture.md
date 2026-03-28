@@ -88,6 +88,10 @@ to. Without this mapping, spec changes silently orphan tests.
 | §3.4 BOM Drop | Interactive tree navigation, swap/add | SelectionCascadeTest | W-GEN-1b | PASS |
 | §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS |
 | §3 GENERATIVE | DemoHouse BOM + UBBL + BIMEyes | DemoHouseTest | W-DH-1..5 | PASS |
+| §2.2 BOM tree integrity | P-PARENT: every non-root BOM has a parent | BomTreeProver | P-PARENT | IMPLEMENTED |
+| §2.2 BOM tree integrity | P-SIBLING: no duplicate children under same parent | BomTreeProver | P-SIBLING | PASS |
+| §2.2 BOM tree integrity | P-QTY: all BOM line quantities > 0 | BomTreeProver | P-QTY | IMPLEMENTED |
+| §4.0 BOM tree integrity | P-TACK: all dx/dy/dz finite and parent-relative | BomTreeProver | P-TACK | IMPLEMENTED |
 
 ### BBC.md §4 — Tack Convention
 
@@ -152,8 +156,8 @@ to. Without this mapping, spec changes silently orphan tests.
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 36 | Spec → test → green. Proven. |
-| IMPLEMENTED | 9 | Test exists but advisory (not gating). |
+| PASS | 37 | Spec → test → green. Proven. |
+| IMPLEMENTED | 12 | Test exists but advisory (not gating). |
 | SQL SEEDED | 6 | AD_Val_Rule SQL written, not code-tested. |
 | SPEC ONLY | 24 | Spec written, test spec defined, code not yet written. |
 | PENDING | 3 | Spec exists, no test spec yet. |

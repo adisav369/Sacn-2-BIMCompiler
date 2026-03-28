@@ -1,11 +1,7 @@
 # BIM Compiler — Project Roadmap
 
-> **Construction is manufacturing with coordinates.** This compiler turns IFC
-> geometry into ERP-structured Bills of Materials — same tables, same logic that
-> manufacturing has used for 30 years, applied to construction.
-
 <div class="bim-banner" markdown>
-<b>One domain expert, AI-assisted. 913 commits in 62 days. ~948,000 lines landed. $550 in AI costs.</b>
+<b>Beta release by Q3 2026.</b>
 </div>
 
 ---
@@ -157,15 +153,17 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 
 ---
 
-## The Moat
+## Project Environment
 
-1. **BOM-as-recipe is the insight.** A building is a manufactured product with coordinates. iDempiere's 30-year-old M_Product / M_BOM / C_Order pattern handles procurement, scheduling, cost, and quality. We add the *where*.
-
-2. **No one else has this stack.** BIM tools don't speak ERP. ERP tools don't speak IFC. This compiler is the bridge — and it took 20 years of iDempiere internals to know where to put it.
-
-3. **Proven at scale.** 48,428 elements compiled via BOM walk (Terminal building). 35 buildings across residential, commercial, infrastructure, and industrial. Not a prototype — a working compiler.
-
-4. **AI-assisted development.** A domain expert with 20 years of ERP and construction knowledge drives every decision — AI handles the volume. 15 commits/day, one person, specs-first discipline. The codebase is AI-maintainable by design — witnesses, tamper seals, anti-drift gates — but the architecture comes from the subject matter expert.
+| Metric | Count |
+|--------|-------|
+| **Java** | 187K lines — compilation pipeline, 76 verbs, ORM, Forge engines |
+| **Python** | 31K lines — Blender/Bonsai Federation addon, IFC extraction |
+| **SQL** | 59K lines — 5 databases, migrations, seed data, validation rules |
+| **Specs** | 101K lines across 61 published docs |
+| **Databases** | 5-DB architecture: ERP, BOM (per-building), output, validation, component library |
+| **Commits** | 917 (AI-assisted, specs-first discipline) |
+| **Interactive ERD** | [bim_architecture_viz.html](bim_architecture_viz.html) — clickable 4-DB tables, pipeline, BOM tree |
 
 ---
 
