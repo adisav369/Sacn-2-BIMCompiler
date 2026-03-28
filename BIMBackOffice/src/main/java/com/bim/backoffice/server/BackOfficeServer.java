@@ -1,6 +1,10 @@
 package com.bim.backoffice.server;
 
 import com.bim.backoffice.dao.*;
+import com.bim.backoffice.federation.ColorSchemeEngine;
+import com.bim.backoffice.federation.DimensionQuery;
+import com.bim.backoffice.federation.WorkPackageSelector;
+import com.bim.backoffice.report.*;
 import com.bim.orm.BIMLogger;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -80,6 +84,12 @@ public class BackOfficeServer implements AutoCloseable {
         server.createContext("/api/carbon", this::handleCarbon);
         server.createContext("/api/maintenance", this::handleMaintenance);
         server.createContext("/api/health", this::handleHealth);
+        // Federation port — 4D-7D color + reports (prompt 77)
+        server.createContext("/api/colorscheme", this::handleColorScheme);
+        server.createContext("/api/report", this::handleReport);
+        server.createContext("/api/query", this::handleQuery);
+        server.createContext("/api/workpackage", this::handleWorkPackage);
+        server.createContext("/api/palette", this::handlePalette);
     }
 
     public BackOfficeServer(String libraryDir) throws Exception {
@@ -266,6 +276,104 @@ public class BackOfficeServer implements AutoCloseable {
                 "libraryDir", libraryDir));
     }
 
+    // ── Federation endpoints (prompt 77) ───────────────────────────
+
+    /** GET /api/colorscheme?id=SH&scheme=discipline|4D-phase|5D-cost|6D-carbon */
+    private void handleColorScheme(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String buildingId = queryParam(ex, "id");
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
+        String scheme = queryParam(ex, "scheme");
+        if (scheme == null) scheme = "discipline";
+        String startDate = queryParam(ex, "start");
+        if (startDate == null) startDate = "2026-04-01";
+        try (Connection bomConn = openBom(buildingId)) {
+            ColorSchemeEngine engine = new ColorSchemeEngine();
+            ColorSchemeEngine.ColorMap result = switch (scheme) {
+                case "4D-phase" -> engine.colorByPhase(bomConn, compLibConn, buildingId, startDate);
+                case "5D-cost"  -> engine.colorByCost(bomConn, compLibConn, buildingId);
+                case "6D-carbon" -> engine.colorByCarbon(bomConn, compLibConn, buildingId);
+                default -> engine.colorByDiscipline(bomConn, buildingId);
+            };
+            sendJson(ex, 200, result);
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
+    /** GET /api/report?id=SH&type=bom|cost|schedule|compliance */
+    private void handleReport(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String buildingId = queryParam(ex, "id");
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
+        String type = queryParam(ex, "type");
+        if (type == null) type = "bom";
+        String startDate = queryParam(ex, "start");
+        if (startDate == null) startDate = "2026-04-01";
+        try (Connection bomConn = openBom(buildingId)) {
+            Object result = switch (type) {
+                case "cost" -> new CostSummaryReport().generate(bomConn, compLibConn, buildingId);
+                case "schedule" -> new ScheduleReport().generate(bomConn, compLibConn, buildingId, startDate);
+                case "compliance" -> new ComplianceReport().generate(compLibConn, bomConn, buildingId);
+                default -> new BomScheduleReport().generate(bomConn, compLibConn, buildingId);
+            };
+            sendJson(ex, 200, result);
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
+    /** GET /api/query?id=SH&dim=discipline&filter=ARC */
+    private void handleQuery(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String buildingId = queryParam(ex, "id");
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
+        String dim = queryParam(ex, "dim");
+        if (dim == null) dim = "discipline";
+        String filter = queryParam(ex, "filter");
+        if (filter == null) { sendError(ex, 400, "Missing ?filter="); return; }
+        try (Connection bomConn = openBom(buildingId)) {
+            DimensionQuery dq = new DimensionQuery();
+            DimensionQuery.QueryResult result = switch (dim) {
+                case "phase" -> dq.byPhase(bomConn, compLibConn, filter);
+                case "floor" -> dq.byFloor(bomConn, filter);
+                case "cost-above" -> dq.byCostAbove(bomConn, compLibConn, buildingId, Double.parseDouble(filter));
+                case "carbon-above" -> dq.byCarbonAbove(bomConn, compLibConn, buildingId, Double.parseDouble(filter));
+                default -> dq.byDiscipline(bomConn, filter);
+            };
+            sendJson(ex, 200, result);
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
+    /** GET /api/workpackage?id=SH&bom=FLOOR_GF */
+    private void handleWorkPackage(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String buildingId = queryParam(ex, "id");
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
+        String bomId = queryParam(ex, "bom");
+        if (bomId == null) { sendError(ex, 400, "Missing ?bom="); return; }
+        try (Connection bomConn = openBom(buildingId)) {
+            WorkPackageSelector sel = new WorkPackageSelector();
+            var result = sel.selectPackage(bomConn, compLibConn, bomId);
+            sendJson(ex, 200, result);
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
+    /** GET /api/palette?type=discipline|phase — returns color legend. */
+    private void handlePalette(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        if (type == null) type = "discipline";
+        var colors = switch (type) {
+            case "phase" -> ColorSchemeEngine.getPhaseColors();
+            default -> ColorSchemeEngine.getDisciplineColors();
+        };
+        sendJson(ex, 200, colors);
+    }
+
     // ── CORS + WAN helpers ──────────────────────────────────────────
 
     private void addCorsHeaders(HttpExchange ex) {
@@ -341,6 +449,12 @@ public class BackOfficeServer implements AutoCloseable {
             System.out.println("  GET /api/carbon?id=SH");
             System.out.println("  GET /api/maintenance?id=SH");
             System.out.println("  GET /api/health");
+            System.out.println("  ── Federation (prompt 77) ──");
+            System.out.println("  GET /api/colorscheme?id=SH&scheme=discipline|4D-phase|5D-cost|6D-carbon");
+            System.out.println("  GET /api/report?id=SH&type=bom|cost|schedule|compliance");
+            System.out.println("  GET /api/query?id=SH&dim=discipline&filter=ARC");
+            System.out.println("  GET /api/workpackage?id=SH&bom=FLOOR_GF");
+            System.out.println("  GET /api/palette?type=discipline|phase");
             System.out.println("Press Ctrl+C to stop.");
 
             // Block until interrupted

@@ -3,6 +3,10 @@ package com.bim.designer.api;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import com.bim.backoffice.federation.ColorSchemeEngine;
+import com.bim.backoffice.federation.DimensionQuery;
+import com.bim.backoffice.federation.WorkPackageSelector;
+import com.bim.backoffice.report.*;
 import com.bim.designer.protocol.JsonProtocol;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -228,6 +232,11 @@ public class WebUIServer implements AutoCloseable {
                 case "pollCommands" -> handlePollCommands();
                 case "getSelection" -> JsonProtocol.toJson(currentSelection);
                 case "launchBonsai" -> handleLaunchBonsai();
+                // ── Federation tabs (prompt 77) ──────────────────
+                case "colorScheme" -> handleColorScheme(obj);
+                case "generateReport" -> handleGenerateReport(obj);
+                case "dimensionQuery" -> handleDimensionQuery(obj);
+                case "workPackage" -> handleWorkPackage(obj);
                 default -> designer.dispatch(jsonLine);
             };
 
@@ -490,6 +499,117 @@ public class WebUIServer implements AutoCloseable {
             pb.start(); // fire and forget — don't wait
             return "{\"success\":true,\"message\":\"Bonsai launched\"}";
         } catch (Exception e) {
+            return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    // ── Federation tab actions (prompt 77) ────────────────────────────────
+
+    private String handleColorScheme(JsonObject obj) {
+        String dbFile = obj.has("bomDbPath") ? obj.get("bomDbPath").getAsString() : "";
+        String scheme = obj.has("scheme") ? obj.get("scheme").getAsString() : "discipline";
+        String buildingId = obj.has("buildingId") ? obj.get("buildingId").getAsString() : "";
+        String startDate = obj.has("startDate") ? obj.get("startDate").getAsString() : "2026-04-01";
+
+        if (dbFile.isBlank()) return "{\"success\":false,\"error\":\"Missing bomDbPath\"}";
+        Path resolved = Path.of(dbFile).normalize();
+        if (!Files.exists(resolved)) return "{\"success\":false,\"error\":\"BOM DB not found\"}";
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + resolved);
+             Connection compConn = DriverManager.getConnection(
+                     "jdbc:sqlite:" + libDir.resolve("ERP.db"))) {
+            ColorSchemeEngine engine = new ColorSchemeEngine();
+            ColorSchemeEngine.ColorMap result = switch (scheme) {
+                case "4D-phase" -> engine.colorByPhase(bomConn, compConn, buildingId, startDate);
+                case "5D-cost"  -> engine.colorByCost(bomConn, compConn, buildingId);
+                case "6D-carbon" -> engine.colorByCarbon(bomConn, compConn, buildingId);
+                default -> engine.colorByDiscipline(bomConn, buildingId);
+            };
+            // Broadcast color map to Bonsai via pending commands
+            Map<String, Object> cmd = new LinkedHashMap<>();
+            cmd.put("command", "applyColorMap");
+            cmd.put("scheme", scheme);
+            cmd.put("colors", result.colors());
+            pendingCommands.add(cmd);
+            sseBroadcast("colorMapApplied", JsonProtocol.toJson(result));
+            return JsonProtocol.toJson(result);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "colorScheme failed", e);
+            return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    private String handleGenerateReport(JsonObject obj) {
+        String dbFile = obj.has("bomDbPath") ? obj.get("bomDbPath").getAsString() : "";
+        String type = obj.has("type") ? obj.get("type").getAsString() : "bom";
+        String buildingId = obj.has("buildingId") ? obj.get("buildingId").getAsString() : "";
+        String startDate = obj.has("startDate") ? obj.get("startDate").getAsString() : "2026-04-01";
+
+        if (dbFile.isBlank()) return "{\"success\":false,\"error\":\"Missing bomDbPath\"}";
+        Path resolved = Path.of(dbFile).normalize();
+        if (!Files.exists(resolved)) return "{\"success\":false,\"error\":\"BOM DB not found\"}";
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + resolved);
+             Connection compConn = DriverManager.getConnection(
+                     "jdbc:sqlite:" + libDir.resolve("ERP.db"))) {
+            Object result = switch (type) {
+                case "cost" -> new CostSummaryReport().generate(bomConn, compConn, buildingId);
+                case "schedule" -> new ScheduleReport().generate(bomConn, compConn, buildingId, startDate);
+                case "compliance" -> new ComplianceReport().generate(compConn, bomConn, buildingId);
+                default -> new BomScheduleReport().generate(bomConn, compConn, buildingId);
+            };
+            return JsonProtocol.toJson(result);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "generateReport failed", e);
+            return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    private String handleDimensionQuery(JsonObject obj) {
+        String dbFile = obj.has("bomDbPath") ? obj.get("bomDbPath").getAsString() : "";
+        String dim = obj.has("dimension") ? obj.get("dimension").getAsString() : "discipline";
+        String filter = obj.has("filter") ? obj.get("filter").getAsString() : "";
+        String buildingId = obj.has("buildingId") ? obj.get("buildingId").getAsString() : "";
+
+        if (dbFile.isBlank()) return "{\"success\":false,\"error\":\"Missing bomDbPath\"}";
+        Path resolved = Path.of(dbFile).normalize();
+        if (!Files.exists(resolved)) return "{\"success\":false,\"error\":\"BOM DB not found\"}";
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + resolved);
+             Connection compConn = DriverManager.getConnection(
+                     "jdbc:sqlite:" + libDir.resolve("ERP.db"))) {
+            DimensionQuery dq = new DimensionQuery();
+            DimensionQuery.QueryResult result = switch (dim) {
+                case "phase" -> dq.byPhase(bomConn, compConn, filter);
+                case "floor" -> dq.byFloor(bomConn, filter);
+                case "cost-above" -> dq.byCostAbove(bomConn, compConn, buildingId, Double.parseDouble(filter));
+                case "carbon-above" -> dq.byCarbonAbove(bomConn, compConn, buildingId, Double.parseDouble(filter));
+                default -> dq.byDiscipline(bomConn, filter);
+            };
+            return JsonProtocol.toJson(result);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "dimensionQuery failed", e);
+            return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    private String handleWorkPackage(JsonObject obj) {
+        String dbFile = obj.has("bomDbPath") ? obj.get("bomDbPath").getAsString() : "";
+        String bomId = obj.has("bomId") ? obj.get("bomId").getAsString() : "";
+
+        if (dbFile.isBlank()) return "{\"success\":false,\"error\":\"Missing bomDbPath\"}";
+        if (bomId.isBlank()) return "{\"success\":false,\"error\":\"Missing bomId\"}";
+        Path resolved = Path.of(dbFile).normalize();
+        if (!Files.exists(resolved)) return "{\"success\":false,\"error\":\"BOM DB not found\"}";
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + resolved);
+             Connection compConn = DriverManager.getConnection(
+                     "jdbc:sqlite:" + libDir.resolve("ERP.db"))) {
+            WorkPackageSelector sel = new WorkPackageSelector();
+            var result = sel.selectPackage(bomConn, compConn, bomId);
+            return JsonProtocol.toJson(result);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "workPackage failed", e);
             return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
         }
     }

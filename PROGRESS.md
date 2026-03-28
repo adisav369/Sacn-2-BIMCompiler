@@ -22,7 +22,7 @@
 
 **Pipeline:** 9 stages. 76 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
-**Tests:** BIMBackOffice 5/5. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
+**Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
 ## What's Next
@@ -45,6 +45,8 @@
 
 ## Session Log (recent first)
 
+**S100-p77** — Federation port to Java (prompt 77). ColorSchemeEngine: 4 schemes (discipline, 4D-phase, 5D-cost, 6D-carbon) ported from bbox_visualization.py + color_palette.py. DimensionQuery: 5 filter methods. WorkPackageSelector: BOM sub-tree + cost. 4 report templates (BomSchedule, CostSummary, Schedule, Compliance). BackOfficeServer: 5 new endpoints. WebUIServer: 4 new dispatch actions. NLP + PDF deferred. BIMBackOffice 20/20 PASS.
+**S100-p73** — Shared discipline recipes in ERP.db (prompt 73). DV025 migration: M_BOM + M_BOM_Line tables created in ERP.db. FP_SYSTEM recipe seeded (1 BOM, 3 lines: FP_RISER, FP_SPRINKLER_LAYOUT, FP_PUMP_LINK). 4 FP tier categories added (FP_MAIN_ROOM, FP_RISER, FP_DISTRIBUTION, FP_SUPPLY). 4 FP assembly products added. AD_Org_ID=3 (FP) FK on M_BOM. Implements DISC_VALIDATION_DB_SRS §10.4.6. SH 7/7 PASS (zero regression).
 **S100-p72** — BOM walk compiler (prompt 72). CompileStage replaced: DSL→BuildingSpec → BOMWalker+PlacementCollectorVisitor→Placements→MeshBinder. Single path for all buildings. WriteStage wired to writeFromBomWalk(). ParseStage handles null DSL. BuildingRegistryTest DSL assumption removed (was skipping TE). Script fix: run_RosettaStones.sh was missing -Dpipeline.tests.skip=false (compilation never ran). TE: 48,428 elements, G0-COMPILED PASS, 6/7 PASS (C9 FAIL: 60 axis swaps, 0.12%). SH 7/7 PASS (zero regression).
 **S100-watchdog2** — Spec hardening: §10.4.1 shouldSkip anti-pattern, §10.4.4 discipline from product (not line), §10.4.6 NEW shared discipline recipes in ERP.db, DX YAML aligned to reference DB. Committed: 93b86858.
 **S100-p71** — Verb-driven compile + tree-structure queries (prompts 69+71). TE IFCtoBOM analysis: BOM persisted (8 BOMs, 1522 lines, 48428 instances), QA all PASS, 6 compile-path blockers documented. Tree inference: MBOM.getRoots()/getChildren()/getRootByDocSubType()/getAll() added, getByType() @Deprecated. ~25 SQL bom_type queries + 9 getByType() calls replaced across 17 files. shouldSkip() anti-pattern identified and removed (LMP §3/§6: single path, no passthrough). Task 5: OrderLine Add mutation stub in BomDropper. Seal v46. SH 7/7, FK 7/7 PASS.
