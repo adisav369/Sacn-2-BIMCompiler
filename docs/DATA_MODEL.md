@@ -263,7 +263,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 | ifc_class | TEXT | IFC entity type |
 | extracted_from | TEXT | Source building |
 | material_name, material_rgba | TEXT | Catalog material |
-| M_Product_Category_ID | TEXT FK | → M_Product_Category. Transitional: TEXT in component_library.db, INTEGER in ERP.db. Phase B unifies. See §8 |
+| M_Product_Category_ID | INTEGER FK | → M_Product_Category. See §8 PK convention |
 | is_active | INTEGER | |
 
 <!-- Implementing SpecsAnalysis.txt §1 -->
@@ -485,13 +485,6 @@ See [MANIFESTO.md](MANIFESTO.md) §Three Concerns for the WHAT/HOW/WHERE rationa
 - S78: AD_Org_ID FK on m_bom, C_OrderLine (W009 migration)
 - S79: Discipline enum replaces deriveDiscipline() in compile path
 
-### 7.2 Remaining Steps
-
-| Step | Task | Status |
-|------|------|--------|
-| 8 | Drop Parent_Category_ID column | PENDING |
-| 9 | Drop vestigial TEXT discipline columns (bom_category, doc_base_type, doc_sub_type) | PENDING |
-
 ---
 
 ## 8. iDempiere PK Convention
@@ -516,13 +509,13 @@ This is standard iDempiere convention: every `X_` generated class has `getTableN
 | ad_val_rule | INTEGER PK | S90 |
 | M_BOM (ERP.db) | INTEGER PK | DV025 |
 | m_bom (BOM.db) | INTEGER PK | S100-p86 Phase A |
-| M_Product_Category | TEXT PK → INTEGER PK | Phase B (prompt 87) |
-| 13 AD tables | TEXT PK → INTEGER PK | Phase C (deferred) |
+| M_Product_Category | INTEGER PK | Phase B |
+| 13 AD tables | INTEGER PK | Phase C |
 
 ### 8.2 Convention Rules
 
 1. **New tables** must use `TableName_ID INTEGER PRIMARY KEY AUTOINCREMENT` from creation. No TEXT PKs for new tables.
-2. **Existing tables** migrate in phases: Phase A (m_bom DONE), Phase B (M_Product_Category NEXT), Phase C (remaining AD tables).
+2. **Existing tables** migrated in phases: Phase A (m_bom), Phase B (M_Product_Category), Phase C (remaining AD tables).
 3. **`_int` sidecar columns** (transitional pattern from S90-S92) are dropped as each table completes migration. Phase D dropped M_Product_Category_ID_int (S92).
 4. **`loadByValue(String)`** on BasePO enables `WHERE Value = ?` lookups — replaces the old TEXT PK pattern without changing caller semantics.
 
