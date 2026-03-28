@@ -723,7 +723,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
 
             if [ "$IFC_RC" -ne 0 ]; then
                 verdict "IFCTOBOM_${PREFIX}" "FAIL" "IFCtoBOM pipeline failed"
-                echo "$IFC_OUTPUT" | grep -E "ERROR\|Exception" | head -5 | sed 's/^/    /'
+                echo "$IFC_OUTPUT" | grep -E "ERROR|Exception|FAIL" | head -5 | sed 's/^/    /'
             else
                 verdict "IFCTOBOM_${PREFIX}" "PASS" "${BOM_DB} produced"
             fi
@@ -772,7 +772,8 @@ for yaml_file in "${YAML_FILES[@]}"; do
     if [ -f "${OUTPUT_BASE}.db" ] && [ -f "scripts/extract_validation_rules.sh" ]; then
         RULES_FILE="migration/DV_${PREFIX}_rules.sql"
         ./scripts/extract_validation_rules.sh "$PREFIX" > "$RULES_FILE" 2>/dev/null
-        rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null || echo "0")
+        rule_count=$(grep -c "^-- Rule:" "$RULES_FILE" 2>/dev/null)
+        rule_count=${rule_count:-0}
         if [ "$rule_count" -gt 0 ]; then
             sqlite3 library/ERP.db < "$RULES_FILE" 2>/dev/null || true
             echo "  [validation] ${PREFIX}: ${rule_count} rules extracted + applied"

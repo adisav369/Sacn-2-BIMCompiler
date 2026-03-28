@@ -740,10 +740,13 @@ CREATE TABLE ad_pressurization_trigger (
             description         TEXT
         );
 CREATE TABLE IF NOT EXISTS "ad_sysconfig" (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    AD_SysConfig_ID INTEGER PRIMARY KEY AUTOINCREMENT,
     config_key TEXT NOT NULL,
     config_value TEXT NOT NULL,
-    description TEXT, is_active INTEGER DEFAULT 1,
+    Name         TEXT,
+    Value        TEXT,
+    description  TEXT,
+    is_active    INTEGER DEFAULT 1,
     UNIQUE(config_key, config_value)
 );
 CREATE TABLE ad_placement_rule (
