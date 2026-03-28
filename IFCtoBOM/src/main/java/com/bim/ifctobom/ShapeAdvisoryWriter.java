@@ -137,6 +137,8 @@ public class ShapeAdvisoryWriter {
                 """;
 
         try (PreparedStatement ps = discConn.prepareStatement(insert)) {
+            int batchSize = 0;
+            int batchCount = 0;
             for (Mismatch m : mismatches) {
                 // SUGGESTION severity — shape mismatches are advisory, not blocking
                 ps.setString(1, buildingType);
@@ -146,11 +148,17 @@ public class ShapeAdvisoryWriter {
                 ps.setString(5, m.diagnostic());
                 ps.setString(6, suggestCorrection(m));
                 ps.addBatch();
+                if (++batchSize % 500 == 0) {
+                    ps.executeBatch();
+                    batchCount++;
+                }
             }
-            ps.executeBatch();
+            ps.executeBatch();  // flush remainder
+            batchCount++;
         }
 
-        BIMLogger.info(TAG, "Wrote {} SHAPE advisories for {}", mismatches.size(), buildingType);
+        BIMLogger.info(TAG, "Wrote {} SHAPE advisories for {} in {} batches",
+                mismatches.size(), buildingType, (mismatches.size() + 499) / 500);
     }
 
     private static String suggestCorrection(Mismatch m) {
