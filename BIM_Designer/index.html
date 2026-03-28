@@ -4539,7 +4539,7 @@ violates a code rule, the compiler flags it.</p>
 <tbody>
 <tr>
 <td>BUILDING_*</td>
-<td>Top-level building BOMs (bom_type=BUILDING)</td>
+<td>Root BOMs (no parent m_bom_line)</td>
 <td>Read-only reference</td>
 </tr>
 <tr>
@@ -4558,7 +4558,7 @@ derived from BOM spatial data:</p>
 <ul>
 <li>Each M_BOM_Line's dx/dy/dz defines the tack offset (where child sits in parent)</li>
 <li>Structural tiers (unit, slab, floor, room) are BOM levels with spatial offsets</li>
-<li>Empty filler space = BOM line with <code>bom_type = 'FILLER'</code>, queryable via SQL</li>
+<li>Empty filler space = PHANTOM BOM line, queryable via SQL</li>
 <li>The GUI presents these as visual room/wall slots for drag-and-drop placement</li>
 </ul>
 <blockquote>
@@ -5116,7 +5116,7 @@ Each level applies the same rule.</p>
 <div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">ad_container_rule</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">id</span><span class="w">              </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
 <span class="w">    </span><span class="n">rule_name</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- &#39;CHILD_WITHIN_PARENT&#39;</span>
-<span class="w">    </span><span class="n">parent_bom_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                    </span><span class="c1">-- NULL = all, or &#39;FLOOR&#39;, &#39;ROOM&#39;</span>
+<span class="w">    </span><span class="n">parent_category</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                    </span><span class="c1">-- NULL = all, or M_Product_Category code</span>
 <span class="w">    </span><span class="n">axis</span><span class="w">            </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- &#39;WIDTH&#39;, &#39;DEPTH&#39;, &#39;HEIGHT&#39;, &#39;ALL&#39;</span>
 <span class="w">    </span><span class="k">operator</span><span class="w">        </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;&lt;=&#39;</span><span class="p">,</span><span class="w">       </span><span class="c1">-- &#39;&lt;=&#39;, &#39;&lt;&#39;, &#39;==&#39;</span>
 <span class="w">    </span><span class="n">margin_mm</span><span class="w">       </span><span class="nb">REAL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">          </span><span class="c1">-- allow N mm tolerance</span>

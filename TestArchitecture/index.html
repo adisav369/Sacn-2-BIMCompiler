@@ -3067,6 +3067,7 @@
 <li><strong>No Weak Assertions.</strong> No <code>assertNotNull</code> as sole verification, no <code>assumeTrue(false)</code> (use <code>@Disabled("TICKET:")</code>), no digest "not empty" checks — compare to golden value or expected reference.</li>
 <li><strong>No Silent Failures.</strong> No <code>catch (Exception ignored) {}</code> — log or fail. No <code>|| true</code> in scripts — capture exit codes. No write-then-read-back as sole proof — cross-check against reference.</li>
 <li><strong>No Silent Re-seal.</strong> Every <code>[SEAL]</code> commit must explain WHY the test changed. Review the diff before accepting.</li>
+<li><strong>No <code>System.err</code> for debug.</strong> Use <code>BIMLogger.fine()</code> for rejection messages, constraint violations, and diagnostic output. <code>System.err</code> bypasses log-level filtering and is invisible to the FINE drift checklist. Easy to grep: <code>System\.err</code> in Java source = drift.</li>
 </ol>
 <hr />
 <h2 id="hardening-status">Hardening Status<a class="headerlink" href="#hardening-status" title="Permanent link">&para;</a></h2>
@@ -3747,8 +3748,8 @@ To cheat D-1 through D-5, you'd have to fake the IFC source files themselves.</p
 1. <strong>Hash seal (L1)</strong> — any byte change = SEAL BROKEN
 2. <strong>Structural guards (L2)</strong> — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. <strong>Git diff review (L3)</strong> — every <code>[SEAL]</code> commit shows exact diff</p>
-<p><strong>Sealed:</strong> 2026-03-27 (v43: S98 FINE logging + drift check)
-<strong>Super-hash:</strong> <code>5ddcd79e4735c9f020b42614f3b66cb2f9ac73af4316db25110416ec1964ed2c</code></p>
+<p><strong>Sealed:</strong> 2026-03-28 (v45: S100-p67 G0-COMPILED gate + script fail-loud)
+<strong>Super-hash:</strong> <code>e08533bcd90009c98a79c0225e9ba5b324d66c470e9978e40441254905ecd374</code></p>
 <div class="highlight"><pre><span></span><code>bash scripts/verify_test_seal.sh            # quick check
 bash scripts/verify_test_seal.sh --detail   # show which files changed
 </code></pre></div>
@@ -3770,7 +3771,7 @@ b9d57454  contract/OutputTemplateTest.java
 9709b84b  contract/StructuralCrossCheckTest.java
 e9b6bcbc  arch/DriftGuardTest.java
 ead7c516  contract/CompilerContractTest.java
-2af523c6  contract/RosettaStoneGateTest.java
+26eb8b47  contract/RosettaStoneGateTest.java
 8acdaac0  contract/ExtractedBOMWalkTest.java
 0e21e5e5  contract/BomChainIntegrityTest.java
 46e2e2f2  contract/BOMChainMathTest.java
@@ -3821,7 +3822,7 @@ db2b0c62  verb/FixOpeningBboxVerbTest.java
 13ad060c  TopologyBatchProcessTest.java
 </code></pre></div>
 <h3 id="critical-production-files-hook-10-files">Critical Production Files + Hook (10 files)<a class="headerlink" href="#critical-production-files-hook-10-files" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>42944c70  CompilationPipeline.java
+<div class="highlight"><pre><span></span><code>88dfd94f  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
 e455d42a  PlaceBomVerb.java
 a1909001  EnBlocVerb.java
@@ -3829,7 +3830,7 @@ af068cf9  WalkThruVerb.java
 ef278ec6  MBOM.java
 9e6a380e  MBOMLine.java
 38f498ae  run_tests.sh
-8bb5f537  run_RosettaStones.sh
+c92fd30c  run_RosettaStones.sh
 39839729  pre-commit
 </code></pre></div>
 <h3 id="rosetta-stone-coverage">Rosetta Stone Coverage<a class="headerlink" href="#rosetta-stone-coverage" title="Permanent link">&para;</a></h3>
@@ -3842,7 +3843,7 @@ ef278ec6  MBOM.java
 <th>FK</th>
 <th>IN</th>
 <th>DX</th>
-<th>TE</th>
+<th>TE †</th>
 <th>DM</th>
 </tr>
 </thead>
@@ -3853,7 +3854,7 @@ ef278ec6  MBOM.java
 <td>PASS (82)</td>
 <td>PASS (699)</td>
 <td>PASS (1099)</td>
-<td>PASS (48428)</td>
+<td>PASS† (48428)</td>
 <td>PASS (60)</td>
 </tr>
 <tr>
@@ -3862,7 +3863,7 @@ ef278ec6  MBOM.java
 <td>PASS</td>
 <td>PASS</td>
 <td>PASS</td>
-<td>PASS</td>
+<td>PASS†</td>
 <td>—</td>
 </tr>
 <tr>
@@ -3871,7 +3872,7 @@ ef278ec6  MBOM.java
 <td>PASS</td>
 <td>PASS</td>
 <td>PASS</td>
-<td>PASS</td>
+<td>PASS†</td>
 <td>— (GENERATIVE)</td>
 </tr>
 <tr>
@@ -3889,7 +3890,7 @@ ef278ec6  MBOM.java
 <td>PASS</td>
 <td>PASS</td>
 <td>PASS</td>
-<td>PASS</td>
+<td>PASS†</td>
 <td>PASS</td>
 </tr>
 <tr>
@@ -3898,12 +3899,19 @@ ef278ec6  MBOM.java
 <td>PASS</td>
 <td>PASS</td>
 <td>PASS</td>
-<td>PASS</td>
+<td>PASS†</td>
 <td>PASS</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Remaining debt:</strong> G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM).</p>
+<blockquote>
+<p><strong>†TE: extraction-only, not BOM-compiled.</strong> IFCtoBOM QA blocked: 471/1515
+tack overflows (W-TACK-1), 14/50 SET BOMs unbalanced (W-BUFFER-1). TE_BOM.db
+empty → BomDrop never runs → c_order=0, c_orderline=0 in output. Gates pass
+because output DB IS the federation extraction (same as reference). SH/FK/DM
+are real BOM compilations. See <code>logs/pipeline_SJTII_Terminal_ifctobom_*.log</code>.</p>
+</blockquote>
+<p><strong>Remaining debt:</strong> G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM). TE BOM compilation (IFCtoBOM tack fix).</p>
 
 
 

@@ -1929,6 +1929,94 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#1041-spatial-model-space-occupant-verb-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.1 Spatial Model — Space + Occupant + Verb + Rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1042-discipline-profiles-abstract-recipe-space-dependent-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1043-the-contractors-checklist-ad_val_rule-as-government-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.3 The Contractor's Checklist — AD_Val_Rule as Government Standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1044-impact-on-the-bom-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.4 Impact on the BOM Tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1045-the-bom-is-already-perfect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.5 The BOM Is Already Perfect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1046-shared-discipline-recipes-in-erpdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.6 Shared Discipline Recipes in ERP.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1047-gof-design-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.7 GoF Design Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1048-cross-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.8 Cross-References
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#105-investigation-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3316,6 +3404,94 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#1041-spatial-model-space-occupant-verb-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.1 Spatial Model — Space + Occupant + Verb + Rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1042-discipline-profiles-abstract-recipe-space-dependent-placement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1043-the-contractors-checklist-ad_val_rule-as-government-standards" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.3 The Contractor's Checklist — AD_Val_Rule as Government Standards
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1044-impact-on-the-bom-tree" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.4 Impact on the BOM Tree
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1045-the-bom-is-already-perfect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.5 The BOM Is Already Perfect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1046-shared-discipline-recipes-in-erpdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.6 Shared Discipline Recipes in ERP.db
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1047-gof-design-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.7 GoF Design Patterns
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#1048-cross-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.8 Cross-References
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#105-investigation-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3592,7 +3768,9 @@ ERP.db — WHERE things go + HOW they connect (discipline metadata)
 ├── IFC alias cascade:    ad_element_mep_alias (84 rows, DV003)
 ├── IFC class map:        ad_ifc_class_map (46 rows, DV005) — authority table for extract.py
 ├── Calibration results:  W_Calibration_Result (from CalibrationTest)
-└── Schema config:        AD_SysConfig
+├── Schema config:        AD_SysConfig
+├── Shared recipes:       M_BOM (1 FP_SYSTEM, DV025) — §10.4.6
+└── Recipe lines:         M_BOM_Line (3 FP children, DV025)
 
 validation.db — RULES + VERDICTS (compliance engine)
 ├── AD_Val_Rule + AD_Val_Rule_Param (thresholds)
@@ -4368,6 +4546,373 @@ products, rules, and scope of work.</p>
 only to the FP trade. Shared infrastructure (<code>AD_Org = '*'</code>) is visible to all.
 This enables per-discipline BOM views, validation scoping, and trade-specific
 product catalogs — all from a single FK.</p>
+<h3 id="1041-spatial-model-space-occupant-verb-rule">10.4.1 Spatial Model — Space + Occupant + Verb + Rule<a class="headerlink" href="#1041-spatial-model-space-occupant-verb-rule" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><em>A discipline is a contractor with a checklist, not a room with walls.</em></p>
+</blockquote>
+<p><strong>TE finding (S99):</strong> <code>DisciplineBomBuilder</code> created DISCIPLINE SET BOMs as
+spatial containers between FLOOR and LEAF. This forced each discipline into
+its own AABB — but disciplines are not spatial containers. A fire protection
+pipe network spans the entire floor. Result: 471 tack overflows, 36
+unbalanced BOMs. Root cause: discipline modelled as a tree level instead of
+a line attribute. See <a href="../TerminalAnalysis/#te-compilation-status--honesty-report-s99-2026-03-27">TerminalAnalysis.md §Compilation Status</a>.</p>
+<p>The BOM hierarchy is recursive and abstract:</p>
+<div class="highlight"><pre><span></span><code>SPACE (M_Product, IsBOM=Y)
+  └── OCCUPANT line (M_BOM_Line, with AD_Org_ID + verb_ref)
+</code></pre></div>
+<p>A SPACE has an AABB (extent) and an M_Product_Category (what kind of space).
+An OCCUPANT has an AD_Org_ID (who), a verb_ref (how), and AD_Val_Rule (checklist).</p>
+<p>The compiler resolves placement through three stages, matching how
+iDempiere processes documents:</p>
+<div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────┐
+│ 1st: DocEvent per Org (discipline blanket)                   │
+│   ModelValidator.docValidate() fires top-down as the walker  │
+│   traverses root → leaf. AD_Org blanket-applies general      │
+│   placement rules for the discipline. Same as iDempiere&#39;s    │
+│   document validation per organization.                      │
+│                                                              │
+│ 2nd: AttributeSet (per-product / per-instance)               │
+│   M_AttributeSet defines what CAN vary per product type.     │
+│   M_AttributeSetInstance carries actual values per instance.  │
+│   Resolved per line item — K-factor, dimensions, material.   │
+│                                                              │
+│ 3rd: AD_Val_Rule (government standards — last)               │
+│   NFPA 13, UBBL, MS1183, IEC — external code compliance.    │
+│   Post-hoc check on the generated result. Read-only.         │
+│   Jurisdiction-swappable. Same as iDempiere validation rules │
+│   that fire after document processing.                       │
+└─────────────────────────────────────────────────────────────┘
+
+for each BOM line in parent:
+    verb    = line.verb_ref                → Strategy (GoF)
+    org     = child.product.AD_Org_ID      → 1st: discipline blanket rules
+    asi     = orderline.ASI                → 2nd: per-instance attributes
+    verb.place(child, parent.space, asi)
+    AD_Val_Rule.validate(result, org)      → 3rd: government compliance
+</code></pre></div>
+<p>This is standard iDempiere processing order: ModelValidator (Org-scoped)
+→ line item resolution (ASI) → validation rules (AD_Val_Rule).</p>
+<p><strong>Anti-pattern: <code>shouldSkip()</code>.</strong> There is ONE compile path, not two paths
+with a skip. The walker always walks the BOM tree. The verb determines what
+happens at each line — PLACE emits at tack offset, ROUTE generates from
+rules, FRAME generates structural grid. A <code>shouldSkip()</code> that produces an
+empty BuildingSpec and falls through to a separate emit path is the same
+structural cheat as <code>if ("CO".equals(...))</code> — just checking verbs instead
+of category. The fix is one walker, verb-dispatched, no skip.</p>
+<p>No <code>if ("CO".equals(...))</code>. No <code>if (discipline == "FP")</code>. Behaviour from
+metadata, not from code — same as iDempiere's DocAction pattern.</p>
+<p><strong>Covering vs Inside — two spatial relationships, both just BOM lines:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Relationship</th>
+<th>Verb family</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>INSIDE</strong></td>
+<td>PLACE</td>
+<td>Sofa at (dx,dy,dz) in living room</td>
+</tr>
+<tr>
+<td><strong>COVERING</strong></td>
+<td>ROUTE, TILE, FRAME, WIRE</td>
+<td>Sprinklers covering a floor per NFPA 13</td>
+</tr>
+</tbody>
+</table>
+<p>INSIDE: child sits AT a point within the parent space (tack offset = position).
+COVERING: child SPANS the parent space (verb determines pattern, rule determines density).</p>
+<h3 id="1042-discipline-profiles-abstract-recipe-space-dependent-placement">10.4.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement<a class="headerlink" href="#1042-discipline-profiles-abstract-recipe-space-dependent-placement" title="Permanent link">&para;</a></h3>
+<p>Each discipline has a <strong>recipe</strong> (BOM cascade from its top-level Category)
+and <strong>Org defaults</strong> (discipline-wide practice). The parent space determines
+quantity and placement. Government standards validate the result post-hoc.</p>
+<table>
+<thead>
+<tr>
+<th>AD_Org</th>
+<th>Top Category</th>
+<th>Verb</th>
+<th>Spatial</th>
+<th>Recipe cascade</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ARC (1)</td>
+<td>ARC_DESIGN</td>
+<td>PLACE, TILE</td>
+<td>INSIDE</td>
+<td>Walls, doors, windows, plates, furniture</td>
+</tr>
+<tr>
+<td>STR (2)</td>
+<td>STR_FRAME</td>
+<td>FRAME</td>
+<td>COVERING</td>
+<td>Column + Beam + Slab</td>
+</tr>
+<tr>
+<td>FP (3)</td>
+<td>FP_MAIN_ROOM</td>
+<td>ROUTE</td>
+<td>COVERING</td>
+<td>Riser → branches → fittings → heads</td>
+</tr>
+<tr>
+<td>ELEC (4)</td>
+<td>ELEC_DISTRIBUTION</td>
+<td>WIRE</td>
+<td>COVERING</td>
+<td>Panel → circuits → fixtures</td>
+</tr>
+<tr>
+<td>ACMV (5)</td>
+<td>ACMV_PLANT</td>
+<td>ROUTE</td>
+<td>COVERING</td>
+<td>AHU → ducts → fittings → terminals</td>
+</tr>
+<tr>
+<td>CW (6)</td>
+<td>CW_SUPPLY</td>
+<td>ROUTE</td>
+<td>COVERING</td>
+<td>Riser → pipe runs → fittings → valves</td>
+</tr>
+<tr>
+<td>SP (7)</td>
+<td>SP_DRAINAGE</td>
+<td>ROUTE</td>
+<td>COVERING</td>
+<td>Stack → drainage pipes → fixtures</td>
+</tr>
+<tr>
+<td>LPG (8)</td>
+<td>LPG_SUPPLY</td>
+<td>ROUTE</td>
+<td>COVERING</td>
+<td>Meter → gas piping → fittings</td>
+</tr>
+</tbody>
+</table>
+<p><strong>OrderLine entry point:</strong> <code>C_OrderLine.Product</code> has a Category (the top
+Category of that discipline). BomDrop explodes the product's BOM, cascading
+through the discipline's own BOM tree. Category at each tier = the product
+group (substitution shelf). The designer can swap any product for another
+in the same Category without changing the BOM structure.</p>
+<p>The recipe is abstract — "cover this zone with sprinklers." Processing
+follows iDempiere order: DocEvent per Org (1st, discipline blanket) →
+ASI resolution per instance (2nd) → AD_Val_Rule compliance check (3rd).</p>
+<h3 id="1043-the-contractors-checklist-ad_val_rule-as-government-standards">10.4.3 The Contractor's Checklist — AD_Val_Rule as Government Standards<a class="headerlink" href="#1043-the-contractors-checklist-ad_val_rule-as-government-standards" title="Permanent link">&para;</a></h3>
+<p>AD_Val_Rule is strictly <strong>government standards and regulations</strong> — external
+compliance requirements that the generated result must satisfy. It is NOT
+part of the generation pipeline.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>iDempiere parallel</th>
+<th>What it does</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1st: DocEvent per Org</strong></td>
+<td>ModelValidator.docValidate()</td>
+<td>Blanket discipline rules, top-down</td>
+<td>FP contractor applies general spacing rules</td>
+</tr>
+<tr>
+<td><strong>2nd: AttributeSet</strong></td>
+<td>M_AttributeSetInstance</td>
+<td>Per-product/per-instance resolution</td>
+<td>K-factor=5.6, pipe_dia=50mm</td>
+</tr>
+<tr>
+<td><strong>3rd: AD_Val_Rule</strong></td>
+<td>AD_Val_Rule</td>
+<td>Government standards, post-hoc</td>
+<td>NFPA 13 max coverage, UBBL fire rating</td>
+</tr>
+<tr>
+<td><strong>Cross-discipline</strong></td>
+<td>AD_Clash_Rule</td>
+<td>Clearance between disciplines</td>
+<td>150mm clearance FP vs ELEC</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Jurisdiction-swappable:</strong> Same BOM, same Org practices, different
+AD_Val_Rule set for Malaysian (UBBL, MS1183) vs US (NFPA, IBC) code.
+The processing pipeline does not change — only the final validation rules.</p>
+<div class="highlight"><pre><span></span><code>1st:  DocEvent(org)          → discipline blanket rules (top-down walk)
+2nd:  ASI resolution         → per-instance attributes on each line
+3rd:  AD_Val_Rule.validate() → government compliance (PASS / WARN / BLOCK)
+</code></pre></div>
+<p>This is standard iDempiere document processing order.</p>
+<h3 id="1044-impact-on-the-bom-tree">10.4.4 Impact on the BOM Tree<a class="headerlink" href="#1044-impact-on-the-bom-tree" title="Permanent link">&para;</a></h3>
+<p><strong>Before (wrong):</strong> <code>BUILDING → FLOOR → DISCIPLINE SET → LEAF</code> — discipline
+as tree level with own AABB → 471 tack overflows.</p>
+<p><strong>After (correct):</strong> <code>BUILDING → FLOOR → LEAF</code> — same depth as SH/DX.
+Tack is <code>element.minX - floor.minX</code>. Always positive. Discipline resolves
+from the child product, not from the line: <code>m_bom_line.child_product_id →
+M_Product → M_Product_Category → AD_Org_ID</code>. This is standard iDempiere —
+every record carries AD_Org, the line is just a relationship.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DisciplineBomBuilder</code></td>
+<td>Remove DISCIPLINE SET BOM. LEAF lines directly under FLOOR</td>
+</tr>
+<tr>
+<td><code>BomValidator</code></td>
+<td>W-TACK-1/W-BUFFER-1 check FLOOR→LEAF, not SET→LEAF</td>
+</tr>
+<tr>
+<td><code>CompilationPipeline</code></td>
+<td>Delete CO skip hack (line 352-354)</td>
+</tr>
+<tr>
+<td><code>PlacementCollectorVisitor</code></td>
+<td>Resolve AD_Org_ID from child product, not discipline stack</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1045-the-bom-is-already-perfect">10.4.5 The BOM Is Already Perfect<a class="headerlink" href="#1045-the-bom-is-already-perfect" title="Permanent link">&para;</a></h3>
+<p>A BOM is a BOM — same as manufacturing a car. You don't label an engine
+assembly with a tier tag. It's a product with children. The tree
+structure IS the hierarchy:</p>
+<ul>
+<li><strong>Root:</strong> <code>getParentBOM()</code> returns null</li>
+<li><strong>Any level:</strong> <code>getChildren()</code> returns its children</li>
+<li><strong>Leaf:</strong> <code>getChildren()</code> returns empty</li>
+<li><strong>Category:</strong> <code>getProductCategory()</code> returns the substitution shelf</li>
+</ul>
+<p>No level labels. No vocabulary. A building, a car, a bridge, a ship —
+same three methods, different products. M_Product_Category groups
+interchangeable products at each level (same shelf = same swap pool).</p>
+<p><strong>VIEW_CONTRACTS.md <code>v_qualified_bom</code></strong> currently uses a legacy <code>bom_type</code>
+bind parameter. Migration pending to use M_Product_Category instead.</p>
+<h3 id="1046-shared-discipline-recipes-in-erpdb">10.4.6 Shared Discipline Recipes in ERP.db<a class="headerlink" href="#1046-shared-discipline-recipes-in-erpdb" title="Permanent link">&para;</a></h3>
+<p>Discipline BOMs are <strong>shared across all buildings.</strong> FP is FP — one recipe,
+all buildings, same rules. ACMV is ACMV. The recipe does not change; the
+space and rules determine the result.</p>
+<p><strong>ERP.db</strong> holds the shared recipes alongside AD_Org:</p>
+<div class="highlight"><pre><span></span><code>ERP.db
+├── AD_Org                    (WHO: FP, ACMV, ELEC, CW, SP, LPG)
+├── AD_SysConfig              (discipline-wide defaults per Org)
+├── M_Product                 (WHAT: sprinklers, pipes, ducts, fittings)
+├── M_Product_Category        (TIER: product taxonomy = substitution shelf)
+└── M_BOM — shared discipline recipes (each a BOM cascade):
+    ├── FP_SYSTEM             (Category=FP_MAIN_ROOM, Org=FP)
+    │   ├── FP_RISER          (Category=FP_RISER, verb=ROUTE)
+    │   ├── FP_SPRINKLER_LAYOUT (Category=FP_DISTRIBUTION, verb=ROUTE)
+    │   └── FP_PUMP_LINK      (Category=FP_SUPPLY, verb=ROUTE)
+    ├── ACMV_SYSTEM           (Category=ACMV_PLANT, Org=ACMV)
+    ├── ELEC_SYSTEM           (Category=ELEC_DISTRIBUTION, Org=ELEC)
+    └── CW_SYSTEM             (Category=CW_SUPPLY, Org=CW)
+
+validation.db (separate — government standards only)
+├── AD_Val_Rule               (NFPA 13, UBBL, MS1183 — post-hoc checks)
+├── AD_Val_Rule_Param         (thresholds per rule)
+└── AD_Clash_Rule             (cross-discipline clearance)
+</code></pre></div>
+<p>component_library.db is strictly <strong>leaf geometry</strong> (meshes, LODs). It never
+holds BOMs or recipes — only what things look like, not how they assemble.</p>
+<p><strong>OrderLine → top Category → BOM cascade:</strong></p>
+<div class="highlight"><pre><span></span><code>C_Order: &quot;Build TE&quot;
+├── C_OrderLine #1: TE_ARC_STR     (Category=ARC, Org=ARC)  ← extracted BOM
+├── C_OrderLine #2: FP_SYSTEM      (Category=FP_MAIN_ROOM, Org=FP)
+├── C_OrderLine #3: ACMV_SYSTEM    (Category=ACMV_PLANT, Org=ACMV)
+├── C_OrderLine #4: ELEC_SYSTEM    (Category=ELEC_DISTRIBUTION, Org=ELEC)
+├── C_OrderLine #5: SP_SYSTEM      (Category=SP_DRAINAGE, Org=SP)
+├── C_OrderLine #6: CW_SYSTEM      (Category=CW_SUPPLY, Org=CW)
+├── C_OrderLine #7: LPG_SYSTEM     (Category=LPG_SUPPLY, Org=LPG)
+└── C_OrderLine #8: STR_SYSTEM     (Category=STR_FRAME, Org=STR)
+</code></pre></div>
+<p>Eight lines. Each line's Product has a top Category — the entry point into
+that discipline's BOM cascade. BomDrop explodes recursively. At each tier,
+Category = the substitution shelf (designer can swap products within it).</p>
+<p><strong>Processing order (same as iDempiere document processing):</strong>
+1. <strong>DocEvent per Org</strong> — discipline blanket rules apply top-down as walker traverses root→leaf
+2. <strong>ASI resolution</strong> — per-product/per-instance attributes (K-factor, dimensions, capacity)
+3. <strong>AD_Val_Rule</strong> — government standards check the result (NFPA 13, UBBL, MS1183)</p>
+<p>Jurisdiction-swappable: same BOM, same Org practices, different AD_Val_Rule
+set for Malaysian vs US code.</p>
+<p>For <strong>extracted buildings</strong> (TE, DX), the designer already applied these
+recipes manually. The extraction captured the result. The compiler emits
+at tack offsets (PLACE verb). For <strong>generative buildings</strong>, the compiler
+applies the shared recipes using verb Strategy + DocEvent per Org + ASI.
+AD_Val_Rule validates the output.</p>
+<h3 id="1047-gof-design-patterns">10.4.7 GoF Design Patterns<a class="headerlink" href="#1047-gof-design-patterns" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Application</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Composite</strong></td>
+<td>BOM tree: SPACE contains OCCUPANT lines, recursively</td>
+</tr>
+<tr>
+<td><strong>Visitor</strong></td>
+<td>BOMWalker visits each line</td>
+</tr>
+<tr>
+<td><strong>Strategy</strong></td>
+<td>Verb determines placement method (DocEvent + ASI)</td>
+</tr>
+<tr>
+<td><strong>Specification</strong></td>
+<td>AD_Val_Rule validates result post-hoc (3rd, government)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="1048-cross-references">10.4.8 Cross-References<a class="headerlink" href="#1048-cross-references" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Disciplines</th>
+<th>Concern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TE</strong></td>
+<td>8 (ARC,STR,FP,ACMV,ELEC,CW,SP,LPG)</td>
+<td>SET as tree level → tack overflow. <a href="../TerminalAnalysis/">TerminalAnalysis.md</a></td>
+</tr>
+<tr>
+<td><strong>DM</strong></td>
+<td>3 (ARC,STR,FP)</td>
+<td>First FP trial — addDiscipline(). <a href="../DemoHouseAnalysis/">DemoHouseAnalysis.md</a></td>
+</tr>
+<tr>
+<td><strong>FK</strong></td>
+<td>2 (ARC,STR) + ROOF debate</td>
+<td><a href="../FZKHausAnalysis/">FZKHausAnalysis.md</a></td>
+</tr>
+<tr>
+<td><strong>Infrastructure</strong></td>
+<td>ROAD,RAIL,GEO,LAND,SIGN</td>
+<td>Extended codes. <a href="../InfrastructureAnalysis/">InfrastructureAnalysis.md</a></td>
+</tr>
+</tbody>
+</table>
 <h3 id="105-investigation-tasks">10.5 Investigation Tasks<a class="headerlink" href="#105-investigation-tasks" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Count Java files that read M_Product from component_library.db vs ERP.db</li>

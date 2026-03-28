@@ -2223,6 +2223,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#5-c9-axis-dimension-matching-artifact-not-a-geometry-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. C9 Axis Dimension — Matching Artifact (Not a Geometry Error)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2886,6 +2897,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#5-c9-axis-dimension-matching-artifact-not-a-geometry-error" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. C9 Axis Dimension — Matching Artifact (Not a Geometry Error)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3348,7 +3370,7 @@ For L-shaped or angled: could be π/2 (90°) or other values.</p>
 <h3 id="bom-model">BOM Model<a class="headerlink" href="#bom-model" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>BUILDING_DX_STD (BUILDING)
   ├── ... shared structural (MAKE/LEAF children) ...
-  └── DUPLEX_SET_STD (LEAF → recurses, bom_type=SET, bom_category=PR)
+  └── DUPLEX_SET_STD (has children → recurses, category=PR)
         ├── UNIT_A → DUPLEX_SINGLE_UNIT_STD (LEAF, rot=0,   dx=huA_offset)
         └── UNIT_B → DUPLEX_SINGLE_UNIT_STD (LEAF, rot=π,   dx=huB_offset)
               Both reference the SAME half-unit BOM.
@@ -3402,6 +3424,17 @@ structural as shared, matching A-side excess behavior.</p>
 <h3 id="4-walker-rotation-verified-2026-03-14">4. Walker Rotation — VERIFIED (2026-03-14)<a class="headerlink" href="#4-walker-rotation-verified-2026-03-14" title="Permanent link">&para;</a></h3>
 <p>DX full delta test: 13 IFC classes, all enbloc=walkthru counts match,
 0 geometry divergences, Rule 8 PASS (all coordinates parent-relative).</p>
+<h3 id="5-c9-axis-dimension-matching-artifact-not-a-geometry-error">5. C9 Axis Dimension — Matching Artifact (Not a Geometry Error)<a class="headerlink" href="#5-c9-axis-dimension-matching-artifact-not-a-geometry-error" title="Permanent link">&para;</a></h3>
+<p>C9 reports 89 wall/slab axis mismatches. Root cause: C9 matches elements by
+position-sorted rank (<code>ROW_NUMBER</code> partitioned by <code>ifc_class</code>), not by GUID.
+For mirrored buildings, elements near the party wall (X ≈ 4.4) have similar
+positions, causing rank shuffles that pair different element types together.</p>
+<p>Evidence: element counts match exactly (1099 ref = 1099 out), walker rotation
+verified (§Resolved #4: 0 divergences), and the "mismatched" pairs show different
+element names (e.g., ref <code>Exterior Brick</code> vs output <code>Interior Partition</code>).</p>
+<p><strong>Status:</strong> Non-issue. C9 matching needs GUID-based pairing to work correctly
+for MIRRORED_PAIR buildings. Filed as future enhancement — does not affect
+compilation correctness.</p>
 <h2 id="remaining">Remaining<a class="headerlink" href="#remaining" title="Permanent link">&para;</a></h2>
 <h3 id="scope-space-origins-for-dx">Scope Space Origins for DX<a class="headerlink" href="#scope-space-origins-for-dx" title="Permanent link">&para;</a></h3>
 <p>The DX <code>floor_rooms</code> section has scope boxes without <code>origin_m</code> coordinates.

@@ -1,11 +1,21 @@
-Note that the RosettaStone test morphs to a different format for Non RosettaStone. It is a combination of pebbles from those stones. A SH structure has its replica minus the parts that are swapped or added ie. the Pitched Roof and the FP disc elements. Thus it has to compare with such fragments. This maybe tricky unless we setup a Rosetta Dictionary.
+Edit the docs with the latest realisation where a BOM is complete in itself and needs no AABB. Even empty buffers or EmptySpaceLines was found out to be redundant earlier. Thus as time goes on we start removing unnecessary scaffolding. 
+ 
+ Its AD_Org is its DISC. There is no Building-Floor-LEAF hierachy because if it has a parent it is not the starting level. If it has no child it is a LEAF. That classify quite whatever level it is. No need to say it is an envelope or space or container. ProductCategory is just allowing for grouping of choices.
 
-Similar to the original RosettaStone story it was not giving the full Hieroglyphics encyclopedia. It was just a short composition but good enough to infer. 
+ProjectOrderBLueprint is drifting too much. Its banner is not sharp. ITs real content begins at 'What is on the way (this document).' Remove all before it.
 
-So can we do that while extracting IFCtoBOM? I think we can. Provide individual grammar rules (DONE- validation), but also as fine as words and sentences. ie it can be gleamed from the SH_BOM models. Thus the test for DEMO HOUSE switches path to the SH_BOM and and the _BOM that the Pitched Roof comes from. It is an indirect source of truth once the first full RosettaStones passed the exact sameness test.
+Its banner should be "An ERP is already a matured compilation of events. Thus define construction as such" . Deduce what can be its opening.
 
-Study the intricacies in that, prepare a model to do that. The Demo House merely needs to confirm the Roof is still where it should be. The FP is aligned to same ceiling spacing or spatial positioning from it. Once that is done, all other extrapolations has got major issues covered. We can afford to go for edge cases in a say highly fragmented composition will the chair to fill up a balcony ends up in the balcony? Trace thru the blindspots as we got the code to do so. Have a witness test at critical junctures. 
+Remove 'The order library as asset.' and 'Relationship to existing patterns: ' sections. Not really saying anything relevant. 1.1 and 1.2 is what the gist is about. Testing is not needed here. 5.1 4D Schedule — Topological Sort of BOM Tree onwards not needed as clutter redundanct. In between try to digest it and clarify further and triage into better arranged specs. Ask me if needed. Its core is about C_Project dimension is similar in iDempiere which allows costing, doc flow between supplier and customer, cost margin, large scale projects with 1 to many Orders, WIP, Materials on Site. 
 
-That is my basic idea. You must have much more LLM training in such software puzzles.
+Then we got M_Location for grid in a large housing estate to place units and its value ideas but need to align to the C_Project context. Be aware Locator interface with StorageOnHand, WMS, picking, putaway thus may integrate well with 4D thru 7D. In short all seems to be retrofitting ERP into it, but how they eventually takes shape may come in spurts and flashes. This was what the brainstorm about, but need to pick the gems out and rearrange to be coherent.
 
-To add to the above, the BIM Designer can also free hand draw on the Viewport, dragging to change dimensions which affects the AttribueSet Instances, and when compiled into output .db again the EYES test infer if the wall is not leaving any gap with an adjoining wall, or the door has left the building. Such geometry maths can go for such spatial values to formulate its shape thru the EYES module also. This is more for non visual manual testing in Bonsai but backend code testing much faster without constant launching of Bonsai.
+===
+
+In BBC.md the whole section 1.2 Discipline Routing is not needed. It already in DISC_VALIDATION_SRS. Can link there for details, but its brief must be clear and readable. Again ProductCategory defined under 1. is wrong. DISC is AD_Org. Category is grouping for choice within same group. Hierarchy is deduced how the BOM products, up and down, categorize themselves. CO_EmptySpace is not in use anymore. Remove even deprecating statements. State what is not what was.
+
+In the 2. Compilation Model, EXTRACTED is RosettaStone so not to be here.  Real stuff begins at IFCtoBOM, so tighten up as the rest maybe cluttering.  AABB no longer also. This is where u define the BOM as explained earlier.
+
+Let's go thru this whole crucial foundation paper with me, interview me to format this doc well. U play the role of the specs guy. I am just the subject matter visionary. No more 2 compilation modes. Things are actually very smooth and simple from our above resolution of what is a BOM without the additional terms. I feel ERP is already a perfect language for us, and the docs sometimes drift wildly not providing the same understanding.
+
+So go thru each doc and check with me if u feel need my direction again

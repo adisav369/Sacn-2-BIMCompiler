@@ -879,6 +879,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Known Limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#r25-ifctobom-qa-failure-not-propagated-to-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R25 — IFCtoBOM QA Failure Not Propagated to Gate Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2844,6 +2861,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Known Limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#r25-ifctobom-qa-failure-not-propagated-to-gate-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R25 — IFCtoBOM QA Failure Not Propagated to Gate Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2963,7 +2997,7 @@
 <p>Before writing code that implements a spec section, the AI MUST:</p>
 <ol>
 <li><strong>Quote the spec section</strong> it is implementing</li>
-<li><strong>Follow the spec mechanism</strong>, not invent a shortcut — same output via a different path = drift</li>
+<li><strong>Follow the spec mechanism</strong>, not invent a shortcut — same output via a different path = draft</li>
 <li><strong>Ask</strong> if the spec is unclear — never guess</li>
 <li><strong>Log a new drift point</strong> before deviating from spec</li>
 </ol>
@@ -2971,7 +3005,8 @@
 <h2 id="session-checklist-11-drift-points">Session Checklist — 11 Drift Points<a class="headerlink" href="#session-checklist-11-drift-points" title="Permanent link">&para;</a></h2>
 <p>Every session ends by checking these 11 areas where AI-generated code is known to drift from spec. Each cites the spec section it guards.</p>
 <h3 id="1-input-output">1. Input = Output?<a class="headerlink" href="#1-input-output" title="Permanent link">&para;</a></h3>
-<p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §2.2.1</a> count invariant — SUM(non-PHANTOM qty) = output count.</p>
+<p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §2.2.1</a> count invariant — SUM(non-PHANTOM qty) = output count.
+<strong>Prerequisite:</strong> §3 (Compiler Only) must PASS first. If output was not compiled — only extracted — this count is a <strong>draft</strong>, not a verdict. (CP-5)</p>
 <p>The compiler must produce exactly the same number of elements as the BOM specifies. Not more (over-production = splitting when it shouldn't), not fewer (lost elements = broken walker).</p>
 <table>
 <thead>
@@ -3129,6 +3164,13 @@
 </tr>
 </tbody>
 </table>
+<h3 id="r25-ifctobom-qa-failure-not-propagated-to-gate-results">R25 — IFCtoBOM QA Failure Not Propagated to Gate Results<a class="headerlink" href="#r25-ifctobom-qa-failure-not-propagated-to-gate-results" title="Permanent link">&para;</a></h3>
+<p><strong>Status:</strong> CLOSED (S100-p67)
+<strong>Root cause:</strong> IFCtoBOM pipeline ABORTs to log file. Rosetta script
+treats missing BOM.db as "skip" not "fail." G1-G6 gates don't check
+whether output was compiled or extracted.
+<strong>Fix:</strong> G0-COMPILED gate (checks c_order &gt; 0) + script fail-loud.
+<strong>Buildings affected:</strong> TE (CO_TE). Extraction passes, BOM compilation blocked.</p>
 <hr />
 <h2 id="verb-fidelity-approximate-vs-exact">Verb Fidelity — Approximate vs Exact<a class="headerlink" href="#verb-fidelity-approximate-vs-exact" title="Permanent link">&para;</a></h2>
 <p>Not all verbs produce exact results. The distinction matters:</p>
@@ -3219,6 +3261,7 @@ squareness  = S / M    &quot;cross-section&quot;  → furniture, terminals
 </tr>
 </tbody>
 </table>
+<p><strong>Rule:</strong> All diagnostic output (rejected mutations, constraint violations, category mismatches) MUST use <code>BIMLogger.fine()</code>, never <code>System.err</code>. This ensures rejection messages appear in the FINE drift checklist and can be grepped from logs. <code>System.err</code> bypasses log filtering and is invisible to auditors reviewing FINE output.</p>
 <h3 id="info-what-always-shows">INFO — what always shows<a class="headerlink" href="#info-what-always-shows" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>[INFO ] PIPELINE     PIPELINE: Sample House [EXTRACTED]
 [INFO ] PIPELINE     STEP 1: METADATA VALIDATION — starting

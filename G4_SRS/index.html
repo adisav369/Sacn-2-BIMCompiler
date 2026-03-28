@@ -2779,7 +2779,7 @@ DesignerAPIImpl.createNew(request)
 │      │   │           Read from bomConn ({PREFIX}_BOM.db)
 │      │   │
 │      │   │   WALK ORDER: BOMWalker pre-order DFS (same walker as compilation)
-│      │   │     BUILDING → FLOOR STR → DISCIPLINE SET → ROOM SET → LEAF
+│      │   │     root → floor → leaf-group → leaf (tree structure, no labels)
 │      │   │
 │      │   │   For each m_bom node encountered:
 │      │   │

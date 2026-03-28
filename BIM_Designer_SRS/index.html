@@ -11243,7 +11243,7 @@ The YAML is redundant: the Order Lines ARE the building specification. The BOM D
 explodes a template into C_OrderLine rows; the user edits lines and attributes directly.
 YAML can be <em>generated</em> from the order state if needed for the backend pipeline.</p>
 <p><strong>Flow:</strong>
-1. Building product dropdown: <code>scanBomProducts</code> — query <code>m_bom WHERE bom_type='BUILDING'</code>
+1. Building product dropdown: <code>scanBomProducts</code> — query root BOMs (no parent m_bom_line)
    from each <code>*_BOM.db</code>. User picks a template (e.g. <code>BUILDING_SH_STD</code>).
 2. <strong>BOM Drop</strong> (<code>bomDrop</code>): creates <code>C_Order</code> + <code>C_OrderLine</code>(s) from BOM tree explosion.
 3. <strong>OrderLine table</strong> (<code>listOrderLines</code>): editable grid — product, category, qty, status.
@@ -11790,7 +11790,7 @@ room area and computes dx/dy/dz from containing space at compile time.</p>
 <p><strong>Witness:</strong> W-FP-TRIAL-1: DocEvent FP placement via 5-table chain.</p>
 <p><strong>S63 findings:</strong> DM needs <code>FP_PIPE_ASSEMBLY</code> BOM + <code>m_attribute</code> seed. FP elements
 resolve as discipline='MEP' (fallback); finer FP discipline needs FP-specific SET
-BOMs or <code>C_OrderLine.Discipline='FPR'</code>. <code>m_bom.bom_type</code> has no 'ASSEMBLY' — use 'SET'.</p>
+BOMs or <code>C_OrderLine.AD_Org_ID=3</code> (FP). BOM type is determined by tree structure, not bom_type string.</p>
 <h4 id="3075-two-browsing-modes-arc-vs-mep">30.7.5 Two Browsing Modes — ARC vs MEP<a class="headerlink" href="#3075-two-browsing-modes-arc-vs-mep" title="Permanent link">&para;</a></h4>
 <p><strong>ARC (manual):</strong> User browses category tree → picks product → <code>UPDATE C_OrderLine.family_ref</code>. Uses existing <code>browseItems()</code> API with category filter.</p>
 <p><strong>MEP (rule-driven):</strong> User toggles discipline ON → DocEvent engine queries

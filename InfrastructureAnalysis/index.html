@@ -3441,7 +3441,7 @@
 
 <h1 id="infrastructure-ifc-analysis">Infrastructure IFC Analysis<a class="headerlink" href="#infrastructure-ifc-analysis" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
+<p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS</a> §10.4.6 (infra discipline codes)</p>
 </blockquote>
 <div class="bim-banner">
 <p><b>Same hierarchy, different vocabulary — infrastructure is not a new problem.</b> 9 IFC4X3 files (bridges, roads, rails) mapped to existing pipeline abstractions.</p>
@@ -3686,8 +3686,8 @@ before any code changes</strong> (per <code>memory/feedback_srs_before_code.md</
 <td><strong>G3</strong></td>
 <td>DATA_MODEL.md §1.4</td>
 <td><code>bom_type = 'BUILDING'</code>, <code>doc_base_type = 'RE'</code></td>
-<td>Infrastructure needs <code>bom_type = 'FACILITY'</code> (or keep BUILDING as abstract root) and new <code>doc_base_type</code> values</td>
-<td><strong>Schema vocabulary</strong> — m_bom schema already stores bom_type as TEXT, no migration needed</td>
+<td>Infrastructure needs different vocabulary</td>
+<td><strong>RESOLVED</strong> — root identified by tree structure (no parent), not <code>bom_type</code> string. Tier selection uses M_Product_Category. <code>doc_base_type</code> replaced by M_Product_Category (S84). See <a href="../DISC_VALIDATION_DB_SRS/#1045-bom_type--tree-structure-and-m_product_category">DISC_VALIDATION_DB_SRS.md §10.4.5</a></td>
 </tr>
 <tr>
 <td><strong>G4</strong></td>
@@ -3871,12 +3871,10 @@ FACILITY (IfcBridge)                   BUILDING (IfcBuilding)
   └─ SEGMENT (Deck)                    └─ FLOOR (Roof)
       └─ LEAF (IfcSlab, IfcRailing)        └─ LEAF (IfcRoof)
 </code></pre></div>
-<p><strong>Decision point:</strong> Should bom_type be <code>FACILITY</code>/<code>SEGMENT</code> (new vocabulary) or
-keep <code>BUILDING</code>/<code>FLOOR</code> (abstract, reused)? Recommendation: <strong>keep BUILDING/FLOOR
-as abstract terms</strong> — they are already in the BOM schema, all validators, all tests.
-Introducing new values requires touching every WHERE clause. Instead, add a
-<code>facility_domain</code> column to m_bom (values: BUILDING, ROAD, BRIDGE, RAILWAY) for
-downstream filtering. This is the iDempiere approach — AD_Ref_List, not new document types.</p>
+<p><strong>Resolved:</strong> The BOM is self-describing — no level labels needed. A bridge
+root has children (spans, piers), each identified by M_Product_Category.
+<code>getParentBOM()</code> null = root, <code>getChildren()</code> empty = leaf. No vocabulary
+issue — the tree structure IS the hierarchy, same as manufacturing.</p>
 <hr />
 <h2 id="5-what-already-works-no-change-needed">5. What Already Works (no change needed)<a class="headerlink" href="#5-what-already-works-no-change-needed" title="Permanent link">&para;</a></h2>
 <ol>
@@ -4526,7 +4524,7 @@ Full IfcMapConversion subtraction is deferred — not blocking for Rosetta pipel
 </tr>
 <tr>
 <td>Recommended approach?</td>
-<td>Extract per-facility, keep BUILDING/FLOOR as abstract bom_type, add facility_domain column</td>
+<td>Extract per-facility, tree structure is self-describing (root/children/leaf), M_Product_Category for domain classification</td>
 </tr>
 </tbody>
 </table>
