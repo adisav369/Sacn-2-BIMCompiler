@@ -1951,13 +1951,41 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1043-the-contractors-checklist-ad_val_rule-as-government-standards" class="md-nav__link">
+  <a href="#1043-three-stage-validation-idempiere-processing-order" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10.4.3 The Contractor's Checklist — AD_Val_Rule as Government Standards
+        10.4.3 Three-Stage Validation — iDempiere Processing Order
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="10.4.3 Three-Stage Validation — iDempiere Processing Order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ad_docevent_rule-1st-stage-schema-erpdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AD_DocEvent_Rule — 1st Stage Schema (ERP.db)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ad_val_rule-3rd-stage-validationdb-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AD_Val_Rule — 3rd Stage (validation.db, unchanged)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -3426,13 +3454,41 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#1043-the-contractors-checklist-ad_val_rule-as-government-standards" class="md-nav__link">
+  <a href="#1043-three-stage-validation-idempiere-processing-order" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10.4.3 The Contractor's Checklist — AD_Val_Rule as Government Standards
+        10.4.3 Three-Stage Validation — iDempiere Processing Order
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="10.4.3 Three-Stage Validation — iDempiere Processing Order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ad_docevent_rule-1st-stage-schema-erpdb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AD_DocEvent_Rule — 1st Stage Schema (ERP.db)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ad_val_rule-3rd-stage-validationdb-unchanged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AD_Val_Rule — 3rd Stage (validation.db, unchanged)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -4565,33 +4621,33 @@ An OCCUPANT has an AD_Org_ID (who), a verb_ref (how), and AD_Val_Rule (checklist
 <p>The compiler resolves placement through three stages, matching how
 iDempiere processes documents:</p>
 <div class="highlight"><pre><span></span><code>┌─────────────────────────────────────────────────────────────┐
-│ 1st: DocEvent per Org (discipline blanket)                   │
-│   ModelValidator.docValidate() fires top-down as the walker  │
-│   traverses root → leaf. AD_Org blanket-applies general      │
-│   placement rules for the discipline. Same as iDempiere&#39;s    │
-│   document validation per organization.                      │
+│ 1st: DocEvent per Org (discipline blanket + govt standards)  │
+│   AD_DocEvent_Rule fires top-down as the walker traverses    │
+│   root → leaf. AD_Org blanket-applies ALL rules for the      │
+│   discipline — spacing, connectivity, host, AND government   │
+│   standards (NFPA 13, UBBL). Jurisdiction-swappable here.    │
+│   Same as iDempiere ModelValidator per organization.          │
 │                                                              │
 │ 2nd: AttributeSet (per-product / per-instance)               │
 │   M_AttributeSet defines what CAN vary per product type.     │
 │   M_AttributeSetInstance carries actual values per instance.  │
 │   Resolved per line item — K-factor, dimensions, material.   │
 │                                                              │
-│ 3rd: AD_Val_Rule (government standards — last)               │
-│   NFPA 13, UBBL, MS1183, IEC — external code compliance.    │
-│   Post-hoc check on the generated result. Read-only.         │
-│   Jurisdiction-swappable. Same as iDempiere validation rules │
-│   that fire after document processing.                       │
+│ 3rd: AD_Val_Rule (user per-line override — last)             │
+│   User sees exploded sub-lines, adds/changes/waives rules.   │
+│   Same as iDempiere AD_Val_Rule — a lookup filter the user   │
+│   attaches to specific lines. Not automatic. Not blanket.    │
 └─────────────────────────────────────────────────────────────┘
 
 for each BOM line in parent:
     verb    = line.verb_ref                → Strategy (GoF)
-    org     = child.product.AD_Org_ID      → 1st: discipline blanket rules
+    org     = child.product.AD_Org_ID      → 1st: DocEvent blanket + standards
     asi     = orderline.ASI                → 2nd: per-instance attributes
     verb.place(child, parent.space, asi)
-    AD_Val_Rule.validate(result, org)      → 3rd: government compliance
+    // 3rd: AD_Val_Rule — only if user attached override to this line
 </code></pre></div>
 <p>This is standard iDempiere processing order: ModelValidator (Org-scoped)
-→ line item resolution (ASI) → validation rules (AD_Val_Rule).</p>
+→ line item resolution (ASI) → user validation rules (AD_Val_Rule).</p>
 <p><strong>Anti-pattern: <code>shouldSkip()</code>.</strong> There is ONE compile path, not two paths
 with a skip. The walker always walks the BOM tree. The verb determines what
 happens at each line — PLACE emits at tack offset, ROUTE generates from
@@ -4704,18 +4760,17 @@ through the discipline's own BOM tree. Category at each tier = the product
 group (substitution shelf). The designer can swap any product for another
 in the same Category without changing the BOM structure.</p>
 <p>The recipe is abstract — "cover this zone with sprinklers." Processing
-follows iDempiere order: DocEvent per Org (1st, discipline blanket) →
-ASI resolution per instance (2nd) → AD_Val_Rule compliance check (3rd).</p>
-<h3 id="1043-the-contractors-checklist-ad_val_rule-as-government-standards">10.4.3 The Contractor's Checklist — AD_Val_Rule as Government Standards<a class="headerlink" href="#1043-the-contractors-checklist-ad_val_rule-as-government-standards" title="Permanent link">&para;</a></h3>
-<p>AD_Val_Rule is strictly <strong>government standards and regulations</strong> — external
-compliance requirements that the generated result must satisfy. It is NOT
-part of the generation pipeline.</p>
+follows iDempiere order: DocEvent per Org (1st, discipline blanket +
+government standards) → ASI resolution per instance (2nd) → AD_Val_Rule
+user override on specific lines (3rd, on demand).</p>
+<h3 id="1043-three-stage-validation-idempiere-processing-order">10.4.3 Three-Stage Validation — iDempiere Processing Order<a class="headerlink" href="#1043-three-stage-validation-idempiere-processing-order" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
 <th>Stage</th>
 <th>iDempiere parallel</th>
 <th>What it does</th>
+<th>Fires</th>
 <th>Example</th>
 </tr>
 </thead>
@@ -4723,37 +4778,106 @@ part of the generation pipeline.</p>
 <tr>
 <td><strong>1st: DocEvent per Org</strong></td>
 <td>ModelValidator.docValidate()</td>
-<td>Blanket discipline rules, top-down</td>
-<td>FP contractor applies general spacing rules</td>
+<td>Blanket discipline rules INCLUDING government standards, top-down</td>
+<td>Automatically during BOM walk, per AD_Org</td>
+<td>FP: NFPA 13 spacing, UBBL fire rating, general pipe sizing rules</td>
 </tr>
 <tr>
 <td><strong>2nd: AttributeSet</strong></td>
 <td>M_AttributeSetInstance</td>
 <td>Per-product/per-instance resolution</td>
-<td>K-factor=5.6, pipe_dia=50mm</td>
+<td>Per line item during placement</td>
+<td>K-factor=5.6, pipe_dia=50mm, material=copper</td>
 </tr>
 <tr>
 <td><strong>3rd: AD_Val_Rule</strong></td>
-<td>AD_Val_Rule</td>
-<td>Government standards, post-hoc</td>
-<td>NFPA 13 max coverage, UBBL fire rating</td>
+<td>AD_Val_Rule (lookup filter)</td>
+<td>User-initiated per-line rule addition or override</td>
+<td>On demand, after explosion, on specific sub-lines</td>
+<td>User adds stricter spacing rule to a particular FP branch</td>
 </tr>
 <tr>
 <td><strong>Cross-discipline</strong></td>
 <td>AD_Clash_Rule</td>
 <td>Clearance between disciplines</td>
+<td>After all disciplines placed</td>
 <td>150mm clearance FP vs ELEC</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Jurisdiction-swappable:</strong> Same BOM, same Org practices, different
-AD_Val_Rule set for Malaysian (UBBL, MS1183) vs US (NFPA, IBC) code.
-The processing pipeline does not change — only the final validation rules.</p>
-<div class="highlight"><pre><span></span><code>1st:  DocEvent(org)          → discipline blanket rules (top-down walk)
+<p><strong>Key distinction:</strong> In iDempiere, AD_Val_Rule is a <strong>lookup filter</strong> — it
+narrows available choices per field, not a document validator. ModelValidator
+(DocEvent) is where real validation lives. Government standards (NFPA 13,
+UBBL, MS1183) are general enough to be 1st-stage blanket rules — they apply
+to EVERY element in the discipline. 3rd-stage AD_Val_Rule is for when the
+user sees specific exploded sub-lines and wants to add, change, or waive a
+rule on THOSE lines.</p>
+<div class="highlight"><pre><span></span><code>1st:  DocEvent(org)          → blanket discipline rules + government standards
 2nd:  ASI resolution         → per-instance attributes on each line
-3rd:  AD_Val_Rule.validate() → government compliance (PASS / WARN / BLOCK)
+3rd:  AD_Val_Rule            → user adds/changes/waives rule on specific lines
 </code></pre></div>
-<p>This is standard iDempiere document processing order.</p>
+<p><strong>Jurisdiction-swappable:</strong> Government standards live in 1st-stage DocEvent
+rules, scoped by <code>jurisdiction</code>. Same BOM, same Org, different jurisdiction
+→ different DocEvent rules fire. Malaysian building uses UBBL rules,
+US building uses NFPA/IBC rules. The BOM and ASI don't change.</p>
+<h4 id="ad_docevent_rule-1st-stage-schema-erpdb">AD_DocEvent_Rule — 1st Stage Schema (ERP.db)<a class="headerlink" href="#ad_docevent_rule-1st-stage-schema-erpdb" title="Permanent link">&para;</a></h4>
+<p>DocEvent rules are shared across all buildings (like AD_Org, M_Product).
+They live in ERP.db. Each rule is scoped to an AD_Org (discipline) and
+optionally to a jurisdiction.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Ready-made discipline event rules in ERP.db</span>
+<span class="c1">-- Fires automatically during BOM walk when AD_Org matches</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">AD_DocEvent_Rule</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">ad_docevent_rule_id</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ad_org_id</span><span class="w">            </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="c1">-- 0=all, 3=FP, 4=ELEC, etc.</span>
+<span class="w">    </span><span class="n">name</span><span class="w">                 </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">               </span><span class="c1">-- &#39;NFPA13_LH_SPACING&#39;</span>
+<span class="w">    </span><span class="n">description</span><span class="w">          </span><span class="nb">TEXT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">rule_type</span><span class="w">            </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">               </span><span class="c1">-- SPACING, CONNECTIVITY, HOST,</span>
+<span class="w">                                                      </span><span class="c1">-- COMPLETENESS, DIMENSION, STANDARD</span>
+<span class="w">    </span><span class="n">standard_ref</span><span class="w">         </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                         </span><span class="c1">-- &#39;NFPA 13 §8.6.2.2.1&#39;, &#39;UBBL s.43(1)&#39;</span>
+<span class="w">    </span><span class="n">jurisdiction</span><span class="w">         </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                         </span><span class="c1">-- MY, US, UK, SG, INTL, NULL=universal</span>
+<span class="w">    </span><span class="n">check_method</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">                </span><span class="c1">-- MIN_DISTANCE, MAX_DISTANCE,</span>
+<span class="w">                                                      </span><span class="c1">-- REQUIRED_HOST, COUNT_PER_AREA,</span>
+<span class="w">                                                      </span><span class="c1">-- MIN_DIMENSION, MAX_COVERAGE, DIMENSION_RANGE</span>
+<span class="w">    </span><span class="n">ifc_class</span><span class="w">            </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                         </span><span class="c1">-- target element (NULL=all in discipline)</span>
+<span class="w">    </span><span class="n">m_product_category_id</span><span class="w"> </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                        </span><span class="c1">-- target category (NULL=all)</span>
+<span class="w">    </span><span class="n">severity</span><span class="w">             </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;WARN&#39;</span><span class="p">,</span><span class="w"> </span><span class="c1">-- BLOCK, WARN</span>
+<span class="w">    </span><span class="n">firing_event</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;BEFORE_PLACE&#39;</span><span class="p">,</span>
+<span class="w">                                                      </span><span class="c1">-- BEFORE_PLACE, AFTER_PLACE, AFTER_COMPLETE</span>
+<span class="w">    </span><span class="n">is_active</span><span class="w">            </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="n">provenance</span><span class="w">           </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                         </span><span class="c1">-- EXTRACTED:UBBL_1984, MINED:TE, RESEARCHED</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">ad_org_id</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">AD_Org</span><span class="p">(</span><span class="n">ad_org_id</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">AD_DocEvent_Rule_Param</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">ad_docevent_rule_param_id</span><span class="w"> </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTOINCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">ad_docevent_rule_id</span><span class="w">       </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">name</span><span class="w">                      </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- max_spacing_mm, min_area_m2, min_count</span>
+<span class="w">    </span><span class="n">value</span><span class="w">                     </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">           </span><span class="c1">-- &#39;4600&#39;, &#39;9.3&#39;, &#39;1&#39;</span>
+<span class="w">    </span><span class="n">value_type</span><span class="w">                </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;NUM&#39;</span><span class="p">,</span><span class="w">      </span><span class="c1">-- NUM, TEXT, BOOL</span>
+<span class="w">    </span><span class="n">condition_expr</span><span class="w">            </span><span class="nb">TEXT</span><span class="p">,</span><span class="w">                    </span><span class="c1">-- &#39;productCategory IN (BD,LR,DR)&#39;</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">ad_docevent_rule_id</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">AD_DocEvent_Rule</span><span class="p">(</span><span class="n">ad_docevent_rule_id</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_docevent_rule_org</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">AD_DocEvent_Rule</span><span class="p">(</span><span class="n">ad_org_id</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">idx_docevent_rule_jurisdiction</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">AD_DocEvent_Rule</span><span class="p">(</span><span class="n">jurisdiction</span><span class="p">);</span>
+</code></pre></div>
+<p><strong>Existing ERP.db <code>ad_val_rule</code> (415 rows):</strong> These are mined DIMENSION_RANGE
+observations from 34 buildings — they are effectively 1st-stage DocEvent rules.
+Migration path: copy qualifying rows into AD_DocEvent_Rule with
+<code>rule_type='DIMENSION'</code>, <code>check_method='DIMENSION_RANGE'</code>,
+<code>provenance='MINED:{building}'</code>.</p>
+<h4 id="ad_val_rule-3rd-stage-validationdb-unchanged">AD_Val_Rule — 3rd Stage (validation.db, unchanged)<a class="headerlink" href="#ad_val_rule-3rd-stage-validationdb-unchanged" title="Permanent link">&para;</a></h4>
+<p>The V001 schema in validation.db stays as-is. Its purpose changes:</p>
+<ul>
+<li><strong>Before (wrong):</strong> Government standards, post-hoc compliance</li>
+<li><strong>After (correct):</strong> User-initiated per-line rule addition/change/waiver</li>
+</ul>
+<p>The user opens an exploded order, sees specific sub-lines, and attaches:
+- <strong>ADD:</strong> "Apply stricter 3000mm spacing to THIS branch" (new rule on line)
+- <strong>CHANGE:</strong> "Override threshold from 4600mm to 3800mm for THIS zone"
+- <strong>WAIVE:</strong> "Acknowledge and accept this deviation" (AD_Val_Rule_Exception)</p>
+<p>This is exactly how iDempiere's AD_Val_Rule works — a lookup filter that
+the user configures on a specific field/line to narrow or adjust what's valid.</p>
 <h3 id="1044-impact-on-the-bom-tree">10.4.4 Impact on the BOM Tree<a class="headerlink" href="#1044-impact-on-the-bom-tree" title="Permanent link">&para;</a></h3>
 <p><strong>Before (wrong):</strong> <code>BUILDING → FLOOR → DISCIPLINE SET → LEAF</code> — discipline
 as tree level with own AABB → 471 tack overflows.</p>
@@ -4844,11 +4968,11 @@ holds BOMs or recipes — only what things look like, not how they assemble.</p>
 that discipline's BOM cascade. BomDrop explodes recursively. At each tier,
 Category = the substitution shelf (designer can swap products within it).</p>
 <p><strong>Processing order (same as iDempiere document processing):</strong>
-1. <strong>DocEvent per Org</strong> — discipline blanket rules apply top-down as walker traverses root→leaf
+1. <strong>DocEvent per Org</strong> — discipline blanket rules + government standards (NFPA 13, UBBL, MS1183) apply top-down as walker traverses root→leaf. Jurisdiction-swappable at this stage.
 2. <strong>ASI resolution</strong> — per-product/per-instance attributes (K-factor, dimensions, capacity)
-3. <strong>AD_Val_Rule</strong> — government standards check the result (NFPA 13, UBBL, MS1183)</p>
-<p>Jurisdiction-swappable: same BOM, same Org practices, different AD_Val_Rule
-set for Malaysian vs US code.</p>
+3. <strong>AD_Val_Rule</strong> — user-initiated per-line override/addition on specific exploded sub-lines</p>
+<p>Jurisdiction-swappable: same BOM, same Org, different AD_DocEvent_Rule set
+for Malaysian (UBBL) vs US (NFPA) code. BOM and ASI don't change.</p>
 <p>For <strong>extracted buildings</strong> (TE, DX), the designer already applied these
 recipes manually. The extraction captured the result. The compiler emits
 at tack offsets (PLACE verb). For <strong>generative buildings</strong>, the compiler
@@ -4877,7 +5001,7 @@ AD_Val_Rule validates the output.</p>
 </tr>
 <tr>
 <td><strong>Specification</strong></td>
-<td>AD_Val_Rule validates result post-hoc (3rd, government)</td>
+<td>AD_DocEvent_Rule validates during walk (1st, blanket + standards). AD_Val_Rule = user override (3rd, per-line)</td>
 </tr>
 </tbody>
 </table>

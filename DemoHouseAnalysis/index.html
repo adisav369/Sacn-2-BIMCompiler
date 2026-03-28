@@ -2463,6 +2463,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3109,6 +3120,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3470,6 +3492,36 @@ parent category, qualified name, and author/version metadata.</p>
 <li>FK roof AABB (13×11m) doesn't cover SH footprint (17×9m) — accepted, not a gate blocker</li>
 <li>FP validateBatch() wiring is the largest remaining gap — Session 3 scope</li>
 </ul>
+<h2 id="recompilation-s100-p85-fleet-audit-2026-03-28">Recompilation (S100-p85 Fleet Audit, 2026-03-28)<a class="headerlink" href="#recompilation-s100-p85-fleet-audit-2026-03-28" title="Permanent link">&para;</a></h2>
+<p><strong>FAIL — MetadataValidator error: <code>no such table: M_Product</code></strong></p>
+<p>DM is a GENERATIVE building — it has no IFC extraction source. The compile DB
+(copied from SH_BOM.db) lacks the <code>M_Product</code> table that <code>MetadataValidator.checkPositiveDimensions()</code>
+queries. This is a pre-existing issue: DM works via the BomDropConfigureTest path (which
+seeds M_Product from the swap scenario) but not via the standard Rosetta Stone pipeline.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Elements</td>
+<td>60 (from BomDropConfigureTest path, not pipeline)</td>
+</tr>
+<tr>
+<td>Pipeline result</td>
+<td>FAIL (MetadataValidator pre-condition)</td>
+</tr>
+<tr>
+<td>C_Order</td>
+<td>0 rows in output.db</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fix needed:</strong> Either (a) seed M_Product in the DM compile DB preparation step,
+or (b) make MetadataValidator skip M_Product checks for GENERATIVE entries.</p>
 
 
 

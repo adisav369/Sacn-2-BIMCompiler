@@ -2226,7 +2226,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Guardrails (session 38 — PROVEN)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recompilation (S100-p85 Fleet Audit, 2026-03-28)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3133,7 +3144,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Guardrails (session 38 — PROVEN)">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recompilation (S100-p85 Fleet Audit, 2026-03-28)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3379,7 +3401,8 @@
 <p><b>82-element German residential with pitched roof — IFC4 ArchiCAD proof.</b> Two-storey house validates European authoring tool interoperability and roof geometry extraction.</p>
 </div>
 <p><strong>Stone:</strong> candidate #4 (German residential — IFC4 ArchiCAD export)
-<strong>Created:</strong> 2026-03-20 (session 38 preparation)</p>
+<strong>Created:</strong> 2026-03-20 (session 38 preparation)
+<strong>Updated:</strong> 2026-03-28 (S100-p85 fleet audit recompilation)</p>
 <hr />
 <h2 id="building-identity">Building Identity<a class="headerlink" href="#building-identity" title="Permanent link">&para;</a></h2>
 <table>
@@ -4061,12 +4084,96 @@ on structural timber — a new verb+material combination.</p>
 </tr>
 <tr>
 <td>Pipeline</td>
-<td>9/10</td>
-<td>g4_tamper only (uncommitted changes)</td>
-<td>PASS*</td>
+<td>10/10</td>
+<td>All gates PASS (S100-p85 fleet audit)</td>
+<td>PASS</td>
 </tr>
 </tbody>
 </table>
+<h2 id="recompilation-s100-p85-fleet-audit-2026-03-28">Recompilation (S100-p85 Fleet Audit, 2026-03-28)<a class="headerlink" href="#recompilation-s100-p85-fleet-audit-2026-03-28" title="Permanent link">&para;</a></h2>
+<p>BOM walk recompilation via <code>CompileStage</code> → <code>writeFromBomWalk()</code>. <strong>7/7 PASS.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Elements</td>
+<td>82</td>
+</tr>
+<tr>
+<td>Root BOM</td>
+<td>BUILDING_FK_STD, origin=(-0.500, -0.500, -0.200)</td>
+</tr>
+<tr>
+<td>Verbs</td>
+<td>82 PLACE, 0 CLUSTER (flat — no factorization)</td>
+</tr>
+<tr>
+<td>Disciplines</td>
+<td>ARC=82 (all architectural)</td>
+</tr>
+<tr>
+<td>LOD binding</td>
+<td>82 LOD, 0 fallback, 0 missing</td>
+</tr>
+<tr>
+<td>H6 WARNs</td>
+<td>38 (MEP schedule vs actual)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LMP Drift Check:</strong> 6 pass, 0 fail, 2 deferred</p>
+<table>
+<thead>
+<tr>
+<th>§</th>
+<th>Check</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§1</td>
+<td>Input=Output</td>
+<td>PASS (82/82)</td>
+</tr>
+<tr>
+<td>§2</td>
+<td>LOD400</td>
+<td>PASS (82/82, 0 warn, 0 fail)</td>
+</tr>
+<tr>
+<td>§3</td>
+<td>Compiler Only</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§6</td>
+<td>Output Path</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§7</td>
+<td>Separate From Input</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§8</td>
+<td>Visual Fidelity</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§4, §9</td>
+<td>Openings, Orientation</td>
+<td>deferred (no proof aggregate)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note:</strong> FK uses 82 PLACE verbs with zero CLUSTER — each element is unique (qty=1). The 36 rafter TILE pattern identified in mined data below has not yet been factorized into verb_ref (deferred to AD_Val_Rule table). All gates improved from session 38 (G4 now PASS with committed code).</p>
 <h3 id="mined-data">Mined Data<a class="headerlink" href="#mined-data" title="Permanent link">&para;</a></h3>
 <p><strong>Rafter TILE pattern (first real TILE candidate):</strong>
 - 42 rafters: 80×5500×3360mm, all identical

@@ -2168,6 +2168,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resolved-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2842,6 +2853,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resolved-issues" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3403,6 +3425,90 @@ the BOM line. Same BOM, different placement = mirror.</p>
 </code></pre></div>
 <p>Then the pairing (per product per storey, min(A,B) = paired,
 excess → shared) is completely independent of the axis.</p>
+<h2 id="recompilation-s100-p85-fleet-audit-2026-03-28">Recompilation (S100-p85 Fleet Audit, 2026-03-28)<a class="headerlink" href="#recompilation-s100-p85-fleet-audit-2026-03-28" title="Permanent link">&para;</a></h2>
+<p>BOM walk recompilation via <code>CompileStage</code> → <code>writeFromBomWalk()</code>. <strong>6/7 PASS, C9 WARN (89 axis mismatches — rank-match artifact).</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Elements</td>
+<td>1099</td>
+</tr>
+<tr>
+<td>Root BOM</td>
+<td>BUILDING_DX_STD, origin=(-0.044, -35.392, -1.250)</td>
+</tr>
+<tr>
+<td>Verbs</td>
+<td>992 PLACE, 17 CLUSTER</td>
+</tr>
+<tr>
+<td>Disciplines</td>
+<td>ARC=1011, STR=2</td>
+</tr>
+<tr>
+<td>LOD binding</td>
+<td>1099 LOD, 0 fallback, 0 missing</td>
+</tr>
+<tr>
+<td>H6 WARNs</td>
+<td>57 (MEP schedule vs actual, 13 rooms)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LMP Drift Check:</strong> 6 pass, 0 fail, 2 deferred</p>
+<table>
+<thead>
+<tr>
+<th>§</th>
+<th>Check</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§1</td>
+<td>Input=Output</td>
+<td>PASS (1099/1099)</td>
+</tr>
+<tr>
+<td>§2</td>
+<td>LOD400</td>
+<td>PASS (1099/1099, 0 warn, 0 fail)</td>
+</tr>
+<tr>
+<td>§3</td>
+<td>Compiler Only</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§6</td>
+<td>Output Path</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§7</td>
+<td>Separate From Input</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§8</td>
+<td>Visual Fidelity</td>
+<td>PASS (geometry OK)</td>
+</tr>
+<tr>
+<td>§4, §9</td>
+<td>Openings, Orientation</td>
+<td>deferred (no proof aggregate)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>C9 WARN (89 mismatches):</strong> Same rank-match artifact documented in §Resolved #5 below. Not a geometry error — position-sorted rank matching shuffles elements near the party wall. Element count is exact (1099=1099).</p>
 <h2 id="resolved-issues">Resolved Issues<a class="headerlink" href="#resolved-issues" title="Permanent link">&para;</a></h2>
 <h3 id="1-element-count-gap-1093-vs-1099-fixed-2026-03-14">1. Element Count Gap: 1093 vs 1099 — FIXED (2026-03-14)<a class="headerlink" href="#1-element-count-gap-1093-vs-1099-fixed-2026-03-14" title="Permanent link">&para;</a></h3>
 <p>Pipeline produced 1093 elements instead of expected 1099. Gap = 6 elements.</p>

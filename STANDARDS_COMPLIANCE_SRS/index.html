@@ -3085,21 +3085,28 @@ Compliance module turns that arithmetic into a proof — one that a regulator
 can verify in minutes, not months.</p>
 <hr />
 <h2 id="1-where-this-sits-in-the-pipeline">§1 Where This Sits in the Pipeline<a class="headerlink" href="#1-where-this-sits-in-the-pipeline" title="Permanent link">&para;</a></h2>
-<p>The pipeline in <code>CompilationPipeline.java</code> runs 9 stages via a static
-<code>List&lt;CompilerStage&gt;</code>. The compliance stage inserts as <strong>Stage 10</strong> — a new
-stage appended after ProveStage (Stage 9), not wedged between existing stages.</p>
-<div class="highlight"><pre><span></span><code>Existing pipeline (CompilationPipeline.STAGES):
+<p>The pipeline in <code>CompilationPipeline.java</code> runs 10 stages via a static
+<code>List&lt;CompilerStage&gt;</code>. ValidationStage (Step 7) runs AD_DocEvent_Rule
+blanket checks including government standards. ComplianceStage appends as
+<strong>Stage 11</strong> — it assembles the proof chain and certificate from
+ValidationStage results, not a separate rule evaluation.</p>
+<div class="highlight"><pre><span></span><code>Current pipeline (CompilationPipeline.STAGES):
   1  MetadataValidator
   2  ParseStage
   3  CompileStage
   4  TemplateStage
   5  WriteStage
   6  VerbStage          — shouldSkip() if no .bimcobol file
-  7  DigestStage
-  8  GeometryStage
-  9  ProveStage
- 10  ComplianceStage    ← NEW — shouldSkip() if no jurisdiction in classify YAML
+  7  ValidationStage    — DocEvent: blanket discipline + govt standards (1st stage)
+  8  DigestStage
+  9  GeometryStage
+ 10  ProveStage
+ 11  ComplianceStage    ← NEW — assembles proof chain from Step 7 results
 </code></pre></div>
+<p><strong>ComplianceStage does NOT re-evaluate rules.</strong> It reads validation results
+from ValidationStage (Step 7), packages them into a signed proof chain
+(compliance_proof.db), and issues a certificate if all mandatory rules PASS.
+It is a <strong>certificate emitter</strong>, not a rule engine.</p>
 <p><strong>Design:</strong> ComplianceStage implements <code>CompilerStage</code> (not "PipelineStage").
 It reads from <code>CompilationContext</code> and the output DB written by prior stages.
 It writes <code>compliance_proof.db</code>. It never mutates the building.</p>

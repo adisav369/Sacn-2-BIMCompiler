@@ -2007,6 +2007,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#guardrails" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2554,6 +2565,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#guardrails" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2603,7 +2625,7 @@
 <p><b>55 elements, one storey — the hello-world proof.</b> Smallest Rosetta Stone validates the full pipeline end-to-end with ARC + STR disciplines.</p>
 </div>
 <p><strong>Stone:</strong> 1 of 3 (smallest — hello-world proof)
-<strong>Updated:</strong> 2026-03-19 (session 24)</p>
+<strong>Updated:</strong> 2026-03-28 (S100-p85 fleet audit recompilation)</p>
 <hr />
 <h2 id="building-identity">Building Identity<a class="headerlink" href="#building-identity" title="Permanent link">&para;</a></h2>
 <table>
@@ -2771,23 +2793,107 @@
 </tr>
 </tbody>
 </table>
+<h2 id="recompilation-s100-p85-fleet-audit-2026-03-28">Recompilation (S100-p85 Fleet Audit, 2026-03-28)<a class="headerlink" href="#recompilation-s100-p85-fleet-audit-2026-03-28" title="Permanent link">&para;</a></h2>
+<p>BOM walk recompilation via <code>CompileStage</code> → <code>writeFromBomWalk()</code>. <strong>7/7 PASS.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Elements</td>
+<td>58 (was 55 — 3 additional from CW discipline)</td>
+</tr>
+<tr>
+<td>Root BOM</td>
+<td>BUILDING_SH_STD, origin=(-9.235, -2.746, -0.470)</td>
+</tr>
+<tr>
+<td>Verbs</td>
+<td>22 PLACE, 4 CLUSTER</td>
+</tr>
+<tr>
+<td>Disciplines</td>
+<td>ARC=24, STR=2, CW=2</td>
+</tr>
+<tr>
+<td>LOD binding</td>
+<td>58 LOD, 0 fallback, 0 missing</td>
+</tr>
+<tr>
+<td>H6 WARNs</td>
+<td>24 (MEP schedule vs actual — no MEP elements yet)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LMP Drift Check:</strong> 6 pass, 0 fail, 2 deferred</p>
+<table>
+<thead>
+<tr>
+<th>§</th>
+<th>Check</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§1</td>
+<td>Input=Output</td>
+<td>PASS (58/58)</td>
+</tr>
+<tr>
+<td>§2</td>
+<td>LOD400</td>
+<td>PASS (58/58 OK, 0 warn, 0 fail)</td>
+</tr>
+<tr>
+<td>§3</td>
+<td>Compiler Only</td>
+<td>PASS (T18/T19/T20 guard)</td>
+</tr>
+<tr>
+<td>§6</td>
+<td>Output Path</td>
+<td>PASS (single path)</td>
+</tr>
+<tr>
+<td>§7</td>
+<td>Separate From Input</td>
+<td>PASS (bom.db=library/_SH_compile.db)</td>
+</tr>
+<tr>
+<td>§8</td>
+<td>Visual Fidelity</td>
+<td>PASS (geometry OK)</td>
+</tr>
+<tr>
+<td>§4</td>
+<td>Openings</td>
+<td>deferred (no proof aggregate)</td>
+</tr>
+<tr>
+<td>§9</td>
+<td>Orientation</td>
+<td>deferred (no proof aggregate)</td>
+</tr>
+</tbody>
+</table>
 <h2 id="guardrails">Guardrails<a class="headerlink" href="#guardrails" title="Permanent link">&para;</a></h2>
 <ol>
 <li><strong>Smallest stone — any regression shows here first.</strong> Run SH before DX/TE.</li>
-<li><strong>EN-BLOC only</strong> — no WALK-THRU yet (W-WALKTHRU-DIFFERS-1 PENDING).</li>
-<li><strong>TACK-FIX applied but untested</strong> — ScopeBomBuilder uses minX() (session 21).
-   Re-run after SRS expedition to verify W-TACK-1 PASS.</li>
-<li><strong>Scope space origins</strong> — room assignments depend on <code>origin_m</code> in YAML.
-   Currently scope spaces populated; verify after any YAML change.</li>
+<li><strong>BOM walk path</strong> — single compilation path for all buildings (S100-p72).</li>
 <li><strong>TRIM verb active</strong> — glass curtain wall panels trimmed to the pitched roof intersection.
-   No TILE/ROUTE/CLUSTER factorization (55 elements are flat, qty=1 each).
-   SH proves the base pipeline + TRIM, not verb compression.</li>
+   SH now uses 22 PLACE + 4 CLUSTER verbs. CLUSTER factorizes windows.</li>
+<li><strong>ProveStage skipped</strong> — no relational data (§4, §9 deferred).</li>
 </ol>
 <h2 id="known-issues">Known Issues<a class="headerlink" href="#known-issues" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Scope space data completeness:</strong> Room scope boxes have origins but furniture
-  SET assignment needs verification after TACK-FIX re-test.</li>
-<li><strong>W-TACK-1:</strong> Advisory (WARN). Will be promoted to FAIL after TACK-FIX testing.</li>
+<li><strong>H6 WARNs (24):</strong> MEP schedule expects products in rooms but no MEP elements compiled yet.
+  These are advisory findings in LOG mode — will resolve when discipline recipes produce elements.</li>
+<li><strong>ProveStage 0ms:</strong> Prover skipped for all non-relational buildings. Not SH-specific.</li>
 </ul>
 <hr />
 <p><em>SH is the hello-world proof. If SH breaks, nothing else can be trusted.

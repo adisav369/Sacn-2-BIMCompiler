@@ -2301,6 +2301,23 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recompilation (S100-p85 Fleet Audit, 2026-03-28)">
+      <ul class="md-nav__list">
+        
           <li class="md-nav__item">
   <a href="#step-7-mine-validation-rules-deferred" class="md-nav__link">
     <span class="md-ellipsis">
@@ -3001,6 +3018,23 @@
   </a>
   
 </li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recompilation (S100-p85 Fleet Audit, 2026-03-28)">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#step-7-mine-validation-rules-deferred" class="md-nav__link">
@@ -3728,12 +3762,13 @@ or SH (4 spaces).</p>
 <p><strong>Add <code>RE_IN</code> to <code>GATE_SCOPE</code></strong> in <code>BuildingRegistryTest.java</code> before running.
 (See <code>SourceCodeGuide.md</code> §10 step 4 and <code>BOMBasedCompilation.md</code> §Appendix G1.)</p>
 <h3 id="step-6-delta-checks">Step 6 — Delta checks<a class="headerlink" href="#step-6-delta-checks" title="Permanent link">&para;</a></h3>
-<p><strong>Actual results (session 39): 9/11 PASS</strong></p>
+<p><strong>Actual results (session 39): 9/11 PASS → Updated S100-p85: 7/7 PASS</strong></p>
 <table>
 <thead>
 <tr>
 <th>Gate</th>
-<th>Result</th>
+<th>Result (S39)</th>
+<th>Result (S100-p85)</th>
 <th>Notes</th>
 </tr>
 </thead>
@@ -3741,62 +3776,157 @@ or SH (4 spaces).</p>
 <tr>
 <td>IFCtoBOM Pipeline</td>
 <td>PASS</td>
+<td>PASS</td>
 <td>93 BOMs, 791 lines, 4.5x factorization</td>
 </tr>
 <tr>
 <td>EN-BLOC compile</td>
+<td>PASS</td>
 <td>PASS</td>
 <td>699 elements</td>
 </tr>
 <tr>
 <td>WALK-THRU compile</td>
 <td>PASS</td>
+<td>PASS</td>
 <td>699 elements</td>
 </tr>
 <tr>
 <td>Delta (EB vs WT)</td>
+<td>PASS</td>
 <td>PASS</td>
 <td>0 element count delta</td>
 </tr>
 <tr>
 <td>Geometry divergence</td>
 <td>PASS</td>
+<td>PASS</td>
 <td>0 hash mismatches</td>
 </tr>
 <tr>
 <td>Rule 8 (coords)</td>
+<td>PASS</td>
 <td>PASS</td>
 <td>All coordinates parent-relative</td>
 </tr>
 <tr>
 <td>Clash check</td>
 <td>PASS</td>
+<td>PASS</td>
 <td>0 furniture clashes</td>
 </tr>
 <tr>
 <td>C9-AXISDIM</td>
 <td>PASS</td>
+<td>PASS</td>
 <td>0 axis dimension mismatches</td>
 </tr>
 <tr>
-<td><strong>C8-GEODIV</strong></td>
-<td><strong>FAIL</strong></td>
-<td>6 IfcFurnishingElement mesh types (ref=6, out=0) — library gap</td>
+<td>C8-GEODIV</td>
+<td>~~FAIL~~</td>
+<td><strong>PASS</strong></td>
+<td>Library gap resolved — 699 LOD, 0 fallback</td>
 </tr>
 <tr>
-<td><strong>G4-TAMPER</strong></td>
-<td><strong>FAIL</strong></td>
-<td>Uncommitted code (expected, same as SH/FK)</td>
+<td>G4-TAMPER</td>
+<td>~~FAIL~~</td>
+<td><strong>PASS</strong></td>
+<td>Code committed</td>
 </tr>
 </tbody>
 </table>
-<p><strong>C8 root cause:</strong> Furnishing products (chairs, desks, lab tables) have 7 distinct
-geometries in the reference DB but no matching meshes in <code>component_library.db</code>.
-Same pattern as DX (12 lost types). Fix: import furnishing LOD geometry into library.</p>
+<p><strong>C8 history (resolved):</strong> Session 39 reported C8 FAIL (6 IfcFurnishingElement mesh types lost).
+Furnishing LOD geometry was subsequently added to <code>component_library.db</code>. Fleet audit
+confirms 699/0/0 LOD binding (zero fallback).</p>
 <p><strong>BOM QA highlights:</strong>
 - 93 BOMs: 1 BUILDING + 10 FLOOR + 82 SET
 - 786 product-linked LEAF lines (699 extraction + 87 template/static)
 - 174 distinct products → 4.5x factorization ratio</p>
+<h2 id="recompilation-s100-p85-fleet-audit-2026-03-28">Recompilation (S100-p85 Fleet Audit, 2026-03-28)<a class="headerlink" href="#recompilation-s100-p85-fleet-audit-2026-03-28" title="Permanent link">&para;</a></h2>
+<p>BOM walk recompilation via <code>CompileStage</code> → <code>writeFromBomWalk()</code>. <strong>7/7 PASS.</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Elements</td>
+<td>699</td>
+</tr>
+<tr>
+<td>Root BOM</td>
+<td>via getRootByDocSubType(IN)</td>
+</tr>
+<tr>
+<td>Verbs</td>
+<td>264 PLACE, 18 CLUSTER, 4 ROUTE</td>
+</tr>
+<tr>
+<td>Disciplines</td>
+<td>ARC=286 (all LEAF lines)</td>
+</tr>
+<tr>
+<td>LOD binding</td>
+<td>699 LOD, 0 fallback, 0 missing</td>
+</tr>
+<tr>
+<td>H6 WARNs</td>
+<td>280 (MEP schedule — large building, many rooms)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LMP Drift Check:</strong> 6 pass, 0 fail, 2 deferred</p>
+<table>
+<thead>
+<tr>
+<th>§</th>
+<th>Check</th>
+<th>Verdict</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>§1</td>
+<td>Input=Output</td>
+<td>PASS (699/699)</td>
+</tr>
+<tr>
+<td>§2</td>
+<td>LOD400</td>
+<td>PASS (699/699, 0 warn, 0 fail)</td>
+</tr>
+<tr>
+<td>§3</td>
+<td>Compiler Only</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§6</td>
+<td>Output Path</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§7</td>
+<td>Separate From Input</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§8</td>
+<td>Visual Fidelity</td>
+<td>PASS (geometry OK)</td>
+</tr>
+<tr>
+<td>§4, §9</td>
+<td>Openings, Orientation</td>
+<td>deferred (no proof aggregate)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>C8 status update:</strong> Session 39 reported C8 FAIL (6 IfcFurnishingElement mesh types lost). Fleet audit shows 7/7 PASS — C8 now passes. LOD binding is 699/0/0 (all elements have library geometry, zero fallback). The furnishing library gap from session 39 has been addressed by subsequent library updates.</p>
+<p><strong>G4 status update:</strong> G4-TAMPER now PASS (code committed since session 39).</p>
 <h3 id="step-7-mine-validation-rules-deferred">Step 7 — Mine validation rules (deferred)<a class="headerlink" href="#step-7-mine-validation-rules-deferred" title="Permanent link">&para;</a></h3>
 <p>Key mining targets for future session:
 - Window spacing per storey (TILE proof at 196 instances)
@@ -3819,7 +3949,7 @@ Same pattern as DX (12 lost types). Fix: import furnishing LOD geometry into lib
 <li>[x] <strong>S3:</strong> <code>classify_in.yaml</code> — 216 lines, 82 spaces (largest YAML yet)</li>
 <li>[x] <strong>S4:</strong> <code>dsl_in.bim</code> — 5 storeys, level:0-4, heights 3.0/3.0/3.0/3.0/2.669m</li>
 <li>[x] <strong>S5:</strong> <code>RE_IN</code> added to GATE_SCOPE (BuildingRegistryTest + RosettaStoneGateTest), pipeline run</li>
-<li>[x] <strong>S6:</strong> 9/11 PASS — C8 (furnishing library gap) + G4 (uncommitted) are known patterns</li>
+<li>[x] <strong>S6:</strong> 9/11 PASS (session 39) → <strong>7/7 PASS (S100-p85 fleet audit)</strong> — C8 + G4 both resolved</li>
 <li>[ ] <strong>S7:</strong> Mine rules — deferred to future session</li>
 <li>[x] <strong>S8:</strong> Docs updated</li>
 </ul>

@@ -2562,13 +2562,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#current-state-2026-03-17" class="md-nav__link">
+  <a href="#current-state-2026-03-28-s100-p84-audit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current State (2026-03-17)
+        Current State (2026-03-28, S100-p84 audit)
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Current State (2026-03-28, S100-p84 audit)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audit-findings-s100-p84-forensic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit Findings — S100-p84 Forensic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -3954,13 +3971,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#current-state-2026-03-17" class="md-nav__link">
+  <a href="#current-state-2026-03-28-s100-p84-audit" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current State (2026-03-17)
+        Current State (2026-03-28, S100-p84 audit)
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Current State (2026-03-28, S100-p84 audit)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#audit-findings-s100-p84-forensic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit Findings — S100-p84 Forensic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -5999,72 +6033,144 @@ form; the compiler generates the transactional records.</p>
        │     BOMQty = grid_cols × grid_rows per formula
        └─ L2: [other disciplines at roof level]
 </code></pre></div>
-<h2 id="current-state-2026-03-17">Current State (2026-03-17)<a class="headerlink" href="#current-state-2026-03-17" title="Permanent link">&para;</a></h2>
+<h2 id="current-state-2026-03-28-s100-p84-audit">Current State (2026-03-28, S100-p84 audit)<a class="headerlink" href="#current-state-2026-03-28-s100-p84-audit" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>TE-5 COMPLETE</strong> — Gates wired, storey fix, surefire property forwarding</li>
-<li><strong>TE_BOM.db</strong> exists — 58 BOMs, 505 products, 48,428 unfactored placement rows</li>
-<li><strong>Output DB produced</strong> — enbloc == walkthru (48,428 elements, 0 delta, Spec 2 fix)</li>
-<li><strong>Active elements:</strong> 48,428 (51,088 - 2,660 REBAR deactivated)</li>
-<li><strong>Gate status:</strong> G1 FAIL (48,212 vs 48,428 expected), G2/G3/G4/G5 PASS</li>
+<li><strong>BOM walk compiler LIVE (S100-p72).</strong> All buildings compile via single BOM walk path.</li>
+<li><strong>Gate: 6/7 PASS, 1 WARN (C9).</strong> G0-COMPILED PASS. G1-G6 PASS. C8 PASS. C9 WARN (60 axis swaps).</li>
+<li><strong>Output:</strong> <code>DAGCompiler/lib/output/sjtii_terminal.db</code> — 48,428 elements, 251MB.</li>
+<li><strong>No cheating detected (S100-p84 forensic audit).</strong> Single write path, no extraction DB access, no TE-conditional logic in compilation, tamper seal INTACT (73 files).</li>
 </ul>
-<p><strong>Storey Distribution (active elements):</strong></p>
+<p><strong>Rosetta Stone (2026-03-28 08:50):</strong> IFCtoBOM QA all PASS. BOM walk 339ms. Write 8.3s. Total pipeline 13s.</p>
+<h3 id="audit-findings-s100-p84-forensic">Audit Findings — S100-p84 Forensic<a class="headerlink" href="#audit-findings-s100-p84-forensic" title="Permanent link">&para;</a></h3>
+<p><strong>What the pipeline log tells us about BOM correction targets:</strong></p>
 <table>
 <thead>
 <tr>
-<th>Storey</th>
-<th>Count</th>
-<th>Disciplines</th>
+<th>Area</th>
+<th>Finding</th>
+<th>Fix Direction</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Foundation</td>
-<td>703</td>
-<td>6</td>
+<td><strong>C9 axis swap (60 walls)</strong></td>
+<td>CLUSTER groups mix wall orientations. Rank-matcher assigns W↔D incorrectly when walls face different directions within the same group.</td>
+<td>Split CLUSTER groups by orientation during IFCtoBOM verb detection.</td>
 </tr>
 <tr>
-<td>Ground Floor</td>
-<td>3,513</td>
-<td>8</td>
+<td><strong>Unfactored elements (1,163)</strong></td>
+<td>342 UPVC pipes, 57 rectangular columns, 44 HDPE pipes, 178 stair components, misc fixtures. IFCtoBOM couldn't find regular spatial patterns.</td>
+<td>Human/AI-assisted pattern recognition → <code>recognised_patterns</code> in TerminalAnalysis → IFCtoBOM crafts by hand. Deterministic, reproducible.</td>
 </tr>
 <tr>
-<td>Level 1</td>
-<td>2,070</td>
-<td>8</td>
+<td><strong>P04 Z-band (87% violations)</strong></td>
+<td>Airport spans Z=-30.6m (foundation) to Z=+22.6m (roof). Default P04 band [-8.5, 10.5] too narrow.</td>
+<td>Per-building P04 calibration or derive from BOM storey Z ranges.</td>
 </tr>
 <tr>
-<td>Level 2</td>
-<td>2,609</td>
-<td>7</td>
+<td><strong>ProveStage 0ms</strong></td>
+<td>Prover skips TE — "no proof aggregate." Zero P01-P28 mathematical proof coverage.</td>
+<td>Wire prover for CO buildings (currently only fires for RE).</td>
 </tr>
 <tr>
-<td>Level 3</td>
-<td>1,798</td>
-<td>7</td>
-</tr>
-<tr>
-<td>Level 4</td>
-<td>2,307</td>
-<td>7</td>
-</tr>
-<tr>
-<td>Roof</td>
-<td>35,428</td>
-<td>7</td>
-</tr>
-<tr>
-<td><strong>Total</strong></td>
-<td><strong>48,428</strong></td>
-<td><strong>8</strong></td>
+<td><strong>H6 "No rooms found"</strong></td>
+<td>TE has no room-level BOM structure. ValidationStage completeness check skipped.</td>
+<td>Expected for CO path. Room-level validation deferred until assembly sub-groupings added (Level 3).</td>
 </tr>
 </tbody>
 </table>
-<ul>
-<li><strong>CO_TE</strong> in GATE_SCOPE of both RosettaStoneGateTest and BuildingRegistryTest</li>
-<li><strong>Terminal_Extracted.db</strong> exists (reference, 51,088 elements)</li>
-<li><strong>G1-COUNT for TE:</strong> exact match (48,428 = 48,428 — rebar + sensors removed as Federation addons)</li>
-<li>Rosetta Stone sameness principle — coordinate match is the geometry guarantee</li>
-</ul>
+<p><strong>Unfactored element breakdown (mining targets):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Count</th>
+<th>Floor(s)</th>
+<th>Opportunity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Pipe Types:jkrME_pipe_UPVC</code></td>
+<td>342</td>
+<td>All</td>
+<td>Biggest win — branching pipe runs, candidate for ROUTE</td>
+</tr>
+<tr>
+<td><code>M_Rectangular Column:600x300mm</code></td>
+<td>57</td>
+<td>Multiple</td>
+<td>Irregular grid — may need human-identified pattern</td>
+</tr>
+<tr>
+<td><code>Pipe Types:jkrME_pipe_HDPE</code></td>
+<td>44</td>
+<td>Multiple</td>
+<td>Drainage pipes — routing networks</td>
+</tr>
+<tr>
+<td>Stair components (various)</td>
+<td>178</td>
+<td>GF-L4, RF</td>
+<td>Inherently irregular — likely stays unfactored</td>
+</tr>
+<tr>
+<td>Walls (various)</td>
+<td>41</td>
+<td>L2, L3, GF</td>
+<td>Small count, low priority</td>
+</tr>
+<tr>
+<td>Furniture/fixtures</td>
+<td>22</td>
+<td>GF, L3</td>
+<td>One-off placements — stays unfactored</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Discipline factorization quality (from IFCtoBOM log):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Floor</th>
+<th>Best factored</th>
+<th>Worst factored</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>RF</td>
+<td>ARC: 33,386 instances from 6 patterns</td>
+<td>SP: 0 patterns, 11 unfactored</td>
+<td>Roof is 69% of building</td>
+</tr>
+<tr>
+<td>GF</td>
+<td>FP: 1,128 from 17 patterns</td>
+<td>ARC: 99 unfactored (check-in hall)</td>
+<td>Most complex floor</td>
+</tr>
+<tr>
+<td>L01</td>
+<td>FP: 1,182 from 7 patterns</td>
+<td>SP: 113 unfactored pipes</td>
+<td>Sanitary plumbing needs ROUTE</td>
+</tr>
+<tr>
+<td>L04</td>
+<td>FP: 1,065 from 6 patterns</td>
+<td>SP: 4 from 1 pattern, 4 unfactored</td>
+<td>Well factored</td>
+</tr>
+<tr>
+<td>FDN</td>
+<td>STR: 427 from 4 patterns</td>
+<td>SP: 128 unfactored pipes</td>
+<td>Underground MEP irregular</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="infrastructure-corruption-precedent">Infrastructure Corruption Precedent<a class="headerlink" href="#infrastructure-corruption-precedent" title="Permanent link">&para;</a></h2>
 <p>The <code>reference/infrastructure/</code> directory contains 9 IFC4X3_ADD2 files (roads, bridges,
@@ -7229,7 +7335,34 @@ the exact signature of the TE passthrough.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Phase 4 — Compile-path enablement (prompt 71):</strong></p>
+<p><strong>Phase 4 — Compile-path enablement: DONE (S100-p71/p72)</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Fix</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8</td>
+<td>Discipline on LEAF lines</td>
+<td><strong>DONE</strong> (S100-p71) — AD_Org resolves from product, not line</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Remove CO passthrough</td>
+<td><strong>DONE</strong> (S100-p72) — BOM walk replaces shouldSkip</td>
+</tr>
+<tr>
+<td>10</td>
+<td>BomDrop for CO buildings</td>
+<td><strong>DONE</strong> (S100-p72) — single path, verb-dispatched</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Phase 5 — iDempiere PK conformance (prompt 86):</strong></p>
 <table>
 <thead>
 <tr>
@@ -7240,25 +7373,39 @@ the exact signature of the TE passthrough.</p>
 </thead>
 <tbody>
 <tr>
-<td>8</td>
-<td>Discipline on LEAF lines</td>
-<td>Add discipline column to m_bom_line, or derive via ad_ifc_class_map. Current <code>role</code> = IFC class, not discipline code</td>
+<td>11</td>
+<td>m_bom <code>bom_id TEXT</code> PK → <code>M_BOM_ID INTEGER</code> PK</td>
+<td>Phase A: 65 Java refs. <code>bom_id</code> → <code>Value</code> column. FKs on INTEGER.</td>
 </tr>
 <tr>
-<td>9</td>
-<td>Remove CO passthrough in CompilationPipeline</td>
-<td>Delete the <code>if ("CO".equals(...))</code> empty BuildingSpec block</td>
+<td>12</td>
+<td>M_Product_Category TEXT PK → INTEGER PK</td>
+<td>Phase B: 135 Java refs. Category codes → <code>Value</code> column.</td>
 </tr>
 <tr>
-<td>10</td>
-<td>BomDrop for CO buildings</td>
-<td>Wire BomDropper to produce C_Order/C_OrderLine from flat BOM</td>
+<td>13</td>
+<td>13 AD tables TEXT PKs → INTEGER PKs</td>
+<td>Phase C: Low impact. Composite PKs get surrogate <code>_ID</code>.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>After Phase 4:</strong> TE BOM → BomDrop → C_OrderLine with disciplines →
-compile produces real output.db → G0-COMPILED PASS → G1-G6 compare
-compiled vs reference → TE gates become real.</p>
+<p><strong>Why Phase 5 matters for TE:</strong> TE's 48,428 elements traverse 8 BOMs
+via <code>bom_id</code> TEXT. Every BOMWalker.walk(), BomDropper.explode(), and
+PlacementCollectorVisitor.onSubAssembly() passes <code>bom_id</code> as String.
+Migrating to INTEGER FK will:
+- Flush hidden string-concatenation assumptions in walker code
+- Expose hardcoded category codes (<code>"RE"</code>, <code>"CO"</code>) that should be Value lookups
+- Verify IFCtoBOM DDL matches the new schema (re-extraction test)
+- Prove the pipeline is PK-type-agnostic (same output, different key type)</p>
+<p><strong>Verification exercise:</strong> After each phase of prompt 86, run TE through
+the full pipeline. The FINE logs (prompt 85) will show whether INTEGER PKs
+flow correctly through BomDrop → BOM walk → WriteStage. SH is the canary
+(7/7 must hold). TE is the stress test (48K elements, 8 disciplines).
+Any TEXT/INTEGER mismatch will surface as a gate failure or exception in
+the FINE log — that's the point.</p>
+<p><strong>After Phase 5:</strong> All tables follow iDempiere convention. <code>_ID</code> is opaque
+INTEGER (never shown to users). <code>Value</code> is the search key. <code>Name</code> is the
+display name. FKs reference <code>_ID</code>. DB integrity enforced at the schema level.</p>
 <hr />
 <p><strong>Cross-references:</strong>
 <a href="../BOMBasedCompilation/"><code>BBC.md</code></a> §1.8 |
