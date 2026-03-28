@@ -1505,10 +1505,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#43-ad_val_rule-seeding-validationdb-v001-schema" class="md-nav__link">
+  <a href="#43-ad_val_rule-seeding-erpdb-v001-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §4.3 AD_Val_Rule Seeding (validation.db — V001 schema)
+        §4.3 AD_Val_Rule Seeding (ERP.db — V001 schema)
       
     </span>
   </a>
@@ -2815,10 +2815,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#43-ad_val_rule-seeding-validationdb-v001-schema" class="md-nav__link">
+  <a href="#43-ad_val_rule-seeding-erpdb-v001-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §4.3 AD_Val_Rule Seeding (validation.db — V001 schema)
+        §4.3 AD_Val_Rule Seeding (ERP.db — V001 schema)
       
     </span>
   </a>
@@ -3113,7 +3113,7 @@ It writes <code>compliance_proof.db</code>. It never mutates the building.</p>
 <div class="highlight"><pre><span></span><code>INPUT:  ctx.proofReport()           — from ProveStage (Stage 9)
         ctx.digestReport()          — from DigestStage (Stage 7)
         classify.yaml → jurisdiction, code_edition
-        validation.db → AD_Val_Rule (COMPLIANCE rules, jurisdiction-scoped)
+        ERP.db → AD_Val_Rule (COMPLIANCE rules, jurisdiction-scoped)
                 ↓
 Step A: LOAD — query AD_Val_Rule WHERE rule_type = &#39;COMPLIANCE&#39;
               AND jurisdiction = ctx.jurisdiction
@@ -3251,7 +3251,7 @@ exactly this compilation.</p>
 <span class="w">    </span><span class="n">sc_proof_line_id</span><span class="w">  </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="p">,</span>
 <span class="w">    </span><span class="n">sc_run_id</span><span class="w">         </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">SC_Run</span><span class="p">(</span><span class="n">sc_run_id</span><span class="p">),</span>
 <span class="w">    </span><span class="n">space_id</span><span class="w">          </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">         </span><span class="c1">-- links to output.db element GUID</span>
-<span class="w">    </span><span class="n">ad_val_rule_id</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- links to validation.db AD_Val_Rule</span>
+<span class="w">    </span><span class="n">ad_val_rule_id</span><span class="w">    </span><span class="nb">INTEGER</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">       </span><span class="c1">-- links to ERP.db AD_Val_Rule</span>
 <span class="w">    </span><span class="n">rule_code</span><span class="w">         </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- e.g. &quot;UBBL-S43-1&quot;</span>
 <span class="w">    </span><span class="n">statute_ref</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- e.g. &quot;UBBL 1984 s.43(1)&quot;</span>
 <span class="w">    </span><span class="n">clause_text</span><span class="w">       </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span><span class="w">          </span><span class="c1">-- verbatim clause (≤200 chars)</span>
@@ -3321,7 +3321,7 @@ These are optional — if absent, <code>ComplianceStage.shouldSkip()</code> retu
 <span class="w">    </span><span class="nt">Roof</span><span class="p">:</span><span class="w">         </span><span class="p p-Indicator">{</span><span class="nt"> code</span><span class="p">:</span><span class="w"> </span><span class="nv">ROOF</span><span class="p p-Indicator">,</span><span class="nt"> bom_category</span><span class="p">:</span><span class="w"> </span><span class="nv">RF</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">ROOF</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">1030</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="c1"># ... rest of classify unchanged</span>
 </code></pre></div>
-<h3 id="43-ad_val_rule-seeding-validationdb-v001-schema">§4.3 AD_Val_Rule Seeding (validation.db — V001 schema)<a class="headerlink" href="#43-ad_val_rule-seeding-validationdb-v001-schema" title="Permanent link">&para;</a></h3>
+<h3 id="43-ad_val_rule-seeding-erpdb-v001-schema">§4.3 AD_Val_Rule Seeding (ERP.db — V001 schema)<a class="headerlink" href="#43-ad_val_rule-seeding-erpdb-v001-schema" title="Permanent link">&para;</a></h3>
 <p>Compliance rules are seeded as <code>rule_type = 'COMPLIANCE'</code> rows in the existing
 <code>AD_Val_Rule</code> table. No schema ALTER needed — the V001 schema already has
 <code>standard_ref</code>, <code>jurisdiction</code>, and <code>provenance</code> columns. Thresholds go in

@@ -4162,7 +4162,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 </tr>
 </tbody>
 </table>
-<p>Three-step process: (1) Query output DB for patterns, (2) Write append-only <code>migration/DV00N_*.sql</code>, (3) Apply to <code>validation.db</code>.</p>
+<p>Three-step process: (1) Query output DB for patterns, (2) Write append-only <code>migration/DV00N_*.sql</code>, (3) Apply to <code>ERP.db</code>.</p>
 <blockquote>
 <p><strong>Mining methodology:</strong> <a href="../TE_MINING_RESULTS/"><code>TE_MINING_RESULTS.md</code></a> | Bridge rules → <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> §7.1</p>
 </blockquote>
@@ -4314,7 +4314,7 @@ ADD LINE TO SY_MY_ROOM CHILD sofa_001 ROLE FURNITURE SEQ 10 DX 0.5 DY 0.3
 FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </code></pre></div>
 <p>Core interfaces: <code>Verb&lt;T&gt;</code> (execute → <code>VerbResult&lt;T&gt;</code>), <code>VerbContext</code> (3 connections: bom/component/output), <code>VerbRegistry</code> (longest-prefix dispatch).</p>
-<p>5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 75 verbs, 202 witnesses.</p>
+<p>5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 76 verbs, 202 witnesses.</p>
 <blockquote>
 <p><strong>Full verb catalog, grammar, witnesses:</strong> <a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a> §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)</p>
 </blockquote>
@@ -4703,6 +4703,10 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 <td>M_Product master catalog</td>
 </tr>
 <tr>
+<td><code>BomWriter</code></td>
+<td>Single write path for m_bom + m_bom_line (all builders delegate here)</td>
+</tr>
+<tr>
 <td><code>VerbFactorizer</code></td>
 <td>Reusable verb compression: group→detect→factored/unfactored LEAF writes</td>
 </tr>
@@ -4782,7 +4786,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </tr>
 <tr>
 <td><code>VerbRegistry</code></td>
-<td>Longest-prefix dispatch (75 verbs)</td>
+<td>Longest-prefix dispatch (76 verbs)</td>
 </tr>
 <tr>
 <td><code>VerbContext</code></td>
@@ -4835,7 +4839,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </tr>
 <tr>
 <td>Validation rules</td>
-<td><code>library/validation.db</code></td>
+<td><code>library/ERP.db</code></td>
 <td>AD_Val_Rule + AD_Val_Rule_Param</td>
 </tr>
 <tr>

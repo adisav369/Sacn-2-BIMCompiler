@@ -3917,7 +3917,7 @@ BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.</p>
 <code>{prefix}_BOM</code> (pipeline populates from named BOM), <code>DocEvent</code> (validation
 handles it), or absent (discipline does not exist). No ambiguity, no inference.</p>
 <p><strong>Rules are DATA, not code.</strong> The engine evaluates AD_Val_Rule rows loaded from
-validation.db. Adding a new rule = SQL INSERT. Adding a new jurisdiction = SQL
+ERP.db. Adding a new rule = SQL INSERT. Adding a new jurisdiction = SQL
 INSERT. The Java code changes only when the ENGINE changes, not when RULES change.</p>
 <p><strong>Terminal as oracle:</strong> The SJTII_Terminal (48,428 elements, 8 disciplines, 7+ storeys)
 is the primary rule source. Every mined rule must pass Non-Disturbance against
@@ -4120,7 +4120,7 @@ YAML.FP absent          →  No FP in this building. Nothing fires for FP.
   │   └── IF value = DocEvent:
   │       │  DocEvent engine handles it (concern #2)
   │       │
-  │       ├── SELECT AD_Val_Rule FROM validation.db
+  │       ├── SELECT AD_Val_Rule FROM ERP.db
   │       │   WHERE discipline = ? AND jurisdiction IN (?, &#39;INTL&#39;)
   │       │
   │       ├── Read mined rule params:
@@ -4337,7 +4337,7 @@ world coordinates. This is a simple angle sum (2D), not quaternion composition.<
 <tr>
 <td>processIt</td>
 <td>DR→IP</td>
-<td>validation.db</td>
+<td>ERP.db</td>
 <td><em>(read-only)</em></td>
 <td>AD_Val_Rule for <code>DocEvent</code> disciplines + shared rules</td>
 </tr>
@@ -4761,8 +4761,8 @@ practice from a real building — not a specific code. They serve as:</p>
    Terminal it was mined from. See <code>TE_MINING_RESULTS.md</code>.</li>
 </ol>
 <h3 id="111-architectural-simplification-work_outputdb-removal-s61">1.11 Architectural Simplification: work_output.db Removal (S61)<a class="headerlink" href="#111-architectural-simplification-work_outputdb-removal-s61" title="Permanent link">&para;</a></h3>
-<p><strong>Decision:</strong> <code>work_output.db</code> is removed from the architecture. The 5-DB split
-becomes a <strong>4-DB split</strong>: component_library / BOM / output / validation.</p>
+<p><strong>Decision:</strong> <code>work_output.db</code> is removed from the architecture. The result is a
+<strong>4-DB split</strong>: component_library / ERP (incl. compliance rules) / BOM / output.</p>
 <p><strong>Rationale:</strong> The BOM is read-only (EntityType D). The user cannot edit it — only
 promote it as a new BOM (approveIt). Save = Blender native save (.blend file).
 The viewport (Bonsai/Blender) holds all visual state. There is no intermediate
@@ -4898,7 +4898,7 @@ rename before each CompleteIt to version their builds (e.g. <code>output/demo_v2
 </tr>
 <tr>
 <td>AD_Val_Rule schema</td>
-<td>DONE — in validation.db</td>
+<td>DONE — in ERP.db</td>
 <td><code>migration/V002_validation_schema.sql</code></td>
 </tr>
 <tr>
@@ -4944,10 +4944,10 @@ rename before each CompleteIt to version their builds (e.g. <code>output/demo_v2
 </tbody>
 </table>
 <blockquote>
-<p><strong>Note: Two separate rule ecosystems.</strong> validation.db (63 rules,
+<p><strong>Note: Two separate rule ecosystems.</strong> ERP.db (63 rules,
 jurisdiction/discipline/rule_type schema) and ERP.db (415 rules,
 provenance/ifc_class/check_method schema) are separate ecosystems with
-incompatible schemas. validation.db drives the DocEvent engine (this spec).
+incompatible schemas. ERP.db drives the DocEvent engine (this spec).
 ERP.db drives the extraction pipeline (see ConstructionAsERP.md).</p>
 </blockquote>
 <hr />
@@ -5079,7 +5079,7 @@ richer <code>check_method</code> params that require dedicated evaluation logic.
 <tbody>
 <tr>
 <td>DV-F-13</td>
-<td><strong>ClashDetector class.</strong> Reads AD_Clash_Rule from validation.db, evaluates element pairs across discipline boundaries on the same storey.</td>
+<td><strong>ClashDetector class.</strong> Reads AD_Clash_Rule from ERP.db, evaluates element pairs across discipline boundaries on the same storey.</td>
 <td><code>ClashDetector.checkFloor(Connection bomConn, Connection valConn, String storeyId)</code> returns <code>List&lt;ClashResult&gt;</code>. Uses R-tree (<code>elements_rtree</code>) to narrow candidates, then applies AD_Clash_Rule filters.</td>
 <td>P1</td>
 </tr>
@@ -5304,7 +5304,7 @@ Groups spanning 3+ storeys with &lt;50mm drift = MEP risers.</p>
 <tbody>
 <tr>
 <td>DV-E-01</td>
-<td>validation.db missing or unreadable</td>
+<td>ERP.db missing or unreadable</td>
 <td><code>activate()</code> throws with clear message. BIM Designer shows "Validation rules unavailable" in ambient strip. Compilation proceeds without validation (DISABLED mode).</td>
 <td>P0</td>
 </tr>

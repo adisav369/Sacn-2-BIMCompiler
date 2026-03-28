@@ -1090,10 +1090,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#71-fix-1-rule-803-elec-spacing-insert-into-validationdb" class="md-nav__link">
+  <a href="#71-fix-1-rule-803-elec-spacing-insert-into-erpdb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into validation.db
+        7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db
       
     </span>
   </a>
@@ -3072,10 +3072,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#71-fix-1-rule-803-elec-spacing-insert-into-validationdb" class="md-nav__link">
+  <a href="#71-fix-1-rule-803-elec-spacing-insert-into-erpdb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into validation.db
+        7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db
       
     </span>
   </a>
@@ -3349,7 +3349,7 @@ and low-density zones (service areas) that skew the range.</p>
 <div class="highlight"><pre><span></span><code>INPUT:
   - TE_BOM.db (extracted discipline BOMs — oracle)
   - TE reference DB (elements_meta + element_transforms — positions)
-  - validation.db (AD_Val_Rule — mined rules, the basis for DocEvent)
+  - ERP.db (AD_Val_Rule — mined rules, the basis for DocEvent)
   - ERP.db (ad_space_type_mep_bom, ad_fp_coverage, ad_element_mep)
   - component_library.db (M_Product dimensions, LOD geometry)
 
@@ -3641,7 +3641,7 @@ but duct routing is topology-dependent. Calibrate diffuser count only.</p>
 </code></pre></div>
 <h3 id="52-dao-calibrationdaojava">5.2 DAO: <code>CalibrationDAO.java</code><a class="headerlink" href="#52-dao-calibrationdaojava" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="cm">/**</span>
-<span class="cm"> * DAO for calibration queries — reads from TE reference DB + validation.db.</span>
+<span class="cm"> * DAO for calibration queries — reads from TE reference DB + ERP.db.</span>
 <span class="cm"> *</span>
 <span class="cm"> * Two concerns:</span>
 <span class="cm"> *   1. Oracle extraction: query TE for ground truth metrics</span>
@@ -3712,7 +3712,7 @@ but duct routing is topology-dependent. Calibrate diffuser count only.</p>
 <td><strong>Phase 1</strong> (now)</td>
 <td>Density + NN spacing comparison, wide bands [0.5, 2.0]</td>
 <td>DRIFT acceptable</td>
-<td>TE reference DB, validation.db, TE_BOM.db</td>
+<td>TE reference DB, ERP.db, TE_BOM.db</td>
 </tr>
 <tr>
 <td><strong>Phase 2</strong></td>
@@ -3735,16 +3735,16 @@ Phase 3 proves the PLACEMENT ENGINE produces correct positions.</p>
 <h2 id="7-seed-data-gaps-3-fixes-session-33-analysis">7. Seed Data Gaps — 3 Fixes (session 33 analysis)<a class="headerlink" href="#7-seed-data-gaps-3-fixes-session-33-analysis" title="Permanent link">&para;</a></h2>
 <p>Three seed data issues were identified in session 33 during ERP.db
 creation. Each fix is scoped, testable, and does NOT touch existing passing tests.</p>
-<h3 id="71-fix-1-rule-803-elec-spacing-insert-into-validationdb">7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into validation.db<a class="headerlink" href="#71-fix-1-rule-803-elec-spacing-insert-into-validationdb" title="Permanent link">&para;</a></h3>
+<h3 id="71-fix-1-rule-803-elec-spacing-insert-into-erpdb">7.1 Fix 1: Rule 803 (ELEC spacing) — INSERT into ERP.db<a class="headerlink" href="#71-fix-1-rule-803-elec-spacing-insert-into-erpdb" title="Permanent link">&para;</a></h3>
 <p><strong>Problem:</strong> CalibrationTest §4.2 references <code>AD_Val_Rule 803</code> for ELEC spacing
-(<code>typical_spacing=3000mm, max=5000mm</code>), but no such rule exists in validation.db.
+(<code>typical_spacing=3000mm, max=5000mm</code>), but no such rule exists in ERP.db.
 DocEvent pitch computation returns 0 → UNCALIBRATED for ELEC discipline.</p>
 <p><strong>Fix:</strong> INSERT one AD_Val_Rule row (id=803, name='IES_LIGHT_SPACING',
 discipline='ELC', rule_type='COMPLIANCE') + AD_Val_Rule_Param rows
 (typical_spacing_mm=3000, max_spacing_mm=5000).</p>
-<p><strong>Impact:</strong> validation.db only (append). No Java changes. No existing test
+<p><strong>Impact:</strong> ERP.db only (append). No Java changes. No existing test
 references rule 803 — CalibrationTest is currently advisory for ELEC.</p>
-<p><strong>Migration:</strong> <code>V007_elec_spacing_rule.sql</code> (append-only, validation.db).</p>
+<p><strong>Migration:</strong> <code>V007_elec_spacing_rule.sql</code> (append-only, ERP.db).</p>
 <h3 id="72-fix-2-light-per_area_normal-update-in-erpdb">7.2 Fix 2: LIGHT per_area_normal — UPDATE in ERP.db<a class="headerlink" href="#72-fix-2-light-per_area_normal-update-in-erpdb" title="Permanent link">&para;</a></h3>
 <p><strong>Problem:</strong> <code>ad_space_type_mep_bom</code> has <code>per_area_normal=0.0</code> for LIGHT across
 most space types. DocEvent computes qty=0 → density=0 → UNCALIBRATED.
@@ -3782,7 +3782,7 @@ result flips to UNCALIBRATED.</p>
 <tbody>
 <tr>
 <td>Rule 803</td>
-<td>validation.db</td>
+<td>ERP.db</td>
 <td>V007 migration</td>
 <td>None reference 803</td>
 <td>Zero</td>

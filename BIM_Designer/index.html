@@ -5242,7 +5242,7 @@ multiplication). Three rules, one recompile, correct output.</p>
 <tbody>
 <tr>
 <td><strong>Pattern rules</strong></td>
-<td><code>validation.db</code> → <code>ad_pattern_rule</code></td>
+<td><code>ERP.db</code> → <code>ad_pattern_rule</code></td>
 <td>GENERATIVE</td>
 <td>"Window every 2500mm" — designer intent</td>
 </tr>
@@ -5451,7 +5451,7 @@ adapter, not a compiler.</p>
 <tr>
 <td><strong>Verb dispatch</strong></td>
 <td><code>VerbRegistry.createDefault().dispatch(ctx, line)</code></td>
-<td>75 verbs via longest-prefix match. GUI emits verb lines, server dispatches them</td>
+<td>76 verbs via longest-prefix match. GUI emits verb lines, server dispatches them</td>
 </tr>
 <tr>
 <td><strong>Product catalog</strong></td>
@@ -5964,7 +5964,7 @@ Real projects would use the full component_library.db catalog.</p>
      Absorbed into DocValidate.md: AD_Validation_Result schema (§3.1),
      AD_Val_Rule_Exception schema (§3.1), BomValidator integration (§4),
      ProjectContext/jurisdiction on C_Order (§4), R-tree performance (§4),
-     provenance column (added to validation.db migration V001).
+     provenance column (added to ERP.db migration V001).
 
      Written off: R-tree already exists (elements_rtree in BuildingWriter),
      DX element count wrong (1,099 not 1.1M), JavaScript/HTTP API doesn't
@@ -6308,7 +6308,7 @@ same <code>BIM_PT_tabs</code> parent. Proposed slot: between #2 and #3.</p>
 </tr>
 <tr>
 <td>Validation rules</td>
-<td>validation.db + PlacementValidator (bim-compiler)</td>
+<td>ERP.db + PlacementValidator (bim-compiler)</td>
 <td>DocValidate OSGi component</td>
 </tr>
 <tr>

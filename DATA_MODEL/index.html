@@ -1199,15 +1199,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-ad-data-placement-the-5-db-architecture" class="md-nav__link">
+  <a href="#6-ad-data-placement-the-4-db-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. AD Data Placement — The 5-DB Architecture
+        6. AD Data Placement — The 4-DB Architecture
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="6. AD Data Placement — The 5-DB Architecture">
+    <nav class="md-nav" aria-label="6. AD Data Placement — The 4-DB Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -1233,10 +1233,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#63-the-5-db-split" class="md-nav__link">
+  <a href="#63-the-4-db-split" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.3 The 5-DB Split
+        6.3 The 4-DB Split
       
     </span>
   </a>
@@ -3093,15 +3093,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-ad-data-placement-the-5-db-architecture" class="md-nav__link">
+  <a href="#6-ad-data-placement-the-4-db-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. AD Data Placement — The 5-DB Architecture
+        6. AD Data Placement — The 4-DB Architecture
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="6. AD Data Placement — The 5-DB Architecture">
+    <nav class="md-nav" aria-label="6. AD Data Placement — The 4-DB Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3127,10 +3127,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#63-the-5-db-split" class="md-nav__link">
+  <a href="#63-the-4-db-split" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6.3 The 5-DB Split
+        6.3 The 4-DB Split
       
     </span>
   </a>
@@ -3234,7 +3234,7 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>5 databases, 120+ tables, zero ambiguity.</b> Every element traces from a library product through a BOM recipe to a placed instance. The split is deliberate — catalog, compliance rules, discipline metadata, recipe, and output never share a database, so each concern scales independently.</p>
+<p><b>4 databases, 120+ tables, zero ambiguity.</b> Every element traces from a library product through a BOM recipe to a placed instance. The split is deliberate — catalog, ERP (discipline metadata + compliance), recipe, and output never share a database, so each concern scales independently.</p>
 </div>
 <p><strong>This specification governs the creation of <code>{PREFIX}_BOM.db</code> dictionaries.</strong>
 Each building has its own BOM dictionary (<code>SH_BOM.db</code>, <code>DX_BOM.db</code>), reproduced from fresh
@@ -3245,10 +3245,9 @@ No hand-editing. No patching. Code produces data.</p>
 - <code>BOMBasedCompilation.md</code> §4 Rule 8 (Cheating Maxim): dx/dy/dz MUST be parent-relative, NEVER world-space centroids
 - <code>BOMBasedCompilation.md</code> §4: Tack convention — dx/dy/dz = where child's LBD sits in parent (the geometric foundation)</p>
 <p><strong>Updated:</strong> 2026-03-26
-<strong>Principle:</strong> 5-DB split.
+<strong>Principle:</strong> 4-DB split (validation.db merged into ERP.db).
 - <code>component_library.db</code> = product LOD catalog (M_Product, geometry, orientation)
-- <code>ERP.db</code> = discipline metadata (schedules, types, placement rules, alias cascade, mined dimension rules)
-- <code>validation.db</code> = compliance rules + verdicts (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — see <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>
+- <code>ERP.db</code> = discipline metadata + compliance rules (schedules, types, placement rules, AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — see <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>
 - <code>{PREFIX}_BOM.db</code> = per-building spatial arrangement (m_bom + m_bom_line with dx/dy/dz)
 - <code>output.db</code> = transactional (fresh each compile)</p>
 <p>At compile time, <code>run_RosettaStones.sh</code> creates <code>library/_SH_compile.db</code> (or <code>_DX_compile.db</code>) — a temp copy of <code>{PREFIX}_BOM.db</code> enriched with shared schema + C_DocType. Java reads via <code>-Dbom.db=library/_SH_compile.db</code>. <strong>Note:</strong> M_Product is transitionally copied to BOM DB for BOMWalker; target: read from library only.</p>
@@ -4139,7 +4138,7 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 </tbody>
 </table>
 <hr />
-<h2 id="6-ad-data-placement-the-5-db-architecture">6. AD Data Placement — The 5-DB Architecture<a class="headerlink" href="#6-ad-data-placement-the-5-db-architecture" title="Permanent link">&para;</a></h2>
+<h2 id="6-ad-data-placement-the-4-db-architecture">6. AD Data Placement — The 4-DB Architecture<a class="headerlink" href="#6-ad-data-placement-the-4-db-architecture" title="Permanent link">&para;</a></h2>
 <h3 id="61-current-state-where-ad-tables-live">6.1 Current State — Where AD Tables Live<a class="headerlink" href="#61-current-state-where-ad-tables-live" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4182,10 +4181,10 @@ I_Element_Extraction × I_Geometry_Map. INSERT OR IGNORE. Never manually migrate
 </tr>
 <tr>
 <td><strong>AD_Val_Rule + Param</strong> (compliance)</td>
+<td style="text-align: center;">63 + authored</td>
 <td style="text-align: center;">—</td>
 <td style="text-align: center;">—</td>
-<td style="text-align: center;">—</td>
-<td>Compliance rules (in validation.db, not shown)</td>
+<td>Compliance rules (merged into ERP.db)</td>
 </tr>
 <tr>
 <td><strong>C_DocType</strong></td>
@@ -4231,14 +4230,14 @@ identical IFC class mappings. Only one authoritative copy is needed.</p>
 C_DocType is shared system configuration — it defines all document types centrally. Currently
 written by <code>IFCtoBOMPipeline</code> per-building; at compile time, <code>schema_snapshot_bom.sql</code> enriches
 the compile DB with additional C_DocType rows.</p>
-<h3 id="63-the-5-db-split">6.3 The 5-DB Split<a class="headerlink" href="#63-the-5-db-split" title="Permanent link">&para;</a></h3>
+<h3 id="63-the-4-db-split">6.3 The 4-DB Split<a class="headerlink" href="#63-the-4-db-split" title="Permanent link">&para;</a></h3>
 <p>In iDempiere, AD tables (Application Dictionary) are shared across all organisations.
-They live once, centrally — not per-product or per-order. ERP.db and validation.db
-serve this role for different concerns (renamed from disc_validation.db in S76).</p>
-<p><strong>Note:</strong> ERP.db and validation.db both contain <code>ad_val_rule</code> / <code>ad_val_rule_param</code>
-tables with <strong>incompatible schemas</strong> — ERP.db holds mined dimension ranges (415 rules),
-validation.db holds authored compliance rules (63 rules). Same name, different purpose.
-See prompt 29 study for merge assessment (verdict: do not merge).</p>
+They live once, centrally — not per-product or per-order. ERP.db serves this role
+(renamed from disc_validation.db in S76; validation.db merged in — all compliance
+rules now live in ERP.db alongside mined dimension rules).</p>
+<p><strong>Note:</strong> ERP.db contains two sets of <code>ad_val_rule</code> / <code>ad_val_rule_param</code> rows with
+different provenance — mined dimension ranges (415 rules) and authored compliance
+rules (63 rules). Same table, different provenance. Distinguished by source column.</p>
 <table>
 <thead>
 <tr>
@@ -4251,12 +4250,7 @@ See prompt 29 study for merge assessment (verdict: do not merge).</p>
 <tr>
 <td><strong>ERP shared</strong></td>
 <td><code>ERP.db</code></td>
-<td>AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule (mined), all ad_* discipline metadata</td>
-</tr>
-<tr>
-<td><strong>Compliance</strong></td>
-<td><code>validation.db</code></td>
-<td>AD_Val_Rule (compliance), AD_Clash_Rule, AD_Occupancy_Class, AD_Validation_Result, ad_pattern_rule</td>
+<td>AD_Org, M_Product_Category, C_DocType (master), AD_SysConfig (schema versions), ad_val_rule (mined + compliance), AD_Clash_Rule, AD_Occupancy_Class, all ad_* discipline metadata</td>
 </tr>
 <tr>
 <td><strong>Product catalog</strong></td>

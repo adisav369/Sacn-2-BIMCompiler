@@ -966,6 +966,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#219-bom-write-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1.9 BOM Write Path
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3192,6 +3203,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#219-bom-write-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1.9 BOM Write Path
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4106,6 +4128,11 @@ data flow, and fidelity details.</p>
 <li>Does not validate against regulations (see <code>DocValidate.md</code>)</li>
 <li>Does not fill missing pipes or correct gaps (WYSIWYG — DX corners without connecting pipes are preserved as-is)</li>
 </ul>
+<h3 id="219-bom-write-path">2.1.9 BOM Write Path<a class="headerlink" href="#219-bom-write-path" title="Permanent link">&para;</a></h3>
+<p><strong>Problem:</strong> 18 INSERT statements (7 <code>m_bom</code>, 11 <code>m_bom_line</code>) spread across 6 builder files, each with a different column subset. DDL changes require N-file edits — P92 (AD_Org_ID) proved the drift.</p>
+<p><strong>Solution:</strong> <code>BomWriter</code> — a static utility (same pattern as <code>ProductRegistrar</code>) with two core methods: <code>insertBom(conn, BomRow)</code> and <code>insertBomLine(conn, BomLineRow)</code>. Builder-pattern row objects (<code>BomRow</code>, <code>BomLineRow</code>) carry all columns with defaults so callers only set the fields they need.</p>
+<p><strong>Invariant:</strong> Every <code>m_bom</code> and <code>m_bom_line</code> write in IFCtoBOM goes through <code>BomWriter</code>. No builder owns raw SQL for these tables.</p>
+<p><strong>Column truth:</strong> <code>BomRow</code> mirrors the <code>m_bom</code> DDL in <code>IFCtoBOMPipeline.java</code>. <code>BomLineRow</code> mirrors the <code>m_bom_line</code> DDL. Adding a column = add to DDL + add to row class + add to <code>BomWriter</code> bind list. One place, not six.</p>
 <hr />
 <h2 id="22-bom-compilation-model-recursive-placement">2.2 BOM Compilation Model — Recursive Placement<a class="headerlink" href="#22-bom-compilation-model-recursive-placement" title="Permanent link">&para;</a></h2>
 <h3 id="221-the-rule">2.2.1 The Rule<a class="headerlink" href="#221-the-rule" title="Permanent link">&para;</a></h3>
@@ -5279,7 +5306,7 @@ offsets per §4) and accumulated through the BOM chain into world coordinates.
 C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).</p>
 <hr />
 <h2 id="6-bim-cobol-verb-driven-bom-mutation">6. BIM COBOL — Verb-Driven BOM Mutation<a class="headerlink" href="#6-bim-cobol-verb-driven-bom-mutation" title="Permanent link">&para;</a></h2>
-<p>The GUI emits BIM COBOL verbs, never direct SQL. 75 verbs in 5 tiers:</p>
+<p>The GUI emits BIM COBOL verbs, never direct SQL. 76 verbs in 5 tiers:</p>
 <table>
 <thead>
 <tr>

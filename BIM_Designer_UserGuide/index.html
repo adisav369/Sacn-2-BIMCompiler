@@ -4089,13 +4089,13 @@ cp<span class="w"> </span>-r<span class="w"> </span>BonsaiBIMDesigner/src/main/p
 <p>Enable in Blender: Edit → Preferences → Add-ons → search "BIM Designer" → enable.</p>
 <h3 id="34-verify-databases-exist">3.4 Verify Databases Exist<a class="headerlink" href="#34-verify-databases-exist" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>ls<span class="w"> </span>-la<span class="w"> </span>library/component_library.db<span class="w">   </span><span class="c1"># Product catalog</span>
-ls<span class="w"> </span>-la<span class="w"> </span>library/validation.db<span class="w">          </span><span class="c1"># Validation rules (32 rules)</span>
+ls<span class="w"> </span>-la<span class="w"> </span>library/ERP.db<span class="w">          </span><span class="c1"># Validation rules (32 rules)</span>
 ls<span class="w"> </span>-la<span class="w"> </span>library/DM_BOM.db<span class="w">              </span><span class="c1"># DemoHouse BOM (generative POC)</span>
 ls<span class="w"> </span>-la<span class="w"> </span>library/SH_BOM.db<span class="w">              </span><span class="c1"># SampleHouse BOM (Rosetta Stone)</span>
 </code></pre></div>
-<p>If <code>validation.db</code> is missing:
-<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/validation.db<span class="w"> </span>&lt;<span class="w"> </span>migration/V001_validation_schema.sql
-sqlite3<span class="w"> </span>library/validation.db<span class="w"> </span>&lt;<span class="w"> </span>migration/V002_validation_seed.sql
+<p>If <code>ERP.db</code> is missing:
+<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/V001_validation_schema.sql
+sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/V002_validation_seed.sql
 </code></pre></div></p>
 <hr />
 <h2 id="4-starting-the-server">4. Starting the Server<a class="headerlink" href="#4-starting-the-server" title="Permanent link">&para;</a></h2>
@@ -4728,7 +4728,7 @@ Rules are <strong>data, not code</strong> — adding a jurisdiction = SQL INSERT
 <h3 id="63-how-validation-works">6.3 How Validation Works<a class="headerlink" href="#63-how-validation-works" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>User sets jurisdiction to MY (Malaysia)
   → PlacementValidator.activate(&quot;MY&quot;, valConn)
-  → Loads 10 UBBL rules from validation.db
+  → Loads 10 UBBL rules from ERP.db
 
 User creates BEDROOM 2800×3500mm
   → PlacementRequest(productCategory=&quot;BEDROOM&quot;, widthMm=2800, depthMm=3500, ...)
@@ -5057,7 +5057,7 @@ Total: 25 BOM lines, 19 leaf elements
 </thead>
 <tbody>
 <tr>
-<td><code>library/validation.db</code></td>
+<td><code>library/ERP.db</code></td>
 <td>32 rules, 6 occupancy classes</td>
 <td>migration/V001 + V002</td>
 </tr>
@@ -5209,7 +5209,7 @@ Total: 25 BOM lines, 19 leaf elements
 </ul>
 <h3 id="validation-always-returns-pass">Validation always returns PASS<a class="headerlink" href="#validation-always-returns-pass" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Check <code>validation.db</code> exists and has rules: <code>sqlite3 library/validation.db "SELECT COUNT(*) FROM AD_Val_Rule"</code></li>
+<li>Check <code>ERP.db</code> exists and has rules: <code>sqlite3 library/ERP.db "SELECT COUNT(*) FROM AD_Val_Rule"</code></li>
 <li>Check jurisdiction is set (validator must be activated)</li>
 <li>Extracted buildings skip validation by design</li>
 </ul>

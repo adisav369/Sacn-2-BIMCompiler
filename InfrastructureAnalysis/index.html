@@ -4420,7 +4420,7 @@ not invented — same mining approach as TE sprinkler spacing (see <code>TE_MINI
 </tr>
 </tbody>
 </table>
-<p><strong>Next steps:</strong> INSERT these as <code>AD_Val_Rule</code> rows in <code>validation.db</code> with
+<p><strong>Next steps:</strong> INSERT these as <code>AD_Val_Rule</code> rows in <code>ERP.db</code> with
 <code>mining_source='Infra_Bridge'</code>, then use them in <code>PlacementValidator</code> for
 infrastructure generative compilation. Same pattern as TE-mined NFPA13 spacing rules.</p>
 <hr />
@@ -4437,7 +4437,6 @@ not an assembly of discrete objects. This maps to a vertical BOM:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">segments</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">Carriageway_01</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">code</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CW01</span>
-<span class="w">    </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ROAD</span>
 <span class="w">    </span><span class="nt">role</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">CARRIAGEWAY</span>
 <span class="w">    </span><span class="nt">seq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1010</span>
 <span class="w">    </span><span class="c1"># Children are layers with dz offsets (subgrade at 0, base at +200mm, ...)</span>

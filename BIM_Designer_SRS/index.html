@@ -9060,7 +9060,7 @@ resources across multiple designers.</strong></p>
 <div class="highlight"><pre><span></span><code>                    ┌─────────────────────────────────┐
                     │        SHARED (read-only)        │
                     │  component_library.db  (catalog)  │
-                    │  validation.db         (rules)    │
+                    │  ERP.db         (rules)    │
                     │  {PREFIX}_BOM.db       (templates) │
                     └────────────┬────────────────────┘
                                  │
@@ -9103,7 +9103,7 @@ resources across multiple designers.</strong></p>
 <td>Extraction pipeline (offline)</td>
 </tr>
 <tr>
-<td><code>validation.db</code></td>
+<td><code>ERP.db</code></td>
 <td><strong>Shared</strong> (all jurisdictions)</td>
 <td>Read-only</td>
 <td>Migration SQL (admin)</td>
@@ -9315,7 +9315,7 @@ the server without Maven test infrastructure.</p>
 <span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">String</span><span class="o">[]</span><span class="w"> </span><span class="n">args</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">args</span><span class="p">.</span><span class="na">length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">Integer</span><span class="p">.</span><span class="na">parseInt</span><span class="p">(</span><span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">]</span><span class="p">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="mi">9876</span><span class="p">;</span>
 <span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">libraryPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">args</span><span class="p">.</span><span class="na">length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">args</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;library/component_library.db&quot;</span><span class="p">;</span>
-<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">valPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">args</span><span class="p">.</span><span class="na">length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">args</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;library/validation.db&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="n">String</span><span class="w"> </span><span class="n">valPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">args</span><span class="p">.</span><span class="na">length</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">args</span><span class="o">[</span><span class="mi">2</span><span class="o">]</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="s">&quot;library/ERP.db&quot;</span><span class="p">;</span>
 
 <span class="w">    </span><span class="n">Connection</span><span class="w"> </span><span class="n">bomConn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">DriverManager</span><span class="p">.</span><span class="na">getConnection</span><span class="p">(</span><span class="s">&quot;jdbc:sqlite:&quot;</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">libraryPath</span><span class="p">);</span>
 <span class="w">    </span><span class="n">PlacementValidatorImpl</span><span class="w"> </span><span class="n">validator</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">PlacementValidatorImpl</span><span class="p">();</span>
@@ -9358,7 +9358,7 @@ java<span class="w"> </span>-jar<span class="w"> </span>bim-designer-server.jar<
 </tr>
 <tr>
 <td>W-LAUNCH-2</td>
-<td>Server loads validation.db rules on startup</td>
+<td>Server loads ERP.db rules on startup</td>
 <td>Auto-configuration</td>
 </tr>
 <tr>

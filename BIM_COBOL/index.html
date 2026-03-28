@@ -5934,12 +5934,12 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>76 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.</p>
+<p><b>77 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.</p>
 </div>
 <p><strong>Version:</strong> 1.0
 <strong>Date:</strong> 2026-03-08
 <strong>Authors:</strong> red1 (architect) + Claude Watchdog (reviewer)
-<strong>Status:</strong> ACTIVE — <strong>76 verbs implemented, 202 witnesses.</strong> Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
+<strong>Status:</strong> ACTIVE — <strong>77 verbs implemented, 202 witnesses.</strong> Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 <strong>Module:</strong> <code>BIM_COBOL/</code> (root-level Maven sibling of DAGCompiler, TopologyMaker)
 <strong>Depends on:</strong> BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
 <strong>Supplements:</strong> MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (W_Verb_Node lineage)</p>
@@ -6028,7 +6028,7 @@ MEP (CURRENT — IMPLICIT)
 </ul>
 <p>These are all <em>high-level construction verbs</em> that currently require manual authoring at the IFC geometry level. BIM COBOL fills this gap.</p>
 <h3 id="24-implemented-verbs-v09-scoreboard">2.4 Implemented Verbs (v0.9) — Scoreboard<a class="headerlink" href="#24-implemented-verbs-v09-scoreboard" title="Permanent link">&para;</a></h3>
-<p>The BIM_COBOL module has a working <code>Verb&lt;T&gt;</code> interface, <code>VerbContext</code>, and <code>VerbResult&lt;T&gt;</code> framework. <strong>76 verbs implemented, 202 witnesses:</strong></p>
+<p>The BIM_COBOL module has a working <code>Verb&lt;T&gt;</code> interface, <code>VerbContext</code>, and <code>VerbResult&lt;T&gt;</code> framework. <strong>77 verbs implemented, 202 witnesses:</strong></p>
 <table>
 <thead>
 <tr>
@@ -6571,6 +6571,13 @@ MEP (CURRENT — IMPLICIT)
 <td>§10</td>
 <td>—</td>
 <td>Geometry Forge: formula-driven construction pieces</td>
+</tr>
+<tr>
+<td>77</td>
+<td><code>FOLLOW</code></td>
+<td>§10.4.10</td>
+<td>W-FOLLOW-1</td>
+<td>Movement: straight pipe run along surface</td>
 </tr>
 <tr>
 <td>—</td>
@@ -7977,7 +7984,7 @@ W_Verb_Node links to C_OrderLine directly (no intermediate spatial slot table).<
 <h3 id="163-preparation-work-bim_cobol-side-can-start-now">16.3 Preparation Work (BIM_COBOL Side — Can Start NOW)<a class="headerlink" href="#163-preparation-work-bim_cobol-side-can-start-now" title="Permanent link">&para;</a></h3>
 <p>Four workstreams that build language infrastructure without touching the pipeline:</p>
 <p><strong>PREP-1: VerbRegistry + Dispatcher</strong> ✅ DONE (W-COBOL-41..42)</p>
-<p><code>VerbRegistry.java</code> — central map of <code>keyword → Verb&lt;?&gt;</code> with <code>createDefault()</code> (all 76 verbs), <code>dispatch()</code> (longest-prefix match), tokenizer preserving <code>"quoted strings"</code>.</p>
+<p><code>VerbRegistry.java</code> — central map of <code>keyword → Verb&lt;?&gt;</code> with <code>createDefault()</code> (all 77 verbs), <code>dispatch()</code> (longest-prefix match), tokenizer preserving <code>"quoted strings"</code>.</p>
 <p><strong>PREP-2: ScriptRunner (Minimal)</strong> ✅ DONE (W-COBOL-43..44)</p>
 <p><code>ScriptRunner.java</code> — reads <code>.bimcobol</code> text line by line, strips <code>--</code> comments and blanks, dispatches to VerbRegistry, returns <code>ScriptReport</code> with pass/fail counts and <code>toJson()</code>.</p>
 <div class="highlight"><pre><span></span><code>-- lighting.bimcobol
@@ -9557,7 +9564,7 @@ internally without changing its callers:</p>
 <p>This is the same <code>check_method</code> upgrade path already designed in
 DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.</p>
 <hr />
-<p><em>BIM COBOL v0.15 — 76 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.</em>
+<p><em>BIM COBOL v0.15 — 77 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.</em>
 <em>48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).</em>
 <em>The Construction Programming Language</em>
 <em>March 2026</em></p>

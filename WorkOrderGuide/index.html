@@ -3915,11 +3915,6 @@ products and geometry links (skips if already done), runs IFCtoBOM to produce
 <td>Building prefix (SH/DX/TE)</td>
 </tr>
 <tr>
-<td><code>doc_base_type</code></td>
-<td>string</td>
-<td>Domain classification — matches <a href="../MANIFESTO/#the-category-cascade-one-pattern-three-domains">M_Product_Category</a> (RE/CO/IN)</td>
-</tr>
-<tr>
 <td><code>name</code></td>
 <td>string</td>
 <td>Human-readable building name</td>
@@ -4409,7 +4404,7 @@ sqlite3<span class="w"> </span>DAGCompiler/lib/output/<span class="o">{</span>bu
 <span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;MY_RULE&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;width_mm&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;3499&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;mm&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Column width&#39;</span><span class="p">);</span>
 </code></pre></div></p>
 <p><strong>7c. Apply:</strong>
-<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/validation.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV00N_my_rules.sql
+<div class="highlight"><pre><span></span><code>sqlite3<span class="w"> </span>library/ERP.db<span class="w"> </span>&lt;<span class="w"> </span>migration/DV00N_my_rules.sql
 </code></pre></div></p>
 <p>Rule types: <code>DIMENSION</code> (element W×D×H), <code>RATIO</code> (cross-element proportion),
 <code>MIN_DIMENSION</code> (safety minimum), <code>MIN_COUNT</code> (regulatory), <code>Z_CONTINUITY</code> (stacking).</p>
@@ -4905,7 +4900,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 <td><a href="../SourceCodeGuide/"><code>SourceCodeGuide.md</code></a></td>
 </tr>
 <tr>
-<td>BIM COBOL verbs (75 verbs)</td>
+<td>BIM COBOL verbs (76 verbs)</td>
 <td><a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a></td>
 </tr>
 <tr>

@@ -2453,10 +2453,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#15-validation-db-libraryvalidationdb" class="md-nav__link">
+  <a href="#15-validation-db-libraryerpdb" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1.5 Validation DB (library/validation.db)
+        1.5 Validation DB (library/ERP.db)
       
     </span>
   </a>
@@ -2777,14 +2777,14 @@
 Date: 2026-03-26 · <strong>Updated:</strong> 2026-03-28 (§6 migration status added)</p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Study mapping the 5-DB split against standard iDempiere column patterns. Tiers 1–2 now migrated (§6).</p>
+<p><b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Study mapping the 4-DB split against standard iDempiere column patterns. Tiers 1–2 now migrated (§6).</p>
 </div>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <p>iDempiere convention: every table has three identity columns:
 - <code>_ID</code> (INTEGER PRIMARY KEY) — surrogate key, referenced by other tables as <code>_FK</code>
 - <code>Name</code> (TEXT NOT NULL) — human-readable label
 - <code>Value</code> (TEXT NOT NULL) — SearchKey, unique business identifier</p>
-<p>Our 5-DB split uses a mix of conventions. Most tables use <strong>TEXT primary keys</strong> (business identifiers as PK) and lack a separate <code>_ID</code> surrogate. Only a few tables follow iDempiere convention closely.</p>
+<p>Our 4-DB split uses a mix of conventions. Most tables use <strong>TEXT primary keys</strong> (business identifiers as PK) and lack a separate <code>_ID</code> surrogate. Only a few tables follow iDempiere convention closely.</p>
 <hr />
 <h2 id="1-column-inventory-by-database">1. Column Inventory by Database<a class="headerlink" href="#1-column-inventory-by-database" title="Permanent link">&para;</a></h2>
 <blockquote>
@@ -3973,7 +3973,7 @@ Date: 2026-03-26 · <strong>Updated:</strong> 2026-03-28 (§6 migration status a
 <p><strong>Notes:</strong>
 - <code>W_Verb_NodeProduct</code> is fully conformant (_ID INTEGER, Name, Value) ✓
 - <code>c_order</code> uses <code>C_Order_ID TEXT</code> — divergent from iDempiere <code>C_Order_ID INTEGER</code></p>
-<h3 id="15-validation-db-libraryvalidationdb">1.5 Validation DB (<code>library/validation.db</code>)<a class="headerlink" href="#15-validation-db-libraryvalidationdb" title="Permanent link">&para;</a></h3>
+<h3 id="15-validation-db-libraryerpdb">1.5 Validation DB (<code>library/ERP.db</code>)<a class="headerlink" href="#15-validation-db-libraryerpdb" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
