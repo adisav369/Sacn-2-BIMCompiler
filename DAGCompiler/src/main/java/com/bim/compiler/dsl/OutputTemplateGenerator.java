@@ -94,7 +94,8 @@ public class OutputTemplateGenerator {
                 ('room_areas',       NULL, 'VIEW: Room area computed from spatial_structure + rtree AABB'),
                 ('area_by_storey',   NULL, 'VIEW: Aggregate area per storey'),
                 ('area_by_type',     NULL, 'VIEW: Aggregate area per room type'),
-                ('building_summary', NULL, 'VIEW: Storey count, room count, total buildup area')
+                ('building_summary', NULL, 'VIEW: Storey count, room count, total buildup area'),
+                ('ad_forge_fabrication', NULL, 'HOW: Forge fabrication cut list — one row per parameter per geometry record')
             """);
         }
     }

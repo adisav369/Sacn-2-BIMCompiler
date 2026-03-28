@@ -177,7 +177,7 @@ public class PrintConfig {
                  "room_areas" -> "QUANTITY";
             case "base_geometries", "surface_styles", "material_layers" -> "GEOMETRY";
             case "c_order", "c_orderline", "W_Verb_Node",
-                 "W_Verb_NodeProduct" -> "ORDER";
+                 "W_Verb_NodeProduct", "ad_forge_fabrication" -> "ORDER";
             case "building_summary" -> "SUMMARY";
             default -> "OTHER";
         };
@@ -187,7 +187,8 @@ public class PrintConfig {
         // Default print includes summary + quantities + order data
         return switch (tableName) {
             case "building_summary", "simple_qto", "area_by_storey",
-                 "c_order", "c_orderline", "elements_meta" -> true;
+                 "c_order", "c_orderline", "elements_meta",
+                 "ad_forge_fabrication" -> true;
             default -> false;
         };
     }

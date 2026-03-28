@@ -3,18 +3,25 @@ package com.bim.cobol.forge;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Writes ForgeResult fabrication maps to ad_forge_fabrication in output.db.
+ * Writes ForgeResult fabrication data to ad_forge_fabrication in output.db.
  *
- * // Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB
+ * <p>Each GeometryRecord's fabrication map becomes N rows (one per parameter).
+ * The standard dimensions (length, width, depth) are also written as fabrication
+ * rows so the cut list is self-contained.
+ *
+ * <p>Transaction ownership: caller must commit. This class does not call commit().
+ *
+ * // Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB-1
  */
 public class ForgeFabricationWriter {
 
     private static final String INSERT_SQL =
-        "INSERT INTO AD_Forge_Fabrication (Element_ID, PieceType, Name, Value, Unit) VALUES (?, ?, ?, ?, ?)";
+            "INSERT INTO ad_forge_fabrication "
+            + "(W_Verb_Node_ID, Element_ID, PieceType, ParamName, ParamValue, Unit) "
+            + "VALUES (?, ?, ?, ?, ?, ?)";
 
     private final Connection conn;
 
@@ -23,59 +30,100 @@ public class ForgeFabricationWriter {
     }
 
     /**
-     * Write all fabrication entries from a ForgeResult.
-     * Each GeometryRecord's fabrication map entries become rows.
+     * Persist all fabrication data from a ForgeResult.
+     *
+     * @param verbNodeId  the W_Verb_Node_ID that produced this result (nullable)
+     * @param result      the ForgeResult from ForgeEngine.compute()
+     * @return number of ad_forge_fabrication rows written
      */
-    public int write(ForgeResult result) throws SQLException {
-        if (result == null || !result.pass() || result.records().isEmpty()) return 0;
+    public int write(Integer verbNodeId, ForgeResult result) throws SQLException {
+        if (!result.pass() || result.records().isEmpty()) {
+            return 0;
+        }
 
         int count = 0;
         try (PreparedStatement ps = conn.prepareStatement(INSERT_SQL)) {
-            for (GeometryRecord rec : result.records()) {
-                Map<String, Double> fab = rec.fabrication();
-                if (fab == null || fab.isEmpty()) continue;
-
-                // Element_ID: use bomLineId if available, else productId, else "FORGE_" + index
+            for (int i = 0; i < result.records().size(); i++) {
+                GeometryRecord rec = result.records().get(i);
                 String elementId = rec.bomLineId() != null ? rec.bomLineId()
-                    : rec.productId() != null ? rec.productId()
-                    : "FORGE_" + count;
+                        : rec.productId() != null ? rec.productId()
+                        : result.pieceType() + "_" + i;
 
-                for (Map.Entry<String, Double> entry : fab.entrySet()) {
-                    ps.setString(1, elementId);
-                    ps.setString(2, result.pieceType());
-                    ps.setString(3, entry.getKey());
-                    ps.setDouble(4, entry.getValue());
-                    ps.setString(5, guessUnit(entry.getKey()));
-                    ps.addBatch();
-                    count++;
+                // Standard dimensions as fabrication rows
+                count += writeParam(ps, verbNodeId, elementId, result.pieceType(),
+                        "length_mm", rec.lengthMm(), "mm");
+                count += writeParam(ps, verbNodeId, elementId, result.pieceType(),
+                        "width_mm", rec.widthMm(), "mm");
+                count += writeParam(ps, verbNodeId, elementId, result.pieceType(),
+                        "depth_mm", rec.depthMm(), "mm");
+
+                // Fabrication map entries (cut angles, notch depth, step count, etc.)
+                for (Map.Entry<String, Double> entry : rec.fabrication().entrySet()) {
+                    String unit = inferUnit(entry.getKey());
+                    count += writeParam(ps, verbNodeId, elementId, result.pieceType(),
+                            entry.getKey(), entry.getValue(), unit);
                 }
             }
-            ps.executeBatch();
         }
         return count;
     }
 
+    private int writeParam(PreparedStatement ps, Integer verbNodeId,
+                           String elementId, String pieceType,
+                           String paramName, double paramValue, String unit)
+            throws SQLException {
+        if (verbNodeId != null) {
+            ps.setInt(1, verbNodeId);
+        } else {
+            ps.setNull(1, java.sql.Types.INTEGER);
+        }
+        ps.setString(2, elementId);
+        ps.setString(3, pieceType);
+        ps.setString(4, paramName);
+        ps.setDouble(5, paramValue);
+        ps.setString(6, unit);
+        ps.executeUpdate();
+        return 1;
+    }
+
     /**
-     * Write fabrication data from a list of ForgeResults.
+     * Write all fabrication data from a list of ForgeResults.
+     *
+     * @param results list of ForgeResult objects
+     * @return total number of rows written
      */
-    public int writeAll(List<ForgeResult> results) throws SQLException {
+    public int writeAll(java.util.List<ForgeResult> results) throws SQLException {
         int total = 0;
-        for (ForgeResult r : results) {
-            total += write(r);
+        for (ForgeResult result : results) {
+            total += write(null, result);
         }
         return total;
     }
 
-    private static String guessUnit(String paramName) {
-        if (paramName.contains("angle") || paramName.contains("pitch") || paramName.contains("degrees"))
-            return "degrees";
-        if (paramName.contains("depth") || paramName.contains("length") || paramName.contains("width")
-                || paramName.contains("radius") || paramName.contains("height") || paramName.contains("spacing"))
+    /**
+     * Infer unit from parameter name. Follows forge engine conventions.
+     */
+    static String inferUnit(String paramName) {
+        if (paramName == null) return null;
+        String lower = paramName.toLowerCase();
+        if (lower.endsWith("_mm") || lower.contains("length") || lower.contains("depth")
+                || lower.contains("width") || lower.contains("radius")
+                || lower.contains("rise") || lower.contains("span")) {
             return "mm";
-        if (paramName.contains("count") || paramName.contains("step") || paramName.contains("segment"))
-            return "count";
-        if (paramName.contains("weight"))
-            return "kg";
+        }
+        if (lower.contains("angle") || lower.contains("pitch")) {
+            return "deg";
+        }
+        if (lower.contains("count") || lower.contains("steps") || lower.contains("rings")
+                || lower.contains("segments") || lower.contains("ribs")) {
+            return "ea";
+        }
+        if (lower.contains("cost")) {
+            return "RM";
+        }
+        if (lower.contains("hours") || lower.contains("labour")) {
+            return "hr";
+        }
         return null;
     }
 }

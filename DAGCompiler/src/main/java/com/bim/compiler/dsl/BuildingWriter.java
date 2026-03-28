@@ -443,18 +443,21 @@ public class BuildingWriter {
                 )
             """);
 
-            // Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB
-            stmt.execute("DROP TABLE IF EXISTS ad_forge_fabrication");
+            // Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB-1
+            // Forge fabrication cut list: one row per fabrication parameter per geometry record.
             stmt.execute("""
-                CREATE TABLE AD_Forge_Fabrication (
+                CREATE TABLE ad_forge_fabrication (
                     AD_Forge_Fabrication_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    W_Verb_Node_ID           INTEGER REFERENCES W_Verb_Node(W_Verb_Node_ID),
                     Element_ID               TEXT NOT NULL,
                     PieceType                TEXT NOT NULL,
-                    Name                     TEXT NOT NULL,
-                    Value                    REAL NOT NULL,
+                    ParamName                TEXT NOT NULL,
+                    ParamValue               REAL NOT NULL,
                     Unit                     TEXT
                 )
             """);
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_forge_fab_element ON ad_forge_fabrication(Element_ID)");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_forge_fab_piece ON ad_forge_fabrication(PieceType)");
         }
     }
 

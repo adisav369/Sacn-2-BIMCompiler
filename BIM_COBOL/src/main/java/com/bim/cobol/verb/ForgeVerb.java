@@ -59,6 +59,23 @@ public class ForgeVerb implements Verb<ForgeResult> {
 
         ForgeResult result = engine.compute(ctx, params);
 
+        // Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB-1
+        // Write fabrication data to output.db if output connection is available
+        if (result.pass() && ctx.outputConn() != null) {
+            try {
+                ForgeFabricationWriter writer = new ForgeFabricationWriter(ctx.outputConn());
+                int rows = writer.write(null, result);
+                if (rows > 0) {
+                    System.out.printf("[FORGE] %d fabrication rows written for %s%n",
+                            rows, pieceType);
+                }
+            } catch (SQLException e) {
+                System.err.printf("[FORGE] WARN: fabrication write failed: %s%n",
+                        e.getMessage());
+                // Non-fatal — forge result still valid even if fabrication write fails
+            }
+        }
+
         if (result.pass())
             return VerbResult.ok(keyword(), result.summary(), result);
         else
