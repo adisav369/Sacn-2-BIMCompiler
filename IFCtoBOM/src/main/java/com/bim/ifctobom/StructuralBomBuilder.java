@@ -176,7 +176,7 @@ public class StructuralBomBuilder {
         return new BuildResult(totalLines, aabbW, aabbD, aabbH, floorBomIds);
     }
 
-    // ── SQL helpers ──────────────────────────────────────────────────────────
+    // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
 
     // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
@@ -186,34 +186,13 @@ public class StructuralBomBuilder {
                                         double originX, double originY, double originZ,
                                         CategoryLookup catLookup)
             throws SQLException {
-        String sql = """
-                INSERT OR REPLACE INTO m_bom
-                (bom_id, Value, bom_name, bom_type, group_by, entity_type,
-                 doc_sub_type, m_product_category_id,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm,
-                 origin_x, origin_y, origin_z, is_active)
-                VALUES (?, ?, ?, ?, ?, 'D', ?, ?,
-                        ?, ?, ?,
-                        ?, ?, ?, 1)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // Value = bom_id
-            stmt.setString(3, bomName);
-            stmt.setString(4, bomType);
-            stmt.setString(5, groupBy);
-            stmt.setString(6, docSubType);
-            int catId = catLookup.getId(docBaseType);
-            if (catId > 0) stmt.setInt(7, catId);
-            else stmt.setNull(7, java.sql.Types.INTEGER);
-            stmt.setDouble(8, aabbW);
-            stmt.setDouble(9, aabbD);
-            stmt.setDouble(10, aabbH);
-            stmt.setDouble(11, originX);
-            stmt.setDouble(12, originY);
-            stmt.setDouble(13, originZ);
-            stmt.executeUpdate();
-        }
+        int catId = catLookup.getId(docBaseType);
+        BomWriter.insertBom(conn, new BomWriter.BomRowBuilder(bomId, bomName, bomType, groupBy)
+                .docSubType(docSubType)
+                .productCategoryId(catId)
+                .aabb((int) aabbW, (int) aabbD, (int) aabbH)
+                .origin(originX, originY, originZ)
+                .build());
     }
 
     private static void updateBomCategory(Connection conn, String bomId, String productCategory,
@@ -257,50 +236,16 @@ public class StructuralBomBuilder {
         String archetype = VerbFactorizer.classifyArchetype(allocW, allocD, allocH);
         String scaleBand = VerbFactorizer.classifyScaleBand(allocW, allocD, allocH);
 
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type, qty,
-                 allocated_width_mm, allocated_depth_mm, allocated_height_mm,
-                 storey, element_ref, ordinal, orientation,
-                 material_name, material_rgba,
-                 shape_archetype, scale_band,
-                 host_element_ref)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?, ?,
-                        ?, 20, 0,
-                        ?, ?, ?, 1, 'D', ?,
-                        ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?,
-                        ?, ?,
-                        ?)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // M_BOM_ID subquery
-            stmt.setString(3, childProductId);
-            stmt.setString(4, componentType);
-            stmt.setString(5, role);
-            stmt.setInt(6, sequence);
-            stmt.setString(7, rotationRule);
-            stmt.setDouble(8, dx);
-            stmt.setDouble(9, dy);
-            stmt.setDouble(10, dz);
-            stmt.setInt(11, qty);
-            stmt.setDouble(12, allocW);
-            stmt.setDouble(13, allocD);
-            stmt.setDouble(14, allocH);
-            stmt.setString(15, storey);
-            stmt.setString(16, elementRef);
-            stmt.setInt(17, ordinal);
-            stmt.setString(18, orientation);
-            stmt.setString(19, materialName);
-            stmt.setString(20, materialRgba);
-            stmt.setString(21, archetype);
-            stmt.setString(22, scaleBand);
-            stmt.setString(23, null);  // MAKE lines have no host_element_ref
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(bomId, childProductId, role, sequence)
+                .componentType(componentType)
+                .rotationRule(rotationRule)
+                .offset(dx, dy, dz)
+                .qty(qty)
+                .alloc(allocW, allocD, allocH)
+                .storey(storey).elementRef(elementRef).ordinal(ordinal)
+                .orientation(orientation)
+                .material(materialName, materialRgba)
+                .shape(archetype, scaleBand)
+                .build());
     }
 }

@@ -244,7 +244,7 @@ public class VerbFactorizer {
         return ShapeClassifier.classifyScaleBand(widthMm, depthMm, heightMm).name();
     }
 
-    // ── SQL helpers ──────────────────────────────────────────────────────────
+    // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
 
     /**
      * Insert a LEAF BOM line with qty, verb_ref, shape_archetype, and scale_band.
@@ -269,52 +269,18 @@ public class VerbFactorizer {
         String archetype = classifyArchetype(allocW, allocD, allocH);
         String scaleBand = classifyScaleBand(allocW, allocD, allocH);
 
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type, qty, verb_ref,
-                 allocated_width_mm, allocated_depth_mm, allocated_height_mm,
-                 storey, element_ref, ordinal, orientation,
-                 material_name, material_rgba,
-                 shape_archetype, scale_band,
-                 host_element_ref, AD_Org_ID)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
-                        ?, 20, 0,
-                        ?, ?, ?, 1, 'D', ?, ?,
-                        ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?,
-                        ?, ?,
-                        ?, ?)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // M_BOM_ID subquery
-            stmt.setString(3, childProductId);
-            stmt.setString(4, role);
-            stmt.setInt(5, sequence);
-            stmt.setString(6, rotationRule);
-            stmt.setDouble(7, dx);
-            stmt.setDouble(8, dy);
-            stmt.setDouble(9, dz);
-            stmt.setInt(10, qty);
-            stmt.setString(11, verbRef);
-            stmt.setDouble(12, allocW);
-            stmt.setDouble(13, allocD);
-            stmt.setDouble(14, allocH);
-            stmt.setString(15, storey);
-            stmt.setString(16, elementRef);
-            stmt.setInt(17, ordinal);
-            stmt.setString(18, orientation);
-            stmt.setString(19, materialName);
-            stmt.setString(20, materialRgba);
-            stmt.setString(21, archetype);
-            stmt.setString(22, scaleBand);
-            stmt.setString(23, hostElementRef);
-            stmt.setInt(24, adOrgId);
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(bomId, childProductId, role, sequence)
+                .rotationRule(rotationRule)
+                .offset(dx, dy, dz)
+                .qty(qty).verbRef(verbRef)
+                .alloc(allocW, allocD, allocH)
+                .storey(storey).elementRef(elementRef).ordinal(ordinal)
+                .orientation(orientation)
+                .material(materialName, materialRgba)
+                .shape(archetype, scaleBand)
+                .hostElementRef(hostElementRef)
+                .adOrgId(adOrgId)
+                .build());
     }
 
     // ── CP-1: Material Allocation (iDempiere M_InOutLineMA pattern) ──────

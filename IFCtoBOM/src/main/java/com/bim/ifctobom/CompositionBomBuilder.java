@@ -289,34 +289,18 @@ public class CompositionBomBuilder {
         return map;
     }
 
-    // ── SQL helpers ──────────────────────────────────────────────────────────
+    // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
 
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
                                         String bomType, String groupBy, String productCategory,
                                         double aabbW, double aabbD, double aabbH,
                                         CategoryLookup catLookup)
             throws SQLException {
-        String sql = """
-                INSERT OR REPLACE INTO m_bom
-                (bom_id, Value, bom_name, bom_type, group_by, m_product_category_id,
-                 entity_type, origin_x, origin_y, origin_z,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, 'D', 0.0, 0.0, 0.0, ?, ?, ?, 1)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // Value = bom_id
-            stmt.setString(3, bomName);
-            stmt.setString(4, bomType);
-            stmt.setString(5, groupBy);
-            int catId = catLookup.getId(productCategory);
-            if (catId > 0) stmt.setInt(6, catId);
-            else stmt.setNull(6, java.sql.Types.INTEGER);
-            stmt.setDouble(7, aabbW);
-            stmt.setDouble(8, aabbD);
-            stmt.setDouble(9, aabbH);
-            stmt.executeUpdate();
-        }
+        int catId = catLookup.getId(productCategory);
+        BomWriter.insertBom(conn, new BomWriter.BomRowBuilder(bomId, bomName, bomType, groupBy)
+                .productCategoryId(catId)
+                .aabb((int) aabbW, (int) aabbD, (int) aabbH)
+                .build());
     }
 
     private static void insertLeafLine(Connection conn, String bomId,
@@ -327,49 +311,16 @@ public class CompositionBomBuilder {
         String archetype = VerbFactorizer.classifyArchetype(e.widthMm(), e.depthMm(), e.heightMm());
         String scaleBand = VerbFactorizer.classifyScaleBand(e.widthMm(), e.depthMm(), e.heightMm());
 
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type,
-                 allocated_width_mm, allocated_depth_mm, allocated_height_mm,
-                 storey, element_ref, ordinal, orientation,
-                 material_name, material_rgba,
-                 shape_archetype, scale_band,
-                 host_element_ref)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
-                        ?, 20, 0,
-                        ?, ?, ?, 1, 'D',
-                        ?, ?, ?,
-                        ?, ?, ?, ?,
-                        ?, ?,
-                        ?, ?,
-                        ?)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // M_BOM_ID subquery
-            stmt.setString(3, e.mProductId());
-            stmt.setString(4, e.ifcClass());
-            stmt.setInt(5, seq);
-            stmt.setString(6, e.orientation() != null ? e.orientation() : "0");
-            stmt.setDouble(7, dx);
-            stmt.setDouble(8, dy);
-            stmt.setDouble(9, dz);
-            stmt.setDouble(10, e.widthMm());
-            stmt.setDouble(11, e.depthMm());
-            stmt.setDouble(12, e.heightMm());
-            stmt.setString(13, e.storey());
-            stmt.setString(14, e.elementRef());
-            stmt.setInt(15, e.ordinal());
-            stmt.setString(16, e.orientation());
-            stmt.setString(17, e.materialName());
-            stmt.setString(18, e.materialRgba());
-            stmt.setString(19, archetype);
-            stmt.setString(20, scaleBand);
-            stmt.setString(21, e.hostElementRef());
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(bomId, e.mProductId(), e.ifcClass(), seq)
+                .rotationRule(e.orientation() != null ? e.orientation() : "0")
+                .offset(dx, dy, dz)
+                .alloc(e.widthMm(), e.depthMm(), e.heightMm())
+                .storey(e.storey()).elementRef(e.elementRef()).ordinal(e.ordinal())
+                .orientation(e.orientation())
+                .material(e.materialName(), e.materialRgba())
+                .shape(archetype, scaleBand)
+                .hostElementRef(e.hostElementRef())
+                .build());
     }
 
     private static void insertPairChild(Connection conn, String pairBomId,
@@ -377,26 +328,10 @@ public class CompositionBomBuilder {
                                         int seq, String rotationRule,
                                         double dx, double dy, double dz)
             throws SQLException {
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
-                        ?, 20, 0,
-                        ?, ?, ?, 1, 'D')
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, pairBomId);
-            stmt.setString(2, pairBomId);  // M_BOM_ID subquery
-            stmt.setString(3, halfUnitBomId);
-            stmt.setString(4, role);
-            stmt.setInt(5, seq);
-            stmt.setString(6, rotationRule);
-            stmt.setDouble(7, dx);
-            stmt.setDouble(8, dy);
-            stmt.setDouble(9, dz);
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(
+                pairBomId, halfUnitBomId, role, seq)
+                .rotationRule(rotationRule)
+                .offset(dx, dy, dz)
+                .build());
     }
 }

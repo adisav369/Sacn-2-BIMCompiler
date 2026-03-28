@@ -102,7 +102,7 @@ public class FloorRoomBomBuilder {
         return lineCount;
     }
 
-    // ── SQL helpers ──────────────────────────────────────────────────────────
+    // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
 
     // Implementing BBC.md §4.2 — Witness: W-AABB-QUAL-1
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
@@ -110,25 +110,11 @@ public class FloorRoomBomBuilder {
                                         CategoryLookup catLookup)
             throws SQLException {
         // FLOOR ROOM BOMs contain YAML-sourced room dimensions → INNER qualifier.
-        // The room's AABB is the architect's intended clear volume (finish-to-finish).
-        String sql = """
-                INSERT OR REPLACE INTO m_bom
-                (bom_id, Value, bom_name, bom_type, group_by, m_product_category_id,
-                 entity_type, origin_x, origin_y, origin_z,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, 'D', 0.0, 0.0, 0.0, 0, 0, 0, 'INNER', 1)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // Value = bom_id
-            stmt.setString(3, bomName);
-            stmt.setString(4, bomType);
-            stmt.setString(5, groupBy);
-            int catId = catLookup.getId(productCategory);
-            if (catId > 0) stmt.setInt(6, catId);
-            else stmt.setNull(6, java.sql.Types.INTEGER);
-            stmt.executeUpdate();
-        }
+        int catId = catLookup.getId(productCategory);
+        BomWriter.insertBom(conn, new BomWriter.BomRowBuilder(bomId, bomName, bomType, groupBy)
+                .productCategoryId(catId)
+                .aabbQualifier("INNER")
+                .build());
     }
 
     private static void insertSpaceLine(Connection conn, String bomId, SpaceConfig space,
@@ -138,62 +124,23 @@ public class FloorRoomBomBuilder {
         String archetype = VerbFactorizer.classifyArchetype(space.aabbW(), space.aabbD(), space.aabbH());
         String scaleBand = VerbFactorizer.classifyScaleBand(space.aabbW(), space.aabbD(), space.aabbH());
 
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type,
-                 allocated_width_mm, allocated_depth_mm, allocated_height_mm,
-                 shape_archetype, scale_band)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
-                        '0', 20, 0,
-                        ?, ?, ?, 1, 'D',
-                        ?, ?, ?,
-                        ?, ?)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);  // M_BOM_ID subquery
-            stmt.setString(3, space.templateBom());
-            stmt.setString(4, space.role());
-            stmt.setInt(5, space.seq());
-            stmt.setDouble(6, dx);
-            stmt.setDouble(7, dy);
-            stmt.setDouble(8, dz);
-            stmt.setInt(9, space.aabbW());
-            stmt.setInt(10, space.aabbD());
-            stmt.setInt(11, space.aabbH());
-            stmt.setString(12, archetype);
-            stmt.setString(13, scaleBand);
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(
+                bomId, space.templateBom(), space.role(), space.seq())
+                .offset(dx, dy, dz)
+                .alloc(space.aabbW(), space.aabbD(), space.aabbH())
+                .shape(archetype, scaleBand)
+                .build());
     }
 
     private static void insertBuildingChild(Connection conn, String buildingBomId,
                                             String childId, String componentType,
                                             String role, int seq,
                                             double dx, double dy, double dz) throws SQLException {
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?, ?,
-                        '0', 20, 0,
-                        ?, ?, ?, 1, 'D')
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, buildingBomId);
-            stmt.setString(2, buildingBomId);  // M_BOM_ID subquery
-            stmt.setString(3, childId);
-            stmt.setString(4, componentType);
-            stmt.setString(5, role);
-            stmt.setInt(6, seq);
-            stmt.setDouble(7, dx);
-            stmt.setDouble(8, dy);
-            stmt.setDouble(9, dz);
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(
+                buildingBomId, childId, role, seq)
+                .componentType(componentType)
+                .offset(dx, dy, dz)
+                .build());
     }
 
     /**
@@ -203,43 +150,17 @@ public class FloorRoomBomBuilder {
      */
     private static void insertEmptyBomHeader(Connection conn, String bomId, String role)
             throws SQLException {
-        String sql = """
-                INSERT OR IGNORE INTO m_bom
-                (bom_id, Value, bom_name, bom_type, group_by, entity_type,
-                 aabb_width_mm, aabb_depth_mm, aabb_height_mm,
-                 origin_x, origin_y, origin_z, is_active)
-                VALUES (?, ?, ?, 'ASSEMBLY', ?, 'D',
-                        0, 0, 0,
-                        0, 0, 0, 1)
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, bomId);
-            stmt.setString(2, bomId);
-            stmt.setString(3, bomId);  // bom_name = bomId
-            stmt.setString(4, role);
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBom(conn, new BomWriter.BomRowBuilder(bomId, bomId, "ASSEMBLY", role)
+                .orIgnore()
+                .build());
     }
 
     private static void insertStaticChild(Connection conn, String buildingBomId,
                                           StaticChildConfig sc) throws SQLException {
-        String sql = """
-                INSERT INTO m_bom_line
-                (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
-                 rotation_rule, fit_priority, min_space_mm,
-                 dx, dy, dz, is_active, entity_type)
-                VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'MAKE', ?, ?,
-                        '0', 20, 0,
-                        0.0, 0.0, ?, 1, 'D')
-                """;
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, buildingBomId);
-            stmt.setString(2, buildingBomId);  // M_BOM_ID subquery
-            stmt.setString(3, sc.childProductId());
-            stmt.setString(4, sc.role());
-            stmt.setInt(5, sc.seq());
-            stmt.setDouble(6, sc.dz());
-            stmt.executeUpdate();
-        }
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(
+                buildingBomId, sc.childProductId(), sc.role(), sc.seq())
+                .componentType("MAKE")
+                .offset(0.0, 0.0, sc.dz())
+                .build());
     }
 }
