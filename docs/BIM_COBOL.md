@@ -3,13 +3,13 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md) · [SourceCodeGuide](SourceCodeGuide.md)
 
 <div class="bim-banner" markdown>
-<b>76 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.
+<b>77 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.
 </div>
 
 **Version:** 1.0
 **Date:** 2026-03-08
 **Authors:** red1 (architect) + Claude Watchdog (reviewer)
-**Status:** ACTIVE — **76 verbs implemented, 202 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
+**Status:** ACTIVE — **77 verbs implemented, 202 witnesses.** Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 **Module:** `BIM_COBOL/` (root-level Maven sibling of DAGCompiler, TopologyMaker)
 **Depends on:** BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
 **Supplements:** MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (W_Verb_Node lineage)
@@ -119,7 +119,7 @@ These are all *high-level construction verbs* that currently require manual auth
 
 ### 2.4 Implemented Verbs (v0.9) — Scoreboard
 
-The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **76 verbs implemented, 202 witnesses:**
+The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `VerbResult<T>` framework. **77 verbs implemented, 202 witnesses:**
 
 | # | Verb | Layer | Witnesses | What it proves |
 |---|---|---|---|---|
@@ -199,6 +199,7 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 74 | `ROLLUP AABB` | utility | — | Recursive AABB aggregation |
 | 75 | `HELLO WORLD` | infra | — | Verb framework smoke test |
 | 76 | `FORGE` | §10 | — | Geometry Forge: formula-driven construction pieces |
+| 77 | `FOLLOW` | §10.4.10 | W-FOLLOW-1 | Movement: straight pipe run along surface |
 | — | *VerbRegistry + ScriptRunner* | infra | W-41..44 | Dispatch + script execution |
 | — | *F5IntegrationTest* | infra | W-F5-1..200 | **End-to-end cross-verb integration (30 verbs, 36 lines, 0 failures)** |
 
@@ -1189,7 +1190,7 @@ Four workstreams that build language infrastructure without touching the pipelin
 
 **PREP-1: VerbRegistry + Dispatcher** ✅ DONE (W-COBOL-41..42)
 
-`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 76 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
+`VerbRegistry.java` — central map of `keyword → Verb<?>` with `createDefault()` (all 77 verbs), `dispatch()` (longest-prefix match), tokenizer preserving `"quoted strings"`.
 
 **PREP-2: ScriptRunner (Minimal)** ✅ DONE (W-COBOL-43..44)
 
@@ -2434,7 +2435,7 @@ DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.
 
 ---
 
-*BIM COBOL v0.15 — 76 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
+*BIM COBOL v0.15 — 77 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.*
 *48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).*
 *The Construction Programming Language*
 *March 2026*

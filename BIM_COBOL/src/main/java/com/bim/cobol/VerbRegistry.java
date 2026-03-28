@@ -80,7 +80,7 @@ public class VerbRegistry {
     }
 
     /**
-     * Static factory that registers all 75 built-in verbs.
+     * Static factory that registers all 77 built-in verbs.
      */
     public static VerbRegistry createDefault() {
         VerbRegistry reg = new VerbRegistry();
@@ -177,6 +177,8 @@ public class VerbRegistry {
         reg.register(new HelloWorldVerb());
         // Geometry Forge — formula-driven construction pieces (GEOMETRY_FORGE_SRS.md §10)
         reg.register(new ForgeVerb());
+        // Movement verbs — DISC_VALIDATION_DB_SRS §10.4.10 (T0.4)
+        reg.register(new FollowVerb());
         return reg;
     }
 

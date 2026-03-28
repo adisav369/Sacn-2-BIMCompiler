@@ -20,7 +20,7 @@
 
 > **TE: BOM walk compiler LIVE (S100-p72).** 48,428 elements compiled via BOM walk. 6/7 PASS (C9 FAIL: 60 axis swaps — library mesh orientation, not walk bug). SH 7/7 PASS (zero regression). Script fix: compilation was never running (missing -Dpipeline.tests.skip=false).
 
-**Pipeline:** 9 stages. 76 verbs. 2475 products. 5-DB architecture (4+1). 4D/5D/6D live.
+**Pipeline:** 9 stages. 77 verbs. 2475 products. 5-DB architecture (4+1). 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
@@ -45,6 +45,7 @@
 
 ## Session Log (recent first)
 
+**S100-p99** — FollowVerb POC (prompt 99). T0.4 movement verb: FOLLOW <surface_type> <room_ref> [STOCK_LENGTH <mm>] [DIAMETER <mm>]. Queries m_bom AABB for room dimensions, computes N = ceil(run_length / stock_length) pipe segments. Verb 77. FollowVerbTest 8/8 PASS (W-FOLLOW-1a..h). SH 7/7 PASS (zero regression). DISC_VALIDATION_DB_SRS §10.4.10/§10.4.11.
 **S100-p94** — BomWriter SQL consolidation (prompt 94). 18 INSERT statements (7 m_bom, 11 m_bom_line) across 6 builder files → single BomWriter static utility with BomRowBuilder/BomLineRowBuilder. All 6 builders migrated: FloorRoomBomBuilder, StructuralBomBuilder, DisciplineBomBuilder, ScopeBomBuilder, CompositionBomBuilder, VerbFactorizer. +369 -493 lines. BomRow 14 fields, BomLineRow 24 fields. SH 7/7 PASS. FK 7/7 PASS. Row counts identical (SH 11/39, FK 12/99). BBC §2.1.9 spec added. Zero behaviour change.
 **S100-watchdog** — BBC §3.6 Parasitic Discipline Compilation spec. 8 OrderLines per CO building, service room category matching, per-discipline traces (all 8 with MY standards), OrderLine.Product Callout, infrastructure generalisation (zones=rooms for IN). DISC_VALIDATION_DB_SRS §10.4.10: movement verbs (FOLLOW, BEND, BRANCH, REDUCE, PENETRATE). §10.4.11: 4-phase task list (T0.1–T3.4). Prompts P94 (BomWriter), P95 (TE clean re-extract), P96 (parasitic disc POC) written and ready.
 **S100-p93** — Fleet re-extraction + script hardening (prompt 93). 3 grep `|| true` guards in run_RosettaStones.sh (lines 703, 722, 775). DX now completes (was script-dies). All 33/35 BOM.db deleted and re-extracted with post-PK schema. Fleet: 20 ALL GREEN, 9 C9 WARN (DX/HI/JE/NI/RA/RM/SC/WB/TE), 3 FAIL (CA/CL/WA pre-existing), RD/RL stall (0 elements, infra walker gap). Zero regressions from P85 baseline. FINE logging verified. Seal INTACT. Finding: TE extraction leaves zombie Java process holding SQLite locks on shared DBs.
