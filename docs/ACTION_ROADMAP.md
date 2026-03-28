@@ -1,7 +1,7 @@
 # BIM Compiler — Project Roadmap
 
 <div class="bim-banner" markdown>
-<b>Beta release by Q3 2026.</b>
+<center><b>Beta release target: July 2026</b></center>
 </div>
 
 ---
@@ -23,104 +23,109 @@
 | **Documentation** | 61 published specs, docs site live |
 | **Federation addon** | Blender/Bonsai IFC viewer with NLP query, 80K lines Python |
 | **Jurisdictions** | Malaysia (UBBL) — rules seeded |
-| **Code** | 272K Java + 221K Python + 59K SQL |
+
+### Development Velocity
+
+| Period | Commits | Lines | Rate |
+|--------|---------|-------|------|
+| Federation (Oct 2025, 5 days) | 11 | 80K Python | Proof of concept |
+| BIMCompiler (Jan 25 – Mar 28, 62 days) | 920 | 378K (187K Java + 31K Py + 59K SQL + 101K docs) | 14.8 commits/day |
+| **Combined** | **931** | **458K** | AI-assisted, specs-first |
 
 ---
 
-## Phase 1 — Fleet Convergence (April 2026)
+## Phase 1 — Fleet Convergence (~10 days → early April)
 
 *Get every building to GREEN.*
 
-| Deliverable | Detail |
-|-------------|--------|
-| Fix CA, CL, WA failures | Recently unblocked — extraction pipeline fixes |
-| Resolve C9 axis warnings (7 buildings) | Library mesh orientation alignment, not compiler bug |
-| RD, RL infrastructure walker | Non-standard IFC hierarchy — extend walker for rail/road elements |
-| DM generative convergence | Generative path alignment to BOM-walk compiler |
-| **Exit criterion** | 34/34 ALL GREEN (DM tracked separately as generative) |
+| Deliverable | Est. | Detail |
+|-------------|------|--------|
+| Fix CA, CL, WA failures | 3d | Recently unblocked — extraction pipeline fixes |
+| Resolve C9 axis warnings (7 buildings) | 2d | Library mesh orientation alignment, not compiler bug |
+| RD, RL infrastructure walker | 3d | Non-standard IFC hierarchy — extend walker for rail/road elements |
+| DM generative convergence | 2d | Generative path alignment to BOM-walk compiler |
+| **Exit criterion** | | 34/34 ALL GREEN (DM tracked separately as generative) |
 
 ---
 
-## Phase 2 — Multi-Jurisdiction Rules (April–May 2026)
+## Phase 2 — Multi-Jurisdiction Rules (~8 days → mid-April)
 
 *The compiler validates against any jurisdiction's building code. Add three more.*
 
-| Jurisdiction | Source | Copyright | Key Rules |
-|-------------|--------|-----------|-----------|
-| **Malaysia (UBBL)** | UBBL 1984 + amendments | Widely cited values | DONE — seeded in ad_val_rule |
-| **UK (Approved Documents)** | gov.uk — free download | Crown Copyright (open) | AD B (fire), AD K (stairs), AD M (access) |
-| **USA (ADA + IBC)** | ADA: ada.gov (public domain). IBC: published dimensional tables | ADA: zero risk. IBC: common-knowledge values | Room area, door width, stair geometry, egress |
-| **Singapore (BCA)** | BCA Approved Document | Government publication | Accessibility, fire safety, structural |
+| Jurisdiction | Est. | Source | Key Rules |
+|-------------|------|--------|-----------|
+| **Malaysia (UBBL)** | — | DONE — seeded in ad_val_rule | UBBL 1984 + amendments |
+| **UK (Approved Documents)** | 3d | gov.uk — Crown Copyright (open) | AD B (fire), AD K (stairs), AD M (access) |
+| **USA (ADA + IBC)** | 3d | ADA: public domain. IBC: published tables | Room area, door width, stair geometry, egress |
+| **Singapore (BCA)** | 2d | BCA Approved Document | Accessibility, fire safety, structural |
 
 The schema already supports multi-jurisdiction — `ad_val_rule.jurisdiction` partitions rules. This phase is **data entry**, not architecture.
 
 ---
 
-## Phase 3 — BIM Designer MVP (May 2026)
+## Phase 3 — BIM Designer MVP (~31 days → mid-May)
 
 *Interactive building design inside Blender — create, edit, save, recall, compile.*
 
-| Deliverable | Detail |
-|-------------|--------|
-| Create New building | One-click with defaults, immediate 3D bbox feedback |
-| Room editing | Slider-driven resize, add/remove rooms, storey management |
-| Save / Recall / Approve | Immutable versioning (W_Variant), non-destructive recall |
-| Ambient compliance | Live status strip — "spell-checker for buildings" |
-| Promote to BOM | Approved design → BOM dictionary entry |
-| Assembly Builder | Layer-by-layer wall/roof/floor composition, U-value calculation. [ASSEMBLY_BUILDER_SRS](ASSEMBLY_BUILDER_SRS.md) |
-| Forge computation | Formula-driven pieces (rafters, stairs, rebar) integrated into compile. Forge UI panel + gizmo handles. [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md) |
-| Room-to-set matching | M_Product_Category drives room→furniture selection — bedroom gets bed set, not sofa set |
-| **Exit criterion** | User can design a house from scratch and compile it without touching SQL |
+| Deliverable | Est. | Detail |
+|-------------|------|--------|
+| Create New building | 3d | One-click with defaults, immediate 3D bbox feedback |
+| Room editing | 5d | Slider-driven resize, add/remove rooms, storey management |
+| Save / Recall / Approve | 4d | Immutable versioning (W_Variant), non-destructive recall |
+| Ambient compliance | 3d | Live status strip — "spell-checker for buildings" (ComplianceStage exists) |
+| Assembly Builder | 5d | Layer-by-layer wall/roof/floor composition, U-value calculation. [ASSEMBLY_BUILDER_SRS](ASSEMBLY_BUILDER_SRS.md) |
+| Forge UI (p60–p63) | 8d | ForgePanel sidebar, ForgeMesh bridge, ForgeGizmo handles, LOD promotion. [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md) |
+| Room-to-set matching | 3d | M_Product_Category drives room→furniture selection — bedroom gets bed set, not sofa set |
+| **Exit criterion** | | User can design a house from scratch and compile it without touching SQL |
 
 SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requirements specified)
 
 ---
 
-## Phase 4 — Dimensional Outputs (May–June 2026)
+## Phase 4 — Dimensional Outputs (~17 days → early June)
 
 *Complete the 4D–8D promise.*
 
-| Dimension | Current State | Remaining Work |
-|-----------|--------------|----------------|
-| **3D Geometry** | LIVE — BOM-walk compiler, LOD400 | Native via Blender viewport |
-| **4D Schedule** | LIVE — topological sort of BOM tree | — |
-| **5D Cost** | LIVE — inherent in product data model | — |
-| **6D Carbon** | Schema exists (V010) | Wire SustainabilityDAO, carbon rollup, UI panel |
-| **7D Facility Mgmt** | Schema exists (V010) | Wire FacilityMgmtDAO, maintenance schedule, UI panel |
-| **8D ERP Integration** | iDempiere table alignment DONE | Live sync to iDempiere instance |
-| **2D Layout** | Specced | Floor plans, elevations, sections as SVG from compiled BOM. [2D_LAYOUT](2D_LAYOUT.md) |
-| **PDF Terrain** | Specced | Survey PDF → elevation points → IFC site topology. [PDF_TERRAIN](PDF_TERRAIN.md) |
-| **Audit trail** | Schema specced (V011) | ChangelogDAO, interceptor, history panel |
+| Dimension | Est. | Current State | Remaining Work |
+|-----------|------|--------------|----------------|
+| **3D Geometry** | — | LIVE — BOM-walk compiler, LOD400 | Native via Blender viewport |
+| **4D Schedule** | — | LIVE — topological sort of BOM tree | — |
+| **5D Cost** | — | LIVE — inherent in product data model | — |
+| **6D Carbon** | 2d | Schema exists (V010) | Wire SustainabilityDAO, carbon rollup, UI panel |
+| **7D Facility Mgmt** | 2d | Schema exists (V010) | Wire FacilityMgmtDAO, maintenance schedule, UI panel |
+| **8D ERP Integration** | — | iDempiere table alignment DONE | Live sync to iDempiere instance |
+| **2D Layout** | 5d | Specced | Floor plans, elevations, sections as SVG from compiled BOM. [2D_LAYOUT](2D_LAYOUT.md) |
+| **PDF Terrain** | 5d | Specced | Survey PDF → elevation points → IFC site topology. [PDF_TERRAIN](PDF_TERRAIN.md) |
+| **Audit trail** | 3d | Schema specced (V011) | ChangelogDAO, interceptor, history panel |
 
 ---
 
-## Phase 5 — Packaging & Deployment (June 2026)
+## Phase 5 — Packaging & Deployment (~16 days → late June)
 
 *From developer tool to installable product.*
 
-| Deliverable | Detail |
-|-------------|--------|
-| Blender addon packaging | Single ZIP install for Federation + Designer |
-| Java server packaging | Docker container or self-contained JAR |
-| Zero-config onboarding | "3 minutes to first building" — no manual DB setup |
-| PDF report export | 18 report templates already built — wire to PDF renderer |
-| IFC export | output.db → IFC 4.3 file (round-trip) |
-| Forge fabrication export | Cut lists, rebar schedules, work orders from ad_forge_fabrication |
-| **Exit criterion** | Non-developer can install, create a building, and export results |
+| Deliverable | Est. | Detail |
+|-------------|------|--------|
+| Blender addon packaging | 3d | Single ZIP install for Federation + Designer |
+| Java server packaging | 2d | Docker container or self-contained JAR |
+| Zero-config onboarding | 3d | "3 minutes to first building" — no manual DB setup |
+| PDF report export | 3d | 18 report templates already built — wire to PDF renderer |
+| IFC export | 5d | output.db → IFC 4.3 file (round-trip) |
+| **Exit criterion** | | Non-developer can install, create a building, and export results |
 
 ---
 
-## Phase 6 — Beta Release (June–July 2026)
+## Phase 6 — Beta Release (~16 days → early July)
 
 *Public beta — real users, real buildings.*
 
-| Deliverable | Detail |
-|-------------|--------|
-| Cloud deployment | Multi-user server, auth, project storage |
-| API documentation | OpenAPI/Swagger for BackOffice endpoints |
-| Fleet hardening | Edge cases across all 35 building types |
-| Localization | English, Malay, Mandarin (minimum for ASEAN) |
-| **Exit criterion** | External users can run the full pipeline on their own IFC files |
+| Deliverable | Est. | Detail |
+|-------------|------|--------|
+| Cloud deployment | 5d | Multi-user server, auth, project storage |
+| API documentation | 3d | OpenAPI/Swagger for BackOffice endpoints |
+| Fleet hardening | 5d | Edge cases across all 35 building types |
+| Localization | 3d | English, Malay, Mandarin (minimum for ASEAN) |
+| **Exit criterion** | | External users can run the full pipeline on their own IFC files |
 
 ---
 
@@ -162,8 +167,8 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 | **SQL** | 59K lines — 5 databases, migrations, seed data, validation rules |
 | **Specs** | 101K lines across 61 published docs |
 | **Databases** | 5-DB architecture: ERP, BOM (per-building), output, validation, component library |
-| **Commits** | 917 (AI-assisted, specs-first discipline) |
-| **Interactive ERD** | [bim_architecture_viz.html](bim_architecture_viz.html) — clickable 4-DB tables, pipeline, BOM tree |
+| **Commits** | 931 across 2 repos (AI-assisted, specs-first discipline) |
+| **Interactive ERD** | [bim_architecture_viz.html](bim_architecture_viz.html) — clickable tables, pipeline, BOM tree |
 
 ---
 
