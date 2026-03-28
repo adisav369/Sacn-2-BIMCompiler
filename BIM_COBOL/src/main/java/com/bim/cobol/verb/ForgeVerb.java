@@ -26,6 +26,7 @@ public class ForgeVerb implements Verb<ForgeResult> {
         register(new PipeBendForge());
         register(new DomeSectionForge());
         register(new BarrelVaultForge());
+        register(new RebarCageForge());
     }
 
     private void register(ForgeEngine engine) {

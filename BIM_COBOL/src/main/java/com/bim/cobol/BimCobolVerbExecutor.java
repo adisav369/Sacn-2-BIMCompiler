@@ -1,5 +1,7 @@
 package com.bim.cobol;
 
+import com.bim.cobol.forge.ForgeResult;
+import com.bim.cobol.forge.ForgeFabricationWriter;
 import com.bim.compiler.dsl.VerbExecutor;
 
 import java.sql.Connection;
@@ -39,6 +41,20 @@ public class BimCobolVerbExecutor implements VerbExecutor {
         // 3. Persist to W_Verb_Node
         VerbNodePersister persister = new VerbNodePersister(outputConn, buildingId);
         int nodeCount = persister.persist(verbLines, report);
+
+        // 3b. Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB
+        // Write forge fabrication data to AD_Forge_Fabrication
+        ForgeFabricationWriter fabWriter = new ForgeFabricationWriter(outputConn);
+        List<ForgeResult> forgeResults = new ArrayList<>();
+        for (VerbResult<?> vr : report.results()) {
+            if (vr.pass() && vr.payload() instanceof ForgeResult fr) {
+                forgeResults.add(fr);
+            }
+        }
+        int fabCount = fabWriter.writeAll(forgeResults);
+        if (fabCount > 0) {
+            System.out.printf("[VERB] Wrote %d fabrication row(s) to AD_Forge_Fabrication%n", fabCount);
+        }
 
         // 4. Build detail lines for logging
         List<String> details = new ArrayList<>();

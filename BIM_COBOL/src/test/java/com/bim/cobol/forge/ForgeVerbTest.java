@@ -142,4 +142,52 @@ class ForgeVerbTest {
         assertTrue(rib.lengthMm() > 12000,
                 "Arc length > span for non-flat vault");
     }
+
+    /**
+     * W-FORGE-9: Slab rebar for 6m x 4m x 200mm -> correct bar count + spacing.
+     */
+    @Test
+    void rebarSlabComputesBars() {
+        VerbResult<?> r = registry.dispatch(ctx, "FORGE REBAR_CAGE type:SLAB grade:GRADE_30 exposure:XC1 width:6000 depth:4000 thickness:200");
+        assertTrue(r.pass(), "Should pass: " + r.summary());
+        ForgeResult fr = (ForgeResult) r.payload();
+        assertEquals(1, fr.records().size());
+        GeometryRecord rec = fr.records().get(0);
+        // Main bars T12 @ <=300mm spacing for 200mm slab
+        assertTrue(rec.fabrication().get("main_bar_diameter") <= 16);
+        assertTrue(rec.fabrication().get("main_bar_spacing") <= 300);
+        assertTrue(rec.fabrication().get("main_bar_count") > 0);
+        // Reinforcement ratio >= 0.13%
+        assertTrue(rec.fabrication().get("reinforcement_ratio") >= 0.0013);
+    }
+
+    /**
+     * W-FORGE-10: Column rebar for 400mm x 400mm -> correct ratio + link spacing.
+     */
+    @Test
+    void rebarColumnComputesLinks() {
+        VerbResult<?> r = registry.dispatch(ctx, "FORGE REBAR_CAGE type:COLUMN grade:GRADE_30 exposure:XC1 width:400 depth:400 height:3500");
+        assertTrue(r.pass(), "Should pass: " + r.summary());
+        ForgeResult fr = (ForgeResult) r.payload();
+        GeometryRecord rec = fr.records().get(0);
+        // Ratio >= 0.8% and <= 4%
+        double ratio = rec.fabrication().get("reinforcement_ratio");
+        assertTrue(ratio >= 0.008, "Min 0.8% ratio: " + ratio);
+        assertTrue(ratio <= 0.04, "Max 4% ratio: " + ratio);
+        // Link spacing <= 12 x bar diameter
+        assertTrue(rec.fabrication().get("link_spacing") <= 12 * rec.fabrication().get("longitudinal_bar_diameter"));
+    }
+
+    /**
+     * W-FORGE-11: Exposure class XS3 -> increased cover requirement.
+     */
+    @Test
+    void rebarXS3IncreasedCover() {
+        VerbResult<?> r = registry.dispatch(ctx, "FORGE REBAR_CAGE type:SLAB grade:GRADE_30 exposure:XS3 width:6000 depth:4000 thickness:200");
+        assertTrue(r.pass(), "Should pass: " + r.summary());
+        ForgeResult fr = (ForgeResult) r.payload();
+        GeometryRecord rec = fr.records().get(0);
+        // XS3 base cover 55mm + 5mm formwork tolerance = 60mm
+        assertEquals(60.0, rec.fabrication().get("cover_mm"), 0.01);
+    }
 }

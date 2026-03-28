@@ -374,7 +374,7 @@ public class BuildingWriter {
                     family_ref          TEXT NOT NULL,
                     host_type           TEXT NOT NULL,
                     m_product_category_id TEXT,
-                    bom_child_id        INTEGER,
+                    M_BOM_Line_ID        INTEGER,
                     dx                  REAL NOT NULL DEFAULT 0,
                     dy                  REAL NOT NULL DEFAULT 0,
                     dz                  REAL NOT NULL DEFAULT 0,
@@ -440,6 +440,19 @@ public class BuildingWriter {
                     ValueType                TEXT DEFAULT 'TEXT'
                         CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
                     UNIQUE(W_Verb_Node_ID, Name)
+                )
+            """);
+
+            // Implementing FORGE_SUITE_SRS.md §9 Part ⑤ — Witness: W-FORGE-FAB
+            stmt.execute("DROP TABLE IF EXISTS ad_forge_fabrication");
+            stmt.execute("""
+                CREATE TABLE AD_Forge_Fabrication (
+                    AD_Forge_Fabrication_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Element_ID               TEXT NOT NULL,
+                    PieceType                TEXT NOT NULL,
+                    Name                     TEXT NOT NULL,
+                    Value                    REAL NOT NULL,
+                    Unit                     TEXT
                 )
             """);
         }
