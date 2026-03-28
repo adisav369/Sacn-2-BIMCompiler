@@ -11,7 +11,7 @@ import java.sql.Connection;
  *
  * <p>Table: {@code ad_room_slot}
  * <pre>
- *   slot_id       INTEGER PRIMARY KEY AUTOINCREMENT
+ *   AD_Room_Slot_ID INTEGER PRIMARY KEY AUTOINCREMENT
  *   room_type     TEXT NOT NULL
  *   slot_name     TEXT NOT NULL
  *   assembly_id   TEXT         (FK → m_bom.bom_id dispatched for this slot)
@@ -30,7 +30,7 @@ import java.sql.Connection;
 public class X_AdRoomSlot extends BasePO {
 
     public static final String Table_Name                    = "ad_room_slot";
-    public static final String COLUMNNAME_slot_id            = "slot_id";
+    public static final String COLUMNNAME_AD_Room_Slot_ID    = "AD_Room_Slot_ID";
     public static final String COLUMNNAME_room_type          = "room_type";
     public static final String COLUMNNAME_slot_name          = "slot_name";
     public static final String COLUMNNAME_assembly_id        = "assembly_id";
@@ -45,9 +45,9 @@ public class X_AdRoomSlot extends BasePO {
     public X_AdRoomSlot(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
-    @Override protected String getPKColumnName() { return COLUMNNAME_slot_id; }
+    @Override protected String getPKColumnName() { return COLUMNNAME_AD_Room_Slot_ID; }
 
-    public int    getSlotId()       { return get_ValueAsInt(COLUMNNAME_slot_id); }
+    public int    getSlotId()       { return get_ValueAsInt(COLUMNNAME_AD_Room_Slot_ID); }
     public String getRoomType()     { return get_ValueAsString(COLUMNNAME_room_type); }
     public String getSlotName()     { return get_ValueAsString(COLUMNNAME_slot_name); }
     public String getAssemblyId()   { return get_ValueAsString(COLUMNNAME_assembly_id); }

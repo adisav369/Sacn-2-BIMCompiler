@@ -11,7 +11,7 @@ import java.sql.Connection;
  *
  * <p>Table: {@code ad_wall_face}
  * <pre>
- *   id            INTEGER PRIMARY KEY AUTOINCREMENT
+ *   AD_Wall_Face_ID INTEGER PRIMARY KEY AUTOINCREMENT
  *   building_type TEXT NOT NULL
  *   storey        TEXT NOT NULL
  *   room_name     TEXT NOT NULL       -- owner room
@@ -29,7 +29,7 @@ import java.sql.Connection;
 public class X_AdWallFace extends BasePO {
 
     public static final String Table_Name                = "ad_wall_face";
-    public static final String COLUMNNAME_id             = "id";
+    public static final String COLUMNNAME_AD_Wall_Face_ID = "AD_Wall_Face_ID";
     public static final String COLUMNNAME_building_type  = "building_type";
     public static final String COLUMNNAME_storey         = "storey";
     public static final String COLUMNNAME_room_name      = "room_name";
@@ -43,9 +43,9 @@ public class X_AdWallFace extends BasePO {
     public X_AdWallFace(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
-    @Override protected String getPKColumnName() { return COLUMNNAME_id; }
+    @Override protected String getPKColumnName() { return COLUMNNAME_AD_Wall_Face_ID; }
 
-    public int    getId()            { return get_ValueAsInt(COLUMNNAME_id); }
+    public int    getId()            { return get_ValueAsInt(COLUMNNAME_AD_Wall_Face_ID); }
     public String getBuildingType()  { return get_ValueAsString(COLUMNNAME_building_type); }
     public String getStorey()        { return get_ValueAsString(COLUMNNAME_storey); }
     public String getRoomName()      { return get_ValueAsString(COLUMNNAME_room_name); }

@@ -566,7 +566,7 @@ public class BuildingInspector {
         // c_orderline dropped from BOM.db (§11.9). C_OrderLine generated at compile time.
         int ruleCount = 0; // not available until compile
         // Count room slots reachable from this building (via room_boundary.room_type)
-        String slotSql = "SELECT COUNT(DISTINCT rs.slot_id) FROM ad_room_slot rs"
+        String slotSql = "SELECT COUNT(DISTINCT rs.AD_Room_Slot_ID) FROM ad_room_slot rs"
                        + " JOIN ad_room_boundary rb ON rs.room_type = rb.room_type"
                        + " WHERE rb.building_type=? AND rb.is_active=1";
         int slotCount = 0;
