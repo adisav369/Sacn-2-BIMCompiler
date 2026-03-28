@@ -180,8 +180,8 @@ public class BOMWalker {
         for (MBOMLine line : lines) {
             String childProductId = line.getChildProductId();
             if (childProductId == null) {
-                System.err.printf("[BOMWalker] m_bom_line bom_child_id=%d has null child_product_id — skipping%n",
-                    line.getBomChildId());
+                System.err.printf("[BOMWalker] m_bom_line M_BOM_Line_ID=%d has null child_product_id — skipping%n",
+                    line.getBomLineId());
                 continue;
             }
 

@@ -319,7 +319,7 @@ class BuildingInspectorTest {
     @DisplayName("W-SPACESIZE-1: active catalog BUY leaf children have AllocatedSize > 0")
     void w_spacesize_1_leafChildrenHaveSpaceSize() throws SQLException {
         String sql = """
-            SELECT bl.bom_child_id, bl.bom_id, bl.child_product_id,
+            SELECT bl.M_BOM_Line_ID, bl.bom_id, bl.child_product_id,
                    bl.allocated_width_mm, bl.allocated_depth_mm, bl.allocated_height_mm
             FROM m_bom_line bl
             JOIN M_Product mp ON bl.child_product_id = mp.product_id
@@ -331,7 +331,7 @@ class BuildingInspectorTest {
         List<String> bad = new java.util.ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(String.format("child_id=%d bom=%s ref=%s alloc=%dx%dx%d",
-                rs.getInt("bom_child_id"), rs.getString("bom_id"), rs.getString("child_product_id"),
+                rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"), rs.getString("child_product_id"),
                 rs.getInt("allocated_width_mm"), rs.getInt("allocated_depth_mm"), rs.getInt("allocated_height_mm")));
         }
         assertTrue(bad.isEmpty(),

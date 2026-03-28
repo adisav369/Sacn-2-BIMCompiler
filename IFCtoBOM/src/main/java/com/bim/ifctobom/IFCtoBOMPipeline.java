@@ -589,7 +589,7 @@ public class IFCtoBOMPipeline {
             // Implementing BBC.md §14.3 IDV-1 — Witness: W-PK-MBOMLINE
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom_line (
-                    bom_child_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_BOM_Line_ID       INTEGER PRIMARY KEY AUTOINCREMENT,
                     bom_id              TEXT NOT NULL,
                     M_BOM_ID            INTEGER NOT NULL DEFAULT 0,
                     child_product_id    TEXT,
@@ -644,9 +644,11 @@ public class IFCtoBOMPipeline {
 
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS ad_sysconfig (
-                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    AD_SysConfig_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     config_key   TEXT NOT NULL,
                     config_value TEXT NOT NULL,
+                    Name         TEXT,
+                    Value        TEXT,
                     description  TEXT,
                     is_active    INTEGER DEFAULT 1,
                     UNIQUE(config_key, config_value)

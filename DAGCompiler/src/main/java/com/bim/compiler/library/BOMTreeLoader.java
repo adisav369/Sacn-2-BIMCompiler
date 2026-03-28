@@ -125,7 +125,7 @@ public final class BOMTreeLoader {
      * If specified, loads only the named BOMs.
      *
      * <p>Joins {@code m_bom} to ensure only active parent BOMs are included.
-     * Loads all active {@code m_attribute} params and groups by {@code bom_child_id}.
+     * Loads all active {@code m_attribute} params and groups by {@code M_BOM_Line_ID}.
      *
      * @param bomDbPath path to BOM.db
      * @param bomIds    optional BOM IDs to filter (empty = all active)
@@ -154,7 +154,7 @@ public final class BOMTreeLoader {
                 .orderBy("bc.bom_id, bc.sequence")
                 .list();
 
-            // ② Load ALL active params — single bulk query, group by bom_child_id
+            // ② Load ALL active params — single bulk query, group by M_BOM_Line_ID
             List<MAttribute> allParams = new ModelQuery<>(
                     conn, MAttribute::new, MAttribute.Table_Name)
                 .where("is_active = ?", 1)
@@ -163,7 +163,7 @@ public final class BOMTreeLoader {
             Map<Integer, Map<String, String>> paramsByChildId = new HashMap<>();
             for (MAttribute p : allParams) {
                 paramsByChildId
-                    .computeIfAbsent(p.getBomChildId(), k -> new HashMap<>())
+                    .computeIfAbsent(p.getBomLineId(), k -> new HashMap<>())
                     .put(p.getParamKey(), p.getParamValue());
             }
 
@@ -171,7 +171,7 @@ public final class BOMTreeLoader {
             Map<String, BOMNode> tree = new HashMap<>();
             for (MBOMLine raw : rawChildren) {
                 Map<String, String> params = paramsByChildId.getOrDefault(
-                    raw.getBomChildId(), Map.of());
+                    raw.getBomLineId(), Map.of());
 
                 // 3-table authority: param overrides column
                 String nameOverride = params.get("name_pattern");
@@ -179,7 +179,7 @@ public final class BOMTreeLoader {
                     ? nameOverride : raw.getChildNamePattern();
 
                 BOMChild child = new BOMChild(
-                    raw.getBomChildId(),
+                    raw.getBomLineId(),
                     raw.getBomId(),
                     raw.getRole(),
                     raw.getChildProductId(),

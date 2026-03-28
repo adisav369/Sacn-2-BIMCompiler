@@ -162,7 +162,7 @@ public class PlacementLoader {
      *
      * <p>S60 path: BomDropper creates C_OrderLine tree in compile DB,
      * then OrderLineWalker walks it, loading MBOMLine attributes via
-     * bom_child_id FK join-back. Same PlacementCollectorVisitor produces
+     * M_BOM_Line_ID FK join-back. Same PlacementCollectorVisitor produces
      * identical Placements.
      *
      * @see com.bim.compiler.bom.BomDropper

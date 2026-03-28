@@ -137,7 +137,7 @@ class CompileBridgeTest {
             double aabbW = 0, aabbD = 0, aabbH = 0;
             try (Statement stmt = conn.createStatement();
                  var rs = stmt.executeQuery(
-                         "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom WHERE bom_id='BUILDING_SH_STD'")) {
+                         "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom WHERE Value='BUILDING_SH_STD'")) {
                 if (rs.next()) {
                     aabbW = rs.getDouble(1);
                     aabbD = rs.getDouble(2);
@@ -149,8 +149,10 @@ class CompileBridgeTest {
             try (Statement stmt = conn.createStatement()) {
                 stmt.execute("""
                     CREATE TABLE IF NOT EXISTS C_DocType (
-                        C_DocType_ID TEXT PRIMARY KEY,
-                        Name TEXT, doc_sub_type TEXT,
+                        C_DocType_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Value TEXT NOT NULL UNIQUE,
+                        Name TEXT NOT NULL,
+                        doc_sub_type TEXT,
                         IsActive INTEGER DEFAULT 1, ProjectName TEXT,
                         OutputDbPath TEXT, ReferenceDbPath TEXT,
                         ExpectedElements INTEGER DEFAULT 0,
@@ -171,7 +173,7 @@ class CompileBridgeTest {
             String refPath = "DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db";
             try (var ps = conn.prepareStatement("""
                     INSERT OR REPLACE INTO C_DocType (
-                        C_DocType_ID, Name, doc_sub_type, IsActive,
+                        Value, Name, doc_sub_type, IsActive,
                         ProjectName, OutputDbPath, ReferenceDbPath,
                         ExpectedElements, Provenance, SeqNo, DSLContent,
                         GeometryFailThreshold

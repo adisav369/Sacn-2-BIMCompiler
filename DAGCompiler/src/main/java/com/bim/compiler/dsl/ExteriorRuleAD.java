@@ -67,7 +67,7 @@ class ExteriorRuleAD {
         if (loaded) return;
         loaded = true;
         String sql = """
-            SELECT space_type_id, requires_exterior, preferred_exterior,
+            SELECT Value, requires_exterior, preferred_exterior,
                    min_exterior_ratio, facade_preference
             FROM ad_space_exterior_rule
             WHERE is_active = 1
@@ -76,7 +76,7 @@ class ExteriorRuleAD {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                String id = rs.getString("space_type_id");
+                String id = rs.getString("Value");
                 ExteriorRule rule = new ExteriorRule(
                     id,
                     rs.getInt("requires_exterior") == 1,

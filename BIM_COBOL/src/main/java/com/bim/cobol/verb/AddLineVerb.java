@@ -110,7 +110,7 @@ public class AddLineVerb implements Verb<AddLineVerb.AddLinePayload> {
         AddLinePayload payload = new AddLinePayload(
             bomId, childProductId, role, sequence, dx, dy, dz,
             rotationRule, widthMm, depthMm, heightMm, componentType,
-            line.getBomChildId());
+            line.getBomLineId());
 
         return VerbResult.ok(keyword(),
             String.format("ADD LINE %s → %s (role=%s, seq=%d, type=%s)",

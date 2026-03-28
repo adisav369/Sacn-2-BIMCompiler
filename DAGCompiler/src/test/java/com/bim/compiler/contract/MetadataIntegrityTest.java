@@ -142,13 +142,13 @@ public class MetadataIntegrityTest {
         // space_type_id → ad_space_type
         int typeD = countDangling(
             "SELECT COUNT(*) FROM ad_space_type_opening sto " +
-            "LEFT JOIN ad_space_type st ON sto.space_type_id = st.space_type_id " +
-            "WHERE st.space_type_id IS NULL");
+            "LEFT JOIN ad_space_type st ON sto.space_type_id = st.Value " +
+            "WHERE st.Value IS NULL");
         if (typeD > 0) {
             String vals = listDangling(
                 "SELECT DISTINCT sto.space_type_id FROM ad_space_type_opening sto " +
-                "LEFT JOIN ad_space_type st ON sto.space_type_id = st.space_type_id " +
-                "WHERE st.space_type_id IS NULL");
+                "LEFT JOIN ad_space_type st ON sto.space_type_id = st.Value " +
+                "WHERE st.Value IS NULL");
             fail("ad_space_type_opening.space_type_id has " + typeD + " dangling rows: " + vals);
         }
 
@@ -181,13 +181,13 @@ public class MetadataIntegrityTest {
         assertEquals(0, bomD,
             "m_bom_line.bom_id has " + bomD + " dangling rows not in m_bom");
 
-        // m_attribute.bom_child_id → m_bom_line
+        // m_attribute.M_BOM_Line_ID → m_bom_line
         int paramD = countDangling(
             "SELECT COUNT(*) FROM m_attribute bcp " +
-            "LEFT JOIN m_bom_line bc ON bcp.bom_child_id = bc.bom_child_id " +
-            "WHERE bc.bom_child_id IS NULL AND bcp.is_active = 1");
+            "LEFT JOIN m_bom_line bc ON bcp.M_BOM_Line_ID = bc.M_BOM_Line_ID " +
+            "WHERE bc.M_BOM_Line_ID IS NULL AND bcp.is_active = 1");
         assertEquals(0, paramD,
-            "m_attribute.bom_child_id has " + paramD + " dangling rows not in m_bom_line");
+            "m_attribute.M_BOM_Line_ID has " + paramD + " dangling rows not in m_bom_line");
     }
 
     // =========================================================================
@@ -348,10 +348,10 @@ public class MetadataIntegrityTest {
     @DisplayName("M13: Space type satellite tables reference valid space types")
     void spaceTypeSatellites_validSpaceTypes() throws SQLException {
         String[][] satellites = {
-            {"ad_space_type_mep", "space_type_id"},
+            {"ad_space_type_mep", "Value"},
             {"ad_space_type_mep_bom", "space_type_id"},
-            {"ad_space_exterior_rule", "space_type_id"},
-            {"ad_space_dim", "space_type"},
+            {"ad_space_exterior_rule", "Value"},
+            {"ad_space_dim", "Value"},
             {"ad_space_type_alias", "space_type_id"},
         };
         for (String[] pair : satellites) {
@@ -359,8 +359,8 @@ public class MetadataIntegrityTest {
             String col = pair[1];
             int dangles = countDangling(
                 "SELECT COUNT(*) FROM " + table + " sat " +
-                "LEFT JOIN ad_space_type st ON sat." + col + " = st.space_type_id " +
-                "WHERE st.space_type_id IS NULL");
+                "LEFT JOIN ad_space_type st ON sat." + col + " = st.Value " +
+                "WHERE st.Value IS NULL");
             assertEquals(0, dangles,
                 table + "." + col + " has " + dangles + " values not in ad_space_type");
         }

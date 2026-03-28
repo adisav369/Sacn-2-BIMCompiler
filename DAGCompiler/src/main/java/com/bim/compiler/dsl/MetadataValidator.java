@@ -102,9 +102,9 @@ public class MetadataValidator implements CompilerStage {
 
         int paramD = queryInt(conn,
             "SELECT COUNT(*) FROM m_attribute bcp " +
-            "LEFT JOIN m_bom_line bc ON bcp.bom_child_id = bc.bom_child_id " +
-            "WHERE bc.bom_child_id IS NULL AND bcp.is_active = 1");
-        if (paramD > 0) errors.add("m_attribute.bom_child_id: " + paramD + " dangling refs to m_bom_line");
+            "LEFT JOIN m_bom_line bc ON bcp.M_BOM_Line_ID = bc.M_BOM_Line_ID " +
+            "WHERE bc.M_BOM_Line_ID IS NULL AND bcp.is_active = 1");
+        if (paramD > 0) errors.add("m_attribute.M_BOM_Line_ID: " + paramD + " dangling refs to m_bom_line");
     }
 
     private void checkGeometryHashes(Connection conn, List<String> errors) throws SQLException {

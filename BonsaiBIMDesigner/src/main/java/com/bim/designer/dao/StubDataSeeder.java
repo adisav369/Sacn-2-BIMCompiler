@@ -103,7 +103,7 @@ public class StubDataSeeder {
             // m_bom_line — BOM children
             s.execute("""
                     CREATE TABLE IF NOT EXISTS m_bom_line (
-                        bom_child_id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                        M_BOM_Line_ID         INTEGER PRIMARY KEY AUTOINCREMENT,
                         bom_id               TEXT NOT NULL,
                         M_BOM_ID             INTEGER NOT NULL,
                         child_product_id     TEXT,

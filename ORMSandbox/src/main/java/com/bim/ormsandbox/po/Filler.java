@@ -233,8 +233,8 @@ public final class Filler {
      *
      * @param conn        JDBC connection
      * @param bomId       the SET BOM containing both items
-     * @param childIdA    bom_child_id of the first item
-     * @param childIdB    bom_child_id of the second item
+     * @param childIdA    M_BOM_Line_ID of the first item
+     * @param childIdB    M_BOM_Line_ID of the second item
      * @return distance in mm between the two items (sum of interstitial widths)
      * @throws IllegalArgumentException if either child not found in BOM
      */
@@ -246,8 +246,8 @@ public final class Filler {
 
         int seqA = -1, seqB = -1;
         for (MBOMLine c : children) {
-            if (c.getBomChildId() == childIdA) seqA = c.getSequence();
-            if (c.getBomChildId() == childIdB) seqB = c.getSequence();
+            if (c.getBomLineId() == childIdA) seqA = c.getSequence();
+            if (c.getBomLineId() == childIdB) seqB = c.getSequence();
         }
         if (seqA < 0 || seqB < 0) {
             throw new IllegalArgumentException("Child not found in " + bomId
@@ -269,7 +269,7 @@ public final class Filler {
 
     /**
      * Measuring tape (by role): distance between items identified by role name.
-     * Convenience wrapper when bom_child_id is not known.
+     * Convenience wrapper when M_BOM_Line_ID is not known.
      *
      * @param conn   JDBC connection
      * @param bomId  the SET BOM
@@ -286,8 +286,8 @@ public final class Filler {
 
         int idA = -1, idB = -1;
         for (MBOMLine c : children) {
-            if (roleA.equals(c.getRole()) && idA < 0) idA = c.getBomChildId();
-            if (roleB.equals(c.getRole()) && idB < 0) idB = c.getBomChildId();
+            if (roleA.equals(c.getRole()) && idA < 0) idA = c.getBomLineId();
+            if (roleB.equals(c.getRole()) && idB < 0) idB = c.getBomLineId();
         }
         if (idA < 0 || idB < 0) {
             throw new IllegalArgumentException("Role not found in " + bomId

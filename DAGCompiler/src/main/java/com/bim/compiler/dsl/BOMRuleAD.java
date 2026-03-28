@@ -301,7 +301,7 @@ public class BOMRuleAD {
         String sql = """
             SELECT c.z_rule, p.param_key, p.param_value
             FROM m_bom_line c
-            LEFT JOIN m_attribute p ON c.bom_child_id = p.bom_child_id AND p.is_active = 1
+            LEFT JOIN m_attribute p ON c.M_BOM_Line_ID = p.M_BOM_Line_ID AND p.is_active = 1
             WHERE c.bom_id = ? AND c.role = ? AND c.is_active = 1
             """;
 

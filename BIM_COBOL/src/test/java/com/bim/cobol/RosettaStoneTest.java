@@ -277,7 +277,7 @@ class RosettaStoneTest {
     private int loadMinPowerPoints(Connection conn, String spaceType) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT power_points FROM ad_space_type_mep"
-                        + " WHERE space_type_id = ?")) {
+                        + " WHERE Value = ?")) {
             ps.setString(1, spaceType);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;

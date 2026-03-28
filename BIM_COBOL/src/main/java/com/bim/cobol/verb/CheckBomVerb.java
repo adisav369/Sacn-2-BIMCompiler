@@ -104,7 +104,7 @@ public class CheckBomVerb implements Verb<CheckBomVerb.BomCheckPayload> {
                             prod = MProduct.getAssembly(conn, pid);
                             if (prod == null)
                                 errors.add("BUY child_product_id=" + pid
-                                        + " (line " + line.getBomChildId() + ") has no M_Product");
+                                        + " (line " + line.getBomLineId() + ") has no M_Product");
                         }
                     }
                 }
@@ -115,7 +115,7 @@ public class CheckBomVerb implements Verb<CheckBomVerb.BomCheckPayload> {
                 }
                 case "PHANTOM" -> counts[2]++;
                 default -> errors.add("unknown component_type=" + type
-                        + " (line " + line.getBomChildId() + ")");
+                        + " (line " + line.getBomLineId() + ")");
             }
         }
         return maxChildDepth;

@@ -65,7 +65,7 @@ public class SetRotationVerb implements Verb<SetRotationVerb.SetRotationPayload>
         target.save();
 
         SetRotationPayload payload = new SetRotationPayload(
-            bomId, lineRef, target.getBomChildId(), rotationValue);
+            bomId, lineRef, target.getBomLineId(), rotationValue);
 
         return VerbResult.ok(keyword(),
             String.format("SET ROTATION %s.%s → %s",

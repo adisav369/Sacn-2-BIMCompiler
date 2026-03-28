@@ -356,7 +356,7 @@ run_a6() {
     local neg_eav_count
     neg_eav_count=$(sqlite3 "$BOM_DB" "
         SELECT COUNT(*) FROM m_attribute a
-        JOIN m_bom_line bl ON a.bom_child_id = bl.bom_child_id
+        JOIN m_bom_line bl ON a.M_BOM_Line_ID = bl.M_BOM_Line_ID
         WHERE a.param_key IN ('dx','dy','dz','x_offset','y_offset','z_offset')
           AND a.is_active = 1
           AND CAST(a.param_value AS REAL) < -0.0001;

@@ -15,11 +15,11 @@ import java.util.List;
  * <p>Drop-in replacement for {@link BOMWalker} when C_OrderLine data
  * exists in the compile DB. The C_OrderLine tree defines the structure
  * (which products, where); MBOMLine attributes (verb_ref, rotation,
- * material, storey, element_ref) are loaded via the {@code bom_child_id}
+ * material, storey, element_ref) are loaded via the {@code M_BOM_Line_ID}
  * FK join-back.
  *
  * <p>This enables product swaps on C_OrderLine without touching m_bom:
- * {@code family_ref} changes (new product), {@code bom_child_id} stays
+ * {@code family_ref} changes (new product), {@code M_BOM_Line_ID} stays
  * (original placement data from m_bom_line).
  *
  * <p>Session D additions:
@@ -110,7 +110,7 @@ public class OrderLineWalker {
                 continue;
             }
 
-            // Load MBOMLine via bom_child_id (join-back for attributes)
+            // Load MBOMLine via M_BOM_Line_ID (join-back for attributes)
             MBOMLine line = null;
             if (row.bomChildId > 0) {
                 line = new MBOMLine(compileDb);
@@ -217,7 +217,7 @@ public class OrderLineWalker {
     // ── Data access ──────────────────────────────────────────────────────────
 
     private OrderLineRow findRoot(String orderId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, AD_Org_ID, "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, M_BOM_Line_ID, Discipline, AD_Org_ID, "
                    + "Qty, locator_ref, is_reference_class "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID IS NULL "
                    + "AND IsActive = 1 ORDER BY Line LIMIT 1";
@@ -231,7 +231,7 @@ public class OrderLineWalker {
     }
 
     private List<OrderLineRow> findChildren(String orderId, int parentLineId) throws SQLException {
-        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, bom_child_id, Discipline, AD_Org_ID, "
+        String sql = "SELECT C_OrderLine_ID, family_ref, host_type, M_BOM_Line_ID, Discipline, AD_Org_ID, "
                    + "Qty, locator_ref, is_reference_class "
                    + "FROM C_OrderLine WHERE C_Order_ID = ? AND Parent_OrderLine_ID = ? "
                    + "AND IsActive = 1 ORDER BY Line";
@@ -260,7 +260,7 @@ public class OrderLineWalker {
                 rs.getInt("C_OrderLine_ID"),
                 rs.getString("family_ref"),
                 rs.getString("host_type"),
-                rs.getInt("bom_child_id"),
+                rs.getInt("M_BOM_Line_ID"),
                 disc,
                 adOrgId,
                 rs.getInt("Qty"),

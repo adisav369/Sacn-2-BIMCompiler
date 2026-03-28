@@ -823,7 +823,7 @@ public class CompilationPipeline {
             try (Connection compileDb = DriverManager.getConnection("jdbc:sqlite:" + compileDbPath)) {
                 String select = """
                     SELECT C_OrderLine_ID, Parent_OrderLine_ID, Line, family_ref, host_type,
-                           m_product_category_id, bom_child_id, dx, dy, dz,
+                           m_product_category_id, M_BOM_Line_ID, dx, dy, dz,
                            aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                            M_Product_ID, Discipline, AD_Org_ID, Qty, locator_ref, is_reference_class
                     FROM C_OrderLine WHERE C_Order_ID = ? ORDER BY C_OrderLine_ID
@@ -832,7 +832,7 @@ public class CompilationPipeline {
                 String insert = """
                     INSERT INTO c_orderline
                     (C_OrderLine_ID, C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type,
-                     m_product_category_id, bom_child_id, dx, dy, dz,
+                     m_product_category_id, M_BOM_Line_ID, dx, dy, dz,
                      aabb_width_mm, aabb_depth_mm, aabb_height_mm,
                      M_Product_ID, Discipline, AD_Org_ID, Qty, locator_ref, is_reference_class)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -851,7 +851,7 @@ public class CompilationPipeline {
                             ins.setString(5, rs.getString(4));     // family_ref
                             ins.setString(6, rs.getString(5));     // host_type
                             ins.setString(7, rs.getString(6));     // m_product_category_id
-                            ins.setObject(8, rs.getObject(7));     // bom_child_id
+                            ins.setObject(8, rs.getObject(7));     // M_BOM_Line_ID
                             ins.setDouble(9, rs.getDouble(8));     // dx
                             ins.setDouble(10, rs.getDouble(9));    // dy
                             ins.setDouble(11, rs.getDouble(10));   // dz

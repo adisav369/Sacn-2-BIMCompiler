@@ -131,7 +131,7 @@ public class BuildingInspector {
             } else {
                 // Leaf — show product dims if child_product_id is set (NORM-2)
                 System.out.printf("[LEAF] id=%d  role=%s  seq=%d  pattern='%s'  %s%n",
-                    child.getBomChildId(), child.getRole(), child.getSequence(),
+                    child.getBomLineId(), child.getRole(), child.getSequence(),
                     child.getChildNamePattern(), child.describeOffset());
                 if (child.getChildProductId() != null) {
                     MProduct prod = MProduct.get(conn, child.getChildProductId());
@@ -144,7 +144,7 @@ public class BuildingInspector {
                 }
                 // Show child params (BOM.db)
                 List<MAttribute> params = MAttribute.getByBomChild(
-                    conn, child.getBomChildId());
+                    conn, child.getBomLineId());
                 for (MAttribute p : params) {
                     indent(depth + 2);
                     System.out.printf("[PARAM] %s = %s (%s)%n",
@@ -232,7 +232,7 @@ public class BuildingInspector {
     private int preflightCheckA() throws SQLException {
         // Implementing S92-tier2e — Witness: W-INT-PK-PHASE-E
         // JOIN on M_BOM_ID INTEGER FK; SELECT Value for text display
-        String sql = "SELECT b.Value AS bom_id, bc.bom_child_id, bc.child_name_pattern, bc.role"
+        String sql = "SELECT b.Value AS bom_id, bc.M_BOM_Line_ID, bc.child_name_pattern, bc.role"
                    + " FROM m_bom_line bc"
                    + " JOIN m_bom b ON bc.M_BOM_ID = b.M_BOM_ID"
                    + " WHERE bc.is_active=1 AND b.is_active=1"
@@ -243,7 +243,7 @@ public class BuildingInspector {
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 String bomId  = rs.getString("bom_id");
-                int childId   = rs.getInt("bom_child_id");
+                int childId   = rs.getInt("M_BOM_Line_ID");
                 byBom.computeIfAbsent(bomId, k -> new ArrayList<>()).add(childId);
             }
         }

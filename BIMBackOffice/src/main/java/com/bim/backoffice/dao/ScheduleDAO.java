@@ -72,7 +72,7 @@ public class ScheduleDAO {
                 JOIN m_bom b ON bl.M_BOM_ID = b.M_BOM_ID
                 LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
                 WHERE bl.child_product_id IS NOT NULL AND bl.is_active = 1
-                ORDER BY bl.bom_child_id
+                ORDER BY bl.M_BOM_Line_ID
                 """;
 
         // Group key: phase + sequence + discipline

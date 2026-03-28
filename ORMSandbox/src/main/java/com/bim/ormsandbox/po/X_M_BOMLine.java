@@ -11,7 +11,7 @@ import java.sql.Connection;
  *
  * <p>Table: {@code m_bom_line}
  * <pre>
- *   bom_child_id        INTEGER PRIMARY KEY AUTOINCREMENT
+ *   M_BOM_Line_ID       INTEGER PRIMARY KEY AUTOINCREMENT
  *   bom_id              TEXT NOT NULL FK → m_bom
  *   child_product_id    TEXT FK → M_Product  (NORM-2: replaces child_bom_id + product_ref + child_ifc_class)
  *   child_element_type  TEXT
@@ -55,7 +55,7 @@ import java.sql.Connection;
 public class X_M_BOMLine extends BasePO {
 
     public static final String Table_Name                       = "m_bom_line";
-    public static final String COLUMNNAME_bom_child_id          = "bom_child_id";
+    public static final String COLUMNNAME_M_BOM_Line_ID         = "M_BOM_Line_ID";
     public static final String COLUMNNAME_bom_id                = "bom_id";
     public static final String COLUMNNAME_M_BOM_ID              = "M_BOM_ID";
     public static final String COLUMNNAME_child_product_id      = "child_product_id";
@@ -94,9 +94,9 @@ public class X_M_BOMLine extends BasePO {
     public X_M_BOMLine(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
-    @Override protected String getPKColumnName() { return COLUMNNAME_bom_child_id; }
+    @Override protected String getPKColumnName() { return COLUMNNAME_M_BOM_Line_ID; }
 
-    public int    getBomChildId()          { return get_ValueAsInt(COLUMNNAME_bom_child_id); }
+    public int    getBomLineId()           { return get_ValueAsInt(COLUMNNAME_M_BOM_Line_ID); }
     public String getBomId()               { return get_ValueAsString(COLUMNNAME_bom_id); }
     public String getChildProductId()      { return get_ValueAsString(COLUMNNAME_child_product_id); }
     public String getChildElementType()    { return get_ValueAsString(COLUMNNAME_child_element_type); }

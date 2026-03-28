@@ -205,7 +205,7 @@ public class WireLightingVerb implements Verb<WireLightingVerb.LightingPayload> 
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT light_points, circuit_type"
                         + " FROM ad_space_type_mep"
-                        + " WHERE space_type_id = ?")) {
+                        + " WHERE Value = ?")) {
             ps.setString(1, roomType);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return null;

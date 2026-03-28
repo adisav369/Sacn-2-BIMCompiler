@@ -69,7 +69,7 @@ public class SelectBomVerb implements Verb<SelectBomVerb.SelectBomPayload> {
                 continue;
 
             rows.add(new ChildRow(
-                line.getBomChildId(),
+                line.getBomLineId(),
                 line.getBomId(),
                 line.getChildProductId(),
                 line.getComponentType(),

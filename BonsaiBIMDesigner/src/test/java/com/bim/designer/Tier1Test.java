@@ -51,7 +51,7 @@ class Tier1Test {
                 """);
             s.execute("""
                 CREATE TABLE m_bom_line (
-                    bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_BOM_Line_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     bom_id TEXT NOT NULL,
                     child_product_id TEXT,
                     qty INTEGER NOT NULL DEFAULT 1,

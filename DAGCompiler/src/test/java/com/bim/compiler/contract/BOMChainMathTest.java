@@ -228,10 +228,10 @@ class BOMChainMathTest {
 
         // For every EAV row with param_key='dx', the typed column must match
         String sql = """
-            SELECT bc.bom_child_id, bc.dx AS typed, CAST(p.param_value AS REAL) AS eav,
+            SELECT bc.M_BOM_Line_ID, bc.dx AS typed, CAST(p.param_value AS REAL) AS eav,
                    ABS(bc.dx - CAST(p.param_value AS REAL)) AS delta
             FROM m_bom_line bc
-            JOIN m_attribute p ON p.bom_child_id = bc.bom_child_id
+            JOIN m_attribute p ON p.M_BOM_Line_ID = bc.M_BOM_Line_ID
              AND p.param_key = 'dx' AND p.param_type = 'DOUBLE'
             WHERE ABS(bc.dx - CAST(p.param_value AS REAL)) > 0.0001
             """;
@@ -240,7 +240,7 @@ class BOMChainMathTest {
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(String.format(
                 "child_id=%d typed=%.4f eav=%.4f",
-                rs.getInt("bom_child_id"), rs.getDouble("typed"), rs.getDouble("eav")));
+                rs.getInt("M_BOM_Line_ID"), rs.getDouble("typed"), rs.getDouble("eav")));
         }
         assertTrue(bad.isEmpty(),
             "m_bom_line.dx mismatches EAV param_value: " + bad);

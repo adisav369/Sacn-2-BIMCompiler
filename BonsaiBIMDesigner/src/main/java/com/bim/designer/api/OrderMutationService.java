@@ -198,7 +198,7 @@ public class OrderMutationService {
 
     /**
      * Insert a PROPOSED LEAF C_OrderLine for an MEP product.
-     * bom_child_id is NULL (rule-driven, not BOM-derived).
+     * M_BOM_Line_ID is NULL (rule-driven, not BOM-derived).
      * Discipline is set explicitly. proposal_status='PROPOSED'.
      */
     private int insertProposedLine(Connection woConn, String orderId, int parentLineId,

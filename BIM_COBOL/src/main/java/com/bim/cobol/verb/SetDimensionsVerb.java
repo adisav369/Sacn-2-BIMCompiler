@@ -75,7 +75,7 @@ public class SetDimensionsVerb implements Verb<SetDimensionsVerb.SetDimensionsPa
         target.save();
 
         SetDimensionsPayload payload = new SetDimensionsPayload(
-            bomId, lineRef, target.getBomChildId(),
+            bomId, lineRef, target.getBomLineId(),
             target.getAllocatedWidthMm(),
             target.getAllocatedDepthMm(),
             target.getAllocatedHeightMm());

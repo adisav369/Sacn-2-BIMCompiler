@@ -100,9 +100,9 @@ public class MEPAD {
             if (conn == null) return null;
 
             String sql = """
-                SELECT element_type, ifc_class, discipline, mep_system, host_type,
+                SELECT Value, ifc_class, discipline, mep_system, host_type,
                        dist_role, circuit_type, mount_height, clearance, ports, properties, code_ref
-                FROM ad_element_mep WHERE element_type = ? AND is_active = 1
+                FROM ad_element_mep WHERE Value = ? AND is_active = 1
                 """;
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -214,9 +214,9 @@ public class MEPAD {
             if (conn == null) return null;
 
             String sql = """
-                SELECT hazard_class, max_coverage_m2, max_spacing_m, min_spacing_m,
+                SELECT Value, max_coverage_m2, max_spacing_m, min_spacing_m,
                        wall_distance_m, k_factor, code_ref
-                FROM ad_fp_coverage WHERE hazard_class = ? AND is_active = 1
+                FROM ad_fp_coverage WHERE Value = ? AND is_active = 1
                 """;
 
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -225,7 +225,7 @@ public class MEPAD {
 
                 if (rs.next()) {
                     FPCoverage cov = new FPCoverage(
-                        rs.getString("hazard_class"),
+                        rs.getString("Value"),
                         rs.getDouble("max_coverage_m2"),
                         rs.getDouble("max_spacing_m"),
                         rs.getDouble("min_spacing_m"),
@@ -340,7 +340,7 @@ public class MEPAD {
 
     private static ElementMEP parseElementMEP(ResultSet rs) throws SQLException {
         return new ElementMEP(
-            rs.getString("element_type"),
+            rs.getString("Value"),
             rs.getString("ifc_class"),
             Discipline.fromString(rs.getString("discipline")),
             rs.getString("mep_system"),

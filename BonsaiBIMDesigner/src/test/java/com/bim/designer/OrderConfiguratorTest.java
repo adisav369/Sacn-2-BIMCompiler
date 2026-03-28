@@ -431,7 +431,7 @@ class OrderConfiguratorTest {
                 )""");
             stmt.execute("""
                 CREATE TABLE m_bom_line (
-                    bom_child_id INTEGER PRIMARY KEY, bom_id TEXT,
+                    M_BOM_Line_ID INTEGER PRIMARY KEY, bom_id TEXT,
                     child_product_id TEXT, component_type TEXT DEFAULT 'BUY',
                     qty INTEGER DEFAULT 1, seq_no INTEGER DEFAULT 10,
                     allocated_width_mm REAL, allocated_depth_mm REAL, allocated_height_mm REAL,
@@ -448,7 +448,7 @@ class OrderConfiguratorTest {
                 """);
             // BOM Lines: BUILDING → FLOOR
             stmt.execute("""
-                INSERT INTO m_bom_line (bom_child_id, bom_id, child_product_id, component_type, qty, seq_no,
+                INSERT INTO m_bom_line (M_BOM_Line_ID, bom_id, child_product_id, component_type, qty, seq_no,
                     allocated_width_mm, allocated_depth_mm, allocated_height_mm)
                 VALUES (1, 'BUILDING_SH_STD', 'FLOOR_SH_GF_STD', 'MAKE', 1, 10, 16868, 8668, 3300)
                 """);

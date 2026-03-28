@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS "m_attribute" (
     param_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    bom_child_id    INTEGER NOT NULL,
+    M_BOM_Line_ID    INTEGER NOT NULL,
     param_key       TEXT NOT NULL,
     param_value     TEXT NOT NULL,
     param_type      TEXT DEFAULT 'DOUBLE',
@@ -8,8 +8,8 @@ CREATE TABLE IF NOT EXISTS "m_attribute" (
     description     TEXT,
     source_code     TEXT,
     is_active       INTEGER DEFAULT 1,
-    FOREIGN KEY (bom_child_id) REFERENCES "m_bom_line"(bom_child_id),
-    UNIQUE(bom_child_id, param_key)
+    FOREIGN KEY (M_BOM_Line_ID) REFERENCES "m_bom_line"(M_BOM_Line_ID),
+    UNIQUE(M_BOM_Line_ID, param_key)
 );
 CREATE TABLE sqlite_sequence(name,seq);
 CREATE TABLE M_Product_Category (
@@ -1050,7 +1050,7 @@ CREATE TABLE M_Product_Category_Line (
     IsActive              INTEGER DEFAULT 1
 , MinQty INTEGER NOT NULL DEFAULT 1, MaxQty INTEGER NOT NULL DEFAULT 1, num_units      INTEGER NOT NULL DEFAULT 0, storey_count   INTEGER NOT NULL DEFAULT 0, mirroring_rule TEXT    NOT NULL DEFAULT 'NONE', aabb_width_mm  INTEGER DEFAULT 0, aabb_depth_mm  INTEGER DEFAULT 0, aabb_height_mm INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS "m_bom_line" (
-    bom_child_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    M_BOM_Line_ID        INTEGER PRIMARY KEY AUTOINCREMENT,
     bom_id              TEXT NOT NULL,            -- Parent BOM
 
     -- Child reference: single FK replaces three-way split (NORM-2)
@@ -1206,7 +1206,7 @@ CREATE TABLE IF NOT EXISTS C_OrderLine (
     family_ref        TEXT NOT NULL,
     host_type         TEXT NOT NULL,
     m_product_category_id TEXT,
-    bom_child_id      INTEGER,
+    M_BOM_Line_ID      INTEGER,
     dx                REAL NOT NULL DEFAULT 0,
     dy                REAL NOT NULL DEFAULT 0,
     dz                REAL NOT NULL DEFAULT 0,

@@ -19,8 +19,8 @@ import java.util.Map;
  * Same logic as {@code DesignerAPIImpl.explodeBomTree()} but writes
  * directly to the compile DB (no WorkOutputDAO dependency).
  *
- * <p>Each C_OrderLine stores {@code bom_child_id} — the FK back to
- * {@code m_bom_line.bom_child_id} — so that {@code OrderLineWalker}
+ * <p>Each C_OrderLine stores {@code M_BOM_Line_ID} — the FK back to
+ * {@code m_bom_line.M_BOM_Line_ID} — so that {@code OrderLineWalker}
  * can load the full MBOMLine attributes (verb_ref, rotation, material,
  * storey, element_ref) during compilation.
  *
@@ -342,7 +342,7 @@ public class BomDropper {
                 String childHostType = deriveHostType(depth + 1);
                 explodeAssembly(conn, orderId, actualChildId,
                         lineId, childHostType, actualChildBom.getProductCategory(),
-                        depth + 1, leafCount, lineSeq, line.getBomChildId(),
+                        depth + 1, leafCount, lineSeq, line.getBomLineId(),
                         locatorRef, exceptions);
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
@@ -373,7 +373,7 @@ public class BomDropper {
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
-                        actualLeafId, "LEAF", productCategory, line.getBomChildId(),
+                        actualLeafId, "LEAF", productCategory, line.getBomLineId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(), qty, leafLocator, false);
@@ -385,7 +385,7 @@ public class BomDropper {
     }
 
     /**
-     * Explode a sub-assembly BOM, storing the parent MAKE line's bom_child_id
+     * Explode a sub-assembly BOM, storing the parent MAKE line's M_BOM_Line_ID
      * on the assembly's C_OrderLine.
      */
     private static int explodeAssembly(Connection conn, String orderId, String bomId,
@@ -415,7 +415,7 @@ public class BomDropper {
         boolean isRefClass = exception != null && exception.isReferenceClass();
         int overrideQty = exception != null ? exception.qty() : 1;
 
-        // Insert assembly C_OrderLine with the MAKE line's bom_child_id
+        // Insert assembly C_OrderLine with the MAKE line's M_BOM_Line_ID
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId, lineSeq[0],
                 bomId, hostType, productCategory, makeBomChildId,
@@ -468,7 +468,7 @@ public class BomDropper {
                 String childHostType = deriveHostType(depth + 1);
                 explodeAssembly(conn, orderId, actualChildId, lineId,
                         childHostType, actualChildBom.getProductCategory(),
-                        depth + 1, leafCount, lineSeq, line.getBomChildId(),
+                        depth + 1, leafCount, lineSeq, line.getBomLineId(),
                         locatorRef, exceptions);
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
@@ -496,7 +496,7 @@ public class BomDropper {
                 int qty = line.getQty();
                 lineSeq[0] += 10;
                 insertLine(conn, orderId, lineId, lineSeq[0],
-                        actualLeafId, "LEAF", productCategory, line.getBomChildId(),
+                        actualLeafId, "LEAF", productCategory, line.getBomLineId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
                         line.getAllocatedHeightMm(), qty, leafLocator, false);
@@ -539,7 +539,7 @@ public class BomDropper {
         int adOrgId = disc.getAD_Org_ID();
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
-                   + " m_product_category_id, bom_child_id, dx, dy, dz, "
+                   + " m_product_category_id, M_BOM_Line_ID, dx, dy, dz, "
                    + " aabb_width_mm, aabb_depth_mm, aabb_height_mm, M_Product_ID, Discipline, AD_Org_ID, Qty, "
                    + " locator_ref, is_reference_class) "
                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";

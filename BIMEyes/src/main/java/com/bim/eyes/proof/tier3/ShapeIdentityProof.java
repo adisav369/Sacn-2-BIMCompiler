@@ -109,7 +109,7 @@ public final class ShapeIdentityProof {
                 : new String[]{elementRef};
             for (String ref : refsToTry) {
                 try (PreparedStatement ps = bomConn.prepareStatement("""
-                        SELECT bl.bom_id, bl.bom_child_id, bl.role, bl.sequence,
+                        SELECT bl.bom_id, bl.M_BOM_Line_ID, bl.role, bl.sequence,
                                bl.allocated_width_mm, bl.allocated_depth_mm, bl.allocated_height_mm,
                                bl.dx, bl.dy, bl.dz, bl.component_type,
                                b.bom_name, b.bom_type
@@ -122,7 +122,7 @@ public final class ShapeIdentityProof {
                         if (rs.next()) {
                             return ("source=M_BOM bom_id=%s (#%d) bom_name=%s bom_type=%s " +
                                     "role=%s comp_type=%s alloc=%dx%dx%dmm — FIX IN BOM DATA")
-                                .formatted(rs.getString("bom_id"), rs.getInt("bom_child_id"),
+                                .formatted(rs.getString("bom_id"), rs.getInt("M_BOM_Line_ID"),
                                     rs.getString("bom_name"), rs.getString("bom_type"),
                                     rs.getString("role"), rs.getString("component_type"),
                                     rs.getInt("allocated_width_mm"), rs.getInt("allocated_depth_mm"),

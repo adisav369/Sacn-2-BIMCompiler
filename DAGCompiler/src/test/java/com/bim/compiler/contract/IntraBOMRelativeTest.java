@@ -69,7 +69,7 @@ class IntraBOMRelativeTest {
         // (up to 17m for SH, 22m for DX) which are relative to the building/floor
         // tack origin, not to a room. Only SET/ROOM/ITEM BOMs must stay within room scale.
         String sql = """
-            SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy
+            SELECT bl.M_BOM_Line_ID, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy
             FROM m_bom_line bl
             JOIN m_bom b ON bl.bom_id = b.bom_id
             WHERE bl.is_active = 1
@@ -84,7 +84,7 @@ class IntraBOMRelativeTest {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) bad.add(String.format(
                     "child_id=%d bom=%s pattern='%s' dx=%.3f dy=%.3f",
-                    rs.getInt("bom_child_id"), rs.getString("bom_id"),
+                    rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"),
                     rs.getString("child_name_pattern"),
                     rs.getDouble("dx"), rs.getDouble("dy")));
             }
@@ -104,7 +104,7 @@ class IntraBOMRelativeTest {
         // vertical stacking within the building envelope (e.g. ROOF dz=6.0m).
         // Only room/set-level children should be bounded by storey height.
         String sql = """
-            SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dz
+            SELECT bl.M_BOM_Line_ID, bl.bom_id, bl.child_name_pattern, bl.dz
             FROM m_bom_line bl
             JOIN m_bom b ON bl.bom_id = b.bom_id
             WHERE bl.is_active = 1 AND ABS(bl.dz) > ?
@@ -116,7 +116,7 @@ class IntraBOMRelativeTest {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) bad.add(String.format(
                     "child_id=%d bom=%s pattern='%s' dz=%.3f",
-                    rs.getInt("bom_child_id"), rs.getString("bom_id"),
+                    rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"),
                     rs.getString("child_name_pattern"),
                     rs.getDouble("dz")));
             }
@@ -157,7 +157,7 @@ class IntraBOMRelativeTest {
         // exactly matches a world boundary coordinate (within 5mm).
         // EB_ BOMs carry building-scale offsets relative to the tack origin,
         // which may coincidentally match room boundary values — exempt them.
-        String childSql = "SELECT bl.bom_child_id, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy " +
+        String childSql = "SELECT bl.M_BOM_Line_ID, bl.bom_id, bl.child_name_pattern, bl.dx, bl.dy " +
                           "FROM m_bom_line bl JOIN m_bom b ON bl.bom_id = b.bom_id " +
                           "WHERE bl.is_active=1 AND b.bom_id NOT LIKE 'EB_%' AND (bl.dx != 0 OR bl.dy != 0)";
         List<String> bad = new ArrayList<>();
@@ -168,11 +168,11 @@ class IntraBOMRelativeTest {
                 for (double worldVal : worldValues) {
                     if (Math.abs(dx - worldVal) < 0.005 && Math.abs(dx) > 1.0) {
                         bad.add(String.format("child_id=%d bom=%s: dx=%.3f matches world boundary %.3f",
-                            rs.getInt("bom_child_id"), rs.getString("bom_id"), dx, worldVal));
+                            rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"), dx, worldVal));
                     }
                     if (Math.abs(dy - worldVal) < 0.005 && Math.abs(dy) > 1.0) {
                         bad.add(String.format("child_id=%d bom=%s: dy=%.3f matches world boundary %.3f",
-                            rs.getInt("bom_child_id"), rs.getString("bom_id"), dy, worldVal));
+                            rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"), dy, worldVal));
                     }
                 }
             }
@@ -195,7 +195,7 @@ class IntraBOMRelativeTest {
         // placed 7.4× their width from the south-wall anchor to match IFC reference coords).
         // 8× still catches absolute world coordinates (room spans 9m+ → ratio 20×+ for 0.45m chair).
         String sql = """
-            SELECT bc.bom_child_id, bc.bom_id, bc.child_name_pattern, bc.dx, bc.dy,
+            SELECT bc.M_BOM_Line_ID, bc.bom_id, bc.child_name_pattern, bc.dx, bc.dy,
                    pd.width AS cat_w, pd.depth AS cat_d
             FROM m_bom_line bc
             JOIN M_Product pd
@@ -208,7 +208,7 @@ class IntraBOMRelativeTest {
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) bad.add(String.format(
                 "child_id=%d bom=%s pattern='%s' dx=%.3f dy=%.3f catW=%.3f catD=%.3f",
-                rs.getInt("bom_child_id"), rs.getString("bom_id"),
+                rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"),
                 rs.getString("child_name_pattern"),
                 rs.getDouble("dx"), rs.getDouble("dy"),
                 rs.getDouble("cat_w"), rs.getDouble("cat_d")));
@@ -231,7 +231,7 @@ class IntraBOMRelativeTest {
     @Test
     @DisplayName("R5: All rotation_rule values are semantic strings or parseable radians")
     void r5_rotationRuleValid() throws SQLException {
-        String sql = "SELECT bom_child_id, bom_id, rotation_rule FROM m_bom_line WHERE is_active=1";
+        String sql = "SELECT M_BOM_Line_ID, bom_id, rotation_rule FROM m_bom_line WHERE is_active=1";
         List<String> bad = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
@@ -241,7 +241,7 @@ class IntraBOMRelativeTest {
                 try { Double.parseDouble(rule); }
                 catch (NumberFormatException e) {
                     bad.add(String.format("child_id=%d bom=%s: rotation_rule='%s' not semantic and not parseable",
-                        rs.getInt("bom_child_id"), rs.getString("bom_id"), rule));
+                        rs.getInt("M_BOM_Line_ID"), rs.getString("bom_id"), rule));
                 }
             }
         }

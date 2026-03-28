@@ -169,10 +169,10 @@ class DiscValidationDBTest {
     void elementMepResolvesToProduct() throws Exception {
         int resolved = 0, unresolved = 0;
         try (PreparedStatement discPs = discConn.prepareStatement(
-                "SELECT element_type, ifc_class FROM ad_element_mep WHERE is_active = 1");
+                "SELECT Value, ifc_class FROM ad_element_mep WHERE is_active = 1");
              ResultSet rs = discPs.executeQuery()) {
             while (rs.next()) {
-                String elementType = rs.getString("element_type");
+                String elementType = rs.getString("Value");
                 String ifcClass = rs.getString("ifc_class");
 
                 // DV015: M_Product now in ERP.db — resolve within same DB
@@ -221,7 +221,7 @@ class DiscValidationDBTest {
     void mepBomSpaceTypeResolves() throws Exception {
         try (PreparedStatement ps = discConn.prepareStatement(
                 "SELECT DISTINCT space_type_id FROM ad_space_type_mep_bom " +
-                "WHERE space_type_id NOT IN (SELECT space_type_id FROM ad_space_type)");
+                "WHERE space_type_id NOT IN (SELECT Value FROM ad_space_type)");
              ResultSet rs = ps.executeQuery()) {
             List<String> orphans = new ArrayList<>();
             while (rs.next()) orphans.add(rs.getString(1));
@@ -259,8 +259,8 @@ class DiscValidationDBTest {
     @DisplayName("W-DV-DB-ALIAS: every canonical_type has at least one alias")
     void everyCanonicalTypeHasAlias() throws Exception {
         try (PreparedStatement ps = discConn.prepareStatement(
-                "SELECT element_type FROM ad_element_mep WHERE is_active = 1 " +
-                "AND element_type NOT IN " +
+                "SELECT Value FROM ad_element_mep WHERE is_active = 1 " +
+                "AND Value NOT IN " +
                 "(SELECT DISTINCT canonical_type FROM ad_element_mep_alias WHERE is_active = 1)");
              ResultSet rs = ps.executeQuery()) {
             List<String> missing = new ArrayList<>();

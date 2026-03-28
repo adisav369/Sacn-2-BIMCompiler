@@ -20,7 +20,7 @@ public class MAttribute extends X_M_Attribute {
     public static List<MAttribute> getByBomChild(Connection conn, int bomChildId)
             throws SQLException {
         return new ModelQuery<>(conn, MAttribute::new, Table_Name)
-            .where(COLUMNNAME_bom_child_id + " = ?", bomChildId)
+            .where(COLUMNNAME_M_BOM_Line_ID + " = ?", bomChildId)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
             .orderBy(COLUMNNAME_param_key)
             .list();

@@ -289,7 +289,7 @@ public class ReplaceAddTest {
 
             stmt.execute("""
                 CREATE TABLE m_bom_line (
-                    bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_BOM_Line_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     bom_id TEXT NOT NULL,
                     child_product_id TEXT,
                     child_element_type TEXT,
@@ -336,7 +336,7 @@ public class ReplaceAddTest {
                     family_ref TEXT NOT NULL,
                     host_type TEXT NOT NULL,
                     m_product_category_id TEXT,
-                    bom_child_id INTEGER,
+                    M_BOM_Line_ID INTEGER,
                     dx REAL NOT NULL DEFAULT 0,
                     dy REAL NOT NULL DEFAULT 0,
                     dz REAL NOT NULL DEFAULT 0,

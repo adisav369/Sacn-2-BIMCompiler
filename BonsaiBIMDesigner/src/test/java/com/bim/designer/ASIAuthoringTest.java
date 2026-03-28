@@ -351,7 +351,7 @@ class ASIAuthoringTest {
                 )""");
             s.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom_line (
-                    bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_BOM_Line_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     bom_id TEXT, child_product_id TEXT, component_type TEXT DEFAULT 'BUY',
                     dx REAL DEFAULT 0, dy REAL DEFAULT 0, dz REAL DEFAULT 0,
                     allocated_width_mm INTEGER DEFAULT 0,

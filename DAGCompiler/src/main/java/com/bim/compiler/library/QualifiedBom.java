@@ -28,7 +28,7 @@ public record QualifiedBom(
             rs.getString("bom_id"),
             rs.getString("bom_name"),
             rs.getString("bom_type"),
-            rs.getInt("bom_child_id"),
+            rs.getInt("M_BOM_Line_ID"),
             rs.getString("role"),
             rs.getInt("sequence"),
             rs.getInt("fit_priority"),

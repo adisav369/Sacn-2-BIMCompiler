@@ -405,7 +405,7 @@ public interface DesignerAPI extends AssemblyAPI {
      * for each room and creating PROPOSED C_OrderLines.
      *
      * <p>The architect reviews proposed lines and accepts or rejects each.
-     * Proposed lines have bom_child_id=NULL (rule-driven, not BOM-derived)
+     * Proposed lines have M_BOM_Line_ID=NULL (rule-driven, not BOM-derived)
      * and proposal_status='PROPOSED'.
      *
      * <p>Delegates to {@link OrderMutationService#addDiscipline}.

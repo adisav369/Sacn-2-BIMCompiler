@@ -433,7 +433,7 @@ class DemoHouseTest {
                     is_active INTEGER DEFAULT 1)""");
             st.execute("""
                 CREATE TABLE m_bom_line (
-                    bom_child_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    M_BOM_Line_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     bom_id TEXT NOT NULL, child_product_id TEXT,
                     component_type TEXT DEFAULT 'BUY', role TEXT,
                     sequence INTEGER DEFAULT 10, entity_type TEXT DEFAULT 'D',

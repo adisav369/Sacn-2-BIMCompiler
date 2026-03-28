@@ -64,7 +64,7 @@ public class StandardsResolver {
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath())) {
             // Check ad_fp_trigger for SMOKE_DETECTION and FIRE_ALARM triggers
             try (PreparedStatement ps = conn.prepareStatement(
-                    "SELECT trigger_id, element_type, code_id, clause " +
+                    "SELECT Value, element_type, code_id, clause " +
                     "FROM ad_fp_trigger WHERE is_active = 1 AND " +
                     "(jurisdiction = ? OR jurisdiction = 'INTERNATIONAL') AND " +
                     "element_type IN ('SMOKE_DETECTION', 'FIRE_ALARM') AND " +

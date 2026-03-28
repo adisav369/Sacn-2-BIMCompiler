@@ -51,11 +51,11 @@ class SpaceDimResolver {
     }
 
     private void loadContracts(Connection conn) throws SQLException {
-        String sql = "SELECT space_type, facade_type, ventilation_opening FROM ad_space_dim WHERE is_active = 1";
+        String sql = "SELECT Value, facade_type, ventilation_opening FROM ad_space_dim WHERE is_active = 1";
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                String type = rs.getString("space_type");
+                String type = rs.getString("Value");
                 String facade = rs.getString("facade_type");
                 if (facade == null) facade = "OPAQUE";
 

@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * <p>Flow: bomDrop(SH) → addDiscipline("ELEC") → PROPOSED LEAF lines under
  * each room that has a matching space_type in ad_space_type_mep_bom.
  *
- * <p>bom_child_id is NULL (rule-driven, not BOM-derived).
+ * <p>M_BOM_Line_ID is NULL (rule-driven, not BOM-derived).
  * proposal_status = 'PROPOSED'.
  * Discipline = the requested discipline code.
  *
@@ -130,7 +130,7 @@ class AddDisciplineTest {
                 }
             }
 
-            // Note: bom_child_id is on the compile DB schema (BomDropper), not work_output.
+            // Note: M_BOM_Line_ID is on the compile DB schema (BomDropper), not work_output.
             // Work_output PROPOSED lines are rule-driven by definition — no BOM parent.
 
             // Verify parent lines are ROOMs

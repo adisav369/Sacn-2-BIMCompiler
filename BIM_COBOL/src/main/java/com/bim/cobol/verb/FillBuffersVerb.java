@@ -57,17 +57,17 @@ public class FillBuffersVerb implements Verb<FillBuffersVerb.FillBuffersPayload>
         List<String> warnings = new ArrayList<>();
 
         // 1. Read fixed children ordered by sequence
-        List<int[]> fixed = new ArrayList<>();   // {bom_child_id, allocated_width_mm}
+        List<int[]> fixed = new ArrayList<>();   // {M_BOM_Line_ID, allocated_width_mm}
         int fixedSumW = 0, maxD = 0, maxH = 0;
 
         try (PreparedStatement stmt = conn.prepareStatement(
-                "SELECT bom_child_id, is_variance, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
+                "SELECT M_BOM_Line_ID, is_variance, allocated_width_mm, allocated_depth_mm, allocated_height_mm " +
                 "FROM m_bom_line WHERE bom_id = ? AND is_active = 1 ORDER BY sequence")) {
             stmt.setString(1, bomId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     if (rs.getInt("is_variance") == 0) {
-                        fixed.add(new int[]{rs.getInt("bom_child_id"), rs.getInt("allocated_width_mm")});
+                        fixed.add(new int[]{rs.getInt("M_BOM_Line_ID"), rs.getInt("allocated_width_mm")});
                         fixedSumW += rs.getInt("allocated_width_mm");
                         maxD = Math.max(maxD, rs.getInt("allocated_depth_mm"));
                         maxH = Math.max(maxH, rs.getInt("allocated_height_mm"));
@@ -101,7 +101,7 @@ public class FillBuffersVerb implements Verb<FillBuffersVerb.FillBuffersPayload>
 
         // 4. Renumber fixed children: 10, 30, 50, ...
         try (PreparedStatement upd = conn.prepareStatement(
-                "UPDATE m_bom_line SET sequence = ? WHERE bom_child_id = ?")) {
+                "UPDATE m_bom_line SET sequence = ? WHERE M_BOM_Line_ID = ?")) {
             for (int i = 0; i < fixed.size(); i++) {
                 upd.setInt(1, (i + 1) * 20 - 10);   // 10, 30, 50, ...
                 upd.setInt(2, fixed.get(i)[0]);

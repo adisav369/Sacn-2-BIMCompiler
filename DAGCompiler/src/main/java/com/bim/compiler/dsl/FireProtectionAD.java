@@ -103,7 +103,7 @@ public class FireProtectionAD {
         List<FPTrigger> result = new ArrayList<>();
 
         String sql = """
-            SELECT trigger_id, trigger_type, element_type, min_storeys, min_height_m,
+            SELECT Value, trigger_type, element_type, min_storeys, min_height_m,
                    min_floor_area_m2, occupancy_group, min_quantity, quantity_formula,
                    code_id, clause, description, is_mandatory
             FROM ad_fp_trigger
@@ -132,7 +132,7 @@ public class FireProtectionAD {
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 result.add(new FPTrigger(
-                    rs.getString("trigger_id"),
+                    rs.getString("Value"),
                     rs.getString("trigger_type"),
                     rs.getString("element_type"),
                     getIntOrNull(rs, "min_storeys"),

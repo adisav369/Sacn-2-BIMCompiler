@@ -266,13 +266,13 @@ public class DesignerDAO {
     /** BOM lines for a given bom_id. */
     public List<BomLineRow> getBomLines(String bomId) throws SQLException {
         String sql = """
-                SELECT bom_child_id, M_BOM_ID, child_product_id,
+                SELECT M_BOM_Line_ID, M_BOM_ID, child_product_id,
                        component_type, dx, dy, dz,
                        allocated_width_mm, allocated_depth_mm, allocated_height_mm,
                        storey, element_ref, verb_ref, sequence
                 FROM m_bom_line
                 WHERE M_BOM_ID = (SELECT M_BOM_ID FROM m_bom WHERE Value = ?) AND is_active = 1
-                ORDER BY sequence, bom_child_id
+                ORDER BY sequence, M_BOM_Line_ID
                 """;
         List<BomLineRow> rows = new ArrayList<>();
         try (PreparedStatement ps = bomConn.prepareStatement(sql)) {
@@ -280,7 +280,7 @@ public class DesignerDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     rows.add(new BomLineRow(
-                            rs.getInt("bom_child_id"),
+                            rs.getInt("M_BOM_Line_ID"),
                             rs.getString("M_BOM_ID"),
                             rs.getString("child_product_id"),
                             rs.getString("component_type"),

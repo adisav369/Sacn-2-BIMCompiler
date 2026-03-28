@@ -91,7 +91,7 @@ class BomChainIntegrityTest {
     @DisplayName("R5a: No dangling MAKE child_product_id FK in m_bom_line")
     void noDanglingChildBomFK() throws SQLException {
         String sql = """
-            SELECT bom_child_id, bom_id, child_product_id
+            SELECT M_BOM_Line_ID, bom_id, child_product_id
             FROM m_bom_line
             WHERE is_active = 1
               AND component_type = 'MAKE'
@@ -101,7 +101,7 @@ class BomChainIntegrityTest {
         List<String> dangling = new ArrayList<>();
         try (Statement st = conn.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) dangling.add(
-                "bom_child_id=" + rs.getInt("bom_child_id")
+                "M_BOM_Line_ID=" + rs.getInt("M_BOM_Line_ID")
                 + " bom=" + rs.getString("bom_id")
                 + " → child_product_id='" + rs.getString("child_product_id") + "' missing from m_bom");
         }

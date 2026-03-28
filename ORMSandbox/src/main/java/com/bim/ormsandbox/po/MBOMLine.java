@@ -21,7 +21,7 @@ public class MBOMLine extends X_M_BOMLine {
     protected void beforeSave(boolean newRecord) {
         if (!newRecord && !X_M_BOM.isGodMode() && X_M_BOM.ENTITYTYPE_Dictionary.equals(getEntityType()))
             throw new IllegalStateException(
-                "MBOMLine " + getBomChildId() + " (bom=" + getBomId()
+                "MBOMLine " + getBomLineId() + " (bom=" + getBomId()
                 + ") is EntityType=D (Dictionary) — read-only. "
                 + "Place GodMode.txt in working directory to override.");
     }
@@ -33,7 +33,7 @@ public class MBOMLine extends X_M_BOMLine {
     public boolean delete() throws java.sql.SQLException {
         if (!X_M_BOM.isGodMode() && X_M_BOM.ENTITYTYPE_Dictionary.equals(getEntityType()))
             throw new IllegalStateException(
-                "MBOMLine " + getBomChildId() + " (bom=" + getBomId()
+                "MBOMLine " + getBomLineId() + " (bom=" + getBomId()
                 + ") is EntityType=D (Dictionary) — cannot delete. "
                 + "Place GodMode.txt in working directory to override.");
         return super.delete();

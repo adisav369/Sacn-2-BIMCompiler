@@ -248,7 +248,7 @@ public class SpaceTypeAD {
     private static SpaceTypeConfig querySpaceType(Connection conn, String typeId) throws SQLException {
         String sql = """
             SELECT
-                s.space_type_id, s.category, s.omniclass_code, s.wall_rule,
+                s.Value, s.category, s.omniclass_code, s.wall_rule,
                 s.is_sleeping_room, s.is_open_plan, s.is_exterior,
                 s.min_area, s.min_dimension, s.requires_window, s.requires_egress,
                 s.structural_grid, s.beam_max_span,
@@ -257,8 +257,8 @@ public class SpaceTypeAD {
                 m.requires_dedicated, m.circuit_type,
                 m.requires_exhaust, m.exhaust_cfm, m.allows_aircon, m.ventilation_type
             FROM ad_space_type s
-            LEFT JOIN ad_space_type_mep m ON s.space_type_id = m.space_type_id
-            WHERE s.space_type_id = ? AND s.is_active = 1
+            LEFT JOIN ad_space_type_mep m ON s.Value = m.Value
+            WHERE s.Value = ? AND s.is_active = 1
             """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {

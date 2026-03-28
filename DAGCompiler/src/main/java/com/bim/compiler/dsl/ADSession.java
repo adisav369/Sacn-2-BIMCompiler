@@ -250,16 +250,16 @@ public class ADSession implements AutoCloseable {
             return session.cached(key, () -> {
                 try {
                     String sql = """
-                        SELECT hazard_class, max_coverage_m2, max_spacing_m, min_spacing_m,
+                        SELECT Value, max_coverage_m2, max_spacing_m, min_spacing_m,
                                wall_distance_m, k_factor, code_ref
-                        FROM ad_fp_coverage WHERE hazard_class = ? AND is_active = 1
+                        FROM ad_fp_coverage WHERE Value = ? AND is_active = 1
                         """;
                     try (PreparedStatement stmt = session.conn.prepareStatement(sql)) {
                         stmt.setString(1, hazardClass.toUpperCase());
                         ResultSet rs = stmt.executeQuery();
                         if (rs.next()) {
                             return new MEPAD.FPCoverage(
-                                rs.getString("hazard_class"),
+                                rs.getString("Value"),
                                 rs.getDouble("max_coverage_m2"),
                                 rs.getDouble("max_spacing_m"),
                                 rs.getDouble("min_spacing_m"),

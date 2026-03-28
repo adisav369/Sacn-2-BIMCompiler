@@ -79,7 +79,7 @@ public class SetTackVerb implements Verb<SetTackVerb.SetTackPayload> {
         target.save();
 
         SetTackPayload payload = new SetTackPayload(
-            bomId, lineRef, target.getBomChildId(),
+            bomId, lineRef, target.getBomLineId(),
             target.getDx(), target.getDy(), target.getDz());
 
         return VerbResult.ok(keyword(),
