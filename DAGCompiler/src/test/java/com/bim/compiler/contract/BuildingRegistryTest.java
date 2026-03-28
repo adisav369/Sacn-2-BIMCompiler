@@ -1,6 +1,7 @@
 package com.bim.compiler.contract;
 
 import com.bim.compiler.bom.BomDropper;
+import com.bim.compiler.callout.OrderLineProductCallout;
 import com.bim.compiler.dsl.BuildingRegistry;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingAssertion;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
@@ -75,6 +76,23 @@ public class BuildingRegistryTest {
                 "jdbc:sqlite:" + System.getProperty("bom.db"))) {
             int leafCount = BomDropper.drop(compileDb, entry);
             System.out.printf("[S60] BomDrop %s → %d leaves%n", entry.id(), leafCount);
+
+            // Implementing BBC.md §3.6.2a — Witness: W-DISC-CALLOUT-1
+            // Discipline callout: auto-insert MEP OrderLines for CO/IN buildings.
+            // Must fire after BomDrop (needs BUILDING OrderLine) and before BOM walk.
+            try (Connection erpDb = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+                int discLines = OrderLineProductCallout.onProductChanged(
+                        compileDb, erpDb, entry.docTypeId(), entry.mProductCategoryId());
+                if (discLines > 0) {
+                    System.out.printf("[CALLOUT] %s → %d discipline lines%n", entry.id(), discLines);
+                }
+                // Implementing BBC.md §3.6 — Witness: W-DISC-QTY-1
+                // Parasitic qty walk: expand discipline OrderLines with BOM children (qty, no placement).
+                int qtyLines = OrderLineProductCallout.expandDisciplineLines(compileDb, erpDb, entry.docTypeId());
+                if (qtyLines > 0) {
+                    System.out.printf("[CALLOUT] %s → %d parasitic qty lines%n", entry.id(), qtyLines);
+                }
+            }
         }
 
         PipelineResult result = CompilationPipeline.run(entry);

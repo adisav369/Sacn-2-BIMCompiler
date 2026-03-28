@@ -1,0 +1,266 @@
+package com.bim.compiler.callout;
+
+import com.bim.compiler.topology.Discipline;
+import com.bim.orm.BIMLogger;
+
+import java.sql.*;
+
+/**
+ * OrderLine.Product callout — auto-insert discipline OrderLines for CO/IN buildings.
+ *
+ * <p>When a CO or IN building is compiled, this callout reads shared discipline BOMs
+ * from ERP.db (M_BOM WHERE AD_Org_ID > 0) and creates sibling C_OrderLine rows in
+ * the compile DB — one per discipline. ARC (seq=10) and STR (seq=20) come from
+ * extraction, not callout.
+ *
+ * <p>This is the standard iDempiere C_OrderLine.M_Product_ID callout pattern:
+ * when product changes, callout fires and auto-creates component lines from BOM.
+ *
+ * <p>// Implementing BBC.md §3.6.2a — Witness: W-DISC-CALLOUT-1
+ * // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T0.2
+ *
+ * @see com.bim.compiler.bom.BomDropper
+ */
+public class OrderLineProductCallout {
+
+    /**
+     * Auto-create discipline OrderLines for a CO or IN building order.
+     *
+     * <p>Reads shared discipline BOMs from ERP.db (AD_Org_ID > 0) and inserts
+     * C_OrderLine rows into the compile DB with correct AD_Org_ID and sequence.
+     * Idempotent: skips if a discipline OrderLine already exists for this order.
+     *
+     * @param compileDb  connection to the compile DB (has C_Order, C_OrderLine)
+     * @param erpDb      connection to ERP.db (has M_BOM with shared discipline recipes)
+     * @param orderId    C_Order_ID (Value) in compile DB
+     * @param productCategory  building category Value from M_Product_Category ("RE", "CO", "IN")
+     * @return count of discipline lines inserted (0 if RE or already populated)
+     */
+    // Implementing BBC.md §3.6.2a — Witness: W-DISC-CALLOUT-1
+    public static int onProductChanged(Connection compileDb, Connection erpDb,
+                                       String orderId, String productCategory) throws SQLException {
+        // 1. If category not CO or IN → return 0 (RE has subset, handled by YAML)
+        if (productCategory == null || (!"CO".equals(productCategory) && !"IN".equals(productCategory))) {
+            BIMLogger.fine("CALLOUT", "Skip discipline callout for category={} (RE/other)", productCategory);
+            return 0;
+        }
+
+        // 2. Read shared discipline BOMs from ERP.db WHERE AD_Org_ID > 0
+        String selectBoms = "SELECT Value, Name, AD_Org_ID FROM M_BOM WHERE AD_Org_ID > 0 ORDER BY AD_Org_ID";
+
+        // 3. Find the root BUILDING C_OrderLine to use as parent
+        Integer buildingLineId = findBuildingLineId(compileDb, orderId);
+
+        int inserted = 0;
+        int startSeq = 30;  // ARC=10, STR=20, disciplines start at 30
+
+        try (PreparedStatement ps = erpDb.prepareStatement(selectBoms);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                String bomValue = rs.getString("Value");
+                String bomName = rs.getString("Name");
+                int adOrgId = rs.getInt("AD_Org_ID");
+
+                // Resolve discipline from AD_Org_ID
+                Discipline disc = Discipline.fromAD_Org_ID(adOrgId);
+                if (disc == null) {
+                    BIMLogger.fine("CALLOUT", "Unknown AD_Org_ID={} for BOM {} — skipping", adOrgId, bomValue);
+                    continue;
+                }
+
+                // 4. Idempotent: skip if discipline OrderLine already exists for this order
+                if (disciplineLineExists(compileDb, orderId, adOrgId)) {
+                    BIMLogger.fine("CALLOUT", "Discipline {} (AD_Org={}) already exists for order {} — skipping",
+                            disc.name(), adOrgId, orderId);
+                    continue;
+                }
+
+                // Sequence: 30 for FP (AD_Org=3), 40 for ELEC (4), 50 for ACMV (5), etc.
+                int seq = adOrgId * 10;
+
+                // INSERT C_OrderLine for this discipline
+                insertDisciplineLine(compileDb, orderId, buildingLineId, seq,
+                        bomValue, disc.name(), adOrgId);
+                inserted++;
+
+                BIMLogger.fine("CALLOUT", "Discipline callout: {} (AD_Org={}, seq={}) inserted for order {}",
+                        disc.name(), adOrgId, seq, orderId);
+            }
+        }
+
+        if (inserted > 0) {
+            BIMLogger.info("CALLOUT", "OrderLine callout: {} discipline lines inserted for order {} (category={})",
+                    inserted, orderId, productCategory);
+        }
+        return inserted;
+    }
+
+    /**
+     * Parasitic qty walk — expand discipline C_OrderLines by reading shared BOM
+     * children from ERP.db and inserting child C_OrderLines with qty but no placement.
+     *
+     * <p>For each DISCIPLINE OrderLine (AD_Org_ID >= 3), reads the M_BOM_Line
+     * children from ERP.db and creates LEAF C_OrderLines with:
+     * <ul>
+     *   <li>qty from BOM line (demand record — "this building needs N sprinklers")</li>
+     *   <li>dx/dy/dz = 0 (no spatial placement — parasitic elements attach to ARC rooms)</li>
+     *   <li>host_type = LEAF, AD_Org_ID from parent discipline</li>
+     * </ul>
+     *
+     * <p>// Implementing BBC.md §3.6 — Witness: W-DISC-QTY-1
+     * // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T0.3
+     *
+     * @param compileDb  connection to the compile DB
+     * @param erpDb      connection to ERP.db
+     * @param orderId    C_Order_ID (Value) in compile DB
+     * @return count of child lines inserted
+     */
+    // Implementing BBC.md §3.6 — Witness: W-DISC-QTY-1
+    public static int expandDisciplineLines(Connection compileDb, Connection erpDb,
+                                             String orderId) throws SQLException {
+        // Find all DISCIPLINE OrderLines for this order
+        String selectDisc = "SELECT C_OrderLine_ID, family_ref, AD_Org_ID, Discipline "
+                          + "FROM C_OrderLine WHERE C_Order_ID = ? AND host_type = 'DISCIPLINE' "
+                          + "ORDER BY Line";
+
+        // Find max Line sequence in the order (to append after existing lines)
+        int maxSeq = 0;
+        try (PreparedStatement ps = compileDb.prepareStatement(
+                "SELECT MAX(Line) FROM C_OrderLine WHERE C_Order_ID = ?")) {
+            ps.setString(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) maxSeq = rs.getInt(1);
+            }
+        }
+
+        int inserted = 0;
+
+        try (PreparedStatement ps = compileDb.prepareStatement(selectDisc)) {
+            ps.setString(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int parentLineId = rs.getInt("C_OrderLine_ID");
+                    String bomValue = rs.getString("family_ref");
+                    int adOrgId = rs.getInt("AD_Org_ID");
+                    String discipline = rs.getString("Discipline");
+
+                    // Read BOM children from ERP.db for this discipline recipe
+                    String selectChildren = "SELECT bl.child_product_id, bl.qty, bl.verb_ref "
+                                          + "FROM M_BOM_Line bl "
+                                          + "JOIN M_BOM b ON bl.M_BOM_ID = b.M_BOM_ID "
+                                          + "WHERE b.Value = ? AND bl.IsActive = 'Y' "
+                                          + "ORDER BY bl.sequence";
+
+                    try (PreparedStatement childPs = erpDb.prepareStatement(selectChildren)) {
+                        childPs.setString(1, bomValue);
+                        try (ResultSet childRs = childPs.executeQuery()) {
+                            while (childRs.next()) {
+                                String childProduct = childRs.getString("child_product_id");
+                                int qty = childRs.getInt("qty");
+
+                                maxSeq += 10;
+                                insertChildLine(compileDb, orderId, parentLineId, maxSeq,
+                                        childProduct, discipline, adOrgId, qty);
+                                inserted++;
+
+                                BIMLogger.fine("CALLOUT", "Parasitic qty: {} qty={} (disc={}, AD_Org={}) for order {}",
+                                        childProduct, qty, discipline, adOrgId, orderId);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (inserted > 0) {
+            BIMLogger.info("CALLOUT", "Parasitic qty walk: {} child lines inserted for order {}",
+                    inserted, orderId);
+        }
+        return inserted;
+    }
+
+    /**
+     * Insert a parasitic child C_OrderLine — qty passthrough, no placement.
+     */
+    private static void insertChildLine(Connection conn, String orderId,
+                                         int parentLineId, int seq,
+                                         String childProduct, String discipline,
+                                         int adOrgId, int qty) throws SQLException {
+        String sql = "INSERT INTO C_OrderLine "
+                   + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
+                   + " m_product_category_id, dx, dy, dz, M_Product_ID, Discipline, AD_Org_ID, Qty, "
+                   + " locator_ref) "
+                   + "VALUES (?, ?, ?, ?, 'LEAF', ?, 0, 0, 0, ?, ?, ?, ?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            ps.setInt(2, parentLineId);
+            ps.setInt(3, seq);
+            ps.setString(4, childProduct);        // family_ref
+            ps.setString(5, discipline);           // m_product_category_id = discipline code
+            ps.setString(6, childProduct);         // M_Product_ID
+            ps.setString(7, discipline);           // Discipline
+            ps.setInt(8, adOrgId);                 // AD_Org_ID
+            ps.setInt(9, qty);                     // Qty from BOM
+            ps.setString(10, discipline + "." + childProduct);  // locator_ref
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * Find the root BUILDING C_OrderLine_ID for this order (parent for discipline lines).
+     */
+    private static Integer findBuildingLineId(Connection conn, String orderId) throws SQLException {
+        String sql = "SELECT C_OrderLine_ID FROM C_OrderLine "
+                   + "WHERE C_Order_ID = ? AND host_type = 'BUILDING' "
+                   + "ORDER BY Line LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : null;
+            }
+        }
+    }
+
+    /**
+     * Check if a discipline OrderLine already exists for this order + AD_Org_ID.
+     */
+    private static boolean disciplineLineExists(Connection conn, String orderId, int adOrgId) throws SQLException {
+        String sql = "SELECT 1 FROM C_OrderLine WHERE C_Order_ID = ? AND AD_Org_ID = ? AND host_type = 'DISCIPLINE' LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            ps.setInt(2, adOrgId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    /**
+     * Insert a single discipline C_OrderLine into the compile DB.
+     * host_type=DISCIPLINE, qty=0 (fill-all), dx/dy/dz=0 (no placement — parasitic).
+     */
+    private static void insertDisciplineLine(Connection conn, String orderId,
+                                              Integer parentLineId, int seq,
+                                              String bomValue, String discipline,
+                                              int adOrgId) throws SQLException {
+        String sql = "INSERT INTO C_OrderLine "
+                   + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
+                   + " m_product_category_id, dx, dy, dz, M_Product_ID, Discipline, AD_Org_ID, Qty, "
+                   + " locator_ref) "
+                   + "VALUES (?, ?, ?, ?, 'DISCIPLINE', ?, 0, 0, 0, ?, ?, ?, 0, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            if (parentLineId != null) ps.setInt(2, parentLineId);
+            else ps.setNull(2, Types.INTEGER);
+            ps.setInt(3, seq);
+            ps.setString(4, bomValue);       // family_ref = discipline BOM Value
+            ps.setString(5, discipline);     // m_product_category_id = discipline code
+            ps.setString(6, bomValue);       // M_Product_ID = discipline BOM Value
+            ps.setString(7, discipline);     // Discipline
+            ps.setInt(8, adOrgId);           // AD_Org_ID
+            ps.setString(9, discipline);     // locator_ref = discipline code
+            ps.executeUpdate();
+        }
+    }
+}
