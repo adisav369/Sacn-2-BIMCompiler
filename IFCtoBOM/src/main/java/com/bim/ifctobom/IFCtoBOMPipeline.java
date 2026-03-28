@@ -381,8 +381,9 @@ public class IFCtoBOMPipeline {
                             ProjectName, OutputDbPath, ReferenceDbPath,
                             ExpectedElements, Provenance, SeqNo,
                             AabbWidthMm, AabbDepthMm, AabbHeightMm,
-                            GeometryFailThreshold, DSLContent
-                        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, ?, ?, ?, ?)
+                            GeometryFailThreshold, DSLContent,
+                            Jurisdiction
+                        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, ?, ?, ?, ?, ?)
                         """)) {
                     ps.setString(1, docTypeId);
                     ps.setString(2, config.name());
@@ -399,6 +400,11 @@ public class IFCtoBOMPipeline {
                         ps.setString(12, dslContent);
                     } else {
                         ps.setNull(12, java.sql.Types.VARCHAR);
+                    }
+                    if (config.jurisdiction() != null) {
+                        ps.setString(13, config.jurisdiction());
+                    } else {
+                        ps.setNull(13, java.sql.Types.VARCHAR);
                     }
                     ps.executeUpdate();
                 }
@@ -679,7 +685,9 @@ public class IFCtoBOMPipeline {
                     AabbDepthMm          REAL,
                     AabbHeightMm         REAL,
                     C_Campaign_ID        TEXT,
-                    SalesRep_ID          INTEGER
+                    SalesRep_ID          INTEGER,
+                    Jurisdiction         TEXT,
+                    CodeEdition          TEXT
                 )
                 """);
 

@@ -12,6 +12,7 @@ building:
   doc_sub_type: SH
   doc_base_type: RE
   name: Sample House
+  jurisdiction: MY
   dsl_file: dsl_sh.bim                  # BIM COBOL script for DAGCompiler
 
   storeys:

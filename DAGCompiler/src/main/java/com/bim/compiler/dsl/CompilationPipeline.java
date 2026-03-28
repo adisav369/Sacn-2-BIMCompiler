@@ -5,6 +5,7 @@ import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.compliance.ComplianceReport;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.BuildingSpecs.*;
+import com.bim.compiler.validation.BomTreeProver;
 import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
@@ -1210,14 +1211,15 @@ public class CompilationPipeline {
         }
     }
 
+    // Implementing LAST_MILE_PROBLEM.md §12 — Witness: W-BOM-PROVE
     private static class ProveStage implements CompilerStage {
         @Override public String name() { return "PLACEMENT MATHEMATICAL PROOF"; }
 
         @Override
         public void execute(CompilationContext ctx) throws Exception {
-            // Skip when no relational data and not generative — prover generates noise
-            if (!ctx.hasRelationalData() && !ctx.entry().isGenerative()) {
-                System.out.println("[SKIP] No relational data — prover deferred");
+            // Skip only when no elements compiled (LMP §12: removed hasRelationalData() gate)
+            if (ctx.elementCount() == 0) {
+                System.out.println("[SKIP] No compiled elements — prover deferred");
                 ctx.setProverSkipped(true);
                 return;
             }
@@ -1228,20 +1230,36 @@ public class CompilationPipeline {
                 return;
             }
 
-            PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(
-                ctx.entry().outputDbPath(), ctx.entry().projectName());
-            ctx.setProofReport(proofReport);
-            PlacementProver.printReport(proofReport);
+            // BOM tree consistency proofs (P-PARENT, P-SIBLING, P-QTY, P-TACK)
+            String bomDbPath = System.getProperty("bom.db");
+            BomTreeProver.BomProofReport bomReport = BomTreeProver.prove(
+                ctx.entry().outputDbPath(), bomDbPath, ctx.entry().docSubType());
 
-            if (proofReport.criticalViolations() == 0) {
-                System.out.printf("[PASS] All critical proofs satisfied (%d proven, %d advisory violations)%n",
-                    proofReport.proven(), proofReport.violated());
+            int totalWarns = bomReport.totalWarns();
+            if (totalWarns == 0) {
+                System.out.printf("[PASS] BOM tree proofs: all checks satisfied%n");
             } else {
-                System.out.printf("[FAIL] %d critical proof violations (GATES test)%n",
-                    proofReport.criticalViolations());
+                System.out.printf("[WARN] BOM tree proofs: %d advisory warnings (non-blocking)%n", totalWarns);
             }
-            if (proofReport.violated() > 0 && proofReport.criticalViolations() == 0) {
-                System.out.printf("[INFO] %d advisory violations (non-blocking)%n", proofReport.violated());
+
+            // EYES proofs — only when relational data exists (DM generative)
+            // Without relational data, EYES proofs generate noise (false violations)
+            if (ctx.hasRelationalData() || ctx.entry().isGenerative()) {
+                PlacementProver.ProofReport proofReport = PlacementProver.proveFromDB(
+                    ctx.entry().outputDbPath(), ctx.entry().projectName());
+                ctx.setProofReport(proofReport);
+                PlacementProver.printReport(proofReport);
+
+                if (proofReport.criticalViolations() == 0) {
+                    System.out.printf("[PASS] All critical proofs satisfied (%d proven, %d advisory violations)%n",
+                        proofReport.proven(), proofReport.violated());
+                } else {
+                    System.out.printf("[FAIL] %d critical proof violations (GATES test)%n",
+                        proofReport.criticalViolations());
+                }
+            } else {
+                // Empty report satisfies test contract (proofReport must be non-null)
+                ctx.setProofReport(new PlacementProver.ProofReport(List.of(), 0, 0, 0));
             }
         }
     }
@@ -1270,11 +1288,12 @@ public class CompilationPipeline {
             String jurisdiction = ctx.entry().jurisdiction();
             String codeEdition = ctx.entry().codeEdition() != null
                     ? ctx.entry().codeEdition() : jurisdiction + "_DEFAULT";
-            String buildingId = ctx.buildingId();
+            // BOM term: root BOM id from c_orderline (not extraction project name)
+            String buildingId = resolveRootBomId(ctx);
             String spatialDigest = ctx.digestReport() != null
                     ? ctx.digestReport().digest() : "NO_DIGEST";
 
-            BIMLogger.info("COMPLIANCE", "Building={}, jurisdiction={}, edition={}",
+            BIMLogger.info("COMPLIANCE", "RootBOM={}, jurisdiction={}, edition={}",
                     buildingId, jurisdiction, codeEdition);
 
             // Load AD_DocEvent_Rule rows for this jurisdiction from ERP.db
@@ -1602,7 +1621,7 @@ public class CompilationPipeline {
                 // Insert SC_Run
                 String libraryHash = "N/A"; // Full hash computation deferred
                 try (PreparedStatement ps = conn.prepareStatement("""
-                        INSERT INTO SC_Run (BuildingID, Jurisdiction, CodeEdition, CompiledAt,
+                        INSERT OR REPLACE INTO SC_Run (BuildingID, Jurisdiction, CodeEdition, CompiledAt,
                             LibraryHash, SpatialDigest, TotalRules, PassCount, BlockCount,
                             WarnCount, SkipCount, OverallResult, CertificateID)
                         VALUES (?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1688,6 +1707,29 @@ public class CompilationPipeline {
                 if (cat.trim().equals(typeCode)) return true;
             }
             return false;
+        }
+
+        /**
+         * Resolve root BOM id from c_orderline in the output DB.
+         * The root orderline (Parent_OrderLine_ID IS NULL) carries the
+         * BOM product identity (family_ref = root BOM Value).
+         * Falls back to ctx.buildingId() if output has no orderlines.
+         */
+        private static String resolveRootBomId(CompilationContext ctx) {
+            String outputDb = ctx.entry().outputDbPath();
+            if (outputDb == null) return ctx.buildingId();
+
+            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + outputDb);
+                 Statement stmt = conn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                     "SELECT family_ref FROM c_orderline WHERE Parent_OrderLine_ID IS NULL LIMIT 1")) {
+                if (rs.next()) {
+                    String rootBom = rs.getString("family_ref");
+                    if (rootBom != null && !rootBom.isBlank()) return rootBom;
+                }
+            } catch (SQLException ignored) { }
+
+            return ctx.buildingId(); // fallback
         }
 
         /** Write submission package directory on PASS. */

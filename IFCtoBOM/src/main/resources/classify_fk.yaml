@@ -13,6 +13,7 @@ building:
   doc_sub_type: FK
   doc_base_type: RE                    # Residential
   name: FZK-Haus
+  jurisdiction: MY
   dsl_file: dsl_fk.bim                # BIM COBOL script for DAGCompiler
 
   storeys:

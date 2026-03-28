@@ -132,6 +132,16 @@ public class BuildingRegistry {
         // W018: DocBaseType/DocSubType dropped from C_DocType. doc_sub_type is the single FK.
         // ST_SH/ST_DX (m_product_category_id='ST') resolve AABB from M_BomCategory, not BUILDING BOM.
         // Tier 2: C_DocType_ID is INTEGER PK. Value holds old TEXT key (e.g., 'RE_SH').
+
+        // Check if C_DocType has Jurisdiction column (added S100-p91)
+        boolean hasJurisdiction = false;
+        try (Connection probe = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
+             ResultSet cols = probe.getMetaData().getColumns(null, null, "C_DocType", "Jurisdiction")) {
+            hasJurisdiction = cols.next();
+        } catch (SQLException ignored) { }
+
+        String jurisdictionExpr = hasJurisdiction ? "d.Jurisdiction, d.CodeEdition " : "NULL AS Jurisdiction, NULL AS CodeEdition ";
+
         String sql = "SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, "
                    + "mpc.Value AS MProductCategoryId, "
                    + "COALESCE(d.doc_sub_type, b.doc_sub_type) AS DocSubType, "
@@ -141,7 +151,7 @@ public class BuildingRegistry {
                    + "COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm, "
                    + "COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm, "
                    + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm, "
-                   + "NULL AS Jurisdiction, NULL AS CodeEdition "
+                   + jurisdictionExpr
                    + "FROM C_DocType d "
                    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                    // Root = BOM with no parent m_bom_line (replaces bom_type = 'BUILDING')

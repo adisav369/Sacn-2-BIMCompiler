@@ -64,7 +64,8 @@ public class ClassificationYaml {
             CompositionConfig composition,
             Map<String, DisciplineConfig> disciplines,
             String dslFile,
-            int geometryFailThreshold
+            int geometryFailThreshold,
+            String jurisdiction
     ) {}
 
     // ── Accessors ────────────────────────────────────────────────────────────
@@ -233,7 +234,8 @@ public class ClassificationYaml {
                 storeys, floorRooms, staticChildren, composition,
                 disciplines,
                 getString(bldg, "dsl_file"),
-                getInt(bldg, "geometry_fail_threshold", 0)
+                getInt(bldg, "geometry_fail_threshold", 0),
+                getString(bldg, "jurisdiction")
         );
 
         return result;
