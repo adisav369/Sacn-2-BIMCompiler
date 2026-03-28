@@ -1287,6 +1287,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-idempiere-pk-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. iDempiere PK Convention
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. iDempiere PK Convention">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-migration-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Migration Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-convention-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Convention Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3153,6 +3192,45 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#8-idempiere-pk-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. iDempiere PK Convention
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. iDempiere PK Convention">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-migration-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Migration Status
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-convention-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 Convention Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3462,8 +3540,8 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tbody>
 <tr>
 <td>C_DocType_ID</td>
-<td>TEXT PK</td>
-<td>RE_SH, RE_DX, RE_TB, CO_TE, ST_SH, ST_DX</td>
+<td>INTEGER PK</td>
+<td>Opaque. Value = RE_SH, RE_DX, CO_TE, etc. See §8 PK convention</td>
 </tr>
 <tr>
 <td>Name</td>
@@ -3534,9 +3612,9 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 </thead>
 <tbody>
 <tr>
-<td>bom_id</td>
-<td>TEXT PK</td>
-<td>e.g. BUILDING_SH_STD, SH_GF_STR, BED_SET</td>
+<td>M_BOM_ID</td>
+<td>INTEGER PK</td>
+<td>Opaque. Value = BUILDING_SH_STD, SH_GF_STR, BED_SET. See §8 PK convention</td>
 </tr>
 <tr>
 <td>bom_name</td>
@@ -3739,7 +3817,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 <tr>
 <td>M_Product_Category_ID</td>
 <td>TEXT FK</td>
-<td>→ M_Product_Category</td>
+<td>→ M_Product_Category. Transitional: TEXT in component_library.db, INTEGER in ERP.db. Phase B unifies. See §8</td>
 </tr>
 <tr>
 <td>is_active</td>
@@ -4259,6 +4337,81 @@ See prompt 29 study for merge assessment (verdict: do not merge).</p>
 </tr>
 </tbody>
 </table>
+<hr />
+<h2 id="8-idempiere-pk-convention">8. iDempiere PK Convention<a class="headerlink" href="#8-idempiere-pk-convention" title="Permanent link">&para;</a></h2>
+<p>Every master table follows the iDempiere <code>TableName_ID</code> / <code>Value</code> / <code>Name</code> convention:</p>
+<ul>
+<li><strong><code>TableName_ID</code></strong> — <code>INTEGER PRIMARY KEY AUTOINCREMENT</code>. Opaque surrogate key. Never shown to users, never used in business logic.</li>
+<li><strong><code>Value</code></strong> — <code>TEXT NOT NULL UNIQUE</code>. The search key (what was previously the TEXT PK). Lookups by business key use <code>WHERE Value = ?</code>.</li>
+<li><strong><code>Name</code></strong> — <code>TEXT NOT NULL</code>. Display name for UI and reports.</li>
+<li><strong>Foreign keys always reference <code>_ID</code></strong>, never <code>Value</code>. Joins are integer comparisons.</li>
+</ul>
+<p>This is standard iDempiere convention: every <code>X_</code> generated class has <code>getTableName_ID()</code>, <code>getValue()</code>, <code>getName()</code>. The migration from TEXT PKs to INTEGER PKs preserves the old TEXT identifier as <code>Value</code>.</p>
+<h3 id="81-migration-status">8.1 Migration Status<a class="headerlink" href="#81-migration-status" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Status</th>
+<th>Since</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M_Product</td>
+<td>INTEGER PK</td>
+<td>S91</td>
+</tr>
+<tr>
+<td>C_Order</td>
+<td>INTEGER PK</td>
+<td>S91</td>
+</tr>
+<tr>
+<td>C_DocType</td>
+<td>INTEGER PK</td>
+<td>S91</td>
+</tr>
+<tr>
+<td>AD_Org</td>
+<td>INTEGER PK (manual)</td>
+<td>pre-S90</td>
+</tr>
+<tr>
+<td>ad_val_rule</td>
+<td>INTEGER PK</td>
+<td>S90</td>
+</tr>
+<tr>
+<td>M_BOM (ERP.db)</td>
+<td>INTEGER PK</td>
+<td>DV025</td>
+</tr>
+<tr>
+<td>m_bom (BOM.db)</td>
+<td>INTEGER PK</td>
+<td>S100-p86 Phase A</td>
+</tr>
+<tr>
+<td>M_Product_Category</td>
+<td>TEXT PK → INTEGER PK</td>
+<td>Phase B (prompt 87)</td>
+</tr>
+<tr>
+<td>13 AD tables</td>
+<td>TEXT PK → INTEGER PK</td>
+<td>Phase C (deferred)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-convention-rules">8.2 Convention Rules<a class="headerlink" href="#82-convention-rules" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>New tables</strong> must use <code>TableName_ID INTEGER PRIMARY KEY AUTOINCREMENT</code> from creation. No TEXT PKs for new tables.</li>
+<li><strong>Existing tables</strong> migrate in phases: Phase A (m_bom DONE), Phase B (M_Product_Category NEXT), Phase C (remaining AD tables).</li>
+<li><strong><code>_int</code> sidecar columns</strong> (transitional pattern from S90-S92) are dropped as each table completes migration. Phase D dropped M_Product_Category_ID_int (S92).</li>
+<li><strong><code>loadByValue(String)</code></strong> on BasePO enables <code>WHERE Value = ?</code> lookups — replaces the old TEXT PK pattern without changing caller semantics.</li>
+</ol>
+<p>See <a href="../DISC_VALIDATION_DB_SRS/#1165-migration-sequence-6-steps-each-independently-committable">DISC_VALIDATION_DB_SRS.md §11.6.5</a> for the full migration sequence.</p>
 <hr />
 <p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
 <code>MANIFESTO.md</code> for the three-concern model (WHAT/HOW/WHERE),
