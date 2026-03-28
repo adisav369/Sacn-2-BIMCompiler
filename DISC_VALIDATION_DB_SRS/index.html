@@ -2045,6 +2045,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#1049-stair-validation-rules-candidate-ad-table-extensions-s100-p84" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.9 Stair Validation Rules — Candidate AD Table Extensions (S100-p84)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#105-investigation-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3548,6 +3559,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#1049-stair-validation-rules-candidate-ad-table-extensions-s100-p84" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.9 Stair Validation Rules — Candidate AD Table Extensions (S100-p84)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#105-investigation-tasks" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5037,6 +5059,76 @@ AD_Val_Rule validates the output.</p>
 </tr>
 </tbody>
 </table>
+<h3 id="1049-stair-validation-rules-candidate-ad-table-extensions-s100-p84">10.4.9 Stair Validation Rules — Candidate AD Table Extensions (S100-p84)<a class="headerlink" href="#1049-stair-validation-rules-candidate-ad-table-extensions-s100-p84" title="Permanent link">&para;</a></h3>
+<p>Existing infrastructure: <code>ad_stair_requirement</code> (7 rows in BOM.db, seeded by
+<code>scripts/create_ad_vertical_circulation.py</code>), <code>VerticalCirculationAD.java</code>,
+<code>VerticalCirculationValidator.java</code>, <code>StairwellCheck.java</code>.</p>
+<p><strong>Rules NOT yet in <code>ad_stair_requirement</code> — candidates for addition:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Rule ID</th>
+<th>Parameter</th>
+<th>Value</th>
+<th>Standard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>STAIR_COMFORT_2RG</td>
+<td>2R+G check</td>
+<td>550-700mm (ideal 630)</td>
+<td>Blondel formula</td>
+</tr>
+<tr>
+<td>STAIR_HEADROOM</td>
+<td>min_headroom_mm</td>
+<td>2000</td>
+<td>UBBL practice / BS 5395</td>
+</tr>
+<tr>
+<td>STAIR_MAX_FLIGHT</td>
+<td>max_flight_rise_mm</td>
+<td>3000</td>
+<td>UBBL By-Law 168</td>
+</tr>
+<tr>
+<td>STAIR_RISER_UNIFORM</td>
+<td>max_variance_mm</td>
+<td>9.5</td>
+<td>IBC s1011.5.4</td>
+</tr>
+<tr>
+<td>STAIR_GUARD_HEIGHT</td>
+<td>min_guard_mm</td>
+<td>1070</td>
+<td>IBC s1015.3</td>
+</tr>
+<tr>
+<td>STAIR_GUARD_OPENING</td>
+<td>max_sphere_mm</td>
+<td>100</td>
+<td>IBC s1015.4 (child safety)</td>
+</tr>
+<tr>
+<td>STAIR_NOSING_MAX</td>
+<td>max_nosing_mm</td>
+<td>32</td>
+<td>IBC s1011.5.5</td>
+</tr>
+<tr>
+<td>STAIR_PRESSURIZE</td>
+<td>pressure_pa</td>
+<td>50-100</td>
+<td>UBBL By-Law 178 (&gt;18m)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TE relevance:</strong> 178 unfactored stair components across GF-L4. Building height
+59.8m → &gt;18m threshold → 2.0hr fire rating, min 1200mm width, pressurization
+required, min 2 stairs. These rules + ASI (per-instance run length, landing width)
+resolve stair geometry without manual pattern recognition. See
+<a href="../TerminalAnalysis/">TerminalAnalysis.md §Stair Validation Rules</a>.</p>
 <h3 id="105-investigation-tasks">10.5 Investigation Tasks<a class="headerlink" href="#105-investigation-tasks" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Count Java files that read M_Product from component_library.db vs ERP.db</li>

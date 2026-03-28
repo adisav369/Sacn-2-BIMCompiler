@@ -2430,6 +2430,28 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#three-layer-validation-resolution-s100-p84" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three-Layer Validation Resolution (S100-p84)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stair-validation-rules-already-partially-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stair Validation Rules — Already Partially Implemented
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#s51b-validation-rules-are-the-patterns-clusterpatternanalyser" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3837,6 +3859,28 @@
   
     <nav class="md-nav" aria-label="Verb Roadmap — What Terminal Still Needs">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#three-layer-validation-resolution-s100-p84" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three-Layer Validation Resolution (S100-p84)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stair-validation-rules-already-partially-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stair Validation Rules — Already Partially Implemented
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#s51b-validation-rules-are-the-patterns-clusterpatternanalyser" class="md-nav__link">
@@ -5587,6 +5631,192 @@ roadmap below tracks promotion from CLUSTER → exact verb per discipline.</p>
 <p><strong>Gap:</strong> CLUSTER's 3.7m avg error is the G2-VOLUME 13.71% drift root cause.
 Promotion path: analyse each CLUSTER group for step-uniformity, reclassify
 groups with ≤1mm step variance as TILE/ROUTE/FRAME. Non-uniform residue stays CLUSTER.</p>
+<h3 id="three-layer-validation-resolution-s100-p84">Three-Layer Validation Resolution (S100-p84)<a class="headerlink" href="#three-layer-validation-resolution-s100-p84" title="Permanent link">&para;</a></h3>
+<p>The 1,163 unfactored elements are not a pattern-mining problem — they're a
+<strong>standards application</strong> problem. The iDempiere three-layer validation resolves
+most of them without manual pattern recognition:</p>
+<p><strong>Layer 1: DocEvent per Org</strong> — blanket discipline rules. When AD_Org=FP, the
+org-scoped ModelValidator fires top-down during BOM walk. General placement
+rules (spacing, connectivity, host). Shared recipes in ERP.db (<code>FP_SYSTEM</code>,
+<code>ACMV_SYSTEM</code>, etc.) provide the abstract BOM templates.</p>
+<p><strong>Layer 2: ASI (AttributeSet Instance)</strong> — per-product/per-instance attributes.
+K-factor, pipe length, duct size. Same as customer options in manufacturing —
+modifies placement without changing the recipe.</p>
+<p><strong>Layer 3: AD_Val_Rule</strong> — same DocEvent engine, narrower scope. User adds a
+specific rule for a particular exploded C_OrderLine. Not a separate mechanism —
+a different granularity. Government standards (NFPA 13, UBBL, MS1183) are
+general rules (Layer 1). Layer 3 is for user-specific overrides.</p>
+<p>This mirrors iDempiere document processing: ModelValidator (Org-scoped) →
+line item resolution (ASI) → validation rules (AD_Val_Rule).</p>
+<p><strong>Resolution estimate (1,163 unfactored elements):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Count</th>
+<th>Resolution</th>
+<th>Layer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SP/CW/LPG pipes</td>
+<td>~450</td>
+<td>Routing standards (branch length, riser sizing)</td>
+<td>DocEvent</td>
+</tr>
+<tr>
+<td>FP devices (alarms, extinguishers)</td>
+<td>~30</td>
+<td>NFPA/UBBL spacing rules</td>
+<td>DocEvent</td>
+</tr>
+<tr>
+<td>ELEC (switches, receptacles)</td>
+<td>~20</td>
+<td>Receptacle count per area</td>
+<td>DocEvent</td>
+</tr>
+<tr>
+<td>Doors/windows</td>
+<td>~30</td>
+<td>Fire door placement per UBBL egress</td>
+<td>DocEvent</td>
+</tr>
+<tr>
+<td>ACMV fittings</td>
+<td>~25</td>
+<td>Duct routing standards</td>
+<td>DocEvent</td>
+</tr>
+<tr>
+<td>STR columns (irregular grid)</td>
+<td>~63</td>
+<td>~50% by rules, rest human/AI pattern</td>
+<td>DocEvent + manual</td>
+</tr>
+<tr>
+<td><strong>Stairs</strong></td>
+<td><strong>~178</strong></td>
+<td><strong>Stair rules (see below)</strong></td>
+<td><strong>DocEvent + ASI</strong></td>
+</tr>
+<tr>
+<td>Walls</td>
+<td>~41</td>
+<td>Define space, not fill it — stays unfactored</td>
+<td>Unfactored</td>
+</tr>
+<tr>
+<td>Furniture/fixtures</td>
+<td>~50</td>
+<td>Architect's choice — stays unfactored</td>
+<td>Unfactored</td>
+</tr>
+<tr>
+<td>Remaining misc</td>
+<td>~276</td>
+<td>Mixed</td>
+<td>Mixed</td>
+</tr>
+<tr>
+<td><strong>Total resolvable</strong></td>
+<td><strong>~550 (47%)</strong></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="stair-validation-rules-already-partially-implemented">Stair Validation Rules — Already Partially Implemented<a class="headerlink" href="#stair-validation-rules-already-partially-implemented" title="Permanent link">&para;</a></h3>
+<p>Infrastructure exists: <code>ad_stair_requirement</code> (7 rows, UBBL/IBC/NFPA),
+<code>VerticalCirculationAD.java</code> (StairRequirement record), <code>VerticalCirculationValidator.java</code>
+(count, width, travel distance), <code>StairwellCheck.java</code> (geometry-based UBBL check).</p>
+<p>The 178 unfactored stair components (runs, landings, stringers) across GF-L4 are
+inherently variable in geometry, but their dimensions are <strong>rule-governed</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Value</th>
+<th>Standard</th>
+<th>In ad_stair_requirement?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Riser height</td>
+<td>100-175mm (public), 100-190mm (residential)</td>
+<td>UBBL By-Law 172</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>Tread depth</td>
+<td>250-300mm (public), min 225mm (residential)</td>
+<td>UBBL By-Law 172</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>2R+G comfort</td>
+<td>550-700mm (ideal 630mm)</td>
+<td>Blondel formula</td>
+<td><strong>NO — add</strong></td>
+</tr>
+<tr>
+<td>Stairway width</td>
+<td>min 1050mm (public), 1200mm (high-rise &gt;18m)</td>
+<td>UBBL By-Law 171</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>Headroom</td>
+<td>min 2000mm</td>
+<td>UBBL practice / BS 5395</td>
+<td><strong>NO — add</strong></td>
+</tr>
+<tr>
+<td>Landing length</td>
+<td>min = stair width</td>
+<td>UBBL general</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>Max flight rise</td>
+<td>3.0m before landing</td>
+<td>UBBL By-Law 168</td>
+<td><strong>NO — add</strong></td>
+</tr>
+<tr>
+<td>Riser uniformity</td>
+<td>max 9.5mm variance between risers</td>
+<td>IBC s1011.5.4</td>
+<td><strong>NO — add</strong></td>
+</tr>
+<tr>
+<td>Handrail height</td>
+<td>900mm (UBBL), 864-965mm (IBC)</td>
+<td>UBBL / IBC s1014.2</td>
+<td>YES</td>
+</tr>
+<tr>
+<td>Guard height</td>
+<td>min 1070mm (42")</td>
+<td>IBC s1015.3</td>
+<td><strong>NO — add</strong></td>
+</tr>
+<tr>
+<td>Fire rating</td>
+<td>1.0hr (&lt;18m), 2.0hr (&gt;18m)</td>
+<td>UBBL By-Law 166(3)</td>
+<td>YES</td>
+</tr>
+</tbody>
+</table>
+<p><strong>TE is &gt;18m (59.8m tall) → requires 2.0hr fire-rated stairs, min 1200mm width,
+pressurization (50-100 Pa per UBBL By-Law 178), min 2 stairs.</strong></p>
+<p>These rules constrain stair geometry enough that ASI (per-instance run length,
+landing width) handles the remaining variance. The 178 stair components aren't
+"irregular" — they follow dimensional rules with per-instance variants.
+EYES geometric proofs (P04 Z-band, P01 positive extent) can verify the result.</p>
 <p><strong>ROUTE DUCTS</strong> and <strong>ROUTE PIPES</strong> are variants of ROUTE SPRINKLERS — same
 path-following walker, different M_Product leaves and AD regulation tables.
 Implementation cost: parameter mapping + AD table creation, not new verb code.</p>

@@ -3198,6 +3198,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#32-integration-gap-register-s100-docs-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32. Integration Gap Register (S100-docs audit)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="32. Integration Gap Register (S100-docs audit)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#321-priority-1-blocking-te-scale-iterative-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.1 Priority 1 — Blocking TE-Scale Iterative Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#322-priority-2-required-for-daily-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.2 Priority 2 — Required for Daily Use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#323-priority-3-competitive-edge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.3 Priority 3 — Competitive Edge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#324-known-fragility-not-gaps-but-pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.4 Known Fragility (not gaps, but pitfalls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#325-whats-solid-no-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.5 What's Solid (no gaps)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -6598,6 +6670,78 @@
     <span class="md-ellipsis">
       
         31.6 Migration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#32-integration-gap-register-s100-docs-audit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32. Integration Gap Register (S100-docs audit)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="32. Integration Gap Register (S100-docs audit)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#321-priority-1-blocking-te-scale-iterative-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.1 Priority 1 — Blocking TE-Scale Iterative Design
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#322-priority-2-required-for-daily-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.2 Priority 2 — Required for Daily Use
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#323-priority-3-competitive-edge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.3 Priority 3 — Competitive Edge
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#324-known-fragility-not-gaps-but-pitfalls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.4 Known Fragility (not gaps, but pitfalls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#325-whats-solid-no-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        32.5 What's Solid (no gaps)
       
     </span>
   </a>
@@ -11970,6 +12114,128 @@ M_AttributeInstance rows with free-form names. With ASI_002:</p>
 Does not modify any existing table except adding M_AttributeSet_ID column to M_Product.</p>
 <p><em>Cross-references: BBC.md §3.5.1–3.5.2 (ASI pattern + verb routing),
 DocValidate.md §1.5 (Column.Callout wiring), §28.5–28.7 (ASI in BOM Drop).</em></p>
+<hr />
+<hr />
+<h2 id="32-integration-gap-register-s100-docs-audit">32. Integration Gap Register (S100-docs audit)<a class="headerlink" href="#32-integration-gap-register-s100-docs-audit" title="Permanent link">&para;</a></h2>
+<p>Audited against current <code>master</code> (S100-p85). Phase 1 complete, backend
+strong (14 report templates, Federation ported, 76 verbs). Gaps below
+would block smooth daily use.</p>
+<h3 id="321-priority-1-blocking-te-scale-iterative-design">32.1 Priority 1 — Blocking TE-Scale Iterative Design<a class="headerlink" href="#321-priority-1-blocking-te-scale-iterative-design" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Description</th>
+<th>Spec</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IG-1 Incremental viewport update</strong></td>
+<td>User edits one BOM line → Java compiles in 2s → Blender reloads ALL 48K objects (30s freeze). BlenderBridge spec defines delta manifest (added/modified/removed GUIDs) + <code>apply_delta()</code> applicator. Neither Java nor Python side is wired.</td>
+<td><a href="../BlenderBridge/">BlenderBridge.md</a> §delta</td>
+<td>SPEC COMPLETE, CODE MISSING</td>
+</tr>
+<tr>
+<td><strong>IG-2 Real-time clash detection</strong></td>
+<td>PlacementValidator checks dimensions but NOT spatial overlaps. User places item, passes validation, compiles, THEN discovers clash in 3D. <code>SpatialPredicates</code> class exists but used for snapping only.</td>
+<td>§26.12</td>
+<td>PARTIAL — needs <code>ClashCheckPredicate</code> in PlacementValidator</td>
+</tr>
+<tr>
+<td><strong>IG-3 Python client threading race</strong></td>
+<td>TCP socket listener and sync <code>_send()</code> share one socket with no mutex. If user edits while <code>COMPILE_COMPLETE</code> pushes, socket corrupts silently. Only protected by a code comment.</td>
+<td><code>client.py</code> lines 30–35</td>
+<td>BUG — needs Queue + lock or split socket</td>
+</tr>
+</tbody>
+</table>
+<h3 id="322-priority-2-required-for-daily-use">32.2 Priority 2 — Required for Daily Use<a class="headerlink" href="#322-priority-2-required-for-daily-use" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Description</th>
+<th>Spec</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IG-4 Design Mode Phase 2</strong></td>
+<td>Can create new (wireframe), cannot edit existing geometry. Load → edit → move chain workflow is skeleton code (WF-11 STUB, WF-12 SPEC ONLY, WF-13 STUB).</td>
+<td>§26.4–26.5</td>
+<td>SCAFFOLD ONLY</td>
+</tr>
+<tr>
+<td><strong>IG-5 Change Request workflow</strong></td>
+<td>Non-compliant moves should spawn <code>R_Request</code> row with approval panel. API stubs exist (<code>moveChain()</code>, <code>costOfChange()</code>) but no R_Request creation or UI.</td>
+<td>§26.13</td>
+<td>SPEC ONLY</td>
+</tr>
+<tr>
+<td><strong>IG-6 4D/5D/6D Web UI tabs</strong></td>
+<td>14 report generators exist in BackOffice (p78–p83). Web UI tabs 4D/5D/6D/7D are placeholder buttons — data layer complete, presentation not wired.</td>
+<td><a href="../BIM_Designer_UserGuide/">BIM_Designer_UserGuide.md §30.3</a></td>
+<td>DATA READY, UI SKELETON</td>
+</tr>
+<tr>
+<td><strong>IG-7 Multi-user session locking</strong></td>
+<td>Server supports 50+ concurrent connections (stateless) but no session tracking. No awareness of who's editing what. No soft locking per floor/building.</td>
+<td>§26.14</td>
+<td>SPEC ONLY</td>
+</tr>
+</tbody>
+</table>
+<h3 id="323-priority-3-competitive-edge">32.3 Priority 3 — Competitive Edge<a class="headerlink" href="#323-priority-3-competitive-edge" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Description</th>
+<th>Spec</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IG-8 Embedding similarity</strong></td>
+<td><code>findSimilar()</code> API exists but ML pipeline deferred (no embeddings computed). BOM Chooser returns empty on "Find Similar".</td>
+<td>§25</td>
+<td>API READY, ML MISSING</td>
+</tr>
+<tr>
+<td><strong>IG-9 NLP query panel</strong></td>
+<td><code>NlpQueryParser</code> + <code>NlpQueryExecutor</code> exist in Java backend (6 categories, regex→SQL). Web UI has no input field for natural language queries.</td>
+<td>—</td>
+<td>BACKEND READY, UI MISSING</td>
+</tr>
+<tr>
+<td><strong>IG-10 Variant comparison</strong></td>
+<td><code>listVariants()</code> API works. No side-by-side diff UI (element count, cost, compliance comparison).</td>
+<td>§18.2</td>
+<td>API READY, UI MISSING</td>
+</tr>
+</tbody>
+</table>
+<h3 id="324-known-fragility-not-gaps-but-pitfalls">32.4 Known Fragility (not gaps, but pitfalls)<a class="headerlink" href="#324-known-fragility-not-gaps-but-pitfalls" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Bbox JSON serialization tax</strong> — <code>panel.py</code> parses JSON on every Blender panel redraw (1–50 Hz). Large designs (50+ rooms) will lag. Fix: cache parsed bboxes at module level, invalidate on property change.</li>
+<li><strong>DesignerServer socket leak</strong> — no timeout on client sockets. 100 Blender restarts → thread pool exhaustion. Fix: socket timeout + explicit close in <code>finally</code> block.</li>
+<li><strong>BOM Chooser stale fit status</strong> — user resizes room via slider, Chooser still shows old FITS/TIGHT badges. Fix: invalidate browse cache on <code>snap()</code> success.</li>
+<li><strong>Web UI HTTP polling</strong> — 0.5s poll interval, no WebSocket. Fine for &lt;5 users. At 10+, thread pool (8 workers) saturates. WebSocketHandler exists (port 9879) but Web UI never upgraded.</li>
+</ul>
+<h3 id="325-whats-solid-no-gaps">32.5 What's Solid (no gaps)<a class="headerlink" href="#325-whats-solid-no-gaps" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Java ↔ Blender TCP protocol (ndjson, stable)</li>
+<li>Design Mode Phase 1 (wireframe, snap, validate, BOM chooser, jurisdiction switch)</li>
+<li>Web UI tabs 1D/9/10 (Order, BOM, Colour — fully functional)</li>
+<li>Bonsai ↔ Browser viewport sync (selection push, color schemes, bbox preview)</li>
+<li>76 verbs, 10-stage compilation pipeline, 24/34 ALL GREEN</li>
+<li>18 report generators (4 existing + 14 new from p78–p83)</li>
+<li>Federation layer (ColorScheme, DimensionQuery, WorkPackage, NLP backend)</li>
+</ul>
 <hr />
 <p><em>References:
 <a href="../BIM_Designer/">BIM_Designer.md</a> (architecture, §17 Design Mode, §18 UI Strategy) |
