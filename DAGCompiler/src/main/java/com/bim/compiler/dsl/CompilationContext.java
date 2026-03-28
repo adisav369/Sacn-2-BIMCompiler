@@ -1,5 +1,6 @@
 package com.bim.compiler.dsl;
 
+import com.bim.compiler.compliance.ComplianceReport;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.CompilationPipeline.PipelineResult;
@@ -33,6 +34,7 @@ public class CompilationContext {
     private boolean proverSkipped;
     private BomTemplateComposer.CompositionReport compositionReport;
     private List<PlacementLoader.Placement> walkedPlacements;
+    private ComplianceReport complianceReport;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -81,6 +83,7 @@ public class CompilationContext {
     public boolean proverSkipped() { return proverSkipped; }
     public BomTemplateComposer.CompositionReport compositionReport() { return compositionReport; }
     public List<PlacementLoader.Placement> walkedPlacements() { return walkedPlacements; }
+    public ComplianceReport complianceReport() { return complianceReport; }
 
     // --- Setters (called by stages) ---
     public void setDefinition(BuildingDefinition definition) { this.definition = definition; }
@@ -92,4 +95,5 @@ public class CompilationContext {
     public void setProverSkipped(boolean proverSkipped) { this.proverSkipped = proverSkipped; }
     public void setCompositionReport(BomTemplateComposer.CompositionReport r) { this.compositionReport = r; }
     public void setWalkedPlacements(List<PlacementLoader.Placement> p) { this.walkedPlacements = p; }
+    public void setComplianceReport(ComplianceReport r) { this.complianceReport = r; }
 }

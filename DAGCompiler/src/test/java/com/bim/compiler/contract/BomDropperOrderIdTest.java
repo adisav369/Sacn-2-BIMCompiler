@@ -34,7 +34,8 @@ public class BomDropperOrderIdTest {
                 null, null, null,
                 true, 10, 0,
                 "GENERATIVE", "test", 0,
-                10000, 8000, 6000
+                10000, 8000, 6000,
+                null, null
             );
 
             // Drop order 1 with explicit ID

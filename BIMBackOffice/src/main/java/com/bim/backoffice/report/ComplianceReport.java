@@ -2,9 +2,8 @@ package com.bim.backoffice.report;
 
 import com.bim.orm.BIMLogger;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.io.File;
+import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -44,6 +43,11 @@ public class ComplianceReport {
      */
     public ReportOutput generate(Connection erpConn, Connection bomConn,
                                  String buildingId) {
+        // Try compliance_proof.db first (richer proof chain from ComplianceStage)
+        ReportOutput proofReport = tryComplianceProofDb(buildingId, bomConn);
+        if (proofReport != null) return proofReport;
+
+        // Fallback: read from AD_Val_Rule directly
         List<RuleResult> rules = new ArrayList<>();
         int passed = 0, failed = 0, skipped = 0;
 
@@ -85,6 +89,67 @@ public class ComplianceReport {
         return new ReportOutput("BIM-RPT-COMPLIANCE",
                 "Compliance Certificate — " + buildingId,
                 buildingId, LocalDate.now().toString(), summary, rules, plainText);
+    }
+
+    // ── Compliance proof DB reader (richer proof chain from ComplianceStage) ──
+
+    /**
+     * Try reading compliance_proof.db for richer proof chain data.
+     * Returns null if not available — caller falls back to AD_Val_Rule.
+     */
+    private ReportOutput tryComplianceProofDb(String buildingId, Connection bomConn) {
+        // Derive path: look for output DB path pattern
+        String proofDbPath = "output/" + buildingId + "_output_compliance_proof.db";
+        if (!new File(proofDbPath).exists()) return null;
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + proofDbPath)) {
+            // Read SC_Run
+            String runSql = "SELECT * FROM SC_Run WHERE BuildingID = ? ORDER BY SC_Run_ID DESC LIMIT 1";
+            try (PreparedStatement ps = conn.prepareStatement(runSql)) {
+                ps.setString(1, buildingId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return null;
+
+                    int runId = rs.getInt("SC_Run_ID");
+                    String overall = rs.getString("OverallResult");
+                    String certId = rs.getString("CertificateID");
+                    int total = rs.getInt("TotalRules");
+                    int pass = rs.getInt("PassCount");
+                    int block = rs.getInt("BlockCount");
+                    int skip = rs.getInt("SkipCount");
+
+                    // Read proof lines
+                    List<RuleResult> rules = new ArrayList<>();
+                    String lineSql = "SELECT * FROM SC_Proof_Line WHERE SC_Run_ID = ? ORDER BY SC_Proof_Line_ID";
+                    try (PreparedStatement lps = conn.prepareStatement(lineSql)) {
+                        lps.setInt(1, runId);
+                        try (ResultSet lrs = lps.executeQuery()) {
+                            while (lrs.next()) {
+                                String verdict = lrs.getString("Result");
+                                if ("BLOCK".equals(verdict)) verdict = "FAIL";
+                                rules.add(new RuleResult(
+                                        String.valueOf(lrs.getInt("AD_DocEvent_Rule_ID")),
+                                        lrs.getString("RuleCode"),
+                                        "COMPLIANCE",
+                                        verdict,
+                                        lrs.getString("StatuteRef") + ": " + lrs.getString("ClauseText")));
+                            }
+                        }
+                    }
+
+                    double passRate = total > 0 ? (pass * 100.0 / total) : 0;
+                    ComplianceSummary summary = new ComplianceSummary(total, pass, block, skip, passRate);
+                    String plainText = formatPlainText(buildingId, summary, rules);
+                    return new ReportOutput(
+                            certId != null ? certId : "BIM-RPT-COMPLIANCE",
+                            "Compliance Certificate — " + buildingId + " (proof chain)",
+                            buildingId, LocalDate.now().toString(), summary, rules, plainText);
+                }
+            }
+        } catch (Exception e) {
+            BIMLogger.warn(TAG, "tryComplianceProofDb: {}", e.getMessage());
+            return null;
+        }
     }
 
     // ── Rule evaluation ─────────────────────────────────────────────

@@ -34,7 +34,8 @@ public class OrderInheritanceTest {
             null, null, null,
             true, 10, 0,
             "GENERATIVE", "test", 0,
-            12000, 10000, 8000
+            12000, 10000, 8000,
+            null, null
     );
 
     @BeforeAll

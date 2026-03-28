@@ -38,7 +38,9 @@ public class BuildingRegistry {
         int geometryFailThreshold,
         double aabbWidthMm,
         double aabbDepthMm,
-        double aabbHeightMm
+        double aabbHeightMm,
+        String jurisdiction,        // MY, US, UK, SG — nullable (skip compliance if absent)
+        String codeEdition          // UBBL_1984_AMD2007 — nullable
     ) {
         public boolean isGenerative() {
             return "GENERATIVE".equals(provenance);
@@ -138,7 +140,8 @@ public class BuildingRegistry {
                    + "d.GeometryFailThreshold, "
                    + "COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm, "
                    + "COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm, "
-                   + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm "
+                   + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm, "
+                   + "NULL AS Jurisdiction, NULL AS CodeEdition "
                    + "FROM C_DocType d "
                    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
                    // Root = BOM with no parent m_bom_line (replaces bom_type = 'BUILDING')
@@ -171,7 +174,9 @@ public class BuildingRegistry {
                         rs.getInt("GeometryFailThreshold"),
                         rs.getDouble("AabbWidthMm"),
                         rs.getDouble("AabbDepthMm"),
-                        rs.getDouble("AabbHeightMm")
+                        rs.getDouble("AabbHeightMm"),
+                        rs.getString("Jurisdiction"),
+                        rs.getString("CodeEdition")
                     ));
                 }
             }
