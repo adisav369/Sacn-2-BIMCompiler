@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RA: Revit Architecture (Revit_ARC)
 -- Source: DAGCompiler/lib/output/revit_arc.db
--- Generated: 2026-03-26 20:02
+-- Generated: 2026-03-28 14:51
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

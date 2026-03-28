@@ -121,6 +121,24 @@ public abstract class BasePO {
         }
     }
 
+    /**
+     * Load by Value column (iDempiere SearchKey convention).
+     * Queries {@code WHERE Value = ?} regardless of PK type.
+     * Returns true if row found.
+     */
+    public boolean loadByValue(String value) throws SQLException {
+        String sql = "SELECT * FROM " + getTableName()
+                   + " WHERE Value = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, value);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (!rs.next()) return false;
+                loadFromResultSet(rs);
+                return true;
+            }
+        }
+    }
+
     // ── Save ──────────────────────────────────────────────────────────────────
 
     /**

@@ -7,7 +7,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — 19/34 ALL GREEN (pre-S96). S96-p0 unblocked 11 DocType-blocked buildings — recount pending. 3 regressions open: DX (severe coordinate failure), IN (44 windows shifted), RM (stair miscompilation).
+**Gate:** `./scripts/run_RosettaStones.sh` — 24/34 ALL GREEN (post-S100-p85 fleet audit). 7 C9 WARN (rank-match artifact). 3 FAIL (CA, CL, WA — recently unblocked). 1 GENERATIVE FAIL (DM). 2 empty (RD, RL — infra walker gap).
 
 | Gate | SH | FK | IN | DX | TE | DM |
 |------|----|----|----|----|------|------|
@@ -20,7 +20,7 @@
 
 > **TE: BOM walk compiler LIVE (S100-p72).** 48,428 elements compiled via BOM walk. 6/7 PASS (C9 FAIL: 60 axis swaps — library mesh orientation, not walk bug). SH 7/7 PASS (zero regression). Script fix: compilation was never running (missing -Dpipeline.tests.skip=false).
 
-**Pipeline:** 9 stages. 76 verbs. 2475 products. 4-DB architecture. 4D/5D/6D live.
+**Pipeline:** 9 stages. 76 verbs. 2475 products. 5-DB architecture (4+1). 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
@@ -45,6 +45,8 @@
 
 ## Session Log (recent first)
 
+**S100-p86** — iDempiere PK conformance Phase A (prompt 86). m_bom INTEGER PK nativized in Java ORM. X_M_BOM.getPKColumnName()→M_BOM_ID. BasePO.loadByValue() added. All getBomId()→getValue() across 30+ files (BomDropper, BOMWalker, PlacementCollectorVisitor, CompilationPipeline, BuildingRegistry, DesignerDAO, 10 BIM_COBOL verbs, BomTemplateComposer, BuildingInspector, DesignerAPIImpl). MBOM queries: COLUMNNAME_bom_id→COLUMNNAME_Value for root-finding, tree nav, category search. IFCtoBOM DDL: m_bom_line.M_BOM_ID NOT NULL. Fresh extraction verified (SH_BOM.db deleted+rebuilt). SH 7/7 FK 7/7 DX 6/7+WARN TE 6/7+WARN (zero regression). Phase B (M_Product_Category 135 refs) + Phase C (AD tables) deferred.
+**S100-p85** — Rosetta fleet audit (prompt 85). FINE logging added: 11 new lines in BomDropper/CompileStage/WriteStage/ValidationStage + 5 failure-transparency BIMLogger.warn upgrades. Verb breakdown counter in PlacementCollectorVisitor. Fleet run: 24/34 ALL GREEN, 7 C9 WARN, 3 FAIL (CA/CL/WA), DM GENERATIVE FAIL, RD/RL 0 elements (infra walker gap). Infrastructure deep dive: BR 7/7 IP 7/7 (standard elements), RD/RL 0 elements (non-standard IFC hierarchy). ProveStage 0ms on all 34 (no relational data). Zero GEO_ fallbacks fleet-wide. SH 7/7 PASS (zero regression).
 **S100-p77** — Federation port to Java (prompt 77). 12 Python files ported: ColorSchemeEngine (4 schemes), DimensionQuery (5 filters), WorkPackageSelector, NlpQueryParser (regex→SQL, 6 categories, Malaysian storey names), NlpQueryExecutor (parse→execute→format), IfcLabelMapper (60+ IFC labels, 17 discipline labels), VisualizationManager (3-layer mode switching), VisualizationMode enum. 4 report templates (BomSchedule, CostSummary, Schedule, Compliance). BackOfficeServer: 8 new endpoints. WebUIServer: 6 new dispatch actions. PDF deferred per prompt. BIMBackOffice 20/20 PASS.
 **S100-p73** — Shared discipline recipes in ERP.db (prompt 73). DV025 migration: M_BOM + M_BOM_Line tables created in ERP.db. FP_SYSTEM recipe seeded (1 BOM, 3 lines: FP_RISER, FP_SPRINKLER_LAYOUT, FP_PUMP_LINK). 4 FP tier categories added (FP_MAIN_ROOM, FP_RISER, FP_DISTRIBUTION, FP_SUPPLY). 4 FP assembly products added. AD_Org_ID=3 (FP) FK on M_BOM. Implements DISC_VALIDATION_DB_SRS §10.4.6. SH 7/7 PASS (zero regression).
 **S100-p72** — BOM walk compiler (prompt 72). CompileStage replaced: DSL→BuildingSpec → BOMWalker+PlacementCollectorVisitor→Placements→MeshBinder. Single path for all buildings. WriteStage wired to writeFromBomWalk(). ParseStage handles null DSL. BuildingRegistryTest DSL assumption removed (was skipping TE). Script fix: run_RosettaStones.sh was missing -Dpipeline.tests.skip=false (compilation never ran). TE: 48,428 elements, G0-COMPILED PASS, 6/7 PASS (C9 FAIL: 60 axis swaps, 0.12%). SH 7/7 PASS (zero regression).

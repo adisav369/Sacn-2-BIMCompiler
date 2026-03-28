@@ -118,7 +118,7 @@ public class BuildingInspector {
         }
         indent(depth);
         System.out.printf("[BOM] %s  name='%s'  type=%s  groupBy=%s%n",
-            bom.getBomId(), bom.getBomName(), bom.getBomType(), bom.getGroupBy());
+            bom.getValue(), bom.getBomName(), bom.getBomType(), bom.getGroupBy());
 
         List<MBOMLine> children = MBOMLine.getByBom(conn, bomId);
         for (MBOMLine child : children) {

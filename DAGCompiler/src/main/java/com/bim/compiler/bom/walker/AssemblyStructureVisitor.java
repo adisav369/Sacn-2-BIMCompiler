@@ -105,7 +105,7 @@ public class AssemblyStructureVisitor implements BOMVisitor {
         // Load BOM definition for this assembly
         try {
             MBOM bom = new MBOM(bomConn);
-            if (!bom.load(bomId)) {
+            if (!bom.loadByValue(bomId)) {
                 // BOM not found — still push minimal context so stack stays balanced
                 stack.push(new AssemblyContext(bomId, bomId, "DEFAULT", null));
                 return;

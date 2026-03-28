@@ -89,10 +89,10 @@ public class CreateFloorVerb implements Verb<CreateFloorVerb.CreateFloorPayload>
                         cat, remainingW, depthMm, heightMm), null);
             }
 
-            int[] childSpace = MBOM.computeTotalChildSpace(conn, bestFit.getBomId());
+            int[] childSpace = MBOM.computeTotalChildSpace(conn, bestFit.getValue());
             int allocW = childSpace[0] > 0 ? childSpace[0] : remainingW;
 
-            roomSlots.add(new RoomSlot(cat, bestFit.getBomId(), allocW, usedWidth));
+            roomSlots.add(new RoomSlot(cat, bestFit.getValue(), allocW, usedWidth));
             usedWidth += allocW;
         }
 

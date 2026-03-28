@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- IN: AC11 Institute (Ifc2x3_AC11Institute)
 -- Source: DAGCompiler/lib/output/ifc2x3_ac11institute.db
--- Generated: 2026-03-26 20:04
+-- Generated: 2026-03-28 14:32
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

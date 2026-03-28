@@ -1730,7 +1730,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
             // 1. Check IsBOM — product must have a matching m_bom entry
             MBOM rootBom = new MBOM(bomConn);
-            if (!rootBom.load(buildingProductId)) {
+            if (!rootBom.loadByValue(buildingProductId)) {
                 return new BomDropResponse(false, null, 0, null, 0,
                         "Product has no BOM (IsBOM=false): " + buildingProductId);
             }
@@ -1825,7 +1825,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
         // Load BOM to get AABB
         MBOM bom = new MBOM(bomConn);
-        if (!bom.load(bomId)) return null;
+        if (!bom.loadByValue(bomId)) return null;
 
         // Insert C_OrderLine for this BOM node
         int lineId = woDao.insertBomDropLine(orderId, parentLineId,
@@ -1844,7 +1844,7 @@ public class DesignerAPIImpl implements DesignerAPI {
 
             // Check IsBOM — does child_product_id have a matching m_bom entry?
             MBOM childBom = new MBOM(bomConn);
-            boolean isBom = childBom.load(childProductId);
+            boolean isBom = childBom.loadByValue(childProductId);
 
             if (isBom) {
                 // Sub-assembly — recurse (iDempiere BOM explosion)

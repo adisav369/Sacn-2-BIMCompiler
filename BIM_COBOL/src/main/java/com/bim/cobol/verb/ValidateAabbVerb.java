@@ -62,7 +62,7 @@ public class ValidateAabbVerb implements Verb<ValidateAabbVerb.ValidationPayload
         long bestVolume = -1;
 
         for (MBOM bom : allInCategory) {
-            int[] space = MBOM.computeTotalChildSpace(conn, bom.getBomId());
+            int[] space = MBOM.computeTotalChildSpace(conn, bom.getValue());
             int tw = space[0], td = space[1], th = space[2];
 
             // Zero-space BOMs (empty containers) always fit
@@ -79,7 +79,7 @@ public class ValidateAabbVerb implements Verb<ValidateAabbVerb.ValidationPayload
             }
         }
 
-        String bestFitId = bestFit != null ? bestFit.getBomId() : null;
+        String bestFitId = bestFit != null ? bestFit.getValue() : null;
 
         if (candidateCount == 0) {
             return VerbResult.fail(keyword(),

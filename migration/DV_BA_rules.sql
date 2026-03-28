@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- BA: PCERT Building Architecture (Building_Architecture)
 -- Source: DAGCompiler/lib/output/building_architecture.db
--- Generated: 2026-03-26 20:16
+-- Generated: 2026-03-28 14:33
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

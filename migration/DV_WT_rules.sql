@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WT: BimWhale Tall Building (BimWhale_Tall)
 -- Source: DAGCompiler/lib/output/bimwhale_tall.db
--- Generated: 2026-03-27 23:52
+-- Generated: 2026-03-28 14:49
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -30,10 +30,10 @@
 
 -- ifc_class  discipline  cnt
 -- ---------  ----------  ---
--- IfcWall    ARC         24 
+-- IfcWall    STR         24 
 -- IfcWindow  ARC         21 
 -- IfcDoor    ARC         5  
--- IfcSlab    ARC         5  
+-- IfcSlab    STR         5  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

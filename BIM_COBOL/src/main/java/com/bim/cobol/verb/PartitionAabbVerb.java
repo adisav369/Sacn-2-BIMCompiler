@@ -80,11 +80,11 @@ public class PartitionAabbVerb implements Verb<PartitionAabbVerb.PartitionPayloa
             }
 
             // Get actual dims from the best-fit BOM's children
-            int[] childSpace = MBOM.computeTotalChildSpace(conn, bestFit.getBomId());
+            int[] childSpace = MBOM.computeTotalChildSpace(conn, bestFit.getValue());
             int allocW = childSpace[0] > 0 ? childSpace[0] : remainingW;
             int allocD = childSpace[1] > 0 ? childSpace[1] : depthMm;
 
-            slots.add(new Slot(cat, bestFit.getBomId(), allocW, allocD, usedWidth, 0));
+            slots.add(new Slot(cat, bestFit.getValue(), allocW, allocD, usedWidth, 0));
             usedWidth += allocW;
         }
 

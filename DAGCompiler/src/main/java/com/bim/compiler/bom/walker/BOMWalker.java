@@ -103,8 +103,8 @@ public class BOMWalker {
         public NodeContext(MProduct product, MBOMLine line, MBOM bom, int level, String buildingType) {
             this(product, line, bom, level, buildingType, null);
         }
-        /** Convenience: bom_id of the owning BOM, or null if bom is null. */
-        public String bomId() { return bom != null ? bom.getBomId() : null; }
+        /** Convenience: Value (SearchKey) of the owning BOM, or null if bom is null. */
+        public String bomId() { return bom != null ? bom.getValue() : null; }
 
         /** Convenience: child_product_id of the BOM line, or null if line is null. */
         public String childProductId() { return line != null ? line.getChildProductId() : null; }
@@ -171,11 +171,11 @@ public class BOMWalker {
                                String buildingType, int level) throws SQLException {
         if (level > MAX_DEPTH) {
             System.err.printf("[BOMWalker] MAX_DEPTH exceeded at BOM %s — possible circular reference%n",
-                bom.getBomId());
+                bom.getValue());
             return;
         }
 
-        List<MBOMLine> lines = MBOMLine.getByBom(bomConn, bom.getBomId());
+        List<MBOMLine> lines = MBOMLine.getByBom(bomConn, bom.getValue());
 
         for (MBOMLine line : lines) {
             String childProductId = line.getChildProductId();
@@ -209,7 +209,7 @@ public class BOMWalker {
                 // IFCtoBOM-generated *_BOM.db). Warn and skip — don't crash the walker.
                 System.err.printf("[BOMWalker] Dangling reference: %s in BOM %s — "
                     + "no m_bom entry, no M_Product. Skipping.%n",
-                    childProductId, bom.getBomId());
+                    childProductId, bom.getValue());
             } else if ("PHANTOM".equals(line.getComponentType())) {
                 // PHANTOM: filler — no output. Tack coordinates consumed, element skipped.
                 for (BOMVisitor v : visitors) v.onPhantom(ctx);
@@ -228,8 +228,8 @@ public class BOMWalker {
 
     private MBOM loadBom(String bomId) throws SQLException {
         MBOM bom = new MBOM(bomConn);
-        // Use load() without active check — caller decides; assembly stubs may be inactive
-        if (!bom.load(bomId)) return null;
+        // Use loadByValue() — M_BOM_ID is INTEGER PK, Value is the business key (was bom_id)
+        if (!bom.loadByValue(bomId)) return null;
         return bom;
     }
 

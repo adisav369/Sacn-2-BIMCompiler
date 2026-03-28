@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SC: Schependomlaan Residential (Schependomlaan)
 -- Source: DAGCompiler/lib/output/schependomlaan.db
--- Generated: 2026-03-22 21:09
+-- Generated: 2026-03-28 14:52
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -74,8 +74,9 @@
 -- IfcBeam                  STR         174 
 -- IfcRailing               ARC         90  
 -- IfcWindow                ARC         77  
--- IfcFlowSegment           MEP         60  
+-- IfcFlowSegment           ARC         40  
 -- IfcColumn                STR         28  
+-- IfcFlowSegment           MEP         20  
 -- IfcBuildingElementProxy  ARC         13  
 -- IfcStair                 ARC         9   
 -- IfcMember                STR         4   

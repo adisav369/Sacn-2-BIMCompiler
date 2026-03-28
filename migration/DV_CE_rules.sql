@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CE: Clinic Electrical (Clinic_Electrical)
 -- Source: DAGCompiler/lib/output/clinic_electrical.db
--- Generated: 2026-03-26 19:58
+-- Generated: 2026-03-28 14:34
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -25,7 +25,8 @@
 
 -- ifc_class                discipline  cnt 
 -- -----------------------  ----------  ----
--- IfcFlowTerminal          MEP         2081
+-- IfcFlowTerminal          MEP         1556
+-- IfcFlowTerminal          ARC         525 
 -- IfcBuildingElementProxy  ARC         29  
 
 -- §5: Candidate validation rules for ERP.db

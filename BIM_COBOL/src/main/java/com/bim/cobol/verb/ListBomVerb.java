@@ -48,7 +48,7 @@ public class ListBomVerb implements Verb<ListBomVerb.ListBomPayload> {
         List<BomEntry> entries = new ArrayList<>();
         for (MBOM bom : boms) {
             entries.add(new BomEntry(
-                bom.getBomId(), bom.getBomName(),
+                bom.getValue(), bom.getBomName(),
                 bom.getBomType(), bom.getProductCategory(),
                 bom.getDocSubType(), bom.getSeqNo()));
         }

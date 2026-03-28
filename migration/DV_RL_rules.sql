@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
--- WI: Wilfer PART02 (Wilfer)
--- Source: DAGCompiler/lib/output/wilfer.db
--- Generated: 2026-03-28 14:45
+-- RL: IFC Infra Rail Sample (Infra_Rail)
+-- Source: DAGCompiler/lib/output/infra_rail.db
+-- Generated: 2026-03-28 14:47
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -17,9 +17,6 @@
 
 -- §4: IFC class inventory
 
--- ifc_class          discipline  cnt
--- -----------------  ----------  ---
--- IfcFlowController  MEP         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

@@ -59,7 +59,7 @@ public class WalkThruVerb implements Verb<WalkThruVerb.WalkThruPayload> {
         try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
             BOMWalker walker = new BOMWalker(conn, compConn);
-            walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
+            walker.walkSelf(match.getValue(), List.of(visitor), projectName);
 
             List<PlacementLoader.Placement> placements = visitor.getPlacements();
 
@@ -67,12 +67,12 @@ public class WalkThruVerb implements Verb<WalkThruVerb.WalkThruPayload> {
             int subAssemblies = visitor.getSubAssemblyCount();
 
             WalkThruPayload payload = new WalkThruPayload(
-                    match.getBomId(), docSubType, projectName,
+                    match.getValue(), docSubType, projectName,
                     placements.size(), subAssemblies);
 
             return VerbResult.ok(keyword(),
                     String.format("WALK THRU %s: %s → %d placements, %d sub-assemblies",
-                            docSubType, match.getBomId(), placements.size(), subAssemblies),
+                            docSubType, match.getValue(), placements.size(), subAssemblies),
                     payload);
         }
     }

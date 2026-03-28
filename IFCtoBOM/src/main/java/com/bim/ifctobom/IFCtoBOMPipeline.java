@@ -578,11 +578,12 @@ public class IFCtoBOMPipeline {
                 )
                 """);
 
+            // Implementing BBC.md §14.3 IDV-1 — Witness: W-PK-MBOMLINE
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom_line (
                     bom_child_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                    bom_id              TEXT NOT NULL REFERENCES m_bom(bom_id),
-                    M_BOM_ID            INTEGER,
+                    bom_id              TEXT NOT NULL,
+                    M_BOM_ID            INTEGER NOT NULL DEFAULT 0,
                     child_product_id    TEXT,
                     child_element_type  TEXT,
                     child_name_pattern  TEXT,
@@ -624,7 +625,7 @@ public class IFCtoBOMPipeline {
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS m_bom_line_ma (
                     bom_id      TEXT NOT NULL,
-                    M_BOM_ID    INTEGER,
+                    M_BOM_ID    INTEGER NOT NULL DEFAULT 0,
                     sequence    INTEGER NOT NULL,
                     qi          INTEGER NOT NULL,
                     guid        TEXT NOT NULL,

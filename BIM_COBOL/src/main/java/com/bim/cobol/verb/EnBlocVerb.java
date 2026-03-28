@@ -55,16 +55,16 @@ public class EnBlocVerb implements Verb<EnBlocVerb.EnBlocPayload> {
         try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, projectName);
             BOMWalker walker = new BOMWalker(conn, compConn);
-            walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
+            walker.walkSelf(match.getValue(), List.of(visitor), projectName);
 
             List<PlacementLoader.Placement> placements = visitor.getPlacements();
 
             EnBlocPayload payload = new EnBlocPayload(
-                    match.getBomId(), docSubType, projectName, placements.size());
+                    match.getValue(), docSubType, projectName, placements.size());
 
             return VerbResult.ok(keyword(),
                     String.format("EN-BLOC %s: %s → %d placements (singularity)",
-                            docSubType, match.getBomId(), placements.size()),
+                            docSubType, match.getValue(), placements.size()),
                     payload);
         }
     }

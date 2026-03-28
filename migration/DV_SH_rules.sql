@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SH: Sample House (Ifc4_SampleHouse)
 -- Source: DAGCompiler/lib/output/ifc4_samplehouse.db
--- Generated: 2026-03-28 02:15
+-- Generated: 2026-03-28 16:29
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -28,15 +28,15 @@
 
 -- ifc_class             discipline  cnt
 -- --------------------  ----------  ---
--- IfcMember             CW          20 
+-- IfcMember             STR         20 
 -- IfcFurnishingElement  ARC         14 
--- IfcPlate              CW          6  
+-- IfcPlate              STR         6  
 -- IfcWall               STR         5  
 -- IfcWindow             ARC         4  
 -- IfcCovering           ARC         3  
 -- IfcDoor               ARC         3  
 -- IfcSlab               STR         2  
--- IfcRoof               STR         1  
+-- IfcRoof               ARC         1  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

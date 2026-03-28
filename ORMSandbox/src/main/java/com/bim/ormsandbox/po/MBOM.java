@@ -32,17 +32,17 @@ public class MBOM extends X_M_BOM {
 
     // ─── Factory Methods ────────────────────────────────────────────────────
 
-    /** Load by bom_id TEXT PK. Returns null if not found or inactive. */
+    /** Load by Value (SearchKey, was bom_id). Returns null if not found or inactive. */
     public static MBOM get(Connection conn, String bomId) throws SQLException {
         MBOM bom = new MBOM(conn);
-        return bom.load(bomId) && bom.isActive() ? bom : null;
+        return bom.loadByValue(bomId) && bom.isActive() ? bom : null;
     }
 
     // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
     /** Root = BOM with no parent m_bom_line pointing to it. */
     public static List<MBOM> getRoots(Connection conn) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_is_active + " = 1 AND " + COLUMNNAME_bom_id
+            .where(COLUMNNAME_is_active + " = 1 AND " + COLUMNNAME_Value
                  + " NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1)")
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
             .list();
@@ -52,9 +52,9 @@ public class MBOM extends X_M_BOM {
     /** Parent = the BOM whose m_bom_line points to this BOM as child_product_id. Null means root. */
     public static MBOM getParentBOM(Connection conn, String bomId) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_id + " IN "
-                 + "(SELECT bom_id FROM m_bom_line "
-                 + " WHERE child_product_id = ? AND is_active = 1)", bomId)
+            .where(COLUMNNAME_Value + " IN "
+                 + "(SELECT b.Value FROM m_bom b JOIN m_bom_line l ON b.Value = l.bom_id "
+                 + " WHERE l.child_product_id = ? AND l.is_active = 1)", bomId)
             .first()
             .orElse(null);  // null = root
     }
@@ -62,7 +62,7 @@ public class MBOM extends X_M_BOM {
     /** Children = BOMs pointed to by m_bom_line entries under a parent BOM. */
     public static List<MBOM> getChildren(Connection conn, String parentBomId) throws SQLException {
         return new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_bom_id + " IN "
+            .where(COLUMNNAME_Value + " IN "
                  + "(SELECT child_product_id FROM m_bom_line "
                  + " WHERE bom_id = ? AND is_active = 1)", parentBomId)
             .andWhere(COLUMNNAME_is_active + " = ?", 1)
@@ -100,7 +100,7 @@ public class MBOM extends X_M_BOM {
      */
     public static MBOM getRootByDocSubType(Connection conn, String docSubType) throws SQLException {
         List<MBOM> roots = new ModelQuery<>(conn, MBOM::new, Table_Name)
-            .where(COLUMNNAME_is_active + " = 1 AND " + COLUMNNAME_bom_id
+            .where(COLUMNNAME_is_active + " = 1 AND " + COLUMNNAME_Value
                  + " NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1)")
             .andWhere(COLUMNNAME_doc_sub_type + " = ?", docSubType)
             .orderBy(COLUMNNAME_seq_no + ", " + COLUMNNAME_Value)
@@ -153,7 +153,7 @@ public class MBOM extends X_M_BOM {
         // EntityType guard: dictionary records are read-only through PO layer
         if (!newRecord && !isGodMode() && ENTITYTYPE_Dictionary.equals(getEntityType()))
             throw new IllegalStateException(
-                "MBOM " + getBomId() + " is EntityType=D (Dictionary) — read-only. "
+                "MBOM " + getValue() + " is EntityType=D (Dictionary) — read-only. "
                 + "Use verbs to create new SY_ records (EntityType=U). "
                 + "Place GodMode.txt in working directory to override.");
 
@@ -168,21 +168,21 @@ public class MBOM extends X_M_BOM {
             try {
                 if ("SET".equals(getBomType())) {
                     // Strip-packing: fill gaps between furniture children
-                    Filler.fill(conn, getBomId(),
+                    Filler.fill(conn, getValue(),
                         getAabbWidthMm(), getAabbDepthMm(), getAabbHeightMm());
                 }
                 // Warn if children exceed declared parent AABB (all levels)
-                int[] childSpace = computeTotalChildSpace(conn, getBomId());
+                int[] childSpace = computeTotalChildSpace(conn, getValue());
                 if (childSpace[0] > getAabbWidthMm()
                         || childSpace[1] > getAabbDepthMm()
                         || childSpace[2] > getAabbHeightMm()) {
                     System.err.printf("[ValidateBOM] %s: children %dx%dx%d exceed parent %dx%dx%d%n",
-                        getBomId(), childSpace[0], childSpace[1], childSpace[2],
+                        getValue(), childSpace[0], childSpace[1], childSpace[2],
                         getAabbWidthMm(), getAabbDepthMm(), getAabbHeightMm());
                 }
             } catch (java.sql.SQLException e) {
                 System.err.printf("[ValidateBOM] %s: validation failed — %s%n",
-                    getBomId(), e.getMessage());
+                    getValue(), e.getMessage());
             }
         }
     }
@@ -195,7 +195,7 @@ public class MBOM extends X_M_BOM {
     public boolean delete() throws java.sql.SQLException {
         if (!isGodMode() && ENTITYTYPE_Dictionary.equals(getEntityType()))
             throw new IllegalStateException(
-                "MBOM " + getBomId() + " is EntityType=D (Dictionary) — cannot delete. "
+                "MBOM " + getValue() + " is EntityType=D (Dictionary) — cannot delete. "
                 + "Only SY_ records (EntityType=U) can be deleted. "
                 + "Place GodMode.txt in working directory to override.");
         return super.delete();
@@ -318,7 +318,7 @@ public class MBOM extends X_M_BOM {
         long bestVolume = -1;
 
         for (MBOM candidate : candidates) {
-            int[] totalSpace = computeTotalChildSpace(conn, candidate.getBomId());
+            int[] totalSpace = computeTotalChildSpace(conn, candidate.getValue());
             int tw = totalSpace[0], td = totalSpace[1], th = totalSpace[2];
 
             if (tw <= maxWidthMm && td <= maxDepthMm && th <= maxHeightMm) {
@@ -384,7 +384,7 @@ public class MBOM extends X_M_BOM {
         long bestVolume = -1;
 
         for (MBOM candidate : candidates) {
-            int[] totalSpace = computeTotalChildSpace(conn, candidate.getBomId());
+            int[] totalSpace = computeTotalChildSpace(conn, candidate.getValue());
             int tw = totalSpace[0], td = totalSpace[1], th = totalSpace[2];
 
             boolean fits;

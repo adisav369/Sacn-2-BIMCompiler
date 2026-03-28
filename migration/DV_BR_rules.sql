@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- BR: IFC Infra Bridge Sample (Infra_Bridge)
 -- Source: DAGCompiler/lib/output/infra_bridge.db
--- Generated: 2026-03-26 20:43
+-- Generated: 2026-03-28 14:47
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -40,8 +40,8 @@
 -- IfcFooting               STR         7  
 -- IfcEarthworksFill        ARC         4  
 -- IfcSign                  ARC         4  
--- IfcWall                  ARC         4  
--- IfcSlab                  ARC         3  
+-- IfcWall                  STR         4  
+-- IfcSlab                  STR         3  
 -- IfcRailing               ARC         2  
 -- IfcBuildingElementProxy  ARC         1  
 

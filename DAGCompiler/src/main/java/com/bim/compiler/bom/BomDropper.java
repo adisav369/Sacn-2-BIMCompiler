@@ -106,6 +106,9 @@ public class BomDropper {
             return 0;
         }
 
+        BIMLogger.fine("BOMDROP", "{}: root BOM={}, category={}, doc_sub_type={}",
+                entry.id(), buildingBomId, entry.mProductCategoryId(), entry.docSubType());
+
         // Create C_Order
         createOrder(compileDb, orderId, entry);
 
@@ -134,8 +137,20 @@ public class BomDropper {
             }
         }
 
-        BIMLogger.fine("BOMDROP", "{} → {} leaves (order={}, bom={})",
-                entry.id(), leafCount[0], orderId, buildingBomId);
+        // Mutation summary
+        int removeCount = 0, replaceCount = 0, addCount = 0, compressCount = 0;
+        for (ExceptionLine ex : exceptions.values()) {
+            switch (ex.type()) {
+                case REMOVE   -> removeCount++;
+                case REPLACE  -> replaceCount++;
+                case ADD      -> addCount++;
+                case COMPRESS -> compressCount++;
+            }
+        }
+        BIMLogger.fine("BOMDROP", "{}: {} leaves, {} lines, {} exceptions applied",
+                entry.id(), leafCount[0], lineSeq[0] / 10, exceptions.size());
+        BIMLogger.fine("BOMDROP", "{}: mutations: {} REMOVE, {} REPLACE, {} ADD, {} COMPRESS",
+                entry.id(), removeCount, replaceCount, addCount, compressCount);
         return leafCount[0];
     }
 
@@ -182,8 +197,9 @@ public class BomDropper {
      * Root = BOM with no parent m_bom_line (replaces bom_type = 'BUILDING' query).
      */
     private static String findBuildingBom(Connection conn, BuildingEntry entry) throws SQLException {
+        // Implementing BBC.md §14.3 IDV-1 — Witness: W-PK-MBOM
         String sql = "SELECT Value FROM m_bom "
-                   + "WHERE bom_id NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
+                   + "WHERE Value NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
                    + "AND m_product_category_id = ? AND doc_sub_type = ? "
                    + "AND is_active = 1 ORDER BY seq_no LIMIT 1";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -249,9 +265,9 @@ public class BomDropper {
             return 0;
         }
 
-        // Load BOM for AABB
+        // Load BOM for AABB — loadByValue: M_BOM_ID is INTEGER PK, Value is business key
         MBOM bom = new MBOM(conn);
-        if (!bom.load(bomId)) return 0;
+        if (!bom.loadByValue(bomId)) return 0;
 
         if (productCategory == null) productCategory = bom.getProductCategory();
 
@@ -290,9 +306,9 @@ public class BomDropper {
             String childProductId = line.getChildProductId();
             if (childProductId == null) continue;
 
-            // Check if child is a sub-assembly BOM
+            // Check if child is a sub-assembly BOM — loadByValue: Value is business key
             MBOM childBom = new MBOM(conn);
-            boolean isBom = childBom.load(childProductId);
+            boolean isBom = childBom.loadByValue(childProductId);
 
             if (isBom) {
                 // Build locator_ref for this child to check Replace exception
@@ -305,7 +321,7 @@ public class BomDropper {
                 if (childEx != null && childEx.type() == MutationType.REPLACE
                         && childEx.replacementProductId() != null) {
                     MBOM replacementBom = new MBOM(conn);
-                    if (replacementBom.load(childEx.replacementProductId())) {
+                    if (replacementBom.loadByValue(childEx.replacementProductId())) {
                         // Category constraint: replacement must be same shelf
                         String origCat = childBom.getProductCategory();
                         String replCat = replacementBom.getProductCategory();
@@ -380,7 +396,7 @@ public class BomDropper {
         if (depth > MAX_DEPTH) return 0;
 
         MBOM bom = new MBOM(conn);
-        if (!bom.load(bomId)) return 0;
+        if (!bom.loadByValue(bomId)) return 0;
 
         if (productCategory == null) productCategory = bom.getProductCategory();
 
@@ -420,7 +436,7 @@ public class BomDropper {
             if (childProductId == null) continue;
 
             MBOM childBom = new MBOM(conn);
-            boolean isBom = childBom.load(childProductId);
+            boolean isBom = childBom.loadByValue(childProductId);
 
             if (isBom) {
                 // Build locator_ref for this child to check Replace exception
@@ -433,7 +449,7 @@ public class BomDropper {
                 if (childEx != null && childEx.type() == MutationType.REPLACE
                         && childEx.replacementProductId() != null) {
                     MBOM replacementBom = new MBOM(conn);
-                    if (replacementBom.load(childEx.replacementProductId())) {
+                    if (replacementBom.loadByValue(childEx.replacementProductId())) {
                         String origCat = childBom.getProductCategory();
                         String replCat = replacementBom.getProductCategory();
                         if (origCat != null && origCat.equals(replCat)) {

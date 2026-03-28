@@ -2,6 +2,7 @@ package com.bim.compiler.bom.walker;
 
 import com.bim.compiler.dsl.PlacementLoader;
 import com.bim.compiler.topology.Discipline;
+import com.bim.orm.BIMLogger;
 import com.bim.ormsandbox.po.MBOM;
 import com.bim.ormsandbox.po.MBOMLine;
 import com.bim.ormsandbox.po.MProduct;
@@ -69,6 +70,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Count of sub-assemblies entered (onSubAssembly calls, depth > 0). */
     private int subAssemblyCount = 0;
 
+    /** Verb expansion counters for FINE logging. */
+    private int placeCount = 0;
+    private int clusterCount = 0;
+    private int tileCount = 0;
+    private int routeCount = 0;
+    private int frameCount = 0;
+    private int sprayCount = 0;
+    private int otherVerbCount = 0;
+
     private int ordinalCounter = 0;
 
     /** IFC GloballyUniqueId: exactly 22 chars from base64url + '$'. */
@@ -91,6 +101,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Number of sub-assemblies entered during the walk (onSubAssembly events at depth > 0). */
     public int getSubAssemblyCount() {
         return subAssemblyCount;
+    }
+
+    /** Verb breakdown string for FINE logging. */
+    public String getVerbBreakdown() {
+        return String.format("%d PLACE, %d CLUSTER, %d TILE, %d ROUTE, %d FRAME, %d SPRAY, %d other",
+                placeCount, clusterCount, tileCount, routeCount, frameCount, sprayCount, otherVerbCount);
     }
 
     // ── BOMVisitor events ─────────────────────────────────────────
@@ -127,6 +143,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             } catch (SQLException e) {
                 System.err.printf("[PlacementCollector] Failed to load BOM %s: %s%n",
                     childBomId, e.getMessage());
+                BIMLogger.warn("COMPILE", "BomLoadFailure for {} — {}", childBomId, e.getMessage());
             }
         } else if (ctx.bom() != null) {
             // Synthetic root (walkSelf): use world origin from BUILDING m_bom.origin_x/y/z
@@ -248,7 +265,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 halfD = product.getDepth() / 2.0;
                 halfH = product.getHeight() / 2.0;
             } else {
-                System.err.printf("[PlacementCollector] BUY leaf %s has no product and no allocated dims — skipping%n",
+                BIMLogger.warn("COMPILE", "MetadataMissing for element_ref={} — no product and no allocated dims",
                     line.getChildProductId());
                 return;
             }
@@ -278,6 +295,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         int qty = line.getQty();
         String verbRef = line.getVerbRef();
         double[][] offsets = expandVerb(verbRef, qty, leafDx, leafDy, leafDz);
+
+        // Track verb usage for FINE logging
+        if (verbRef == null || verbRef.isEmpty()) { placeCount++; }
+        else if (verbRef.startsWith("CLUSTER:")) { clusterCount++; }
+        else if (verbRef.startsWith("TILE:"))    { tileCount++; }
+        else if (verbRef.startsWith("ROUTE:"))   { routeCount++; }
+        else if (verbRef.startsWith("FRAME:"))   { frameCount++; }
+        else if (verbRef.startsWith("SPRAY:"))   { sprayCount++; }
+        else { otherVerbCount++; }
 
         // CP-1: Load MA (Material Allocation) GUIDs for identity-based matching
         String[] maGuids = loadMaGuids(line.getBomId(), line.getSequence(), qty);
@@ -400,7 +426,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
 
         // Unknown verb — fall back to origin position for all instances
-        System.err.printf("[PlacementCollector] Unknown verb_ref prefix: %s — using origin%n", verbRef);
+        BIMLogger.warn("COMPILE", "UnknownVerbRef prefix: {} — using origin", verbRef);
         double[][] result = new double[qty][3];
         for (int i = 0; i < qty; i++) {
             result[i] = new double[]{originDx, originDy, originDz};

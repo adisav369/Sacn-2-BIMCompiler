@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- DM: Demo House 2BR (DemoHouse_2BR)
 -- Source: DAGCompiler/lib/output/demohouse_2br.db
--- Generated: 2026-03-24 07:33
+-- Generated: 2026-03-28 14:32
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

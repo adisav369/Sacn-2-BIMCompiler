@@ -117,7 +117,7 @@ public class CreateRoomVerb implements Verb<CreateRoomVerb.CreateRoomPayload> {
         }
 
         // Step 6: Clone each child from template via ADD LINE
-        List<MBOMLine> templateChildren = MBOMLine.getByBom(conn, template.getBomId());
+        List<MBOMLine> templateChildren = MBOMLine.getByBom(conn, template.getValue());
         int childCount = 0;
 
         for (MBOMLine src : templateChildren) {
@@ -143,8 +143,8 @@ public class CreateRoomVerb implements Verb<CreateRoomVerb.CreateRoomPayload> {
         return VerbResult.ok(keyword(),
             String.format("CREATE ROOM %s %dx%dx%d → %s (%d children from %s)",
                 category, widthMm, depthMm, heightMm, bomId,
-                childCount, template.getBomId()),
-            new CreateRoomPayload(bomId, category, childCount, template.getBomId()));
+                childCount, template.getValue()),
+            new CreateRoomPayload(bomId, category, childCount, template.getValue()));
     }
 
     public record CreateRoomPayload(

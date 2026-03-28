@@ -1,6 +1,7 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.BIMConstants;
+import com.bim.orm.BIMLogger;
 import com.bim.eyes.shape.ShapeArchetype;
 import com.bim.eyes.shape.ScaleBand;
 import com.bim.eyes.shape.ShapeClassifier;
@@ -907,6 +908,7 @@ public class BuildingWriter {
             library = new ComponentLibrary("library/component_library.db");
         } catch (Exception e) {
             System.err.printf("[BOM-WALK] WARN: Component library not available: %s%n", e.getMessage());
+            BIMLogger.warn("WRITE", "ComponentLibraryUnavailable — {}", e.getMessage());
         }
 
         MeshBinder binder = null;

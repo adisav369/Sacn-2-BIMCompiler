@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- ES: Esplanades (Esplanades)
 -- Source: DAGCompiler/lib/output/esplanades.db
--- Generated: 2026-03-22 21:02
+-- Generated: 2026-03-28 14:38
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

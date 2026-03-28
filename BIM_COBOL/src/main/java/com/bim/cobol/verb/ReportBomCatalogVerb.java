@@ -51,7 +51,7 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
         // Collect all active BOMs (type-agnostic)
         List<CatalogRow> rows = new ArrayList<>();
         for (MBOM bom : MBOM.getAll(conn)) {
-            List<MBOMLine> children = MBOMLine.getByBom(conn, bom.getBomId());
+            List<MBOMLine> children = MBOMLine.getByBom(conn, bom.getValue());
             int buyCount = 0, makeCount = 0, phantomCount = 0;
             for (MBOMLine line : children) {
                 switch (line.getComponentType()) {
@@ -61,7 +61,7 @@ public class ReportBomCatalogVerb implements Verb<ReportBomCatalogVerb.CatalogPa
                 }
             }
             rows.add(new CatalogRow(
-                bom.getBomId(), bom.getBomName(),
+                bom.getValue(), bom.getBomName(),
                 bom.getBomType(), bom.getProductCategory(),
                 bom.getDocSubType() != null ? bom.getDocSubType() : "",
                 bom.getEntityType() != null ? bom.getEntityType() : "D",

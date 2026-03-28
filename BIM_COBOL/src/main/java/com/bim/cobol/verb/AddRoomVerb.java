@@ -97,7 +97,7 @@ public class AddRoomVerb implements Verb<AddRoomVerb.AddRoomPayload> {
             return VerbResult.fail(keyword(),
                 "no BOM fits category " + category, null);
 
-        int[] childSpace = MBOM.computeTotalChildSpace(conn, bestFit.getBomId());
+        int[] childSpace = MBOM.computeTotalChildSpace(conn, bestFit.getValue());
         int allocW = childSpace[0] > 0 ? childSpace[0] : 0;
 
         // Compute dx: either explicit or strip-append to right edge
@@ -108,7 +108,7 @@ public class AddRoomVerb implements Verb<AddRoomVerb.AddRoomPayload> {
         // Create m_bom_line
         MBOMLine line = new MBOMLine(conn);
         line.setBomId(floorBomId);
-        line.setChildProductId(bestFit.getBomId());
+        line.setChildProductId(bestFit.getValue());
         line.setRole("ROOM_" + category);
         line.setSequence(maxSeq + 10);
         line.setDx(dx);
@@ -128,8 +128,8 @@ public class AddRoomVerb implements Verb<AddRoomVerb.AddRoomPayload> {
 
         return VerbResult.ok(keyword(),
             String.format("ADD ROOM %s TO %s → %s (dx=%.3f, allocW=%d)",
-                category, floorBomId, bestFit.getBomId(), dx, allocW),
-            new AddRoomPayload(floorBomId, bestFit.getBomId(), newRemainingW, floorDepth));
+                category, floorBomId, bestFit.getValue(), dx, allocW),
+            new AddRoomPayload(floorBomId, bestFit.getValue(), newRemainingW, floorDepth));
     }
 
     public record AddRoomPayload(

@@ -62,7 +62,7 @@ public class CompilationPipeline {
         new TemplateStage(),      // Step 4 — ST mode only; skipped for all other DocSubTypes
         new WriteStage(),         // Step 5
         new VerbStage(),          // Step 6 — BIM COBOL script hook (skips if no .bimcobol file)
-        new ValidationStage(),    // Step 7 — DocEvent §13 three-tier cascade (LOG mode)
+        new ValidationStage(),    // Step 7 — iDempiere processing order: DocEvent + ASI + AD_Val_Rule (LOG mode)
         new DigestStage(),        // Step 8
         new GeometryStage(),      // Step 9
         new ProveStage()          // Step 10
@@ -371,7 +371,11 @@ public class CompilationPipeline {
                     bomConn, ctx.entry().projectName(), worldOrigin);
 
                 BOMWalker walker = new BOMWalker(bomConn, compConn);
-                walker.walk(root.getBomId(), List.of(visitor), ctx.entry().projectName());
+                walker.walk(root.getValue(), List.of(visitor), ctx.entry().projectName());
+
+                BIMLogger.fine("COMPILE", "{}: root BOM={}, origin=({},{},{})",
+                    ctx.entry().name(), root.getValue(),
+                    root.getOriginX(), root.getOriginY(), root.getOriginZ());
 
                 List<PlacementLoader.Placement> placements = visitor.getPlacements();
                 ctx.setWalkedPlacements(placements);
@@ -381,7 +385,11 @@ public class CompilationPipeline {
                     List.of(), null, List.of(), null, null));
 
                 BIMLogger.info("COMPILE", "BOM walk: {} → {} elements from {} sub-assemblies",
-                    root.getBomId(), placements.size(), visitor.getSubAssemblyCount());
+                    root.getValue(), placements.size(), visitor.getSubAssemblyCount());
+                BIMLogger.fine("COMPILE", "{}: walk complete: {} placements from {} sub-assemblies",
+                    ctx.entry().name(), placements.size(), visitor.getSubAssemblyCount());
+                BIMLogger.fine("COMPILE", "{}: verb breakdown: {}",
+                    ctx.entry().name(), visitor.getVerbBreakdown());
             }
         }
     }
@@ -424,6 +432,48 @@ public class CompilationPipeline {
 
                 ctx.setElementCount(queryInt(conn, "SELECT COUNT(*) FROM elements_meta"));
                 System.out.printf("Total elements: %d%n", ctx.elementCount());
+
+                // FINE: discipline breakdown from c_orderline
+                try (Statement stmt = conn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT Discipline, COUNT(*) as cnt FROM c_orderline " +
+                         "WHERE host_type = 'LEAF' GROUP BY Discipline ORDER BY cnt DESC")) {
+                    StringBuilder discBreak = new StringBuilder();
+                    while (rs.next()) {
+                        String disc = rs.getString(1);
+                        int cnt = rs.getInt(2);
+                        if (discBreak.length() > 0) discBreak.append(" ");
+                        discBreak.append(disc != null ? disc : "null").append("=").append(cnt);
+                    }
+                    if (discBreak.length() > 0) {
+                        BIMLogger.fine("WRITE", "{}: discipline breakdown: {}",
+                            ctx.entry().name(), discBreak);
+                    }
+                } catch (SQLException e) {
+                    // c_orderline may not have Discipline column in all builds
+                }
+
+                // FINE: LOD binding stats from element_instances
+                try (Statement stmt = conn.createStatement()) {
+                    int totalWritten = ctx.elementCount();
+                    int lodCount = 0;
+                    int fallbackCount = 0;
+                    try (ResultSet rs = stmt.executeQuery(
+                             "SELECT COUNT(*) FROM element_instances WHERE geometry_hash NOT LIKE 'GEO_%'")) {
+                        if (rs.next()) lodCount = rs.getInt(1);
+                    }
+                    try (ResultSet rs2 = stmt.executeQuery(
+                             "SELECT COUNT(*) FROM element_instances WHERE geometry_hash LIKE 'GEO_%'")) {
+                        if (rs2.next()) fallbackCount = rs2.getInt(1);
+                    }
+                    int missingCount = totalWritten - lodCount - fallbackCount;
+                    BIMLogger.fine("WRITE", "{}: LOD binding: {} LOD, {} fallback, {} missing",
+                        ctx.entry().name(), lodCount, fallbackCount, Math.max(0, missingCount));
+                    BIMLogger.fine("WRITE", "{}: {} elements written to output DB",
+                        ctx.entry().name(), totalWritten);
+                } catch (SQLException e) {
+                    // element_instances may not exist
+                }
 
                 // Class breakdown
                 try (Statement stmt = conn.createStatement();
@@ -510,7 +560,7 @@ public class CompilationPipeline {
                 try (Connection libConn = DriverManager.getConnection("jdbc:sqlite:" + System.getProperty("bom.db"))) {
                     if (docSubType != null) {
                         MBOM bldgBom = MBOM.getRootByDocSubType(libConn, docSubType);
-                        if (bldgBom != null) bldgBomId = bldgBom.getBomId();
+                        if (bldgBom != null) bldgBomId = bldgBom.getValue();
                     }
                     if (bldgBomId == null && "ST".equals(ctx.entry().mProductCategoryId())) {
                         BomTemplateComposer.CompositionReport tmplReport = ctx.compositionReport();
@@ -521,7 +571,7 @@ public class CompilationPipeline {
                                 .findFirst().orElse(null);
                             if (gfOwner != null) {
                                 MBOM ownerBldg = MBOM.getBuildingBom(libConn, gfOwner);
-                                if (ownerBldg != null) bldgBomId = ownerBldg.getBomId();
+                                if (ownerBldg != null) bldgBomId = ownerBldg.getValue();
                             }
                         }
                     }
@@ -593,6 +643,7 @@ public class CompilationPipeline {
             } catch (SQLException e) {
                 System.err.printf("[ROOM_SLOTS] WARN: Failed to compute room slots for %s: %s%n",
                     buildingId, e.getMessage());
+                BIMLogger.warn("WRITE", "RoomSlotFailure for {} — {}", buildingId, e.getMessage());
             }
             return slots;
         }
@@ -634,11 +685,11 @@ public class CompilationPipeline {
                 try {
                     List<MBOM> roots = MBOM.getRoots(bomConn);
                     MBOM root = roots.isEmpty() ? null : roots.get(0);
-                    List<MBOM> floorBoms = root != null ? MBOM.getChildren(bomConn, root.getBomId()) : List.of();
+                    List<MBOM> floorBoms = root != null ? MBOM.getChildren(bomConn, root.getValue()) : List.of();
                     resolvedFloorBomId = floorBoms.stream()
                         .filter(b -> docSubType.equals(b.getDocSubType())
                                   && b.getProductCategory() != null)
-                        .map(MBOM::getBomId)
+                        .map(MBOM::getValue)
                         .findFirst().orElse(floorBomId);
                 } catch (SQLException e) {
                     // fall through with original floorBomId
@@ -752,6 +803,7 @@ public class CompilationPipeline {
             } catch (Exception e) {
                 System.err.printf("[C_ORDER] WARN: Failed to create C_Order for %s: %s%n",
                     buildingId, e.getMessage());
+                BIMLogger.warn("WRITE", "C_OrderCreateFailure for {} — {}", buildingId, e.getMessage());
             }
         }
 
@@ -822,6 +874,7 @@ public class CompilationPipeline {
                 }
             } catch (Exception e) {
                 System.err.printf("[C_ORDERLINE] WARN: Failed to copy C_OrderLine: %s%n", e.getMessage());
+                BIMLogger.warn("WRITE", "C_OrderLineCopyFailure — {}", e.getMessage());
             }
         }
     }
@@ -935,6 +988,9 @@ public class CompilationPipeline {
                 // Override: force LOG until rules proven (prompt 75 scope)
                 mode = "LOG";
 
+                BIMLogger.fine("VALIDATE", "{}: mode={}, jurisdiction=none",
+                    ctx.entry().name(), mode);
+
                 int totalFindings = 0;
 
                 // ── Tier 1: Per-discipline handlers ──
@@ -951,6 +1007,27 @@ public class CompilationPipeline {
 
                 // ── Tier 3: Cross-storey ──
                 // H5 VERTICAL — future (AD_Val_Rule CONTINUITY: 0 rows, BLOCKED)
+
+                // FINE: W_Validation_Result breakdown
+                try (Statement stmt = outConn.createStatement();
+                     ResultSet rs = stmt.executeQuery(
+                         "SELECT severity, COUNT(*) FROM W_Validation_Result GROUP BY severity")) {
+                    int passCount = 0, warnCount = 0, blockCount = 0;
+                    while (rs.next()) {
+                        String sev = rs.getString(1);
+                        int cnt = rs.getInt(2);
+                        if ("PASS".equals(sev)) passCount = cnt;
+                        else if ("WARN".equals(sev)) warnCount = cnt;
+                        else if ("BLOCK".equals(sev)) blockCount = cnt;
+                    }
+                    BIMLogger.fine("VALIDATE", "{}: W_Validation_Result: {} PASS, {} WARN, {} BLOCK",
+                        ctx.entry().name(), passCount, warnCount, blockCount);
+                } catch (SQLException e) {
+                    // W_Validation_Result may be empty
+                }
+
+                BIMLogger.fine("VALIDATE", "{}: H6 rooms checked, findings={}",
+                    ctx.entry().name(), h6Findings);
 
                 if (totalFindings == 0) {
                     BIMLogger.info("VALIDATE", "[PASS] Validation: 0 findings (mode={})", mode);

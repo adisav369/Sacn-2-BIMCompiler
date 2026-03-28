@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RM: Revit MEP (Revit_MEP)
 -- Source: DAGCompiler/lib/output/revit_mep.db
--- Generated: 2026-03-26 20:04
+-- Generated: 2026-03-28 14:52
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -9,7 +9,7 @@
 
 -- ifc_class                   storey      cnt   avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
 -- --------------------------  ----------  ----  --------  --------  --------  --------  --------
--- IfcMember                   Unknown     1450  851.0     564.0     851.0     60.0      3548.0  
+-- IfcMember                   Unknown     1450  851.0     564.0     851.0     60.0      3549.0  
 -- IfcPlate                    Unknown     629   1986.0    1112.0    1778.0    30.0      40591.0 
 -- IfcDuctFitting              Level 2     328   259.0     249.0     275.0     12.0      1050.0  
 -- IfcDuctFitting              Level 3     319   253.0     243.0     274.0     25.0      1150.0  
@@ -46,7 +46,7 @@
 -- IfcCovering                 Level 3     18    7027.0    7662.0    50.0      2243.0    10789.0 
 -- IfcDoor                     Unknown     17    979.0     668.0     2283.0    190.0     2140.0  
 -- IfcFlowFitting              Roof Level  14    70.0      81.0      81.0      22.0      213.0   
--- IfcSlab                     Unknown     12    1600.0    4108.0    1808.0    1600.0    1600.0  
+-- IfcSlab                     Unknown     12    1600.0    4109.0    1808.0    1600.0    1600.0  
 -- IfcDuctSegment              Roof Level  9     2056.0    825.0     2118.0    400.0     11875.0 
 -- IfcRailing                  Unknown     8     40.0      7548.0    4411.0    40.0      40.0    
 -- IfcSlab                     Level 2     8     36040.0   34852.0   163.0     7105.0    65685.0 
@@ -580,16 +580,16 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '81.0');
 
--- Rule: IfcSlab_Unknown (12 instances, avg 1600.0x4108.0x1808.0 mm)
+-- Rule: IfcSlab_Unknown (12 instances, avg 1600.0x4109.0x1808.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
 -- VALUES ('IfcSlab_Unknown', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Unknown: 12 instances, avg W=1600.0 D=4108.0 H=1808.0mm',
+--     'IfcSlab on Unknown: 12 instances, avg W=1600.0 D=4109.0 H=1808.0mm',
 --     'Revit_MEP');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_width_mm', '1600.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '4108.0');
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4109.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '1808.0');
 

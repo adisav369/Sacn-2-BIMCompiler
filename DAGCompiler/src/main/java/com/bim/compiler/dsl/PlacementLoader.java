@@ -232,7 +232,7 @@ public class PlacementLoader {
                 if (rs.next()) {
                     String bomId = rs.getString("family_ref");
                     MBOM bom = new MBOM(conn);
-                    if (bom.load(bomId)) {
+                    if (bom.loadByValue(bomId)) {
                         return new double[]{bom.getOriginX(), bom.getOriginY(), bom.getOriginZ()};
                     }
                 }
@@ -265,7 +265,7 @@ public class PlacementLoader {
                 String buildingType = docSubTypeToProject.get(docSubType);
                 if (buildingType == null) {
                     System.err.printf("[PlacementLoader] No C_DocType for doc_sub_type '%s' on BOM %s — skipping%n",
-                        docSubType, bom.getBomId());
+                        docSubType, bom.getValue());
                     continue;
                 }
 
@@ -275,13 +275,13 @@ public class PlacementLoader {
                 };
 
                 PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(conn, buildingType, worldOrigin);
-                walker.walkSelf(bom.getBomId(), List.of(visitor), buildingType);
+                walker.walkSelf(bom.getValue(), List.of(visitor), buildingType);
 
                 List<Placement> placements = visitor.getPlacements();
                 cache.computeIfAbsent(buildingType, k -> new ArrayList<>()).addAll(placements);
 
                 System.out.printf("[PlacementLoader] %s (%s) → %d placements, worldOrigin=(%.3f,%.3f,%.3f)%n",
-                    bom.getBomId(), buildingType, placements.size(),
+                    bom.getValue(), buildingType, placements.size(),
                     worldOrigin[0], worldOrigin[1], worldOrigin[2]);
             }
         } catch (SQLException e) {

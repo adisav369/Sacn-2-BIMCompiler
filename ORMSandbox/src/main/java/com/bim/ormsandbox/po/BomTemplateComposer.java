@@ -201,7 +201,7 @@ public class BomTemplateComposer {
                 selections.add(new NodeSelection(
                     childId, catName, level,
                     childW, childD, childH,
-                    bom != null ? bom.getBomId() : null,
+                    bom != null ? bom.getValue() : null,
                     bom != null ? bom.getDocSubType() : null,
                     false, mirrorRule));
 
@@ -223,7 +223,7 @@ public class BomTemplateComposer {
                 selections.add(new NodeSelection(
                     childId, catName, level,
                     childW, childD, childH,
-                    bom != null ? bom.getBomId() : null,
+                    bom != null ? bom.getValue() : null,
                     bom != null ? bom.getDocSubType() : null,
                     true, mirrorRule));
 

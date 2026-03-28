@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- NI: AC90 Niedriha (AC90_Niedriha)
 -- Source: DAGCompiler/lib/output/ac90_niedriha.db
--- Generated: 2026-03-26 20:19
+-- Generated: 2026-03-28 14:51
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

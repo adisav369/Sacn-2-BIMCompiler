@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WL: BimWhale Large Building (BimWhale_Large)
 -- Source: DAGCompiler/lib/output/bimwhale_large.db
--- Generated: 2026-03-27 23:52
+-- Generated: 2026-03-28 14:49
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -32,11 +32,11 @@
 -- -----------------------  ----------  ---
 -- IfcWindow                ARC         42 
 -- IfcDoor                  ARC         18 
--- IfcWall                  ARC         18 
+-- IfcWall                  STR         18 
 -- IfcFurnishingElement     ARC         14 
 -- IfcBuildingElementProxy  ARC         13 
 -- IfcCovering              ARC         5  
--- IfcSlab                  ARC         4  
+-- IfcSlab                  STR         4  
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.

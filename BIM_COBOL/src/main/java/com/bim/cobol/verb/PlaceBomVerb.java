@@ -67,12 +67,12 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
         try (Connection compConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
             PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(bomConn, projectName);
             BOMWalker walker = new BOMWalker(bomConn, compConn);
-            walker.walkSelf(match.getBomId(), List.of(visitor), projectName);
+            walker.walkSelf(match.getValue(), List.of(visitor), projectName);
             List<PlacementLoader.Placement> placements = visitor.getPlacements();
 
             if (placements.isEmpty())
                 return VerbResult.fail(keyword(),
-                        "No placements from BOM " + match.getBomId(), null);
+                        "No placements from BOM " + match.getValue(), null);
 
             // 4. Open component library + create MeshBinder
             ComponentLibrary library;
@@ -132,7 +132,7 @@ public class PlaceBomVerb implements Verb<PlaceBomVerb.PlaceBomPayload> {
             }
 
             PlaceBomPayload payload = new PlaceBomPayload(
-                    match.getBomId(), docSubType, projectName,
+                    match.getValue(), docSubType, projectName,
                     placements.size(), placed, errors);
 
             if (errors > 0)

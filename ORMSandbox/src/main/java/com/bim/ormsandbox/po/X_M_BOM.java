@@ -16,7 +16,10 @@ import java.sql.Connection;
  *
  * <p>Table: {@code m_bom}
  * <pre>
- *   bom_id           TEXT PRIMARY KEY
+ *   M_BOM_ID         INTEGER PRIMARY KEY AUTOINCREMENT  (iDempiere _ID — hidden, opaque)
+ *   Value            TEXT NOT NULL UNIQUE                (iDempiere SearchKey — was bom_id)
+ *   Name             TEXT NOT NULL                       (iDempiere DisplayName — was bom_name)
+ *   bom_id           TEXT NOT NULL UNIQUE                (legacy alias of Value)
  *   bom_name         TEXT NOT NULL
  *   description      TEXT
  *   target_ifc_class TEXT DEFAULT 'IfcElementAssembly'
@@ -95,7 +98,8 @@ public class X_M_BOM extends BasePO {
     public X_M_BOM(Connection conn) { super(conn); }
 
     @Override protected String getTableName()    { return Table_Name; }
-    @Override protected String getPKColumnName() { return COLUMNNAME_bom_id; }
+    // Implementing BBC.md §14.3 IDV-1 — Witness: W-PK-MBOM
+    @Override protected String getPKColumnName() { return COLUMNNAME_M_BOM_ID; }
 
     public String  getBomId()           { return get_ValueAsString(COLUMNNAME_bom_id); }
     public String  getBomName()         { return get_ValueAsString(COLUMNNAME_bom_name); }

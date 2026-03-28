@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WA: BimWhale Advanced Project (BimWhale_Advanced)
 -- Source: DAGCompiler/lib/output/bimwhale_advanced.db
--- Generated: 2026-03-27 23:53
+-- Generated: 2026-03-28 14:50
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -32,7 +32,7 @@
 -- IfcBuildingElementProxy  -1 - Garage       24   3540.0    2529.0    1642.0    1514.0    3930.0  
 -- IfcRailing               Unknown           17   1848.0    2170.0    3685.0    916.0     3279.0  
 -- IfcStairFlight           Unknown           9    2726.0    3033.0    2952.0    2382.0    3291.0  
--- IfcBuildingElementProxy  Level 2           7    956.0     501.0     626.0     409.0     1047.0  
+-- IfcBuildingElementProxy  Level 2           7    956.0     501.0     626.0     410.0     1047.0  
 -- IfcWall                  6 - Sixth Floor   7    3403.0    3172.0    3029.0    503.0     7737.0  
 -- IfcFlowTerminal          -1 - Garage       5    773.0     739.0     860.0     578.0     868.0   
 -- IfcFlowTerminal          Level 1           4    631.0     823.0     826.0     578.0     683.0   
@@ -53,13 +53,13 @@
 -- ifc_class                discipline  cnt
 -- -----------------------  ----------  ---
 -- IfcFurnishingElement     ARC         407
--- IfcWall                  ARC         390
+-- IfcWall                  STR         390
 -- IfcBuildingElementProxy  ARC         358
 -- IfcWindow                ARC         263
 -- IfcDoor                  ARC         126
 -- IfcMember                STR         83 
 -- IfcFlowTerminal          MEP         49 
--- IfcSlab                  ARC         43 
+-- IfcSlab                  STR         43 
 -- IfcRailing               ARC         19 
 -- IfcStairFlight           ARC         9  
 -- IfcRampFlight            ARC         2  

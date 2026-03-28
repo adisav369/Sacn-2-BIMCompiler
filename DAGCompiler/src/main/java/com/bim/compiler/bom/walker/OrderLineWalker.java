@@ -270,7 +270,7 @@ public class OrderLineWalker {
 
     private MBOM loadBom(String bomId) throws SQLException {
         MBOM bom = new MBOM(compileDb);
-        return bom.load(bomId) ? bom : null;
+        return bom.loadByValue(bomId) ? bom : null;
     }
 
     private record OrderLineRow(int lineId, String familyRef, String hostType, int bomChildId,

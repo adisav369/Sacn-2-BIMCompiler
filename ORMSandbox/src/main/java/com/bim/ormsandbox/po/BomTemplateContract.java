@@ -124,7 +124,7 @@ public class BomTemplateContract {
             .toList();
 
         int found = inScope.size();
-        String bestFitBomId = inScope.isEmpty() ? null : inScope.get(0).getBomId();
+        String bestFitBomId = inScope.isEmpty() ? null : inScope.get(0).getValue();
         boolean required = minQty > 0;
         boolean satisfied = found >= minQty;
 
