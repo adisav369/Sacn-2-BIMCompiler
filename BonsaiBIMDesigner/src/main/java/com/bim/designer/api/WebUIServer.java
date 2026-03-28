@@ -237,6 +237,8 @@ public class WebUIServer implements AutoCloseable {
                 case "generateReport" -> handleGenerateReport(obj);
                 case "dimensionQuery" -> handleDimensionQuery(obj);
                 case "workPackage" -> handleWorkPackage(obj);
+                case "nlpQuery" -> handleNlpQuery(obj);
+                case "switchVisualization" -> handleSwitchVisualization(obj);
                 default -> designer.dispatch(jsonLine);
             };
 
@@ -611,6 +613,43 @@ public class WebUIServer implements AutoCloseable {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "workPackage failed", e);
             return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    private String handleNlpQuery(JsonObject obj) {
+        String dbFile = obj.has("bomDbPath") ? obj.get("bomDbPath").getAsString() : "";
+        String query = obj.has("query") ? obj.get("query").getAsString() : "";
+
+        if (dbFile.isBlank()) return "{\"success\":false,\"error\":\"Missing bomDbPath\"}";
+        if (query.isBlank()) return "{\"success\":false,\"error\":\"Missing query\"}";
+        Path resolved = Path.of(dbFile).normalize();
+        if (!Files.exists(resolved)) return "{\"success\":false,\"error\":\"BOM DB not found\"}";
+
+        try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + resolved)) {
+            var executor = new com.bim.backoffice.federation.NlpQueryExecutor();
+            var result = executor.query(bomConn, query);
+            return JsonProtocol.toJson(result);
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "nlpQuery failed", e);
+            return "{\"success\":false,\"error\":\"" + e.getMessage().replace("\"", "'") + "\"}";
+        }
+    }
+
+    private String handleSwitchVisualization(JsonObject obj) {
+        String mode = obj.has("mode") ? obj.get("mode").getAsString() : "BBOXES";
+        try {
+            var vizMode = com.bim.backoffice.federation.VisualizationMode.valueOf(mode.toUpperCase());
+            // Queue command for Bonsai to switch visualization mode
+            Map<String, Object> cmd = new LinkedHashMap<>();
+            cmd.put("command", "switchVisualization");
+            cmd.put("mode", vizMode.name());
+            cmd.put("collectionName", vizMode.collectionName());
+            pendingCommands.add(cmd);
+            sseBroadcast("visualizationSwitched", JsonProtocol.toJson(Map.of(
+                    "mode", vizMode.name(), "description", vizMode.description())));
+            return JsonProtocol.toJson(Map.of("success", true, "mode", vizMode.name()));
+        } catch (IllegalArgumentException e) {
+            return "{\"success\":false,\"error\":\"Invalid mode. Use BBOXES, SEMANTICS, or MATERIALS\"}";
         }
     }
 

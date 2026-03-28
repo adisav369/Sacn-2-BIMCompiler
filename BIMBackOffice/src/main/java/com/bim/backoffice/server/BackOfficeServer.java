@@ -60,6 +60,8 @@ public class BackOfficeServer implements AutoCloseable {
     private final String libraryDir;
     private final Connection compLibConn;
     private final SessionManager sessionMgr;
+    private final com.bim.backoffice.federation.VisualizationManager vizManager =
+            new com.bim.backoffice.federation.VisualizationManager();
 
     public BackOfficeServer(String libraryDir, int port) throws Exception {
         this.libraryDir = libraryDir;
@@ -90,6 +92,9 @@ public class BackOfficeServer implements AutoCloseable {
         server.createContext("/api/query", this::handleQuery);
         server.createContext("/api/workpackage", this::handleWorkPackage);
         server.createContext("/api/palette", this::handlePalette);
+        server.createContext("/api/nlp", this::handleNlp);
+        server.createContext("/api/labels", this::handleLabels);
+        server.createContext("/api/visualization", this::handleVisualization);
     }
 
     public BackOfficeServer(String libraryDir) throws Exception {
@@ -374,6 +379,52 @@ public class BackOfficeServer implements AutoCloseable {
         sendJson(ex, 200, colors);
     }
 
+    /** GET /api/nlp?id=SH&q=how+many+beams — NLP query against BOM. */
+    private void handleNlp(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String buildingId = queryParam(ex, "id");
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
+        String q = queryParam(ex, "q");
+        if (q == null || q.isBlank()) { sendError(ex, 400, "Missing ?q="); return; }
+        try (Connection bomConn = openBom(buildingId)) {
+            var executor = new com.bim.backoffice.federation.NlpQueryExecutor();
+            var result = executor.query(bomConn, java.net.URLDecoder.decode(q, java.nio.charset.StandardCharsets.UTF_8));
+            sendJson(ex, 200, result);
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
+    /** GET /api/labels?type=ifc|discipline — IFC/discipline label maps. */
+    private void handleLabels(HttpExchange ex) throws IOException {
+        String type = queryParam(ex, "type");
+        if ("discipline".equals(type)) {
+            sendJson(ex, 200, com.bim.backoffice.federation.IfcLabelMapper.allDisciplineLabels());
+        } else {
+            sendJson(ex, 200, com.bim.backoffice.federation.IfcLabelMapper.allIfcLabels());
+        }
+    }
+
+    /** POST /api/visualization?mode=BBOXES|SEMANTICS|MATERIALS — switch viz mode. */
+    private void handleVisualization(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String mode = queryParam(ex, "mode");
+        if (mode == null) {
+            // GET — return current state
+            sendJson(ex, 200, vizManager.state());
+            return;
+        }
+        try {
+            var vizMode = com.bim.backoffice.federation.VisualizationMode.valueOf(mode.toUpperCase());
+            var result = vizManager.switchMode(vizMode);
+            sendJson(ex, 200, result);
+        } catch (IllegalArgumentException e) {
+            sendError(ex, 400, "Invalid mode. Use BBOXES, SEMANTICS, or MATERIALS");
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
     // ── CORS + WAN helpers ──────────────────────────────────────────
 
     private void addCorsHeaders(HttpExchange ex) {
@@ -455,6 +506,9 @@ public class BackOfficeServer implements AutoCloseable {
             System.out.println("  GET /api/query?id=SH&dim=discipline&filter=ARC");
             System.out.println("  GET /api/workpackage?id=SH&bom=FLOOR_GF");
             System.out.println("  GET /api/palette?type=discipline|phase");
+            System.out.println("  GET /api/nlp?id=SH&q=how+many+beams");
+            System.out.println("  GET /api/labels?type=ifc|discipline");
+            System.out.println("  GET /api/visualization?mode=BBOXES|SEMANTICS|MATERIALS");
             System.out.println("Press Ctrl+C to stop.");
 
             // Block until interrupted
