@@ -3057,8 +3057,8 @@ GRID_DERIVED_MM          Hand-approximated grid (excluded)          NO
 <h2 id="3-bom-type-cascade-the-compilers-core-strategy">3. BOM Type Cascade — The Compiler's Core Strategy<a class="headerlink" href="#3-bom-type-cascade-the-compilers-core-strategy" title="Permanent link">&para;</a></h2>
 <h3 id="31-governing-principle">3.1 Governing Principle<a class="headerlink" href="#31-governing-principle" title="Permanent link">&para;</a></h3>
 <p>A BOM is a Product. DINING_SET is a product. BEDROOM_STD is a product. The same cascade
-logic applies at every nesting level — only the space envelope and bom_type bind parameter
-change between levels. This is the GardenWorld Patio Furniture Set model applied to
+logic applies at every nesting level — only the space envelope and M_Product_Category context
+change between levels. <em>(Note: legacy <code>bom_type</code> bind parameter deprecated — see §4.3.)</em> This is the GardenWorld Patio Furniture Set model applied to
 buildings.</p>
 <p><strong>Tier order:</strong>
 <div class="highlight"><pre><span></span><code>BUILDING  → complete building  (BUILDING_SH_STD, BUILDING_DX_STD, BUILDING_TBLKTN_STD)
@@ -3128,12 +3128,12 @@ The compiler's job is a <strong>sane, non-embarrassing starting state</strong>. 
 </code></pre></div>
 <h3 id="43-phase-1c-add-bom_type-to-m_bom">4.3 Phase 1c — Add bom_type to m_bom<a class="headerlink" href="#43-phase-1c-add-bom_type-to-m_bom" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><strong>TARGET STATE — not current DB vocabulary.</strong>
-The bom_ids listed below (BEDROOM_STD, LIVING_STD, DINING_SET etc.) are the
-intended assembly vocabulary for the generative BOM cascade. They do not yet exist
-in <code>m_bom</code>. The actual highest-tier assemblies in the DB are <code>FLOOR_*/BUILDING_*</code>
-(confirmed in §4.7 migration record). These sections describe the data model target —
-the SQL below is correct as a future seed, not a rerunnable migration against current data.</p>
+<p><strong>DEPRECATED — <code>bom_type</code> column removed.</strong>
+BBC.md §1 rejects fixed <code>UNIT/FLOOR/ROOM/SET/ITEM</code> vocabulary. Hierarchy is
+self-describing via <code>getParentBOM()/getChildren()</code>. M_Product_Category determines
+grouping at each level. The SQL below is a historical artifact from the pre-S100
+design. <code>v_qualified_bom</code> migration to M_Product_Category is pending
+(DISC_VALIDATION_DB_SRS.md §10.4.5).</p>
 </blockquote>
 <div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">m_bom</span>
 <span class="k">ADD</span><span class="w"> </span><span class="k">COLUMN</span><span class="w"> </span><span class="n">bom_type</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="s1">&#39;SET&#39;</span>

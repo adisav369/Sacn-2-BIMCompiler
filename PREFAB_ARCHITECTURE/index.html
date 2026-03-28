@@ -4190,7 +4190,7 @@ iDempiere MFG captures this for manufacturing. The same model applies here witho
 You cannot say BUILDING_SH_STD has a Ground Floor without saying where the Ground Floor sits.
 You cannot say FLOOR_SH_GF_STD has a Living Room without saying where the Living Room is."</em></p>
 </blockquote>
-<p>The BOM Drop is not a one-time room-level event. It must fire at <strong>every layer</strong> — UNIT, FLOOR, ROOM, SET — each layer producing Orderlines that declare the position of its children relative to its own space bbox.</p>
+<p>The BOM Drop is not a one-time room-level event. It must fire at <strong>every tree level</strong> — each parent producing Orderlines that declare the position of its children relative to its own space bbox. The tree walker (<code>getParentBOM()/getChildren()</code>) handles all depths; no fixed vocabulary needed (BBC.md §1).</p>
 <h3 id="the-chain-sh-ifc4_samplehouse-actual-data">The Chain — SH (Ifc4_SampleHouse, actual data)<a class="headerlink" href="#the-chain-sh-ifc4_samplehouse-actual-data" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>BUILDING_SH_STD                       ← building unit C_OrderLine
 │   host_type=BUILDING             family_ref=BUILDING_SH_STD
@@ -4416,7 +4416,7 @@ Three orthogonal dimensions: <code>M_Product_Category</code> (M_Product_Category
 <p>Without UNIT and FLOOR Orderlines, rooms are resolved from flat absolute coords in
 <code>ad_room_boundary</code> (world XY hardcoded from Revit extraction). The relational chain is
 broken at the top two levels. Adding FLOOR Orderlines restores the cascade:
-<code>UNIT_abs + FLOOR_rel_dZ + ROOM_rel_xy = correct world position</code>.</p>
+<code>parent_abs + child_rel_dZ + grandchild_rel_xy = correct world position</code> (tack offsets compose at every level).</p>
 <h3 id="building-specific-room-topologies">Building-Specific Room Topologies<a class="headerlink" href="#building-specific-room-topologies" title="Permanent link">&para;</a></h3>
 <p><code>SH_LIVING</code> is not the same as <code>DX_LIVING</code>. The Sample House living room is a single
 open rectangle at ground level combined with the dining area. The Duplex living room
@@ -4460,7 +4460,7 @@ distinct entry in the catalog with its own name prefix:</p>
 <p><strong>If you need a new spatial arrangement, it is a new variant</strong> — add a catalog entry,
 do not modify an existing one. The existing SH and DX rooms are the Rosetta Stones:
 their arrangements are extracted, not invented. New topologies derive from new Stones.</p>
-<p>Building-specific naming applies at the UNIT, FLOOR, and ROOM topology levels — where
+<p>Building-specific naming applies at the upper tree levels (root, floor, room) — where
 the spatial arrangement genuinely differs per building. It does <strong>not</strong> propagate down
 to the leaf items. The lower the level, the more generic and reusable:</p>
 <div class="highlight"><pre><span></span><code>BUILDING_SH_STD       ← always building-specific (unique floor plate)
@@ -5938,15 +5938,15 @@ resolver never needs to know about adjacent floors.</p>
     recurse: each child → resolve(nextLevel, childAnchor, childEnvelope)
     return List&lt;PlacedElement&gt; — absolute XYZ for all levels
 </code></pre></div>
-<p><code>BOMTierResolver.TIERS = { UNIT, FLOOR, ROOM, SET, ITEM }</code> — the full ALB cascade.
-<code>BOMTierResolver.expandBOMNode()</code> — handles ROOM→SET→ITEM tail (unified from former <code>FurnitureBOMResolver</code>).
+<p><code>BOMTierResolver</code> — dispatches on M_Product_Category context, not fixed tier vocabulary (BBC.md §1).
+<code>BOMTierResolver.expandBOMNode()</code> — recursive tree walk (unified from former <code>FurnitureBOMResolver</code>).
 <code>BOMWalker</code> + <code>AssemblyStructureVisitor</code> — BOM traversal (replaced <code>BOMAssemblerAD</code> + <code>RelationalResolver</code>).</p>
 <p>These are now unified in <code>BOMTierResolver</code> (Phase G-1 complete).</p>
 <h3 id="92-unified-data-model">9.2 Unified Data Model<a class="headerlink" href="#92-unified-data-model" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">// Shared record — combines what all three walkers need</span>
 <span class="kd">record</span> <span class="nc">BOMChild</span><span class="p">(</span>
 <span class="w">    </span><span class="n">String</span><span class="w">   </span><span class="n">bomId</span><span class="p">,</span><span class="w">           </span><span class="c1">// this child&#39;s BOM (for sub-BOM recursion)</span>
-<span class="w">    </span><span class="n">String</span><span class="w">   </span><span class="n">tier</span><span class="p">,</span><span class="w">            </span><span class="c1">// UNIT / FLOOR / ROOM / SET / ITEM</span>
+<span class="w">    </span><span class="n">String</span><span class="w">   </span><span class="n">categoryId</span><span class="p">,</span><span class="w">      </span><span class="c1">// M_Product_Category context (BBC.md §1 — no fixed tier vocabulary)</span>
 <span class="w">    </span><span class="kt">double</span><span class="w">   </span><span class="n">minSpaceMm</span><span class="p">,</span><span class="w">      </span><span class="c1">// fit gate — was BomTierResolver only</span>
 <span class="w">    </span><span class="n">String</span><span class="w">   </span><span class="n">locatorRef</span><span class="p">,</span><span class="w">      </span><span class="c1">// NORTH_WALL, CENTRE, FLOAT (Phase 4c)</span>
 <span class="w">    </span><span class="n">String</span><span class="w">   </span><span class="n">layoutStrategy</span><span class="p">,</span><span class="w">  </span><span class="c1">// LINEAR / SURROUND / FLOAT (Phase 4c)</span>
@@ -6022,7 +6022,7 @@ See <a href="../SourceCodeGuide/#dao-pattern-orm-core">SourceCodeGuide.md — DA
 </table>
 <p><strong>Pre-condition:</strong> <code>migration_phase4c_wms_locator.sql</code> applied + <code>height_extent_mm</code> populated for all FLOOR Orderlines.</p>
 <h3 id="95-migration-path">9.5 Migration Path<a class="headerlink" href="#95-migration-path" title="Permanent link">&para;</a></h3>
-<p>The cascade will initially skip Levels 2/3 (UNIT/FLOOR Orderlines still missing) and operate over the same ROOM→SET→ITEM range as today — so no regression. When UNIT/FLOOR Orderlines land (Phase BOM-2c), the cascade naturally extends upward without code change.</p>
+<p>The cascade initially operates over the lower tree levels (room → set → leaf) and naturally extends to upper levels as parent Orderlines land — so no regression. The tree walker is depth-agnostic (BBC.md §1).</p>
 <p><strong>Three compilation modes (§ "Three Compilation Modes") do not change</strong> — <code>BOMCascadeResolver</code> operates on the same <code>ad_room_boundary</code> coordinate_frame signals. The data determines the mode; the resolver is mode-agnostic.</p>
 <hr />
 <h2 id="appendix-roadmap-2026-02-25-state">Appendix — Roadmap (2026-02-25 state)<a class="headerlink" href="#appendix-roadmap-2026-02-25-state" title="Permanent link">&para;</a></h2>

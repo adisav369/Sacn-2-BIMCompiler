@@ -4699,14 +4699,15 @@ sections below. Code changes spec in <code>ACTION_ROADMAP.md</code> §Pre-Code S
 </tbody>
 </table>
 <h2 id="why-terminal-is-different-from-shdx">Why Terminal Is Different From SH/DX<a class="headerlink" href="#why-terminal-is-different-from-shdx" title="Permanent link">&para;</a></h2>
-<p>SH/DX are residential. Their BOM hierarchy is:
-<div class="highlight"><pre><span></span><code>UNIT → FLOOR → ROOM → SET → ITEM
+<p>SH/DX are residential. Their BOM tree shape (self-describing per BBC.md §1) is:
+<div class="highlight"><pre><span></span><code>BUILDING → FLOOR → ROOM → SET → LEAF
 </code></pre></div></p>
 <p>Terminal is institutional. There are no "rooms" in the residential sense.
 Instead there are ZONES: departure hall, check-in counters, boarding gates,
-retail areas, mechanical rooms, roof structure. The BOM hierarchy must be:
-<div class="highlight"><pre><span></span><code>BUILDING → STOREY → DISCIPLINE → ASSEMBLY → COMPONENT
-</code></pre></div></p>
+retail areas, mechanical rooms, roof structure. The BOM tree shape is:
+<div class="highlight"><pre><span></span><code>BUILDING → STOREY → DISCIPLINE → ASSEMBLY → LEAF
+</code></pre></div>
+The tree walker (<code>getParentBOM()/getChildren()</code>) handles both shapes — no vocabulary or level labels needed.</p>
 <p>Also: SH/DX had 1-2 IFC source files. Terminal was federated from 9
 discipline-specific models. The discipline boundaries are authoritative —
 they came from separate consultant firms.</p>
@@ -5959,13 +5960,13 @@ M_Product_Category at every cascade level (see DATA_MODEL.md §7).</em></p>
 <tbody>
 <tr>
 <td>RE (Residential)</td>
-<td>BUILDING → FLOOR → <strong>ROOM</strong> → SET → ITEM</td>
+<td>BUILDING → FLOOR → <strong>ROOM</strong> → SET → LEAF</td>
 <td>Room type (LI, KT, BD)</td>
 <td>EN-BLOC (singularity)</td>
 </tr>
 <tr>
 <td>CO (Commercial)</td>
-<td>BUILDING → FLOOR → <strong>DISCIPLINE</strong> → ASSEMBLY → COMPONENT</td>
+<td>BUILDING → FLOOR → <strong>DISCIPLINE</strong> → ASSEMBLY → LEAF</td>
 <td>Discipline (ARC, FP, STR)</td>
 <td>WALK THRU (discipline-driven)</td>
 </tr>

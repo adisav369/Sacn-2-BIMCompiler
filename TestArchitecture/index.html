@@ -3345,6 +3345,34 @@ to. Without this mapping, spec changes silently orphan tests.</p>
 <td>W-DH-1..5</td>
 <td>PASS</td>
 </tr>
+<tr>
+<td>§2.2 BOM tree integrity</td>
+<td>P-PARENT: every non-root BOM has a parent</td>
+<td>BomTreeProver</td>
+<td>P-PARENT</td>
+<td>IMPLEMENTED</td>
+</tr>
+<tr>
+<td>§2.2 BOM tree integrity</td>
+<td>P-SIBLING: no duplicate children under same parent</td>
+<td>BomTreeProver</td>
+<td>P-SIBLING</td>
+<td>PASS</td>
+</tr>
+<tr>
+<td>§2.2 BOM tree integrity</td>
+<td>P-QTY: all BOM line quantities &gt; 0</td>
+<td>BomTreeProver</td>
+<td>P-QTY</td>
+<td>IMPLEMENTED</td>
+</tr>
+<tr>
+<td>§4.0 BOM tree integrity</td>
+<td>P-TACK: all dx/dy/dz finite and parent-relative</td>
+<td>BomTreeProver</td>
+<td>P-TACK</td>
+<td>IMPLEMENTED</td>
+</tr>
 </tbody>
 </table>
 <h3 id="bbcmd-4-tack-convention">BBC.md §4 — Tack Convention<a class="headerlink" href="#bbcmd-4-tack-convention" title="Permanent link">&para;</a></h3>
@@ -3625,12 +3653,12 @@ to. Without this mapping, spec changes silently orphan tests.</p>
 <tbody>
 <tr>
 <td>PASS</td>
-<td>36</td>
+<td>37</td>
 <td>Spec → test → green. Proven.</td>
 </tr>
 <tr>
 <td>IMPLEMENTED</td>
-<td>9</td>
+<td>12</td>
 <td>Test exists but advisory (not gating).</td>
 </tr>
 <tr>

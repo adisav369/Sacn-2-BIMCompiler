@@ -2970,10 +2970,9 @@ names change:</p>
 but no room-level categories (LIVING, KITCHEN, BEDROOM). These buildings were
 extracted before room-level classification was implemented. Re-extraction with
 the current pipeline would populate room categories automatically.</p>
-<p><strong>Vertical BOM levels:</strong> All buildings currently use <code>bom_level=SET</code>. The full
-hierarchy (BUILDING → FLOOR → ROOM → SET → ITEM) is specified in BBC.md §1
-but not yet populated — the BOM tree expresses hierarchy through parent-child
-M_BOM_Line relationships, not through bom_level values.</p>
+<p><strong>Self-describing BOM tree:</strong> The hierarchy is whatever the products make it
+(BBC.md §1 — no fixed <code>UNIT/FLOOR/ROOM/SET/ITEM</code> vocabulary). Root = <code>getParentBOM()</code> returns null.
+Leaf = <code>getChildren()</code> returns empty. M_Product_Category determines the grouping at each level.</p>
 <hr />
 <h2 id="the-insight">The Insight<a class="headerlink" href="#the-insight" title="Permanent link">&para;</a></h2>
 <p>In 2006, we built ADempiere's manufacturing BOM module. In 2010, we rebuilt it

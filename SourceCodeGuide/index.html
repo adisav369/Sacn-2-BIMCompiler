@@ -4168,7 +4168,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 </blockquote>
 <hr />
 <h2 id="5-the-bom-tree">§5 — The BOM Tree<a class="headerlink" href="#5-the-bom-tree" title="Permanent link">&para;</a></h2>
-<p>A building BOM is a hierarchy: BUILDING → FLOOR → ROOM/SET → ITEM (LEAF).</p>
+<p>A building BOM is a self-describing tree (BBC.md §1). No fixed vocabulary — the hierarchy is whatever the products make it. Root = <code>getParentBOM()</code> null; leaf = <code>getChildren()</code> empty. For SH, the tree looks like:</p>
 <div class="highlight"><pre><span></span><code>BUILDING_SH_STD              ← Finished good
 ├── FLOOR_SH_GF_STD          ← Ground Floor
 │   ├── SH_LIVING_SET        ← Sub-assembly: Living Room

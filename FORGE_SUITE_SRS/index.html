@@ -2915,7 +2915,7 @@ feedback, and fabrication data that no BIM tool provides live during editing.</p
 <tr>
 <td><strong>① ForgeEngine</strong></td>
 <td>Java: dimensions, angles, compliance, cost from parameters</td>
-<td><strong>DONE</strong> — 5 engines, W-FORGE-1..8</td>
+<td><strong>DONE</strong> — 6 engines (incl. RebarCageForge), W-FORGE-1..11</td>
 </tr>
 <tr>
 <td><strong>② ForgeMesh</strong></td>
@@ -2935,7 +2935,7 @@ feedback, and fabrication data that no BIM tool provides live during editing.</p
 <tr>
 <td><strong>⑤ ForgeFabrication</strong></td>
 <td>Fabrication data → work order output</td>
-<td>NOT DONE</td>
+<td><strong>DONE</strong> — ForgeFabricationWriter → ad_forge_fabrication in output.db, S100-p59, W-FORGE-FAB-1..5</td>
 </tr>
 <tr>
 <td><strong>⑥ ForgeGizmo</strong></td>
@@ -3214,7 +3214,7 @@ rows and creates handles dynamically.</p>
 </tbody>
 </table>
 <p><strong>The generic Python gizmo class (ForgeGizmoGroup):</strong></p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span> <span class="nc">ForgeGizmoGroup</span><span class="p">(</span><span class="n">BaseParametricGizmoGroup</span><span class="p">,</span> <span class="n">bpy</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">GizmoGroup</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ForgeGizmoGroup</span><span class="p">(</span><span class="n">BaseParametricGizmoGroup</span><span class="p">,</span> <span class="n">bpy</span><span class="o">.</span><span class="n">types</span><span class="o">.</span><span class="n">GizmoGroup</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Metadata-driven gizmo group for all forge piece types.</span>
 <span class="sd">    Reads ad_forge_gizmo rows from DB → creates DimensionGizmoConfig per row.</span>
@@ -3226,7 +3226,7 @@ rows and creates handles dynamically.</p>
     <span class="c1"># Dynamic — built from DB at setup time</span>
     <span class="n">dimension_gizmo_props</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># populated from ad_forge_gizmo</span>
 
-    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
         <span class="n">piece_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_piece_type</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
         <span class="n">rows</span> <span class="o">=</span> <span class="n">read_forge_gizmo_rows</span><span class="p">(</span><span class="n">piece_type</span><span class="p">)</span>  <span class="c1"># DB query</span>
         <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
@@ -3790,8 +3790,8 @@ step counts, pipe spool data, live compliance, live cost.
 <h3 id="part-1-forgeengine-done">Part ① ForgeEngine — DONE<a class="headerlink" href="#part-1-forgeengine-done" title="Permanent link">&para;</a></h3>
 <p><strong>Location:</strong> <code>BIM_COBOL/src/main/java/com/bim/cobol/forge/</code>
 <strong>Spec:</strong> <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS.md</a> §5</p>
-<p>Five engines: SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT.
-ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..8 PASS.</p>
+<p>Six engines: SLOPE_CUT, STAIR_FLIGHT, PIPE_BEND, DOME_SECTION, BARREL_VAULT, REBAR_CAGE.
+ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..11 PASS.</p>
 <p><strong>Interface:</strong> <code>ForgeEngine.compute(VerbContext, Map&lt;String,String&gt;) → ForgeResult</code>
 <strong>Output:</strong> <code>ForgeResult</code> (pass, promotable, pieceType, summary, records, compliance, error)
 <strong>Records:</strong> <code>GeometryRecord</code> (bomLineId, productId, length/width/depth, fabrication map, placement xyz, rotation)</p>
@@ -3805,7 +3805,7 @@ ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..8 PASS.</p>
 <p><strong>Implementation approach:</strong></p>
 <p>For <strong>elongated members</strong> (rafter, stringer, pipe):
 <div class="highlight"><pre><span></span><code><span class="c1"># Python side — receives ForgeResult via BlenderBridge</span>
-<span class="k">def</span> <span class="nf">forge_mesh_extrude</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">forge_mesh_extrude</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
     <span class="n">rec</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">records</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="n">profile</span> <span class="o">=</span> <span class="n">ShapeBuilder</span><span class="o">.</span><span class="n">rectangle</span><span class="p">(</span><span class="n">rec</span><span class="o">.</span><span class="n">width_mm</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">depth_mm</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
     <span class="n">body</span> <span class="o">=</span> <span class="n">ShapeBuilder</span><span class="o">.</span><span class="n">extrude</span><span class="p">(</span><span class="n">profile</span><span class="p">,</span> <span class="n">rec</span><span class="o">.</span><span class="n">length_mm</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>
@@ -3817,7 +3817,7 @@ ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..8 PASS.</p>
     <span class="k">return</span> <span class="n">body</span>
 </code></pre></div></p>
 <p>For <strong>panel arrays</strong> (dome sections, vault segments):
-<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">forge_mesh_panels</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">forge_mesh_panels</span><span class="p">(</span><span class="n">result</span><span class="p">):</span>
     <span class="n">objects</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
         <span class="n">panel</span> <span class="o">=</span> <span class="n">bmesh</span><span class="o">.</span><span class="n">new</span><span class="p">()</span>
@@ -3840,6 +3840,10 @@ ForgeVerb (76th verb) registered in VerbRegistry. W-FORGE-1..8 PASS.</p>
 - <code>FORGE_MESH_PANELS</code> — create panel array from ForgeResult
 - <code>FORGE_MESH_UPDATE</code> — regenerate after parameter change (gizmo drag)
 - <code>FORGE_MESH_CLEAR</code> — remove preview mesh (cancel)</p>
+<p><strong>WebUIServer bridge commands — DONE (S100-p90, W-FORGE-BRIDGE-1..5):</strong>
+- <code>forgeCompute</code> — dispatches ForgeVerb with piece_type + params, returns ForgeResult as JSON
+- <code>forgeCost</code> — returns fabrication cost breakdown from ad_forge_fabrication
+- <code>forgeList</code> — lists available piece types and their required parameters</p>
 <h3 id="part-3-forgepanel-bonsai-sidebar-ui">Part ③ ForgePanel — Bonsai sidebar UI<a class="headerlink" href="#part-3-forgepanel-bonsai-sidebar-ui" title="Permanent link">&para;</a></h3>
 <p><strong>Purpose:</strong> Parameter input + live compliance + live cost in a sidebar panel.</p>
 <p><strong>Layout:</strong>
@@ -3970,10 +3974,10 @@ BOM template promotion (ProjectOrderBlueprint.md §4).</p>
 <hr />
 <h2 id="10-phases">10. Phases<a class="headerlink" href="#10-phases" title="Permanent link">&para;</a></h2>
 <p>All phases are SPEC ONLY. No timelines.</p>
-<p><strong>Phase 1 — ForgeEngine.</strong> DONE (S99-forge). 5 engines, 8 witnesses, FORGE
-verb registered (76th). <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS.md</a> §5.</p>
-<p><strong>Phase 2 — ForgeFabrication wiring.</strong> Attach fabrication data to work order
-output. Small — column additions to output tables. Prompt: <code>59_forge_fabrication_wire</code>.</p>
+<p><strong>Phase 1 — ForgeEngine.</strong> DONE (S99-forge + S100-forge). 6 engines, 11 witnesses,
+FORGE verb registered (76th). <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS.md</a> §5.</p>
+<p><strong>Phase 2 — ForgeFabrication wiring.</strong> DONE (S100-p59). ForgeFabricationWriter
+writes to ad_forge_fabrication table in output.db. W-FORGE-FAB-1..5 PASS.</p>
 <p><strong>Phase 3 — ForgePanel.</strong> Bonsai sidebar UI. Parameter form + compliance +
 cost. Depends on BlenderBridge forge commands + CostDAO wiring (prompt 53).
 Prompt: <code>60_forge_panel</code>.</p>
@@ -3983,8 +3987,9 @@ ForgeEngine params via BlenderBridge. Prompt: <code>61_forge_mesh_bridge</code>.
 table + generic <code>ForgeGizmoGroup</code>. Prompt: <code>62_forge_gizmo</code>.</p>
 <p><strong>Phase 6 — ForgePromotion.</strong> Approve → component_library.db. DocAction path.
 Prompt: <code>63_forge_promote_lod</code>.</p>
-<p><strong>Phase 7 — Rebar port.</strong> Port Federation <code>rebar_generator.py</code> + standards
-to Java verbs. Standards tables are the asset. Prompt: <code>64_rebar_java_port</code>.</p>
+<p><strong>Phase 7 — Rebar port.</strong> DONE (S100-forge). RebarCageForge — 6th engine,
+implements MS 1347:2020 + BS 8110 + EC2. SlabReinforcement, BeamReinforcement,
+ColumnReinforcement classes. W-FORGE-9..11 PASS.</p>
 <p><strong>Phase 8 — Formula-as-metadata.</strong> Migrate hardcoded formulas to
 <code>ad_forge_formula</code> table. New piece types = SQL INSERTs. May not be needed
 if piece type count stays small. <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS.md</a> §10.</p>
@@ -4000,7 +4005,7 @@ if piece type count stays small. <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE
 <tbody>
 <tr>
 <td><a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS.md</a></td>
-<td>Part ① detail — ForgeEngine interface, 5 engines</td>
+<td>Part ① detail — ForgeEngine interface, 6 engines</td>
 </tr>
 <tr>
 <td><a href="../BlenderBridge/">BlenderBridge.md</a></td>
@@ -4037,7 +4042,7 @@ if piece type count stays small. <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE
 </tbody>
 </table>
 <hr />
-<p><em>Status: Phase 1 DONE (ForgeEngine). Phases 2–8 SPEC ONLY.</em></p>
+<p><em>Status: Phases 1, 2, 7 DONE (ForgeEngine, ForgeFabrication, RebarCageForge). Phases 3–6, 8 SPEC ONLY.</em></p>
 
 
 

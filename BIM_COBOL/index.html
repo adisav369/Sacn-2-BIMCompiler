@@ -5934,12 +5934,12 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> · <a href="../SourceCodeGuide/">SourceCodeGuide</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>75 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.</p>
+<p><b>76 verbs that turn BOM recipes into geometry.</b> The domain vocabulary lives here — TILE, CLUSTER, ROUTE, FRAME — but the compiler underneath is generic. Swap the verbs and you compile a different domain.</p>
 </div>
 <p><strong>Version:</strong> 1.0
 <strong>Date:</strong> 2026-03-08
 <strong>Authors:</strong> red1 (architect) + Claude Watchdog (reviewer)
-<strong>Status:</strong> ACTIVE — <strong>75 verbs implemented, 202 witnesses.</strong> Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
+<strong>Status:</strong> ACTIVE — <strong>76 verbs implemented, 202 witnesses.</strong> Full layered composition stack L0→L1→L2→L3→L4. F5 integration script exercises 30 verbs across all 5 layers in a single ScriptRunner pass (36 verb lines, 0 failures). 22 verbs need dedicated harness (output.db path, XLSX, component_library.db context). Phase H2: 5 verb wrappers replace all raw SQL on protected tables. T16 tamper rule enforces zero regressions.
 <strong>Module:</strong> <code>BIM_COBOL/</code> (root-level Maven sibling of DAGCompiler, TopologyMaker)
 <strong>Depends on:</strong> BIM_Designer.md (Compiled Construction v0.8), TopologyMaker/docs/TOPOLOGY_MAKER.md (Synthetic Stone §18-19), TheRosettaStoneStrategy.md (Terminal formula coverage — shared concern)
 <strong>Supplements:</strong> MANIFESTO.md, PREFAB_ARCHITECTURE.md, DocAction_SRS.md (W_Verb_Node lineage)</p>
@@ -6028,7 +6028,7 @@ MEP (CURRENT — IMPLICIT)
 </ul>
 <p>These are all <em>high-level construction verbs</em> that currently require manual authoring at the IFC geometry level. BIM COBOL fills this gap.</p>
 <h3 id="24-implemented-verbs-v09-scoreboard">2.4 Implemented Verbs (v0.9) — Scoreboard<a class="headerlink" href="#24-implemented-verbs-v09-scoreboard" title="Permanent link">&para;</a></h3>
-<p>The BIM_COBOL module has a working <code>Verb&lt;T&gt;</code> interface, <code>VerbContext</code>, and <code>VerbResult&lt;T&gt;</code> framework. <strong>75 verbs implemented, 202 witnesses:</strong></p>
+<p>The BIM_COBOL module has a working <code>Verb&lt;T&gt;</code> interface, <code>VerbContext</code>, and <code>VerbResult&lt;T&gt;</code> framework. <strong>76 verbs implemented, 202 witnesses:</strong></p>
 <table>
 <thead>
 <tr>
@@ -6132,60 +6132,263 @@ MEP (CURRENT — IMPLICIT)
 <td>BOM walk → output.db emission</td>
 </tr>
 <tr>
-<td>14-21</td>
-<td><code>SELECT</code>/<code>LIST</code>/<code>DESCRIBE</code>/<code>COUNT</code>/<code>AGGREGATE</code>/<code>EXPORT</code>/<code>CLONE</code>/<code>SUMMARIZE</code></td>
+<td>14</td>
+<td><code>SELECT BOM</code></td>
 <td>data</td>
 <td>—</td>
-<td>BOM query + export</td>
+<td>BOM selection by ID</td>
 </tr>
 <tr>
-<td>22-29</td>
-<td><code>CREATE BOM</code>/<code>ADD LINE</code>/<code>SET TACK</code>/<code>SET ROTATION</code>/<code>SET DIMENSIONS</code>/<code>REMOVE LINE</code>/<code>DELETE BOM</code>/<code>SET LINE PROPERTY</code></td>
+<td>15</td>
+<td><code>LIST BOMS</code></td>
+<td>data</td>
+<td>—</td>
+<td>List available BOMs</td>
+</tr>
+<tr>
+<td>16</td>
+<td><code>DESCRIBE BOM</code></td>
+<td>data</td>
+<td>—</td>
+<td>BOM metadata summary</td>
+</tr>
+<tr>
+<td>17</td>
+<td><code>COUNT BOM</code></td>
+<td>data</td>
+<td>—</td>
+<td>BOM line count</td>
+</tr>
+<tr>
+<td>18</td>
+<td><code>AGGREGATE BOM</code></td>
+<td>data</td>
+<td>—</td>
+<td>BOM quantity roll-up</td>
+</tr>
+<tr>
+<td>19</td>
+<td><code>EXPORT BOM</code></td>
+<td>data</td>
+<td>—</td>
+<td>BOM export to file</td>
+</tr>
+<tr>
+<td>20</td>
+<td><code>CLONE BOM</code></td>
+<td>data</td>
+<td>—</td>
+<td>Deep-copy BOM tree</td>
+</tr>
+<tr>
+<td>21</td>
+<td><code>SUMMARIZE BUILDING</code></td>
+<td>data</td>
+<td>—</td>
+<td>Building-level BOM summary</td>
+</tr>
+<tr>
+<td>22</td>
+<td><code>CREATE BOM</code></td>
 <td>L0</td>
 <td>W-SY-1..29</td>
-<td>Synthetic BOM primitives</td>
+<td>Synthetic BOM creation</td>
 </tr>
 <tr>
-<td>30-32</td>
-<td><code>EXTRACT AABB</code>/<code>SNAP TO GRID</code>/<code>VALIDATE AABB</code></td>
+<td>23</td>
+<td><code>ADD LINE</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Add child line to BOM</td>
+</tr>
+<tr>
+<td>24</td>
+<td><code>SET TACK</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Set BOM line tack point</td>
+</tr>
+<tr>
+<td>25</td>
+<td><code>SET ROTATION</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Set BOM line rotation</td>
+</tr>
+<tr>
+<td>26</td>
+<td><code>SET DIMENSIONS</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Set BOM line dimensions</td>
+</tr>
+<tr>
+<td>27</td>
+<td><code>REMOVE LINE</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Remove child line from BOM</td>
+</tr>
+<tr>
+<td>28</td>
+<td><code>DELETE BOM</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Delete entire BOM</td>
+</tr>
+<tr>
+<td>29</td>
+<td><code>SET LINE PROPERTY</code></td>
+<td>L0</td>
+<td>W-SY-1..29</td>
+<td>Set arbitrary line property</td>
+</tr>
+<tr>
+<td>30</td>
+<td><code>EXTRACT AABB</code></td>
 <td>utility</td>
 <td>W-SY-1..29</td>
-<td>Geometry planning</td>
+<td>Extract axis-aligned bounding box</td>
 </tr>
 <tr>
-<td>33-36</td>
-<td><code>CREATE ROOM</code>/<code>FURNISH ROOM</code>/<code>RESIZE ROOM</code>/<code>STRIP ROOM</code></td>
+<td>31</td>
+<td><code>SNAP TO GRID</code></td>
+<td>utility</td>
+<td>W-SY-1..29</td>
+<td>Snap coordinates to grid</td>
+</tr>
+<tr>
+<td>32</td>
+<td><code>VALIDATE AABB</code></td>
+<td>utility</td>
+<td>W-SY-1..29</td>
+<td>Validate AABB consistency</td>
+</tr>
+<tr>
+<td>33</td>
+<td><code>CREATE ROOM</code></td>
 <td>L1</td>
 <td>W-SY-30..43</td>
-<td>Room-level convenience</td>
+<td>Room BOM from category</td>
 </tr>
 <tr>
-<td>37-41</td>
-<td><code>PARTITION AABB</code>/<code>CREATE FLOOR</code>/<code>ADD ROOM</code>/<code>REMOVE ROOM</code>/<code>SWAP ROOM</code></td>
+<td>34</td>
+<td><code>FURNISH ROOM</code></td>
+<td>L1</td>
+<td>W-SY-30..43</td>
+<td>Add furniture to room BOM</td>
+</tr>
+<tr>
+<td>35</td>
+<td><code>RESIZE ROOM</code></td>
+<td>L1</td>
+<td>W-SY-30..43</td>
+<td>Adjust room dimensions</td>
+</tr>
+<tr>
+<td>36</td>
+<td><code>STRIP ROOM</code></td>
+<td>L1</td>
+<td>W-SY-30..43</td>
+<td>Remove furnishings from room</td>
+</tr>
+<tr>
+<td>37</td>
+<td><code>PARTITION AABB</code></td>
 <td>L2</td>
 <td>W-SY-44..56</td>
-<td>Floor-level composition</td>
+<td>Split AABB into sub-volumes</td>
 </tr>
 <tr>
-<td>42-44</td>
-<td><code>COMPOSE BUILDING</code>/<code>ADD FLOOR</code>/<code>STACK FLOORS</code></td>
+<td>38</td>
+<td><code>CREATE FLOOR</code></td>
+<td>L2</td>
+<td>W-SY-44..56</td>
+<td>Floor BOM from room list</td>
+</tr>
+<tr>
+<td>39</td>
+<td><code>ADD ROOM</code></td>
+<td>L2</td>
+<td>W-SY-44..56</td>
+<td>Add room to floor BOM</td>
+</tr>
+<tr>
+<td>40</td>
+<td><code>REMOVE ROOM</code></td>
+<td>L2</td>
+<td>W-SY-44..56</td>
+<td>Remove room from floor BOM</td>
+</tr>
+<tr>
+<td>41</td>
+<td><code>SWAP ROOM</code></td>
+<td>L2</td>
+<td>W-SY-44..56</td>
+<td>Replace room in floor BOM</td>
+</tr>
+<tr>
+<td>42</td>
+<td><code>COMPOSE BUILDING</code></td>
 <td>L3</td>
 <td>W-SY-66..72</td>
-<td>Building-level composition</td>
+<td>Building BOM from floor list</td>
 </tr>
 <tr>
-<td>45-47</td>
-<td><code>DEFINE CATEGORY</code>/<code>ADD TEMPLATE RULE</code>/<code>REGISTER BOM</code></td>
+<td>43</td>
+<td><code>ADD FLOOR</code></td>
+<td>L3</td>
+<td>W-SY-66..72</td>
+<td>Add floor to building BOM</td>
+</tr>
+<tr>
+<td>44</td>
+<td><code>STACK FLOORS</code></td>
+<td>L3</td>
+<td>W-SY-66..72</td>
+<td>Auto-stack floors with Z offsets</td>
+</tr>
+<tr>
+<td>45</td>
+<td><code>DEFINE CATEGORY</code></td>
 <td>L4</td>
 <td>W-SY-57..65</td>
-<td>Catalog-level taxonomy</td>
+<td>Create product category</td>
 </tr>
 <tr>
-<td>48-50</td>
-<td><code>REPORT BOM CATALOG</code>/<code>REPORT PRODUCT CATALOG</code>/<code>REPORT BOM STRUCTURE</code></td>
+<td>46</td>
+<td><code>ADD TEMPLATE RULE</code></td>
+<td>L4</td>
+<td>W-SY-57..65</td>
+<td>Attach template rule to category</td>
+</tr>
+<tr>
+<td>47</td>
+<td><code>REGISTER BOM</code></td>
+<td>L4</td>
+<td>W-SY-57..65</td>
+<td>Register BOM in catalog</td>
+</tr>
+<tr>
+<td>48</td>
+<td><code>REPORT BOM CATALOG</code></td>
 <td>H0</td>
 <td>W-H0-1..10</td>
-<td>XLSX report generation</td>
+<td>XLSX BOM catalog report</td>
+</tr>
+<tr>
+<td>49</td>
+<td><code>REPORT PRODUCT CATALOG</code></td>
+<td>H0</td>
+<td>W-H0-1..10</td>
+<td>XLSX product catalog report</td>
+</tr>
+<tr>
+<td>50</td>
+<td><code>REPORT BOM STRUCTURE</code></td>
+<td>H0</td>
+<td>W-H0-1..10</td>
+<td>XLSX BOM tree structure report</td>
 </tr>
 <tr>
 <td>51</td>
@@ -6246,51 +6449,107 @@ MEP (CURRENT — IMPLICIT)
 <tr>
 <td>59</td>
 <td><code>VOID EMPTY_SPACE FOR BUILDING</code></td>
-<td>original</td>
+<td>H2+</td>
 <td>—</td>
-<td>Empty space allocation for building</td>
+<td>WMS empty space allocation</td>
 </tr>
 <tr>
 <td>60</td>
 <td><code>OVERRIDE ROOF</code></td>
-<td>original</td>
+<td>H3</td>
 <td>—</td>
 <td>Roof parameter override</td>
 </tr>
 <tr>
 <td>61</td>
 <td><code>FIX OPENING BBOX</code></td>
-<td>original</td>
+<td>H3</td>
 <td>—</td>
 <td>Opening bounding box correction</td>
 </tr>
 <tr>
 <td>62</td>
 <td><code>BUILD SPATIAL STRUCTURE</code></td>
-<td>original</td>
+<td>H3</td>
 <td>—</td>
 <td>Spatial hierarchy construction</td>
 </tr>
 <tr>
-<td>63-71</td>
-<td><code>FIT</code>/<code>JOIN</code>/<code>ATTACH</code>/<code>MOUNT</code>/<code>HANG</code>/<code>BOLT</code>/<code>WELD</code>/<code>EMBED</code>/<code>CLAMP</code></td>
+<td>63</td>
+<td><code>FIT</code></td>
 <td>§4.6</td>
 <td>—</td>
-<td>Joining verbs (how elements connect)</td>
+<td>Joining: press-fit connection</td>
+</tr>
+<tr>
+<td>64</td>
+<td><code>JOIN</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: general connection</td>
+</tr>
+<tr>
+<td>65</td>
+<td><code>ATTACH</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: surface attachment</td>
+</tr>
+<tr>
+<td>66</td>
+<td><code>MOUNT</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: bracket/frame mount</td>
+</tr>
+<tr>
+<td>67</td>
+<td><code>HANG</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: suspended connection</td>
+</tr>
+<tr>
+<td>68</td>
+<td><code>BOLT</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: bolted connection</td>
+</tr>
+<tr>
+<td>69</td>
+<td><code>WELD</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: welded connection</td>
+</tr>
+<tr>
+<td>70</td>
+<td><code>EMBED</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: embedded connection</td>
+</tr>
+<tr>
+<td>71</td>
+<td><code>CLAMP</code></td>
+<td>§4.6</td>
+<td>—</td>
+<td>Joining: clamped connection</td>
 </tr>
 <tr>
 <td>72</td>
 <td><code>ALONG</code></td>
-<td>original</td>
+<td>§4.6</td>
 <td>—</td>
-<td>Path-following placement</td>
+<td>Surface: path-following placement</td>
 </tr>
 <tr>
 <td>73</td>
 <td><code>CORNER</code></td>
-<td>original</td>
+<td>§4.6</td>
 <td>—</td>
-<td>Corner element placement</td>
+<td>Surface: corner element placement</td>
 </tr>
 <tr>
 <td>74</td>
@@ -6305,6 +6564,13 @@ MEP (CURRENT — IMPLICIT)
 <td>infra</td>
 <td>—</td>
 <td>Verb framework smoke test</td>
+</tr>
+<tr>
+<td>76</td>
+<td><code>FORGE</code></td>
+<td>§10</td>
+<td>—</td>
+<td>Geometry Forge: formula-driven construction pieces</td>
 </tr>
 <tr>
 <td>—</td>
@@ -7711,7 +7977,7 @@ W_Verb_Node links to C_OrderLine directly (no intermediate spatial slot table).<
 <h3 id="163-preparation-work-bim_cobol-side-can-start-now">16.3 Preparation Work (BIM_COBOL Side — Can Start NOW)<a class="headerlink" href="#163-preparation-work-bim_cobol-side-can-start-now" title="Permanent link">&para;</a></h3>
 <p>Four workstreams that build language infrastructure without touching the pipeline:</p>
 <p><strong>PREP-1: VerbRegistry + Dispatcher</strong> ✅ DONE (W-COBOL-41..42)</p>
-<p><code>VerbRegistry.java</code> — central map of <code>keyword → Verb&lt;?&gt;</code> with <code>createDefault()</code> (all 75 verbs), <code>dispatch()</code> (longest-prefix match), tokenizer preserving <code>"quoted strings"</code>.</p>
+<p><code>VerbRegistry.java</code> — central map of <code>keyword → Verb&lt;?&gt;</code> with <code>createDefault()</code> (all 76 verbs), <code>dispatch()</code> (longest-prefix match), tokenizer preserving <code>"quoted strings"</code>.</p>
 <p><strong>PREP-2: ScriptRunner (Minimal)</strong> ✅ DONE (W-COBOL-43..44)</p>
 <p><code>ScriptRunner.java</code> — reads <code>.bimcobol</code> text line by line, strips <code>--</code> comments and blanks, dispatches to VerbRegistry, returns <code>ScriptReport</code> with pass/fail counts and <code>toJson()</code>.</p>
 <div class="highlight"><pre><span></span><code>-- lighting.bimcobol
@@ -7805,14 +8071,16 @@ Step 3: Pipeline replacement
 <td>Measure roof AABB surface at each wall centroid. Ridge along longer axis, linear slope from eave (minZ) to crown (maxZ). Walls exceeding roof surface by &gt;50mm flagged for trimming. Flat roofs (minZ≈maxZ) → slope≈0 naturally. Returns slope angle, direction, and profile type per entry.</td>
 <td>W-TRIM-1 through W-TRIM-7</td>
 </tr>
+<tr>
+<td><code>FORGE</code></td>
+<td><code>&lt;piece_type&gt; [key:value ...]</code></td>
+<td>Formula-driven construction piece computation. 6 engines: SLOPE_CUT (rafter trig), STAIR_FLIGHT (rise-over-run + Blondel), PIPE_BEND (arc geometry), DOME_SECTION (ring×segment panels), BARREL_VAULT (rib arc), REBAR_CAGE (slab/beam/column reinforcement with exposure-class cover). Fabrication data persisted to <code>ad_forge_fabrication</code> in output.db. ParametricMesh deprecated. See <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS</a>, <a href="../FORGE_SUITE_SRS/">FORGE_SUITE_SRS</a>.</td>
+<td>W-FORGE-1..11</td>
+</tr>
 </tbody>
 </table>
 <h3 id="172-proposed-not-yet-implemented">17.2 Proposed (Not Yet Implemented)<a class="headerlink" href="#172-proposed-not-yet-implemented" title="Permanent link">&para;</a></h3>
 <p>Candidate verbs: CHECK CLASH, CHECK CONTAINMENT, VERIFY ROOF COVERAGE, CUT OPENINGS, SEAL ENVELOPE. M_AttributeSet_Verb junction table would dispatch verbs automatically by product type.</p>
-<p><strong>FORGE verb</strong> (spec only): <code>FORGE &lt;piece_type&gt; [key:value ...]</code> — computes
-construction pieces from parameters via <a href="../GEOMETRY_FORGE_SRS/">Geometry Forge</a>.
-Same verb architecture, same VerbResult output. Shell registered, no piece types
-implemented yet.</p>
 <hr />
 <h2 id="18-synthetic-bom-creation-the-composition-language">18. Synthetic BOM Creation — The Composition Language<a class="headerlink" href="#18-synthetic-bom-creation-the-composition-language" title="Permanent link">&para;</a></h2>
 <p><em>Added v0.11 — Phase F0.2. This section defines the verb suite for creating new BOM assemblies from the catalog. Where §4–5 define verbs that PLACE and CHECK elements, and §15–17 define verbs that operate on compiled output, this section defines verbs that CREATE the BOM data itself — the input to compilation.</em></p>
@@ -9289,7 +9557,7 @@ internally without changing its callers:</p>
 <p>This is the same <code>check_method</code> upgrade path already designed in
 DocValidate §15.6 — the predicate encapsulates the fallback-to-FK transition.</p>
 <hr />
-<p><em>BIM COBOL v0.15 — 75 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.</em>
+<p><em>BIM COBOL v0.15 — 76 verbs, 13 spatial predicates, 202 witnesses. Verb pattern detection LIVE: TILE/ROUTE/FRAME/CLUSTER.</em>
 <em>48,485 → 1,131 lines (42.8:1). Mathematical basis: CLT (Theorem 1) + Information Theory (Theorem 5).</em>
 <em>The Construction Programming Language</em>
 <em>March 2026</em></p>

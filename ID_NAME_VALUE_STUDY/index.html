@@ -2564,10 +2564,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#34-migrations-needed" class="md-nav__link">
+  <a href="#34-migrations-needed-partially-completed-see-6" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.4 Migrations Needed
+        3.4 Migrations Needed (partially completed — see §6)
       
     </span>
   </a>
@@ -2653,10 +2653,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#migration-tiers" class="md-nav__link">
+  <a href="#migration-tiers-see-6-for-current-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Migration tiers
+        Migration tiers (see §6 for current status)
       
     </span>
   </a>
@@ -2680,10 +2680,71 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#appendix-conformance-scorecard" class="md-nav__link">
+  <a href="#6-migration-status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Appendix: Conformance Scorecard
+        6. Migration Status
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Migration Status">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tier-1-namevalue-columns-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1 — Name/Value columns ✅ DONE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-core-table-integer-pk-phases-ad-done" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 — Core table INTEGER PK ✅ Phases A–D DONE
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#remaining-gaps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remaining gaps
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#appendix-conformance-scorecard-updated-2026-03-28" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Appendix: Conformance Scorecard (updated 2026-03-28)
       
     </span>
   </a>
@@ -2712,21 +2773,23 @@
 
 <h1 id="idempiere-_id-name-value-convention-impact-study">iDempiere _ID / Name / Value Convention — Impact Study<a class="headerlink" href="#idempiere-_id-name-value-convention-impact-study" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>Analysis only. No code changes.</strong>
-Reference: https://wiki.idempiere.org/en/Columns#Standard_Columns
-Date: 2026-03-26</p>
+<p>Reference: https://wiki.idempiere.org/en/Columns#Standard_Columns
+Date: 2026-03-26 · <strong>Updated:</strong> 2026-03-28 (§6 migration status added)</p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Analysis-only study mapping the 4-DB split against standard iDempiere column patterns.</p>
+<p><b>Conformance gap between our TEXT PKs and iDempiere's _ID/Name/Value convention.</b> Study mapping the 5-DB split against standard iDempiere column patterns. Tiers 1–2 now migrated (§6).</p>
 </div>
 <h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
 <p>iDempiere convention: every table has three identity columns:
 - <code>_ID</code> (INTEGER PRIMARY KEY) — surrogate key, referenced by other tables as <code>_FK</code>
 - <code>Name</code> (TEXT NOT NULL) — human-readable label
 - <code>Value</code> (TEXT NOT NULL) — SearchKey, unique business identifier</p>
-<p>Our 4-DB split uses a mix of conventions. Most tables use <strong>TEXT primary keys</strong> (business identifiers as PK) and lack a separate <code>_ID</code> surrogate. Only a few tables follow iDempiere convention closely.</p>
+<p>Our 5-DB split uses a mix of conventions. Most tables use <strong>TEXT primary keys</strong> (business identifiers as PK) and lack a separate <code>_ID</code> surrogate. Only a few tables follow iDempiere convention closely.</p>
 <hr />
 <h2 id="1-column-inventory-by-database">1. Column Inventory by Database<a class="headerlink" href="#1-column-inventory-by-database" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Snapshot note:</strong> §1–§5 reflect the pre-migration state (2026-03-26). See <a href="#6-migration-status">§6 Migration Status</a> for what has been migrated since.</p>
+</blockquote>
 <h3 id="11-bom-db-prefix_bomdb-eg-sh_bomdb">1.1 BOM DB (<code>{PREFIX}_BOM.db</code> — e.g., SH_BOM.db)<a class="headerlink" href="#11-bom-db-prefix_bomdb-eg-sh_bomdb" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -4256,51 +4319,59 @@ Date: 2026-03-26</p>
   - <code>SpatialStructureBuilder.java</code> — spatial_structure, rel_contained_in_space
   - <code>IDempiereExporter.java</code> — idempiere_product_map, idempiere_bom_map</p>
 <p>The iDempiere-named tables (<code>M_Product</code>, <code>m_bom</code>, <code>m_bom_line</code>, <code>C_Order</code>, <code>C_OrderLine</code>, <code>C_DocType</code>, <code>M_AttributeSet*</code>, <code>W_Verb_Node*</code>) are the ones that would be migrated. The <code>ad_*</code> and output tables use their own convention.</p>
-<h3 id="34-migrations-needed">3.4 Migrations Needed<a class="headerlink" href="#34-migrations-needed" title="Permanent link">&para;</a></h3>
-<p>If TEXT PKs were converted to INTEGER <code>_ID</code> + <code>Value TEXT</code> SearchKey:</p>
+<h3 id="34-migrations-needed-partially-completed-see-6">3.4 Migrations Needed <em>(partially completed — see §6)</em><a class="headerlink" href="#34-migrations-needed-partially-completed-see-6" title="Permanent link">&para;</a></h3>
+<p>Original assessment (pre-migration). Rows marked ✅ are now DONE:</p>
 <table>
 <thead>
 <tr>
 <th>Table</th>
 <th>Migration</th>
 <th>Risk</th>
+<th>Status</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>M_Product</td>
 <td>Add <code>M_Product_ID INTEGER</code>, keep <code>product_id</code> as <code>Value</code></td>
-<td><strong>EXTREME</strong> — 29 Java files, all BOM DBs, all output DBs</td>
+<td><strong>EXTREME</strong> — 29 Java files</td>
+<td>✅ S91 (IFCtoBOM DDL), Phase B deferred (135 refs)</td>
 </tr>
 <tr>
 <td>m_bom</td>
 <td>Add <code>M_BOM_ID INTEGER</code>, keep <code>bom_id</code> as <code>Value</code></td>
-<td><strong>EXTREME</strong> — 37 Java files, all BOM DBs</td>
+<td><strong>EXTREME</strong> — 37 Java files</td>
+<td>✅ S91 DDL + S100-p86 Java ORM (30+ files)</td>
 </tr>
 <tr>
 <td>m_bom_line</td>
 <td>Already has <code>bom_child_id INTEGER</code> PK</td>
 <td>Rename to <code>M_BOM_Line_ID</code> only</td>
+<td>✅ S91 (M_BOM_ID FK added)</td>
 </tr>
 <tr>
 <td>c_order</td>
 <td>Change <code>C_Order_ID TEXT</code> → <code>C_Order_ID INTEGER</code> + <code>Value TEXT</code></td>
 <td><strong>HIGH</strong> — 19 Java files</td>
+<td>✅ S91 (IFCtoBOM DDL)</td>
 </tr>
 <tr>
 <td>C_DocType</td>
 <td>Change <code>C_DocType_ID TEXT</code> → <code>C_DocType_ID INTEGER</code> + <code>Value TEXT</code></td>
 <td><strong>HIGH</strong> — 14 Java files</td>
+<td>✅ S91 (IFCtoBOM DDL)</td>
 </tr>
 <tr>
 <td>M_Product_Category</td>
 <td>Add <code>_ID INTEGER</code>, keep current as <code>Value</code></td>
 <td>Medium — 6 files</td>
+<td>✅ S90 schema + S92 sidecar drop</td>
 </tr>
 <tr>
 <td>M_AttributeSet</td>
 <td>Change TEXT → INTEGER</td>
 <td>Low — 4 files</td>
+<td>Deferred</td>
 </tr>
 </tbody>
 </table>
@@ -4415,25 +4486,102 @@ Date: 2026-03-26</p>
 </tr>
 </tbody>
 </table>
-<h3 id="migration-tiers">Migration tiers<a class="headerlink" href="#migration-tiers" title="Permanent link">&para;</a></h3>
-<p><strong>Tier 1 — Quick wins (Name/Value on tables that already have INTEGER PKs):</strong>
-- Add <code>Name TEXT</code> and <code>Value TEXT</code> where missing on INTEGER PK tables
-- ~30 ALTER TABLE statements
-- Low risk, no FK changes</p>
-<p><strong>Tier 2 — Core ERP tables (TEXT PK → INTEGER PK):</strong>
-- <code>M_Product</code>, <code>m_bom</code>, <code>c_order</code>, <code>C_DocType</code>, <code>M_Product_Category</code>
-- Requires FK cascade changes across all 4 DBs + 34 BOM DBs
-- ~50+ Java files to update
-- <strong>HIGH RISK</strong> — touches Sacred Files (X_M_BOM.java, X_M_BOMLine.java)</p>
+<h3 id="migration-tiers-see-6-for-current-status">Migration tiers <em>(see §6 for current status)</em><a class="headerlink" href="#migration-tiers-see-6-for-current-status" title="Permanent link">&para;</a></h3>
+<p><strong>Tier 1 — Name/Value on INTEGER PK tables:</strong> ✅ DONE (S83)
+- 5 migrations, 43 tables. Name/Value columns added.</p>
+<p><strong>Tier 2 — Core ERP tables (TEXT PK → INTEGER PK):</strong> ✅ Phases A–D DONE (S90–S92, S100-p86)
+- <code>m_bom</code>, <code>C_DocType</code>, <code>C_Order</code>, <code>M_Product_Category</code> — INTEGER PK in IFCtoBOM DDL + Java ORM
+- <code>M_Product</code> — INTEGER PK in DDL, Phase B (135 consumer refs) deferred
+- Sidecar <code>_int</code> columns dropped (S92)</p>
 <p><strong>Tier 3 — Config tables (ad_* TEXT PK → INTEGER PK):</strong>
-- ~40 <code>ad_*</code> tables
+- ~40 <code>ad_*</code> tables — not yet started
 - Lower Java impact (mostly read-only from Java)
 - Medium risk — mostly migration SQL + seed data updates</p>
 <h3 id="recommendation">Recommendation<a class="headerlink" href="#recommendation" title="Permanent link">&para;</a></h3>
-<p>The current TEXT-PK convention is <strong>functional but non-standard</strong>. The TEXT PKs act as both surrogate key and SearchKey, which is simpler but prevents integer-based FK joins and violates iDempiere conventions.</p>
-<p>A full migration would be a multi-session effort touching 50+ Java files, 34+ BOM databases, and all migration SQL. The safest approach would be Tier 1 first (add Name/Value to existing INTEGER PK tables), then Tier 2 for core tables in a dedicated branch with comprehensive test coverage.</p>
+<p>Tier 1 and Tier 2 core tables are migrated. The remaining gaps are:
+- <strong>M_Product Phase B:</strong> 135 consumer references still use <code>product_id TEXT</code> lookups
+- <strong>M_Product_Category Phase B:</strong> Java refs still use TEXT lookups in some paths
+- <strong>M_AttributeSet:</strong> TEXT PK, low priority
+- <strong>Tier 3:</strong> ~40 <code>ad_*</code> config tables, deferred indefinitely (functional as-is)</p>
 <hr />
-<h2 id="appendix-conformance-scorecard">Appendix: Conformance Scorecard<a class="headerlink" href="#appendix-conformance-scorecard" title="Permanent link">&para;</a></h2>
+<h2 id="6-migration-status">6. Migration Status<a class="headerlink" href="#6-migration-status" title="Permanent link">&para;</a></h2>
+<p>This study was written as analysis-only (2026-03-26). Migration began the same week. Current state:</p>
+<h3 id="tier-1-namevalue-columns-done">Tier 1 — Name/Value columns ✅ DONE<a class="headerlink" href="#tier-1-namevalue-columns-done" title="Permanent link">&para;</a></h3>
+<p><strong>Session:</strong> S83-tier1 · <strong>Migrations:</strong> 5 SQL files · <strong>Scope:</strong> 43 INTEGER PK tables</p>
+<p>Added <code>Name TEXT</code> and <code>Value TEXT</code> columns where missing on all tables that already had INTEGER primary keys. Low risk, no FK changes. All 43 tables now have the iDempiere triple (_ID, Name, Value).</p>
+<h3 id="tier-2-core-table-integer-pk-phases-ad-done">Tier 2 — Core table INTEGER PK ✅ Phases A–D DONE<a class="headerlink" href="#tier-2-core-table-integer-pk-phases-ad-done" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Session</th>
+<th>What</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A+B (schema)</td>
+<td>S90-tier2</td>
+<td>8 migration SQL files. INTEGER PK on 5 core tables: M_Product, m_bom, C_DocType, C_Order, M_Product_Category. BOM DB via <code>prepare_compile_db</code> ALTER TABLE (IFCtoBOM DDL was hardcoded). ERP.db + CL applied directly.</td>
+</tr>
+<tr>
+<td>C (Java)</td>
+<td>S91-tier2c</td>
+<td>IFCtoBOM DDL nativized: <code>M_Product_ID</code>, <code>M_BOM_ID</code>, <code>C_DocType_ID</code> all <code>INTEGER PRIMARY KEY AUTOINCREMENT</code>. Value/Name backfill in pipeline. C_OrderLine persisted (37 rows for SH — was 0). ORM accessors added (X_M_BOM, X_M_BOMLine). All <code>_int</code> sidecar columns eliminated from snapshot.</td>
+</tr>
+<tr>
+<td>D (cleanup)</td>
+<td>S92-tier2d</td>
+<td><code>M_Product_Category_ID_int</code> sidecar column + index dropped (DV024 + CL005 migrations). TEXT FK audit: 6 TEXT FK columns still actively used (deferred to Phase E).</td>
+</tr>
+<tr>
+<td>m_bom ORM</td>
+<td>S100-p86</td>
+<td><code>M_BOM_ID</code> nativized in Java ORM. <code>X_M_BOM.getPKColumnName()</code> → <code>M_BOM_ID</code>. <code>BasePO.loadByValue()</code> added. All <code>getBomId()</code> → <code>getValue()</code> across 30+ files (BomDropper, BOMWalker, PlacementCollectorVisitor, CompilationPipeline, BuildingRegistry, DesignerDAO, 10 BIM_COBOL verbs, BomTemplateComposer, BuildingInspector, DesignerAPIImpl).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="remaining-gaps">Remaining gaps<a class="headerlink" href="#remaining-gaps" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Scope</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>M_Product Phase B</td>
+<td>135 Java refs still use <code>product_id TEXT</code> lookups</td>
+<td>Medium — functional, deferred</td>
+</tr>
+<tr>
+<td>M_Product_Category Phase B</td>
+<td>Some Java paths still use TEXT lookups</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>M_AttributeSet</td>
+<td>TEXT PK, 4 files</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Tier 3 (ad_* config)</td>
+<td>~40 tables, TEXT PKs</td>
+<td>Deferred indefinitely — functional as-is</td>
+</tr>
+<tr>
+<td>Phase E (TEXT FK audit)</td>
+<td>6 TEXT FK columns identified in S92</td>
+<td>Deferred</td>
+</tr>
+</tbody>
+</table>
+<h3 id="verification">Verification<a class="headerlink" href="#verification" title="Permanent link">&para;</a></h3>
+<p>All migration phases verified with zero regression: <code>SH 7/7 PASS</code>, <code>FK 7/7 PASS</code>, <code>mvn compile -q</code> PASS. Fresh BOM DB extraction verified (SH_BOM.db deleted + rebuilt after S100-p86).</p>
+<hr />
+<h2 id="appendix-conformance-scorecard-updated-2026-03-28">Appendix: Conformance Scorecard <em>(updated 2026-03-28)</em><a class="headerlink" href="#appendix-conformance-scorecard-updated-2026-03-28" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -4446,27 +4594,27 @@ Date: 2026-03-26</p>
 <tbody>
 <tr>
 <td>INTEGER PK</td>
-<td>4 tables (AD_Org, M_Attr<em>, PP_</em>)</td>
-<td>~30 (INTEGER PK, missing Name/Value)</td>
-<td>~70 (TEXT PK)</td>
+<td>~10 tables (core ERP + BOM tables post-Tier 2)</td>
+<td>~25 (INTEGER PK, missing Name/Value)</td>
+<td>~65 (TEXT PK, mostly ad_* config)</td>
 </tr>
 <tr>
 <td>Name column</td>
-<td>~20 tables</td>
+<td>~63 tables (post-Tier 1)</td>
 <td>—</td>
-<td>~100 tables</td>
+<td>~57 tables</td>
 </tr>
 <tr>
 <td>Value/SearchKey</td>
-<td>4 tables</td>
+<td>~47 tables (post-Tier 1)</td>
 <td>—</td>
-<td>~116 tables</td>
+<td>~73 tables</td>
 </tr>
 <tr>
 <td>INTEGER FK joins</td>
-<td>~8 FK refs</td>
+<td>~15 FK refs (post-Tier 2 BOM DB)</td>
 <td>—</td>
-<td>~40 FK refs</td>
+<td>~33 FK refs</td>
 </tr>
 </tbody>
 </table>

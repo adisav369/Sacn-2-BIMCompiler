@@ -10034,7 +10034,7 @@ S2b-PEEK ──[release]──→ S2b
 <td>§26.12.3</td>
 <td>design_bbox.py + DesignerServer</td>
 <td>W-WF-COST</td>
-<td>STUB (costOfChange verb)</td>
+<td>WIRED (costOfChange → CostDAO.costBreakdown, a75962f4)</td>
 </tr>
 <tr>
 <td>WF-15</td>
@@ -10048,7 +10048,7 @@ S2b-PEEK ──[release]──→ S2b
 <td>§26.12.3</td>
 <td>DesignerServer (costOfChange verb)</td>
 <td>W-WF-COST-CANCEL</td>
-<td>STUB (returns zero delta)</td>
+<td>WIRED (CostDAO, a75962f4)</td>
 </tr>
 <tr>
 <td>WF-17</td>
@@ -12170,9 +12170,9 @@ would block smooth daily use.</p>
 </tr>
 <tr>
 <td><strong>IG-5 Change Request workflow</strong></td>
-<td>Non-compliant moves should spawn <code>R_Request</code> row with approval panel. API stubs exist (<code>moveChain()</code>, <code>costOfChange()</code>) but no R_Request creation or UI.</td>
+<td>Non-compliant moves should spawn <code>R_Request</code> row with approval panel. API stubs exist (<code>moveChain()</code>, <code>costOfChange()</code>) but no R_Request creation or UI. <code>costOfChange</code> now wired to <code>CostDAO.costBreakdown</code> (was STUB returning zero). <code>placeSet</code> batch placement implemented. Capacity rules: DV029 migration (CAP-ROOMS-100, CAP-STOREYS-10, CAP-VARIANTS-50). Committed a75962f4.</td>
 <td>§26.13</td>
-<td>SPEC ONLY</td>
+<td>PARTIAL</td>
 </tr>
 <tr>
 <td><strong>IG-6 4D/5D/6D Web UI tabs</strong></td>

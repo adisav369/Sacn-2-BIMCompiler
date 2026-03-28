@@ -883,6 +883,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#12-proof-data-gap-provestage-compliancestage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12 — Proof Data Gap (ProveStage + ComplianceStage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#r25-ifctobom-qa-failure-not-propagated-to-gate-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2865,6 +2876,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#12-proof-data-gap-provestage-compliancestage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        §12 — Proof Data Gap (ProveStage + ComplianceStage)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#r25-ifctobom-qa-failure-not-propagated-to-gate-results" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3124,11 +3146,12 @@
 <h3 id="9-orientation">9. Orientation?<a class="headerlink" href="#9-orientation" title="Permanent link">&para;</a></h3>
 <p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §4</a> — rotation is a property of the BOM line, not invented at compile time.</p>
 <p>Doors and windows must face the correct direction. <code>host_element_ref</code> links each opening to its host wall. Orientation data seeded from extraction (M16/M17 SQL).</p>
-<p><strong>Verdict:</strong> PASS — W-ROT witness proven.</p>
+<p><strong>Verdict:</strong> PASS — W-ROT witness proven. Rotation read from <code>m_bom_line.rotation_rule</code> (PlacementCollectorVisitor:183).</p>
+<p><strong>PASS (S100-p91):</strong> ProveStage rewired to BOM tree proofs (BomTreeProver). <code>hasRelationalData()</code> gate removed — ProveStage now runs for every building with compiled elements. Four BOM-term proof checks: P-PARENT (LEAF within parent extent), P-SIBLING (no sibling tack collisions), P-QTY (LEAF qty vs output count), P-TACK (tack position vs element centroid). SH: P-SIBLING 93/93 PASS. P-PARENT/P-QTY/P-TACK produce advisory WARNs (room origins not persisted in c_orderline — gap for future work). ComplianceStage: jurisdiction=MY, 53ms, 8 proof lines.</p>
 <h3 id="10-who-checks-the-tests">10. Who Checks the Tests?<a class="headerlink" href="#10-who-checks-the-tests" title="Permanent link">&para;</a></h3>
 <p><strong>Spec:</strong> <a href="../TestArchitecture/">TestArchitecture</a> §Anti-Drift — no silent re-seal, no weakened assertions.</p>
 <p>The tamper seal (SHA256 of 73 critical files) detects if a test was weakened to make it pass. Every seal change requires a full git diff review. T18-T20 tamper rules cross-validate. C8/C9 provide independent arithmetic verification that tests didn't drift.</p>
-<p><strong>Verdict:</strong> PASS — Seal v42 (73 files).</p>
+<p><strong>Verdict:</strong> PASS — Seal v9 (73 files). Version counter reset during S100 PK migration series.</p>
 <h3 id="11-factorization">11. Factorization?<a class="headerlink" href="#11-factorization" title="Permanent link">&para;</a></h3>
 <p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §6</a> verb factorization — N elements → 1 BOM line with qty=N.</p>
 <p>Any code that factorizes BOM lines MUST preserve:
@@ -3152,7 +3175,7 @@
 <tbody>
 <tr>
 <td>DX MIRROR</td>
-<td>G2 volume -0.16%, 87 axis swaps (width↔depth in some walls)</td>
+<td>G2 volume -0.16%, 89 axis swaps (width↔depth in some walls)</td>
 <td>S25</td>
 <td>MIRROR verb is incomplete — tracked in <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a> CP-2</td>
 </tr>
@@ -3164,6 +3187,46 @@
 </tr>
 </tbody>
 </table>
+<h3 id="12-proof-data-gap-provestage-compliancestage">§12 — Proof Data Gap (ProveStage + ComplianceStage)<a class="headerlink" href="#12-proof-data-gap-provestage-compliancestage" title="Permanent link">&para;</a></h3>
+<p><strong>Status:</strong> CLOSED (S100-p91)</p>
+<p>Both stages now fire on SH and FK:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Step</th>
+<th>Code</th>
+<th>Gate condition</th>
+<th>Result (SH)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ProveStage</td>
+<td>10</td>
+<td><code>BomTreeProver</code></td>
+<td><code>elementCount() == 0</code></td>
+<td>P-SIBLING 93/93 PASS. P-PARENT 15/28, P-QTY delta=2, P-TACK 0/28 (advisory WARNs).</td>
+</tr>
+<tr>
+<td>ComplianceStage</td>
+<td>11</td>
+<td><code>ComplianceStage</code></td>
+<td><code>jurisdiction != null</code></td>
+<td>jurisdiction=MY, 53ms, 8 proof lines, submission package written.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Remaining advisory WARNs (non-blocking):</strong>
+- P-PARENT: room origins from YAML <code>origin_m</code> not persisted in c_orderline → parent extent check uses container tacks only
+- P-QTY: delta=2 between LEAF qty sum and output count (static children counted differently)
+- P-TACK: BOM walker applies room origins internally; c_orderline LEAF dx/dy/dz are post-walk world positions, not raw tack accumulations. Reconstruction gap = room origins not in output DB.</p>
+<p><strong>What changed (p91):</strong>
+1. <code>BomTreeProver.java</code> — 4 BOM-term proof checks (no sidecar, no geometry language)
+2. <code>hasRelationalData()</code> gate removed — ProveStage runs for every compiled building
+3. <code>jurisdiction: MY</code> added to SH + FK YAMLs → ComplianceStage fires
+4. Jurisdiction wired: YAML → ClassificationYaml → C_DocType → BuildingRegistry
+5. SC_Run.BuildingID uses root BOM id (c_orderline root family_ref), not project name</p>
 <h3 id="r25-ifctobom-qa-failure-not-propagated-to-gate-results">R25 — IFCtoBOM QA Failure Not Propagated to Gate Results<a class="headerlink" href="#r25-ifctobom-qa-failure-not-propagated-to-gate-results" title="Permanent link">&para;</a></h3>
 <p><strong>Status:</strong> CLOSED (S100-p67)
 <strong>Root cause:</strong> IFCtoBOM pipeline ABORTs to log file. Rosetta script
