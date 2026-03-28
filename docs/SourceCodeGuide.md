@@ -164,7 +164,7 @@ X_AdProductDim dim = new ModelQuery<>(conn, X_AdProductDim::new, X_AdProductDim.
 - `X_` prefix — plain PO (column getters/setters, no business logic)
 - `M_` prefix — domain model (adds factory methods, lifecycle, validation)
 - Table_Name constant: `X_M_BOMLine.Table_Name = "m_bom_line"` (must match actual table)
-- PK field: TEXT PK must be set explicitly before `save()` — `BasePO.isNewRecord` flag determines INSERT vs UPDATE
+- PK field: INTEGER `_ID` auto-generated on `save()`. Business key in `Value` column (`loadByValue()`). `BasePO.isNewRecord` flag determines INSERT vs UPDATE
 
 **BasePO trap:** `isNewRecord` is an explicit flag — not derived from PK presence. Always `markAsNew()` for new objects:
 

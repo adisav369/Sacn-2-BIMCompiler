@@ -1898,9 +1898,9 @@ the exact signature of the TE passthrough.
 
 | # | Fix | Approach |
 |---|-----|----------|
-| 11 | m_bom `bom_id TEXT` PK → `M_BOM_ID INTEGER` PK | Phase A: 65 Java refs. `bom_id` → `Value` column. FKs on INTEGER. |
-| 12 | M_Product_Category TEXT PK → INTEGER PK | Phase B: 135 Java refs. Category codes → `Value` column. |
-| 13 | 13 AD tables TEXT PKs → INTEGER PKs | Phase C: Low impact. Composite PKs get surrogate `_ID`. |
+| 11 | m_bom M_BOM_ID INTEGER PK | Phase A: DONE (S100-p86). 65 Java refs migrated. `bom_id` → `Value`. |
+| 12 | M_Product_Category INTEGER PK | Phase B: DONE. 135 Java refs migrated. Category codes → `Value`. |
+| 13 | 13 AD tables INTEGER PKs | Phase C: DONE. Composite PKs got surrogate `_ID`. |
 
 **Why Phase 5 matters for TE:** TE's 48,428 elements traverse 8 BOMs
 via `bom_id` TEXT. Every BOMWalker.walk(), BomDropper.explode(), and

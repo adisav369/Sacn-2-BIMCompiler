@@ -408,7 +408,7 @@ CREATE TABLE IF NOT EXISTS bim_changelog (
     field_name      TEXT,                -- column name (null for INSERT/DELETE)
     old_value       TEXT,                -- previous value (null for INSERT)
     new_value       TEXT,                -- new value (null for DELETE)
-    bom_id          TEXT,                -- the BOM element affected (for spatial context)
+    m_bom_id        INTEGER,             -- FK to m_bom(M_BOM_ID) — spatial context
     CONSTRAINT ck_action CHECK (action IN
         ('SAVE','PLACE','MOVE','RESIZE','DELETE','PROMOTE','UNDO'))
 );

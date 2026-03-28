@@ -2430,17 +2430,17 @@ Open gaps for the DemoHouse acceptance test (§30.4). See [S60_ERP_ALIGNMENT.md]
 #### 30.7.1 Schema
 
 ```sql
--- component_library.db
+-- iDempiere PK convention (DATA_MODEL.md §8)
 CREATE TABLE M_Product_Category (
-    M_Product_Category_ID  TEXT PRIMARY KEY,
-    Parent_Category_ID     TEXT,          -- **DEPRECATED — to be dropped (see DATA_MODEL.md §7.6)**
+    M_Product_Category_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+    Value                  TEXT NOT NULL UNIQUE,  -- search key (was TEXT PK)
     Name                   TEXT NOT NULL,
     Description            TEXT,
     IsActive               INTEGER DEFAULT 1
 );
 
--- Add FK column to existing M_Product
-ALTER TABLE M_Product ADD COLUMN M_Product_Category_ID TEXT
+-- FK references INTEGER _ID, lookups by Value
+ALTER TABLE M_Product ADD COLUMN M_Product_Category_ID INTEGER
     REFERENCES M_Product_Category(M_Product_Category_ID);
 ```
 

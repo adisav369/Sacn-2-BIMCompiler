@@ -257,7 +257,7 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 
 | Column | Type | Notes |
 |--------|------|-------|
-| product_id | TEXT PK | Product identifier |
+| M_Product_ID | INTEGER PK | Opaque. Value = product identifier (e.g. SH_WALL_001). See §8 |
 | product_type | TEXT | DOOR/WALL/FURNITURE/SET/FLOOR/etc. |
 | width, depth, height | REAL | Dimensions (metres) |
 | ifc_class | TEXT | IFC entity type |
@@ -329,7 +329,7 @@ copied to `{PREFIX}_BOM.db` for BOMWalker compatibility.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| product_id | TEXT PK | = element_ref (deterministic) |
+| M_Product_ID | INTEGER PK | Value = element_ref (deterministic). See §8 |
 | product_type | TEXT | Derived from IFC class (WALL, DOOR, etc.) |
 | width, depth, height | REAL | Intrinsic dimensions in metres |
 | ifc_class | TEXT | Source IFC entity type |
