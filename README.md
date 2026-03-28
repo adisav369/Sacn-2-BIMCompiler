@@ -2,7 +2,7 @@
 
 # BIM Intent Compiler
 
-**Construction is manufacturing. A building IS its Bill of Materials.**
+**[Construction is manufacturing. A building IS its Bill of Materials.](https://red1oon.github.io/BIMCompiler/)**
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html)
 [![Java 17+](https://img.shields.io/badge/Java-17+-orange.svg)](https://openjdk.org/)
@@ -25,7 +25,7 @@ Every output element traces to a library input. Nothing is invented. No AI insid
 
 | | |
 |:---|:---|
-| **35 buildings** compiled (48,428 elements largest) | **75 verbs**, 2,475 products |
+| **35 buildings** compiled (48,428 elements largest) | **76 verbs**, 2,475 products |
 | **6 mathematical gates** prove every output | **392 tests**, all GREEN |
 | **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** live GUI |
 
