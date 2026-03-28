@@ -239,6 +239,7 @@ public class WebUIServer implements AutoCloseable {
                 case "workPackage" -> handleWorkPackage(obj);
                 case "nlpQuery" -> handleNlpQuery(obj);
                 case "switchVisualization" -> handleSwitchVisualization(obj);
+                case "getSubmission" -> handleGetSubmission(obj);
                 default -> designer.dispatch(jsonLine);
             };
 
@@ -677,6 +678,29 @@ public class WebUIServer implements AutoCloseable {
             return JsonProtocol.toJson(Map.of("success", true, "mode", vizMode.name()));
         } catch (IllegalArgumentException e) {
             return "{\"success\":false,\"error\":\"Invalid mode. Use BBOXES, SEMANTICS, or MATERIALS\"}";
+        }
+    }
+
+    /** GET submission package for a building (compliance proof chain). */
+    private String handleGetSubmission(JsonObject obj) {
+        String buildingId = obj.has("buildingId") ? obj.get("buildingId").getAsString() : null;
+        if (buildingId == null) return "{\"success\":false,\"error\":\"buildingId required\"}";
+        try {
+            String dir = "output/" + buildingId + "_submission";
+            java.io.File certFile = new java.io.File(dir, "certificate.json");
+            if (!certFile.exists()) {
+                return "{\"success\":false,\"error\":\"Building not compiled with jurisdiction, or compliance BLOCK\"}";
+            }
+            String cert = java.nio.file.Files.readString(certFile.toPath());
+            String proof = java.nio.file.Files.readString(java.nio.file.Path.of(dir, "proof_chain.json"));
+            String summary = java.nio.file.Files.readString(java.nio.file.Path.of(dir, "compliance_summary.txt"));
+            return JsonProtocol.toJson(Map.of(
+                    "success", true,
+                    "certificate", cert,
+                    "proofChain", proof,
+                    "summary", summary));
+        } catch (Exception e) {
+            return "{\"success\":false,\"error\":\"" + e.getMessage() + "\"}";
         }
     }
 

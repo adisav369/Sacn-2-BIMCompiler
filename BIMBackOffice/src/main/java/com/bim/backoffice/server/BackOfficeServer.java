@@ -88,6 +88,7 @@ public class BackOfficeServer implements AutoCloseable {
         server.createContext("/api/health", this::handleHealth);
         // Federation port — 4D-7D color + reports (prompt 77)
         server.createContext("/api/colorscheme", this::handleColorScheme);
+        server.createContext("/api/submission", this::handleSubmission);
         server.createContext("/api/report", this::handleReport);
         server.createContext("/api/query", this::handleQuery);
         server.createContext("/api/workpackage", this::handleWorkPackage);
@@ -349,6 +350,35 @@ public class BackOfficeServer implements AutoCloseable {
                 default -> new BomScheduleReport().generate(bomConn, compLibConn, buildingId);
             };
             sendJson(ex, 200, result);
+        } catch (Exception e) {
+            sendError(ex, e);
+        }
+    }
+
+    /** GET /api/submission?id=SH — compliance submission package as JSON */
+    private void handleSubmission(HttpExchange ex) throws IOException {
+        if (requireSession(ex) == null) return;
+        String buildingId = queryParam(ex, "id");
+        if (buildingId == null) { sendError(ex, 400, "Missing ?id="); return; }
+        try {
+            // Look for submission directory
+            String dir = "output/" + buildingId + "_submission";
+            java.io.File certFile = new java.io.File(dir, "certificate.json");
+            if (!certFile.exists()) {
+                sendError(ex, 404,
+                        "Building not compiled with jurisdiction, or compliance BLOCK");
+                return;
+            }
+            // Read and combine certificate + proof chain
+            String cert = java.nio.file.Files.readString(certFile.toPath());
+            String proofChain = java.nio.file.Files.readString(
+                    java.nio.file.Path.of(dir, "proof_chain.json"));
+            String summary = java.nio.file.Files.readString(
+                    java.nio.file.Path.of(dir, "compliance_summary.txt"));
+            sendJson(ex, 200, java.util.Map.of(
+                    "certificate", cert,
+                    "proofChain", proofChain,
+                    "summary", summary));
         } catch (Exception e) {
             sendError(ex, e);
         }

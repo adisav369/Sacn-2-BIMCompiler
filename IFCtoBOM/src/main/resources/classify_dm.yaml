@@ -13,6 +13,8 @@ building:
   doc_base_type: RE
   name: Demo House 2BR
   provenance: GENERATIVE                    # no IFC source — generative POC
+  jurisdiction: MY                          # Malaysian UBBL compliance
+  code_edition: UBBL_1984_AMD2007           # Uniform Building By-Laws 1984 (Amended 2007)
 
   storeys:
     Ground: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }

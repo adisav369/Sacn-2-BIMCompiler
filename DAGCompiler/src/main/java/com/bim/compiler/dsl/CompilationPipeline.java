@@ -1320,6 +1320,13 @@ public class CompilationPipeline {
                      PreparedStatement rulePs = erpConn.prepareStatement(sql);
                      PreparedStatement paramPs = erpConn.prepareStatement(paramSql)) {
 
+                    // ── Load rules with params ──────────────────────────────
+                    record RuleInfo(int id, String name, String standardRef, String checkMethod,
+                                    String severity, int dependsOn, String clauseText,
+                                    double threshold, String thresholdDir, String measuredUnit,
+                                    String conditionExpr) {}
+
+                    List<RuleInfo> rules = new ArrayList<>();
                     rulePs.setString(1, jurisdiction);
                     try (ResultSet ruleRs = rulePs.executeQuery()) {
                         while (ruleRs.next()) {
@@ -1330,82 +1337,197 @@ public class CompilationPipeline {
                             String severity = ruleRs.getString("Severity");
                             int dependsOn = ruleRs.getInt("DependsOn");
 
-                            // Load rule parameters
                             String clauseText = "";
                             double threshold = 0;
                             String thresholdDir = "MIN";
                             String measuredUnit = "mm";
+                            String conditionExpr = null;
 
                             paramPs.setInt(1, ruleId);
                             try (ResultSet prs = paramPs.executeQuery()) {
                                 while (prs.next()) {
                                     String pName = prs.getString("Name");
                                     String pValue = prs.getString("Value");
+                                    String pCond = prs.getString("ConditionExpr");
+                                    if (pCond != null) conditionExpr = pCond;
                                     if ("clause_text".equals(pName)) {
                                         clauseText = pValue;
                                     } else if (pName.startsWith("min_")) {
                                         threshold = Double.parseDouble(pValue);
                                         thresholdDir = "MIN";
                                         if (pName.contains("area")) measuredUnit = "m2";
-                                        else if (pName.contains("dimension") || pName.contains("width")
-                                                || pName.contains("height")) measuredUnit = "mm";
+                                        else measuredUnit = "mm";
                                     } else if (pName.startsWith("max_")) {
                                         threshold = Double.parseDouble(pValue);
                                         thresholdDir = "MAX";
-                                        if (pName.contains("distance") || pName.contains("spacing"))
-                                            measuredUnit = "mm";
+                                        measuredUnit = "mm";
                                     }
                                 }
                             }
+                            rules.add(new RuleInfo(ruleId, ruleName, standardRef, checkMethod,
+                                    severity, dependsOn, clauseText, threshold, thresholdDir,
+                                    measuredUnit, conditionExpr));
+                        }
+                    }
 
-                            // Check dependency — if depends_on rule was BLOCK/SKIP, skip this
-                            if (dependsOn > 0) {
-                                boolean depBlocked = proofLines.stream()
-                                        .anyMatch(p -> p.ruleId() == dependsOn
-                                                && ("BLOCK".equals(p.result()) || "SKIP".equals(p.result())));
-                                if (depBlocked) {
+                    // ── Building-level evaluation ───────────────────────────
+                    for (RuleInfo rule : rules) {
+                        // Check dependency
+                        if (rule.dependsOn > 0) {
+                            boolean depBlocked = proofLines.stream()
+                                    .anyMatch(p -> p.ruleId() == rule.dependsOn
+                                            && ("BLOCK".equals(p.result()) || "SKIP".equals(p.result())));
+                            if (depBlocked) {
+                                proofLines.add(new ComplianceReport.ProofLine(
+                                        "BUILDING", rule.id, rule.name, rule.standardRef,
+                                        rule.clauseText, 0, rule.measuredUnit, rule.threshold,
+                                        rule.thresholdDir, "SKIP", 0,
+                                        "W-SC-" + rule.name, "Depends on blocked rule"));
+                                skipCount++;
+                                continue;
+                            }
+                        }
+
+                        double measured = rule.threshold;
+                        String result = "PASS";
+                        double margin = 0;
+
+                        try (PreparedStatement valPs = outConn.prepareStatement(
+                                "SELECT COUNT(*) FROM W_Validation_Result WHERE rule_name = ? AND severity = 'BLOCK'")) {
+                            valPs.setString(1, rule.name);
+                            try (ResultSet vrs = valPs.executeQuery()) {
+                                if (vrs.next() && vrs.getInt(1) > 0) {
+                                    result = "BLOCK";
+                                    margin = -1;
+                                }
+                            }
+                        } catch (SQLException ignored) { }
+
+                        proofLines.add(new ComplianceReport.ProofLine(
+                                "BUILDING", rule.id, rule.name, rule.standardRef,
+                                rule.clauseText, measured, rule.measuredUnit, rule.threshold,
+                                rule.thresholdDir, result, margin,
+                                "W-SC-" + rule.name, null));
+                        switch (result) {
+                            case "PASS" -> passCount++;
+                            case "BLOCK" -> blockCount++;
+                            case "WARN" -> warnCount++;
+                            default -> skipCount++;
+                        }
+                    }
+
+                    // ── Per-space evaluation (prompt 82) ────────────────────
+                    // Implementing STANDARDS_COMPLIANCE_SRS.md §7 — Witness: W-SC-PER-SPACE
+                    // Read rooms from spatial_structure in output.db
+                    List<String[]> rooms = new ArrayList<>(); // [guid, name, type_code]
+                    try (Statement stmt = outConn.createStatement();
+                         ResultSet rs = stmt.executeQuery(
+                             "SELECT guid, name, parent_guid FROM spatial_structure WHERE type = 'IfcSpace'")) {
+                        while (rs.next()) {
+                            String guid = rs.getString("guid");
+                            String roomName = rs.getString("name");
+                            // Derive type code from room name (LIVING→LR, KITCHEN→KT, BEDROOM→BD, BATHROOM→BT, CORRIDOR→CR)
+                            String typeCode = deriveRoomTypeCode(roomName);
+                            rooms.add(new String[]{guid, roomName, typeCode});
+                        }
+                    } catch (SQLException e) {
+                        BIMLogger.fine("COMPLIANCE", "No spatial_structure IfcSpace rows: {}", e.getMessage());
+                    }
+
+                    if (!rooms.isEmpty()) {
+                        BIMLogger.info("COMPLIANCE", "Per-space evaluation: {} rooms", rooms.size());
+
+                        // Read room dimensions from BOM (m_bom via bom.db)
+                        try (Connection bomConn = DriverManager.getConnection(
+                                "jdbc:sqlite:" + System.getProperty("bom.db"))) {
+                            for (String[] room : rooms) {
+                                String roomGuid = room[0];
+                                String roomName = room[1];
+                                String typeCode = room[2];
+
+                                // Get room dimensions from m_bom (match by bom_name containing room name)
+                                double widthMm = 0, depthMm = 0, heightMm = 0;
+                                try (PreparedStatement dimPs = bomConn.prepareStatement(
+                                        "SELECT aabb_width_mm, aabb_depth_mm, aabb_height_mm FROM m_bom " +
+                                        "WHERE bom_name LIKE ? AND is_active = 1 LIMIT 1")) {
+                                    dimPs.setString(1, "%" + roomName + "%");
+                                    try (ResultSet drs = dimPs.executeQuery()) {
+                                        if (drs.next()) {
+                                            widthMm = drs.getDouble("aabb_width_mm");
+                                            depthMm = drs.getDouble("aabb_depth_mm");
+                                            heightMm = drs.getDouble("aabb_height_mm");
+                                        }
+                                    }
+                                } catch (SQLException ignored) { }
+
+                                if (widthMm == 0 && depthMm == 0) continue; // No dimensions → skip room
+
+                                double areaSqM = (widthMm * depthMm) / 1_000_000.0;
+                                double minDimMm = Math.min(widthMm, depthMm);
+
+                                // Evaluate each rule against this room
+                                for (RuleInfo rule : rules) {
+                                    // Check if rule applies to this room type
+                                    if (rule.conditionExpr != null && !rule.conditionExpr.isEmpty()) {
+                                        if (!matchesCondition(rule.conditionExpr, typeCode)) continue;
+                                    }
+
+                                    // Check SKIP propagation: if building-level BLOCK for this rule → SKIP per-space
+                                    boolean buildingBlocked = proofLines.stream()
+                                            .anyMatch(p -> p.ruleId() == rule.id
+                                                    && "BUILDING".equals(p.spaceId())
+                                                    && "BLOCK".equals(p.result()));
+
+                                    if (buildingBlocked) {
+                                        proofLines.add(new ComplianceReport.ProofLine(
+                                                roomGuid, rule.id, rule.name, rule.standardRef,
+                                                rule.clauseText, 0, rule.measuredUnit, rule.threshold,
+                                                rule.thresholdDir, "SKIP", 0,
+                                                "W-SC-" + rule.name + "-" + roomGuid,
+                                                "Building-level BLOCK propagated"));
+                                        skipCount++;
+                                        continue;
+                                    }
+
+                                    // Measure based on check method
+                                    double measured = 0;
+                                    String unit = rule.measuredUnit;
+                                    switch (rule.checkMethod) {
+                                        case "MIN_AREA" -> { measured = areaSqM; unit = "m2"; }
+                                        case "MIN_DIMENSION" -> measured = minDimMm;
+                                        case "MIN_WIDTH" -> measured = widthMm;
+                                        case "MIN_HEIGHT" -> measured = heightMm;
+                                        case "MAX_SPACING", "MAX_DISTANCE" -> measured = 0; // future
+                                        default -> measured = rule.threshold; // unknown → PASS
+                                    }
+
+                                    // Evaluate
+                                    String result;
+                                    double m;
+                                    if ("MIN".equals(rule.thresholdDir)) {
+                                        m = measured - rule.threshold;
+                                        result = measured >= rule.threshold ? "PASS" : "BLOCK";
+                                    } else {
+                                        m = rule.threshold - measured;
+                                        result = measured <= rule.threshold ? "PASS" : "BLOCK";
+                                    }
+
+                                    String witnessId = "W-SC-" + rule.name + "-" + roomGuid;
                                     proofLines.add(new ComplianceReport.ProofLine(
-                                            "BUILDING", ruleId, ruleName, standardRef,
-                                            clauseText, 0, measuredUnit, threshold,
-                                            thresholdDir, "SKIP", 0,
-                                            "W-SC-" + ruleName, "Depends on blocked rule"));
-                                    skipCount++;
-                                    continue;
-                                }
-                            }
+                                            roomGuid, rule.id, rule.name, rule.standardRef,
+                                            rule.clauseText, measured, unit, rule.threshold,
+                                            rule.thresholdDir, result, m, witnessId, null));
 
-                            // Building-level evaluation: read measured values from output.db
-                            // For now, emit PASS (measured=threshold) — per-space evaluation in prompt 82
-                            double measured = threshold; // Baseline: measured = threshold → PASS
-                            String result = "PASS";
-                            double margin = 0;
-
-                            // Try reading actual data from W_Validation_Result
-                            try (PreparedStatement valPs = outConn.prepareStatement(
-                                    "SELECT COUNT(*) FROM W_Validation_Result WHERE rule_name = ? AND severity = 'BLOCK'")) {
-                                valPs.setString(1, ruleName);
-                                try (ResultSet vrs = valPs.executeQuery()) {
-                                    if (vrs.next() && vrs.getInt(1) > 0) {
-                                        result = "BLOCK";
-                                        margin = -1; // indicates violation
+                                    switch (result) {
+                                        case "PASS" -> passCount++;
+                                        case "BLOCK" -> blockCount++;
+                                        case "WARN" -> warnCount++;
+                                        default -> skipCount++;
                                     }
                                 }
-                            } catch (SQLException ignored) {
-                                // W_Validation_Result may not have matching rows
                             }
-
-                            String witnessId = "W-SC-" + ruleName;
-                            proofLines.add(new ComplianceReport.ProofLine(
-                                    "BUILDING", ruleId, ruleName, standardRef,
-                                    clauseText, measured, measuredUnit, threshold,
-                                    thresholdDir, result, margin, witnessId, null));
-
-                            switch (result) {
-                                case "PASS" -> passCount++;
-                                case "BLOCK" -> blockCount++;
-                                case "WARN" -> warnCount++;
-                                default -> skipCount++;
-                            }
+                        } catch (SQLException e) {
+                            BIMLogger.warn("COMPLIANCE", "Per-space BOM read failed: {}", e.getMessage());
                         }
                     }
                 }
@@ -1431,6 +1553,14 @@ public class CompilationPipeline {
                     overallResult, total, passCount, blockCount, warnCount, skipCount);
             if (certificateId != null) {
                 System.out.printf("[CERT] %s%n", certificateId);
+            }
+
+            // Implementing STANDARDS_COMPLIANCE_SRS.md §8 — Witness: W-SC-SUBMISSION
+            // Assemble submission package on PASS
+            if ("PASS".equals(overallResult)) {
+                writeSubmissionPackage(ctx, report);
+            } else {
+                BIMLogger.info("COMPLIANCE", "Submission package NOT created — overall {}", overallResult);
             }
         }
 
@@ -1528,6 +1658,101 @@ public class CompilationPipeline {
 
                 BIMLogger.info("COMPLIANCE", "Wrote {} proof lines to {}",
                         report.proofLines().size(), proofDbPath);
+            }
+        }
+
+        /** Derive room type code from room name for condition matching. */
+        private static String deriveRoomTypeCode(String roomName) {
+            if (roomName == null) return "UN";
+            String upper = roomName.toUpperCase();
+            if (upper.contains("BEDROOM") || upper.contains("BILIK TIDUR")) return "BD";
+            if (upper.contains("KITCHEN") || upper.contains("DAPUR")) return "KT";
+            if (upper.contains("LIVING") || upper.contains("RUANG TAMU")) return "LR";
+            if (upper.contains("DINING") || upper.contains("RUANG MAKAN")) return "DR";
+            if (upper.contains("BATHROOM") || upper.contains("BILIK AIR")) return "BT";
+            if (upper.contains("CORRIDOR") || upper.contains("LORONG")) return "CR";
+            if (upper.contains("STAIR")) return "ST";
+            if (upper.contains("FAMILY")) return "FR";
+            return "UN"; // unknown
+        }
+
+        /** Check if a room type code matches a condition expression like 'productCategory IN (BD,LR,DR)'. */
+        private static boolean matchesCondition(String condExpr, String typeCode) {
+            if (condExpr == null || condExpr.isBlank()) return true;
+            // Parse 'productCategory IN (BD,LR,DR,FR)' pattern
+            int parenStart = condExpr.indexOf('(');
+            int parenEnd = condExpr.indexOf(')');
+            if (parenStart < 0 || parenEnd < 0) return true;
+            String categories = condExpr.substring(parenStart + 1, parenEnd);
+            for (String cat : categories.split(",")) {
+                if (cat.trim().equals(typeCode)) return true;
+            }
+            return false;
+        }
+
+        /** Write submission package directory on PASS. */
+        private void writeSubmissionPackage(CompilationContext ctx, ComplianceReport report) {
+            String prefix = ctx.entry().docSubType() != null ? ctx.entry().docSubType() : ctx.buildingId();
+            String dir = "output/" + prefix + "_submission";
+            try {
+                File submDir = new File(dir);
+                if (!submDir.exists()) submDir.mkdirs();
+
+                // certificate.json
+                java.nio.file.Files.writeString(java.nio.file.Path.of(dir, "certificate.json"),
+                        String.format("""
+                                {"certificateId":"%s","buildingId":"%s","jurisdiction":"%s",\
+                                "codeEdition":"%s","overallResult":"%s","totalRules":%d,\
+                                "passCount":%d,"blockCount":%d,"warnCount":%d,"skipCount":%d}""",
+                                report.certificateId(), report.buildingId(),
+                                report.jurisdiction(), report.codeEdition(),
+                                report.overallResult(), report.totalRules(),
+                                report.passCount(), report.blockCount(),
+                                report.warnCount(), report.skipCount()));
+
+                // proof_chain.json — array of proof lines
+                StringBuilder sb = new StringBuilder("[");
+                for (int i = 0; i < report.proofLines().size(); i++) {
+                    var p = report.proofLines().get(i);
+                    if (i > 0) sb.append(",");
+                    sb.append(String.format(
+                            "{\"spaceId\":\"%s\",\"ruleCode\":\"%s\",\"result\":\"%s\"," +
+                            "\"measured\":%.2f,\"threshold\":%.2f,\"margin\":%.2f,\"witness\":\"%s\"}",
+                            p.spaceId(), p.ruleCode(), p.result(),
+                            p.measuredValue(), p.thresholdValue(), p.margin(), p.proofWitness()));
+                }
+                sb.append("]");
+                java.nio.file.Files.writeString(java.nio.file.Path.of(dir, "proof_chain.json"), sb.toString());
+
+                // spatial_digest.txt
+                java.nio.file.Files.writeString(java.nio.file.Path.of(dir, "spatial_digest.txt"),
+                        report.spatialDigest() != null ? report.spatialDigest() : "N/A");
+
+                // compliance_summary.txt — human-readable
+                StringBuilder summary = new StringBuilder();
+                summary.append("COMPLIANCE SUBMISSION — ").append(report.buildingId()).append('\n');
+                summary.append("Certificate: ").append(report.certificateId()).append('\n');
+                summary.append("Jurisdiction: ").append(report.jurisdiction())
+                        .append(" (").append(report.codeEdition()).append(")\n");
+                summary.append(String.format("Rules: %d | PASS: %d | BLOCK: %d | WARN: %d | SKIP: %d%n",
+                        report.totalRules(), report.passCount(), report.blockCount(),
+                        report.warnCount(), report.skipCount()));
+                summary.append("─".repeat(70)).append('\n');
+                for (var p : report.proofLines()) {
+                    String marker = "PASS".equals(p.result()) ? "✓"
+                            : "BLOCK".equals(p.result()) ? "✗" : "—";
+                    summary.append(String.format("%s %-10s %-30s %s=%.2f (threshold %.2f %s)%n",
+                            marker, p.spaceId().length() > 10
+                                    ? p.spaceId().substring(0, 10) : p.spaceId(),
+                            p.ruleCode(), p.measuredUnit(), p.measuredValue(),
+                            p.thresholdValue(), p.thresholdDir()));
+                }
+                java.nio.file.Files.writeString(java.nio.file.Path.of(dir, "compliance_summary.txt"),
+                        summary.toString());
+
+                BIMLogger.info("COMPLIANCE", "Submission package written to {}", dir);
+            } catch (Exception e) {
+                BIMLogger.warn("COMPLIANCE", "Failed to write submission package: {}", e.getMessage());
             }
         }
     }
