@@ -89,8 +89,11 @@ public class FloorRoomBomBuilder {
 
         // ── Static children ──────────────────────────────────────────────────
         for (StaticChildConfig sc : config.staticChildren()) {
-            // Ensure product stub exists
+            // Ensure product stub + empty BOM header exist so BomDropper
+            // treats these as sub-assemblies (containers), not LEAFs.
+            // P91 P-QTY fix: static children contribute 0 to LEAF qty.
             ProductRegistrar.ensureAssemblyStub(bomConn, sc.childProductId(), "ASSEMBLY");
+            insertEmptyBomHeader(bomConn, sc.childProductId(), sc.role());
 
             insertStaticChild(bomConn, buildingBomId, sc);
             lineCount++;
@@ -189,6 +192,31 @@ public class FloorRoomBomBuilder {
             stmt.setDouble(7, dx);
             stmt.setDouble(8, dy);
             stmt.setDouble(9, dz);
+            stmt.executeUpdate();
+        }
+    }
+
+    /**
+     * Create an empty BOM header for a static child so BomDropper
+     * recurses into it as a sub-assembly (producing a container c_orderline)
+     * instead of treating it as a LEAF.
+     */
+    private static void insertEmptyBomHeader(Connection conn, String bomId, String role)
+            throws SQLException {
+        String sql = """
+                INSERT OR IGNORE INTO m_bom
+                (bom_id, Value, bom_name, bom_type, group_by, entity_type,
+                 aabb_width_mm, aabb_depth_mm, aabb_height_mm,
+                 origin_x, origin_y, origin_z, is_active)
+                VALUES (?, ?, ?, 'ASSEMBLY', ?, 'D',
+                        0, 0, 0,
+                        0, 0, 0, 1)
+                """;
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, bomId);
+            stmt.setString(2, bomId);
+            stmt.setString(3, bomId);  // bom_name = bomId
+            stmt.setString(4, role);
             stmt.executeUpdate();
         }
     }

@@ -90,6 +90,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_entity_type         = "entity_type";
     public static final String COLUMNNAME_verb_ref           = "verb_ref";
     public static final String COLUMNNAME_host_element_ref   = "host_element_ref";
+    public static final String COLUMNNAME_AD_Org_ID          = "AD_Org_ID";
 
     public X_M_BOMLine(Connection conn) { super(conn); }
 
@@ -188,6 +189,10 @@ public class X_M_BOMLine extends BasePO {
     /** R21: element_ref of host wall/slab for doors/windows. NULL for non-openings. */
     public String getHostElementRef()             { return get_ValueAsString(COLUMNNAME_host_element_ref); }
     public void setHostElementRef(String v)       { set_Value(COLUMNNAME_host_element_ref, v); }
+
+    /** AD_Org_ID — discipline FK from extraction. 0 = use category-based fallback. */
+    public int getAdOrgId()                       { return get_ValueAsInt(COLUMNNAME_AD_Org_ID); }
+    public void setAdOrgId(int v)                 { set_Value(COLUMNNAME_AD_Org_ID, v); }
 
     // ── Cheating Maxim guard (Rule 8, RosettaStoneStrategy) ────────────
 

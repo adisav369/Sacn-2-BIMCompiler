@@ -78,7 +78,22 @@ public class VerbFactorizer {
                                           double parentMinX, double parentMinY, double parentMinZ,
                                           int startSeq, boolean writeMaRows) throws SQLException {
         return doFactorize(conn, parentBomId, elements, parentMinX, parentMinY, parentMinZ,
-                startSeq, writeMaRows);
+                startSeq, writeMaRows, 0);
+    }
+
+    /**
+     * Factorize with MA rows and explicit AD_Org_ID (discipline) on each LEAF line.
+     * // Implementing DISC_VALIDATION_DB_SRS.md §10.4.4 — Witness: W-DV-DISC-ORG
+     *
+     * @param adOrgId  AD_Org_ID from Discipline enum. Written on each LEAF m_bom_line.
+     *                 0 = no discipline override (fallback to category-based inference).
+     */
+    public static FactorResult factorize(Connection conn, String parentBomId,
+                                          List<ExtractionElement> elements,
+                                          double parentMinX, double parentMinY, double parentMinZ,
+                                          int startSeq, boolean writeMaRows, int adOrgId) throws SQLException {
+        return doFactorize(conn, parentBomId, elements, parentMinX, parentMinY, parentMinZ,
+                startSeq, writeMaRows, adOrgId);
     }
 
     /**
@@ -90,13 +105,13 @@ public class VerbFactorizer {
                                           double parentMinX, double parentMinY, double parentMinZ,
                                           int startSeq) throws SQLException {
         return doFactorize(conn, parentBomId, elements, parentMinX, parentMinY, parentMinZ,
-                startSeq, false);
+                startSeq, false, 0);
     }
 
     private static FactorResult doFactorize(Connection conn, String parentBomId,
                                           List<ExtractionElement> elements,
                                           double parentMinX, double parentMinY, double parentMinZ,
-                                          int startSeq, boolean writeMaRows) throws SQLException {
+                                          int startSeq, boolean writeMaRows, int adOrgId) throws SQLException {
         // Group by child_product_id
         Map<String, List<ExtractionElement>> byProduct = new LinkedHashMap<>();
         for (ExtractionElement e : elements) {
@@ -151,7 +166,7 @@ public class VerbFactorizer {
                         first.widthMm(), first.depthMm(), first.heightMm(),
                         first.storey(), first.elementRef(), first.ordinal(),
                         first.orientation(), first.materialName(), first.materialRgba(),
-                        group.size(), verbRef, first.hostElementRef());
+                        group.size(), verbRef, first.hostElementRef(), adOrgId);
 
                 // CP-1: MA (Material Allocation) — per-instance IFC GUIDs
                 if (writeMaRows) {
@@ -193,7 +208,7 @@ public class VerbFactorizer {
                             e.widthMm(), e.depthMm(), e.heightMm(),
                             e.storey(), elemRef, e.ordinal(),
                             e.orientation(), e.materialName(), e.materialRgba(),
-                            1, null, e.hostElementRef());
+                            1, null, e.hostElementRef(), adOrgId);
 
                     // CP-1: MA for unfactored lines (qi=0, single instance).
                     // Required for CO buildings where SpatialDiff uses GUID-based matching.
@@ -238,6 +253,7 @@ public class VerbFactorizer {
      * <p>CP-4 §4a: shape_archetype and scale_band are computed from allocated
      * dimensions at insert time. Every LEAF row carries its geometric identity.
      */
+    // Implementing DISC_VALIDATION_DB_SRS.md §10.4.4 — Witness: W-DV-DISC-ORG
     private static void insertLeafLine(Connection conn,
                                         String bomId, String childProductId, String role,
                                         int sequence, String rotationRule,
@@ -247,7 +263,7 @@ public class VerbFactorizer {
                                         String orientation,
                                         String materialName, String materialRgba,
                                         int qty, String verbRef,
-                                        String hostElementRef)
+                                        String hostElementRef, int adOrgId)
             throws SQLException {
         // CP-4 §4a: compute geometric classification from allocated dimensions
         String archetype = classifyArchetype(allocW, allocD, allocH);
@@ -262,7 +278,7 @@ public class VerbFactorizer {
                  storey, element_ref, ordinal, orientation,
                  material_name, material_rgba,
                  shape_archetype, scale_band,
-                 host_element_ref)
+                 host_element_ref, AD_Org_ID)
                 VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, 'LEAF', ?, ?,
                         ?, 20, 0,
                         ?, ?, ?, 1, 'D', ?, ?,
@@ -270,7 +286,7 @@ public class VerbFactorizer {
                         ?, ?, ?, ?,
                         ?, ?,
                         ?, ?,
-                        ?)
+                        ?, ?)
                 """;
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, bomId);
@@ -296,6 +312,7 @@ public class VerbFactorizer {
             stmt.setString(21, archetype);
             stmt.setString(22, scaleBand);
             stmt.setString(23, hostElementRef);
+            stmt.setInt(24, adOrgId);
             stmt.executeUpdate();
         }
     }

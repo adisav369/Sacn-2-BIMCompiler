@@ -286,11 +286,11 @@ public class BomDropper {
         boolean isRefClass = exception != null && exception.isReferenceClass();
         int overrideQty = exception != null ? exception.qty() : 1;
 
-        // Insert C_OrderLine for this assembly node
+        // Insert C_OrderLine for this assembly node (root BOM stores world origin)
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId == 0 ? null : parentLineId,
                 lineSeq[0], bomId, hostType, productCategory, 0,
-                0, 0, 0,
+                bom.getOriginX(), bom.getOriginY(), bom.getOriginZ(),
                 bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
                 isRefClass ? overrideQty : 1, locatorRef, isRefClass);
 
@@ -343,6 +343,7 @@ public class BomDropper {
                 explodeAssembly(conn, orderId, actualChildId,
                         lineId, childHostType, actualChildBom.getProductCategory(),
                         depth + 1, leafCount, lineSeq, line.getBomLineId(),
+                        line.getDx(), line.getDy(), line.getDz(),
                         locatorRef, exceptions);
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
@@ -376,7 +377,8 @@ public class BomDropper {
                         actualLeafId, "LEAF", productCategory, line.getBomLineId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
-                        line.getAllocatedHeightMm(), qty, leafLocator, false);
+                        line.getAllocatedHeightMm(), qty, leafLocator, false,
+                        line.getAdOrgId());
                 leafCount[0] += qty;
             }
         }
@@ -387,11 +389,16 @@ public class BomDropper {
     /**
      * Explode a sub-assembly BOM, storing the parent MAKE line's M_BOM_Line_ID
      * on the assembly's C_OrderLine.
+     *
+     * @param makeDx  MAKE line dx offset (parent-relative, metres) for container origin
+     * @param makeDy  MAKE line dy offset
+     * @param makeDz  MAKE line dz offset
      */
     private static int explodeAssembly(Connection conn, String orderId, String bomId,
                                         int parentLineId, String hostType, String productCategory,
                                         int depth, int[] leafCount, int[] lineSeq,
                                         int makeBomChildId,
+                                        double makeDx, double makeDy, double makeDz,
                                         String parentLocator, Map<String, ExceptionLine> exceptions)
             throws SQLException {
         if (depth > MAX_DEPTH) return 0;
@@ -415,11 +422,15 @@ public class BomDropper {
         boolean isRefClass = exception != null && exception.isReferenceClass();
         int overrideQty = exception != null ? exception.qty() : 1;
 
-        // Insert assembly C_OrderLine with the MAKE line's M_BOM_Line_ID
+        // Insert assembly C_OrderLine with the MAKE line's offset + child BOM origin
+        // P91 follow-up: persist container origin for BomTreeProver P-PARENT/P-TACK
+        double containerDx = makeDx + bom.getOriginX();
+        double containerDy = makeDy + bom.getOriginY();
+        double containerDz = makeDz + bom.getOriginZ();
         lineSeq[0] += 10;
         int lineId = insertLine(conn, orderId, parentLineId, lineSeq[0],
                 bomId, hostType, productCategory, makeBomChildId,
-                0, 0, 0,
+                containerDx, containerDy, containerDz,
                 bom.getAabbWidthMm(), bom.getAabbDepthMm(), bom.getAabbHeightMm(),
                 isRefClass ? overrideQty : 1, locatorRef, isRefClass);
 
@@ -469,6 +480,7 @@ public class BomDropper {
                 explodeAssembly(conn, orderId, actualChildId, lineId,
                         childHostType, actualChildBom.getProductCategory(),
                         depth + 1, leafCount, lineSeq, line.getBomLineId(),
+                        line.getDx(), line.getDy(), line.getDz(),
                         locatorRef, exceptions);
 
             } else if ("PHANTOM".equals(line.getComponentType())) {
@@ -499,7 +511,8 @@ public class BomDropper {
                         actualLeafId, "LEAF", productCategory, line.getBomLineId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         line.getAllocatedWidthMm(), line.getAllocatedDepthMm(),
-                        line.getAllocatedHeightMm(), qty, leafLocator, false);
+                        line.getAllocatedHeightMm(), qty, leafLocator, false,
+                        line.getAdOrgId());
                 leafCount[0] += qty;
             }
         }
@@ -533,8 +546,35 @@ public class BomDropper {
                                    double widthMm, double depthMm, double heightMm,
                                    int qty, String locatorRef, boolean isReferenceClass)
             throws SQLException {
+        return insertLine(conn, orderId, parentLineId, lineSeq, familyRef, hostType,
+                productCategory, bomChildId, dx, dy, dz, widthMm, depthMm, heightMm,
+                qty, locatorRef, isReferenceClass, 0);
+    }
+
+    /**
+     * Insert a single C_OrderLine row with explicit AD_Org_ID override.
+     * // Implementing DISC_VALIDATION_DB_SRS.md §10.4.4 — Witness: W-DV-DISC-ORG
+     *
+     * @param lineAdOrgId  AD_Org_ID from m_bom_line (extraction). If > 0, used directly;
+     *                     otherwise falls back to category-based resolveDiscipline().
+     */
+    private static int insertLine(Connection conn, String orderId, Integer parentLineId,
+                                   int lineSeq, String familyRef, String hostType,
+                                   String productCategory, int bomChildId,
+                                   double dx, double dy, double dz,
+                                   double widthMm, double depthMm, double heightMm,
+                                   int qty, String locatorRef, boolean isReferenceClass,
+                                   int lineAdOrgId)
+            throws SQLException {
         // Implementing DISC_VALIDATION_DB_SRS.md §11.6.5 Step 5-6 — Witness: W-DV-DISC-ORG
-        Discipline disc = resolveDiscipline(productCategory);
+        // Priority: (1) m_bom_line.AD_Org_ID if > 0, (2) category-based fallback, (3) ARC
+        Discipline disc;
+        if (lineAdOrgId > 0) {
+            disc = Discipline.fromAD_Org_ID(lineAdOrgId);
+            if (disc == null) disc = resolveDiscipline(productCategory);
+        } else {
+            disc = resolveDiscipline(productCategory);
+        }
         String discipline = disc.name();
         int adOrgId = disc.getAD_Org_ID();
         String sql = "INSERT INTO C_OrderLine "

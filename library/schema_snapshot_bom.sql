@@ -1086,7 +1086,7 @@ CREATE TABLE IF NOT EXISTS "m_bom_line" (
     allocated_depth_mm  INTEGER DEFAULT 0,
     allocated_height_mm INTEGER DEFAULT 0,
 
-    component_type      TEXT NOT NULL DEFAULT 'MAKE', storey         TEXT, element_ref    TEXT, ordinal        INTEGER DEFAULT 0, orientation    TEXT, material_name  TEXT, material_rgba  TEXT, entity_type TEXT DEFAULT 'D', M_BOM_ID INTEGER,
+    component_type      TEXT NOT NULL DEFAULT 'MAKE', storey         TEXT, element_ref    TEXT, ordinal        INTEGER DEFAULT 0, orientation    TEXT, material_name  TEXT, material_rgba  TEXT, entity_type TEXT DEFAULT 'D', M_BOM_ID INTEGER, verb_ref TEXT DEFAULT NULL, shape_archetype TEXT DEFAULT NULL, scale_band TEXT DEFAULT NULL, host_element_ref TEXT DEFAULT NULL, AD_Org_ID INTEGER DEFAULT 0,
 
     FOREIGN KEY (bom_id) REFERENCES m_bom(bom_id)
 );

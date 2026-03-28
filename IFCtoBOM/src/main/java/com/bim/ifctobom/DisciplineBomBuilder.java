@@ -136,9 +136,14 @@ public class DisciplineBomBuilder {
                 String discCode = discEntry.getKey();
                 List<ExtractionElement> discElems = discEntry.getValue();
 
+                // Resolve discipline code → AD_Org_ID for persisting on m_bom_line
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.4 — Witness: W-DV-DISC-ORG
+                // AD_Org_ID values match ERP.db AD_Org table (DV013 migration)
+                int adOrgId = resolveAdOrgId(discCode);
+
                 // F-2: Factored LEAF writes directly under FLOOR BOM
                 VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
-                        bomConn, floorBomId, discElems, fMinX, fMinY, fMinZ, discSeq, true);
+                        bomConn, floorBomId, discElems, fMinX, fMinY, fMinZ, discSeq, true, adOrgId);
                 totalLines += fr.linesWritten();
                 discSeq = discSeq + fr.linesWritten() * 10 + 10;
                 if (fr.verbMatched() > 0 || fr.unfactored() > 0) {
@@ -262,5 +267,25 @@ public class DisciplineBomBuilder {
             stmt.setString(22, null);  // MAKE lines have no host_element_ref
             stmt.executeUpdate();
         }
+    }
+
+    /**
+     * Resolve discipline code to AD_Org_ID. Mirrors Discipline.java enum values
+     * without cross-module dependency. Values match ERP.db AD_Org (DV013).
+     */
+    private static int resolveAdOrgId(String discCode) {
+        if (discCode == null) return 0;
+        return switch (discCode.toUpperCase()) {
+            case "ARC"  -> 1;
+            case "STR"  -> 2;
+            case "FP"   -> 3;
+            case "ELEC" -> 4;
+            case "ACMV" -> 5;
+            case "CW"   -> 6;
+            case "SP"   -> 7;
+            case "LPG"  -> 8;
+            case "REB"  -> 9;
+            default     -> 0;
+        };
     }
 }
