@@ -1,0 +1,756 @@
+# BIM Compiler Pipeline Log
+# Run:   Sample House_extracted
+# Start: 2026-03-30 03:39:40.012
+# Level: FINE
+#
+2026-03-30 03:39:40.013 [INFO ] PIPELINE     ======================================================================
+2026-03-30 03:39:40.014 [INFO ] PIPELINE     PIPELINE: Sample House [EXTRACTED]
+2026-03-30 03:39:40.014 [INFO ] PIPELINE     ======================================================================
+2026-03-30 03:39:40.014 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.014 [INFO ] PIPELINE     STEP 1: METADATA VALIDATION — starting
+2026-03-30 03:39:40.058 [FINE ] PIPELINE     Stage 1 (METADATA VALIDATION) completed in 44ms
+2026-03-30 03:39:40.058 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.058 [INFO ] PIPELINE     STEP 2: PARSE DSL — starting
+2026-03-30 03:39:40.064 [FINE ] PIPELINE     Stage 2 (PARSE DSL) completed in 6ms
+2026-03-30 03:39:40.064 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.064 [INFO ] PIPELINE     STEP 3: BOM WALK COMPILE — starting
+2026-03-30 03:39:40.069 [GEO  ] TACK         ENTER FLOOR_SLAB_GF depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.069 [GEO  ] TACK         EXIT  FLOOR_SLAB_GF depth=0
+2026-03-30 03:39:40.070 [GEO  ] TACK         ENTER ROOF_ASSEMBLY depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,3.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,3.0000)
+2026-03-30 03:39:40.070 [GEO  ] TACK         EXIT  ROOF_ASSEMBLY depth=0
+2026-03-30 03:39:40.071 [GEO  ] TACK         ENTER SH_GF_STR depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.072 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWfu anchor=(0.0000,0.0000,0.0000) + offset=(1.5000,1.5000,2.6700) + half=(4.6538,2.8275,0.0285) → centroid=(6.1538,4.3275,2.6985) LBD=(1.5000,1.5000,2.6700)
+2026-03-30 03:39:40.074 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWgM anchor=(0.0000,0.0000,0.0000) + offset=(10.9025,1.6450,2.6700) + half=(2.2263,0.9763,0.0285) → centroid=(13.1288,2.6213,2.6985) LBD=(10.9025,1.6450,2.6700)
+2026-03-30 03:39:40.074 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWfk anchor=(0.0000,0.0000,0.0000) + offset=(10.9025,3.6925,2.6700) + half=(2.2263,1.7313,0.0285) → centroid=(13.1288,5.4238,2.6985) LBD=(10.9025,3.6925,2.6700)
+2026-03-30 03:39:40.075 [GEO  ] TACK         LEAF  Doors_IntSgl:810x2110mm guid=3cUkl32yn9qRSPvBJVyWaG anchor=(0.0000,0.0000,0.0000) + offset=(10.7445,2.1813,0.4700) + half=(0.0890,0.4400,1.0725) → centroid=(10.8335,2.6213,1.5425) LBD=(10.7445,2.1813,0.4700)
+2026-03-30 03:39:40.076 [GEO  ] TACK         LEAF  Doors_IntSgl:810x2110mm guid=3cUkl32yn9qRSPvBJVyWax anchor=(0.0000,0.0000,0.0000) + offset=(10.7875,4.9837,0.4700) + half=(0.0890,0.4400,1.0725) → centroid=(10.8765,5.4238,1.5425) LBD=(10.7875,4.9837,0.4700)
+2026-03-30 03:39:40.076 [GEO  ] TACK         LEAF  Doors_ExtDbl_Flush:1810x2110mm guid=3cUkl32yn9qRSPvBJVyWYp anchor=(0.0000,0.0000,0.0000) + offset=(12.1988,1.4760,0.4700) + half=(0.9300,0.0995,1.0550) → centroid=(13.1288,1.5755,1.5250) LBD=(12.1988,1.4760,0.4700)
+2026-03-30 03:39:40.077 [GEO  ] TACK         LEAF  Floor:Floor-Grnd-Susp_65Scr-80Ins-100Blk-75PC guid=3cUkl32yn9qRSPvBJVyWgQ anchor=(0.0000,0.0000,0.0000) + offset=(0.0000,0.0000,0.0000) + half=(8.4338,4.3338,0.2350) → centroid=(8.4338,4.3338,0.2350) LBD=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.078 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWw5 anchor=(0.0000,0.0000,0.0000) + offset=(1.5000,7.1550,0.4700) + half=(7.0725,0.1450,1.2369) → centroid=(8.5725,7.3000,1.7069) LBD=(1.5000,7.1550,0.4700)
+2026-03-30 03:39:40.078 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWy4 anchor=(0.0000,0.0000,0.0000) + offset=(6.4000,1.3550,0.4700) + half=(4.4775,0.1450,1.4105) → centroid=(10.8775,1.5000,1.8805) LBD=(6.4000,1.3550,0.4700)
+2026-03-30 03:39:40.079 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWx4 anchor=(0.0000,0.0000,0.0000) + offset=(15.3550,1.3550,0.4700) + half=(0.1450,2.9000,1.6791) → centroid=(15.5000,4.2550,2.1491) LBD=(15.3550,1.3550,0.4700)
+2026-03-30 03:39:40.080 [GEO  ] TACK         LEAF  Basic Wall:Wall-Partn_12P-70MStd-12P guid=3cUkl32yn9qRSPvBJVyWXt anchor=(0.0000,0.0000,0.0000) + offset=(10.8075,1.6450,0.4700) + half=(0.0475,2.7550,1.1675) → centroid=(10.8550,4.4000,1.6375) LBD=(10.8075,1.6450,0.4700)
+2026-03-30 03:39:40.081 [GEO  ] TACK         LEAF  Basic Wall:Wall-Partn_12P-70MStd-12P guid=3cUkl32yn9qRSPvBJVyWY1 anchor=(0.0000,0.0000,0.0000) + offset=(10.9025,3.5975,0.4700) + half=(2.2263,0.0475,1.1675) → centroid=(13.1288,3.6450,1.6375) LBD=(10.9025,3.5975,0.4700)
+2026-03-30 03:39:40.081 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWe9 anchor=(0.0000,0.0000,0.0000) + offset=(3.0750,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(4.0050,7.3063,1.9750) LBD=(3.0750,7.1300,1.3700)
+2026-03-30 03:39:40.082 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWdx anchor=(0.0000,0.0000,0.0000) + offset=(7.0725,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(8.0025,7.3063,1.9750) LBD=(7.0725,7.1300,1.3700)
+2026-03-30 03:39:40.082 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyZTO anchor=(0.0000,0.0000,0.0000) + offset=(7.6738,1.3175,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(8.6038,1.4938,1.9750) LBD=(7.6738,1.3175,1.3700)
+2026-03-30 03:39:40.082 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWcE anchor=(0.0000,0.0000,0.0000) + offset=(12.1988,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(13.1288,7.3063,1.9750) LBD=(12.1988,7.1300,1.3700)
+2026-03-30 03:39:40.082 [GEO  ] TACK         EXIT  SH_GF_STR depth=0
+2026-03-30 03:39:40.083 [GEO  ] TACK         ENTER FLOOR_SH_GF_STD depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.084 [GEO  ] TACK         ENTER SH_LIVING_SET depth=1: parent=(0.0000,0.0000,0.0000) + line=(1.7246,5.1800,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(1.7246,5.1800,0.4700)
+2026-03-30 03:39:40.089 [GEO  ] TACK         LEAF  Furniture_Chair_Viper:1120x940x350mm guid=3cUkl32yn9qRSPvBJVyY1R anchor=(1.7246,5.1800,0.4700) + offset=(0.0000,0.0928,0.0000) + half=(0.7140,0.7002,0.4591) → centroid=(2.4386,5.9730,0.9291) LBD=(1.7246,5.2728,0.4700)
+2026-03-30 03:39:40.090 [GEO  ] TACK         LEAF  Furniture_Chair_Viper:1120x940x350mm guid=3cUkl32yn9qRSPvBJVyY48 anchor=(1.7246,5.1800,0.4700) + offset=(4.3853,0.1949,0.0000) + half=(0.7119,0.6946,0.4591) → centroid=(6.8217,6.0695,0.9291) LBD=(6.1099,5.3749,0.4700)
+2026-03-30 03:39:40.090 [GEO  ] TACK         LEAF  Furniture_Couch_Viper:2290x950x340mm guid=3cUkl32yn9qRSPvBJVyYGp anchor=(1.7246,5.1800,0.4700) + offset=(1.7391,0.9085,0.0000) + half=(1.1434,0.4886,0.4791) → centroid=(4.6071,6.5772,0.9491) LBD=(3.4636,6.0885,0.4700)
+2026-03-30 03:39:40.091 [GEO  ] TACK         LEAF  Furniture_Table_Coffee_1:1200x550x450mm guid=3cUkl32yn9qRSPvBJVyYoX anchor=(1.7246,5.1800,0.4700) + offset=(2.3754,0.0000,0.0000) + half=(0.6000,0.2750,0.2250) → centroid=(4.7000,5.4550,0.6950) LBD=(4.1000,5.1800,0.4700)
+2026-03-30 03:39:40.091 [GEO  ] TACK         LEAF  Furniture_Piano:1370x600x1170mm guid=3cUkl32yn9qRSPvBJVyYXU anchor=(1.7246,5.1800,0.4700) + offset=(7.4971,1.3750,0.0001) + half=(0.6858,0.3000,0.5849) → centroid=(9.9075,6.8550,1.0551) LBD=(9.2217,6.5550,0.4701)
+2026-03-30 03:39:40.092 [GEO  ] TACK         EXIT  SH_LIVING_SET depth=1
+2026-03-30 03:39:40.092 [GEO  ] TACK         ENTER SH_DINING_SET depth=1: parent=(0.0000,0.0000,0.0000) + line=(2.6089,2.4652,0.4693) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(2.6089,2.4652,0.4693)
+2026-03-30 03:39:40.093 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZac anchor=(2.6089,2.4652,0.4693) + offset=(0.0000,0.5012,0.0000) + half=(0.2135,0.2213,0.6135) → centroid=(2.8223,3.1877,1.0828) LBD=(2.6089,2.9664,0.4693)
+2026-03-30 03:39:40.093 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$y anchor=(2.6089,2.4652,0.4693) + offset=(0.6457,0.0000,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(3.4758,2.6786,1.0828) LBD=(3.2546,2.4652,0.4693)
+2026-03-30 03:39:40.093 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$_ anchor=(2.6089,2.4652,0.4693) + offset=(0.6457,1.0125,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(3.4758,3.6912,1.0828) LBD=(3.2546,3.4777,0.4693)
+2026-03-30 03:39:40.094 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$x anchor=(2.6089,2.4652,0.4693) + offset=(1.3457,0.0000,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(4.1758,2.6786,1.0828) LBD=(3.9546,2.4652,0.4693)
+2026-03-30 03:39:40.094 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$z anchor=(2.6089,2.4652,0.4693) + offset=(1.3457,1.0125,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(4.1758,3.6912,1.0828) LBD=(3.9546,3.4777,0.4693)
+2026-03-30 03:39:40.094 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZab anchor=(2.6089,2.4652,0.4693) + offset=(2.0070,0.5012,0.0000) + half=(0.2135,0.2213,0.6135) → centroid=(4.8293,3.1877,1.0828) LBD=(4.6159,2.9664,0.4693)
+2026-03-30 03:39:40.094 [GEO  ] TACK         LEAF  Furniture_Table_Dining_w-Chairs_Rectangular:2000x1000x750mm_w-6_Seats guid=3cUkl32yn9qRSPvBJVyZ$$ anchor=(2.6089,2.4652,0.4693) + offset=(0.2170,0.2225,0.0007) + half=(1.0000,0.5000,0.3750) → centroid=(3.8258,3.1877,0.8450) LBD=(2.8258,2.6877,0.4700)
+2026-03-30 03:39:40.095 [GEO  ] TACK         EXIT  SH_DINING_SET depth=1
+2026-03-30 03:39:40.095 [GEO  ] TACK         ENTER SH_BED_SET depth=1: parent=(0.0000,0.0000,0.0000) + line=(13.3480,3.6925,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(13.3480,3.6925,0.4700)
+2026-03-30 03:39:40.096 [GEO  ] TACK         LEAF  Furniture_Bed_1:1525x2007x355mm-Queen guid=1RS53LK$j6KOlAGwxTiY8D anchor=(13.3480,3.6925,0.4700) + offset=(0.0000,0.0000,0.0000) + half=(1.0035,0.9000,0.2413) → centroid=(14.3515,4.5925,0.7113) LBD=(13.3480,3.6925,0.4700)
+2026-03-30 03:39:40.096 [GEO  ] TACK         LEAF  Furniture_Desk:1525x762mm guid=3cUkl32yn9qRSPvBJVyZVU anchor=(13.3480,3.6925,0.4700) + offset=(0.4230,2.6015,0.0000) + half=(0.7816,0.4096,0.3810) → centroid=(14.5525,6.7035,0.8510) LBD=(13.7710,6.2940,0.4700)
+2026-03-30 03:39:40.097 [GEO  ] TACK         EXIT  SH_BED_SET depth=1
+2026-03-30 03:39:40.097 [GEO  ] TACK         ENTER TOILET_BLOCK_FIXTURES depth=1: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.097 [GEO  ] TACK         EXIT  TOILET_BLOCK_FIXTURES depth=1
+2026-03-30 03:39:40.098 [GEO  ] TACK         EXIT  FLOOR_SH_GF_STD depth=0
+2026-03-30 03:39:40.098 [GEO  ] TACK         ENTER SH_ROOF_STR depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.8040,0.8067,2.2115) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.8040,0.8067,2.2115)
+2026-03-30 03:39:40.099 [GEO  ] TACK         LEAF  Basic Roof:Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr guid=3cUkl32yn9qRSPvBJVyWh4 anchor=(0.8040,0.8067,2.2115) + offset=(0.0000,0.0000,0.0000) + half=(7.4205,3.6425,0.8669) → centroid=(8.2245,4.4492,3.0784) LBD=(0.8040,0.8067,2.2115)
+2026-03-30 03:39:40.099 [GEO  ] TACK         LEAF  Floor:Simple floor guid=3ntFzSulnDNeQ4nJrMgcOt anchor=(0.8040,0.8067,2.2115) + offset=(0.6960,0.6933,0.5935) + half=(6.9838,2.8838,0.0825) → centroid=(8.4838,4.3838,2.8875) LBD=(1.5000,1.5000,2.8050)
+2026-03-30 03:39:40.099 [GEO  ] TACK         EXIT  SH_ROOF_STR depth=0
+2026-03-30 03:39:40.100 [GEO  ] TACK         ENTER SH_CW_STR depth=0: parent=(0.0000,0.0000,0.0000) + line=(1.4850,1.4850,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(1.4850,1.4850,0.4700)
+2026-03-30 03:39:40.101 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom3 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,0.0150,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(1.5000,1.5150,1.8457) LBD=(1.4850,1.5000,0.4700)
+2026-03-30 03:39:40.101 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomB anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,0.0150,2.7327) + half=(0.0150,0.9443,0.2921) → centroid=(1.5000,2.4443,3.4948) LBD=(1.4850,1.5000,3.2027)
+2026-03-30 03:39:40.101 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom5 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,0.0450,0.0000) + half=(0.0150,0.9200,0.0150) → centroid=(1.5000,2.4500,0.4850) LBD=(1.4850,1.5300,0.4700)
+2026-03-30 03:39:40.101 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomU anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,1.8850,0.0000) + half=(0.0150,0.0150,1.6442) → centroid=(1.5000,3.3850,2.1142) LBD=(1.4850,3.3700,0.4700)
+2026-03-30 03:39:40.102 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom9 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,1.9000,3.2057) + half=(0.0150,0.9425,0.0765) → centroid=(1.5000,4.3275,3.7522) LBD=(1.4850,3.3850,3.6757)
+2026-03-30 03:39:40.102 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom4 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,1.9150,0.0000) + half=(0.0150,0.9275,0.0150) → centroid=(1.5000,4.3275,0.4850) LBD=(1.4850,3.4000,0.4700)
+2026-03-30 03:39:40.102 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom1 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,3.7700,0.0000) + half=(0.0150,0.0150,1.6038) → centroid=(1.5000,5.2700,2.0738) LBD=(1.4850,5.2550,0.4700)
+2026-03-30 03:39:40.102 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom8 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,3.7788,2.4571) + half=(0.0150,0.9456,0.3890) → centroid=(1.5000,6.2094,3.3161) LBD=(1.4850,5.2638,2.9271)
+2026-03-30 03:39:40.102 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom7 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,3.8000,0.0000) + half=(0.0150,0.9200,0.0150) → centroid=(1.5000,6.2050,0.4850) LBD=(1.4850,5.2850,0.4700)
+2026-03-30 03:39:40.102 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom0 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,5.6400,0.0000) + half=(0.0150,0.0150,1.2369) → centroid=(1.5000,7.1400,1.7069) LBD=(1.4850,7.1250,0.4700)
+2026-03-30 03:39:40.103 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomN anchor=(1.4850,1.4850,0.4700) + offset=(0.0150,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(1.5150,1.5000,1.8457) LBD=(1.5000,1.4850,0.4700)
+2026-03-30 03:39:40.103 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomR anchor=(1.4850,1.4850,0.4700) + offset=(0.0450,0.0000,0.0000) + half=(0.7942,0.0150,0.0150) → centroid=(2.3242,1.5000,0.4850) LBD=(1.5300,1.4850,0.4700)
+2026-03-30 03:39:40.103 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomT anchor=(1.4850,1.4850,0.4700) + offset=(0.0450,0.0000,2.7213) + half=(0.7942,0.0150,0.0150) → centroid=(2.3242,1.5000,3.2063) LBD=(1.5300,1.4850,3.1913)
+2026-03-30 03:39:40.103 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomK anchor=(1.4850,1.4850,0.4700) + offset=(1.6333,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(3.1333,1.5000,1.8457) LBD=(3.1183,1.4850,0.4700)
+2026-03-30 03:39:40.103 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomO anchor=(1.4850,1.4850,0.4700) + offset=(1.6633,0.0000,0.0000) + half=(0.8017,0.0150,0.0150) → centroid=(3.9500,1.5000,0.4850) LBD=(3.1483,1.4850,0.4700)
+2026-03-30 03:39:40.103 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomQ anchor=(1.4850,1.4850,0.4700) + offset=(1.6633,0.0000,2.7213) + half=(0.8017,0.0150,0.0150) → centroid=(3.9500,1.5000,3.2063) LBD=(3.1483,1.4850,3.1913)
+2026-03-30 03:39:40.104 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomL anchor=(1.4850,1.4850,0.4700) + offset=(3.2667,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(4.7667,1.5000,1.8457) LBD=(4.7517,1.4850,0.4700)
+2026-03-30 03:39:40.104 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomP anchor=(1.4850,1.4850,0.4700) + offset=(3.2967,0.0000,0.0000) + half=(0.7942,0.0150,0.0150) → centroid=(5.5758,1.5000,0.4850) LBD=(4.7817,1.4850,0.4700)
+2026-03-30 03:39:40.104 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomS anchor=(1.4850,1.4850,0.4700) + offset=(3.2967,0.0000,2.7213) + half=(0.7942,0.0150,0.0150) → centroid=(5.5758,1.5000,3.2063) LBD=(4.7817,1.4850,3.1913)
+2026-03-30 03:39:40.104 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomM anchor=(1.4850,1.4850,0.4700) + offset=(4.8850,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(6.3850,1.5000,1.8457) LBD=(6.3700,1.4850,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$Y anchor=(1.4850,1.4850,0.4700) + offset=(0.0150,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(2.3167,1.5370,1.8457) LBD=(1.5000,1.5245,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_3 anchor=(1.4850,1.4850,0.4700) + offset=(0.0395,0.0150,0.0000) + half=(0.0125,0.9425,1.6584) → centroid=(1.5370,2.4425,2.1284) LBD=(1.5245,1.5000,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_5 anchor=(1.4850,1.4850,0.4700) + offset=(0.0395,1.9000,0.0000) + half=(0.0125,0.9425,1.6793) → centroid=(1.5370,4.3275,2.1493) LBD=(1.5245,3.3850,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_O anchor=(1.4850,1.4850,0.4700) + offset=(0.0395,3.7850,0.0000) + half=(0.0125,0.9425,1.6175) → centroid=(1.5370,6.2125,2.0875) LBD=(1.5245,5.2700,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$l anchor=(1.4850,1.4850,0.4700) + offset=(1.6483,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(3.9500,1.5370,1.8457) LBD=(3.1333,1.5245,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$j anchor=(1.4850,1.4850,0.4700) + offset=(3.2817,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(5.5833,1.5370,1.8457) LBD=(4.7667,1.5245,0.4700)
+2026-03-30 03:39:40.105 [GEO  ] TACK         EXIT  SH_CW_STR depth=0
+2026-03-30 03:39:40.106 [FINE ] COMPILE      Sample House: root BOM=BUILDING_SH_STD, origin=(-9.23484992980957,-2.746417760848999,-0.4700000584125519)
+2026-03-30 03:39:40.106 [INFO ] COMPILE      BOM walk: BUILDING_SH_STD → 58 elements from 10 sub-assemblies
+2026-03-30 03:39:40.106 [FINE ] COMPILE      Sample House: walk complete: 58 placements from 10 sub-assemblies
+2026-03-30 03:39:40.106 [FINE ] COMPILE      Sample House: verb breakdown: 22 PLACE, 4 CLUSTER, 0 TILE, 0 ROUTE, 0 FRAME, 0 SPRAY, 0 other
+2026-03-30 03:39:40.106 [FINE ] PIPELINE     Stage 3 (BOM WALK COMPILE) completed in 41ms
+2026-03-30 03:39:40.106 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.107 [INFO ] PIPELINE     STEP 4: DISCIPLINE ROUTE — starting
+2026-03-30 03:39:40.109 [FINE ] CALLOUT      Discipline FP not in default set [ELEC, SP] — skipping
+2026-03-30 03:39:40.109 [FINE ] CALLOUT      Discipline ELEC (AD_Org=4) already exists for order RE_SH — skipping
+2026-03-30 03:39:40.109 [FINE ] CALLOUT      Discipline ACMV not in default set [ELEC, SP] — skipping
+2026-03-30 03:39:40.109 [FINE ] CALLOUT      Discipline CW not in default set [ELEC, SP] — skipping
+2026-03-30 03:39:40.109 [FINE ] CALLOUT      Discipline SP (AD_Org=7) already exists for order RE_SH — skipping
+2026-03-30 03:39:40.109 [FINE ] CALLOUT      Discipline LPG not in default set [ELEC, SP] — skipping
+2026-03-30 03:39:40.109 [INFO ] ROUTE        Callout: 0 discipline OrderLines inserted (category=RE)
+2026-03-30 03:39:40.109 [INFO ] ROUTE        Disciplines for routing: [ELEC, SP]
+2026-03-30 03:39:40.111 [FINE ] ROUTE        storeyZBands: 3 storeys from walked placements
+2026-03-30 03:39:40.111 [INFO ] ROUTE        RouteDocEvent: fireAll for 2 disciplines
+2026-03-30 03:39:40.112 [FINE ] ROUTE        DisciplineRouteRegistry: 6 builders registered
+2026-03-30 03:39:40.112 [INFO ] ROUTE        RouteDocEvent: firing ELEC route (CableTray)
+2026-03-30 03:39:40.113 [FINE ] CRAWL        serviceRoomPosition: cat=ELEC pos=(0.000, 0.000, 0.000)
+2026-03-30 03:39:40.114 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.114 [FINE ] ROUTE        ELEC route: start=(0.000, 0.000, 0.000) floors=3
+2026-03-30 03:39:40.114 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.114 [FINE ] CRAWL        slabThickness: floor=Unknown default=150mm
+2026-03-30 03:39:40.115 [FINE ] CRAWL        ceilingHeightMm: floor=Ground Floor ceiling=270mm (floorZ=0mm)
+2026-03-30 03:39:40.115 [FINE ] CRAWL        slabThickness: floor=Ground Floor default=150mm
+2026-03-30 03:39:40.115 [FINE ] CRAWL        roomsOnFloor: floor=Ground Floor rooms=0
+2026-03-30 03:39:40.116 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.116 [FINE ] CRAWL        slabThickness: floor=Roof default=150mm
+2026-03-30 03:39:40.116 [FINE ] CRAWL        ceilingHeightMm: floor=Unknown ceiling=2011mm (floorZ=470mm)
+2026-03-30 03:39:40.116 [FINE ] CRAWL        slabThickness: floor=Unknown default=150mm
+2026-03-30 03:39:40.116 [FINE ] CRAWL        roomsOnFloor: floor=Unknown rooms=0
+2026-03-30 03:39:40.116 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.116 [FINE ] CRAWL        slabThickness: floor=Roof default=150mm
+2026-03-30 03:39:40.117 [FINE ] CRAWL        ceilingHeightMm: floor=Roof ceiling=5511mm (floorZ=2211mm)
+2026-03-30 03:39:40.117 [FINE ] CRAWL        slabThickness: floor=Roof default=150mm
+2026-03-30 03:39:40.117 [FINE ] CRAWL        roomsOnFloor: floor=Roof rooms=0
+2026-03-30 03:39:40.117 [FINE ] CRAWL        CrawlRouter: start pos=(0.000, 0.000, 0.000) dir=(0.000, 0.000, 1.000) dia=25mm product=CableTray disc=ELEC ops=15
+2026-03-30 03:39:40.117 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 0.000) dir=(0.000, 0.000, 1.000) dist=270mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.117 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, 0.270)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        PENETRATE: pos=(0.000, 0.000, 0.270) barrier=SLAB thickness=150mm fireRated=false diameter=25mm
+2026-03-30 03:39:40.118 [FINE ] CRAWL        PENETRATE: done pos=(0.000, 0.000, 0.420)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, 0.420) dir=(0.000, 0.000, 1.000) angle=90° → fitting=ELBOW_90 diameter=25mm
+2026-03-30 03:39:40.118 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, 1.000)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        REDUCE: pos=(0.000, 0.000, 0.420) fromDia=25mm toDia=20mm → fitting=REDUCER
+2026-03-30 03:39:40.118 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 0.420) dir=(0.000, 0.000, 1.000) dist=6000mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.118 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, 6.420)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, 6.420) dir=(0.000, 0.000, 1.000) angle=-90° → fitting=ELBOW_90 diameter=20mm
+2026-03-30 03:39:40.118 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, 1.000)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 6.420) dir=(0.000, 0.000, 1.000) dist=1741mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.118 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, 8.161)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        PENETRATE: pos=(0.000, 0.000, 8.161) barrier=SLAB thickness=150mm fireRated=false diameter=20mm
+2026-03-30 03:39:40.118 [FINE ] CRAWL        PENETRATE: done pos=(0.000, 0.000, 8.311)
+2026-03-30 03:39:40.118 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, 8.311) dir=(0.000, 0.000, 1.000) angle=90° → fitting=ELBOW_90 diameter=20mm
+2026-03-30 03:39:40.119 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, 1.000)
+2026-03-30 03:39:40.119 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 8.311) dir=(0.000, 0.000, 1.000) dist=6000mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.119 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, 14.311)
+2026-03-30 03:39:40.119 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, 14.311) dir=(0.000, 0.000, 1.000) angle=-90° → fitting=ELBOW_90 diameter=20mm
+2026-03-30 03:39:40.119 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, 1.000)
+2026-03-30 03:39:40.119 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 14.311) dir=(0.000, 0.000, 1.000) dist=3500mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.119 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, 17.811)
+2026-03-30 03:39:40.119 [FINE ] CRAWL        PENETRATE: pos=(0.000, 0.000, 17.811) barrier=SLAB thickness=150mm fireRated=false diameter=20mm
+2026-03-30 03:39:40.119 [FINE ] CRAWL        PENETRATE: done pos=(0.000, 0.000, 17.961)
+2026-03-30 03:39:40.119 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, 17.961) dir=(0.000, 0.000, 1.000) angle=90° → fitting=ELBOW_90 diameter=20mm
+2026-03-30 03:39:40.119 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, 1.000)
+2026-03-30 03:39:40.119 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 17.961) dir=(0.000, 0.000, 1.000) dist=6000mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.119 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, 23.961)
+2026-03-30 03:39:40.121 [FINE ] CRAWL        CrawlRouter: done segments=6 fittings=9 edges=14 totalLen=23511mm
+2026-03-30 03:39:40.121 [FINE ] ROUTE        ELEC route done: segments=6 fittings=9 rooms=0
+2026-03-30 03:39:40.121 [INFO ] ROUTE        RouteDocEvent: ELEC done — segments=6 fittings=9 len=23511mm floors=3 rooms=0
+2026-03-30 03:39:40.121 [INFO ] ROUTE        RouteDocEvent: firing SP route (PipeSegment)
+2026-03-30 03:39:40.121 [FINE ] CRAWL        serviceRoomPosition: cat=SP pos=(0.000, 0.000, 0.000)
+2026-03-30 03:39:40.121 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.121 [FINE ] ROUTE        SP route: start=(0.000, 0.000, 0.000) floors=3
+2026-03-30 03:39:40.121 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        slabThickness: floor=Roof default=150mm
+2026-03-30 03:39:40.122 [FINE ] CRAWL        ceilingHeightMm: floor=Roof ceiling=5511mm (floorZ=2211mm)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        slabThickness: floor=Roof default=150mm
+2026-03-30 03:39:40.122 [FINE ] CRAWL        ceilingHeightMm: floor=Roof ceiling=5511mm (floorZ=2211mm)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        roomsOnFloor: floor=Roof rooms=0
+2026-03-30 03:39:40.122 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        slabThickness: floor=Roof default=150mm
+2026-03-30 03:39:40.122 [FINE ] CRAWL        ceilingHeightMm: floor=Unknown ceiling=2011mm (floorZ=470mm)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        slabThickness: floor=Unknown default=150mm
+2026-03-30 03:39:40.122 [FINE ] CRAWL        roomsOnFloor: floor=Unknown rooms=0
+2026-03-30 03:39:40.122 [FINE ] CRAWL        floors: 3 levels from storeyZBands (absolute Z)
+2026-03-30 03:39:40.122 [FINE ] CRAWL        slabThickness: floor=Unknown default=150mm
+2026-03-30 03:39:40.122 [FINE ] CRAWL        ceilingHeightMm: floor=Ground Floor ceiling=270mm (floorZ=0mm)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        slabThickness: floor=Ground Floor default=150mm
+2026-03-30 03:39:40.123 [FINE ] CRAWL        roomsOnFloor: floor=Ground Floor rooms=0
+2026-03-30 03:39:40.123 [FINE ] CRAWL        CrawlRouter: start pos=(0.000, 0.000, 5.511) dir=(0.000, 0.000, -1.000) dia=100mm product=PipeSegment disc=SP ops=13
+2026-03-30 03:39:40.123 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, 5.511) dir=(0.000, 0.000, -1.000) angle=90° → fitting=ELBOW_90 diameter=100mm
+2026-03-30 03:39:40.123 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, -1.000)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        REDUCE: pos=(0.000, 0.000, 5.511) fromDia=100mm toDia=75mm → fitting=REDUCER
+2026-03-30 03:39:40.123 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, 5.511) dir=(0.000, 0.000, -1.000) dist=6000mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.123 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, -0.489)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, -0.489) dir=(0.000, 0.000, -1.000) angle=-90° → fitting=ELBOW_90 diameter=75mm
+2026-03-30 03:39:40.123 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, -1.000)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, -0.489) dir=(0.000, 0.000, -1.000) dist=3500mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.123 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, -3.989)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        PENETRATE: pos=(0.000, 0.000, -3.989) barrier=SLAB thickness=150mm fireRated=false diameter=75mm
+2026-03-30 03:39:40.123 [FINE ] CRAWL        PENETRATE: done pos=(0.000, 0.000, -4.139)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, -4.139) dir=(0.000, 0.000, -1.000) angle=90° → fitting=ELBOW_90 diameter=75mm
+2026-03-30 03:39:40.123 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, -1.000)
+2026-03-30 03:39:40.123 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, -4.139) dir=(0.000, 0.000, -1.000) dist=6000mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.123 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, -10.139)
+2026-03-30 03:39:40.124 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, -10.139) dir=(0.000, 0.000, -1.000) angle=-90° → fitting=ELBOW_90 diameter=75mm
+2026-03-30 03:39:40.124 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, -1.000)
+2026-03-30 03:39:40.124 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, -10.139) dir=(0.000, 0.000, -1.000) dist=1741mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.124 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, -11.880)
+2026-03-30 03:39:40.124 [FINE ] CRAWL        PENETRATE: pos=(0.000, 0.000, -11.880) barrier=SLAB thickness=150mm fireRated=false diameter=75mm
+2026-03-30 03:39:40.124 [FINE ] CRAWL        PENETRATE: done pos=(0.000, 0.000, -12.030)
+2026-03-30 03:39:40.124 [FINE ] CRAWL        BEND: pos=(0.000, 0.000, -12.030) dir=(0.000, 0.000, -1.000) angle=90° → fitting=ELBOW_90 diameter=75mm
+2026-03-30 03:39:40.124 [FINE ] CRAWL        BEND: done dir=(0.000, 0.000, -1.000)
+2026-03-30 03:39:40.124 [FINE ] CRAWL        FOLLOW: pos=(0.000, 0.000, -12.030) dir=(0.000, 0.000, -1.000) dist=6000mm stock=6000mm → 1 segments
+2026-03-30 03:39:40.124 [FINE ] CRAWL        FOLLOW: done pos=(0.000, 0.000, -18.030)
+2026-03-30 03:39:40.124 [FINE ] CRAWL        CrawlRouter: done segments=5 fittings=8 edges=12 totalLen=23241mm
+2026-03-30 03:39:40.124 [FINE ] ROUTE        SP route done: segments=5 fittings=8 rooms=0
+2026-03-30 03:39:40.124 [INFO ] ROUTE        RouteDocEvent: SP done — segments=5 fittings=8 len=23241mm floors=3 rooms=0
+2026-03-30 03:39:40.125 [INFO ] ROUTE        RouteDocEvent: fireAll done — 2 routes, 11 total segments, 17 total fittings
+2026-03-30 03:39:40.126 [INFO ] ROUTE        RouteExecutorImpl: 2 routes, 26 edges, 28 nodes
+2026-03-30 03:39:40.126 [INFO ] ROUTE        RouteStage done: 2 routes, 11 segments, 26 edges
+2026-03-30 03:39:40.126 [FINE ] PIPELINE     Stage 4 (DISCIPLINE ROUTE) completed in 19ms
+2026-03-30 03:39:40.126 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.126 [INFO ] PIPELINE     STEP 5: TEMPLATE COMPOSITION — starting
+2026-03-30 03:39:40.126 [INFO ] PIPELINE     [SKIP] TEMPLATE COMPOSITION
+2026-03-30 03:39:40.126 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.126 [INFO ] PIPELINE     STEP 6: WRITE TO DB — starting
+2026-03-30 03:39:40.203 [GEO  ] TACK         ENTER ROOT depth=-1: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(-9.2348,-2.7464,-0.4700) → anchor=(-9.2348,-2.7464,-0.4700)
+2026-03-30 03:39:40.204 [GEO  ] TACK         ENTER FLOOR_SLAB_GF depth=0: parent=(-9.2348,-2.7464,-0.4700) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-9.2348,-2.7464,-0.4700)
+2026-03-30 03:39:40.204 [GEO  ] TACK         EXIT  FLOOR_SLAB_GF depth=0
+2026-03-30 03:39:40.205 [GEO  ] TACK         ENTER ROOF_ASSEMBLY depth=0: parent=(-9.2348,-2.7464,-0.4700) + line=(0.0000,0.0000,3.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-9.2348,-2.7464,2.5300)
+2026-03-30 03:39:40.205 [GEO  ] TACK         EXIT  ROOF_ASSEMBLY depth=0
+2026-03-30 03:39:40.205 [GEO  ] TACK         ENTER SH_GF_STR depth=0: parent=(-9.2348,-2.7464,-0.4700) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-9.2348,-2.7464,-0.4700)
+2026-03-30 03:39:40.206 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWfu anchor=(-9.2348,-2.7464,-0.4700) + offset=(1.5000,1.5000,2.6700) + half=(4.6538,2.8275,0.0285) → centroid=(-3.0811,1.5811,2.2285) LBD=(-7.7348,-1.2464,2.2000)
+2026-03-30 03:39:40.206 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWgM anchor=(-9.2348,-2.7464,-0.4700) + offset=(10.9025,1.6450,2.6700) + half=(2.2263,0.9763,0.0285) → centroid=(3.8939,-0.1252,2.2285) LBD=(1.6677,-1.1014,2.2000)
+2026-03-30 03:39:40.206 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWfk anchor=(-9.2348,-2.7464,-0.4700) + offset=(10.9025,3.6925,2.6700) + half=(2.2263,1.7313,0.0285) → centroid=(3.8939,2.6773,2.2285) LBD=(1.6677,0.9461,2.2000)
+2026-03-30 03:39:40.206 [GEO  ] TACK         LEAF  Doors_IntSgl:810x2110mm guid=3cUkl32yn9qRSPvBJVyWaG anchor=(-9.2348,-2.7464,-0.4700) + offset=(10.7445,2.1813,0.4700) + half=(0.0890,0.4400,1.0725) → centroid=(1.5987,-0.1252,1.0725) LBD=(1.5097,-0.5652,0.0000)
+2026-03-30 03:39:40.207 [GEO  ] TACK         LEAF  Doors_IntSgl:810x2110mm guid=3cUkl32yn9qRSPvBJVyWax anchor=(-9.2348,-2.7464,-0.4700) + offset=(10.7875,4.9837,0.4700) + half=(0.0890,0.4400,1.0725) → centroid=(1.6417,2.6773,1.0725) LBD=(1.5527,2.2373,0.0000)
+2026-03-30 03:39:40.207 [GEO  ] TACK         LEAF  Doors_ExtDbl_Flush:1810x2110mm guid=3cUkl32yn9qRSPvBJVyWYp anchor=(-9.2348,-2.7464,-0.4700) + offset=(12.1988,1.4760,0.4700) + half=(0.9300,0.0995,1.0550) → centroid=(3.8939,-1.1709,1.0550) LBD=(2.9639,-1.2704,0.0000)
+2026-03-30 03:39:40.207 [GEO  ] TACK         LEAF  Floor:Floor-Grnd-Susp_65Scr-80Ins-100Blk-75PC guid=3cUkl32yn9qRSPvBJVyWgQ anchor=(-9.2348,-2.7464,-0.4700) + offset=(0.0000,0.0000,0.0000) + half=(8.4338,4.3338,0.2350) → centroid=(-0.8011,1.5873,-0.2350) LBD=(-9.2348,-2.7464,-0.4700)
+2026-03-30 03:39:40.207 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWw5 anchor=(-9.2348,-2.7464,-0.4700) + offset=(1.5000,7.1550,0.4700) + half=(7.0725,0.1450,1.2369) → centroid=(-0.6623,4.5536,1.2369) LBD=(-7.7348,4.4086,0.0000)
+2026-03-30 03:39:40.208 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWy4 anchor=(-9.2348,-2.7464,-0.4700) + offset=(6.4000,1.3550,0.4700) + half=(4.4775,0.1450,1.4105) → centroid=(1.6427,-1.2464,1.4105) LBD=(-2.8348,-1.3914,0.0000)
+2026-03-30 03:39:40.208 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWx4 anchor=(-9.2348,-2.7464,-0.4700) + offset=(15.3550,1.3550,0.4700) + half=(0.1450,2.9000,1.6791) → centroid=(6.2652,1.5086,1.6791) LBD=(6.1202,-1.3914,0.0000)
+2026-03-30 03:39:40.208 [GEO  ] TACK         LEAF  Basic Wall:Wall-Partn_12P-70MStd-12P guid=3cUkl32yn9qRSPvBJVyWXt anchor=(-9.2348,-2.7464,-0.4700) + offset=(10.8075,1.6450,0.4700) + half=(0.0475,2.7550,1.1675) → centroid=(1.6202,1.6536,1.1675) LBD=(1.5727,-1.1014,0.0000)
+2026-03-30 03:39:40.209 [GEO  ] TACK         LEAF  Basic Wall:Wall-Partn_12P-70MStd-12P guid=3cUkl32yn9qRSPvBJVyWY1 anchor=(-9.2348,-2.7464,-0.4700) + offset=(10.9025,3.5975,0.4700) + half=(2.2263,0.0475,1.1675) → centroid=(3.8939,0.8986,1.1675) LBD=(1.6677,0.8511,0.0000)
+2026-03-30 03:39:40.209 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWe9 anchor=(-9.2348,-2.7464,-0.4700) + offset=(3.0750,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(-5.2298,4.5598,1.5050) LBD=(-6.1598,4.3836,0.9000)
+2026-03-30 03:39:40.209 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWdx anchor=(-9.2348,-2.7464,-0.4700) + offset=(7.0725,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(-1.2323,4.5598,1.5050) LBD=(-2.1623,4.3836,0.9000)
+2026-03-30 03:39:40.209 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyZTO anchor=(-9.2348,-2.7464,-0.4700) + offset=(7.6738,1.3175,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(-0.6311,-1.2527,1.5050) LBD=(-1.5611,-1.4289,0.9000)
+2026-03-30 03:39:40.210 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWcE anchor=(-9.2348,-2.7464,-0.4700) + offset=(12.1988,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(3.8939,4.5598,1.5050) LBD=(2.9639,4.3836,0.9000)
+2026-03-30 03:39:40.210 [GEO  ] TACK         EXIT  SH_GF_STR depth=0
+2026-03-30 03:39:40.210 [GEO  ] TACK         ENTER FLOOR_SH_GF_STD depth=0: parent=(-9.2348,-2.7464,-0.4700) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-9.2348,-2.7464,-0.4700)
+2026-03-30 03:39:40.211 [GEO  ] TACK         ENTER SH_LIVING_SET depth=1: parent=(-9.2348,-2.7464,-0.4700) + line=(1.7246,5.1800,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-7.5103,2.4336,0.0000)
+2026-03-30 03:39:40.211 [GEO  ] TACK         LEAF  Furniture_Chair_Viper:1120x940x350mm guid=3cUkl32yn9qRSPvBJVyY1R anchor=(-7.5103,2.4336,0.0000) + offset=(0.0000,0.0928,0.0000) + half=(0.7140,0.7002,0.4591) → centroid=(-6.7962,3.2266,0.4591) LBD=(-7.5103,2.5264,0.0000)
+2026-03-30 03:39:40.211 [GEO  ] TACK         LEAF  Furniture_Chair_Viper:1120x940x350mm guid=3cUkl32yn9qRSPvBJVyY48 anchor=(-7.5103,2.4336,0.0000) + offset=(4.3853,0.1949,0.0000) + half=(0.7119,0.6946,0.4591) → centroid=(-2.4131,3.3231,0.4591) LBD=(-3.1250,2.6285,0.0000)
+2026-03-30 03:39:40.212 [GEO  ] TACK         LEAF  Furniture_Couch_Viper:2290x950x340mm guid=3cUkl32yn9qRSPvBJVyYGp anchor=(-7.5103,2.4336,0.0000) + offset=(1.7391,0.9085,0.0000) + half=(1.1434,0.4886,0.4791) → centroid=(-4.6278,3.8308,0.4791) LBD=(-5.7712,3.3421,0.0000)
+2026-03-30 03:39:40.212 [GEO  ] TACK         LEAF  Furniture_Table_Coffee_1:1200x550x450mm guid=3cUkl32yn9qRSPvBJVyYoX anchor=(-7.5103,2.4336,0.0000) + offset=(2.3754,0.0000,0.0000) + half=(0.6000,0.2750,0.2250) → centroid=(-4.5348,2.7086,0.2250) LBD=(-5.1348,2.4336,0.0000)
+2026-03-30 03:39:40.212 [GEO  ] TACK         LEAF  Furniture_Piano:1370x600x1170mm guid=3cUkl32yn9qRSPvBJVyYXU anchor=(-7.5103,2.4336,0.0000) + offset=(7.4971,1.3750,0.0001) + half=(0.6858,0.3000,0.5849) → centroid=(0.6727,4.1086,0.5851) LBD=(-0.0131,3.8086,0.0001)
+2026-03-30 03:39:40.213 [GEO  ] TACK         EXIT  SH_LIVING_SET depth=1
+2026-03-30 03:39:40.213 [GEO  ] TACK         ENTER SH_DINING_SET depth=1: parent=(-9.2348,-2.7464,-0.4700) + line=(2.6089,2.4652,0.4693) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-6.6260,-0.2812,-0.0007)
+2026-03-30 03:39:40.214 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZac anchor=(-6.6260,-0.2812,-0.0007) + offset=(0.0000,0.5012,0.0000) + half=(0.2135,0.2213,0.6135) → centroid=(-6.4125,0.4412,0.6128) LBD=(-6.6260,0.2200,-0.0007)
+2026-03-30 03:39:40.214 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$y anchor=(-6.6260,-0.2812,-0.0007) + offset=(0.6457,0.0000,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(-5.7590,-0.0678,0.6128) LBD=(-5.9803,-0.2812,-0.0007)
+2026-03-30 03:39:40.214 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$_ anchor=(-6.6260,-0.2812,-0.0007) + offset=(0.6457,1.0125,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(-5.7590,0.9447,0.6128) LBD=(-5.9803,0.7313,-0.0007)
+2026-03-30 03:39:40.214 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$x anchor=(-6.6260,-0.2812,-0.0007) + offset=(1.3457,0.0000,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(-5.0590,-0.0678,0.6128) LBD=(-5.2803,-0.2812,-0.0007)
+2026-03-30 03:39:40.214 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$z anchor=(-6.6260,-0.2812,-0.0007) + offset=(1.3457,1.0125,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(-5.0590,0.9447,0.6128) LBD=(-5.2803,0.7313,-0.0007)
+2026-03-30 03:39:40.214 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZab anchor=(-6.6260,-0.2812,-0.0007) + offset=(2.0070,0.5012,0.0000) + half=(0.2135,0.2213,0.6135) → centroid=(-4.4055,0.4412,0.6128) LBD=(-4.6190,0.2200,-0.0007)
+2026-03-30 03:39:40.215 [GEO  ] TACK         LEAF  Furniture_Table_Dining_w-Chairs_Rectangular:2000x1000x750mm_w-6_Seats guid=3cUkl32yn9qRSPvBJVyZ$$ anchor=(-6.6260,-0.2812,-0.0007) + offset=(0.2170,0.2225,0.0007) + half=(1.0000,0.5000,0.3750) → centroid=(-5.4090,0.4412,0.3750) LBD=(-6.4090,-0.0588,0.0000)
+2026-03-30 03:39:40.215 [GEO  ] TACK         EXIT  SH_DINING_SET depth=1
+2026-03-30 03:39:40.215 [GEO  ] TACK         ENTER SH_BED_SET depth=1: parent=(-9.2348,-2.7464,-0.4700) + line=(13.3480,3.6925,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(4.1132,0.9461,0.0000)
+2026-03-30 03:39:40.215 [GEO  ] TACK         LEAF  Furniture_Bed_1:1525x2007x355mm-Queen guid=1RS53LK$j6KOlAGwxTiY8D anchor=(4.1132,0.9461,0.0000) + offset=(0.0000,0.0000,0.0000) + half=(1.0035,0.9000,0.2413) → centroid=(5.1167,1.8461,0.2413) LBD=(4.1132,0.9461,0.0000)
+2026-03-30 03:39:40.216 [GEO  ] TACK         LEAF  Furniture_Desk:1525x762mm guid=3cUkl32yn9qRSPvBJVyZVU anchor=(4.1132,0.9461,0.0000) + offset=(0.4230,2.6015,0.0000) + half=(0.7816,0.4096,0.3810) → centroid=(5.3177,3.9571,0.3810) LBD=(4.5361,3.5475,0.0000)
+2026-03-30 03:39:40.216 [GEO  ] TACK         EXIT  SH_BED_SET depth=1
+2026-03-30 03:39:40.216 [GEO  ] TACK         ENTER TOILET_BLOCK_FIXTURES depth=1: parent=(-9.2348,-2.7464,-0.4700) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-9.2348,-2.7464,-0.4700)
+2026-03-30 03:39:40.216 [GEO  ] TACK         EXIT  TOILET_BLOCK_FIXTURES depth=1
+2026-03-30 03:39:40.216 [GEO  ] TACK         EXIT  FLOOR_SH_GF_STD depth=0
+2026-03-30 03:39:40.217 [GEO  ] TACK         ENTER SH_ROOF_STR depth=0: parent=(-9.2348,-2.7464,-0.4700) + line=(0.8040,0.8067,2.2115) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-8.4308,-1.9397,1.7415)
+2026-03-30 03:39:40.217 [GEO  ] TACK         LEAF  Basic Roof:Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr guid=3cUkl32yn9qRSPvBJVyWh4 anchor=(-8.4308,-1.9397,1.7415) + offset=(0.0000,0.0000,0.0000) + half=(7.4205,3.6425,0.8669) → centroid=(-1.0103,1.7027,2.6084) LBD=(-8.4308,-1.9397,1.7415)
+2026-03-30 03:39:40.217 [GEO  ] TACK         LEAF  Floor:Simple floor guid=3ntFzSulnDNeQ4nJrMgcOt anchor=(-8.4308,-1.9397,1.7415) + offset=(0.6960,0.6933,0.5935) + half=(6.9838,2.8838,0.0825) → centroid=(-0.7511,1.6373,2.4175) LBD=(-7.7348,-1.2464,2.3350)
+2026-03-30 03:39:40.217 [GEO  ] TACK         EXIT  SH_ROOF_STR depth=0
+2026-03-30 03:39:40.217 [GEO  ] TACK         ENTER SH_CW_STR depth=0: parent=(-9.2348,-2.7464,-0.4700) + line=(1.4850,1.4850,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(-7.7498,-1.2614,-0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom3 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,0.0150,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(-7.7348,-1.2314,1.3757) LBD=(-7.7498,-1.2464,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomB anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,0.0150,2.7327) + half=(0.0150,0.9443,0.2921) → centroid=(-7.7348,-0.3021,3.0248) LBD=(-7.7498,-1.2464,2.7327)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom5 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,0.0450,0.0000) + half=(0.0150,0.9200,0.0150) → centroid=(-7.7348,-0.2964,0.0150) LBD=(-7.7498,-1.2164,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomU anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,1.8850,0.0000) + half=(0.0150,0.0150,1.6442) → centroid=(-7.7348,0.6386,1.6442) LBD=(-7.7498,0.6236,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom9 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,1.9000,3.2057) + half=(0.0150,0.9425,0.0765) → centroid=(-7.7348,1.5811,3.2822) LBD=(-7.7498,0.6386,3.2057)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom4 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,1.9150,0.0000) + half=(0.0150,0.9275,0.0150) → centroid=(-7.7348,1.5811,0.0150) LBD=(-7.7498,0.6536,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom1 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,3.7700,0.0000) + half=(0.0150,0.0150,1.6038) → centroid=(-7.7348,2.5236,1.6038) LBD=(-7.7498,2.5086,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom8 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,3.7788,2.4571) + half=(0.0150,0.9456,0.3890) → centroid=(-7.7348,3.4630,2.8461) LBD=(-7.7498,2.5174,2.4571)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom7 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,3.8000,0.0000) + half=(0.0150,0.9200,0.0150) → centroid=(-7.7348,3.4586,0.0150) LBD=(-7.7498,2.5386,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom0 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0000,5.6400,0.0000) + half=(0.0150,0.0150,1.2369) → centroid=(-7.7348,4.3936,1.2369) LBD=(-7.7498,4.3786,0.0000)
+2026-03-30 03:39:40.218 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomN anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0150,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(-7.7198,-1.2464,1.3757) LBD=(-7.7348,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomR anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0450,0.0000,0.0000) + half=(0.7942,0.0150,0.0150) → centroid=(-6.9107,-1.2464,0.0150) LBD=(-7.7048,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomT anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0450,0.0000,2.7213) + half=(0.7942,0.0150,0.0150) → centroid=(-6.9107,-1.2464,2.7363) LBD=(-7.7048,-1.2614,2.7213)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomK anchor=(-7.7498,-1.2614,-0.0000) + offset=(1.6333,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(-6.1015,-1.2464,1.3757) LBD=(-6.1165,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomO anchor=(-7.7498,-1.2614,-0.0000) + offset=(1.6633,0.0000,0.0000) + half=(0.8017,0.0150,0.0150) → centroid=(-5.2848,-1.2464,0.0150) LBD=(-6.0865,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomQ anchor=(-7.7498,-1.2614,-0.0000) + offset=(1.6633,0.0000,2.7213) + half=(0.8017,0.0150,0.0150) → centroid=(-5.2848,-1.2464,2.7363) LBD=(-6.0865,-1.2614,2.7213)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomL anchor=(-7.7498,-1.2614,-0.0000) + offset=(3.2667,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(-4.4682,-1.2464,1.3757) LBD=(-4.4832,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomP anchor=(-7.7498,-1.2614,-0.0000) + offset=(3.2967,0.0000,0.0000) + half=(0.7942,0.0150,0.0150) → centroid=(-3.6590,-1.2464,0.0150) LBD=(-4.4532,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomS anchor=(-7.7498,-1.2614,-0.0000) + offset=(3.2967,0.0000,2.7213) + half=(0.7942,0.0150,0.0150) → centroid=(-3.6590,-1.2464,2.7363) LBD=(-4.4532,-1.2614,2.7213)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomM anchor=(-7.7498,-1.2614,-0.0000) + offset=(4.8850,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(-2.8498,-1.2464,1.3757) LBD=(-2.8648,-1.2614,0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$Y anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0150,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(-6.9182,-1.2094,1.3757) LBD=(-7.7348,-1.2219,-0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_3 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0395,0.0150,0.0000) + half=(0.0125,0.9425,1.6584) → centroid=(-7.6978,-0.3039,1.6584) LBD=(-7.7103,-1.2464,-0.0000)
+2026-03-30 03:39:40.219 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_5 anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0395,1.9000,0.0000) + half=(0.0125,0.9425,1.6793) → centroid=(-7.6978,1.5811,1.6793) LBD=(-7.7103,0.6386,-0.0000)
+2026-03-30 03:39:40.220 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_O anchor=(-7.7498,-1.2614,-0.0000) + offset=(0.0395,3.7850,0.0000) + half=(0.0125,0.9425,1.6175) → centroid=(-7.6978,3.4661,1.6175) LBD=(-7.7103,2.5236,-0.0000)
+2026-03-30 03:39:40.220 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$l anchor=(-7.7498,-1.2614,-0.0000) + offset=(1.6483,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(-5.2848,-1.2094,1.3757) LBD=(-6.1015,-1.2219,-0.0000)
+2026-03-30 03:39:40.220 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$j anchor=(-7.7498,-1.2614,-0.0000) + offset=(3.2817,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(-3.6515,-1.2094,1.3757) LBD=(-4.4682,-1.2219,-0.0000)
+2026-03-30 03:39:40.220 [GEO  ] TACK         EXIT  SH_CW_STR depth=0
+2026-03-30 03:39:40.220 [GEO  ] TACK         EXIT  ROOT depth=-1
+2026-03-30 03:39:40.242 [INFO ] WRITE        Edge persistence: 26 edges, 28 nodes written
+2026-03-30 03:39:40.251 [FINE ] WRITE        Sample House: discipline breakdown: ARC=22 STR=2 CW=2
+2026-03-30 03:39:40.251 [FINE ] WRITE        Sample House: LOD binding: 58 LOD, 0 fallback, 0 missing
+2026-03-30 03:39:40.251 [FINE ] WRITE        Sample House: 58 elements written to output DB
+2026-03-30 03:39:40.265 [FINE ] PIPELINE     Stage 6 (WRITE TO DB) completed in 139ms
+2026-03-30 03:39:40.265 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.265 [INFO ] PIPELINE     STEP 7: VERB STAGE (BIM COBOL) — starting
+2026-03-30 03:39:40.265 [INFO ] VERB         BOM verbs: 22 PLACE, 4 CLUSTER, 0 TILE, 0 ROUTE, 0 FRAME, 0 SPRAY, 0 other
+2026-03-30 03:39:40.265 [INFO ] VERB         Found script: scripts/Ifc4_SampleHouse.bimcobol
+2026-03-30 03:39:40.266 [INFO ] VERB         2 verb line(s):
+2026-03-30 03:39:40.266 [FINE ] VERB           > PLACE BOM SH
+2026-03-30 03:39:40.266 [FINE ] VERB           > TRIM WALLS TO ROOF
+2026-03-30 03:39:40.303 [GEO  ] TACK         ENTER ROOT depth=-1: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.304 [GEO  ] TACK         ENTER FLOOR_SLAB_GF depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.304 [GEO  ] TACK         EXIT  FLOOR_SLAB_GF depth=0
+2026-03-30 03:39:40.305 [GEO  ] TACK         ENTER ROOF_ASSEMBLY depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,3.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,3.0000)
+2026-03-30 03:39:40.305 [GEO  ] TACK         EXIT  ROOF_ASSEMBLY depth=0
+2026-03-30 03:39:40.305 [GEO  ] TACK         ENTER SH_GF_STR depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.306 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWfu anchor=(0.0000,0.0000,0.0000) + offset=(1.5000,1.5000,2.6700) + half=(4.6538,2.8275,0.0285) → centroid=(6.1538,4.3275,2.6985) LBD=(1.5000,1.5000,2.6700)
+2026-03-30 03:39:40.306 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWgM anchor=(0.0000,0.0000,0.0000) + offset=(10.9025,1.6450,2.6700) + half=(2.2263,0.9763,0.0285) → centroid=(13.1288,2.6213,2.6985) LBD=(10.9025,1.6450,2.6700)
+2026-03-30 03:39:40.306 [GEO  ] TACK         LEAF  Compound Ceiling:Plain guid=3cUkl32yn9qRSPvBJVyWfk anchor=(0.0000,0.0000,0.0000) + offset=(10.9025,3.6925,2.6700) + half=(2.2263,1.7313,0.0285) → centroid=(13.1288,5.4238,2.6985) LBD=(10.9025,3.6925,2.6700)
+2026-03-30 03:39:40.306 [GEO  ] TACK         LEAF  Doors_IntSgl:810x2110mm guid=3cUkl32yn9qRSPvBJVyWaG anchor=(0.0000,0.0000,0.0000) + offset=(10.7445,2.1813,0.4700) + half=(0.0890,0.4400,1.0725) → centroid=(10.8335,2.6213,1.5425) LBD=(10.7445,2.1813,0.4700)
+2026-03-30 03:39:40.307 [GEO  ] TACK         LEAF  Doors_IntSgl:810x2110mm guid=3cUkl32yn9qRSPvBJVyWax anchor=(0.0000,0.0000,0.0000) + offset=(10.7875,4.9837,0.4700) + half=(0.0890,0.4400,1.0725) → centroid=(10.8765,5.4238,1.5425) LBD=(10.7875,4.9837,0.4700)
+2026-03-30 03:39:40.307 [GEO  ] TACK         LEAF  Doors_ExtDbl_Flush:1810x2110mm guid=3cUkl32yn9qRSPvBJVyWYp anchor=(0.0000,0.0000,0.0000) + offset=(12.1988,1.4760,0.4700) + half=(0.9300,0.0995,1.0550) → centroid=(13.1288,1.5755,1.5250) LBD=(12.1988,1.4760,0.4700)
+2026-03-30 03:39:40.307 [GEO  ] TACK         LEAF  Floor:Floor-Grnd-Susp_65Scr-80Ins-100Blk-75PC guid=3cUkl32yn9qRSPvBJVyWgQ anchor=(0.0000,0.0000,0.0000) + offset=(0.0000,0.0000,0.0000) + half=(8.4338,4.3338,0.2350) → centroid=(8.4338,4.3338,0.2350) LBD=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.307 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWw5 anchor=(0.0000,0.0000,0.0000) + offset=(1.5000,7.1550,0.4700) + half=(7.0725,0.1450,1.2369) → centroid=(8.5725,7.3000,1.7069) LBD=(1.5000,7.1550,0.4700)
+2026-03-30 03:39:40.307 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWy4 anchor=(0.0000,0.0000,0.0000) + offset=(6.4000,1.3550,0.4700) + half=(4.4775,0.1450,1.4105) → centroid=(10.8775,1.5000,1.8805) LBD=(6.4000,1.3550,0.4700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P guid=3cUkl32yn9qRSPvBJVyWx4 anchor=(0.0000,0.0000,0.0000) + offset=(15.3550,1.3550,0.4700) + half=(0.1450,2.9000,1.6791) → centroid=(15.5000,4.2550,2.1491) LBD=(15.3550,1.3550,0.4700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Basic Wall:Wall-Partn_12P-70MStd-12P guid=3cUkl32yn9qRSPvBJVyWXt anchor=(0.0000,0.0000,0.0000) + offset=(10.8075,1.6450,0.4700) + half=(0.0475,2.7550,1.1675) → centroid=(10.8550,4.4000,1.6375) LBD=(10.8075,1.6450,0.4700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Basic Wall:Wall-Partn_12P-70MStd-12P guid=3cUkl32yn9qRSPvBJVyWY1 anchor=(0.0000,0.0000,0.0000) + offset=(10.9025,3.5975,0.4700) + half=(2.2263,0.0475,1.1675) → centroid=(13.1288,3.6450,1.6375) LBD=(10.9025,3.5975,0.4700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWe9 anchor=(0.0000,0.0000,0.0000) + offset=(3.0750,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(4.0050,7.3063,1.9750) LBD=(3.0750,7.1300,1.3700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWdx anchor=(0.0000,0.0000,0.0000) + offset=(7.0725,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(8.0025,7.3063,1.9750) LBD=(7.0725,7.1300,1.3700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyZTO anchor=(0.0000,0.0000,0.0000) + offset=(7.6738,1.3175,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(8.6038,1.4938,1.9750) LBD=(7.6738,1.3175,1.3700)
+2026-03-30 03:39:40.308 [GEO  ] TACK         LEAF  Windows_Sgl_Plain:1810x1210mm guid=3cUkl32yn9qRSPvBJVyWcE anchor=(0.0000,0.0000,0.0000) + offset=(12.1988,7.1300,1.3700) + half=(0.9300,0.1763,0.6050) → centroid=(13.1288,7.3063,1.9750) LBD=(12.1988,7.1300,1.3700)
+2026-03-30 03:39:40.309 [GEO  ] TACK         EXIT  SH_GF_STR depth=0
+2026-03-30 03:39:40.312 [GEO  ] TACK         ENTER FLOOR_SH_GF_STD depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.312 [GEO  ] TACK         ENTER SH_LIVING_SET depth=1: parent=(0.0000,0.0000,0.0000) + line=(1.7246,5.1800,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(1.7246,5.1800,0.4700)
+2026-03-30 03:39:40.313 [GEO  ] TACK         LEAF  Furniture_Chair_Viper:1120x940x350mm guid=3cUkl32yn9qRSPvBJVyY1R anchor=(1.7246,5.1800,0.4700) + offset=(0.0000,0.0928,0.0000) + half=(0.7140,0.7002,0.4591) → centroid=(2.4386,5.9730,0.9291) LBD=(1.7246,5.2728,0.4700)
+2026-03-30 03:39:40.313 [GEO  ] TACK         LEAF  Furniture_Chair_Viper:1120x940x350mm guid=3cUkl32yn9qRSPvBJVyY48 anchor=(1.7246,5.1800,0.4700) + offset=(4.3853,0.1949,0.0000) + half=(0.7119,0.6946,0.4591) → centroid=(6.8217,6.0695,0.9291) LBD=(6.1099,5.3749,0.4700)
+2026-03-30 03:39:40.313 [GEO  ] TACK         LEAF  Furniture_Couch_Viper:2290x950x340mm guid=3cUkl32yn9qRSPvBJVyYGp anchor=(1.7246,5.1800,0.4700) + offset=(1.7391,0.9085,0.0000) + half=(1.1434,0.4886,0.4791) → centroid=(4.6071,6.5772,0.9491) LBD=(3.4636,6.0885,0.4700)
+2026-03-30 03:39:40.313 [GEO  ] TACK         LEAF  Furniture_Table_Coffee_1:1200x550x450mm guid=3cUkl32yn9qRSPvBJVyYoX anchor=(1.7246,5.1800,0.4700) + offset=(2.3754,0.0000,0.0000) + half=(0.6000,0.2750,0.2250) → centroid=(4.7000,5.4550,0.6950) LBD=(4.1000,5.1800,0.4700)
+2026-03-30 03:39:40.314 [GEO  ] TACK         LEAF  Furniture_Piano:1370x600x1170mm guid=3cUkl32yn9qRSPvBJVyYXU anchor=(1.7246,5.1800,0.4700) + offset=(7.4971,1.3750,0.0001) + half=(0.6858,0.3000,0.5849) → centroid=(9.9075,6.8550,1.0551) LBD=(9.2217,6.5550,0.4701)
+2026-03-30 03:39:40.314 [GEO  ] TACK         EXIT  SH_LIVING_SET depth=1
+2026-03-30 03:39:40.314 [GEO  ] TACK         ENTER SH_DINING_SET depth=1: parent=(0.0000,0.0000,0.0000) + line=(2.6089,2.4652,0.4693) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(2.6089,2.4652,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZac anchor=(2.6089,2.4652,0.4693) + offset=(0.0000,0.5012,0.0000) + half=(0.2135,0.2213,0.6135) → centroid=(2.8223,3.1877,1.0828) LBD=(2.6089,2.9664,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$y anchor=(2.6089,2.4652,0.4693) + offset=(0.6457,0.0000,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(3.4758,2.6786,1.0828) LBD=(3.2546,2.4652,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$_ anchor=(2.6089,2.4652,0.4693) + offset=(0.6457,1.0125,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(3.4758,3.6912,1.0828) LBD=(3.2546,3.4777,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$x anchor=(2.6089,2.4652,0.4693) + offset=(1.3457,0.0000,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(4.1758,2.6786,1.0828) LBD=(3.9546,2.4652,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZ$z anchor=(2.6089,2.4652,0.4693) + offset=(1.3457,1.0125,0.0000) + half=(0.2213,0.2135,0.6135) → centroid=(4.1758,3.6912,1.0828) LBD=(3.9546,3.4777,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Chair - Dining:Chair - Dining guid=3cUkl32yn9qRSPvBJVyZab anchor=(2.6089,2.4652,0.4693) + offset=(2.0070,0.5012,0.0000) + half=(0.2135,0.2213,0.6135) → centroid=(4.8293,3.1877,1.0828) LBD=(4.6159,2.9664,0.4693)
+2026-03-30 03:39:40.315 [GEO  ] TACK         LEAF  Furniture_Table_Dining_w-Chairs_Rectangular:2000x1000x750mm_w-6_Seats guid=3cUkl32yn9qRSPvBJVyZ$$ anchor=(2.6089,2.4652,0.4693) + offset=(0.2170,0.2225,0.0007) + half=(1.0000,0.5000,0.3750) → centroid=(3.8258,3.1877,0.8450) LBD=(2.8258,2.6877,0.4700)
+2026-03-30 03:39:40.315 [GEO  ] TACK         EXIT  SH_DINING_SET depth=1
+2026-03-30 03:39:40.316 [GEO  ] TACK         ENTER SH_BED_SET depth=1: parent=(0.0000,0.0000,0.0000) + line=(13.3480,3.6925,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(13.3480,3.6925,0.4700)
+2026-03-30 03:39:40.316 [GEO  ] TACK         LEAF  Furniture_Bed_1:1525x2007x355mm-Queen guid=1RS53LK$j6KOlAGwxTiY8D anchor=(13.3480,3.6925,0.4700) + offset=(0.0000,0.0000,0.0000) + half=(1.0035,0.9000,0.2413) → centroid=(14.3515,4.5925,0.7113) LBD=(13.3480,3.6925,0.4700)
+2026-03-30 03:39:40.316 [GEO  ] TACK         LEAF  Furniture_Desk:1525x762mm guid=3cUkl32yn9qRSPvBJVyZVU anchor=(13.3480,3.6925,0.4700) + offset=(0.4230,2.6015,0.0000) + half=(0.7816,0.4096,0.3810) → centroid=(14.5525,6.7035,0.8510) LBD=(13.7710,6.2940,0.4700)
+2026-03-30 03:39:40.317 [GEO  ] TACK         EXIT  SH_BED_SET depth=1
+2026-03-30 03:39:40.317 [GEO  ] TACK         ENTER TOILET_BLOCK_FIXTURES depth=1: parent=(0.0000,0.0000,0.0000) + line=(0.0000,0.0000,0.0000) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.0000,0.0000,0.0000)
+2026-03-30 03:39:40.317 [GEO  ] TACK         EXIT  TOILET_BLOCK_FIXTURES depth=1
+2026-03-30 03:39:40.317 [GEO  ] TACK         EXIT  FLOOR_SH_GF_STD depth=0
+2026-03-30 03:39:40.317 [GEO  ] TACK         ENTER SH_ROOF_STR depth=0: parent=(0.0000,0.0000,0.0000) + line=(0.8040,0.8067,2.2115) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(0.8040,0.8067,2.2115)
+2026-03-30 03:39:40.318 [GEO  ] TACK         LEAF  Basic Roof:Roof_Flat-4Felt-150Ins-50Scr-150Conc-12Plr guid=3cUkl32yn9qRSPvBJVyWh4 anchor=(0.8040,0.8067,2.2115) + offset=(0.0000,0.0000,0.0000) + half=(7.4205,3.6425,0.8669) → centroid=(8.2245,4.4492,3.0784) LBD=(0.8040,0.8067,2.2115)
+2026-03-30 03:39:40.318 [GEO  ] TACK         LEAF  Floor:Simple floor guid=3ntFzSulnDNeQ4nJrMgcOt anchor=(0.8040,0.8067,2.2115) + offset=(0.6960,0.6933,0.5935) + half=(6.9838,2.8838,0.0825) → centroid=(8.4838,4.3838,2.8875) LBD=(1.5000,1.5000,2.8050)
+2026-03-30 03:39:40.318 [GEO  ] TACK         EXIT  SH_ROOF_STR depth=0
+2026-03-30 03:39:40.318 [GEO  ] TACK         ENTER SH_CW_STR depth=0: parent=(0.0000,0.0000,0.0000) + line=(1.4850,1.4850,0.4700) + bomOrigin=(0.0000,0.0000,0.0000) → anchor=(1.4850,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom3 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,0.0150,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(1.5000,1.5150,1.8457) LBD=(1.4850,1.5000,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomB anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,0.0150,2.7327) + half=(0.0150,0.9443,0.2921) → centroid=(1.5000,2.4443,3.4948) LBD=(1.4850,1.5000,3.2027)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom5 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,0.0450,0.0000) + half=(0.0150,0.9200,0.0150) → centroid=(1.5000,2.4500,0.4850) LBD=(1.4850,1.5300,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomU anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,1.8850,0.0000) + half=(0.0150,0.0150,1.6442) → centroid=(1.5000,3.3850,2.1142) LBD=(1.4850,3.3700,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom9 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,1.9000,3.2057) + half=(0.0150,0.9425,0.0765) → centroid=(1.5000,4.3275,3.7522) LBD=(1.4850,3.3850,3.6757)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom4 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,1.9150,0.0000) + half=(0.0150,0.9275,0.0150) → centroid=(1.5000,4.3275,0.4850) LBD=(1.4850,3.4000,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom1 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,3.7700,0.0000) + half=(0.0150,0.0150,1.6038) → centroid=(1.5000,5.2700,2.0738) LBD=(1.4850,5.2550,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom8 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,3.7788,2.4571) + half=(0.0150,0.9456,0.3890) → centroid=(1.5000,6.2094,3.3161) LBD=(1.4850,5.2638,2.9271)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom7 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,3.8000,0.0000) + half=(0.0150,0.9200,0.0150) → centroid=(1.5000,6.2050,0.4850) LBD=(1.4850,5.2850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMom0 anchor=(1.4850,1.4850,0.4700) + offset=(0.0000,5.6400,0.0000) + half=(0.0150,0.0150,1.2369) → centroid=(1.5000,7.1400,1.7069) LBD=(1.4850,7.1250,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomN anchor=(1.4850,1.4850,0.4700) + offset=(0.0150,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(1.5150,1.5000,1.8457) LBD=(1.5000,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomR anchor=(1.4850,1.4850,0.4700) + offset=(0.0450,0.0000,0.0000) + half=(0.7942,0.0150,0.0150) → centroid=(2.3242,1.5000,0.4850) LBD=(1.5300,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomT anchor=(1.4850,1.4850,0.4700) + offset=(0.0450,0.0000,2.7213) + half=(0.7942,0.0150,0.0150) → centroid=(2.3242,1.5000,3.2063) LBD=(1.5300,1.4850,3.1913)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomK anchor=(1.4850,1.4850,0.4700) + offset=(1.6333,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(3.1333,1.5000,1.8457) LBD=(3.1183,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomO anchor=(1.4850,1.4850,0.4700) + offset=(1.6633,0.0000,0.0000) + half=(0.8017,0.0150,0.0150) → centroid=(3.9500,1.5000,0.4850) LBD=(3.1483,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomQ anchor=(1.4850,1.4850,0.4700) + offset=(1.6633,0.0000,2.7213) + half=(0.8017,0.0150,0.0150) → centroid=(3.9500,1.5000,3.2063) LBD=(3.1483,1.4850,3.1913)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomL anchor=(1.4850,1.4850,0.4700) + offset=(3.2667,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(4.7667,1.5000,1.8457) LBD=(4.7517,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomP anchor=(1.4850,1.4850,0.4700) + offset=(3.2967,0.0000,0.0000) + half=(0.7942,0.0150,0.0150) → centroid=(5.5758,1.5000,0.4850) LBD=(4.7817,1.4850,0.4700)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomS anchor=(1.4850,1.4850,0.4700) + offset=(3.2967,0.0000,2.7213) + half=(0.7942,0.0150,0.0150) → centroid=(5.5758,1.5000,3.2063) LBD=(4.7817,1.4850,3.1913)
+2026-03-30 03:39:40.319 [GEO  ] TACK         LEAF  Curtain Wall:Curtain_Wall-Exterior_Glazing guid=09J5N7xMHBfQZeQGAEMomM anchor=(1.4850,1.4850,0.4700) + offset=(4.8850,0.0000,0.0000) + half=(0.0150,0.0150,1.3757) → centroid=(6.3850,1.5000,1.8457) LBD=(6.3700,1.4850,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$Y anchor=(1.4850,1.4850,0.4700) + offset=(0.0150,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(2.3167,1.5370,1.8457) LBD=(1.5000,1.5245,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_3 anchor=(1.4850,1.4850,0.4700) + offset=(0.0395,0.0150,0.0000) + half=(0.0125,0.9425,1.6584) → centroid=(1.5370,2.4425,2.1284) LBD=(1.5245,1.5000,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_5 anchor=(1.4850,1.4850,0.4700) + offset=(0.0395,1.9000,0.0000) + half=(0.0125,0.9425,1.6793) → centroid=(1.5370,4.3275,2.1493) LBD=(1.5245,3.3850,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW_O anchor=(1.4850,1.4850,0.4700) + offset=(0.0395,3.7850,0.0000) + half=(0.0125,0.9425,1.6175) → centroid=(1.5370,6.2125,2.0875) LBD=(1.5245,5.2700,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$l anchor=(1.4850,1.4850,0.4700) + offset=(1.6483,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(3.9500,1.5370,1.8457) LBD=(3.1333,1.5245,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         LEAF  System Panel:Glazed guid=3cUkl32yn9qRSPvBJVyW$j anchor=(1.4850,1.4850,0.4700) + offset=(3.2817,0.0395,0.0000) + half=(0.8167,0.0125,1.3757) → centroid=(5.5833,1.5370,1.8457) LBD=(4.7667,1.5245,0.4700)
+2026-03-30 03:39:40.320 [GEO  ] TACK         EXIT  SH_CW_STR depth=0
+2026-03-30 03:39:40.320 [GEO  ] TACK         EXIT  ROOT depth=-1
+2026-03-30 03:39:40.347 [WARN ] VERB         PLACE BOM → FAIL: SQL error: [SQLITE_CONSTRAINT_PRIMARYKEY] A PRIMARY KEY constraint failed (UNIQUE constraint failed: element_instances.guid)
+2026-03-30 03:39:40.348 [FINE ] VERB         TRIM WALLS TO ROOF → 5 walls checked, 2 need trimming (of 5 under roof)
+2026-03-30 03:39:40.358 [FINE ] VERB           [FAIL] PLACE BOM → SQL error: [SQLITE_CONSTRAINT_PRIMARYKEY] A PRIMARY KEY constraint failed (UNIQUE constraint failed: element_instances.guid)
+2026-03-30 03:39:40.358 [FINE ] VERB           [PASS] TRIM WALLS TO ROOF → 5 walls checked, 2 need trimming (of 5 under roof)
+2026-03-30 03:39:40.362 [INFO ] VERB         FAIL — 1 pass, 1 fail, 2 W_Verb_Node rows
+2026-03-30 03:39:40.362 [WARN ] VERB         1 verb(s) failed — DocStatus=VO
+2026-03-30 03:39:40.362 [FINE ] PIPELINE     Stage 7 (VERB STAGE (BIM COBOL)) completed in 97ms
+2026-03-30 03:39:40.362 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.362 [INFO ] PIPELINE     STEP 8: VALIDATE (DocEvent §13) — starting
+2026-03-30 03:39:40.363 [FINE ] VALIDATE     Sample House: mode=LOG, jurisdiction=none
+2026-03-30 03:39:40.447 [INFO ] VALIDATE     [H6] COMPLETENESS: 4 rooms checked, 24 findings
+2026-03-30 03:39:40.447 [FINE ] VALIDATE     Sample House: W_Validation_Result: 0 PASS, 24 WARN, 0 BLOCK
+2026-03-30 03:39:40.447 [FINE ] VALIDATE     Sample House: H6 rooms checked, findings=24
+2026-03-30 03:39:40.447 [INFO ] VALIDATE     [INFO] Validation: 24 findings (mode=LOG, H6=24)
+2026-03-30 03:39:40.447 [FINE ] PIPELINE     Stage 8 (VALIDATE (DocEvent §13)) completed in 84ms
+2026-03-30 03:39:40.447 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.447 [INFO ] PIPELINE     STEP 9: SPATIAL DIGEST — starting
+2026-03-30 03:39:40.469 [FINE ] VERB         COMPLETE BUILDING → COMPLETE BUILDING Ifc4_SampleHouse: DocStatus=CO, elements=58
+2026-03-30 03:39:40.473 [FINE ] PIPELINE     Stage 9 (SPATIAL DIGEST) completed in 26ms
+2026-03-30 03:39:40.473 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.473 [INFO ] PIPELINE     STEP 10: GEOMETRY INTEGRITY CHECK — starting
+2026-03-30 03:39:40.503 [FINE ] PIPELINE     Stage 10 (GEOMETRY INTEGRITY CHECK) completed in 30ms
+2026-03-30 03:39:40.503 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.503 [INFO ] PIPELINE     STEP 11: PLACEMENT MATHEMATICAL PROOF — starting
+2026-03-30 03:39:40.507 [FINE ] PROVE        SH: P-PARENT 0/26 PASS, 26 WARN
+2026-03-30 03:39:40.508 [FINE ] PROVE        SH: P-SIBLING 92/92 PASS, 0 WARN
+2026-03-30 03:39:40.508 [FINE ] PROVE        SH: P-QTY 1/1 PASS, 0 WARN (expected=58, actual=58)
+2026-03-30 03:39:40.508 [FINE ] PROVE        SH: P-TACK 0/26 PASS, 26 WARN (1mm tolerance)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_SLAB_GROUND_FLOOR_7 — dx=16.8675 dy=8.6675 dz=0.4700
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_SLAB_GROUND_FLOOR_7 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_SLAB_GROUND_FLOOR_7 — min_dim=0.4700
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_SLAB_GROUND_FLOOR_7 — Z[0.000,0.470] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_ROOF_31 — dx=14.8410 dy=7.2849 dz=1.7337
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_ROOF_31 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_ROOF_31 — min_dim=1.7337
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_ROOF_31 — Z[2.211,3.945] within [2.2,3.9]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_42 — dx=0.0300 dy=0.0300 dz=2.4737
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_42 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_42 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_42 — Z[0.470,2.944] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_41 — dx=0.0300 dy=1.8400 dz=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_41 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_41 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_41 — Z[0.470,0.500] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_40 — dx=0.0300 dy=1.8912 dz=0.7780
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_40 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_40 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_40 — Z[2.927,3.705] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_39 — dx=0.0300 dy=0.0300 dz=3.2076
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_39 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_39 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_39 — Z[0.470,3.678] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_38 — dx=0.0300 dy=1.8550 dz=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_38 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_38 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_38 — Z[0.470,0.500] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_37 — dx=0.0300 dy=1.8850 dz=0.1530
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_37 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_37 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_37 — Z[3.676,3.829] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_36 — dx=0.0300 dy=0.0300 dz=3.2884
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_36 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_36 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_36 — Z[0.470,3.758] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_35 — dx=0.0300 dy=1.8400 dz=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_35 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_35 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_35 — Z[0.470,0.500] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_34 — dx=0.0300 dy=1.8886 dz=0.5841
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_34 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_34 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_34 — Z[3.203,3.787] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_33 — dx=0.0300 dy=0.0300 dz=2.7513
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_33 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_33 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_33 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_43 — dx=0.0300 dy=0.0300 dz=2.7513
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_43 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_43 — min_dim=0.0300
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_43 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_GROUND_FLOOR_1 — dx=9.3075 dy=5.6550 dz=0.0570
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_GROUND_FLOOR_1 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_GROUND_FLOOR_1 — min_dim=0.0570
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_GROUND_FLOOR_1 — Z[2.670,2.727] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_SLAB_ROOF_32 — dx=13.9675 dy=5.7675 dz=0.1650
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_SLAB_ROOF_32 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_SLAB_ROOF_32 — min_dim=0.1650
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_SLAB_ROOF_32 — Z[2.805,2.970] within [2.2,3.9]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_WALL_GROUND_FLOOR_8 — dx=14.1450 dy=0.2900 dz=2.4737
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_WALL_GROUND_FLOOR_8 — all coords in range
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_WALL_GROUND_FLOOR_8 — min_dim=0.2900
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_WALL_GROUND_FLOOR_8 — Z[0.470,2.944] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.522 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_45 — dx=1.5883 dy=0.0300 dz=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_45 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_45 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_45 — Z[3.191,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_44 — dx=1.5883 dy=0.0300 dz=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_44 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_44 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_44 — Z[0.470,0.500] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — COMPACT_MD_GROUND_FLOOR_17 — dx=1.4281 dy=1.4004 dz=0.9183
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — COMPACT_MD_GROUND_FLOOR_17 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — COMPACT_MD_GROUND_FLOOR_17 — min_dim=0.9183
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — COMPACT_MD_GROUND_FLOOR_17 — Z[0.470,1.388] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_22 — dx=0.4269 dy=0.4425 dz=1.2270
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_22 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_22 — min_dim=0.4269
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_22 — Z[0.469,1.696] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_28 — dx=2.0000 dy=1.0000 dz=0.7500
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_28 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_28 — min_dim=0.7500
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_28 — Z[0.470,1.220] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_13 — dx=1.8600 dy=0.3525 dz=1.2100
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_13 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_13 — min_dim=0.3525
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_13 — Z[1.370,2.580] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_46 — dx=0.0300 dy=0.0300 dz=2.7513
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_46 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_46 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_46 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_48 — dx=1.6033 dy=0.0300 dz=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_48 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_48 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_48 — Z[3.191,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_47 — dx=1.6033 dy=0.0300 dz=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_47 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_47 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_47 — Z[0.470,0.500] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_24 — dx=0.4425 dy=0.4269 dz=1.2270
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_24 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_24 — min_dim=0.4269
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_24 — Z[0.469,1.696] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_23 — dx=0.4425 dy=0.4269 dz=1.2270
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_23 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_23 — min_dim=0.4269
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_23 — Z[0.469,1.696] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_19 — dx=2.2869 dy=0.9773 dz=0.9581
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_19 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_19 — min_dim=0.9581
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_19 — Z[0.470,1.428] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_26 — dx=0.4425 dy=0.4269 dz=1.2270
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_26 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_26 — min_dim=0.4269
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_26 — Z[0.469,1.696] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_25 — dx=0.4425 dy=0.4269 dz=1.2270
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_25 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_25 — min_dim=0.4269
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_25 — Z[0.469,1.696] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_20 — dx=1.2000 dy=0.5500 dz=0.4500
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_20 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_20 — min_dim=0.4500
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_20 — Z[0.470,0.920] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_27 — dx=0.4269 dy=0.4425 dz=1.2270
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_27 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_27 — min_dim=0.4269
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_27 — Z[0.469,1.696] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_49 — dx=0.0300 dy=0.0300 dz=2.7513
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_49 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_49 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_49 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_51 — dx=1.5883 dy=0.0300 dz=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_51 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_51 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_51 — Z[3.191,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_50 — dx=1.5883 dy=0.0300 dz=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_50 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_50 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_50 — Z[0.470,0.500] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_PLATE_UNKNOWN_53 — dx=1.6333 dy=0.0250 dz=2.7513
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_PLATE_UNKNOWN_53 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_PLATE_UNKNOWN_53 — min_dim=0.0250
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_PLATE_UNKNOWN_53 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_PLATE_UNKNOWN_54 — dx=0.0250 dy=1.8850 dz=3.3168
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_PLATE_UNKNOWN_54 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_PLATE_UNKNOWN_54 — min_dim=0.0250
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_PLATE_UNKNOWN_54 — Z[0.470,3.787] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_PLATE_UNKNOWN_55 — dx=0.0250 dy=1.8850 dz=3.3587
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_PLATE_UNKNOWN_55 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_PLATE_UNKNOWN_55 — min_dim=0.0250
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_PLATE_UNKNOWN_55 — Z[0.470,3.829] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_PLATE_UNKNOWN_56 — dx=0.0250 dy=1.8850 dz=3.2351
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_PLATE_UNKNOWN_56 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_PLATE_UNKNOWN_56 — min_dim=0.0250
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_PLATE_UNKNOWN_56 — Z[0.470,3.705] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_PLATE_UNKNOWN_57 — dx=1.6333 dy=0.0250 dz=2.7513
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_PLATE_UNKNOWN_57 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_PLATE_UNKNOWN_57 — min_dim=0.0250
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_PLATE_UNKNOWN_57 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_PLATE_UNKNOWN_58 — dx=1.6333 dy=0.0250 dz=2.7513
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_PLATE_UNKNOWN_58 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_PLATE_UNKNOWN_58 — min_dim=0.0250
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_PLATE_UNKNOWN_58 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — COMPACT_MD_GROUND_FLOOR_18 — dx=1.4237 dy=1.3891 dz=0.9183
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — COMPACT_MD_GROUND_FLOOR_18 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — COMPACT_MD_GROUND_FLOOR_18 — min_dim=0.9183
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — COMPACT_MD_GROUND_FLOOR_18 — Z[0.470,1.388] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_MEMBER_UNKNOWN_52 — dx=0.0300 dy=0.0300 dz=2.7513
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_MEMBER_UNKNOWN_52 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_MEMBER_UNKNOWN_52 — min_dim=0.0300
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_MEMBER_UNKNOWN_52 — Z[0.470,3.221] within [0.5,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_WALL_GROUND_FLOOR_9 — dx=8.9550 dy=0.2900 dz=2.8211
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_WALL_GROUND_FLOOR_9 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_WALL_GROUND_FLOOR_9 — min_dim=0.2900
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_WALL_GROUND_FLOOR_9 — Z[0.470,3.291] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_14 — dx=1.8600 dy=0.3525 dz=1.2100
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_14 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_14 — min_dim=0.3525
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_14 — Z[1.370,2.580] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_15 — dx=1.8600 dy=0.3525 dz=1.2100
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_15 — all coords in range
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_15 — min_dim=0.3525
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_15 — Z[1.370,2.580] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.523 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — COMPACT_MD_GROUND_FLOOR_21 — dx=1.3716 dy=0.6000 dz=1.1699
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — COMPACT_MD_GROUND_FLOOR_21 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — COMPACT_MD_GROUND_FLOOR_21 — min_dim=0.6000
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — COMPACT_MD_GROUND_FLOOR_21 — Z[0.470,1.640] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_GROUND_FLOOR_4 — dx=0.1780 dy=0.8800 dz=2.1450
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_GROUND_FLOOR_4 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_GROUND_FLOOR_4 — min_dim=0.1780
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_GROUND_FLOOR_4 — Z[0.470,2.615] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_GROUND_FLOOR_5 — dx=0.1780 dy=0.8800 dz=2.1450
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_GROUND_FLOOR_5 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_GROUND_FLOOR_5 — min_dim=0.1780
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_GROUND_FLOOR_5 — Z[0.470,2.615] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_WALL_GROUND_FLOOR_11 — dx=0.0950 dy=5.5100 dz=2.3350
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_WALL_GROUND_FLOOR_11 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_WALL_GROUND_FLOOR_11 — min_dim=0.0950
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_WALL_GROUND_FLOOR_11 — Z[0.470,2.805] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_WALL_GROUND_FLOOR_12 — dx=4.4525 dy=0.0950 dz=2.3350
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_WALL_GROUND_FLOOR_12 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_WALL_GROUND_FLOOR_12 — min_dim=0.0950
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_WALL_GROUND_FLOOR_12 — Z[0.470,2.805] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_GROUND_FLOOR_3 — dx=4.4525 dy=3.4625 dz=0.0570
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_GROUND_FLOOR_3 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_GROUND_FLOOR_3 — min_dim=0.0570
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_GROUND_FLOOR_3 — Z[2.670,2.727] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_GROUND_FLOOR_2 — dx=4.4525 dy=1.9525 dz=0.0570
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_GROUND_FLOOR_2 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_GROUND_FLOOR_2 — min_dim=0.0570
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_GROUND_FLOOR_2 — Z[2.670,2.727] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — SLAB_MD_GROUND_FLOOR_6 — dx=1.8600 dy=0.1990 dz=2.1100
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — SLAB_MD_GROUND_FLOOR_6 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — SLAB_MD_GROUND_FLOOR_6 — min_dim=0.1990
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — SLAB_MD_GROUND_FLOOR_6 — Z[0.470,2.580] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_16 — dx=1.8600 dy=0.3525 dz=1.2100
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_16 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_16 — min_dim=0.3525
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_16 — Z[1.370,2.580] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — MD_GROUND_FLOOR_29 — dx=2.0070 dy=1.8000 dz=0.4826
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — MD_GROUND_FLOOR_29 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — MD_GROUND_FLOOR_29 — min_dim=0.4826
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — MD_GROUND_FLOOR_29 — Z[0.470,0.953] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — COMPACT_MD_GROUND_FLOOR_30 — dx=1.5631 dy=0.8192 dz=0.7620
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — COMPACT_MD_GROUND_FLOOR_30 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — COMPACT_MD_GROUND_FLOOR_30 — min_dim=0.7620
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — COMPACT_MD_GROUND_FLOOR_30 — Z[0.470,1.232] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P01_POSITIVE_EXTENT — STR_MD_WALL_GROUND_FLOOR_10 — dx=0.2900 dy=5.8000 dz=3.3582
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P02_FINITE_COORDS — STR_MD_WALL_GROUND_FLOOR_10 — all coords in range
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P03_MIN_DIMENSION — STR_MD_WALL_GROUND_FLOOR_10 — min_dim=0.2900
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P04_STOREY_Z_BAND — STR_MD_WALL_GROUND_FLOOR_10 — Z[0.470,3.828] within [0.0,3.8]±0.5 (actual)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P05_NO_DUPLICATE_POSITION — GLOBAL — 58 placements, no duplicate centroids
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P06_NO_SAME_CLASS_OVERLAP — GLOBAL — 58 placements, no same-class overlaps
+2026-03-30 03:39:40.524 [WARN ] PROVER       [VIOLATED] P27_WALL_ROOF_INTERSECTION — STR_MD_WALL_GROUND_FLOOR_8 — wall.maxZ=2.944 exceeds roofZ=2.588 by 0.355m at (8.57,7.30)
+2026-03-30 03:39:40.524 [WARN ] PROVER       [VIOLATED] P27_WALL_ROOF_INTERSECTION — STR_MD_WALL_GROUND_FLOOR_9 — wall.maxZ=3.291 exceeds roofZ=2.541 by 0.750m at (10.88,1.50)
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P28_ROOF_COVERAGE — GLOBAL — roof [0.80,15.65]x[0.81,8.09] covers walls [1.50,15.65]x[1.35,7.45]
+2026-03-30 03:39:40.524 [FINE ] PROVER       [SKIPPED] P07_OPENING_CONTAINED — GLOBAL — no relational data for Ifc4_SampleHouse
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_SLAB_GROUND_FLOOR_7 — planarity=0.0279 elongation=0.5139 470×8668×16868mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_ROOF_31 — planarity=0.1168 elongation=0.4909 1734×7285×14841mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_42 — planarity=0.0121 elongation=0.0121 30×30×2474mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_41 — planarity=0.0163 elongation=0.0163 30×30×1840mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_40 — planarity=0.0159 elongation=0.4114 30×778×1891mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_39 — planarity=0.0094 elongation=0.0094 30×30×3208mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_38 — planarity=0.0162 elongation=0.0162 30×30×1855mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_37 — planarity=0.0159 elongation=0.0812 30×153×1885mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_36 — planarity=0.0091 elongation=0.0091 30×30×3288mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_35 — planarity=0.0163 elongation=0.0163 30×30×1840mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_34 — planarity=0.0159 elongation=0.3093 30×584×1889mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_33 — planarity=0.0109 elongation=0.0109 30×30×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_43 — planarity=0.0109 elongation=0.0109 30×30×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_GROUND_FLOOR_1 — planarity=0.0061 elongation=0.6076 57×5655×9308mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_SLAB_ROOF_32 — planarity=0.0118 elongation=0.4129 165×5768×13968mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_WALL_GROUND_FLOOR_8 — planarity=0.0205 elongation=0.1749 290×2474×14145mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_45 — planarity=0.0189 elongation=0.0189 30×30×1588mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_44 — planarity=0.0189 elongation=0.0189 30×30×1588mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — COMPACT_MD_GROUND_FLOOR_17 — planarity=0.6430 elongation=0.9806 918×1400×1428mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_22 — planarity=0.3479 elongation=0.3607 427×443×1227mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_28 — planarity=0.3750 elongation=0.5000 750×1000×2000mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_13 — planarity=0.1895 elongation=0.6505 353×1210×1860mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_46 — planarity=0.0109 elongation=0.0109 30×30×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_48 — planarity=0.0187 elongation=0.0187 30×30×1603mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_47 — planarity=0.0187 elongation=0.0187 30×30×1603mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_24 — planarity=0.3479 elongation=0.3607 427×443×1227mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_23 — planarity=0.3479 elongation=0.3607 427×443×1227mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_19 — planarity=0.4190 elongation=0.4273 958×977×2287mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_26 — planarity=0.3479 elongation=0.3607 427×443×1227mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_25 — planarity=0.3479 elongation=0.3607 427×443×1227mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_20 — planarity=0.3750 elongation=0.4583 450×550×1200mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_27 — planarity=0.3479 elongation=0.3607 427×443×1227mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_49 — planarity=0.0109 elongation=0.0109 30×30×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_51 — planarity=0.0189 elongation=0.0189 30×30×1588mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_50 — planarity=0.0189 elongation=0.0189 30×30×1588mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_PLATE_UNKNOWN_53 — planarity=0.0091 elongation=0.5937 25×1633×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_PLATE_UNKNOWN_54 — planarity=0.0075 elongation=0.5683 25×1885×3317mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_PLATE_UNKNOWN_55 — planarity=0.0074 elongation=0.5612 25×1885×3359mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_PLATE_UNKNOWN_56 — planarity=0.0077 elongation=0.5827 25×1885×3235mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_PLATE_UNKNOWN_57 — planarity=0.0091 elongation=0.5937 25×1633×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_PLATE_UNKNOWN_58 — planarity=0.0091 elongation=0.5937 25×1633×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — COMPACT_MD_GROUND_FLOOR_18 — planarity=0.6450 elongation=0.9757 918×1389×1424mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_MEMBER_UNKNOWN_52 — planarity=0.0109 elongation=0.0109 30×30×2751mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_WALL_GROUND_FLOOR_9 — planarity=0.0324 elongation=0.3150 290×2821×8955mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_14 — planarity=0.1895 elongation=0.6505 353×1210×1860mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_15 — planarity=0.1895 elongation=0.6505 353×1210×1860mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — COMPACT_MD_GROUND_FLOOR_21 — planarity=0.4374 elongation=0.8529 600×1170×1372mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_GROUND_FLOOR_4 — planarity=0.0830 elongation=0.4103 178×880×2145mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_GROUND_FLOOR_5 — planarity=0.0830 elongation=0.4103 178×880×2145mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_WALL_GROUND_FLOOR_11 — planarity=0.0172 elongation=0.4238 95×2335×5510mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_WALL_GROUND_FLOOR_12 — planarity=0.0213 elongation=0.5244 95×2335×4453mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_GROUND_FLOOR_3 — planarity=0.0128 elongation=0.7777 57×3463×4453mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_GROUND_FLOOR_2 — planarity=0.0128 elongation=0.4385 57×1953×4453mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — SLAB_MD_GROUND_FLOOR_6 — planarity=0.0943 elongation=0.8815 199×1860×2110mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_16 — planarity=0.1895 elongation=0.6505 353×1210×1860mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — MD_GROUND_FLOOR_29 — planarity=0.2405 elongation=0.8969 483×1800×2007mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — COMPACT_MD_GROUND_FLOOR_30 — planarity=0.4875 elongation=0.5241 762×819×1563mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P10_SHAPE_IDENTITY — STR_MD_WALL_GROUND_FLOOR_10 — planarity=0.0500 elongation=0.5790 290×3358×5800mm
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — MD_GROUND_FLOOR_13 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — MD_GROUND_FLOOR_14 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — MD_GROUND_FLOOR_15 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — SLAB_MD_GROUND_FLOOR_4 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — SLAB_MD_GROUND_FLOOR_5 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — SLAB_MD_GROUND_FLOOR_6 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [PROVEN] P22_OPENING_MESH_IN_BBOX — MD_GROUND_FLOOR_16 — mesh within bbox
+2026-03-30 03:39:40.524 [FINE ] PROVER       [SKIPPED] P23_DRAIN_CORNER_ALIGNMENT — GLOBAL — no IfcFlowSegment elements
+2026-03-30 03:39:40.525 [FINE ] PROVER       [SKIPPED] P25_ROOM_VALIDITY — GLOBAL — no IfcSpace elements found
+2026-03-30 03:39:40.525 [FINE ] PROVER       [PROVEN] P26_BUILDING_COMPLETENESS — GLOBAL — roof present
+2026-03-30 03:39:40.525 [WARN ] PROVER       [VIOLATED] P26_BUILDING_COMPLETENESS — GLOBAL — missing: rooms(0), external_door(doors exist but none at perimeter), circulation(3 storeys, no stairs/ramps)
+2026-03-30 03:39:40.525 [FINE ] PIPELINE     Stage 11 (PLACEMENT MATHEMATICAL PROOF) completed in 22ms
+2026-03-30 03:39:40.525 [INFO ] PIPELINE     ----------------------------------------------------------------------
+2026-03-30 03:39:40.525 [INFO ] PIPELINE     STEP 12: COMPLIANCE PROOF CHAIN — starting
+2026-03-30 03:39:40.526 [INFO ] COMPLIANCE   RootBOM=BUILDING_SH_STD, jurisdiction=MY, edition=MY_DEFAULT
+2026-03-30 03:39:40.561 [INFO ] COMPLIANCE   Wrote 8 proof lines to DAGCompiler/lib/output/ifc4_samplehouse_compliance_proof.db
+2026-03-30 03:39:40.563 [INFO ] COMPLIANCE   Submission package written to output/SH_submission
+2026-03-30 03:39:40.563 [FINE ] PIPELINE     Stage 12 (COMPLIANCE PROOF CHAIN) completed in 38ms
+2026-03-30 03:39:40.563 [INFO ] PIPELINE     ======================================================================
+2026-03-30 03:39:40.563 [INFO ] PIPELINE     PIPELINE COMPLETE: Sample House — 58 elements
+2026-03-30 03:39:40.563 [INFO ] PIPELINE     ======================================================================
+2026-03-30 03:39:40.563 [FINE ] DRIFT        --------------------------------------------------
+2026-03-30 03:39:40.563 [FINE ] DRIFT        LAST MILE CHECK: Sample House (LAST_MILE_PROBLEM.md §Session Checklist)
+2026-03-30 03:39:40.563 [FINE ] DRIFT        §1  Input=Output: expected=58, actual=58 → PASS
+2026-03-30 03:39:40.563 [FINE ] DRIFT        §2  LOD400 Geometry: 58/58 OK, 0 warn, 0 fail → PASS
+2026-03-30 03:39:40.563 [FINE ] DRIFT        §3  Compiler Only: T18/T19/T20 guard (checked at gate)
+2026-03-30 03:39:40.563 [FINE ] DRIFT        §4  Openings: P05=0 violations, P06=0 violations → PASS
+2026-03-30 03:39:40.563 [FINE ] DRIFT        §6  Output Path: C_OrderLine → BOM explosion → elements (structural)
+2026-03-30 03:39:40.563 [FINE ] DRIFT        §7  Separate From Input: bom.db=library/_SH_compile.db
+2026-03-30 03:39:40.564 [FINE ] DRIFT        §8  Visual Fidelity: 301 proven, 3 violated, 3 skipped → PASS
+2026-03-30 03:39:40.564 [FINE ] DRIFT        §9  Orientation: P01=0 violations → PASS
+2026-03-30 03:39:40.564 [FINE ] DRIFT        §10 Tamper Seal: checked at gate (verify_test_seal.sh)
+2026-03-30 03:39:40.564 [FINE ] DRIFT        §11 Factorization: BOM line guards (checked at extraction)
+2026-03-30 03:39:40.564 [FINE ] DRIFT        SUMMARY: 8 pass, 0 fail, 0 deferred
+2026-03-30 03:39:40.564 [FINE ] DRIFT        --------------------------------------------------
+2026-03-30 03:39:40.564 [INFO ] PIPELINE     Log saved: logs/pipeline_Sample House_extracted_20260330_033940.log
+# End: 2026-03-30 03:39:40.564
