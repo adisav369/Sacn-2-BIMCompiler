@@ -456,6 +456,6 @@ Run: `mvn test -pl BIMBackOffice`
 *Related docs:
 [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) (SRS) |
 [BIM_Designer_UserGuide.md](BIM_Designer_UserGuide.md) (Bonsai client guide) |
-[INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md) (installer packaging) |
+[INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md) (installer packaging) |
 [ACTION_ROADMAP.md](ACTION_ROADMAP.md) (report engine roadmap) |
 [MANIFESTO.md](MANIFESTO.md) (iDempiere mapping)*

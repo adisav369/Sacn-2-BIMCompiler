@@ -712,7 +712,7 @@ lives in DAGCompiler.
 
 ## 10. Audit Finding: Proof Coverage Honesty (S60 post-audit)
 
-Post-S60 audit ([AUDIT_S51_FOCUSED.md §Oracle Independence](https://github.com/red1oon/BIMCompiler/blob/master/specs/AUDIT_S51_FOCUSED.md)) found the 28-proof claim overstates actual per-element coverage:
+Post-S60 audit ([AUDIT_S51_FOCUSED.md §Oracle Independence](https://github.com/red1oon/BIMCompiler/blob/master/internal/AUDIT_S51_FOCUSED.md)) found the 28-proof claim overstates actual per-element coverage:
 
 | Category | Count | Nature |
 |----------|-------|--------|

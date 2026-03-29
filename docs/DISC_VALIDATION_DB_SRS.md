@@ -1531,4 +1531,4 @@ is independently committable, each step gated by existing Rosetta Stone tests.
 [DocAction_SRS.md](DocAction_SRS.md) §1.3 (processIt DocEvent) |
 [CALIBRATION_SRS.md](CALIBRATION_SRS.md) (DocEvent vs Terminal) |
 [G4_SRS.md](G4_SRS.md) §2 (output.db pattern) |
-[AUDIT_S51_FOCUSED.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/AUDIT_S51_FOCUSED.md) Appendix F (database reality check)*
+[AUDIT_S51_FOCUSED.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/AUDIT_S51_FOCUSED.md) Appendix F (database reality check)*

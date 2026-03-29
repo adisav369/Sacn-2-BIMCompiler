@@ -6,7 +6,7 @@
 </div>
 
 **Version:** 1.5 (2026-03-26, session 79 — AD_Org_ID migration, work_output.db cleanup)
-**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
+**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
 **Scope:** The `processIt()` orchestration — iDempiere MOrder.processIt() mapped to
 BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
 
@@ -887,7 +887,7 @@ For extracted buildings (Provenance=EXTRACTED):
 
 Terminal spatial footprints (48,428 elements, 8 disciplines, 7+ storeys) extracted
 via mining pipeline. Position data from `elements_meta`, `element_transforms`,
-`spatial_structure`. See [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md) for full
+`spatial_structure`. See [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md) for full
 M1/M4/M5/M6/M12 distributions, discipline footprints, and implied placement rules
 (structural grid, FP coverage, riser continuity, ceiling alignment, z-zone ordering).
 
@@ -910,7 +910,7 @@ Already tracked as untracked file: `migration/V005_add_depends_on.sql`.
 
 *References:
 [DocValidate.md](DocValidate.md) (master validation spec) |
-[TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md) (Terminal mining data) |
+[TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md) (Terminal mining data) |
 [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §18-19 (ambient compliance, inference) |
 [BOMBasedCompilation.md](BOMBasedCompilation.md) §3-4 (tack, BUFFER) |
 [TestArchitecture.md](TestArchitecture.md) (G1-G6 gates, traceability) |

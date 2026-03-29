@@ -7,7 +7,7 @@
 
 **Version:** 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
 **Depends on:** [BIM_Designer.md](BIM_Designer.md) §17.10, [DocValidate.md](DocValidate.md) §15, [MANIFESTO.md](MANIFESTO.md) §2
-**Pre-requisite:** TACK-FIX (see [TACK_FIX_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TACK_FIX_SPEC.md))
+**Pre-requisite:** TACK-FIX (see [TACK_FIX_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TACK_FIX_SPEC.md))
 
 ---
 
@@ -870,5 +870,5 @@ grid pitch formula) — both addressable as data changes, no schema changes need
 [BIM_Designer.md](BIM_Designer.md) §17.10 (three-tier persistence) |
 [DocValidate.md](DocValidate.md) §15 (code-level specs) |
 [MANIFESTO.md](MANIFESTO.md) §2 (C_Order model) |
-[TACK_FIX_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TACK_FIX_SPEC.md) (pre-requisite fix) |
+[TACK_FIX_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TACK_FIX_SPEC.md) (pre-requisite fix) |
 [ACTION_ROADMAP.md](ACTION_ROADMAP.md) Phase G (task list)*
