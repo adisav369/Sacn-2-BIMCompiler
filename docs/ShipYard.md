@@ -684,6 +684,76 @@ The extensions required for marine, tunnel, earthworks, and plant are not new
 framework capabilities — they are surface providers and import adapters that plug
 into existing framework interfaces.
 
+### GEO Formula Verification — The ShipYard Breakthrough
+
+For buildings, GEO debug mode verifies compiled positions against the
+**extraction source** — a database of positions from the original IFC
+([LMP §7](LAST_MILE_PROBLEM.md#7-separate-from-input)). The comparison
+target is a lookup: `SELECT minX, minY, minZ FROM extracted.elements_rtree
+WHERE guid = ?`.
+
+ShipYard domains have no extraction source. A hull is designed, not scanned.
+But they have something better: **a mathematical definition.** A hull surface
+is a NURBS equation. A tunnel lining is a circular arc. A bridge deck follows
+a survey alignment. The shape is defined by a formula, not a database.
+
+GEO evolves from database comparison to **formula comparison:**
+
+| Domain | GEO comparison target | What it proves |
+|--------|----------------------|---------------|
+| Building (Rosetta) | `extracted.db` lookup by GUID | Compiled position matches IFC source |
+| Ship hull | `hull_surface(u, v) → (x, y, z)` | Plate sits on the design surface |
+| Tunnel ring | `arc(angle, radius) → (x, y, z)` | Segment follows the bore profile |
+| Bridge deck | `alignment(chainage, offset) → (x, y, z)` | Element follows the survey curve |
+| Plant pipe | `pipe_route(param) → (x, y, z)` | Segment follows the P&ID route |
+
+The TACK LEAF log line stays the same — `anchor + offset + half → centroid`.
+The MATCH/DRIFT verdict stays the same — delta per axis, within tolerance.
+Only the **comparison target** changes: from a database query to a function
+evaluation.
+
+```
+[GEO] TACK LEAF HullPlate_A7 guid=...
+  compiled  LBD=(12.450, 3.200, -1.800)
+  surface   LBD=(12.450, 3.200, -1.802)   ← hull_surface(u=0.45, v=0.32)
+  delta=(0.000mm, 0.000mm, 2.000mm) MATCH (≤5mm hull tolerance)
+```
+
+This is the equivalent of protein science's energy minimisation — the
+verification target isn't a reference structure, it's a physics equation.
+"Does this folded shape have minimum free energy?" becomes "Does this hull
+plate sit on the design surface within tolerance?"
+
+**BIMEyes integration.** The existing EYES proof framework
+([EYES_SRS.md](EYES_SRS.md)) defines proofs as `prove(placement) → PROVEN |
+VIOLATED`. A formula-based proof is the same interface:
+
+```java
+public class SurfaceConformanceProof implements Proof {
+    /** P-SURFACE: element LBD within tolerance of design surface. */
+    ProofResult prove(Placement p, SurfaceFunction surface, double toleranceMm);
+}
+```
+
+The 26 existing EYES proofs check spatial invariants (overlap, containment,
+gradient). SurfaceConformanceProof checks conformance to a mathematical
+definition. Same proof framework, new comparison target. The GEO log
+carries the verdict.
+
+**What this means for ShipYard:** a hull block is compiled from a BOM
+(plates + stiffeners + brackets, each with tack offsets). GEO verifies
+every plate against the hull surface equation. If any plate drifts from the
+surface, the log says which plate, by how much, on which axis. The shipyard
+doesn't need to visually inspect the 3D model — the compiler's own GEO
+proof chain tells them whether the block is correct.
+
+This is the billion-dollar capability: **geometry verification by formula,
+not by inspection.** No other BIM tool does this because no other tool
+compiles from BOMs and has a mathematical comparison target. Rosetta Stones
+taught the spatial relationships. GEO proves they hold — for buildings
+against extraction, for ships against hull equations, for tunnels against
+bore profiles.
+
 ---
 
 ## Cross-Domain Precedent
