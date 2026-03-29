@@ -53,10 +53,10 @@ public final class ElecRouteBuilder implements DisciplineRouteBuilder {
 
         for (int f = 0; f < floors.size(); f++) {
             BuildingGeometry.FloorLevel floor = floors.get(f);
-            double floorZMm = floor.zMm();
+            double ceilingZMm = geo.ceilingHeightMm(floor.ref());
 
-            // Rise to this floor
-            double riseDistance = floorZMm - currentZ;
+            // Rise to ceiling void of this floor
+            double riseDistance = ceilingZMm - currentZ;
             if (riseDistance > 0) {
                 ops.add(new FollowOp(riseDistance, STOCK_LENGTH_MM));
                 ops.add(new PenetrateOp("SLAB", geo.slabThickness(floor.ref()), false));
@@ -96,7 +96,7 @@ public final class ElecRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new BendOp(-90));
             }
 
-            currentZ = floorZMm;
+            currentZ = ceilingZMm;
         }
 
         CrawlRouter.RouteResult result = CrawlRouter.execute(initial, ops);

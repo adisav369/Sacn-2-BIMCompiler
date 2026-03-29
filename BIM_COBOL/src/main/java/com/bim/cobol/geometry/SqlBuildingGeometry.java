@@ -21,6 +21,8 @@ public class SqlBuildingGeometry implements BuildingGeometry {
 
     private static final String TAG = "CRAWL";
     private static final double DEFAULT_SLAB_THICKNESS_MM = 150.0;
+    private static final double DEFAULT_STOREY_HEIGHT_MM = 3500.0;
+    private static final double MEP_CLEARANCE_MM = 50.0;
 
     private final Connection compileDb;
 
@@ -149,5 +151,32 @@ public class SqlBuildingGeometry implements BuildingGeometry {
         }
         BIMLogger.fine(TAG, "slabThickness: floor={} default={:.0f}mm", floorRef, DEFAULT_SLAB_THICKNESS_MM);
         return DEFAULT_SLAB_THICKNESS_MM;
+    }
+
+    @Override
+    public double ceilingHeightMm(String floorRef) {
+        // Implementing DISC_VALIDATION_DB_SRS §10.4.12 Gap 1 — ceiling void routing
+        // ceilingHeight = nextFloor.zMm - slabThickness(nextFloor) - clearanceMm
+        List<FloorLevel> allFloors = floors();
+        for (int i = 0; i < allFloors.size(); i++) {
+            if (allFloors.get(i).ref().equals(floorRef)) {
+                double thisFloorZ = allFloors.get(i).zMm();
+                double ceilingZ;
+                if (i + 1 < allFloors.size()) {
+                    // Next floor exists — ceiling = next floor Z - slab thickness - clearance
+                    FloorLevel nextFloor = allFloors.get(i + 1);
+                    ceilingZ = nextFloor.zMm() - slabThickness(nextFloor.ref()) - MEP_CLEARANCE_MM;
+                } else {
+                    // Top floor — use default storey height above this floor
+                    ceilingZ = thisFloorZ + DEFAULT_STOREY_HEIGHT_MM - slabThickness(floorRef) - MEP_CLEARANCE_MM;
+                }
+                BIMLogger.fine(TAG, "ceilingHeightMm: floor={} ceiling={:.0f}mm (floorZ={:.0f}mm)",
+                        floorRef, ceilingZ, thisFloorZ);
+                return ceilingZ;
+            }
+        }
+        // Fallback: not found
+        BIMLogger.fine(TAG, "ceilingHeightMm: floor={} not found, using default", floorRef);
+        return DEFAULT_STOREY_HEIGHT_MM - DEFAULT_SLAB_THICKNESS_MM - MEP_CLEARANCE_MM;
     }
 }

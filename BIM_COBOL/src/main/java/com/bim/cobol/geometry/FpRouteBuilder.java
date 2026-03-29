@@ -55,9 +55,10 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
         for (int f = 0; f < floors.size(); f++) {
             BuildingGeometry.FloorLevel floor = floors.get(f);
             double floorZMm = floor.zMm();
+            double ceilingZMm = geo.ceilingHeightMm(floor.ref());
 
-            // Rise to this floor (if above current Z)
-            double riseDistance = floorZMm - currentZ;
+            // Rise to ceiling void of this floor (if above current Z)
+            double riseDistance = ceilingZMm - currentZ;
             if (riseDistance > 0) {
                 ops.add(new FollowOp(riseDistance, STOCK_LENGTH_MM));
                 // Penetrate slab (fire-rated for FP)
@@ -65,7 +66,7 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new PenetrateOp("SLAB", slabMm, true));
             }
 
-            // At floor level: bend 90° to horizontal, reduce to main diameter
+            // At ceiling void: bend 90° to horizontal, reduce to main diameter
             ops.add(new BendOp(90));
             if (f == 0) {
                 // First floor: reduce from riser to main diameter
@@ -101,7 +102,7 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new BendOp(-90));
             }
 
-            currentZ = floorZMm;
+            currentZ = ceilingZMm;
         }
 
         CrawlRouter.RouteResult result = CrawlRouter.execute(initial, ops);

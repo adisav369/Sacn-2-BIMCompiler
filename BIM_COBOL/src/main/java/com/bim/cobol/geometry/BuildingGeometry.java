@@ -40,6 +40,12 @@ public interface BuildingGeometry {
     /** Slab thickness for a floor (from STR data or default 150mm). */
     double slabThickness(String floorRef);
 
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.12 Gap 1 — ceiling void routing
+    // ceilingHeight = nextFloor.zMm - slabThickness(nextFloor) - clearanceMm
+
+    /** Ceiling void Z for a floor = slab bottom of floor above minus clearance. */
+    double ceilingHeightMm(String floorRef);
+
     /** Floor level: reference name + Z position. */
     record FloorLevel(String ref, double zMm) {}
 

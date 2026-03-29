@@ -56,10 +56,10 @@ public final class LpgRouteBuilder implements DisciplineRouteBuilder {
 
         for (int f = 0; f < floors.size(); f++) {
             BuildingGeometry.FloorLevel floor = floors.get(f);
-            double floorZMm = floor.zMm();
+            double ceilingZMm = geo.ceilingHeightMm(floor.ref());
 
-            // Rise to floor
-            double riseDistance = floorZMm - currentZ;
+            // Rise to ceiling void of this floor
+            double riseDistance = ceilingZMm - currentZ;
             if (riseDistance > 0) {
                 ops.add(new FollowOp(riseDistance, STOCK_LENGTH_MM));
                 // LPG does not penetrate slabs — runs along external wall
@@ -100,7 +100,7 @@ public final class LpgRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new BendOp(-90));
             }
 
-            currentZ = floorZMm;
+            currentZ = ceilingZMm;
         }
 
         CrawlRouter.RouteResult result = CrawlRouter.execute(initial, ops);

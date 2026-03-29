@@ -55,8 +55,8 @@ public final class SpRouteBuilder implements DisciplineRouteBuilder {
         List<BuildingGeometry.FloorLevel> topDown = new ArrayList<>(floors);
         Collections.reverse(topDown);
 
-        // Start at wet core position, top floor
-        double startZMm = topDown.isEmpty() ? start.z() * 1000 : topDown.get(0).zMm();
+        // Start at wet core position, ceiling void of top floor
+        double startZMm = topDown.isEmpty() ? start.z() * 1000 : geo.ceilingHeightMm(topDown.get(0).ref());
         CrawlState initial = new CrawlState(
                 new Point3D(start.x(), start.y(), startZMm / 1000.0),
                 new Point3D(0, 0, -1), STACK_DIAMETER_MM, segmentProduct(), DISC);
@@ -65,10 +65,10 @@ public final class SpRouteBuilder implements DisciplineRouteBuilder {
 
         for (int f = 0; f < topDown.size(); f++) {
             BuildingGeometry.FloorLevel floor = topDown.get(f);
-            double floorZMm = floor.zMm();
+            double ceilingZMm = geo.ceilingHeightMm(floor.ref());
 
-            // Drop to this floor (if below current Z)
-            double dropDistance = currentZ - floorZMm;
+            // Drop to ceiling void of this floor (if below current Z)
+            double dropDistance = currentZ - ceilingZMm;
             if (dropDistance > 0) {
                 ops.add(new FollowOp(dropDistance, STOCK_LENGTH_MM));
                 // SP can penetrate slabs (drainage risers)
@@ -111,7 +111,7 @@ public final class SpRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new BendOp(-90));
             }
 
-            currentZ = floorZMm;
+            currentZ = ceilingZMm;
         }
 
         CrawlRouter.RouteResult result = CrawlRouter.execute(initial, ops);

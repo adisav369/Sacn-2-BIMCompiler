@@ -45,6 +45,7 @@
 
 ## Session Log (recent first)
 
+**S100-p118** — Ceiling void routing (prompt 118). `ceilingHeightMm(floorRef)` added to BuildingGeometry + SqlBuildingGeometry. All 6 RouteBuilders updated: horizontal MEP runs at ceiling void Z (nextFloor.z - slabThickness - 50mm clearance). SH 7/7, TE 5/7 (no regression). Surprise: c_orderline FLOOR dz values are BOM-relative offsets (0-47mm), not absolute Z — ceiling heights negative for most floors, routing handles gracefully.
 **S100-p117** — Callout category defaults (prompt 117). OrderLineProductCallout now pre-populates disciplines by M_Product_Category: CO=all 6, RE=[ELEC,SP], IN=none. YAML override via REMOVE_DISCIPLINES/ADD_DISCIPLINES in ad_sysconfig. readMepDisciplines() removed from CompilationPipeline. SH 7/7, TE 5/7, BR 8/8 (all no regression).
 **S100-p116** — VerbStage default recipe (prompt 116). Scriptless buildings now generate CHECK BOM + CHECK PLACEMENT + CHECK CLASH (if routes exist) via `defaultRecipe()`. Root BOM found from m_bom query (same as BomDropper). TE: 3 verbs fired, 3 W_Verb_Node rows. SH: override path unchanged (7/7 PASS). 31 scriptless buildings now execute verbs.
 **S100-p115** — P04 StoreyZBandProof multi-storey support (prompt 115). StoreyZBandProof now pre-computes per-storey Z-bands from actual element positions via EyesProofRunner. P04 violations: 48,428→0 on TE. TE critical violations: 51,625→3,197 (P05 36 + P06 3,161 remain). TE gate 5/7 (compile FAIL — 3,197 critical >0 threshold). SH 7/7 PASS (zero regression).
