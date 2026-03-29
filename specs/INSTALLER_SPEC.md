@@ -1,5 +1,5 @@
 # BIM Designer — Installer Specification
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](../docs/BOMBasedCompilation.md) · [DATA_MODEL](../docs/DATA_MODEL.md) · [BIM_COBOL](../docs/BIM_COBOL.md) · [MANIFESTO](../docs/MANIFESTO.md) · [TestArchitecture](../docs/TestArchitecture.md)
 
 <div class="bim-banner" markdown>
 <b>One download, five minutes, working BIM Designer.</b> Solo or multi-user — no server setup, no database configuration, no IT department. Local mode works offline. Cloud mode at bomtree.io gives you collaboration, shared catalogs, and client handoff with zero infrastructure.

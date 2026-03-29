@@ -19,7 +19,7 @@
 | **Report generators** | 18 templates — BOQ, schedules, takeoffs, financial, compliance. BackOffice + Web UI |
 | **Geometric comprehension** | BIMEyes — 28 proof classes, shape/compare/diff verification engine |
 | **Test infrastructure** | 261 test classes, 45 witness/proof classes, 6 gates (G0–G6), tamper seal |
-| **iDempiere conformance** | INTEGER PK on core tables (Tier 1–2 done). _ID/Name/Value triple. [Study](ID_NAME_VALUE_STUDY.md) |
+| **iDempiere conformance** | INTEGER PK on core tables (Tier 1–2 done). _ID/Name/Value triple. [Study](https://github.com/red1oon/BIMCompiler/blob/master/specs/ID_NAME_VALUE_STUDY.md) |
 | **Documentation** | 61 published specs, docs site live |
 | **Federation addon** | Blender/Bonsai IFC viewer with NLP query, 80K lines Python |
 | **Jurisdictions** | Malaysia (UBBL) — rules seeded |
@@ -121,11 +121,11 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 
 | Deliverable | Est. | Detail |
 |-------------|------|--------|
-| Cloud deployment | 5d | Oracle Cloud Free Tier — ARM A1 + SQLite, revolving workspace, user saves Order set. [INSTALLER_SPEC.md §10](INSTALLER_SPEC.md#10-oracle-cloud-deployment) |
-| User identity | 2d | OCI Identity Domains — self-service signup, OAuth2, social login, MFA. [INSTALLER_SPEC.md §10.5](INSTALLER_SPEC.md#105-user-identity-and-access) |
+| Cloud deployment | 5d | Oracle Cloud Free Tier — ARM A1 + SQLite, revolving workspace, user saves Order set. [INSTALLER_SPEC.md §10](https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md#10-oracle-cloud-deployment) |
+| User identity | 2d | OCI Identity Domains — self-service signup, OAuth2, social login, MFA. [INSTALLER_SPEC.md §10.5](https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md#105-user-identity-and-access) |
 | Custom domain | 1d | `bomtree.io` → OCI Load Balancer + DNS Zone + Let's Encrypt SSL |
-| OCI Marketplace listing | 1d | First BIM-to-BOM tool on Oracle Cloud. [INSTALLER_SPEC.md §10.4](INSTALLER_SPEC.md#104-market-position) |
-| Context-sensitive help | 1d | F1 key → github.io docs, deep-linked per panel. [INSTALLER_SPEC.md §11](INSTALLER_SPEC.md#11-context-sensitive-help) |
+| OCI Marketplace listing | 1d | First BIM-to-BOM tool on Oracle Cloud. [INSTALLER_SPEC.md §10.4](https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md#104-market-position) |
+| Context-sensitive help | 1d | F1 key → github.io docs, deep-linked per panel. [INSTALLER_SPEC.md §11](https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md#11-context-sensitive-help) |
 | API documentation | 3d | OpenAPI/Swagger for BackOffice endpoints |
 | Fleet hardening | 5d | Edge cases across all 35 building types |
 | Localization | 3d | English, Malay, Mandarin (minimum for ASEAN) |

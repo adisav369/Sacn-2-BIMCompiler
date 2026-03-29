@@ -1,12 +1,12 @@
 # TACK-FIX Method Specification
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](../docs/BOMBasedCompilation.md) · [DATA_MODEL](../docs/DATA_MODEL.md) · [BIM_COBOL](../docs/BIM_COBOL.md) · [MANIFESTO](../docs/MANIFESTO.md) · [TestArchitecture](../docs/TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>Fix three code paths that compute dx/dy/dz wrong.</b> Centroid-relative offsets must become LBD-to-LBD (minCorner-to-minCorner) per [BBC.md §4](BOMBasedCompilation.md).
+<b>Fix three code paths that compute dx/dy/dz wrong.</b> Centroid-relative offsets must become LBD-to-LBD (minCorner-to-minCorner) per [BBC.md §4](../docs/BOMBasedCompilation.md).
 </div>
 
 **Version:** 1.0 (2026-03-18, session 21)
-**Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §4, [DATA_MODEL.md](DATA_MODEL.md) §1.2
+**Depends on:** [BOMBasedCompilation.md](../docs/BOMBasedCompilation.md) §4, [DATA_MODEL.md](../docs/DATA_MODEL.md) §1.2
 **Status:** IMPLEMENTED — FIX-1 (ScopeBomBuilder LBD offsets) and FIX-3 (VerbDetector minX/minY/minZ) confirmed in code. FIX-2 (FloorRoomBomBuilder zero offsets) partially implemented.
 
 > **Problem:** Three code paths compute BOM line dx/dy/dz using centroid-relative
@@ -457,7 +457,7 @@ After  TACK-FIX:  overshoots > 0 → FAIL (pipeline aborts, no BOM committed)
 ---
 
 *References:
-[BOMBasedCompilation.md](BOMBasedCompilation.md) §4 (tack convention) |
-[DATA_MODEL.md](DATA_MODEL.md) §1.2 (tack convention) |
-[TestArchitecture.md](TestArchitecture.md) (gate structure) |
-[ACTION_ROADMAP.md](ACTION_ROADMAP.md) Pre-Code Specs T-1..T-4*
+[BOMBasedCompilation.md](../docs/BOMBasedCompilation.md) §4 (tack convention) |
+[DATA_MODEL.md](../docs/DATA_MODEL.md) §1.2 (tack convention) |
+[TestArchitecture.md](../docs/TestArchitecture.md) (gate structure) |
+[ACTION_ROADMAP.md](../docs/ACTION_ROADMAP.md) Pre-Code Specs T-1..T-4*

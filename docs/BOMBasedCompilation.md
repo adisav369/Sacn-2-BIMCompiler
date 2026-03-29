@@ -751,7 +751,7 @@ TE mining (M12): 11 true overlaps ELEC×SP, 35 pairs under 150mm on lower floors
 Rule: `NEC_ELEC_SP_CLEARANCE`, min 150mm, WARN severity.
 
 *Standards by jurisdiction and discipline: [DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.3.
-TE mining data: [TE_MINING_RESULTS](TE_MINING_RESULTS.md).
+TE mining data: [TE_MINING_RESULTS](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md).
 Shared discipline recipes: DV025 migration in ERP.db (FP_SYSTEM seed, S100-p73).
 DocEvent rule schema: AD_DocEvent_Rule in ERP.db ([DISC_VALIDATION_DB_SRS](DISC_VALIDATION_DB_SRS.md) §10.4.3).*
 

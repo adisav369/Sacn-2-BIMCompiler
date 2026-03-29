@@ -462,7 +462,7 @@ iDempiere protects shipped dictionary records from user modification. Our
 `X_M_BOM` enforces the same: Dictionary records (shipped BOM templates) are
 read-only. User records (verb-created BOMs) are fully mutable. GodMode
 bypass for migrations only. Three-tier protection at the ORM layer.
-→ [BBC.md §1](BOMBasedCompilation.md) · [AUDIT Appendix O.7](AUDIT_S51_FOCUSED.md)
+→ [BBC.md §1](BOMBasedCompilation.md) · [AUDIT Appendix O.7](https://github.com/red1oon/BIMCompiler/blob/master/specs/AUDIT_S51_FOCUSED.md)
 
 **AD_PrintFormat — Output selection.**
 In iDempiere, `AD_PrintFormat` controls which columns appear on a printed

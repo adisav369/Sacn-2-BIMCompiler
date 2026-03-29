@@ -1,5 +1,5 @@
 # View Contracts — The Compiler's Data Access Layer
-> **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
+> **Foundation:** [BBC](../docs/BOMBasedCompilation.md) · [DATA_MODEL](../docs/DATA_MODEL.md) · [BIM_COBOL](../docs/BIM_COBOL.md) · [MANIFESTO](../docs/MANIFESTO.md) · [TestArchitecture](../docs/TestArchitecture.md)
 
 <div class="bim-banner" markdown>
 <b>SQL views define the data contract between base tables and the compiler.</b> Governed views (v_qualified_bom, v_proven_geometry, etc.) that abstract the underlying schema.

@@ -85,6 +85,8 @@ nav:
       - Validation Rules: DocValidate.md
       - Assembly Builder: ASSEMBLY_BUILDER_SRS.md
       - Blender Bridge: BlenderBridge.md
+      - Output DB (G4): G4_SRS.md
+      - BIM Designer Architecture: BIM_Designer.md
 
   # ─── Enterprise (nD Platform + ERP) ───────────────────
   - Enterprise:
@@ -100,11 +102,13 @@ nav:
       - ERP Database: DISC_VALIDATION_DB_SRS.md
       - Generative House: GENERATIVE_HOUSE_SRS.md
       - Geometry Forge: GEOMETRY_FORGE_SRS.md
+      - Forge Suite: FORGE_SUITE_SRS.md
       - Prefab Architecture: PREFAB_ARCHITECTURE.md
 
   # ─── Roadmap & Papers ─────────────────────────────────
   - Roadmap:
       - Action Roadmap: ACTION_ROADMAP.md
+      - Project Blueprint: ProjectOrderBlueprint.md
       - Vibe Programming: VibeProgramming.md
       - Strategic Positioning: StrategicIndustryPositioning.md
       - BIM-ERP Paper: BIMERPPaper.md
@@ -127,4 +131,6 @@ nav:
       - Back Office Guide: BackOfficeUserGuide.md
       - IFC Onboarding: IFC_ONBOARDING_RUNBOOK.md
       - Systems Installer: SYSTEMS_INSTALLER_GUIDE.md
+      - Deployment: DEPLOYMENT.md
+      - Logging: BIMLogger.md
       - Doc Index: INDEX.md

@@ -234,7 +234,7 @@ After a Rosetta Stone passes 10/10, observed patterns become `AD_Val_Rule` entri
 
 Three-step process: (1) Query output DB for patterns, (2) Write append-only `migration/DV00N_*.sql`, (3) Apply to `ERP.db`.
 
-> **Mining methodology:** [`TE_MINING_RESULTS.md`](TE_MINING_RESULTS.md) | Bridge rules → [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §7.1
+> **Mining methodology:** [`TE_MINING_RESULTS.md`](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md) | Bridge rules → [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §7.1
 
 ---
 

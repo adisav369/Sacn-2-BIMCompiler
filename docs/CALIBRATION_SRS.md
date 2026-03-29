@@ -6,7 +6,7 @@
 </div>
 
 **Version:** 1.1 (2026-03-19, session 34 — §3.4 verdict rules, blocking vs advisory, GF exception)
-**Depends on:** [DocAction_SRS.md](DocAction_SRS.md) §1.3, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9, [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md)
+**Depends on:** [DocAction_SRS.md](DocAction_SRS.md) §1.3, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9, [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md)
 **Scope:** Qualification test comparing DocEvent rule-generated MEP layouts against
 Terminal's engineer-placed MEP elements. Proves the generic engine produces
 realistic results calibrated to ground truth.
@@ -425,5 +425,5 @@ result flips to UNCALIBRATED.
 *References:
 [DocAction_SRS.md](DocAction_SRS.md) §1.3 (processIt DocEvent path) |
 [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9 (LOD resolution chain) |
-[TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) (M1 FP spacing, M4 ELEC spacing) |
+[TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md) (M1 FP spacing, M4 ELEC spacing) |
 [NonDisturbanceTest.java](https://github.com/red1oon/BIMCompiler/blob/master/BonsaiBIMDesigner/src/test/java/com/bim/designer/NonDisturbanceTest.java) (complementary gate)*

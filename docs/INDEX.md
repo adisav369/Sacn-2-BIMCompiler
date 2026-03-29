@@ -44,7 +44,7 @@ Single-page entry point. All active docs by tier.
 | [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) | Infra Designer: terrain, alignment, 5 phases I-1..I-5 |
 | [TIER1_SRS.md](TIER1_SRS.md) | 6D carbon, 7D FM, audit trail, 3D native |
 | [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) | BackOffice HTTP server, SessionManager, portfolio |
-| [INSTALLER_SPEC.md](INSTALLER_SPEC.md) | Installation and deployment specification |
+| [INSTALLER_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md) | Installation and deployment specification |
 | [EYES_SRS.md](EYES_SRS.md) | BIMEyes geometric comprehension engine, 26 proofs, shape/compare/diff |
 | [FORGE_SUITE_SRS.md](FORGE_SUITE_SRS.md) | **Forge Suite:** parametric computation (6 parts), proprietary gap analysis, fabrication data, compliance-as-you-design |
 | [GEOMETRY_FORGE_SRS.md](GEOMETRY_FORGE_SRS.md) | ForgeEngine detail: interface, 6 engines (5 starter + RebarCageForge), formula-as-metadata |
@@ -63,7 +63,7 @@ Single-page entry point. All active docs by tier.
 | [ACInstituteAnalysis.md](ACInstituteAnalysis.md) | IN (AC Institute) 699-element institutional |
 | [DemoHouseAnalysis.md](DemoHouseAnalysis.md) | DM guardrails: 3-OrderLine compilation, SH base + FK roof + FP discipline |
 | [InfrastructureAnalysis.md](InfrastructureAnalysis.md) | Infrastructure IFC4X3, FACILITY/SEGMENT mapping |
-| [TE_MINING_RESULTS.md](TE_MINING_RESULTS.md) | M1/M4/M5/M6/M12 distributions (V004 seed data) |
+| [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md) | M1/M4/M5/M6/M12 distributions (V004 seed data) |
 
 ## T4 Guides — User-Facing
 
@@ -99,15 +99,15 @@ Single-page entry point. All active docs by tier.
 | [BIMLogger.md](BIMLogger.md) | Levelled pipeline logging spec, grep patterns |
 | [WorkOrderGuide.md](WorkOrderGuide.md) | Pipeline config, discipline mapping |
 | [BlenderBridge.md](BlenderBridge.md) | Java-smart/Python-dumb pipe |
-| [TACK_FIX_SPEC.md](TACK_FIX_SPEC.md) | FIX-1/2/3 method specs, pipeline coordination |
+| [TACK_FIX_SPEC.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/TACK_FIX_SPEC.md) | FIX-1/2/3 method specs, pipeline coordination |
 | [PREFAB_ARCHITECTURE.md](PREFAB_ARCHITECTURE.md) | 6-level assembly hierarchy, MRP BOM drop |
-| [VIEW_CONTRACTS.md](VIEW_CONTRACTS.md) | Data access layer, 6 SQL views |
+| [VIEW_CONTRACTS.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/VIEW_CONTRACTS.md) | Data access layer, 6 SQL views |
 | [BIM_Designer.md](BIM_Designer.md) | GUI, ASI, 4-action persistence, Design Mode |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Deployment procedures |
-| [AUDIT_S51_FOCUSED.md](AUDIT_S51_FOCUSED.md) | S30–S50 audit: geometry, migrations, test integrity, security, API |
-| [ID_NAME_VALUE_STUDY.md](ID_NAME_VALUE_STUDY.md) | iDempiere _ID/Name/Value column convention impact study |
+| [AUDIT_S51_FOCUSED.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/AUDIT_S51_FOCUSED.md) | S30–S50 audit: geometry, migrations, test integrity, security, API |
+| [ID_NAME_VALUE_STUDY.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/ID_NAME_VALUE_STUDY.md) | iDempiere _ID/Name/Value column convention impact study |
 | [IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md) | Self-service IFC onboarding: 8-step pipeline, template generator |
-| [WATCHDOG_READABILITY_REVIEW.md](WATCHDOG_READABILITY_REVIEW.md) | S96 expert readability review: credibility gaps, action items |
+| [WATCHDOG_READABILITY_REVIEW.md](https://github.com/red1oon/BIMCompiler/blob/master/specs/WATCHDOG_READABILITY_REVIEW.md) | S96 expert readability review: credibility gaps, action items |
 
 ## Database — Schema & ERDs (`database/`)
 

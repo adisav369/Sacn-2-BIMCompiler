@@ -456,7 +456,7 @@ Three S60-spec commits already landed:
 
 ## Appendix C — Terminal (TE) Last Mile Status (S60)
 
-Against [LAST_MILE_PROBLEM.md](LAST_MILE_PROBLEM.md) Session 42 Checklist.
+Against [LAST_MILE_PROBLEM.md](../docs/LAST_MILE_PROBLEM.md) Session 42 Checklist.
 
 | # | Check | TE Status | Evidence | Outstanding |
 |---|-------|-----------|----------|-------------|
@@ -544,7 +544,7 @@ LAST_MILE_PROBLEM.md refresh (`e1d2afe`) verified accurate.
 
 ## Appendix F — Application Dictionary Audit (S62, 2026-03-23)
 
-> **Scope:** Cross-check [DISC_VALIDATION_DB_SRS.md §10](DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62) against actual database state.
+> **Scope:** Cross-check [DISC_VALIDATION_DB_SRS.md §10](../docs/DISC_VALIDATION_DB_SRS.md#10-open-question--application-dictionary-database-s62) against actual database state.
 > **Method:** Direct SQLite queries on `library/component_library.db` and `library/ERP.db`.
 
 ### §10 Spec Assessment
@@ -1121,7 +1121,7 @@ Appendix G identified Layer 2 as weak (D+ grade). S67's response — delete the 
 
 ### I.8 — Rosetta Dictionary: Compositional Verification Model (S67)
 
-The Three Verification Tiers (TheRosettaStoneStrategy.md) only covered extracted buildings with full reference DBs. A new **Tier 4: COMPOSITIONAL VERIFICATION** was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).
+The Three Verification Tiers (../docs/TheRosettaStoneStrategy.md) only covered extracted buildings with full reference DBs. A new **Tier 4: COMPOSITIONAL VERIFICATION** was written to address composed buildings (DemoHouse, BIM Designer creations, C_Project developments).
 
 **Core concept:** When a Rosetta Stone passes exact sameness (G1-G6), its BOM becomes a certified dictionary entry. A composed building is a sentence built from proven words. Verification changes from "output == reference?" to "each fragment consistent with its source + composition satisfies spatial invariants."
 
@@ -1504,7 +1504,7 @@ explicitly deferred per the session prompt and Appendix J §J.3.
 references remained across 44 live docs.
 
 **Action taken (this session):**
-- Replaced all `[ConstructionAsERP](ConstructionAsERP.md)` foundation breadcrumbs → `[MANIFESTO](MANIFESTO.md)` (25 files)
+- Replaced all `[ConstructionAsERP](../docs/ConstructionAsERP.md)` foundation breadcrumbs → `[MANIFESTO](../docs/MANIFESTO.md)` (25 files)
 - Mapped deep section references to correct live targets: §1.1/§1.3/§1.4 → DATA_MODEL.md, §2/§3 → SystemContract.md, §11/Appendix A → BBC.md §1, §D.5 → ProjectOrderBlueprint.md (19 files)
 - Fixed INDEX.md: removed duplicate SystemContract entry from T1, added ConstructionAsERP to Archived table
 - Fixed BIM_COBOL.md: ADHistory.md/METADATA_DRIVEN_ARCHITECTURE.md refs → DocAction_SRS.md
