@@ -298,6 +298,18 @@ The Rosetta Stone library — 35 real buildings — is the Protein Data Bank of 
 
 ---
 
+> *Along the way, we discovered physics. We set out to compile buildings
+> from Bills of Materials — an ERP problem. We ended up proving that
+> hierarchical spatial recipes can reconstruct any physical assembly with
+> per-element, identity-traced, zero-drift verification — a physics
+> problem. The tack offset is just three numbers. But accumulated through
+> a hierarchy of parent-child relationships, verified against the source
+> structure, and traced through an identity chain, those three numbers
+> encode the spatial truth of a physical object. Construction was the
+> first proof. It will not be the last.*
+
+---
+
 *Correspondence: red1org@gmail.com*
 *Code and evidence: https://github.com/red1oon/BIMCompiler*
 *Documentation: https://red1oon.github.io/BIMCompiler/*
