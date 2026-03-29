@@ -727,7 +727,7 @@ Additional M_Product columns:
 | Column | Type | Source |
 |--------|------|--------|
 | `unit_cost_rm` | REAL | CIDB/PWD 203A 2024 material rate (RM per unit) |
-| `cost_uom` | TEXT | EA / M / M2 / M3 |
+| `cost_uom` | TEXT | Trade UOM: EA (fittings, terminals), M (pipe/duct/beam), M2 (wall/slab/covering), KG (rebar). M3 for concrete volume only. See DISC_VALIDATION_DB_SRS §10.4.11 T3.5 |
 | `cost_spec` | TEXT | Spec description (e.g. "Grade 50, shop fab, fire protection") |
 
 ### §6.3 DAO — CostDAO

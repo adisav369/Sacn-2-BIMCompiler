@@ -882,7 +882,13 @@ ROUTE FP FROM PUMP_ROOM
 
 The BOM IS the routing. No graph data structure needed — parent-child
 with sequence controlling path order. Each fitting is a BOM child with
-qty=1 at the transition point.
+qty=1 (EA) at the transition point.
+
+**UOM conversion:** CrawlOps produce lengths in mm internally. RouteStage
+converts to the product's cost_uom at persistence: mm ÷ 1000 → M for
+pipe/duct segments; fitting qty stays 1 (EA). This is the single
+conversion point — all internal geometry is mm, all persisted qty
+matches M_Product.cost_uom.
 
 #### Joint Product Resolution
 
@@ -959,6 +965,135 @@ Wire movement verbs into discipline-specific DocEvent rules.
 | **T3.2** Cross-discipline clearance | NEC_ELEC_SP_CLEARANCE fires after all disciplines placed | Detect 11 known overlaps from TE mining (M12) |
 | **T3.3** Infrastructure POC | BR (bridge) with zone-based anchors instead of rooms | BR 7/7 with STR + DRAIN discipline OrderLines |
 | **T3.4** RE subset | SH with ARC + ELEC + SP (3 disciplines, subset callout) | SH 7/7, 3 OrderLines, light fixtures + plumbing placed |
+
+##### T3.1 Implementation — Pipeline Wiring
+
+P104 verification found 4 blockers. Resolution:
+
+**B1 — RouteDocEvent not in pipeline.** RouteDocEvent.fireAll() must be called
+during compilation, after CompileStage (which produces ARC c_orderline positions)
+and before WriteStage (which writes output.db). The callout
+(OrderLineProductCallout.onProductChanged + expandDisciplineLines) must also
+move from BuildingRegistryTest into the pipeline at the same point.
+
+Pipeline sequence with routing:
+```
+CompileStage → [callout + RouteDocEvent.fireAll()] → WriteStage
+```
+
+The callout reads ERP.db shared BOMs, creates DISCIPLINE OrderLines, expands
+LEAF children with qty. RouteDocEvent reads BuildingGeometry (ARC c_orderline
+positions) and produces RouteResult per discipline. Both must fire before
+WriteStage persists to output.db.
+
+**B2 — No edge persistence.** CrawlRouter produces CONNECTS_TO edges in-memory.
+BIMEyes P16 (WasteGradientProof) and P17 (SystemConnectedProof) need queryable
+data in output.db.
+
+Output tables:
+
+| Table | Columns | Source | Consumer |
+|-------|---------|--------|----------|
+| system_edges | discipline, from_index, to_index, from_xyz, to_xyz, edge_type | RouteResult.edges() | P17 BFS connectivity |
+| system_nodes | discipline, node_index, node_type, xyz, diameter_mm, product, length_mm | RouteResult.segments() + fittings() | P16 SP gradient check |
+
+**B4 — BIMEyes gate.** ProveStage gates P15/P16/P17 behind hasRelationalData()
+which checks ad_room_boundary. CO buildings have DISCIPLINE OrderLines but no
+ad_room_boundary. Gate must also check system_edges > 0.
+
+##### T3.4 Implementation — RE Subset
+
+**B3 — RE callout skips.** OrderLineProductCallout line 43 returns 0 for RE.
+RE buildings need a discipline whitelist from classification YAML:
+
+```yaml
+mep_disciplines: [ELEC, SP]
+```
+
+When `mep_disciplines` is present, callout creates only the listed disciplines.
+When absent, CO/IN get all 6 (existing behavior). RE with no key gets 0
+(backward compat).
+
+SH: `mep_disciplines: [ELEC, SP]` → 2 DISCIPLINE OrderLines + ARC + STR = 4.
+
+##### T3.5 Finding — MEP UOM Correction
+
+**Finding (S100 watchdog):** `M_Product.cost_uom` in ERP.db is M3 (cubic meters)
+for nearly all MEP products (pipe segments, fittings, ducts, terminals, valves).
+This came from extraction — bounding box volume was computed for all elements.
+
+ARC/STR products have correct UOM (walls=M2, beams=M, doors=EA). MEP products
+do not. Correct trade UOM by ifc_class:
+
+| ifc_class | Current | Correct | Reason |
+|-----------|---------|---------|--------|
+| IfcPipeSegment | M3 | **M** | Pipe bought by linear meter |
+| IfcPipeFitting | M3 | **EA** | Fittings bought per piece |
+| IfcDuctSegment | M3 | **M** | Duct bought by linear meter |
+| IfcDuctFitting | M3 | **EA** | Fittings bought per piece |
+| IfcFlowTerminal | M3 | **EA** | Sprinkler heads, taps = each |
+| IfcFlowFitting | M3 | **EA** | Couplings, adapters = each |
+| IfcFlowController | M3 | **EA** | Valves, dampers = each |
+| IfcAirTerminal | M3 | **EA** | Diffusers, grilles = each |
+| IfcLightFixture | M3 | **EA** | Light fixtures = each |
+| IfcFireSuppressionTerminal | M3 | **EA** | Sprinkler heads = each |
+| IfcValve | M3 | **EA** | Valves = each |
+| IfcAlarm | M3 | **EA** | Alarms = each |
+| IfcReinforcingBar | M3 | **KG** | Rebar bought by weight (PWD 203A, NRM2) |
+| IfcCourse | M3 | **M2** | Masonry = wall face area (PWD 203A §G) |
+| IfcCovering | M3 | **M2** | Cladding, insulation, ceiling tiles = area (PWD 203A §H) |
+| IfcFurnishingElement | M3 | **EA** | Furniture bought per piece |
+
+**Impact:** RouteStage persists qty from CrawlRouter. Pipe segment qty should be
+in meters (length from FollowOp), fitting qty should be 1 (each from BendOp/
+BranchOp/ReduceOp). If cost_uom is M3, the 5D cost engine will multiply qty ×
+unit_cost incorrectly (volume vs length vs count).
+
+**Fix:** DV migration updating cost_uom by ifc_class for MEP products. iDempiere
+convention: `C_UOM_ID` FK to `C_UOM` table. Current schema uses TEXT `cost_uom`
+— acceptable for now, align to `C_UOM_ID` INTEGER FK in a future PK conformance
+pass.
+
+**Migration SQL pattern (for coder to implement as DV029):**
+
+```sql
+-- Linear segments: M3 → M (bought by linear meter)
+UPDATE M_Product SET cost_uom = 'M'
+WHERE ifc_class IN ('IfcPipeSegment', 'IfcDuctSegment', 'IfcFlowSegment')
+  AND cost_uom = 'M3';
+
+-- Discrete fittings/terminals: M3 → EA (bought per piece)
+UPDATE M_Product SET cost_uom = 'EA'
+WHERE ifc_class IN ('IfcPipeFitting', 'IfcDuctFitting', 'IfcFlowTerminal',
+    'IfcFlowFitting', 'IfcFlowController', 'IfcAirTerminal',
+    'IfcLightFixture', 'IfcFireSuppressionTerminal', 'IfcValve', 'IfcAlarm')
+  AND cost_uom = 'M3';
+
+-- Furnishings: M3 → EA (bought per piece)
+UPDATE M_Product SET cost_uom = 'EA'
+WHERE ifc_class IN ('IfcFurnishingElement', 'IfcFurniture')
+  AND cost_uom = 'M3';
+
+-- Rebar: M3 → KG (bought by weight — PWD 203A, NRM2, AIQS)
+UPDATE M_Product SET cost_uom = 'KG'
+WHERE ifc_class = 'IfcReinforcingBar'
+  AND cost_uom = 'M3';
+
+-- Masonry courses: M3 → M2 (wall face area — PWD 203A §G)
+UPDATE M_Product SET cost_uom = 'M2'
+WHERE ifc_class = 'IfcCourse'
+  AND cost_uom = 'M3';
+
+-- Coverings: M3 → M2 (area coverage — PWD 203A §H)
+UPDATE M_Product SET cost_uom = 'M2'
+WHERE ifc_class = 'IfcCovering'
+  AND cost_uom = 'M3';
+```
+
+**Scope:** ERP.db M_Product table (~320 MEP + 346 rebar + 7 course + 35 covering rows).
+component_library.db M_Product must also be updated (same SQL).
+BOM.db copies are regenerated on next extraction — no manual fix needed.
+**New UOM value:** KG (not previously used). No schema change — cost_uom is TEXT.
 
 #### Dependencies
 

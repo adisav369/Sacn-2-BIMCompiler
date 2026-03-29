@@ -96,7 +96,9 @@ never creates geometry. `G5-PROVENANCE` Check 6 enforces zero GEO_ hashes.
 ### 2.1 Recipe vs Placement — The BOM Contract
 
 **The BOM is a recipe.** Each m_bom_line is a **type line** — one row per
-unique product within its parent BOM, with a qty count or verb formula reference.
+unique product within its parent BOM, with a qty and verb formula reference.
+Qty is expressed in the product's **cost_uom**: EA for discrete items (doors,
+fittings), M for linear (pipe segments, beams), M2 for area (walls, slabs).
 The compiler expands type lines into placement instances at compile time.
 
 **output.db holds placements.** Each row in `c_orderline` / `elements_meta` is one
@@ -696,11 +698,18 @@ verifying minimum pipe gradient at each segment.
 
 #### 3.6.5 Qty as Control Knob
 
-The M_BOM_Line qty on a parasitic child is the **user's intent**:
+The M_BOM_Line qty on a parasitic child is the **user's intent**.
+Qty is always in the product's **cost_uom** (from M_Product):
+
+| Product Type | cost_uom | Qty Meaning |
+|-------------|----------|-------------|
+| Sprinkler head, fitting, valve | EA | `qty = 47` → distribute exactly 47 items |
+| Pipe segment, duct segment | M | `qty = 18` → 18 linear meters of pipe |
+| Wall panel, slab | M2 | `qty = 24` → 24 square meters |
 
 | Qty | Meaning |
 |-----|---------|
-| `qty = 47` | Distribute exactly 47 items. Walker stops when count reached. |
+| `qty = 47` | Distribute exactly 47 items (EA) or 47 units of measure. Walker stops when count reached. |
 | `qty = 0` (or blank) | No limit — distribute until all eligible rooms are covered. |
 
 During YAML setup, the author peeks at the extracted DB to see what exists:
@@ -713,7 +722,7 @@ Recompile → different density. Same BOM recipe, different quantity.
 #### 3.6.6 The Pipeline for Parasitic Disciplines
 
 ```
-1. BOM walk      → "Floor GF needs 12 sprinklers, 3 risers"     (WHAT + HOW MANY)
+1. BOM walk      → "Floor GF needs 12 sprinklers (EA), 3 risers (EA)"  (WHAT + HOW MANY)
 2. DocEvent      → distribute into ARC rooms by jurisdiction     (WHERE — rule-based)
                    rules: NFPA 13, UBBL, MS 1525, MS 1228, MS 830
 3. Designer GUI  → user drags/adjusts positions                  (WHERE — user override)

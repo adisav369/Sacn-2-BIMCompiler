@@ -263,7 +263,21 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 | extracted_from | TEXT | Source building |
 | material_name, material_rgba | TEXT | Catalog material |
 | M_Product_Category_ID | INTEGER FK | → M_Product_Category. See §8 PK convention |
+| cost_uom | TEXT | Trade UOM — see table below. Drives 5D cost (qty × unit_cost). Future: C_UOM_ID INTEGER FK |
 | is_active | INTEGER | |
+
+**cost_uom values** (trade unit of measure per product type):
+
+| UOM | Meaning | Used For | Standard |
+|-----|---------|----------|----------|
+| EA | Each (discrete item) | Fittings, terminals, valves, doors, furniture, alarms | — |
+| M | Linear meter | Pipe segments, duct segments, beams, columns, rails | — |
+| M2 | Square meter | Walls, slabs, roofs, coverings, masonry courses | — |
+| M3 | Cubic meter | Concrete (footings, earthworks fill) only | — |
+| KG | Kilogram | Reinforcing bar (rebar) | PWD 203A, NRM2, AIQS |
+
+See [DISC_VALIDATION_DB_SRS §10.4.11 T3.5](DISC_VALIDATION_DB_SRS.md) for the DV029 migration
+that corrects MEP/rebar/covering UOMs from extraction defaults.
 
 <!-- Implementing SpecsAnalysis.txt §1 -->
 ### M_Product_Category (flat classification — iDempiere standard)

@@ -53,7 +53,7 @@ it is a packaging exercise — the report logic does not change.
 | `PortfolioDAO` | `BIMBackOffice/.../dao/PortfolioDAO.java` | Cross-project portfolio analysis — WIP, completion %, overrun flags |
 | `BackOfficeServer` | `BIMBackOffice/.../server/BackOfficeServer.java` | HTTP server exposing DAOs as REST-like endpoints |
 | `ReportDAO.GanttTask` | same file | `record(id, name, phase, sequence, durationDays, dependency)` |
-| `ReportDAO.CostLine` | same file | `record(discipline, category, productName, qty, unitCost, totalCost, uom)` |
+| `ReportDAO.CostLine` | same file | `record(discipline, category, productName, qty, unitCost, totalCost, uom)` — uom from M_Product.cost_uom (EA/M/M2). Qty × unitCost is only correct when cost_uom matches trade convention (see DISC_VALIDATION_DB_SRS §10.4.11 T3.5) |
 | `ReportDAO.CarbonLine` | same file | `record(element, material, qty, carbonPerUnit, totalCarbon)` |
 | `ReportDAO.AssetRecord` | same file | `record(guid, type, location, floor, system, manufacturer, maintenanceInterval)` |
 | `ReportDAO.ComplianceResult` | same file | `record(ruleId, ruleName, jurisdiction, verdict, citation, detail)` |

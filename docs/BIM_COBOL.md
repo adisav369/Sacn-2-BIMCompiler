@@ -199,7 +199,7 @@ The BIM_COBOL module has a working `Verb<T>` interface, `VerbContext`, and `Verb
 | 74 | `ROLLUP AABB` | utility | — | Recursive AABB aggregation |
 | 75 | `HELLO WORLD` | infra | — | Verb framework smoke test |
 | 76 | `FORGE` | §10 | — | Geometry Forge: formula-driven construction pieces |
-| 77 | `FOLLOW` | §10.4.10 | W-FOLLOW-1 | Movement: straight pipe run along surface |
+| 77 | `FOLLOW` | §10.4.10 | W-FOLLOW-1 | Movement: straight pipe run along surface. Produces lengthMm → persisted as qty in M (mm÷1000 at RouteStage boundary) |
 | — | *VerbRegistry + ScriptRunner* | infra | W-41..44 | Dispatch + script execution |
 | — | *F5IntegrationTest* | infra | W-F5-1..200 | **End-to-end cross-verb integration (30 verbs, 36 lines, 0 failures)** |
 
