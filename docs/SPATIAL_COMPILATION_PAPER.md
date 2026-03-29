@@ -176,6 +176,40 @@ The primary verification building is the Ifc4 Sample House (SH): 58 elements, 3 
 
 The 0.002mm worst-case error arises from IEEE 754 double-precision floating-point arithmetic in the tack accumulation chain. The error is 6 orders of magnitude below the construction tolerance of 1mm.
 
+#### 4.3.1 Honesty Note: CLUSTER vs Formula Verbs
+
+The tack convention uses two classes of verb for factored elements:
+
+| Verb | How offsets arise | What zero-drift proves |
+|------|-------------------|----------------------|
+| **TILE, FRAME** | Computed from formula (grid spacing, bay count) | The compiler **derives** positions from a spatial recipe |
+| **CLUSTER** | Stored from extraction (exact per-instance LBD offsets) | The compiler **replays** stored positions losslessly |
+
+Both use identical tack accumulation (`parent + offset → child`). The
+compiler treats them identically. But CLUSTER offsets are extraction
+transcripts, not learned recipes. Zero drift on CLUSTER proves lossless
+storage and retrieval — not spatial computation.
+
+Building verb composition:
+
+| Building | Unfactored | CLUSTER | TILE/FRAME/ROUTE | % CLUSTER |
+|----------|-----------|---------|-----------------|-----------|
+| FK | 99 | 0 | 0 | **0%** (purest test) |
+| SH | 35 | 36 | 0 | 51% |
+| DX | 557 | 107 | 0 | 16% |
+| IN | 422 | 403 | 32 | 47% |
+| CP | 35 | 6,552 | 0 | **99.5%** |
+| TE | 1,170 | 47,157 | 108 | **97.4%** |
+
+FK (0% CLUSTER) is the purest test of spatial compilation — every position
+is computed from tack offsets, not replayed. CP and TE results primarily
+prove CLUSTER replay fidelity.
+
+**Ongoing work:** converting CLUSTER fallbacks to formula verbs through
+improved pattern detection in VerbDetector. Each CLUSTER-to-TILE conversion
+strengthens the spatial compilation claim by replacing a stored transcript
+with a computed recipe. See §10.4.10 in [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md).
+
 ### 4.4 Results: Duplex (1,099 elements, mirrored)
 
 The Ifc2x3 Duplex building contains a mirrored composition (two residential units reflected about a party wall). The BOM walk applies a rotation_rule of π radians to one unit's tack offsets. GEO verification confirmed:
