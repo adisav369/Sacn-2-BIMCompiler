@@ -230,8 +230,8 @@ SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of
 2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Sealed:** 2026-03-29 (v14: S100-p112 run_RosettaStones.sh split into 4 modules)
-**Super-hash:** `a60a9398dc22ebfe7a1e1948befa108040f685ea9419d3ab82438a4c4fbee7a3`
+**Sealed:** 2026-03-29 (v15: S100-p117 callout category defaults + script split)
+**Super-hash:** `1851dd57f4fe8d4c7c1d011904b004961a16376fd09ce36ab654445cc0bdff89`
 
 ```
 bash scripts/verify_test_seal.sh            # quick check
@@ -314,7 +314,7 @@ aeaa7e09  TopologyBatchProcessTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-8cdb4145  CompilationPipeline.java
+8e5552fd  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
 7a1b759c  PlaceBomVerb.java
 87f8aa95  EnBlocVerb.java
@@ -322,7 +322,11 @@ a1ce5479  WalkThruVerb.java
 b366f5e8  MBOM.java
 4970aa07  MBOMLine.java
 38f498ae  run_tests.sh
-2e70a30b  run_RosettaStones.sh
+d9260c29  run_RosettaStones.sh
+c51284a4  lib_rosetta_helpers.sh
+37850cf9  rosetta_compile.sh
+0f77a8a4  rosetta_integrity.sh
+bcd2af85  rosetta_fidelity.sh
 39839729  pre-commit
 ```
 

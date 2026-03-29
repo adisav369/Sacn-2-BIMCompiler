@@ -4,7 +4,9 @@ import com.bim.compiler.topology.Discipline;
 import com.bim.orm.BIMLogger;
 
 import java.sql.*;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 /**
  * OrderLine.Product callout — auto-insert discipline OrderLines for CO/IN buildings.
@@ -43,37 +45,52 @@ public class OrderLineProductCallout {
         return onProductChanged(compileDb, erpDb, orderId, productCategory, null);
     }
 
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.4 — category defaults + YAML override
+    // CO=all 6, RE=[ELEC,SP], IN=none. YAML remove_disciplines/add_disciplines for exceptions.
+
+    /** Category default discipline sets. */
+    private static final Set<String> CO_DEFAULT = Set.of("FP", "ELEC", "ACMV", "CW", "SP", "LPG");
+    private static final Set<String> RE_DEFAULT = Set.of("ELEC", "SP");
+    private static final Set<String> IN_DEFAULT = Set.of();
+
     /**
-     * Overload with mep_disciplines whitelist (§10.4.11 T3.4).
-     * When mepDisciplines is non-null, only the listed disciplines are created
-     * (works for any building type including RE). When null, CO/IN get all 6, RE gets 0.
+     * Overload with mep_disciplines whitelist — kept for backward compat.
+     * If whitelist is non-null, uses whitelist. Otherwise uses category defaults.
      */
-    // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.4 Implementation — Witness: W-RE-SUBSET-1
     public static int onProductChanged(Connection compileDb, Connection erpDb,
                                        String orderId, String productCategory,
                                        List<String> mepDisciplines) throws SQLException {
-        // 1. If no whitelist and category not CO or IN → return 0
-        if (mepDisciplines == null &&
-                (productCategory == null || (!"CO".equals(productCategory) && !"IN".equals(productCategory)))) {
-            BIMLogger.fine("CALLOUT", "Skip discipline callout for category={} (RE/other, no whitelist)", productCategory);
+        // Determine discipline set: explicit whitelist or category default
+        Set<String> disciplineSet;
+        if (mepDisciplines != null) {
+            disciplineSet = Set.copyOf(mepDisciplines);
+        } else if ("CO".equals(productCategory)) {
+            disciplineSet = CO_DEFAULT;
+        } else if ("RE".equals(productCategory)) {
+            disciplineSet = RE_DEFAULT;
+        } else {
+            // IN and others: no MEP default
+            disciplineSet = IN_DEFAULT;
+        }
+
+        if (disciplineSet.isEmpty()) {
+            BIMLogger.fine("CALLOUT", "No disciplines for category={} — skipping", productCategory);
             return 0;
         }
 
-        // 2. Read shared discipline BOMs from ERP.db WHERE AD_Org_ID > 0
+        // Read shared discipline BOMs from ERP.db WHERE AD_Org_ID > 0
         String selectBoms = "SELECT Value, Name, AD_Org_ID FROM M_BOM WHERE AD_Org_ID > 0 ORDER BY AD_Org_ID";
 
-        // 3. Find the root BUILDING C_OrderLine to use as parent
+        // Find the root BUILDING C_OrderLine to use as parent
         Integer buildingLineId = findBuildingLineId(compileDb, orderId);
 
         int inserted = 0;
-        int startSeq = 30;  // ARC=10, STR=20, disciplines start at 30
 
         try (PreparedStatement ps = erpDb.prepareStatement(selectBoms);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 String bomValue = rs.getString("Value");
-                String bomName = rs.getString("Name");
                 int adOrgId = rs.getInt("AD_Org_ID");
 
                 // Resolve discipline from AD_Org_ID
@@ -83,14 +100,14 @@ public class OrderLineProductCallout {
                     continue;
                 }
 
-                // §10.4.11 T3.4: whitelist filter — skip disciplines not in mep_disciplines
-                if (mepDisciplines != null && !mepDisciplines.contains(disc.name())) {
-                    BIMLogger.fine("CALLOUT", "Discipline {} not in whitelist {} — skipping",
-                            disc.name(), mepDisciplines);
+                // Filter by discipline set
+                if (!disciplineSet.contains(disc.name())) {
+                    BIMLogger.fine("CALLOUT", "Discipline {} not in default set {} — skipping",
+                            disc.name(), disciplineSet);
                     continue;
                 }
 
-                // 4. Idempotent: skip if discipline OrderLine already exists for this order
+                // Idempotent: skip if discipline OrderLine already exists for this order
                 if (disciplineLineExists(compileDb, orderId, adOrgId)) {
                     BIMLogger.fine("CALLOUT", "Discipline {} (AD_Org={}) already exists for order {} — skipping",
                             disc.name(), adOrgId, orderId);
@@ -100,7 +117,6 @@ public class OrderLineProductCallout {
                 // Sequence: 30 for FP (AD_Org=3), 40 for ELEC (4), 50 for ACMV (5), etc.
                 int seq = adOrgId * 10;
 
-                // INSERT C_OrderLine for this discipline
                 insertDisciplineLine(compileDb, orderId, buildingLineId, seq,
                         bomValue, disc.name(), adOrgId);
                 inserted++;
@@ -111,10 +127,86 @@ public class OrderLineProductCallout {
         }
 
         if (inserted > 0) {
-            BIMLogger.info("CALLOUT", "OrderLine callout: {} discipline lines inserted for order {} (category={})",
-                    inserted, orderId, productCategory);
+            BIMLogger.info("CALLOUT", "Callout: {} discipline OrderLines inserted (category={}, default={})",
+                    inserted, productCategory, disciplineSet);
         }
         return inserted;
+    }
+
+    /**
+     * Apply YAML overrides from ad_sysconfig: REMOVE_DISCIPLINES and ADD_DISCIPLINES.
+     * Called after onProductChanged to adjust the category default set.
+     *
+     * <p>REMOVE_DISCIPLINES=SP → deactivate SP OrderLine (IsActive='N')
+     * <p>ADD_DISCIPLINES=FP → insert FP if not already present
+     */
+    public static void applyYamlOverrides(Connection compileDb, Connection erpDb,
+                                           String orderId) throws SQLException {
+        // REMOVE_DISCIPLINES
+        String removeCsv = readSysconfig(compileDb, "REMOVE_DISCIPLINES");
+        if (removeCsv != null) {
+            for (String disc : removeCsv.split(",")) {
+                disc = disc.trim();
+                if (!disc.isEmpty()) {
+                    int updated = deactivateDiscipline(compileDb, orderId, disc);
+                    if (updated > 0) {
+                        BIMLogger.info("CALLOUT", "YAML override: deactivated {} discipline OrderLine(s) for {}",
+                                updated, disc);
+                    }
+                }
+            }
+        }
+
+        // ADD_DISCIPLINES
+        String addCsv = readSysconfig(compileDb, "ADD_DISCIPLINES");
+        if (addCsv != null) {
+            Integer buildingLineId = findBuildingLineId(compileDb, orderId);
+            String selectBoms = "SELECT Value, AD_Org_ID FROM M_BOM WHERE AD_Org_ID > 0 ORDER BY AD_Org_ID";
+            try (PreparedStatement ps = erpDb.prepareStatement(selectBoms);
+                 ResultSet rs = ps.executeQuery()) {
+                List<String> addList = Arrays.asList(addCsv.split(","));
+                while (rs.next()) {
+                    String bomValue = rs.getString("Value");
+                    int adOrgId = rs.getInt("AD_Org_ID");
+                    Discipline disc = Discipline.fromAD_Org_ID(adOrgId);
+                    if (disc == null) continue;
+                    if (!addList.contains(disc.name().trim())) continue;
+                    if (disciplineLineExists(compileDb, orderId, adOrgId)) continue;
+                    int seq = adOrgId * 10;
+                    insertDisciplineLine(compileDb, orderId, buildingLineId, seq,
+                            bomValue, disc.name(), adOrgId);
+                    BIMLogger.info("CALLOUT", "YAML override: added discipline {} for order {}", disc.name(), orderId);
+                }
+            }
+        }
+    }
+
+    /** Read a config value from ad_sysconfig. */
+    private static String readSysconfig(Connection conn, String key) {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT config_value FROM ad_sysconfig WHERE config_key = ?")) {
+            ps.setString(1, key);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    String val = rs.getString(1);
+                    return (val != null && !val.isBlank()) ? val : null;
+                }
+            }
+        } catch (SQLException e) {
+            // Table may not exist
+        }
+        return null;
+    }
+
+    /** Deactivate discipline OrderLines by setting IsActive='N'. */
+    private static int deactivateDiscipline(Connection conn, String orderId, String discipline) throws SQLException {
+        String sql = "UPDATE C_OrderLine SET IsActive = 'N' "
+                   + "WHERE C_Order_ID = ? AND Discipline = ? AND host_type = 'DISCIPLINE'";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, orderId);
+            ps.setString(2, discipline);
+            return ps.executeUpdate();
+        }
     }
 
     /**

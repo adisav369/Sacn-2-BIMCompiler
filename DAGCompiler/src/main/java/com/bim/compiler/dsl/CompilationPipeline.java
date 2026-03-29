@@ -21,7 +21,7 @@ import com.bim.ormsandbox.po.MBOMLine;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
-import java.util.Arrays;
+
 import java.util.List;
 import java.util.ServiceLoader;
 
@@ -431,18 +431,18 @@ public class CompilationPipeline {
             try (Connection compileDb = DriverManager.getConnection("jdbc:sqlite:" + compileDbPath);
                  Connection erpDb = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
 
-                // 1. Read mep_disciplines whitelist from ad_sysconfig
-                List<String> mepDisciplines = readMepDisciplines(compileDb);
-
-                // 2. Get order ID and product category
+                // 1. Get order ID and product category
                 String orderId = ctx.entry().docTypeId();
                 String productCategory = ctx.entry().mProductCategoryId();
 
-                // 3. Callout: insert discipline OrderLines
+                // 2. Callout: insert discipline OrderLines (category defaults: CO=all 6, RE=[ELEC,SP], IN=none)
                 int inserted = OrderLineProductCallout.onProductChanged(
-                        compileDb, erpDb, orderId, productCategory, mepDisciplines);
-                BIMLogger.info("ROUTE", "Callout: {} discipline OrderLines inserted (category={}, whitelist={})",
-                        inserted, productCategory, mepDisciplines);
+                        compileDb, erpDb, orderId, productCategory);
+                BIMLogger.info("ROUTE", "Callout: {} discipline OrderLines inserted (category={})",
+                        inserted, productCategory);
+
+                // 3. Apply YAML overrides (REMOVE_DISCIPLINES / ADD_DISCIPLINES from ad_sysconfig)
+                OrderLineProductCallout.applyYamlOverrides(compileDb, erpDb, orderId);
 
                 // 4. Parasitic qty walk: expand discipline OrderLines with BOM children
                 if (inserted > 0) {
@@ -473,24 +473,6 @@ public class CompilationPipeline {
                 BIMLogger.info("ROUTE", "RouteStage done: {} routes, {} segments, {} edges",
                         report.routeCount(), report.totalSegments(), report.edges().size());
             }
-        }
-
-        /** Read MEP_DISCIPLINES from ad_sysconfig (§10.4.11 T3.4). */
-        private static List<String> readMepDisciplines(Connection compileDb) {
-            try (PreparedStatement ps = compileDb.prepareStatement(
-                    "SELECT config_value FROM ad_sysconfig WHERE config_key = 'MEP_DISCIPLINES'")) {
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        String csv = rs.getString(1);
-                        if (csv != null && !csv.isBlank()) {
-                            return Arrays.asList(csv.split(","));
-                        }
-                    }
-                }
-            } catch (SQLException e) {
-                BIMLogger.fine("ROUTE", "ad_sysconfig MEP_DISCIPLINES query failed: {}", e.getMessage());
-            }
-            return null;
         }
 
         /** Query discipline codes from DISCIPLINE OrderLines in compile DB. */
