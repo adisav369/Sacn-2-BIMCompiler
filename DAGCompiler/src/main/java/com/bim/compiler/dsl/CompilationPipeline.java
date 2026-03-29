@@ -403,6 +403,11 @@ public class CompilationPipeline {
                 ctx.setVerbBreakdown(verbBreakdown);
                 BIMLogger.fine("COMPILE", "{}: verb breakdown: {}",
                     ctx.entry().name(), verbBreakdown);
+
+                // GEO SUMMARY: all-pairs relative offset verification (BBC.md §4, LMP §7)
+                String extDbPath = "DAGCompiler/lib/input/"
+                    + ctx.entry().projectName() + "_extracted.db";
+                visitor.emitGeoSummary(extDbPath);
             }
         }
     }

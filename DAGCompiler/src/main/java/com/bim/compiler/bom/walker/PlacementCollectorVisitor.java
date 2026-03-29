@@ -763,4 +763,102 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         Discipline d = Discipline.fromString(text);
         return d != null ? d : Discipline.ARC;
     }
+
+    // ── GEO SUMMARY: all-pairs relative offset verification (LMP §7) ────
+
+    /**
+     * Emit a GEO SUMMARY line comparing compiled placements against extraction
+     * source positions. Uses all-pairs relative offset deltas — cancels world
+     * origin, proves tack chain is lossless.
+     *
+     * <p>Only runs when {@code bim.geo.debug=true}. Opens the extraction DB
+     * once, runs O(n²) comparison, emits one summary line.
+     *
+     * @param extractionDbPath path to *_extracted.db (elements_meta + elements_rtree)
+     */
+    public void emitGeoSummary(String extractionDbPath) {
+        if (!BIMLogger.geoMatch("")) return;  // GEO mode off → skip
+
+        // Collect compiled placements with valid IFC GUIDs
+        List<String> guids = new ArrayList<>();
+        List<double[]> compiledLbd = new ArrayList<>();
+        for (PlacementLoader.Placement p : placements) {
+            if (p.elementRef() != null && IFC_GUID.matcher(p.elementRef()).matches()) {
+                guids.add(p.elementRef());
+                compiledLbd.add(new double[]{p.minX(), p.minY(), p.minZ()});
+            }
+        }
+
+        if (guids.isEmpty()) {
+            BIMLogger.geo("TACK", "SUMMARY 0 elements with IFC GUIDs — no comparison possible");
+            return;
+        }
+
+        // Load extraction positions by GUID
+        java.util.Map<String, double[]> extPos = new java.util.HashMap<>();
+        try (Connection extConn = java.sql.DriverManager.getConnection(
+                "jdbc:sqlite:" + extractionDbPath)) {
+            try (java.sql.PreparedStatement ps = extConn.prepareStatement(
+                    "SELECT r.minX, r.minY, r.minZ FROM elements_meta m "
+                    + "JOIN elements_rtree r ON m.id = r.id WHERE m.guid = ?")) {
+                for (String guid : guids) {
+                    ps.setString(1, guid);
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        if (rs.next()) {
+                            extPos.put(guid, new double[]{
+                                rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)});
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            BIMLogger.geo("TACK", "SUMMARY extraction DB open failed: {} — skipping", e.getMessage());
+            return;
+        }
+
+        // All-pairs relative offset comparison
+        // For each pair (i,j): compiled delta vs extraction delta
+        // Drift = max axis difference between the two deltas
+        int matched = 0;
+        int pairs = 0;
+        int driftCount = 0;
+        double worstDrift = 0.0;
+        double driftThreshold = 1.0;  // 1mm
+
+        for (int i = 0; i < guids.size(); i++) {
+            double[] extI = extPos.get(guids.get(i));
+            if (extI == null) continue;
+            for (int j = i + 1; j < guids.size(); j++) {
+                double[] extJ = extPos.get(guids.get(j));
+                if (extJ == null) continue;
+                pairs++;
+
+                // Compiled relative offset (LBD_i - LBD_j)
+                double cdx = compiledLbd.get(i)[0] - compiledLbd.get(j)[0];
+                double cdy = compiledLbd.get(i)[1] - compiledLbd.get(j)[1];
+                double cdz = compiledLbd.get(i)[2] - compiledLbd.get(j)[2];
+
+                // Extraction relative offset
+                double edx = extI[0] - extJ[0];
+                double edy = extI[1] - extJ[1];
+                double edz = extI[2] - extJ[2];
+
+                // Max axis delta in mm
+                double drift = Math.max(Math.abs(cdx - edx),
+                               Math.max(Math.abs(cdy - edy),
+                                        Math.abs(cdz - edz))) * 1000.0;
+
+                if (drift > worstDrift) worstDrift = drift;
+                if (drift > driftThreshold) {
+                    driftCount++;
+                } else {
+                    matched++;
+                }
+            }
+        }
+
+        int elementsWithExt = (int) guids.stream().filter(extPos::containsKey).count();
+        BIMLogger.geo("TACK", "SUMMARY {} elements, {} pairs, worst={:.3f}mm, DRIFT={}",
+            elementsWithExt, pairs, worstDrift, driftCount);
+    }
 }
