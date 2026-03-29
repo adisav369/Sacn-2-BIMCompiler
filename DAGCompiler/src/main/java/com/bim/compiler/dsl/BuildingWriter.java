@@ -228,8 +228,8 @@ public class BuildingWriter {
             """);
 
             // Phase 35: MEP System tables
-            stmt.execute("DROP TABLE IF EXISTS system_edges");
-            stmt.execute("DROP TABLE IF EXISTS system_nodes");
+            // system_edges + system_nodes owned by RouteStage (CompilationPipeline.persistRouteEdges)
+            // Implementing DISC_VALIDATION_DB_SRS §10.4.11 B2 — Witness: W-ROUTE-STAGE-1
             stmt.execute("DROP TABLE IF EXISTS mep_systems");
 
             stmt.execute("""
@@ -243,32 +243,6 @@ public class BuildingWriter {
                     edge_count INTEGER
                 )
             """);
-
-            stmt.execute("""
-                CREATE TABLE system_nodes (
-                    node_id TEXT PRIMARY KEY,
-                    system_id TEXT NOT NULL REFERENCES mep_systems(system_id),
-                    element_guid TEXT,
-                    role TEXT NOT NULL,
-                    name TEXT,
-                    properties_json TEXT
-                )
-            """);
-
-            stmt.execute("""
-                CREATE TABLE system_edges (
-                    edge_id TEXT PRIMARY KEY,
-                    system_id TEXT NOT NULL REFERENCES mep_systems(system_id),
-                    from_node_id TEXT NOT NULL REFERENCES system_nodes(node_id),
-                    to_node_id TEXT NOT NULL REFERENCES system_nodes(node_id),
-                    edge_type TEXT NOT NULL,
-                    properties_json TEXT
-                )
-            """);
-
-            // Indices for graph traversal
-            stmt.execute("CREATE INDEX idx_edges_from ON system_edges(from_node_id)");
-            stmt.execute("CREATE INDEX idx_edges_to ON system_edges(to_node_id)");
 
             // Phase 90: element_properties table for NLP property queries
             stmt.execute("DROP TABLE IF EXISTS element_properties");
