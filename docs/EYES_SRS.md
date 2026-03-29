@@ -480,6 +480,110 @@ this: off by default, on when you need the proof chain.
 - Tier 3: "Does this building satisfy conservation laws?" (aggregate)
 - Tier 4: "Does this output match its source or design intent?" (provenance)
 
+### 4.8 Research Direction — Tack Signatures as Geometric Semantics
+
+> **Status:** Research question, not implementation spec. Documented here
+> because the evidence points to a deeper capability than rule checking.
+
+#### The observation
+
+After 35 buildings, the compiler has accumulated thousands of verified tack
+chains — parent-child spatial relationships extracted from real IFC files,
+stored as BOM offsets, recompiled, and verified to sub-millimetre accuracy.
+
+A tack is three numbers: dx, dy, dz. But within its BOM hierarchy, it
+carries **semantic meaning** that is never explicitly stated:
+
+```
+SH_BED_SET:
+  bed  → dx=0.00, dy=0.00, dz=0.00  (anchor)
+  desk → dx=0.42, dy=2.60, dz=0.00  (beside and behind the bed)
+```
+
+Nobody wrote "beside and behind the bed." The tack offset implies it. The
+BOM Drop doesn't describe the spatial arrangement — it drops a recipe and
+the tacks carry the meaning. The ecosystem is inferred from the data.
+
+#### Tack signature = syntactic + semantic
+
+- **Syntactic layer:** the numbers — `{child_count, offsets[], product_categories[], aspect_ratios[]}`
+- **Semantic layer:** what the numbers mean in context — the parent BOM,
+  the sibling tacks, the spatial pattern they form together
+
+The same tack `(0.42, 2.60, 0)` in a BED_SET means "workspace corner."
+In a KITCHEN_SET it might mean "fridge behind the counter." The numbers
+are identical. The semantics change because the context — parent category,
+sibling products — changes.
+
+#### The finite vocabulary hypothesis
+
+Protein science discovered that despite billions of possible amino acid
+sequences, nature uses approximately **1,400 distinct protein folds.** Every
+protein is a composition of these ~1,400 spatial archetypes. The folding
+problem reduced from "predict any 3D shape" to "which of 1,400 folds?"
+
+Evidence suggests construction has a similar finite vocabulary. Across 35
+buildings and 48,428 elements in the largest, the dominant placement
+patterns are only **5 verb types** (PLACE, CLUSTER, TILE, ROUTE, FRAME).
+These 5 patterns cover 99% of all element placements.
+
+| Verb pattern | Geometric archetype | Construction example | Cross-domain |
+|-------------|-------------------|---------------------|--------------|
+| PLACE | Single object at offset | Door in wall | Equipment on skid |
+| CLUSTER | Irregular group in AABB | Furniture set | Cabin fitout |
+| TILE | Regular grid | Ceiling tiles | Hull plates |
+| ROUTE | Linear chain with branches | Pipe riser + header | Cable tray |
+| FRAME | Structural repetition | Column grid | Ship frames |
+
+If the vocabulary is finite, then after enough Rosetta Stones, EYES has
+seen every geometric archetype that construction produces — not every
+building, but every **spatial pattern.** A new IFC can be classified
+instantly by matching tack signatures against known archetypes.
+
+#### What EYES could do with this
+
+Given a new IFC (never seen, unknown building type), EYES reads the raw
+geometry — AABBs, positions, adjacency — and matches spatial signatures
+against its library of tack patterns learned from 35 buildings:
+
+- "These four walls enclosing a slab with furniture at regular offsets
+  — CLUSTER archetype, room confidence 0.98"
+- "These vertical segments with horizontal branches at floor intervals
+  — ROUTE archetype, fire riser confidence 0.95"
+- "These plates with continuously varying curvature and frame-aligned
+  stiffeners — TILE archetype, hull surface confidence 0.92"
+
+Not rule matching. **Pattern recognition from compiled experience.** The
+compiler is the teacher. EYES is the student. The GEO tack chain is the
+curriculum. Each Rosetta Stone that passes through compilation adds to the
+geometric vocabulary.
+
+#### Open questions
+
+1. **Is the archetype vocabulary provably finite?** The 5-verb evidence is
+   suggestive but not a proof. Need: formal analysis of the tack offset
+   equivalence classes under scale/rotation/reflection.
+
+2. **How many Rosetta Stones until saturation?** Protein science needed
+   ~200K structures to cover 1,400 folds. How many buildings cover the
+   construction vocabulary? The 5-verb convergence at 35 buildings suggests
+   the number is small.
+
+3. **Does the vocabulary transfer across domains?** A TILE pattern from
+   ceiling tiles and a TILE pattern from hull plates have the same geometric
+   signature. Does EYES trained on buildings recognise ship geometry? The
+   tack math is identical — the question is whether the signatures match.
+
+4. **Can EYES infer the formula from the pattern?** Given 500 hull plates,
+   can EYES reconstruct the NURBS surface they sample? Given a column grid,
+   can it infer the structural bay spacing? This is the perception question
+   — not checking against a known formula, but deriving the formula from the
+   observed geometry.
+
+These questions connect to the cross-domain precedent in
+[TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md#cross-domain-precedent--the-folding-problem)
+and [ShipYard.md](ShipYard.md#geo-formula-verification--the-shipyard-breakthrough).
+
 ---
 
 ## 5. Comparison Subsystem
