@@ -43,12 +43,15 @@ public class EyesProofRunner {
             RelationalContext ctx) {
         List<ProofResult> results = new ArrayList<>();
 
+        // Pre-compute per-storey Z-bands from actual element positions
+        Map<String, double[]> storeyZBands = computeStoreyZBands(placements);
+
         // Tier 1: Per-element arithmetic
         for (PlacementData p : placements) {
             results.add(PositiveExtentProof.prove(p));
             results.add(FiniteCoordsProof.prove(p));
             results.add(MinDimensionProof.prove(p));
-            results.add(StoreyZBandProof.prove(p));
+            results.add(StoreyZBandProof.prove(p, storeyZBands));
         }
 
         // Tier 2: Pairwise relations
@@ -142,6 +145,21 @@ public class EyesProofRunner {
         List<ProofResult> allResults = new ArrayList<>(baseReport.results());
         allResults.addAll(dbLevelResults);
         return buildReport(allResults);
+    }
+
+    /**
+     * Compute per-storey Z-bands from actual element positions.
+     * Each storey maps to [minZ, maxZ] across all its elements.
+     */
+    private static Map<String, double[]> computeStoreyZBands(List<PlacementData> placements) {
+        Map<String, double[]> bands = new LinkedHashMap<>();
+        for (PlacementData p : placements) {
+            String storey = p.storey() != null ? p.storey().trim() : "";
+            if (storey.isEmpty()) continue;
+            bands.merge(storey, new double[]{p.minZ(), p.maxZ()},
+                (old, cur) -> new double[]{Math.min(old[0], cur[0]), Math.max(old[1], cur[1])});
+        }
+        return bands;
     }
 
     /** Build aggregate report from results list. */
