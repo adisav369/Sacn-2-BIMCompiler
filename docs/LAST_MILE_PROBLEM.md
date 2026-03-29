@@ -146,6 +146,22 @@ on each element traces it back to the original IFC entity.
   compiled output matches extraction within 0.002mm. Not checked per-line
   yet — verified by post-hoc all-pairs join (see evidence log).
 
+**Verification script:** [`scripts/geo_verify.py`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py)
+joins GEO TACK LEAF log against extraction DB by IFC GUID, computes all-pairs
+relative offsets, reports MATCH/DRIFT. Verified results:
+
+| Building | Elements | GUID-matched | Pairs | Worst | Drift |
+|----------|----------|-------------|-------|-------|-------|
+| SH | 58 | 58 | 1,653 | 0.002mm | 0 |
+| DX | 1,099 | 179 | 15,931 | 0.004mm | 0 |
+
+```bash
+python3 scripts/geo_verify.py \
+    "logs/pipeline_Sample House_extracted_20260330_033940.log" \
+    DAGCompiler/lib/output/ifc4_samplehouse.db \
+    DAGCompiler/lib/input/Ifc4_SampleHouse_extracted.db
+```
+
 **Next step for coder:** add a `[GEO] SUMMARY` line at end of compilation
 that emits the all-pairs relative offset count and worst error automatically:
 ```

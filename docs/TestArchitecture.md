@@ -41,6 +41,7 @@
 | C11 | P06 same-class overlap sharpness | DONE | Cross-product exempt, same-product flagged, IfcPlate 50mm tolerance |
 | C12 | G5 GEO_ slab fallback | DONE | Slab flows through MeshBinder to LOD_ library geometry |
 | C13 | No parametric mesh in pipeline | SPEC | G5-PROVENANCE Check 6: zero GEO_ hashes. 28 call sites identified |
+| C14 | GEO all-pairs relative offset | DONE | [`scripts/geo_verify.py`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py): SH 1,653 pairs 0.002mm, DX 15,931 pairs 0.004mm. ZERO DRIFT. See [LMP §7](LAST_MILE_PROBLEM.md#7-separate-from-input) |
 
 ### HIGH Fixes (H1–H7)
 
