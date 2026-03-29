@@ -276,7 +276,15 @@ public class IFCtoBOMPipeline {
                         structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
             } else {
                 // RE path: scope + composition + structural + rooms
-                scope = ScopeBomBuilder.build(bomConn, config, storeyElements, catLookup);
+                // Open extraction DB for IFC spatial containment (§10.4.13)
+                String extDbPath = "DAGCompiler/lib/input/"
+                        + config.buildingType() + "_extracted.db";
+                Connection extractionConn = java.nio.file.Files.exists(
+                        java.nio.file.Path.of(extDbPath))
+                    ? DriverManager.getConnection("jdbc:sqlite:" + extDbPath)
+                    : null;
+                try {
+                scope = ScopeBomBuilder.build(bomConn, extractionConn, config, storeyElements, catLookup);
                 System.out.printf("[IFCtoBOM] Scope spaces: %d SET BOMs, %d lines (%d PHANTOM)%n",
                         scope.setBomIds().size(), scope.totalSetLines(), scope.phantomLines());
 
@@ -325,6 +333,9 @@ public class IFCtoBOMPipeline {
                         floorLbdWorld, scope.setLbdPositions(),
                         bldgMinX, bldgMinY, bldgMinZ, catLookup);
                 System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
+                } finally {
+                    if (extractionConn != null) extractionConn.close();
+                }
             }
 
             // 9. Pre-commit QA validation — FAIL = rollback, do not produce broken BOM

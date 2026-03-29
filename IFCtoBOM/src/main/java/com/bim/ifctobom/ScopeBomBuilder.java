@@ -46,11 +46,15 @@ public class ScopeBomBuilder {
      * Run scope space assignment for all storeys with floor_rooms.
      *
      * @param bomConn        writable connection to output BOM DB
+     * @param extractionConn read-only connection to *_extracted.db (for IFC spatial containment)
      * @param config         building classification from YAML
      * @param storeyElements extraction elements grouped by storey
      * @return scope result with exclude sets and counts
      */
-    public static ScopeResult build(Connection bomConn, BuildingConfig config,
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.13 — IFC-driven extraction
+    // IfcRelContainedInSpatialStructure replaces YAML scope boxes
+    public static ScopeResult build(Connection bomConn, Connection extractionConn,
+                                    BuildingConfig config,
                                     Map<String, List<ExtractionElement>> storeyElements,
                                     CategoryLookup catLookup)
             throws SQLException {
@@ -71,44 +75,33 @@ public class ScopeBomBuilder {
             Set<String> excludedRefs = new LinkedHashSet<>();
 
             for (SpaceConfig space : fr.spaces()) {
-                if (!space.hasScopeBox()) {
-                    // No scope box (e.g. BATHROOM with no sanitary in SH) — create empty SET BOM
-                    createEmptySetBom(bomConn, space, catLookup);
-                    setBomIds.add(space.templateBom());
-                    continue;
-                }
+                // ── Containment: IFC spatial (ifc_space) or scope box fallback ──
+                List<ExtractionElement> assigned;
 
-                // ASSUMPTION: origin_m in the YAML is in the same world coordinate
-                // frame as the extraction centroids. If the IFC file is re-extracted
-                // with a different coordinate offset (e.g. IfcMapConversion), these
-                // scope boxes will mis-assign elements silently. Verify by comparing
-                // the extraction envelope against YAML space AABB after any re-extract.
-                double ox = space.originM()[0];
-                double oy = space.originM()[1];
-                double oz = space.originM()[2];
-                double sx = space.aabbW() / 1000.0;  // mm → m
-                double sy = space.aabbD() / 1000.0;
-                double sz = space.aabbH() / 1000.0;
-
-                // Collect elements whose centroid falls inside the scope box
-                List<ExtractionElement> assigned = new ArrayList<>();
-                for (ExtractionElement e : elems) {
-                    // Skip elements already assigned to a prior space
-                    if (excludedRefs.contains(elementKey(e))) continue;
-
-                    double cx = e.centroidX();
-                    double cy = e.centroidY();
-                    double cz = e.centroidZ();
-
-                    if (cx >= ox && cx <= ox + sx
-                            && cy >= oy && cy <= oy + sy
-                            && cz >= oz && cz <= oz + sz) {
-                        assigned.add(e);
+                if (space.hasIfcSpace()) {
+                    // IFC containment: read rel_contained_in_space from extraction DB
+                    assigned = loadElementsInSpace(extractionConn, space.ifcSpace(),
+                            elems, excludedRefs);
+                    if (assigned.isEmpty()) {
+                        // IFC space exists but no elements contained — create empty SET
+                        createEmptySetBom(bomConn, space, catLookup);
+                        setBomIds.add(space.templateBom());
+                        System.out.printf("  [IFC] space='%s' → 0 elements (empty SET)%n",
+                                space.ifcSpace());
+                        continue;
                     }
-                }
-
-                if (assigned.isEmpty()) {
-                    // Create empty SET BOM header (e.g. BATHROOM with no sanitary)
+                    System.out.printf("  [IFC] space='%s' → %d elements%n",
+                            space.ifcSpace(), assigned.size());
+                } else if (space.hasScopeBox()) {
+                    // Fallback: scope box containment (existing logic)
+                    assigned = filterByScopeBox(elems, space, excludedRefs);
+                    if (assigned.isEmpty()) {
+                        createEmptySetBom(bomConn, space, catLookup);
+                        setBomIds.add(space.templateBom());
+                        continue;
+                    }
+                } else {
+                    // No containment mechanism — create empty SET BOM
                     createEmptySetBom(bomConn, space, catLookup);
                     setBomIds.add(space.templateBom());
                     continue;
@@ -185,6 +178,76 @@ public class ScopeBomBuilder {
      */
     static String elementKey(ExtractionElement e) {
         return e.storey() + "|" + e.elementRef() + "|" + e.ordinal();
+    }
+
+    // ── Containment helpers ─────────────────────────────────────────────────
+
+    /**
+     * IFC containment: load elements assigned to an IfcSpace via
+     * rel_contained_in_space in the extraction DB.
+     *
+     * <p>Matches extraction elements by GUID against the spatial containment
+     * table. Falls back to empty list if extraction DB has no spatial data.
+     */
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.13 — IFC-driven extraction
+    private static List<ExtractionElement> loadElementsInSpace(
+            Connection extractionConn, String ifcSpaceName,
+            List<ExtractionElement> elems, Set<String> excludedRefs) throws SQLException {
+        // Load GUIDs contained in this IfcSpace
+        Set<String> containedGuids = new LinkedHashSet<>();
+        try (PreparedStatement ps = extractionConn.prepareStatement(
+                "SELECT rc.element_guid FROM rel_contained_in_space rc "
+                + "JOIN spatial_structure ss ON rc.space_guid = ss.guid "
+                + "WHERE ss.name = ?")) {
+            ps.setString(1, ifcSpaceName);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    containedGuids.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException e) {
+            // Table may not exist (old extraction DB) — fall back to empty
+            return List.of();
+        }
+
+        // Match against extraction elements by GUID
+        List<ExtractionElement> assigned = new ArrayList<>();
+        for (ExtractionElement e : elems) {
+            if (excludedRefs.contains(elementKey(e))) continue;
+            if (e.guid() != null && containedGuids.contains(e.guid())) {
+                assigned.add(e);
+            }
+        }
+        return assigned;
+    }
+
+    /**
+     * Scope box containment: filter elements whose centroid falls inside
+     * the YAML-defined rectangular volume. Original logic, now a helper.
+     */
+    private static List<ExtractionElement> filterByScopeBox(
+            List<ExtractionElement> elems, SpaceConfig space,
+            Set<String> excludedRefs) {
+        double ox = space.originM()[0];
+        double oy = space.originM()[1];
+        double oz = space.originM()[2];
+        double sx = space.aabbW() / 1000.0;
+        double sy = space.aabbD() / 1000.0;
+        double sz = space.aabbH() / 1000.0;
+
+        List<ExtractionElement> assigned = new ArrayList<>();
+        for (ExtractionElement e : elems) {
+            if (excludedRefs.contains(elementKey(e))) continue;
+            double cx = e.centroidX();
+            double cy = e.centroidY();
+            double cz = e.centroidZ();
+            if (cx >= ox && cx <= ox + sx
+                    && cy >= oy && cy <= oy + sy
+                    && cz >= oz && cz <= oz + sz) {
+                assigned.add(e);
+            }
+        }
+        return assigned;
     }
 
     // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────

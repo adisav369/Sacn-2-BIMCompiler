@@ -28,11 +28,16 @@ public class ClassificationYaml {
 
     public record SpaceConfig(String name, String templateBom, String role, int seq,
                               int aabbW, int aabbD, int aabbH,
-                              double[] originM) {
+                              double[] originM, String ifcSpace) {
         /** True if this space has a valid scope box for containment testing. */
         public boolean hasScopeBox() {
             return originM != null && originM.length == 3
                     && (aabbW > 0 || aabbD > 0 || aabbH > 0);
+        }
+
+        /** True if this space uses IFC spatial containment instead of scope box. */
+        public boolean hasIfcSpace() {
+            return ifcSpace != null && !ifcSpace.isEmpty();
         }
     }
 
@@ -152,7 +157,8 @@ public class ClassificationYaml {
                                 getString(sp, "role"),
                                 getInt(sp, "seq", 0),
                                 aw, ad, ah,
-                                originM
+                                originM,
+                                getString(sp, "ifc_space")
                         ));
                     }
                 }
