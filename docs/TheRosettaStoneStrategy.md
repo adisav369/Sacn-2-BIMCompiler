@@ -250,6 +250,78 @@ where the source building says it should.
 
 ---
 
+## Cross-Domain Precedent — The Folding Problem
+
+Construction is not the first domain to face this challenge. Two other fields
+solved the same abstract problem: **inferring 3D spatial structure from a 1D
+specification by learning from solved examples.**
+
+### Protein science (the closest cousin)
+
+The protein folding problem consumed 50 years of research: given a sequence
+of amino acids (1D), predict the 3D folded structure. DeepMind's AlphaFold
+solved it in 2020 by learning from the Protein Data Bank (PDB) — 200,000
+experimentally solved structures that served as ground truth.
+
+| | Protein Science | BIM Compiler |
+|---|---|---|
+| **1D input** | Amino acid sequence | Construction Order (C_Order → C_OrderLine) |
+| **3D output** | Folded protein structure | Compiled building (output.db) |
+| **Ground truth database** | PDB (200K solved structures) | Rosetta Stones (35 buildings, growing) |
+| **What's learned** | Bond angles, torsion, spatial motifs | Tack offsets, verb patterns, BOM recipes |
+| **Compilation step** | Homology modelling / AlphaFold inference | BOM walk (PlacementCollectorVisitor) |
+| **Verification** | RMSD against crystal structure / energy minimisation | GEO MATCH/DRIFT + G1-G6 gates |
+| **Reuse unit** | Protein domain (reusable fold motif) | BOM assembly (reusable spatial recipe) |
+
+Template-based modelling in protein science works because spatial
+relationships **transfer**: a helix-turn-helix motif in one protein predicts
+the same fold in another protein with a similar sequence. Our BOM assemblies
+work the same way — a BED_SET tack arrangement from SH compiles correctly
+in any building with a bedroom of compatible dimensions.
+
+### Robotics (the mechanical cousin)
+
+URDF (Unified Robot Description Format) decomposes a robot into links and
+joints with parent-child transforms. Forward kinematics accumulates these
+transforms through the chain to compute world positions — mathematically
+identical to PlacementCollectorVisitor's anchor stack. Robot calibration
+verifies computed positions against sensor readings — their version of
+GEO MATCH/DRIFT.
+
+### Who does all four steps?
+
+| Domain | Decompose real thing? | Store spatial recipe? | Recompile? | Self-verify? |
+|--------|:---:|:---:|:---:|:---:|
+| VLSI | — | Yes | Yes | Yes (DRC) |
+| Automotive | — | Yes | Yes | Partial |
+| Game engines | — | Yes | Yes | — |
+| **Robotics** | **Yes** | **Yes** | **Yes** | **Yes** |
+| **Protein/Rosetta** | **Yes** | **Yes** | **Yes** | **Yes** |
+| Shipbuilding | — | Yes | Yes | — |
+| **BIM Compiler** | **Yes** | **Yes** | **Yes** | **Yes** |
+
+Only robotics, protein science, and this compiler do all four. Construction
+is the last major engineering domain to gain a compilation model that learns
+from real structures.
+
+### The growth dynamic
+
+The PDB grew from a few hundred structures to 200,000 over 50 years. Each
+solved structure made the next prediction more accurate — because spatial
+motifs transfer. Our Rosetta Stone library is at 35 buildings. The same
+growth dynamic applies: each new building type adds proven tack arrangements,
+verb patterns, and product resolutions to the dictionary. A residential
+BED_SET, a commercial FP_RISER, an infrastructure bridge deck — each is a
+solved spatial motif that transfers to the next building of that type.
+
+AlphaFold's breakthrough was proving that learned spatial relationships
+**generalise**. The BIM Compiler's thesis is the same: the spatial
+relationships in 35 real buildings, captured as BOM tack offsets, are
+sufficient to compile any building of similar type — and the GEO proof
+chain verifies it with millimetre precision.
+
+---
+
 > **Full historical record:** Terminal decomposition phases (TE-1 through TE-8),
 > score history, benchmark baselines, known gaps (resolved), testing code
 > description, and synthetic Rosetta Stone details are preserved in

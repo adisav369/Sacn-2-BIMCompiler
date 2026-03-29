@@ -645,13 +645,41 @@ but is structurally domain-independent:
 | CutFillCalculator | INFRA_DESIGNER §5 | **PROVEN** | Any site has earthworks |
 | BOM Mining (Approve) | POB §4 | **SPEC** | Any domain accumulates reusable patterns |
 | Site-as-warehouse | POB §2.2 | **SPEC** | Any multi-unit project has plot allocation |
-| Domain-agnostic pipeline | BBC §5 (9 stages) | **PROVEN** (RE/CO/IN/IP) | Stages operate on abstract BOM nodes |
+| Domain-agnostic pipeline | BBC §5 (12 stages) | **PROVEN** (RE/CO/IN/IP) | Stages operate on abstract BOM nodes |
 
 **The framework is not aspirational — it is substantially built.** Of 18 capabilities
 listed, 14 are PROVEN or IMPLEMENTED, 4 are SPEC (design complete, code pending).
 The extensions required for marine, tunnel, earthworks, and plant are not new
 framework capabilities — they are surface providers and import adapters that plug
 into existing framework interfaces.
+
+---
+
+## Cross-Domain Precedent
+
+The abstract problem — infer 3D structure from 1D specification by learning
+from solved examples — has been solved in two other domains:
+
+**Protein science.** The folding problem (1D amino acid sequence → 3D
+structure) was solved by learning spatial motifs from 200K experimentally
+solved proteins in the Protein Data Bank. Template-based modelling reuses
+known folds for new sequences. AlphaFold proved that learned spatial
+relationships generalise. Our Rosetta Stone library is the PDB for
+buildings — 35 solved structures whose tack offsets, verb patterns, and
+product resolutions transfer to new buildings of similar type.
+
+**Robotics.** URDF decomposes a robot into links with parent-child
+transforms. Forward kinematics accumulates transforms to compute world
+positions — the same math as our BOM walk anchor stack. Calibration
+verifies computed vs measured positions — their GEO MATCH/DRIFT.
+
+Construction is the last major domain to gain this capability. The engine
+is domain-agnostic — the same BOM walker, tack convention, and GEO proof
+that compiles a 35-building residential library can compile a hull block
+library, a tunnel ring library, or an industrial plant module library.
+The spatial relationships are different data, not different code.
+
+See [TheRosettaStoneStrategy.md §Cross-Domain](TheRosettaStoneStrategy.md#cross-domain-precedent--the-folding-problem) for the full comparison table.
 
 ---
 
