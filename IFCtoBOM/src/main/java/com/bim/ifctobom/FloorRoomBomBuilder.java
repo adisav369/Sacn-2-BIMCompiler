@@ -4,17 +4,23 @@ import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
 import com.bim.ifctobom.ClassificationYaml.FloorRoomConfig;
 import com.bim.ifctobom.ClassificationYaml.SpaceConfig;
 import com.bim.ifctobom.ClassificationYaml.StaticChildConfig;
+import com.bim.ifctobom.ScopeBomBuilder.SetBomInfo;
 
 import java.sql.*;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Creates FLOOR room BOMs from classification YAML.
+ * Creates FLOOR room BOMs — the FLOOR→SET hierarchy linking floors to rooms.
  *
- * <p>For each {@code floor_rooms} entry: creates M_Product stub,
- * MBOM header, and MBOMLine children referencing template BOMs.
- * Also adds LEAF children for room assignments and static_children
- * to the BUILDING BOM.
+ * <p>Two modes:
+ * <ol>
+ *   <li><b>IFC-driven</b> (§10.4.13): uses {@code setBomsByStorey} from
+ *       {@link ScopeBomBuilder} — auto-discovered IfcSpaces, no YAML</li>
+ *   <li><b>YAML-driven</b> (legacy): iterates {@code floor_rooms} from YAML</li>
+ * </ol>
+ *
+ * <p>Also adds static_children (slabs, roof) to the BUILDING BOM.
  */
 public class FloorRoomBomBuilder {
 
@@ -34,48 +40,49 @@ public class FloorRoomBomBuilder {
                             Map<String, double[]> floorLbdWorld,
                             Map<String, double[]> setLbdPositions,
                             double bldgMinX, double bldgMinY, double bldgMinZ,
-                            CategoryLookup catLookup) throws SQLException {
+                            CategoryLookup catLookup,
+                            Map<String, List<SetBomInfo>> setBomsByStorey) throws SQLException {
         String buildingBomId = config.buildingBomId();
+        String prefix = config.prefix();
         int lineCount = 0;
 
         // ── Floor room BOMs ──────────────────────────────────────────────────
-        for (var floorEntry : config.floorRooms().entrySet()) {
-            String storeyName = floorEntry.getKey();
-            FloorRoomConfig fr = floorEntry.getValue();
-            String floorBomId = fr.bomId();
+        // IFC-driven: use setBomsByStorey from ScopeBomBuilder (auto-discovered IfcSpaces)
+        // YAML-driven: fall back to config.floorRooms() if setBomsByStorey is empty
+        boolean ifcDriven = setBomsByStorey != null && !setBomsByStorey.isEmpty();
 
-            // Create M_Product assembly stub for this floor
-            ProductRegistrar.ensureAssemblyStub(bomConn, floorBomId, "FLOOR");
+        if (ifcDriven) {
+            for (var entry : setBomsByStorey.entrySet()) {
+                String storeyName = entry.getKey();
+                List<SetBomInfo> sets = entry.getValue();
 
-            // Create FLOOR room BOM header
-            insertBomHeader(bomConn, floorBomId,
-                    config.prefix() + " " + storeyName + " Rooms",
-                    "FLOOR", "ROOM", fr.productCategory(), catLookup);
+                var storey = config.storeys().get(storeyName);
+                if (storey == null) continue;
 
-            // Floor world LBD for computing SET-in-FLOOR offsets
-            double[] floorLbd = floorLbdWorld.get(storeyName);
+                String floorBomId = prefix + "_ROOM_" + storey.code();
 
-            // Insert space children referencing template BOMs
-            // dx/dy/dz = SET BOM LBD position relative to FLOOR LBD (§4 tack convention)
-            for (SpaceConfig space : fr.spaces()) {
-                double[] setLbd = setLbdPositions.get(space.templateBom());
-                double spaceDx = 0, spaceDy = 0, spaceDz = 0;
-                if (setLbd != null && floorLbd != null) {
-                    spaceDx = setLbd[0] - floorLbd[0];
-                    spaceDy = setLbd[1] - floorLbd[1];
-                    spaceDz = setLbd[2] - floorLbd[2];
+                ProductRegistrar.ensureAssemblyStub(bomConn, floorBomId, "FLOOR");
+                insertBomHeader(bomConn, floorBomId,
+                        prefix + " " + storeyName + " Rooms",
+                        "FLOOR", "ROOM", storey.productCategory(), catLookup);
+
+                double[] floorLbd = floorLbdWorld.get(storeyName);
+
+                for (SetBomInfo set : sets) {
+                    double[] setLbd = setLbdPositions.get(set.setBomId());
+                    double spaceDx = 0, spaceDy = 0, spaceDz = 0;
+                    if (setLbd != null && floorLbd != null) {
+                        spaceDx = setLbd[0] - floorLbd[0];
+                        spaceDy = setLbd[1] - floorLbd[1];
+                        spaceDz = setLbd[2] - floorLbd[2];
+                    }
+                    insertSetLine(bomConn, floorBomId, set.setBomId(), set.role(), set.seq(),
+                            spaceDx, spaceDy, spaceDz);
+                    lineCount++;
                 }
-                insertSpaceLine(bomConn, floorBomId, space, spaceDx, spaceDy, spaceDz);
-                lineCount++;
-            }
 
-            // Add this floor room BOM as LEAF child of BUILDING BOM
-            // dx/dy/dz = FLOOR LBD position relative to BUILDING LBD (§4 tack convention)
-            var storey = config.storeys().get(storeyName);
-            if (storey != null) {
                 double bldgDx = 0, bldgDy = 0, bldgDz = 0;
                 if (floorLbd != null) {
-                    // BUILDING→FLOOR offset = floor world LBD - building world LBD (§4)
                     bldgDx = floorLbd[0] - bldgMinX;
                     bldgDy = floorLbd[1] - bldgMinY;
                     bldgDz = floorLbd[2] - bldgMinZ;
@@ -84,6 +91,46 @@ public class FloorRoomBomBuilder {
                         "LEAF", "ROOM_" + storey.code(), storey.seq() + 5,
                         bldgDx, bldgDy, bldgDz);
                 lineCount++;
+            }
+        } else {
+            // Legacy YAML-driven path
+            for (var floorEntry : config.floorRooms().entrySet()) {
+                String storeyName = floorEntry.getKey();
+                FloorRoomConfig fr = floorEntry.getValue();
+                String floorBomId = fr.bomId();
+
+                ProductRegistrar.ensureAssemblyStub(bomConn, floorBomId, "FLOOR");
+                insertBomHeader(bomConn, floorBomId,
+                        prefix + " " + storeyName + " Rooms",
+                        "FLOOR", "ROOM", fr.productCategory(), catLookup);
+
+                double[] floorLbd = floorLbdWorld.get(storeyName);
+
+                for (SpaceConfig space : fr.spaces()) {
+                    double[] setLbd = setLbdPositions.get(space.templateBom());
+                    double spaceDx = 0, spaceDy = 0, spaceDz = 0;
+                    if (setLbd != null && floorLbd != null) {
+                        spaceDx = setLbd[0] - floorLbd[0];
+                        spaceDy = setLbd[1] - floorLbd[1];
+                        spaceDz = setLbd[2] - floorLbd[2];
+                    }
+                    insertSpaceLine(bomConn, floorBomId, space, spaceDx, spaceDy, spaceDz);
+                    lineCount++;
+                }
+
+                var storey = config.storeys().get(storeyName);
+                if (storey != null) {
+                    double bldgDx = 0, bldgDy = 0, bldgDz = 0;
+                    if (floorLbd != null) {
+                        bldgDx = floorLbd[0] - bldgMinX;
+                        bldgDy = floorLbd[1] - bldgMinY;
+                        bldgDz = floorLbd[2] - bldgMinZ;
+                    }
+                    insertBuildingChild(bomConn, buildingBomId, floorBomId,
+                            "LEAF", "ROOM_" + storey.code(), storey.seq() + 5,
+                            bldgDx, bldgDy, bldgDz);
+                    lineCount++;
+                }
             }
         }
 
@@ -129,6 +176,16 @@ public class FloorRoomBomBuilder {
                 .offset(dx, dy, dz)
                 .alloc(space.aabbW(), space.aabbD(), space.aabbH())
                 .shape(archetype, scaleBand)
+                .build());
+    }
+
+    /** IFC-driven: insert SET child line under FLOOR BOM. */
+    private static void insertSetLine(Connection conn, String floorBomId,
+                                      String setBomId, String role, int seq,
+                                      double dx, double dy, double dz) throws SQLException {
+        BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(
+                floorBomId, setBomId, role, seq)
+                .offset(dx, dy, dz)
                 .build());
     }
 

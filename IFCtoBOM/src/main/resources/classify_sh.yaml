@@ -20,14 +20,8 @@ building:
     Roof:         { code: ROOF, product_category: RF, role: ROOF, seq: 1020 }
     Unknown:      { code: CW, product_category: CW, role: CURTAIN_WALL, seq: 1030 }
 
-  floor_rooms:
-    Ground Floor:
-      bom_id: FLOOR_SH_GF_STD
-      product_category: GF
-      spaces:
-        # IFC-driven (§10.4.13): ifc_space replaces scope box when IfcSpace data exists
-        - { ifc_space: "1 - Living room", name: LIVING, template_bom: SH_LIVING_SET, role: LIVING, seq: 10 }
-        - { ifc_space: "2 - Bedroom",     name: MASTER, template_bom: SH_BED_SET,    role: MASTER, seq: 30 }
+  # floor_rooms: removed — IFC spatial containment is the sole source (§10.4.13)
+  # IfcSpaces auto-discovered from extraction DB: "1 - Living room", "2 - Bedroom"
 
   static_children:
     - { child_product_id: FLOOR_SLAB_GF, role: GROUND_SLAB, seq: 5, dz: 0.0 }

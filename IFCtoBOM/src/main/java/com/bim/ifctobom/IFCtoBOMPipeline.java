@@ -264,7 +264,7 @@ public class IFCtoBOMPipeline {
             if ("CO".equals(config.productCategory()) || "IN".equals(config.productCategory())) {
                 // CO/IN path: discipline-stratified hierarchy (IN = infrastructure)
                 structural = DisciplineBomBuilder.build(bomConn, config, storeyElements, catLookup);
-                scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0);
+                scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0, Map.of());
                 composition = new CompositionResult(Map.of(), 0, 0);
                 roomLines = 0;
                 BIMLogger.fine("EXTRACTION", "{}: {} BOMs (discipline path), AABB={}x{}x{}mm",
@@ -331,7 +331,8 @@ public class IFCtoBOMPipeline {
 
                 roomLines = FloorRoomBomBuilder.build(bomConn, config,
                         floorLbdWorld, scope.setLbdPositions(),
-                        bldgMinX, bldgMinY, bldgMinZ, catLookup);
+                        bldgMinX, bldgMinY, bldgMinZ, catLookup,
+                        scope.setBomsByStorey());
                 System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);
                 } finally {
                     if (extractionConn != null) extractionConn.close();
