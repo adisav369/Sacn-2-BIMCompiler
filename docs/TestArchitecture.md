@@ -230,8 +230,8 @@ SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of
 2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Sealed:** 2026-03-29 (v15: S100-p117 callout category defaults + script split)
-**Super-hash:** `1851dd57f4fe8d4c7c1d011904b004961a16376fd09ce36ab654445cc0bdff89`
+**Sealed:** 2026-03-30 (v16: S100-p118b ceiling Z + p122 compile fix)
+**Super-hash:** `7f78da6d2a28001b069be886a202a5142169c2a7365473a44185bcfe2a338cba`
 
 ```
 bash scripts/verify_test_seal.sh            # quick check
@@ -263,7 +263,7 @@ fd65b3f6  contract/CompilerContractTest.java
 c1b54166  contract/BOMChainMathTest.java
 a0ce0436  contract/SpatialPlacementVisitorTest.java
 e3f80cdc  contract/StTemplatePipelineTest.java
-325c46d4  contract/BuildingRegistryTest.java
+8bafb5b8  contract/BuildingRegistryTest.java
 3a91a827  contract/IntraBOMRelativeTest.java
 cc7e581e  contract/MetadataIntegrityTest.java
 c3fdd0fd  contract/DataIntegrityTest.java
@@ -314,7 +314,7 @@ aeaa7e09  TopologyBatchProcessTest.java
 
 ### Critical Production Files + Hook (10 files)
 ```
-8e5552fd  CompilationPipeline.java
+414e8816  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
 7a1b759c  PlaceBomVerb.java
 87f8aa95  EnBlocVerb.java
@@ -322,9 +322,9 @@ a1ce5479  WalkThruVerb.java
 b366f5e8  MBOM.java
 4970aa07  MBOMLine.java
 38f498ae  run_tests.sh
-d9260c29  run_RosettaStones.sh
-c51284a4  lib_rosetta_helpers.sh
-37850cf9  rosetta_compile.sh
+c2d7932a  run_RosettaStones.sh
+e6ac9ef2  lib_rosetta_helpers.sh
+77ebf32c  rosetta_compile.sh
 0f77a8a4  rosetta_integrity.sh
 bcd2af85  rosetta_fidelity.sh
 39839729  pre-commit

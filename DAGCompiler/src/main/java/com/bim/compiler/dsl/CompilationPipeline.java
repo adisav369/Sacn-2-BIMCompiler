@@ -21,6 +21,8 @@ import com.bim.ormsandbox.po.MBOMLine;
 import java.io.File;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import java.util.List;
 import java.util.ServiceLoader;
@@ -467,12 +469,30 @@ public class CompilationPipeline {
                     return;
                 }
 
-                RouteExecutor.RouteReport report = executor.executeRoutes(compileDb, disciplines);
+                // Compute storey Z-bands from walked placements (absolute Z, meters)
+                Map<String, double[]> storeyZBands = computeStoreyZBands(ctx);
+
+                RouteExecutor.RouteReport report = executor.executeRoutes(compileDb, disciplines, storeyZBands);
                 ctx.setRouteReport(report);
 
                 BIMLogger.info("ROUTE", "RouteStage done: {} routes, {} segments, {} edges",
                         report.routeCount(), report.totalSegments(), report.edges().size());
             }
+        }
+
+        /** Compute per-storey Z-bands from walked placements (same approach as P115). */
+        private static Map<String, double[]> computeStoreyZBands(CompilationContext ctx) {
+            Map<String, double[]> bands = new LinkedHashMap<>();
+            List<PlacementLoader.Placement> placements = ctx.walkedPlacements();
+            if (placements == null) return bands;
+            for (PlacementLoader.Placement p : placements) {
+                String storey = p.storey() != null ? p.storey().trim() : "";
+                if (storey.isEmpty()) continue;
+                bands.merge(storey, new double[]{p.minZ(), p.maxZ()},
+                    (old, cur) -> new double[]{Math.min(old[0], cur[0]), Math.max(old[1], cur[1])});
+            }
+            BIMLogger.fine("ROUTE", "storeyZBands: {} storeys from walked placements", bands.size());
+            return bands;
         }
 
         /** Query discipline codes from DISCIPLINE OrderLines in compile DB. */

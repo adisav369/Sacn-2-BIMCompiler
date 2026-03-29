@@ -2,6 +2,7 @@ package com.bim.compiler.dsl;
 
 import java.sql.Connection;
 import java.util.List;
+import java.util.Map;
 
 /**
  * SPI interface for discipline routing — fires RouteDocEvent during compilation.
@@ -26,6 +27,17 @@ public interface RouteExecutor {
      * @return routing report with edges and nodes for persistence
      */
     RouteReport executeRoutes(Connection compileDb, List<String> disciplines) throws Exception;
+
+    /**
+     * Fire discipline routing with absolute storey Z-bands from walked placements.
+     * // Fix DISC_VALIDATION_DB_SRS §10.4.12 Gap 1 — ceiling Z from elements_rtree (absolute)
+     *
+     * @param storeyZBands  map of storey name → [minZ_meters, maxZ_meters] from element positions
+     */
+    default RouteReport executeRoutes(Connection compileDb, List<String> disciplines,
+                                       Map<String, double[]> storeyZBands) throws Exception {
+        return executeRoutes(compileDb, disciplines);
+    }
 
     /** Complete routing report — edges and nodes for output.db persistence. */
     record RouteReport(

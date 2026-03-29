@@ -9,6 +9,7 @@ import com.bim.orm.BIMLogger;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * SPI implementation of {@link RouteExecutor} — fires RouteDocEvent during compilation.
@@ -24,7 +25,13 @@ public class RouteExecutorImpl implements RouteExecutor {
 
     @Override
     public RouteReport executeRoutes(Connection compileDb, List<String> disciplines) throws Exception {
-        SqlBuildingGeometry geo = new SqlBuildingGeometry(compileDb);
+        return executeRoutes(compileDb, disciplines, null);
+    }
+
+    @Override
+    public RouteReport executeRoutes(Connection compileDb, List<String> disciplines,
+                                      Map<String, double[]> storeyZBands) throws Exception {
+        SqlBuildingGeometry geo = new SqlBuildingGeometry(compileDb, storeyZBands);
         List<DisciplineRouteResult> results = RouteDocEvent.fireAll(disciplines, geo);
 
         List<EdgeRow> edges = new ArrayList<>();

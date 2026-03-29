@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * COMPOSE BUILDING &lt;docBaseType&gt; &lt;width&gt; &lt;depth&gt; &lt;height&gt; UNITS &lt;n&gt;
+ * COMPOSE BUILDING &lt;buildingType&gt; &lt;width&gt; &lt;depth&gt; &lt;height&gt; UNITS &lt;n&gt;
  *
  * <p>Level 3 building verb (§18.8). <b>Delegates to
  * {@link BomTemplateComposer#compose()}</b> for MRP explosion — no
@@ -32,8 +32,8 @@ import java.util.Map;
  */
 public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuildingPayload> {
 
-    /** Map from building_type shorthand to M_BomCategory doc_type (short code). */
-    private static final Map<String, String> DOC_TYPE_MAP = Map.of(
+    /** Map from building_type longhand to M_Product_Category value (RE/CO/IN). */
+    private static final Map<String, String> CATEGORY_MAP = Map.of(
         "RESIDENTIAL", "RE",
         "COMMERCIAL", "CO",
         "INDUSTRIAL", "IN"
@@ -46,17 +46,17 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
     public VerbResult<ComposeBuildingPayload> execute(VerbContext ctx, String... args)
             throws SQLException {
 
-        // Parse: COMPOSE BUILDING <docBaseType> <width> <depth> <height> UNITS <n>
+        // Parse: COMPOSE BUILDING <buildingType> <width> <depth> <height> UNITS <n>
         if (args.length < 5)
             return VerbResult.fail(keyword(),
-                "usage: COMPOSE BUILDING <docBaseType> <width> <depth> <height> UNITS <n>", null);
+                "usage: COMPOSE BUILDING <buildingType> <width> <depth> <height> UNITS <n>", null);
 
-        String docBaseType = args[0].toUpperCase();
-        String docType = DOC_TYPE_MAP.get(docBaseType);
-        if (docType == null)
+        String buildingType = args[0].toUpperCase();
+        String categoryCode = CATEGORY_MAP.get(buildingType);
+        if (categoryCode == null)
             return VerbResult.fail(keyword(),
-                "unknown building type: " + docBaseType
-                    + ", must be one of " + DOC_TYPE_MAP.keySet(), null);
+                "unknown building type: " + buildingType
+                    + ", must be one of " + CATEGORY_MAP.keySet(), null);
 
         int widthMm, depthMm, heightMm;
         try {
@@ -80,14 +80,14 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         // Step 1: Delegate to BomTemplateComposer for MRP explosion
         CompositionReport report = BomTemplateComposer.compose(
-            conn, docType, widthMm, depthMm, heightMm, numUnits);
+            conn, categoryCode, widthMm, depthMm, heightMm, numUnits);
 
         if (report.selections().isEmpty())
             return VerbResult.fail(keyword(),
-                "no template found for " + docType, null);
+                "no template found for " + categoryCode, null);
 
         // Step 2: Create the BUILDING BOM header
-        String prefix = docBaseType.substring(0, Math.min(2, docBaseType.length()));
+        String prefix = buildingType.substring(0, Math.min(2, buildingType.length()));
         String bldgBomId = String.format("SY_%s_BLDG_%dx%dx%d",
             prefix, widthMm, depthMm, heightMm);
 
@@ -97,9 +97,9 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         MBOM bldgBom = new MBOM(conn);
         bldgBom.setBomId(bldgBomId);
-        bldgBom.setBomName(docBaseType + " Building " + widthMm + "x" + depthMm + "x" + heightMm);
+        bldgBom.setBomName(buildingType + " Building " + widthMm + "x" + depthMm + "x" + heightMm);
         bldgBom.setBomType("BUILDING");
-        bldgBom.setProductCategory(prefix);   // RE, CO, IN — m_product_category_id (derived from docBaseType)
+        bldgBom.setProductCategory(prefix);   // RE, CO, IN — m_product_category_id
         bldgBom.setGroupBy("BUILDING");
         bldgBom.setIsActive(true);
         bldgBom.setBomLevel("BUILDING");
@@ -160,7 +160,7 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         return VerbResult.ok(keyword(),
             String.format("COMPOSE BUILDING %s %dx%dx%d UNITS %d → %s (%d lines, %d gaps)",
-                docBaseType, widthMm, depthMm, heightMm, numUnits,
+                buildingType, widthMm, depthMm, heightMm, numUnits,
                 bldgBomId, totalLines, gaps.length),
             new ComposeBuildingPayload(bldgBomId, totalBoms, totalLines, floorCount, gaps));
     }

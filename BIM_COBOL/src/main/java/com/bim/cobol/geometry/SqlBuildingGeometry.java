@@ -7,8 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * SQL implementation of {@link BuildingGeometry} — queries c_orderline in the compile DB.
@@ -25,9 +24,15 @@ public class SqlBuildingGeometry implements BuildingGeometry {
     private static final double MEP_CLEARANCE_MM = 50.0;
 
     private final Connection compileDb;
+    private final Map<String, double[]> storeyZBands;
 
     public SqlBuildingGeometry(Connection compileDb) {
+        this(compileDb, null);
+    }
+
+    public SqlBuildingGeometry(Connection compileDb, Map<String, double[]> storeyZBands) {
         this.compileDb = compileDb;
+        this.storeyZBands = storeyZBands;
     }
 
     @Override
@@ -57,6 +62,21 @@ public class SqlBuildingGeometry implements BuildingGeometry {
 
     @Override
     public List<FloorLevel> floors() {
+        // Fix DISC_VALIDATION_DB_SRS §10.4.12 Gap 1 — ceiling Z from elements_rtree (absolute)
+        // Same approach as P115 StoreyZBandProof.computeStoreyZBands()
+        if (storeyZBands != null && !storeyZBands.isEmpty()) {
+            // Use absolute Z from walked placements (meters → mm)
+            List<FloorLevel> floors = new ArrayList<>();
+            for (Map.Entry<String, double[]> entry : storeyZBands.entrySet()) {
+                double minZMm = entry.getValue()[0] * 1000.0; // meters to mm
+                floors.add(new FloorLevel(entry.getKey(), minZMm));
+            }
+            floors.sort(Comparator.comparingDouble(FloorLevel::zMm));
+            BIMLogger.fine(TAG, "floors: {} levels from storeyZBands (absolute Z)", floors.size());
+            return floors;
+        }
+
+        // Fallback: c_orderline FLOOR rows (BOM-relative offsets)
         List<FloorLevel> floors = new ArrayList<>();
         try (PreparedStatement ps = compileDb.prepareStatement(
                 "SELECT family_ref, dz FROM C_OrderLine"
@@ -72,7 +92,7 @@ public class SqlBuildingGeometry implements BuildingGeometry {
         } catch (SQLException e) {
             BIMLogger.warn(TAG, "floors query failed: {}", e.getMessage());
         }
-        BIMLogger.fine(TAG, "floors: {} levels found", floors.size());
+        BIMLogger.fine(TAG, "floors: {} levels found (c_orderline fallback)", floors.size());
         return floors;
     }
 

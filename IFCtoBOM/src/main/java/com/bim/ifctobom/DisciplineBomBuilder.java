@@ -79,8 +79,8 @@ public class DisciplineBomBuilder {
         insertBomHeader(bomConn, buildingBomId,
                 prefix + " " + config.name(),
                 "BUILDING", "BUILDING",
-                config.docSubType(), config.docBaseType(),
-                aabbW, aabbD, aabbH, config.docBaseType(),
+                config.docSubType(), config.productCategory(),
+                aabbW, aabbD, aabbH,
                 allMinX, allMinY, allMinZ, catLookup);
 
         // ── Process each storey ───────────────────────────────────────────
@@ -114,9 +114,8 @@ public class DisciplineBomBuilder {
             insertBomHeader(bomConn, floorBomId,
                     prefix + " " + storeyName,
                     "FLOOR", "STOREY",
-                    null, null,
+                    null, storeyInfo.productCategory(),
                     floorW, floorD, floorH,
-                    storeyInfo.productCategory(),
                     0, 0, 0, catLookup);  // R16: child origin = 0; offset lives in MAKE line dx
 
             // ── Group elements by discipline ──────────────────────────────
@@ -171,9 +170,8 @@ public class DisciplineBomBuilder {
 
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
                                         String bomType, String groupBy,
-                                        String docSubType, String docBaseType,
+                                        String docSubType, String productCategory,
                                         double aabbW, double aabbD, double aabbH,
-                                        String productCategory,
                                         double originX, double originY, double originZ,
                                         CategoryLookup catLookup)
             throws SQLException {
