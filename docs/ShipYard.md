@@ -10,6 +10,37 @@
 
 ## 0. Thesis — Why the Engine Is Domain-Agnostic
 
+**ShipYard is not Rosetta Stone.** Rosetta Stones decompose a real building
+(IFC → BOM), recompile it, and verify exact sameness. ShipYard domains
+(marine, tunnel, plant) have no reference IFC to decompose — you design
+a hull from scratch, not from a scanned ship. The value of ShipYard is
+different: **the spatial recipes learned from Rosetta Stones transfer to
+domains that have never been compiled before.**
+
+A BED_SET tack arrangement proven on SH is a spatial motif — parent at
+origin, children at relative offsets. That same motif works as a cabin
+furniture set on a ship, a utility room fitout in a tunnel, or an equipment
+skid in a plant. The BOM recipe is proven data; the domain is just a
+different M_Product_Category.
+
+This is the same transfer mechanism as two other domains that solved the
+"reusable geometry" problem:
+
+- **Protein science** solved the folding problem (1D amino acid sequence →
+  3D structure) by learning spatial motifs from 200K solved structures in
+  the Protein Data Bank. A helix-turn-helix motif from one protein predicts
+  the fold of another. Our BOM assemblies are the structural motifs — proven
+  spatial arrangements that transfer across building types and domains.
+
+- **Robotics** solves forward kinematics by accumulating parent-child
+  transforms through a link chain — mathematically identical to our BOM walk
+  anchor stack. A robot arm calibrated in one configuration reuses the same
+  link transforms in any configuration.
+
+Both domains distinguish between **learning** (solve the structure, capture
+the relationships) and **applying** (reuse the relationships in a new context).
+Rosetta Stones are the learning phase. ShipYard is the application phase.
+
 The BIM Intent Compiler has no concept of "building." Its core loop is:
 
 1. Read a parent BOM. For each child line, accumulate (dx, dy, dz).
