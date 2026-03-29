@@ -168,6 +168,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             double sin = Math.sin(cumRot);
             double rx = lineDx * cos - lineDy * sin;
             double ry = lineDx * sin + lineDy * cos;
+            // Log 4: Rotation applied — proves rotation was not skipped
+            if (BIMLogger.geoMatch(childBomId != null ? childBomId : "ROOT")) {
+                BIMLogger.geo("TACK", "  ROT {:.4f}rad: line=({:.4f},{:.4f}) → rotated=({:.4f},{:.4f})",
+                    cumRot, line != null ? line.getDx() : 0.0, line != null ? line.getDy() : 0.0, rx, ry);
+            }
             lineDx = rx;
             lineDy = ry;
         }
@@ -193,10 +198,30 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             parent[2] + lineDz + bomOriginZ
         };
         anchorStack.push(newAnchor);
+
+        // Log 1: ENTER — proves anchor accumulation executed
+        if (BIMLogger.geoMatch(childBomId != null ? childBomId : "ROOT")) {
+            BIMLogger.geo("TACK", "ENTER {} depth={}: parent=({:.4f},{:.4f},{:.4f}) + line=({:.4f},{:.4f},{:.4f}) + bomOrigin=({:.4f},{:.4f},{:.4f}) → anchor=({:.4f},{:.4f},{:.4f})",
+                childBomId != null ? childBomId : "ROOT",
+                ctx.level(),
+                parent[0], parent[1], parent[2],
+                lineDx, lineDy, lineDz,
+                bomOriginX, bomOriginY, bomOriginZ,
+                newAnchor[0], newAnchor[1], newAnchor[2]);
+        }
     }
 
     @Override
     public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
+        // Log 2: EXIT — proves stack unwind happened
+        if (!anchorStack.isEmpty()) {
+            MBOMLine exitLine = ctx.line();
+            String exitId = (exitLine != null) ? exitLine.getChildProductId() : "ROOT";
+            if (BIMLogger.geoMatch(exitId != null ? exitId : "ROOT")) {
+                BIMLogger.geo("TACK", "EXIT  {} depth={}",
+                    exitId != null ? exitId : "ROOT", ctx.level());
+            }
+        }
         if (!anchorStack.isEmpty()) {
             anchorStack.pop();
         }
@@ -246,6 +271,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             double sin = Math.sin(cumRot);
             double rx = leafDx * cos - leafDy * sin;
             double ry = leafDx * sin + leafDy * cos;
+            // Log 4b: Leaf rotation — proves rotation applied to leaf offset
+            if (BIMLogger.geoMatch(line.getChildProductId())) {
+                BIMLogger.geo("TACK", "  ROT {:.4f}rad: leaf=({:.4f},{:.4f}) → rotated=({:.4f},{:.4f})",
+                    cumRot, line.getDx(), line.getDy(), rx, ry);
+            }
             leafDx = rx;
             leafDy = ry;
         }
@@ -324,6 +354,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             double cy = anchor[1] + offsets[qi][1] + iHalfD;
             double cz = anchor[2] + offsets[qi][2] + iHalfH;
 
+            // Log 3+5: LEAF — proves centroid was computed by tack accumulation + shows GUID
+            // (elementRef resolved below, so we log after GUID resolution)
+
             // Element ref: CP-1 MA guid > line ref > generated.
             // MA (Material Allocation) carries per-instance IFC GUIDs for SpatialDiff.
             // Guard: only accept valid IFC GloballyUniqueId (22 chars, base64url+'$').
@@ -346,6 +379,17 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             // Apply unit prefix for mirrored compositions (makes GUIDs unique per unit)
             if (!unitPrefix.isEmpty()) {
                 elementRef = unitPrefix + elementRef;
+            }
+
+            // Log 3+5: LEAF with GUID — proves tack math ran and IFC GUID preserved
+            if (BIMLogger.geoMatch(productId)) {
+                BIMLogger.geo("TACK", "LEAF  {} guid={} anchor=({:.4f},{:.4f},{:.4f}) + offset=({:.4f},{:.4f},{:.4f}) + half=({:.4f},{:.4f},{:.4f}) → centroid=({:.4f},{:.4f},{:.4f}) LBD=({:.4f},{:.4f},{:.4f})",
+                    productId, elementRef,
+                    anchor[0], anchor[1], anchor[2],
+                    offsets[qi][0], offsets[qi][1], offsets[qi][2],
+                    iHalfW, iHalfD, iHalfH,
+                    cx, cy, cz,
+                    cx - iHalfW, cy - iHalfD, cz - iHalfH);
             }
 
             // Ordinal: always sequential — ensures GUID uniqueness across

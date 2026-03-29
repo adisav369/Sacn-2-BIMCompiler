@@ -145,6 +145,8 @@ public class ScopeBomBuilder {
                 // setMinX/Y/Z = SET AABB minimum corner (computed above at lines 116-121)
                 // NOT scope box origin (ox,oy,oz) — that is a containment filter only (§4.1)
                 // FACTORIZE-v2: verb-compressed LEAF writes via VerbFactorizer.
+                // BBC.md §4 — write IFC GUIDs to m_bom_line_ma for traceability
+                // 7-arg overload: writes MA rows, keeps element_ref as product name (RE path)
                 VerbFactorizer.FactorResult vfr = VerbFactorizer.factorize(
                         bomConn, space.templateBom(), assigned, minX, minY, minZ, 10);
                 totalSetLines += vfr.linesWritten();

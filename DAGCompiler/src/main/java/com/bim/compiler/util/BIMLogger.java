@@ -34,6 +34,9 @@ public class BIMLogger {
     public static void warn(String c, String f, Object... a) { com.bim.orm.BIMLogger.warn(c, f, a); }
     public static void error(String c, String f, Object... a) { com.bim.orm.BIMLogger.error(c, f, a); }
 
+    public static void geo(String c, String f, Object... a) { com.bim.orm.BIMLogger.geo(c, f, a); }
+    public static boolean geoMatch(String productId) { return com.bim.orm.BIMLogger.geoMatch(productId); }
+
     public static void stage(int step, String name, String detail) { com.bim.orm.BIMLogger.stage(step, name, detail); }
     public static void gate(String gId, String tag, String status, String detail) { com.bim.orm.BIMLogger.gate(gId, tag, status, detail); }
     public static void proof(String pId, String status, String el, String ev) { com.bim.orm.BIMLogger.proof(pId, status, el, ev); }

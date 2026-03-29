@@ -43,6 +43,16 @@ public class BIMLogger {
     private static PrintWriter logFile = null;
     private static String logFilePath = null;
 
+    // ── GEO debug mode — dedicated channel for tack chain logging (BBC.md §4) ──
+    // Implementing BBC.md §4 — FINE tack chain logging + IFC GUID traceability
+    // Each TACK LEAF line proves: (A) tack math ran, (B) IFC GUID preserved
+    private static final boolean GEO_ENABLED =
+        "true".equalsIgnoreCase(System.getProperty("bim.geo.debug",
+            readBimProperty("bim.geo.debug", "false")));
+    private static final String GEO_FILTER =
+        System.getProperty("bim.geo.filter",
+            readBimProperty("bim.geo.filter", null));
+
     /**
      * Resolve initial level — iDempiere convention: external properties, not hardcoded.
      *
@@ -171,6 +181,36 @@ public class BIMLogger {
     }
 
     // =========================================================================
+    // GEO debug mode — tack chain logging (BBC.md §4)
+    // =========================================================================
+
+    /**
+     * Log a GEO message — emits ONLY when {@code bim.geo.debug=true}.
+     * Independent of the general log level (INFO/FINE). Goes to file only.
+     */
+    public static void geo(String component, String format, Object... args) {
+        if (!GEO_ENABLED) return;
+        String message = formatMessage(format, args);
+        String timestamp = LocalDateTime.now().format(TIME_FMT);
+        String line = String.format("%s [GEO  ] %-12s %s",
+            timestamp, component, message);
+        // GEO goes to file only (never console)
+        if (logFile != null) {
+            logFile.println(line);
+            logFile.flush();
+        }
+    }
+
+    /**
+     * Check if GEO mode is active and the given productId matches the filter.
+     * Filter controls logging only — never skip a placement.
+     */
+    public static boolean geoMatch(String productId) {
+        return GEO_ENABLED && (GEO_FILTER == null || GEO_FILTER.isEmpty()
+                || (productId != null && productId.contains(GEO_FILTER)));
+    }
+
+    // =========================================================================
     // Specialized logging for BIM operations
     // =========================================================================
 
@@ -235,6 +275,23 @@ public class BIMLogger {
             logFile.println(line);
             logFile.flush();
         }
+    }
+
+    /**
+     * Read a property from BIM.properties file in working directory.
+     * Returns defaultValue if file doesn't exist or property is absent.
+     */
+    private static String readBimProperty(String key, String defaultValue) {
+        Path propsFile = Paths.get("BIM.properties");
+        if (Files.exists(propsFile)) {
+            try (InputStream in = Files.newInputStream(propsFile)) {
+                Properties props = new Properties();
+                props.load(in);
+                String val = props.getProperty(key);
+                if (val != null && !val.isEmpty()) return val.trim();
+            } catch (IOException ignored) { /* fall through */ }
+        }
+        return defaultValue;
     }
 
     private static String formatMessage(String format, Object[] args) {

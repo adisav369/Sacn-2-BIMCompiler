@@ -74,7 +74,7 @@ public class StructuralBomBuilder {
         insertBomHeader(bomConn, buildingBomId,
                 prefix + " " + config.name(),
                 "BUILDING", "BUILDING",
-                config.docSubType(), config.docBaseType(),
+                config.docSubType(), config.productCategory(),
                 aabbW, aabbD, aabbH,
                 allMinX, allMinY, allMinZ, catLookup);
 
@@ -131,6 +131,8 @@ public class StructuralBomBuilder {
                 floorElems.add(e);
             }
 
+            // BBC.md §4 — write IFC GUIDs to m_bom_line_ma for traceability
+            // 7-arg overload: writes MA rows, keeps element_ref as product name (RE path)
             VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
                     bomConn, floorBomId, floorElems, fMinX, fMinY, fMinZ, 10);
             totalLines += fr.linesWritten();
@@ -178,15 +180,15 @@ public class StructuralBomBuilder {
 
     // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
 
-    // Implementing DATA_MODEL.md §7 — DocBaseType → M_Product_Category alignment
+    // Implementing DATA_MODEL.md §7 — M_Product_Category alignment
     private static void insertBomHeader(Connection conn, String bomId, String bomName,
                                         String bomType, String groupBy,
-                                        String docSubType, String docBaseType,
+                                        String docSubType, String productCategory,
                                         double aabbW, double aabbD, double aabbH,
                                         double originX, double originY, double originZ,
                                         CategoryLookup catLookup)
             throws SQLException {
-        int catId = catLookup.getId(docBaseType);
+        int catId = catLookup.getId(productCategory);
         BomWriter.insertBom(conn, new BomWriter.BomRowBuilder(bomId, bomName, bomType, groupBy)
                 .docSubType(docSubType)
                 .productCategoryId(catId)

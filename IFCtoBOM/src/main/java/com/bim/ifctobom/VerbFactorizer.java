@@ -78,7 +78,7 @@ public class VerbFactorizer {
                                           double parentMinX, double parentMinY, double parentMinZ,
                                           int startSeq, boolean writeMaRows) throws SQLException {
         return doFactorize(conn, parentBomId, elements, parentMinX, parentMinY, parentMinZ,
-                startSeq, writeMaRows, 0);
+                startSeq, writeMaRows, writeMaRows, 0);
     }
 
     /**
@@ -93,25 +93,28 @@ public class VerbFactorizer {
                                           double parentMinX, double parentMinY, double parentMinZ,
                                           int startSeq, boolean writeMaRows, int adOrgId) throws SQLException {
         return doFactorize(conn, parentBomId, elements, parentMinX, parentMinY, parentMinZ,
-                startSeq, writeMaRows, adOrgId);
+                startSeq, writeMaRows, writeMaRows, adOrgId);
     }
 
     /**
-     * Factorize without MA rows (default for RE buildings).
-     * Equivalent to {@code factorize(conn, parentBomId, elements, ..., false)}.
+     * Factorize with MA rows for IFC GUID traceability (BBC.md §4).
+     * element_ref stays as product name (RE buildings need it for geometry lookup).
+     * IFC GUIDs written to m_bom_line_ma only — compiler reads them via loadMaGuids().
      */
     public static FactorResult factorize(Connection conn, String parentBomId,
                                           List<ExtractionElement> elements,
                                           double parentMinX, double parentMinY, double parentMinZ,
                                           int startSeq) throws SQLException {
+        // BBC.md §4: write MA rows for GUID traceability, keep element_ref as product name
         return doFactorize(conn, parentBomId, elements, parentMinX, parentMinY, parentMinZ,
-                startSeq, false, 0);
+                startSeq, true, false, 0);
     }
 
     private static FactorResult doFactorize(Connection conn, String parentBomId,
                                           List<ExtractionElement> elements,
                                           double parentMinX, double parentMinY, double parentMinZ,
-                                          int startSeq, boolean writeMaRows, int adOrgId) throws SQLException {
+                                          int startSeq, boolean writeMaRows,
+                                          boolean useGuidAsRef, int adOrgId) throws SQLException {
         // Group by child_product_id
         Map<String, List<ExtractionElement>> byProduct = new LinkedHashMap<>();
         for (ExtractionElement e : elements) {
@@ -193,11 +196,11 @@ public class VerbFactorizer {
                     double dz = e.minZ() - parentMinZ;
 
                     String rotationRule = e.orientation() != null ? e.orientation() : "0";
-                    // CP-1: For CO buildings (writeMaRows=true), use IFC GUID as
+                    // CP-1: For CO buildings (useGuidAsRef=true), use IFC GUID as
                     // element_ref for identity-based SpatialDiff matching.
-                    // For RE buildings, element_ref stays as product name (geometry lookup key).
+                    // For RE buildings (useGuidAsRef=false), element_ref stays as product name.
                     String elemRef;
-                    if (writeMaRows && e.guid() != null && !e.guid().isEmpty()) {
+                    if (useGuidAsRef && e.guid() != null && !e.guid().isEmpty()) {
                         elemRef = e.guid();
                     } else {
                         elemRef = e.elementRef();
