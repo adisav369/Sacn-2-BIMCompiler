@@ -3,6 +3,7 @@ package com.bim.designer.api;
 import com.bim.compiler.dsl.BuildingRegistry;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.CompilationPipeline;
+import com.bim.compiler.dsl.VerbExecutor;
 import com.bim.designer.assembly.AssemblyBuilderService;
 import com.bim.designer.compile.ChangeSet;
 import com.bim.designer.compile.IncrementalCompiler;
@@ -2895,6 +2896,105 @@ public class DesignerAPIImpl implements DesignerAPI {
         } catch (Exception e) {
             LOG.log(Level.WARNING, "Verb execution failed: " + verbLine, e);
             return new VerbResponse(false, null, null, e.getMessage());
+        }
+    }
+
+    // ── Verb Emission — GUI → VerbStage Pipeline (§33) ──────────────
+
+    // Implementing BBC.md §6 — GUI emits BIM COBOL verbs, never direct SQL
+    // Implementing BIM_Designer_SRS.md §33 — Verb Emission Protocol
+    // Witness: W-EMIT-1, W-EMIT-2, W-EMIT-3
+    @Override
+    public VerbExecutor.ExecutionReport emitVerbs(String buildingId, List<String> verbLines) {
+        if (verbLines == null || verbLines.isEmpty()) {
+            return new VerbExecutor.ExecutionReport(0, 0, 0, List.of());
+        }
+
+        // SPI: discover VerbExecutor implementation (same as VerbStage)
+        VerbExecutor executor = java.util.ServiceLoader.load(VerbExecutor.class)
+                .findFirst().orElse(null);
+
+        if (executor == null) {
+            BIMLogger.warn(TAG, "No VerbExecutor on classpath — cannot emit verbs");
+            return new VerbExecutor.ExecutionReport(0, verbLines.size(), 0,
+                    List.of("[FAIL] No VerbExecutor implementation on classpath"));
+        }
+
+        try {
+            // Output connection: use work_output.db for this building
+            Connection woConn = workOutputConns.computeIfAbsent(buildingId, id -> {
+                try {
+                    String dbPath = WorkOutputDAO.dbPathFor(id);
+                    Connection c = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+                    WorkOutputDAO initDao = new WorkOutputDAO(c);
+                    initDao.initSchema();
+                    return c;
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to open work_output.db for " + id, e);
+                }
+            });
+
+            // Ensure W_Verb_Node tables exist for VerbNodePersister
+            ensureVerbNodeSchema(woConn);
+
+            woConn.setAutoCommit(false);
+            VerbExecutor.ExecutionReport report =
+                    executor.execute(bomConn, woConn, buildingId, verbLines);
+            woConn.commit();
+
+            BIMLogger.info(TAG, "emitVerbs({}) — {} pass, {} fail, {} nodes",
+                    buildingId, report.passCount(), report.failCount(), report.totalNodes());
+
+            return report;
+        } catch (Exception e) {
+            LOG.log(Level.WARNING, "emitVerbs failed for " + buildingId, e);
+            return new VerbExecutor.ExecutionReport(0, verbLines.size(), 0,
+                    List.of("[FAIL] " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Ensure W_Verb_Node + W_Verb_NodeProduct tables exist on the output connection.
+     * VerbNodePersister (called by BimCobolVerbExecutor) writes to these tables.
+     * Safe to call repeatedly (IF NOT EXISTS).
+     */
+    private void ensureVerbNodeSchema(Connection conn) throws java.sql.SQLException {
+        try (java.sql.Statement s = conn.createStatement()) {
+            s.execute("""
+                CREATE TABLE IF NOT EXISTS c_order (
+                    C_Order_ID TEXT PRIMARY KEY
+                )
+            """);
+            s.execute("""
+                CREATE TABLE IF NOT EXISTS W_Verb_Node (
+                    W_Verb_Node_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    C_Order_ID        TEXT NOT NULL,
+                    SeqNo             INTEGER NOT NULL DEFAULT 10,
+                    Name              TEXT NOT NULL,
+                    Description       TEXT NOT NULL,
+                    S_Resource_ID     INTEGER,
+                    M_Product_ID      TEXT,
+                    IsActive          INTEGER DEFAULT 1,
+                    DocStatus         TEXT DEFAULT 'DR'
+                        CHECK(DocStatus IN ('DR','IP','CO','VO')),
+                    last_result       TEXT,
+                    element_count     INTEGER DEFAULT 0,
+                    Created           TEXT DEFAULT (datetime('now')),
+                    Updated           TEXT DEFAULT (datetime('now'))
+                )
+            """);
+            s.execute("""
+                CREATE TABLE IF NOT EXISTS W_Verb_NodeProduct (
+                    W_Verb_NodeProduct_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    W_Verb_Node_ID         INTEGER NOT NULL
+                        REFERENCES W_Verb_Node(W_Verb_Node_ID),
+                    Name                     TEXT NOT NULL,
+                    Value                    TEXT NOT NULL,
+                    ValueType                TEXT DEFAULT 'TEXT'
+                        CHECK(ValueType IN ('TEXT','REAL','INTEGER')),
+                    UNIQUE(W_Verb_Node_ID, Name)
+                )
+            """);
         }
     }
 

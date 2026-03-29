@@ -2606,7 +2606,7 @@ DocValidate.md §1.5 (Column.Callout wiring), §28.5–28.7 (ASI in BOM Drop).*
 ## 32. Integration Gap Register (S100-docs audit)
 
 Audited against current `master` (S100-p85). Phase 1 complete, backend
-strong (14 report templates, Federation ported, 76 verbs). Gaps below
+strong (14 report templates, Federation ported, 77 verbs). Gaps below
 would block smooth daily use.
 
 ### 32.1 Priority 1 — Blocking TE-Scale Iterative Design
@@ -2647,7 +2647,7 @@ would block smooth daily use.
 - Design Mode Phase 1 (wireframe, snap, validate, BOM chooser, jurisdiction switch)
 - Web UI tabs 1D/9/10 (Order, BOM, Colour — fully functional)
 - Bonsai ↔ Browser viewport sync (selection push, color schemes, bbox preview)
-- 76 verbs, 10-stage compilation pipeline, 24/34 ALL GREEN
+- 77 verbs, 10-stage compilation pipeline, 24/34 ALL GREEN
 - 18 report generators (4 existing + 14 new from p78–p83)
 - Federation layer (ColorScheme, DimensionQuery, WorkPackage, NLP backend)
 
@@ -2705,6 +2705,91 @@ Compress, Add) + DiffVerb + ASI:
 
 Each macro = AD_Process with AD_Process_Para (iDempiere pattern).
 Filter + Mutation + Cascade scope. No new primitive needed.
+
+## 33. Verb Emission Protocol — GUI → VerbStage Pipeline
+
+**Version:** 1.0 (2026-03-29)
+**Depends on:** §28.10 (10 macro actions), [BIM_COBOL.md](BIM_COBOL.md) §1 (verb tiers), [BBC.md](BOMBasedCompilation.md) §6 (GUI emits verbs)
+**Module:** `BonsaiBIMDesigner/` — `DesignerAPI.emitVerbs()`
+
+### 33.1 Core Principle
+
+> **The Designer GUI emits BIM COBOL verb strings. It never calls Java verb classes directly.**
+
+The Designer is a verb emitter, not a verb executor. When the user performs a macro
+action (§28.10), the GUI composes one or more BIM COBOL verb lines as plain strings
+and passes them to `DesignerAPI.emitVerbs()`. The API delegates to `VerbExecutor`
+via the same SPI that `VerbStage` uses in the compilation pipeline. The verb lines
+are the interface contract.
+
+### 33.2 Macro-to-Verb Mapping
+
+Each of the 10 macro actions from §28.10 maps to existing BIM COBOL verbs.
+No new verbs are needed — the 77-verb registry covers all cases.
+
+| # | Macro (§28.10) | BIM COBOL Verb(s) Emitted | GUI Parameters |
+|---|----------------|---------------------------|----------------|
+| 1 | MOVE BATCH | `SET TACK <bomId> X <x> Y <y> Z <z>` (per item) | Selected OrderLine IDs, dx/dy/dz offsets |
+| 2 | SWAP RANGE | `SWAP ROOM <floorBomId> <oldCategory> <newCategory>` | Category filter, new product_id |
+| 3 | COPY FLOOR | `CLONE BOM <floorBomId> AS <newName>` | Source floor BOM ID, target name |
+| 4 | MIRROR FLOOR | `CLONE BOM <floorBomId> AS <newName>` + `SET TACK <id> X <-x>` (negate X per item) | Source floor, mirror axis |
+| 5 | ADD DISCIPLINE | `ADD LINE <floorBomId> CHILD <disciplineProductId> ROLE SET QTY 1` | Floor BOM ID, discipline product |
+| 6 | REMOVE DISCIPLINE | `REMOVE LINE <floorBomId> <lineNo>` (per discipline line) | Floor BOM ID, AD_Org_ID filter |
+| 7 | RETYPE ROOM | `SWAP ROOM <floorBomId> <oldCategory> <newCategory>` | Room BOM node, new category |
+| 8 | ROUTE OVERRIDE | `FOLLOW <bomId> AXIS <axis> SPACING <mm>` | Pipe/duct BOM, new FOLLOW params |
+| 9 | SPACING OVERRIDE | `ROUTE SPRINKLERS <buildingId> <storey> SPACING <mm>` | Discipline BOM, new spacing value |
+| 10 | STAMP TEMPLATE | `CLONE BOM <templateBomId> AS <targetName>` + `ADD LINE <parentBomId> CHILD <clonedId> ROLE SET QTY 1` | Template BOM ID, target room/floor |
+
+### 33.3 Emission Flow
+
+```
+GUI macro action
+  → compose verb line strings (§33.2 mapping)
+  → DesignerAPI.emitVerbs(buildingId, verbLines)
+    → VerbExecutor.execute(bomConn, outputConn, buildingId, verbLines)
+      → VerbRegistry.dispatch() per line
+      → W_Verb_Node rows persisted to output.db
+    → VerbExecutor.ExecutionReport returned to GUI
+```
+
+The Designer does not need a compilation pipeline. It reuses the `VerbExecutor` SPI
+directly — the same interface that `VerbStage` calls during full compilation.
+
+### 33.4 Interface Contract
+
+```java
+/**
+ * Execute BIM COBOL verbs emitted by the Designer GUI.
+ * @param buildingId the target building
+ * @param verbLines  list of BIM COBOL verb strings
+ * @return execution report (pass/fail counts, W_Verb_Node rows)
+ */
+VerbExecutor.ExecutionReport emitVerbs(String buildingId, List<String> verbLines);
+```
+
+### 33.5 Rules
+
+1. **No new verbs.** All 10 macros decompose to existing verbs.
+2. **No pipeline dependency.** `emitVerbs()` calls `VerbExecutor` directly, not `CompilationPipeline`.
+3. **Same SPI.** Uses `ServiceLoader<VerbExecutor>` — same as VerbStage.
+4. **Transaction ownership.** `emitVerbs()` commits after `VerbExecutor.execute()` returns.
+5. **Error handling.** Returns `ExecutionReport` — the GUI reads `failCount` and `details`.
+
+### 33.6 Witnesses
+
+| ID | Claim | Test | Status |
+|----|-------|------|--------|
+| W-EMIT-1 | emitVerbs() dispatches verb lines via VerbExecutor SPI | VerbEmissionTest | CODE |
+| W-EMIT-2 | ExecutionReport returns pass/fail counts | VerbEmissionTest | CODE |
+| W-EMIT-3 | Unknown verb in batch returns failCount > 0, does not throw | VerbEmissionTest | CODE |
+
+### 33.7 Traceability
+
+| Req | Section | Source | Witness | Status |
+|-----|---------|--------|---------|--------|
+| VE-01 | §33.2 | DesignerAPIImpl.emitVerbs() | W-EMIT-1 | CODE |
+| VE-02 | §33.4 | DesignerAPI.emitVerbs() | W-EMIT-2 | CODE |
+| VE-03 | §33.5 | DesignerAPIImpl.emitVerbs() | W-EMIT-3 | CODE |
 
 ---
 

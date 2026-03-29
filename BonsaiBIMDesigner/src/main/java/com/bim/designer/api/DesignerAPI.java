@@ -83,6 +83,26 @@ public interface DesignerAPI extends AssemblyAPI {
      */
     VerbResponse executeVerb(String buildingId, String verbLine);
 
+    // ── Verb Emission — GUI → VerbStage Pipeline (§33) ──────────────────
+
+    /**
+     * Execute BIM COBOL verbs emitted by the Designer GUI.
+     * Delegates to VerbExecutor via SPI (same pattern as VerbStage).
+     *
+     * <p>The Designer composes verb line strings for each macro action (§28.10)
+     * and passes them here. This method does NOT go through the compilation
+     * pipeline — it calls VerbExecutor directly.
+     *
+     * // Implementing BBC.md §6 — GUI emits BIM COBOL verbs, never direct SQL
+     * // Implementing BIM_Designer_SRS.md §33 — Verb Emission Protocol
+     *
+     * @param buildingId the target building
+     * @param verbLines  list of BIM COBOL verb strings
+     * @return execution report (pass/fail counts, W_Verb_Node rows)
+     */
+    com.bim.compiler.dsl.VerbExecutor.ExecutionReport emitVerbs(
+            String buildingId, List<String> verbLines);
+
     // ── Design Mode — Snap + Validate (§17.10) ─────────────────────────
 
     /**
