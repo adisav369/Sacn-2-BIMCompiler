@@ -1386,6 +1386,115 @@ Each phase is one bounded task for a coder. FP grid (L2.2) is the natural
 first because sprinkler spacing is the most formula-driven (NFPA 13 table
 lookup from hazard class + room AABB → grid dimensions → head count).
 
+### 10.4.13 IFC-Driven Extraction — Replacing YAML Scope Boxes
+
+**Status:** Spec complete (S100 SpecsPerson session). No code changes yet.
+
+#### The finding
+
+The extraction pipeline (`ScopeBomBuilder`) assigns elements to SET BOMs
+using YAML-authored scope boxes (`origin_m`, `aabb_mm`). This is manual —
+the human defines rectangular containment volumes for each room zone.
+
+But the IFC file already carries this information:
+
+```
+spatial_structure:
+  IfcBuilding
+    IfcBuildingStorey "Ground Floor"
+      IfcSpace "1 - Living room"    ← 12 elements contained
+      IfcSpace "2 - Bedroom"        ← 2 elements contained
+      IfcSpace "3 - Entrance hall"  ← 0 elements
+    IfcBuildingStorey "Roof"
+      IfcSpace "4 - Roof"           ← 0 elements
+
+rel_contained_in_space:   element_guid → space_guid (14 assignments)
+rel_fills_host:           element_guid → host_guid  (7 door/window → wall)
+```
+
+Dry run on SH (58 elements): 14 elements assigned to spaces by IFC, 44
+orphans (structural: walls, slabs, ceilings, curtain wall). The orphans
+are correctly structural — not in any room.
+
+#### Current vs proposed extraction flow
+
+**Current (YAML scope boxes):**
+```
+YAML defines: LIVING origin=(-7.0,2.5) aabb=(8000,2000,1200)
+              DINING origin=(-6.5,-0.3) aabb=(2500,1500,1300)
+ScopeBomBuilder: for each element, test centroid ∈ scope box
+  → 12 elements assigned to LIVING/DINING/MASTER
+  → VerbDetector groups by product → CLUSTER fallback
+```
+
+**Proposed (IFC spatial containment):**
+```
+Read rel_contained_in_space from extracted.db
+  → "1 - Living room" contains 12 elements
+  → "2 - Bedroom" contains 2 elements
+YAML maps: ifc_space "1 - Living room" → template SH_LIVING_SET
+           ifc_space "2 - Bedroom" → template SH_BED_SET
+VerbDetector groups within each IFC space
+```
+
+#### YAML simplification
+
+Before (current):
+```yaml
+floor_rooms:
+  Ground Floor:
+    bom_id: FLOOR_SH_GF_STD
+    product_category: GF
+    spaces:
+      - { name: LIVING, template_bom: SH_LIVING_SET, role: LIVING, seq: 10,
+          aabb_mm: [8000, 2000, 1200], origin_m: [-7.0, 2.5, 0.0] }
+      - { name: DINING, template_bom: SH_DINING_SET, role: DINING, seq: 20,
+          aabb_mm: [2500, 1500, 1300], origin_m: [-6.5, -0.3, 0.0] }
+```
+
+After (proposed):
+```yaml
+floor_rooms:
+  Ground Floor:
+    bom_id: FLOOR_SH_GF_STD
+    product_category: GF
+    spaces:
+      - { ifc_space: "1 - Living room", template_bom: SH_LIVING_SET, role: LIVING, seq: 10 }
+      - { ifc_space: "2 - Bedroom", template_bom: SH_BED_SET, role: MASTER, seq: 30 }
+```
+
+No `origin_m`, no `aabb_mm`. IFC does the containment. YAML maps space
+names to BOM templates.
+
+YAML scope boxes remain available as **optional override** for:
+- Sub-room zones (dining vs seating within one IfcSpace)
+- Buildings with missing IfcSpace data
+- Infrastructure (no IfcSpace concept)
+
+#### Impact on CLUSTER
+
+IFC-driven extraction doesn't eliminate CLUSTER directly — the 6 dining
+chairs are still 6 identical products in one space. But it changes the
+extraction architecture from "sort by manual box" to "sort by IFC
+containment" which:
+
+1. Removes human coordinate authoring errors (wrong scope box origin)
+2. Uses the architect's spatial intent (they modelled the IfcSpaces)
+3. Enables IFC `rel_fills_host` for door/window→wall BOM nesting
+4. Reduces YAML from ~15 lines per room to ~2 lines per room
+
+#### Structural orphans
+
+44 elements not in any IfcSpace are structural: walls (5), slabs (2),
+ceilings (3), curtain wall (26), doors (3), windows (4), roof (1).
+
+Doors and windows have `rel_fills_host` → they belong to their host wall.
+Walls and slabs are floor-level structural → `StructuralBomBuilder` handles
+them (unchanged).
+
+The current extraction already handles orphans correctly —
+`StructuralBomBuilder` picks up everything not assigned to a SET.
+
 ### 10.5 Investigation Tasks
 
 1. Count Java files that read M_Product from component_library.db vs ERP.db
