@@ -1434,6 +1434,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1619,6 +1623,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1634,6 +1694,8 @@
   
     
     
+      
+        
       
         
       
@@ -2049,6 +2111,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
         
   
@@ -2085,6 +2175,8 @@
   
     
     
+      
+        
       
         
       
@@ -2154,6 +2246,34 @@
     
   
     Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
   
 
     
@@ -2552,6 +2672,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -2752,6 +2876,62 @@
     
   
     Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
   
 
     
@@ -3797,12 +3977,62 @@ BOM assembly stubs (MAKE references) get sentinel dims (0.001).
 <td>→ M_Product_Category. See §8 PK convention</td>
 </tr>
 <tr>
+<td>cost_uom</td>
+<td>TEXT</td>
+<td>Trade UOM — see table below. Drives 5D cost (qty × unit_cost). Future: C_UOM_ID INTEGER FK</td>
+</tr>
+<tr>
 <td>is_active</td>
 <td>INTEGER</td>
 <td></td>
 </tr>
 </tbody>
 </table>
+<p><strong>cost_uom values</strong> (trade unit of measure per product type):</p>
+<table>
+<thead>
+<tr>
+<th>UOM</th>
+<th>Meaning</th>
+<th>Used For</th>
+<th>Standard</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>EA</td>
+<td>Each (discrete item)</td>
+<td>Fittings, terminals, valves, doors, furniture, alarms</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M</td>
+<td>Linear meter</td>
+<td>Pipe segments, duct segments, beams, columns, rails</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M2</td>
+<td>Square meter</td>
+<td>Walls, slabs, roofs, coverings, masonry courses</td>
+<td>—</td>
+</tr>
+<tr>
+<td>M3</td>
+<td>Cubic meter</td>
+<td>Concrete (footings, earthworks fill) only</td>
+<td>—</td>
+</tr>
+<tr>
+<td>KG</td>
+<td>Kilogram</td>
+<td>Reinforcing bar (rebar)</td>
+<td>PWD 203A, NRM2, AIQS</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS §10.4.11 T3.5</a> for the DV029 migration
+that corrects MEP/rebar/covering UOMs from extraction defaults.</p>
 <!-- Implementing SpecsAnalysis.txt §1 -->
 <h3 id="m_product_category-flat-classification-idempiere-standard">M_Product_Category (flat classification — iDempiere standard)<a class="headerlink" href="#m_product_category-flat-classification-idempiere-standard" title="Permanent link">&para;</a></h3>
 <p><strong>M_Product_Category is FLAT.</strong> No parent FK. No tree. This follows iDempiere standard

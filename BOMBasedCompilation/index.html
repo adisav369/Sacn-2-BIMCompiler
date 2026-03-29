@@ -1749,6 +1749,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1934,6 +1938,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1949,6 +2009,8 @@
   
     
     
+      
+        
       
         
       
@@ -2364,6 +2426,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
         
   
@@ -2400,6 +2490,8 @@
   
     
     
+      
+        
       
         
       
@@ -2469,6 +2561,34 @@
     
   
     Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
   
 
     
@@ -2867,6 +2987,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3067,6 +3191,62 @@
     
   
     Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
   
 
     
@@ -4043,7 +4223,9 @@ the PO layer. Verbs create new records as entity_type='U'. The guard is in code
 never creates geometry. <code>G5-PROVENANCE</code> Check 6 enforces zero GEO_ hashes.</p>
 <h3 id="21-recipe-vs-placement-the-bom-contract">2.1 Recipe vs Placement — The BOM Contract<a class="headerlink" href="#21-recipe-vs-placement-the-bom-contract" title="Permanent link">&para;</a></h3>
 <p><strong>The BOM is a recipe.</strong> Each m_bom_line is a <strong>type line</strong> — one row per
-unique product within its parent BOM, with a qty count or verb formula reference.
+unique product within its parent BOM, with a qty and verb formula reference.
+Qty is expressed in the product's <strong>cost_uom</strong>: EA for discrete items (doors,
+fittings), M for linear (pipe segments, beams), M2 for area (walls, slabs).
 The compiler expands type lines into placement instances at compile time.</p>
 <p><strong>output.db holds placements.</strong> Each row in <code>c_orderline</code> / <code>elements_meta</code> is one
 physical element at its world-space coordinate. The compiler produces these by
@@ -5014,7 +5196,34 @@ Designer after.</p>
 fixtures per floor — but the DocEvent must connect them downward to soil stacks,
 verifying minimum pipe gradient at each segment.</p>
 <h4 id="365-qty-as-control-knob">3.6.5 Qty as Control Knob<a class="headerlink" href="#365-qty-as-control-knob" title="Permanent link">&para;</a></h4>
-<p>The M_BOM_Line qty on a parasitic child is the <strong>user's intent</strong>:</p>
+<p>The M_BOM_Line qty on a parasitic child is the <strong>user's intent</strong>.
+Qty is always in the product's <strong>cost_uom</strong> (from M_Product):</p>
+<table>
+<thead>
+<tr>
+<th>Product Type</th>
+<th>cost_uom</th>
+<th>Qty Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sprinkler head, fitting, valve</td>
+<td>EA</td>
+<td><code>qty = 47</code> → distribute exactly 47 items</td>
+</tr>
+<tr>
+<td>Pipe segment, duct segment</td>
+<td>M</td>
+<td><code>qty = 18</code> → 18 linear meters of pipe</td>
+</tr>
+<tr>
+<td>Wall panel, slab</td>
+<td>M2</td>
+<td><code>qty = 24</code> → 24 square meters</td>
+</tr>
+</tbody>
+</table>
 <table>
 <thead>
 <tr>
@@ -5025,7 +5234,7 @@ verifying minimum pipe gradient at each segment.</p>
 <tbody>
 <tr>
 <td><code>qty = 47</code></td>
-<td>Distribute exactly 47 items. Walker stops when count reached.</td>
+<td>Distribute exactly 47 items (EA) or 47 units of measure. Walker stops when count reached.</td>
 </tr>
 <tr>
 <td><code>qty = 0</code> (or blank)</td>
@@ -5039,7 +5248,7 @@ This becomes the qty on the FP OrderLine.</p>
 <p>In the Designer GUI, the user edits qty directly on the C_OrderLine.
 Recompile → different density. Same BOM recipe, different quantity.</p>
 <h4 id="366-the-pipeline-for-parasitic-disciplines">3.6.6 The Pipeline for Parasitic Disciplines<a class="headerlink" href="#366-the-pipeline-for-parasitic-disciplines" title="Permanent link">&para;</a></h4>
-<div class="highlight"><pre><span></span><code>1. BOM walk      → &quot;Floor GF needs 12 sprinklers, 3 risers&quot;     (WHAT + HOW MANY)
+<div class="highlight"><pre><span></span><code>1. BOM walk      → &quot;Floor GF needs 12 sprinklers (EA), 3 risers (EA)&quot;  (WHAT + HOW MANY)
 2. DocEvent      → distribute into ARC rooms by jurisdiction     (WHERE — rule-based)
                    rules: NFPA 13, UBBL, MS 1525, MS 1228, MS 830
 3. Designer GUI  → user drags/adjusts positions                  (WHERE — user override)
@@ -5060,7 +5269,7 @@ where radius = MIN(width, depth) / 2    ← pipe cross-section
 <p>TE mining (M12): 11 true overlaps ELEC×SP, 35 pairs under 150mm on lower floors.
 Rule: <code>NEC_ELEC_SP_CLEARANCE</code>, min 150mm, WARN severity.</p>
 <p><em>Standards by jurisdiction and discipline: <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS</a> §10.4.3.
-TE mining data: <a href="../TE_MINING_RESULTS/">TE_MINING_RESULTS</a>.
+TE mining data: <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md">TE_MINING_RESULTS</a>.
 Shared discipline recipes: DV025 migration in ERP.db (FP_SYSTEM seed, S100-p73).
 DocEvent rule schema: AD_DocEvent_Rule in ERP.db (<a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS</a> §10.4.3).</em></p>
 <h3 id="37-rosetta-stone">3.7 Rosetta Stone<a class="headerlink" href="#37-rosetta-stone" title="Permanent link">&para;</a></h3>

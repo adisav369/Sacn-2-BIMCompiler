@@ -999,6 +999,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1184,6 +1188,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1201,6 +1261,8 @@
   
     
     
+      
+        
       
         
       
@@ -2170,6 +2232,45 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Phase 3 — Integration (2-3 prompts)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#t31-implementation-pipeline-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T3.1 Implementation — Pipeline Wiring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#t34-implementation-re-subset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T3.4 Implementation — RE Subset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#t35-finding-mep-uom-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T3.5 Finding — MEP UOM Correction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -2464,6 +2565,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
         
   
@@ -2500,6 +2629,8 @@
   
     
     
+      
+        
       
         
       
@@ -2569,6 +2700,34 @@
     
   
     Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
   
 
     
@@ -2967,6 +3126,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -3167,6 +3330,62 @@
     
   
     Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
   
 
     
@@ -3816,6 +4035,45 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Phase 3 — Integration (2-3 prompts)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#t31-implementation-pipeline-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T3.1 Implementation — Pipeline Wiring
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#t34-implementation-re-subset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T3.4 Implementation — RE Subset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#t35-finding-mep-uom-correction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T3.5 Finding — MEP UOM Correction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -5511,7 +5769,12 @@ produces BOM lines (segments + fittings):</p>
 </code></pre></div>
 <p>The BOM IS the routing. No graph data structure needed — parent-child
 with sequence controlling path order. Each fitting is a BOM child with
-qty=1 at the transition point.</p>
+qty=1 (EA) at the transition point.</p>
+<p><strong>UOM conversion:</strong> CrawlOps produce lengths in mm internally. RouteStage
+converts to the product's cost_uom at persistence: mm ÷ 1000 → M for
+pipe/duct segments; fitting qty stays 1 (EA). This is the single
+conversion point — all internal geometry is mm, all persisted qty
+matches M_Product.cost_uom.</p>
 <h4 id="joint-product-resolution">Joint Product Resolution<a class="headerlink" href="#joint-product-resolution" title="Permanent link">&para;</a></h4>
 <p>When a movement verb needs a fitting, it resolves from the component library:</p>
 <div class="highlight"><pre><span></span><code>Inputs:  verb (BEND), angle (90°), parent_diameter (50mm), material (Poly Steel)
@@ -5722,6 +5985,219 @@ committing to the full build. Each is a standalone Rosetta Stone test.</p>
 </tr>
 </tbody>
 </table>
+<h5 id="t31-implementation-pipeline-wiring">T3.1 Implementation — Pipeline Wiring<a class="headerlink" href="#t31-implementation-pipeline-wiring" title="Permanent link">&para;</a></h5>
+<p>P104 verification found 4 blockers. Resolution:</p>
+<p><strong>B1 — RouteDocEvent not in pipeline.</strong> RouteDocEvent.fireAll() must be called
+during compilation, after CompileStage (which produces ARC c_orderline positions)
+and before WriteStage (which writes output.db). The callout
+(OrderLineProductCallout.onProductChanged + expandDisciplineLines) must also
+move from BuildingRegistryTest into the pipeline at the same point.</p>
+<p>Pipeline sequence with routing:
+<div class="highlight"><pre><span></span><code>CompileStage → [callout + RouteDocEvent.fireAll()] → WriteStage
+</code></pre></div></p>
+<p>The callout reads ERP.db shared BOMs, creates DISCIPLINE OrderLines, expands
+LEAF children with qty. RouteDocEvent reads BuildingGeometry (ARC c_orderline
+positions) and produces RouteResult per discipline. Both must fire before
+WriteStage persists to output.db.</p>
+<p><strong>B2 — No edge persistence.</strong> CrawlRouter produces CONNECTS_TO edges in-memory.
+BIMEyes P16 (WasteGradientProof) and P17 (SystemConnectedProof) need queryable
+data in output.db.</p>
+<p>Output tables:</p>
+<table>
+<thead>
+<tr>
+<th>Table</th>
+<th>Columns</th>
+<th>Source</th>
+<th>Consumer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>system_edges</td>
+<td>discipline, from_index, to_index, from_xyz, to_xyz, edge_type</td>
+<td>RouteResult.edges()</td>
+<td>P17 BFS connectivity</td>
+</tr>
+<tr>
+<td>system_nodes</td>
+<td>discipline, node_index, node_type, xyz, diameter_mm, product, length_mm</td>
+<td>RouteResult.segments() + fittings()</td>
+<td>P16 SP gradient check</td>
+</tr>
+</tbody>
+</table>
+<p><strong>B4 — BIMEyes gate.</strong> ProveStage gates P15/P16/P17 behind hasRelationalData()
+which checks ad_room_boundary. CO buildings have DISCIPLINE OrderLines but no
+ad_room_boundary. Gate must also check system_edges &gt; 0.</p>
+<h5 id="t34-implementation-re-subset">T3.4 Implementation — RE Subset<a class="headerlink" href="#t34-implementation-re-subset" title="Permanent link">&para;</a></h5>
+<p><strong>B3 — RE callout skips.</strong> OrderLineProductCallout line 43 returns 0 for RE.
+RE buildings need a discipline whitelist from classification YAML:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">mep_disciplines</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">ELEC</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">SP</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<p>When <code>mep_disciplines</code> is present, callout creates only the listed disciplines.
+When absent, CO/IN get all 6 (existing behavior). RE with no key gets 0
+(backward compat).</p>
+<p>SH: <code>mep_disciplines: [ELEC, SP]</code> → 2 DISCIPLINE OrderLines + ARC + STR = 4.</p>
+<h5 id="t35-finding-mep-uom-correction">T3.5 Finding — MEP UOM Correction<a class="headerlink" href="#t35-finding-mep-uom-correction" title="Permanent link">&para;</a></h5>
+<p><strong>Finding (S100 watchdog):</strong> <code>M_Product.cost_uom</code> in ERP.db is M3 (cubic meters)
+for nearly all MEP products (pipe segments, fittings, ducts, terminals, valves).
+This came from extraction — bounding box volume was computed for all elements.</p>
+<p>ARC/STR products have correct UOM (walls=M2, beams=M, doors=EA). MEP products
+do not. Correct trade UOM by ifc_class:</p>
+<table>
+<thead>
+<tr>
+<th>ifc_class</th>
+<th>Current</th>
+<th>Correct</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IfcPipeSegment</td>
+<td>M3</td>
+<td><strong>M</strong></td>
+<td>Pipe bought by linear meter</td>
+</tr>
+<tr>
+<td>IfcPipeFitting</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Fittings bought per piece</td>
+</tr>
+<tr>
+<td>IfcDuctSegment</td>
+<td>M3</td>
+<td><strong>M</strong></td>
+<td>Duct bought by linear meter</td>
+</tr>
+<tr>
+<td>IfcDuctFitting</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Fittings bought per piece</td>
+</tr>
+<tr>
+<td>IfcFlowTerminal</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Sprinkler heads, taps = each</td>
+</tr>
+<tr>
+<td>IfcFlowFitting</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Couplings, adapters = each</td>
+</tr>
+<tr>
+<td>IfcFlowController</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Valves, dampers = each</td>
+</tr>
+<tr>
+<td>IfcAirTerminal</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Diffusers, grilles = each</td>
+</tr>
+<tr>
+<td>IfcLightFixture</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Light fixtures = each</td>
+</tr>
+<tr>
+<td>IfcFireSuppressionTerminal</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Sprinkler heads = each</td>
+</tr>
+<tr>
+<td>IfcValve</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Valves = each</td>
+</tr>
+<tr>
+<td>IfcAlarm</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Alarms = each</td>
+</tr>
+<tr>
+<td>IfcReinforcingBar</td>
+<td>M3</td>
+<td><strong>KG</strong></td>
+<td>Rebar bought by weight (PWD 203A, NRM2)</td>
+</tr>
+<tr>
+<td>IfcCourse</td>
+<td>M3</td>
+<td><strong>M2</strong></td>
+<td>Masonry = wall face area (PWD 203A §G)</td>
+</tr>
+<tr>
+<td>IfcCovering</td>
+<td>M3</td>
+<td><strong>M2</strong></td>
+<td>Cladding, insulation, ceiling tiles = area (PWD 203A §H)</td>
+</tr>
+<tr>
+<td>IfcFurnishingElement</td>
+<td>M3</td>
+<td><strong>EA</strong></td>
+<td>Furniture bought per piece</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Impact:</strong> RouteStage persists qty from CrawlRouter. Pipe segment qty should be
+in meters (length from FollowOp), fitting qty should be 1 (each from BendOp/
+BranchOp/ReduceOp). If cost_uom is M3, the 5D cost engine will multiply qty ×
+unit_cost incorrectly (volume vs length vs count).</p>
+<p><strong>Fix:</strong> DV migration updating cost_uom by ifc_class for MEP products. iDempiere
+convention: <code>C_UOM_ID</code> FK to <code>C_UOM</code> table. Current schema uses TEXT <code>cost_uom</code>
+— acceptable for now, align to <code>C_UOM_ID</code> INTEGER FK in a future PK conformance
+pass.</p>
+<p><strong>Migration SQL pattern (for coder to implement as DV029):</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Linear segments: M3 → M (bought by linear meter)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IfcPipeSegment&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcDuctSegment&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcFlowSegment&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M3&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Discrete fittings/terminals: M3 → EA (bought per piece)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;EA&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IfcPipeFitting&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcDuctFitting&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcFlowTerminal&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;IfcFlowFitting&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcFlowController&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcAirTerminal&#39;</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">&#39;IfcLightFixture&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcFireSuppressionTerminal&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcValve&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcAlarm&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M3&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Furnishings: M3 → EA (bought per piece)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;EA&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;IfcFurnishingElement&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;IfcFurniture&#39;</span><span class="p">)</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M3&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Rebar: M3 → KG (bought by weight — PWD 203A, NRM2, AIQS)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;KG&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;IfcReinforcingBar&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M3&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Masonry courses: M3 → M2 (wall face area — PWD 203A §G)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M2&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;IfcCourse&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M3&#39;</span><span class="p">;</span>
+
+<span class="c1">-- Coverings: M3 → M2 (area coverage — PWD 203A §H)</span>
+<span class="k">UPDATE</span><span class="w"> </span><span class="n">M_Product</span><span class="w"> </span><span class="k">SET</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M2&#39;</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">ifc_class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;IfcCovering&#39;</span>
+<span class="w">  </span><span class="k">AND</span><span class="w"> </span><span class="n">cost_uom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;M3&#39;</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>Scope:</strong> ERP.db M_Product table (~320 MEP + 346 rebar + 7 course + 35 covering rows).
+component_library.db M_Product must also be updated (same SQL).
+BOM.db copies are regenerated on next extraction — no manual fix needed.
+<strong>New UOM value:</strong> KG (not previously used). No schema change — cost_uom is TEXT.</p>
 <h4 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">&para;</a></h4>
 <div class="highlight"><pre><span></span><code>T0.1 (service rooms) ──→ T0.3 (qty walk) ──→ T2.x (discipline routing)
 T0.2 (callout)       ──→ T3.1 (multi-disc TE)
@@ -6501,7 +6977,7 @@ is independently committable, each step gated by existing Rosetta Stone tests.</
 <a href="../DocAction_SRS/">DocAction_SRS.md</a> §1.3 (processIt DocEvent) |
 <a href="../CALIBRATION_SRS/">CALIBRATION_SRS.md</a> (DocEvent vs Terminal) |
 <a href="../G4_SRS/">G4_SRS.md</a> §2 (output.db pattern) |
-<a href="../AUDIT_S51_FOCUSED/">AUDIT_S51_FOCUSED.md</a> Appendix F (database reality check)</em></p>
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/AUDIT_S51_FOCUSED.md">AUDIT_S51_FOCUSED.md</a> Appendix F (database reality check)</em></p>
 
 
 
