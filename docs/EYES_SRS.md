@@ -378,6 +378,108 @@ Aggregate proof across the entire building. A complete building requires:
 4. If storeys > 1: check CIRCULATION elements exist (stair flights or ramps)
 5. Missing component → VIOLATED
 
+### 4.7 Tier 4 — Provenance and Surface Conformance (GEO Proofs)
+
+Tier 1–3 proofs verify the output in isolation — they check spatial
+invariants without knowing where the data came from. Tier 4 proofs
+verify against a **comparison target**: either the extraction source
+(for Rosetta Stone buildings) or a mathematical surface definition
+(for ShipYard domains).
+
+Tier 4 activates only when GEO mode is enabled (`-Dbim.geo.debug=true`).
+In normal compilation, Tier 4 is skipped — no extraction DB connection,
+no performance cost. See [LMP §7](LAST_MILE_PROBLEM.md#7-separate-from-input)
+for the T18 exemption rationale.
+
+| Proof ID | Name | What it proves | Comparison target | Critical? |
+|----------|------|----------------|-------------------|-----------|
+| **P29** | TACK_FIDELITY | Compiled position matches source within 1mm per axis | extracted.db `elements_rtree` by GUID | Yes |
+| **P30** | GUID_CHAIN | Every compiled element traces to an IFC GUID via `m_bom_line_ma` | BOM.db `m_bom_line_ma` | Yes |
+| **P31** | RELATIVE_OFFSET | Sibling elements within a BOM assembly preserve BOM `dx/dy/dz` separation | BOM.db `m_bom_line` | Yes |
+| **P32** | SURFACE_CONFORMANCE | Element position lies on a design surface within tolerance | `SurfaceFunction.evaluate(u, v) → (x, y, z)` | Yes |
+
+#### P29 TACK_FIDELITY — Round-Trip Position Proof
+
+```
+∀ element e with guid g in compiled output:
+  Let source = extracted.elements_rtree WHERE guid = g
+  Assert: |e.minX - source.minX| < 1mm ∧ |e.minY - source.minY| < 1mm ∧ |e.minZ - source.minZ| < 1mm
+  Result: MATCH (delta ≤ 1mm) or DRIFT (delta > 1mm, per-axis diagnostic)
+```
+
+P29 is the mathematical formulation of the GEO MATCH/DRIFT verdict.
+For each element, it answers: "did the BOM tack chain faithfully reproduce
+the extraction position?" The TACK LEAF log line is the emission of this
+proof — `anchor + offset + half → centroid` with the delta against source.
+
+#### P30 GUID_CHAIN — IFC Provenance Proof
+
+```
+∀ element e in compiled output:
+  Assert: e.guid ∈ extracted.elements_meta.guid
+          (the GUID is a real IFC GloballyUniqueId, not a synthetic ID)
+  Assert: ∃ ma ∈ m_bom_line_ma WHERE ma.guid = e.guid
+          (the GUID was carried through the BOM chain)
+  Result: TRACED (GUID found in both extraction and BOM) or ORPHAN (synthetic GUID)
+```
+
+P30 answers: "can I trace this compiled element back to a specific IFC
+entity in the original file?" Without this, the compilation is a black box
+— you get a building but can't prove which IFC elements it came from.
+
+#### P31 RELATIVE_OFFSET — Sibling Separation Proof
+
+```
+∀ BOM assembly B with children c_i, c_j:
+  Let bom_dx = m_bom_line(c_j).dx - m_bom_line(c_i).dx
+  Let out_dx = output(c_j).minX - output(c_i).minX
+  Assert: |out_dx - bom_dx| < 1mm (per axis)
+  Result: MATCH or DRIFT
+```
+
+P31 answers: "is the desk still 2.6m from the bed?" It verifies that the
+relative spatial arrangement within a BOM assembly survived compilation.
+This is the single-level tack proof — one parent, one offset. Verified for
+SH_BED_SET: 0.000mm error on all axes.
+
+#### P32 SURFACE_CONFORMANCE — Mathematical Surface Proof
+
+```
+∀ element e in compiled output where domain has SurfaceFunction f:
+  Let (x, y, z) = f(u(e), v(e))    — evaluate design surface at element's parametric coordinates
+  Assert: |e.minX - x| < tolerance ∧ |e.minY - y| < tolerance ∧ |e.minZ - z| < tolerance
+  Result: MATCH (on surface) or DRIFT (off surface, with normal distance)
+```
+
+P32 is the ShipYard extension. The comparison target is not a database
+lookup but a function evaluation. A hull plate is verified against the
+NURBS hull surface. A tunnel segment is verified against the bore arc.
+A bridge element is verified against the survey alignment curve. Same
+proof interface, different `SurfaceFunction` implementation per domain.
+
+**SurfaceFunction interface:**
+```java
+public interface SurfaceFunction {
+    Point3D evaluate(double u, double v);
+    double tolerance();
+    String description();  // "NURBS hull surface", "circular bore r=3200mm"
+}
+```
+
+#### Why Tier 4 is separate
+
+Tiers 1–3 run on every compilation with zero external dependencies.
+Tier 4 requires either an extraction database (P29/P30/P31) or a surface
+definition (P32). These are verification-mode proofs — activated for quality
+assurance, not for production throughput. The `bim.geo.debug` flag controls
+this: off by default, on when you need the proof chain.
+
+**The progression:**
+- Tier 1: "Is this element physically valid?" (arithmetic)
+- Tier 2: "Does this element relate correctly to its neighbours?" (spatial)
+- Tier 3: "Does this building satisfy conservation laws?" (aggregate)
+- Tier 4: "Does this output match its source or design intent?" (provenance)
+
 ---
 
 ## 5. Comparison Subsystem
@@ -775,7 +877,14 @@ Let `overlaps(A, B) ≡ A.minX < B.maxX ∧ B.minX < A.maxX ∧ ...` (all 3 axes
 - **P12 (RoomHasDoor):** `∀ room ∉ {utility, porch}: ∃ door ∈ children(room)`. Every habitable room must have at least one door. Emits one `ProofResult` per room with room identifier (S61 update).
 - **P25 (RoomValidity):** `∀ room (IfcSpace): has_walls(room) ∧ has_floor(room) ∧ has_ceiling(room) ∧ has_door(room)`. Composite per-room structural completeness.
 
-**Why EYES cannot prove offset correctness.** EYES operates on the output database only — it has no access to the BOM tables (m_bom, m_bom_line) or the compilation parameters. It can verify that the *result* is geometrically sane (doors in walls, positive extents, no overlaps), but it cannot verify that the result *honours the BOM's declared offsets*. That verification belongs in the standard gate tests (G1-G6, C8/C9, W-TOT) which run uniformly for all buildings — extracted and generative alike — via `run_RosettaStones.sh`. *(S67: W-GEN-COMPILE-5 removed; DM compiles through the same pipeline as every Rosetta Stone.)*
+**Tier 4 closes the offset gap.** Tiers 1–3 operate on the output database only
+— they verify geometric sanity but cannot verify that the result honours the
+BOM's declared offsets. Tier 4 (§4.7) adds GEO provenance proofs that compare
+compiled positions against extraction source (P29 TACK_FIDELITY) or mathematical
+surface definitions (P32 SURFACE_CONFORMANCE). These require external data
+(extraction DB or surface function) and activate only in GEO debug mode.
+Standard gate tests (G1-G6, C8/C9) remain the production verification layer.
+*(S67: W-GEN-COMPILE-5 removed; DM compiles through the same pipeline as every Rosetta Stone.)*
 
 **What EYES replaces.** Without EYES, a human must visually inspect every compiled building in a 3D viewer to detect misplaced doors, floating furniture, open perimeters, and missing roofs. EYES automates this inspection with mathematical predicates that are faster, exhaustive, and reproducible. The human viewer becomes a confirmation tool — you open it to see what EYES has already proven, not to find what might be wrong.
 
