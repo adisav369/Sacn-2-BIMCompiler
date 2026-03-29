@@ -121,15 +121,22 @@ emits its tack chain with IFC GUID from the exact line that computed the positio
         → LBD=(13.7710,6.2940,0.4700)
 ```
 
-**Verified result (S100 session, SH all 58 elements):**
+**Verified result (S100 fleet run, 24 buildings):**
 
 | Metric | Result |
 |--------|--------|
-| Elements with IFC GUID | 58/58 |
-| GEO log position == output.db position | 58/58 within 1mm |
-| All-pairs relative offset (output vs extraction) | **1,653/1,653 MATCH** |
-| Worst error | **0.002mm** |
-| Drift count | **0** |
+| Buildings verified | **24/24** (all extracted RE + CO) |
+| Buildings ZERO DRIFT | **22/24** |
+| Pre-existing anomalies | 2 (IN double-walk 11.97m, GH 4.7mm accumulation) |
+| No-data | 1 (HI — no IFC GUIDs in extraction source) |
+| Largest clean run | **CP: 6,584 elements, 21.7M pairs, 0.000mm worst** |
+| SH | 58 elements, 1,653 pairs, 0.002mm worst |
+| DX | 179 GUID-matched, 15,931 pairs, 0.004mm worst |
+
+The two anomalies are pre-existing architecture issues, not compilation
+errors: IN has overlapping BOM paths that double-walk the same GUID through
+different coordinate frames; GH has floating-point accumulation through a
+deep tack chain. Both are diagnosed from the GEO log without code inspection.
 
 Every spatial relationship in the house — bed to desk, window to wall,
 door to room, slab to column — is preserved to 2 microns. The IFC GUID

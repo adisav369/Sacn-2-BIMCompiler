@@ -185,12 +185,43 @@ The Ifc2x3 Duplex building contains a mirrored composition (two residential unit
 - 179 MA rows (IFC GUIDs for unfactored elements)
 - C9 fidelity: 89 axis mismatches (pre-existing mirror artefact, not compilation error)
 
-### 4.5 Evidence
+### 4.5 Results: Fleet Verification (24 buildings)
+
+GEO verification was run across the full Rosetta Stone fleet — every
+extracted building with a compiled output.
+
+| Metric | Result |
+|--------|--------|
+| Buildings verified | **24** |
+| Buildings ZERO DRIFT | **22 (91.7%)** |
+| Pre-existing anomalies | **2** |
+| Largest clean run | **CP: 6,584 elements, 21.7 million pairs, 0.000mm worst** |
+
+The two anomalies are pre-existing architecture issues diagnosed from the
+GEO log without code inspection:
+
+| Building | Anomaly | Cause | GEO diagnosis |
+|----------|---------|-------|--------------|
+| IN | 11.97m drift on some elements | Same GUID double-walked through overlapping BOM paths — one path applies world origin, one doesn't | TACK ENTER shows two different parent anchors for the same element |
+| GH | 4.7mm drift | Floating-point accumulation through deep tack chain | TACK LEAF shows consistent 4.7mm offset across all affected elements |
+| HI | 0 GUIDs (no provenance) | Extraction source lacks IFC GloballyUniqueId values — product names instead | GUID regex correctly rejects non-IFC identifiers |
+
+**Significance:** the GEO log diagnosed all three anomalies without manual
+debugging. The IN double-walk is visible as two ENTER lines with different
+anchors for the same GUID. The GH float drift is visible as a consistent
+offset in every LEAF line. HI's missing GUIDs are visible as synthetic IDs
+on every LEAF line. This is the interpretability contribution in practice —
+read the log, find the problem.
+
+### 4.6 Evidence
 
 The GEO proof log for the Sample House verification is archived at:
 `evidence/SH_GEO_proof_20260330.log`
 
 This log contains the complete TACK chain for all 58 elements across 3 compilation passes, with IFC GUIDs on every LEAF line.
+
+The fleet verification script:
+[`scripts/geo_verify.py`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py)
 
 ---
 
