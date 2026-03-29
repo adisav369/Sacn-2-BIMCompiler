@@ -232,28 +232,43 @@ storeys:
 
 Parsed by [`ClassificationYaml.java:110`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java). Consumed by [`ScopeBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) (scope assignment) and [`FloorRoomBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java) (room BOM creation).
 
-Defines room/scope space structure per storey.
+Defines room/scope space structure per storey. Two modes:
+
+**IFC-driven (preferred):** elements assigned by `IfcRelContainedInSpatialStructure`
+from the extraction DB. YAML maps IFC space names to BOM templates:
 
 ```yaml
 floor_rooms:
   Ground Floor:
     bom_id: FLOOR_SH_GF_STD
-    bom_category: GF
+    product_category: GF
     spaces:
-      - { name: LIVING, template_bom: SH_LIVING_SET, role: LIVING, seq: 10,
-          aabb_mm: [8000, 2000, 1200], origin_m: [-7.0, 2.5, 0.0] }
+      - { ifc_space: "1 - Living room", template_bom: SH_LIVING_SET, role: LIVING, seq: 10 }
+      - { ifc_space: "2 - Bedroom", template_bom: SH_BED_SET, role: MASTER, seq: 30 }
+```
+
+**Scope box (Order processing only):** for sub-room zone subdivision at
+order time (BIM Designer GUI, BOM Drop). Not used during IFCtoBOM extraction.
+
+```yaml
+# Order-time sub-division (not extraction):
+spaces:
+  - { name: DINING, template_bom: SH_DINING_SET, role: DINING, seq: 20,
+      aabb_mm: [2500, 1500, 1300], origin_m: [-6.5, -0.3, 0.0] }
 ```
 
 | Space field | Description |
 |-------------|-------------|
-| `name` | Scope space name |
+| `ifc_space` | IFC IfcSpace name (extraction: `rel_contained_in_space`) |
+| `name` | Scope space name (Order processing fallback) |
 | `template_bom` | BOM ID for furniture/fixture template |
 | `role` | Role string on the LEAF child |
 | `seq` | Sequence number |
-| `aabb_mm` | `[width, depth, height]` scope box in mm |
-| `origin_m` | `[x, y, z]` scope box origin in metres (world coords) |
+| `aabb_mm` | Scope box dimensions in mm (Order processing only) |
+| `origin_m` | Scope box origin in metres (Order processing only) |
 
-Elements whose centroid falls inside `origin_m + aabb_mm` are assigned to that scope space.
+IFC-driven: elements assigned by `IfcSpace` containment from extraction DB.
+Scope box: elements assigned by centroid-in-box test at order time.
 
 ### `static_children` (optional)
 

@@ -1466,10 +1466,16 @@ floor_rooms:
 No `origin_m`, no `aabb_mm`. IFC does the containment. YAML maps space
 names to BOM templates.
 
-YAML scope boxes remain available as **optional override** for:
-- Sub-room zones (dining vs seating within one IfcSpace)
-- Buildings with missing IfcSpace data
-- Infrastructure (no IfcSpace concept)
+**Scope boxes are removed from IFCtoBOM extraction.** IFC spatial
+containment is the sole source during extraction. Scope boxes move to
+**Order processing** — the BIM Designer GUI and BOM Drop use scope boxes
+when the user defines sub-room zones at order time (e.g., splitting a
+Living room into dining + seating zones). This is a C_OrderLine concern,
+not an extraction concern.
+
+For buildings without IfcSpace data, extraction groups by storey only
+(existing `StructuralBomBuilder` behaviour). Sub-room grouping is deferred
+to order time.
 
 #### Impact on CLUSTER
 
