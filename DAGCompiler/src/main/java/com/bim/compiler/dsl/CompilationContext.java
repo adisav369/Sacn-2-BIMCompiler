@@ -36,6 +36,7 @@ public class CompilationContext {
     private List<PlacementLoader.Placement> walkedPlacements;
     private ComplianceReport complianceReport;
     private RouteExecutor.RouteReport routeReport;
+    private String verbBreakdown;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -86,6 +87,7 @@ public class CompilationContext {
     public List<PlacementLoader.Placement> walkedPlacements() { return walkedPlacements; }
     public ComplianceReport complianceReport() { return complianceReport; }
     public RouteExecutor.RouteReport routeReport() { return routeReport; }
+    public String verbBreakdown() { return verbBreakdown; }
 
     // --- Setters (called by stages) ---
     public void setDefinition(BuildingDefinition definition) { this.definition = definition; }
@@ -99,4 +101,5 @@ public class CompilationContext {
     public void setWalkedPlacements(List<PlacementLoader.Placement> p) { this.walkedPlacements = p; }
     public void setComplianceReport(ComplianceReport r) { this.complianceReport = r; }
     public void setRouteReport(RouteExecutor.RouteReport r) { this.routeReport = r; }
+    public void setVerbBreakdown(String verbBreakdown) { this.verbBreakdown = verbBreakdown; }
 }

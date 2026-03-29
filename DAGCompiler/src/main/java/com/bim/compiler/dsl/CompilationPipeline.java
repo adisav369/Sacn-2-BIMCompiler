@@ -397,8 +397,10 @@ public class CompilationPipeline {
                     root.getValue(), placements.size(), visitor.getSubAssemblyCount());
                 BIMLogger.fine("COMPILE", "{}: walk complete: {} placements from {} sub-assemblies",
                     ctx.entry().name(), placements.size(), visitor.getSubAssemblyCount());
+                String verbBreakdown = visitor.getVerbBreakdown();
+                ctx.setVerbBreakdown(verbBreakdown);
                 BIMLogger.fine("COMPILE", "{}: verb breakdown: {}",
-                    ctx.entry().name(), visitor.getVerbBreakdown());
+                    ctx.entry().name(), verbBreakdown);
             }
         }
     }

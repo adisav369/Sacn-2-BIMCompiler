@@ -12,11 +12,14 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 /**
- * Pipeline stage: BIM COBOL verb execution (Step 6).
+ * Pipeline stage: BIM COBOL verb execution (Step 7).
  *
- * <p>Positioned after WriteStage, before DigestStage.
- * Looks for {@code scripts/<building_id>.bimcobol}. If found, parses verb lines
- * and delegates execution to a {@link VerbExecutor} discovered via SPI.
+ * <p>Hybrid design (P108 recommendation B): always fires for every building.
+ * <ol>
+ *   <li>Logs BOM verb breakdown from CompileStage (PLACE/CLUSTER/TILE/ROUTE/FRAME/SPRAY)</li>
+ *   <li>If a {@code scripts/<building_id>.bimcobol} script exists, parses and executes
+ *       script verbs as overrides/supplements via SPI {@link VerbExecutor}</li>
+ * </ol>
  *
  * <p>SPI pattern breaks circular dependency: DAGCompiler defines
  * {@link VerbExecutor}, BIM_COBOL provides the implementation
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
  * verbs execute and results persist to W_Verb_Node. When absent,
  * VerbStage falls back to log-only mode.
  */
+// Implementing BBC.md §3.5 — Witness: W-VERB-1
 public class VerbStage implements CompilerStage {
 
     static final String SCRIPT_DIR = "scripts";
@@ -33,22 +37,37 @@ public class VerbStage implements CompilerStage {
 
     @Override
     public boolean shouldSkip(CompilationContext ctx) {
-        return !scriptPath(ctx.buildingId()).toFile().exists();
+        // Hybrid: never skip — always logs BOM verb breakdown
+        return false;
     }
 
     @Override
     public void execute(CompilationContext ctx) throws Exception {
+        // ── Part 1: BOM verb breakdown (from CompileStage) ──
+        String breakdown = ctx.verbBreakdown();
+        if (breakdown != null) {
+            BIMLogger.info("VERB", "BOM verbs: {}", breakdown);
+        } else {
+            BIMLogger.fine("VERB", "No BOM verb breakdown available");
+        }
+
+        // ── Part 2: Script verbs (override/supplement) ──
         Path script = scriptPath(ctx.buildingId());
-        System.out.printf("[VERB] Found script: %s%n", script);
+        if (!script.toFile().exists()) {
+            BIMLogger.fine("VERB", "No .bimcobol script for {} — BOM verbs only", ctx.buildingId());
+            return;
+        }
+
+        BIMLogger.info("VERB", "Found script: {}", script);
 
         List<String> verbLines = parseVerbLines(script);
-        System.out.printf("[VERB] %d verb line(s):%n", verbLines.size());
+        BIMLogger.info("VERB", "{} verb line(s):", verbLines.size());
         for (String line : verbLines) {
-            System.out.printf("[VERB]   > %s%n", line);
+            BIMLogger.fine("VERB", "  > {}", line);
         }
 
         if (verbLines.isEmpty()) {
-            System.out.println("[VERB] WARN: script exists but no verb lines");
+            BIMLogger.warn("VERB", "Script exists but no verb lines");
             return;
         }
 
@@ -57,7 +76,7 @@ public class VerbStage implements CompilerStage {
                 .findFirst().orElse(null);
 
         if (executor == null) {
-            System.out.println("[VERB] No VerbExecutor on classpath — log-only mode");
+            BIMLogger.info("VERB", "No VerbExecutor on classpath — log-only mode");
             return;
         }
 
@@ -71,20 +90,17 @@ public class VerbStage implements CompilerStage {
                     executor.execute(bomConn, outputConn, ctx.buildingId(), verbLines);
 
             for (String detail : report.details()) {
-                System.out.printf("[VERB]   %s%n", detail);
+                BIMLogger.fine("VERB", "  {}", detail);
             }
 
             outputConn.commit();
 
-            BIMLogger.fine("VERB", "{} — {} pass, {} fail, {} W_Verb_Node rows",
-                    report.allPass() ? "PASS" : "FAIL",
-                    report.passCount(), report.failCount(), report.totalNodes());
-            System.out.printf("[VERB] %s — %d pass, %d fail, %d W_Verb_Node rows%n",
+            BIMLogger.info("VERB", "{} — {} pass, {} fail, {} W_Verb_Node rows",
                     report.allPass() ? "PASS" : "FAIL",
                     report.passCount(), report.failCount(), report.totalNodes());
 
             if (!report.allPass()) {
-                System.err.printf("[VERB] WARNING: %d verb(s) failed — DocStatus=VO%n",
+                BIMLogger.warn("VERB", "{} verb(s) failed — DocStatus=VO",
                         report.failCount());
             }
         }

@@ -13,16 +13,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Witness tests for VerbStage — BIM COBOL pipeline integration hook.
  *
- * <h2>W-VERB-1 — No script → graceful skip</h2>
- * <p>When no {@code scripts/<building_id>.bimcobol} file exists for a building,
- * {@link VerbStage#shouldSkip(com.bim.compiler.dsl.CompilationContext)} returns true.
- * The pipeline logs "[SKIP]" and moves on without error.
+ * <h2>W-VERB-1 — Hybrid: always fires (never skips)</h2>
+ * <p>{@link VerbStage#shouldSkip} always returns false — the stage logs BOM verb
+ * breakdown for every building, then runs script verbs if a .bimcobol file exists.
+ * P108 recommendation (B): BOM-driven defaults, script overrides when present.
  *
  * <h2>W-VERB-2 — Script found → parsed and logged without error</h2>
- * <p>When a {@code .bimcobol} script file exists, {@code shouldSkip} returns false,
- * and {@link VerbStage#parseVerbLines(Path)} correctly strips comments and blanks,
- * returning only the verb lines. Full execution integration is deferred to the
- * BIM_COBOL ↔ DAGCompiler wiring sprint.
+ * <p>When a {@code .bimcobol} script file exists, {@link VerbStage#parseVerbLines(Path)}
+ * correctly strips comments and blanks, returning only the verb lines.
  */
 @DisplayName("VerbStage — W-VERB witnesses")
 class VerbStageTest {
@@ -55,30 +53,18 @@ class VerbStageTest {
     }
 
     /**
-     * W-VERB-1: VerbStage.shouldSkip() returns true when no script file exists.
-     * Uses a building ID guaranteed to have no corresponding .bimcobol file.
+     * W-VERB-1: VerbStage never skips — hybrid design logs BOM verb breakdown
+     * for all buildings, then runs script verbs only if a .bimcobol file exists.
      */
     @Test
-    @DisplayName("W-VERB-1: No .bimcobol script → shouldSkip path check returns 'not exists'")
-    void w_verb_1_noScriptGracefulSkip() {
-        // scriptPath for a non-existent building must not resolve to a real file
-        Path nonExistentScript = VerbStage.scriptPath("NONEXISTENT_BUILDING_XYZ_ABC");
-        assertFalse(nonExistentScript.toFile().exists(),
-            "Script path for unknown building must not exist: " + nonExistentScript);
-
-        // Verify that VerbStage correctly identifies missing scripts as "skip"
+    @DisplayName("W-VERB-1: Hybrid — shouldSkip always false (never skips)")
+    void w_verb_1_hybridNeverSkips() {
         VerbStage stage = new VerbStage();
         assertEquals("VERB STAGE (BIM COBOL)", stage.name());
 
-        // The shouldSkip logic is: !scriptPath(buildingId).toFile().exists()
-        // Verify that no script for Ifc4_SampleHouse exists (production — no script written yet)
-        Path shScript = VerbStage.scriptPath("Ifc4_SampleHouse");
-        if (!shScript.toFile().exists()) {
-            // Confirmed: SH has no .bimcobol script → shouldSkip would return true
-            // (Pipeline test via BuildingRegistryTest verifies the full flow)
-            assertFalse(shScript.toFile().exists(),
-                "SH should not have a .bimcobol script at this stage");
-        }
+        // shouldSkip returns false regardless — hybrid always fires
+        assertFalse(stage.shouldSkip(null),
+            "VerbStage must never skip — hybrid design fires for all buildings");
     }
 
     /**
@@ -105,7 +91,6 @@ class VerbStageTest {
         assertEquals("ROUTE SPRINKLERS TB_LKTN \"Ground Floor\" bilik_utama", verbLines.get(2));
 
         // Verify shouldSkip returns false when the script file exists
-        // (test the helper logic directly — full pipeline test in BuildingRegistryTest)
         assertTrue(testScriptPath.toFile().exists());
     }
 
