@@ -252,6 +252,47 @@ Three capabilities developed for building compilation are transferable to other 
 
 The common thread: moving from **bulk verification** (RMSD, end-effector check, element count) to **per-element, identity-traced, relationship-level verification** — knowing not just that something is wrong, but exactly which piece, by how much, and why.
 
+### 5.4 The Unifying Problem
+
+All three fields solve the same fundamental problem: **reconstructing 3D
+structures from 1D specifications.** The specification languages differ
+(amino acid sequence, joint angles, construction order) but the
+reconstruction mechanism is identical — hierarchical accumulation of
+parent-relative spatial offsets.
+
+```
+Protein:      sequence → motif offsets → fold → 3D structure
+Robot:        joint angles → link transforms → FK → end effector position
+Construction: order → BOM tack offsets → walk → 3D building
+```
+
+The three mechanisms are isomorphic:
+
+| Mechanism | Protein | Robotics | Construction |
+|-----------|---------|----------|-------------|
+| **1D input** | Amino acid sequence | Joint angle vector | C_Order + C_OrderLine |
+| **Spatial recipe** | Template motif (bond angles, torsion) | DH parameters (link length, twist) | BOM tack (dx, dy, dz) |
+| **Accumulation** | Chain through backbone | FK through link chain | BOM walk through hierarchy |
+| **Leaf output** | Atom position | End effector pose | Element centroid |
+| **Identity** | Residue number | Joint serial | IFC GUID |
+| **Verification** | RMSD (bulk) | Sensor (endpoint) | **All-pairs (every element)** |
+
+The BIM Compiler's contribution to the unifying problem is the
+**verification column**: per-element, identity-traced, all-pairs, zero-drift.
+This is the missing capability in the other two domains. Protein science
+approximates. Robotics measures the endpoint. Neither verifies every
+element in the chain with identity tracing and relationship-level
+comparison.
+
+The mathematical equivalence between BOM walk and forward kinematics is
+exact — both compute `world_position = Σ(parent_offset_i)` through a
+tree. The difference is that construction has a **digital source of truth**
+(the IFC extraction) against which to verify, while robotics has only
+physical sensors and protein science has only energy functions. The
+Rosetta Stone — a real building decomposed into a BOM — IS the digital
+crystal structure. The GEO proof IS the RMSD, but deterministic and
+per-element instead of stochastic and bulk.
+
 ---
 
 ## 6. Limitations
