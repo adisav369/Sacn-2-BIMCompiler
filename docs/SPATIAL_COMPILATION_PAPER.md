@@ -266,6 +266,64 @@ Robot:        joint angles → link transforms → FK → end effector position
 Construction: order → BOM tack offsets → walk → 3D building
 ```
 
+#### Visual: BOM Walk vs Forward Kinematics vs Protein Folding
+
+**Robotics — Forward Kinematics (accumulate link transforms):**
+
+```
+Base ──[θ₁]── Link₁ ──[θ₂]── Link₂ ──[θ₃]── End Effector
+ │              │               │               │
+ origin    origin+T₁      origin+T₁+T₂    origin+T₁+T₂+T₃
+ (0,0,0)   (1.2,0,0.5)    (1.2,0.8,0.5)   (1.2,0.8,1.3)
+                                              ↑
+                                     ONLY THIS verified
+                                     (sensor at tip)
+```
+
+**Construction — BOM Walk (accumulate tack offsets):**
+
+```
+BUILDING ──[dx,dy,dz]── FLOOR ──[dx,dy,dz]── SET ──[dx,dy,dz]── LEAF
+ │                        │                    │                   │
+ origin              origin+tack₁        origin+Σtack        origin+Σtack
+ (0,0,0)             (0,0,0)             (13.35,3.69,0.47)   (13.77,6.29,0.47)
+                                                                ↑
+                                                       EVERY element verified
+                                                       (GUID + all-pairs)
+```
+
+**Protein — Motif Chain (accumulate backbone offsets):**
+
+```
+N-term ──[φ,ψ]── Motif₁ ──[φ,ψ]── Motif₂ ──[φ,ψ]── C-term
+ │                 │                 │                 │
+ origin       origin+rot₁      origin+Σrot       origin+Σrot
+ (0,0,0)      (1.5,0,0)        (3.0,1.2,0)       (4.5,1.2,0.8)
+                                                      ↑
+                                             BULK verified (RMSD)
+                                             No per-residue identity
+```
+
+The mathematical operation is identical in all three: `position_n =
+position_{n-1} + transform_n`. The difference is **what gets verified**.
+In robotics, only the tip. In proteins, the bulk average. In spatial
+compilation, **every element, every pair, every relationship** — with
+identity tracing back to the source.
+
+**Tolerance stack-up:** In a robot arm, if joint 2 is off by 0.1mm, the
+error propagates to the end effector — and the diagnosis requires
+disassembly. In spatial compilation, the GEO TACK log shows the anchor
+at every level. If the FLOOR tack is off by 0.1mm, every LEAF under that
+floor shows the same 0.1mm shift — and the ENTER log line for that floor
+pinpoints the exact source. No disassembly. No bulk recalibration.
+Read the log.
+
+**Protein equivalent:** If a template motif at residues 42-58 introduces
+a 2 Angstrom error, every atom downstream of that motif shifts. RMSD
+averages this across the whole chain. A TACK-style chain would show the
+error appearing at the ENTER line for motif 42-58 and propagating to all
+children — diagnosable from the log without re-running the prediction.
+
 The three mechanisms are isomorphic:
 
 | Mechanism | Protein | Robotics | Construction |
