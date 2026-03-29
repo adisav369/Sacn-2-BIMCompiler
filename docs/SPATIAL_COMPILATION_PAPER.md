@@ -351,6 +351,68 @@ Rosetta Stone — a real building decomposed into a BOM — IS the digital
 crystal structure. The GEO proof IS the RMSD, but deterministic and
 per-element instead of stochastic and bulk.
 
+### 5.5 Generative Construction — Verification Without a Source
+
+The results in Section 4 verify compiled output against an extraction source
+— the original IFC file. This raises a question: what happens when there is
+no source? A generative building (designed from scratch, not extracted from
+IFC) has no extraction database to compare against.
+
+The GEO dataset from 35 verified Rosetta Stones provides the answer.
+
+#### From source verification to pattern verification
+
+Each verified building contributes thousands of tack signatures to a
+**spatial vocabulary** — proven parent-child offset patterns that survived
+the decomposition → compilation → verification cycle. For SH: 58 elements,
+1,653 verified relationships. For DX: 179 GUID-matched elements, 15,931
+verified relationships. Each relationship is a proven spatial fact:
+"a desk sits 0.42m from a bed in a bedroom" or "a door sits within a wall
+with 150mm containment tolerance."
+
+For a generative building, EYES matches the new building's tack signatures
+against this vocabulary:
+
+| Generative element | Pattern match | Vocabulary source | Confidence |
+|-------------------|--------------|-------------------|-----------|
+| BED_SET: desk at (0.42, 2.60) from bed | CLUSTER: bedroom furniture | SH verified, 0.002mm | High |
+| FP riser: branches at each floor Z | ROUTE: fire protection | TE verified, 711 edges | High |
+| Wall floating 2m above slab | **No match** in 35-building vocabulary | — | Anomaly |
+
+The verification target shifts from "does this match the extraction source?"
+to "is this consistent with proven spatial patterns?" — the same shift that
+protein science made from template-based modelling (match a known structure)
+to AlphaFold (match learned patterns from 200K structures).
+
+#### The vocabulary growth dynamic
+
+| Rosetta Stones | Verified relationships | Spatial vocabulary |
+|---------------|----------------------|-------------------|
+| 1 (SH) | 1,653 | Residential furniture, doors, windows |
+| 5 (SH+FK+IN+DX+TE) | ~20,000 | + institutional, mirrored, 48K-scale |
+| 35 (full fleet) | ~500,000 (projected) | + infrastructure, MEP routing |
+| 100+ (future) | millions | Approaching domain saturation |
+
+Each verified relationship is a **spatial axiom** — a proven fact about
+how physical elements relate in real buildings. The generative compiler
+doesn't need an extraction source. It needs a vocabulary of axioms rich
+enough to validate any reasonable arrangement.
+
+This is the PDB growth dynamic applied to construction. Protein science
+reached practical coverage at ~200,000 structures. The question for
+construction is: how many Rosetta Stones until the spatial vocabulary
+covers the domain? The 5-verb convergence (PLACE, CLUSTER, TILE, ROUTE,
+FRAME covering 99% of placements across 35 buildings) suggests the number
+is small — perhaps hundreds, not thousands.
+
+#### Verification script
+
+The all-pairs verification is automated:
+[`scripts/geo_verify.py`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py)
+joins GEO TACK LEAF log against extraction DB by IFC GUID, computes
+all-pairs relative offsets, reports MATCH/DRIFT per building. Each verified
+building's output extends the spatial vocabulary for generative use.
+
 ---
 
 ## 6. Limitations
