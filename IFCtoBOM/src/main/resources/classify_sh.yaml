@@ -10,20 +10,20 @@ building:
   prefix: SH
   building_bom_id: BUILDING_SH_STD
   doc_sub_type: SH
-  doc_base_type: RE
+  product_category: RE
   name: Sample House
   jurisdiction: MY
   dsl_file: dsl_sh.bim                  # BIM COBOL script for DAGCompiler
 
   storeys:
-    Ground Floor: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
-    Roof:         { code: ROOF, bom_category: RF, role: ROOF, seq: 1020 }
-    Unknown:      { code: CW, bom_category: CW, role: CURTAIN_WALL, seq: 1030 }
+    Ground Floor: { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1010 }
+    Roof:         { code: ROOF, product_category: RF, role: ROOF, seq: 1020 }
+    Unknown:      { code: CW, product_category: CW, role: CURTAIN_WALL, seq: 1030 }
 
   floor_rooms:
     Ground Floor:
       bom_id: FLOOR_SH_GF_STD
-      bom_category: GF
+      product_category: GF
       spaces:
         - { name: LIVING,   template_bom: SH_LIVING_SET,        role: LIVING,   seq: 10,
             aabb_mm: [8000, 2000, 1200], origin_m: [-7.0, 2.5, 0.0] }

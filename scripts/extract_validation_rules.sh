@@ -42,7 +42,7 @@ for yaml_file in "$YAML_DIR"/classify_*.yaml; do
     prefix=$(parse_yaml "$yaml_file" "prefix")
     building_type=$(parse_yaml "$yaml_file" "building_type")
     name=$(parse_yaml "$yaml_file" "name")
-    doc_base=$(parse_yaml "$yaml_file" "doc_base_type")
+    product_category=$(parse_yaml "$yaml_file" "product_category")
 
     # Filter if prefixes specified
     if [ ${#FILTER_PREFIXES[@]} -gt 0 ]; then

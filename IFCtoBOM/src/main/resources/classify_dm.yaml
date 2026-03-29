@@ -10,19 +10,19 @@ building:
   prefix: DM
   building_bom_id: BUILDING_DEMO_2BR
   doc_sub_type: DM
-  doc_base_type: RE
+  product_category: RE
   name: Demo House 2BR
   provenance: GENERATIVE                    # no IFC source — generative POC
   jurisdiction: MY                          # Malaysian UBBL compliance
   code_edition: UBBL_1984_AMD2007           # Uniform Building By-Laws 1984 (Amended 2007)
 
   storeys:
-    Ground: { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
+    Ground: { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1010 }
 
   floor_rooms:
     Ground:
       bom_id: FLOOR_DEMO_GF
-      bom_category: GF
+      product_category: GF
       spaces:
         - { name: LIVING,   template_bom: ROOM_DEMO_LI,  role: LIVING,   seq: 10,
             aabb_mm: [4000, 3500, 2800], origin_m: [0.0, 0.0, 0.0] }

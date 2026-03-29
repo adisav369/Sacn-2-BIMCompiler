@@ -62,7 +62,7 @@ info() { printf "  %s\n" "$1"; }
 PREFIX=""
 BUILDING_TYPE=""
 HUMAN_NAME=""
-DOC_BASE="RE"
+PRODUCT_CATEGORY="RE"
 IFC_PATH=""
 SKIP_RECON=false
 SKIP_EXTRACT=false
@@ -73,7 +73,7 @@ while [ $# -gt 0 ]; do
         --prefix)  PREFIX=$(echo "$2" | tr '[:lower:]' '[:upper:]'); shift 2 ;;
         --type)    BUILDING_TYPE="$2"; shift 2 ;;
         --name)    HUMAN_NAME="$2"; shift 2 ;;
-        --base)    DOC_BASE=$(echo "$2" | tr '[:lower:]' '[:upper:]'); shift 2 ;;
+        --base)    PRODUCT_CATEGORY=$(echo "$2" | tr '[:lower:]' '[:upper:]'); shift 2 ;;
         --ifc)     IFC_PATH="$2"; shift 2 ;;
         --skip-recon)   SKIP_RECON=true; shift ;;
         --skip-extract) SKIP_EXTRACT=true; shift ;;
@@ -92,7 +92,7 @@ if [ -z "$PREFIX" ] || [ -z "$BUILDING_TYPE" ] || [ -z "$HUMAN_NAME" ] || [ -z "
 fi
 
 PREFIX_LOWER=$(echo "$PREFIX" | tr '[:upper:]' '[:lower:]')
-DOC_TYPE_ID="${DOC_BASE}_${PREFIX}"
+DOC_TYPE_ID="${PRODUCT_CATEGORY}_${PREFIX}"
 YAML_DIR="IFCtoBOM/src/main/resources"
 YAML_FILE="${YAML_DIR}/classify_${PREFIX_LOWER}.yaml"
 DSL_FILE="${YAML_DIR}/dsl_${PREFIX_LOWER}.bim"
@@ -251,7 +251,7 @@ infer_role() {
     echo "  prefix: ${PREFIX}"
     echo "  building_bom_id: BUILDING_${PREFIX}_STD"
     echo "  doc_sub_type: ${PREFIX}"
-    echo "  doc_base_type: ${DOC_BASE}"
+    echo "  product_category: ${PRODUCT_CATEGORY}"
     echo "  name: ${HUMAN_NAME}"
     echo "  dsl_file: dsl_${PREFIX_LOWER}.bim"
     echo ""
@@ -262,7 +262,7 @@ infer_role() {
         [ -z "$storey" ] && continue
         code=$(infer_code "$storey")
         role=$(infer_role "$storey")
-        printf "    \"%s\": { code: %s, bom_category: %s, role: %s, seq: %d }  # %s elements\n" \
+        printf "    \"%s\": { code: %s, product_category: %s, role: %s, seq: %d }  # %s elements\n" \
             "$storey" "$code" "$code" "$role" "$seq_no" "$cnt"
         seq_no=$((seq_no + 10))
     done
@@ -334,7 +334,7 @@ else
         [ -z "$storey" ] && continue
         code=$(infer_code "$storey")
         role=$(infer_role "$storey")
-        storey_block="${storey_block}      \"${storey}\": { code: ${code}, bom_category: ${code}, role: ${role}, seq: ${seq_no} }\n"
+        storey_block="${storey_block}      \"${storey}\": { code: ${code}, product_category: ${code}, role: ${role}, seq: ${seq_no} }\n"
         seq_no=$((seq_no + 10))
     done <<< "$STOREY_DATA"
 
@@ -354,7 +354,7 @@ else
     doc_type_id: ${DOC_TYPE_ID}
     name: ${HUMAN_NAME}
     doc_sub_type: ${PREFIX}
-    doc_base_type: ${DOC_BASE}
+    product_category: ${PRODUCT_CATEGORY}
     description: \"$(basename "$IFC_PATH" .ifc) — ${HUMAN_NAME}\"
     provenance: EXTRACTED
     climate: SCAN

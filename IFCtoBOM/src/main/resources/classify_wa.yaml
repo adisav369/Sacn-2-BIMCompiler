@@ -10,21 +10,21 @@ building:
   prefix: WA
   building_bom_id: BUILDING_WA_STD
   doc_sub_type: WA
-  doc_base_type: CO
+  product_category: CO
   name: BimWhale Advanced Project
   dsl_file: dsl_wa.bim
 
   storeys:
-    "Level 1": { code: L1A, bom_category: L1A, role: UPPER_FLOOR, seq: 1010 }  # 495 elements
-    "1 - First Floor": { code: L1B, bom_category: L1B, role: UPPER_FLOOR, seq: 1020 }  # 735 elements
-    "Level 2": { code: L2A, bom_category: L2A, role: UPPER_FLOOR, seq: 1030 }  # 7 elements
-    "-1 - Garage": { code: -1_-, bom_category: -1_-, role: UPPER_FLOOR, seq: 1040 }  # 165 elements
-    "6 - Sixth Floor": { code: 6_-_, bom_category: 6_-_, role: UPPER_FLOOR, seq: 1050 }  # 46 elements
-    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1060 }  # 113 elements
-    "2 - Second Floor": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1070 }  # 47 elements
-    "3 - Third Floor": { code: L3, bom_category: L3, role: UPPER_FLOOR, seq: 1080 }  # 47 elements
-    "4 - Fourth Floor": { code: L4, bom_category: L4, role: UPPER_FLOOR, seq: 1090 }  # 47 elements
-    "5 - Fifth Floor": { code: L5, bom_category: L5, role: UPPER_FLOOR, seq: 1100 }  # 47 elements
+    "Level 1": { code: L1A, product_category: L1A, role: UPPER_FLOOR, seq: 1010 }  # 495 elements
+    "1 - First Floor": { code: L1B, product_category: L1B, role: UPPER_FLOOR, seq: 1020 }  # 735 elements
+    "Level 2": { code: L2A, product_category: L2A, role: UPPER_FLOOR, seq: 1030 }  # 7 elements
+    "-1 - Garage": { code: -1_-, product_category: -1_-, role: UPPER_FLOOR, seq: 1040 }  # 165 elements
+    "6 - Sixth Floor": { code: 6_-_, product_category: 6_-_, role: UPPER_FLOOR, seq: 1050 }  # 46 elements
+    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1060 }  # 113 elements
+    "2 - Second Floor": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1070 }  # 47 elements
+    "3 - Third Floor": { code: L3, product_category: L3, role: UPPER_FLOOR, seq: 1080 }  # 47 elements
+    "4 - Fourth Floor": { code: L4, product_category: L4, role: UPPER_FLOOR, seq: 1090 }  # 47 elements
+    "5 - Fifth Floor": { code: L5, product_category: L5, role: UPPER_FLOOR, seq: 1100 }  # 47 elements
 
   # MEP disciplines: defaults to all 6 for CO (§10.4.11 T3.4)
 

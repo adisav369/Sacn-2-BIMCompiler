@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * COMPOSE BUILDING &lt;buildingType&gt; &lt;width&gt; &lt;depth&gt; &lt;height&gt; UNITS &lt;n&gt;
+ * COMPOSE BUILDING &lt;productCategory&gt; &lt;width&gt; &lt;depth&gt; &lt;height&gt; UNITS &lt;n&gt;
  *
  * <p>Level 3 building verb (§18.8). <b>Delegates to
  * {@link BomTemplateComposer#compose()}</b> for MRP explosion — no
@@ -46,16 +46,16 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
     public VerbResult<ComposeBuildingPayload> execute(VerbContext ctx, String... args)
             throws SQLException {
 
-        // Parse: COMPOSE BUILDING <buildingType> <width> <depth> <height> UNITS <n>
+        // Parse: COMPOSE BUILDING <productCategory> <width> <depth> <height> UNITS <n>
         if (args.length < 5)
             return VerbResult.fail(keyword(),
-                "usage: COMPOSE BUILDING <buildingType> <width> <depth> <height> UNITS <n>", null);
+                "usage: COMPOSE BUILDING <productCategory> <width> <depth> <height> UNITS <n>", null);
 
-        String buildingType = args[0].toUpperCase();
-        String categoryCode = CATEGORY_MAP.get(buildingType);
-        if (categoryCode == null)
+        String productCategory = args[0].toUpperCase();
+        String mProductCategoryValue = CATEGORY_MAP.get(productCategory);
+        if (mProductCategoryValue == null)
             return VerbResult.fail(keyword(),
-                "unknown building type: " + buildingType
+                "unknown building type: " + productCategory
                     + ", must be one of " + CATEGORY_MAP.keySet(), null);
 
         int widthMm, depthMm, heightMm;
@@ -80,14 +80,14 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         // Step 1: Delegate to BomTemplateComposer for MRP explosion
         CompositionReport report = BomTemplateComposer.compose(
-            conn, categoryCode, widthMm, depthMm, heightMm, numUnits);
+            conn, mProductCategoryValue, widthMm, depthMm, heightMm, numUnits);
 
         if (report.selections().isEmpty())
             return VerbResult.fail(keyword(),
-                "no template found for " + categoryCode, null);
+                "no template found for " + mProductCategoryValue, null);
 
         // Step 2: Create the BUILDING BOM header
-        String prefix = buildingType.substring(0, Math.min(2, buildingType.length()));
+        String prefix = productCategory.substring(0, Math.min(2, productCategory.length()));
         String bldgBomId = String.format("SY_%s_BLDG_%dx%dx%d",
             prefix, widthMm, depthMm, heightMm);
 
@@ -97,7 +97,7 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         MBOM bldgBom = new MBOM(conn);
         bldgBom.setBomId(bldgBomId);
-        bldgBom.setBomName(buildingType + " Building " + widthMm + "x" + depthMm + "x" + heightMm);
+        bldgBom.setBomName(productCategory + " Building " + widthMm + "x" + depthMm + "x" + heightMm);
         bldgBom.setBomType("BUILDING");
         bldgBom.setProductCategory(prefix);   // RE, CO, IN — m_product_category_id
         bldgBom.setGroupBy("BUILDING");
@@ -160,7 +160,7 @@ public class ComposeBuildingVerb implements Verb<ComposeBuildingVerb.ComposeBuil
 
         return VerbResult.ok(keyword(),
             String.format("COMPOSE BUILDING %s %dx%dx%d UNITS %d → %s (%d lines, %d gaps)",
-                buildingType, widthMm, depthMm, heightMm, numUnits,
+                productCategory, widthMm, depthMm, heightMm, numUnits,
                 bldgBomId, totalLines, gaps.length),
             new ComposeBuildingPayload(bldgBomId, totalBoms, totalLines, floorCount, gaps));
     }

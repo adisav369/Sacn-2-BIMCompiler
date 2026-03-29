@@ -147,7 +147,7 @@ def extract_building(bom_conn, comp_conn, building_type):
                     ?, ?, ?,
                     0.0, 0.0, 0.0, 1)
         """, (floor_bom_id, f"{prefix} {storey_name} Structured",
-              storey_info['bom_category'],
+              storey_info['product_category'],
               floor_aabb_w, floor_aabb_d, floor_aabb_h))
 
         # ── Delete existing element lines for this floor ─────────────────────

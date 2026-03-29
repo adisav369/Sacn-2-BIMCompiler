@@ -10,22 +10,22 @@ building:
   prefix: MO
   building_bom_id: BUILDING_MO_STD
   doc_sub_type: MO
-  doc_base_type: RE
+  product_category: RE
   name: Molio
   dsl_file: dsl_mo.bim
   geometry_fail_threshold: 1  # 1 IfcCovering (FRAME_MD_6._SAL_468) has no library mesh
 
   storeys:
-    "Kælder": { code: BSMT, bom_category: BSMT, role: BASEMENT, seq: 1010 }  # 59 elements
-    "Grundplan": { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1020 }  # 66 elements
-    "1. Sal": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1030 }  # 60 elements
-    "2. Sal": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1040 }  # 70 elements
-    "3. Sal": { code: L3, bom_category: L3, role: UPPER_FLOOR, seq: 1050 }  # 70 elements
-    "4. Sal": { code: L4, bom_category: L4, role: UPPER_FLOOR, seq: 1060 }  # 70 elements
-    "5. Sal": { code: L5, bom_category: L5, role: UPPER_FLOOR, seq: 1070 }  # 70 elements
-    "6. sal": { code: L6, bom_category: L6, role: UPPER_FLOOR, seq: 1080 }  # 15 elements
-    "Fundament": { code: FDN, bom_category: FDN, role: FOUNDATION, seq: 1090 }  # 4 elements
-    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1100 }  # 2630 elements
+    "Kælder": { code: BSMT, product_category: BSMT, role: BASEMENT, seq: 1010 }  # 59 elements
+    "Grundplan": { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1020 }  # 66 elements
+    "1. Sal": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1030 }  # 60 elements
+    "2. Sal": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1040 }  # 70 elements
+    "3. Sal": { code: L3, product_category: L3, role: UPPER_FLOOR, seq: 1050 }  # 70 elements
+    "4. Sal": { code: L4, product_category: L4, role: UPPER_FLOOR, seq: 1060 }  # 70 elements
+    "5. Sal": { code: L5, product_category: L5, role: UPPER_FLOOR, seq: 1070 }  # 70 elements
+    "6. sal": { code: L6, product_category: L6, role: UPPER_FLOOR, seq: 1080 }  # 15 elements
+    "Fundament": { code: FDN, product_category: FDN, role: FOUNDATION, seq: 1090 }  # 4 elements
+    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1100 }  # 2630 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

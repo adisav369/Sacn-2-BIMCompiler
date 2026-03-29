@@ -19,7 +19,7 @@ buildings:
     doc_type_id: RE_SH
     name: Sample House
     doc_sub_type: SH
-    doc_base_type: RE
+    product_category: RE
     description: "IFC4 Sample House — single-unit residential, 1-storey"
     provenance: EXTRACTED
     climate: SCAN
@@ -29,16 +29,16 @@ buildings:
     building_bom_id: BUILDING_SH_STD
     seq_no: 10
     storeys:
-      Ground Floor: { code: GF,   bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
-      Roof:         { code: ROOF, bom_category: RF, role: ROOF,         seq: 1020 }
-      Unknown:      { code: CW,   bom_category: CW, role: CURTAIN_WALL, seq: 1030 }
+      Ground Floor: { code: GF,   product_category: GF, role: GROUND_FLOOR, seq: 1010 }
+      Roof:         { code: ROOF, product_category: RF, role: ROOF,         seq: 1020 }
+      Unknown:      { code: CW,   product_category: CW, role: CURTAIN_WALL, seq: 1030 }
 
   Ifc2x3_Duplex:
     prefix: DX
     doc_type_id: RE_DX
     name: Duplex
     doc_sub_type: DX
-    doc_base_type: RE
+    product_category: RE
     description: "IFC2x3 Duplex — paired half-units, 2-storey"
     provenance: EXTRACTED
     climate: SCAN
@@ -49,18 +49,18 @@ buildings:
     building_bom_id: BUILDING_DX_STD
     seq_no: 20
     storeys:
-      Level 1: { code: L1,   bom_category: L1, role: LEVEL_1,    seq: 1010 }
-      Level 2: { code: L2,   bom_category: L2, role: LEVEL_2,    seq: 1020 }
-      Roof:    { code: ROOF, bom_category: RF, role: ROOF,       seq: 1030 }
-      T/FDN:   { code: FDN,  bom_category: FN, role: FOUNDATION, seq: 1040 }
-      Unknown: { code: MISC, bom_category: MS, role: MISC,       seq: 1050 }
+      Level 1: { code: L1,   product_category: L1, role: LEVEL_1,    seq: 1010 }
+      Level 2: { code: L2,   product_category: L2, role: LEVEL_2,    seq: 1020 }
+      Roof:    { code: ROOF, product_category: RF, role: ROOF,       seq: 1030 }
+      T/FDN:   { code: FDN,  product_category: FN, role: FOUNDATION, seq: 1040 }
+      Unknown: { code: MISC, product_category: MS, role: MISC,       seq: 1050 }
 
   Ifc2x3_AC11Institute:
     prefix: IN
     doc_type_id: RE_IN
     name: AC11 Institute
     doc_sub_type: IN
-    doc_base_type: RE
+    product_category: RE
     description: "IFC2x3 AC11 Institute — 5-storey institutional, 82 rooms"
     provenance: EXTRACTED
     climate: SCAN
@@ -70,18 +70,18 @@ buildings:
     building_bom_id: BUILDING_IN_STD
     seq_no: 35
     storeys:
-      Keller:             { code: KE,  bom_category: KE,  role: BASEMENT,     seq: 1000 }
-      Erdgeschoss:        { code: EG,  bom_category: EG,  role: GROUND_FLOOR, seq: 1010 }
-      1. Obergeschoss:    { code: OG1, bom_category: OG1, role: UPPER_FLOOR,  seq: 1020 }
-      2. Obergeschoss:    { code: OG2, bom_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
-      Dachgeschoss:       { code: DG,  bom_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
+      Keller:             { code: KE,  product_category: KE,  role: BASEMENT,     seq: 1000 }
+      Erdgeschoss:        { code: EG,  product_category: EG,  role: GROUND_FLOOR, seq: 1010 }
+      1. Obergeschoss:    { code: OG1, product_category: OG1, role: UPPER_FLOOR,  seq: 1020 }
+      2. Obergeschoss:    { code: OG2, product_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
+      Dachgeschoss:       { code: DG,  product_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
 
   Building_Architecture:
     prefix: BA
     doc_type_id: RE_BA
     name: PCERT Building Architecture
     doc_sub_type: BA
-    doc_base_type: RE
+    product_category: RE
     description: "IFC4x3 PCERT Building Architecture — small demo building, 11 elements"
     provenance: EXTRACTED
     climate: SCAN
@@ -91,15 +91,15 @@ buildings:
     building_bom_id: BUILDING_BA_STD
     seq_no: 50
     storeys:
-      "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }
-      "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }
+      "00 groundfloor": { code: GF,   product_category: GF,   role: GROUND_FLOOR, seq: 1010 }
+      "Unknown":        { code: MISC, product_category: MISC, role: MISC,         seq: 1020 }
 
   Building_Hvac:
     prefix: BH
     doc_type_id: RE_BH
     name: PCERT Building Hvac
     doc_sub_type: BH
-    doc_base_type: RE
+    product_category: RE
     description: "IFC4x3 PCERT Building Hvac — small MEP demo, 5 elements"
     provenance: EXTRACTED
     climate: SCAN
@@ -109,15 +109,15 @@ buildings:
     building_bom_id: BUILDING_BH_STD
     seq_no: 51
     storeys:
-      "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }
-      "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }
+      "00 groundfloor": { code: GF,   product_category: GF,   role: GROUND_FLOOR, seq: 1010 }
+      "Unknown":        { code: MISC, product_category: MISC, role: MISC,         seq: 1020 }
 
   Building_Structural:
     prefix: BS
     doc_type_id: RE_BS
     name: PCERT Building Structural
     doc_sub_type: BS
-    doc_base_type: RE
+    product_category: RE
     description: "IFC4x3 PCERT Building Structural — structural model, 16 elements"
     provenance: EXTRACTED
     climate: SCAN
@@ -127,15 +127,15 @@ buildings:
     building_bom_id: BUILDING_BS_STD
     seq_no: 52
     storeys:
-      "00 groundfloor": { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1010 }
-      "Unknown":        { code: MISC, bom_category: MISC, role: MISC,         seq: 1020 }
+      "00 groundfloor": { code: GF,   product_category: GF,   role: GROUND_FLOOR, seq: 1010 }
+      "Unknown":        { code: MISC, product_category: MISC, role: MISC,         seq: 1020 }
 
   Schependomlaan:
     prefix: SC
     doc_type_id: RE_SC
     name: Schependomlaan Residential
     doc_sub_type: SC
-    doc_base_type: RE
+    product_category: RE
     description: "IFC2x3 Schependomlaan — Dutch multi-storey residential, 3214 elements"
     provenance: EXTRACTED
     climate: SCAN
@@ -146,12 +146,12 @@ buildings:
     building_bom_id: BUILDING_SC_STD
     seq_no: 70
     storeys:
-      "-1 fundering":        { code: FDN,  bom_category: FDN,  role: FOUNDATION,   seq: 1010 }
-      "00 begane grond":     { code: GF,   bom_category: GF,   role: GROUND_FLOOR, seq: 1020 }
-      "01 eerste verdieping": { code: L1,  bom_category: L1,   role: UPPER_FLOOR,  seq: 1030 }
-      "02 tweede verdieping": { code: L2,  bom_category: L2,   role: UPPER_FLOOR,  seq: 1040 }
-      "03 derde verdieping":  { code: L3,  bom_category: L3,   role: UPPER_FLOOR,  seq: 1050 }
-      "04 dak":              { code: ROOF, bom_category: ROOF, role: ROOF,         seq: 1060 }
+      "-1 fundering":        { code: FDN,  product_category: FDN,  role: FOUNDATION,   seq: 1010 }
+      "00 begane grond":     { code: GF,   product_category: GF,   role: GROUND_FLOOR, seq: 1020 }
+      "01 eerste verdieping": { code: L1,  product_category: L1,   role: UPPER_FLOOR,  seq: 1030 }
+      "02 tweede verdieping": { code: L2,  product_category: L2,   role: UPPER_FLOOR,  seq: 1040 }
+      "03 derde verdieping":  { code: L3,  product_category: L3,   role: UPPER_FLOOR,  seq: 1050 }
+      "04 dak":              { code: ROOF, product_category: ROOF, role: ROOF,         seq: 1060 }
 
   # --- INFRASTRUCTURE ---
 
@@ -160,7 +160,7 @@ buildings:
     doc_type_id: IN_IP
     name: PCERT Infra Plumbing
     doc_sub_type: IP
-    doc_base_type: IN
+    product_category: IN
     description: "IFC4x3 PCERT Infra Plumbing — plumbing network, 27 elements"
     provenance: EXTRACTED
     climate: SCAN
@@ -170,7 +170,7 @@ buildings:
     building_bom_id: BUILDING_IP_STD
     seq_no: 60
     storeys:
-      "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1010 }
+      "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1010 }
 
   # --- COMMERCIAL buildings ---
 
@@ -179,7 +179,7 @@ buildings:
     doc_type_id: CO_TE
     name: Airport Terminal
     doc_sub_type: TE
-    doc_base_type: CO
+    product_category: CO
     description: "SJTII Airport Terminal — commercial large-scale"
     provenance: EXTRACTED
     climate: INST
@@ -190,13 +190,13 @@ buildings:
     building_bom_id: BUILDING_TE_STD
     seq_no: 40
     storeys:
-      Foundation:   { code: FDN, bom_category: FN, role: FOUNDATION,   seq: 1000 }
-      Ground Floor: { code: GF,  bom_category: GF, role: GROUND_FLOOR, seq: 1010 }
-      Level 1:      { code: L01, bom_category: L1, role: LEVEL_1,      seq: 1020 }
-      Level 2:      { code: L02, bom_category: L2, role: LEVEL_2,      seq: 1030 }
-      Level 3:      { code: L03, bom_category: L3, role: LEVEL_3,      seq: 1040 }
-      Level 4:      { code: L04, bom_category: L4, role: LEVEL_4,      seq: 1050 }
-      Roof:         { code: RF,  bom_category: RF, role: ROOF,         seq: 2000 }
+      Foundation:   { code: FDN, product_category: FN, role: FOUNDATION,   seq: 1000 }
+      Ground Floor: { code: GF,  product_category: GF, role: GROUND_FLOOR, seq: 1010 }
+      Level 1:      { code: L01, product_category: L1, role: LEVEL_1,      seq: 1020 }
+      Level 2:      { code: L02, product_category: L2, role: LEVEL_2,      seq: 1030 }
+      Level 3:      { code: L03, product_category: L3, role: LEVEL_3,      seq: 1040 }
+      Level 4:      { code: L04, product_category: L4, role: LEVEL_4,      seq: 1050 }
+      Roof:         { code: RF,  product_category: RF, role: ROOF,         seq: 2000 }
 
   # --- TEMPLATE paths (ST mode — AABB-fit selection, not real buildings) ---
 
@@ -205,7 +205,7 @@ buildings:
     doc_type_id: ST_SH
     name: Standard Sample House
     doc_sub_type: ST
-    doc_base_type: RE
+    product_category: RE
     description: "Template path — select BOMs from catalog by AABB fit for SH-sized building"
     provenance: EXTRACTED
     seq_no: 40
@@ -216,7 +216,7 @@ buildings:
     doc_type_id: ST_DX
     name: Standard Duplex
     doc_sub_type: ST
-    doc_base_type: RE
+    product_category: RE
     description: "Template path — select BOMs from catalog by AABB fit for DX-sized building"
     provenance: EXTRACTED
     seq_no: 41

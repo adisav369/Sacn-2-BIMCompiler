@@ -10,15 +10,15 @@ building:
   prefix: RL
   building_bom_id: BUILDING_RL_STD
   doc_sub_type: RL
-  doc_base_type: IN                          # IN = Infrastructure
+  product_category: IN                          # IN = Infrastructure
   name: IFC Infra Rail Sample
   dsl_file: dsl_rl.bim                       # EN-BLOC only — extracted, not generative
 
   # Infrastructure uses `segments:` — alias for `storeys:`.
   # All track elements are in a single "Rail track" segment.
   segments:
-    Rail track:                    { code: TRK,  bom_category: TRK, role: TRACK,         seq: 1010 }
-    Unknown:                       { code: MISC, bom_category: MS,  role: MISC,          seq: 9000 }
+    Rail track:                    { code: TRK,  product_category: TRK, role: TRACK,         seq: 1010 }
+    Unknown:                       { code: MISC, product_category: MS,  role: MISC,          seq: 9000 }
 
   static_children: []
   # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)

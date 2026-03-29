@@ -11,21 +11,21 @@ building:
   prefix: IN
   building_bom_id: BUILDING_IN_STD
   doc_sub_type: IN
-  doc_base_type: RE
+  product_category: RE
   name: AC11 Institute
   dsl_file: dsl_in.bim
 
   storeys:
-    Keller:             { code: KE,  bom_category: KE,  role: BASEMENT,     seq: 1000 }
-    Erdgeschoss:        { code: EG,  bom_category: EG,  role: GROUND_FLOOR, seq: 1010 }
-    1. Obergeschoss:    { code: OG1, bom_category: OG1, role: UPPER_FLOOR,  seq: 1020 }
-    2. Obergeschoss:    { code: OG2, bom_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
-    Dachgeschoss:       { code: DG,  bom_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
+    Keller:             { code: KE,  product_category: KE,  role: BASEMENT,     seq: 1000 }
+    Erdgeschoss:        { code: EG,  product_category: EG,  role: GROUND_FLOOR, seq: 1010 }
+    1. Obergeschoss:    { code: OG1, product_category: OG1, role: UPPER_FLOOR,  seq: 1020 }
+    2. Obergeschoss:    { code: OG2, product_category: OG2, role: UPPER_FLOOR,  seq: 1030 }
+    Dachgeschoss:       { code: DG,  product_category: DG,  role: ROOF_FLOOR,   seq: 1040 }
 
   floor_rooms:
     Keller:
       bom_id: FLOOR_IN_KE_STD
-      bom_category: KE
+      product_category: KE
       spaces:
         - { name: "BESPRECHUNGSRAUM_I", template_bom: IN_KE_001_SET, role: MEETING, seq: 10,
             aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 4.5, -1.65] }
@@ -64,7 +64,7 @@ building:
 
     Erdgeschoss:
       bom_id: FLOOR_IN_EG_STD
-      bom_category: EG
+      product_category: EG
       spaces:
         - { name: "BUERO_MEIER", template_bom: IN_EG_101_SET, role: OFFICE, seq: 10,
             aabb_mm: [2600, 4400, 2700], origin_m: [1.6, 4.5, 1.35] }
@@ -105,7 +105,7 @@ building:
 
     1. Obergeschoss:
       bom_id: FLOOR_IN_OG1_STD
-      bom_category: OG1
+      product_category: OG1
       spaces:
         - { name: "BUERO_OBERMUELLER", template_bom: IN_OG1_201_SET, role: OFFICE, seq: 10,
             aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 4.5, 4.35] }
@@ -154,7 +154,7 @@ building:
 
     2. Obergeschoss:
       bom_id: FLOOR_IN_OG2_STD
-      bom_category: OG2
+      product_category: OG2
       spaces:
         - { name: "BUERO", template_bom: IN_OG2_301_SET, role: OFFICE, seq: 10,
             aabb_mm: [5600, 4400, 2700], origin_m: [3.1, 4.5, 7.35] }
@@ -203,7 +203,7 @@ building:
 
     Dachgeschoss:
       bom_id: FLOOR_IN_DG_STD
-      bom_category: DG
+      product_category: DG
       spaces:
         - { name: "FLUR_3.OG_TREPPE", template_bom: IN_DG_401_SET, role: CORRIDOR, seq: 10,
             aabb_mm: [5400, 13400, 2669], origin_m: [21.0, 9.0, 10.335] }

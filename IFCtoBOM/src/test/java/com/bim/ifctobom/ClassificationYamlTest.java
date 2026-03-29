@@ -25,7 +25,7 @@ class ClassificationYamlTest {
         assertEquals("SH", b.prefix());
         assertEquals("BUILDING_SH_STD", b.buildingBomId());
         assertEquals("SH", b.docSubType());
-        assertEquals("RE", b.docBaseType());
+        assertEquals("RE", b.productCategory());
         assertEquals("Sample House", b.name());
     }
 

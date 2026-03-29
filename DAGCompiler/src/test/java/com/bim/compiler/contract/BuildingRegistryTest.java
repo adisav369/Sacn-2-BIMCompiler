@@ -40,17 +40,17 @@ public class BuildingRegistryTest {
 
     @TestFactory
     Collection<DynamicTest> compilationPipeline() {
-        // doc.base.type property filters which M_Product_Category (= DocBaseType) to compile:
+        // product.category property filters which M_Product_Category to compile:
         //   RE → direct BUILDING BOM match (singularity)
         //   ST → template path (M_BomCategory tree walk)
         //   null → all active (default)
-        String docBaseType = System.getProperty("doc.base.type");
-        List<BuildingEntry> buildings = docBaseType != null
-            ? BuildingRegistry.loadByProductCategory(docBaseType)
+        String productCategory = System.getProperty("product.category");
+        List<BuildingEntry> buildings = productCategory != null
+            ? BuildingRegistry.loadByProductCategory(productCategory)
             : BuildingRegistry.loadActive();
         assertFalse(buildings.isEmpty(),
             "C_DocType must have active building types"
-                + (docBaseType != null ? " for DocBaseType=" + docBaseType : ""));
+                + (productCategory != null ? " for ProductCategory=" + productCategory : ""));
 
         List<DynamicTest> tests = new ArrayList<>();
         for (BuildingEntry entry : buildings) {

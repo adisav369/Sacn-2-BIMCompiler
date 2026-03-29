@@ -10,21 +10,21 @@ building:
   prefix: DX
   building_bom_id: BUILDING_DX_STD
   doc_sub_type: DX
-  doc_base_type: RE
+  product_category: RE
   name: Duplex
   dsl_file: dsl_dx.bim                     # BIM COBOL script for DAGCompiler
 
   storeys:
-    Level 1: { code: L1,   bom_category: L1, role: LEVEL_1,    seq: 1010 }
-    Level 2: { code: L2,   bom_category: L2, role: LEVEL_2,    seq: 1020 }
-    Roof:    { code: ROOF, bom_category: RF, role: ROOF,       seq: 1030 }
-    T/FDN:   { code: FDN,  bom_category: FN, role: FOUNDATION, seq: 1040 }
-    Unknown: { code: MISC, bom_category: MS, role: MISC,       seq: 1050 }
+    Level 1: { code: L1,   product_category: L1, role: LEVEL_1,    seq: 1010 }
+    Level 2: { code: L2,   product_category: L2, role: LEVEL_2,    seq: 1020 }
+    Roof:    { code: ROOF, product_category: RF, role: ROOF,       seq: 1030 }
+    T/FDN:   { code: FDN,  product_category: FN, role: FOUNDATION, seq: 1040 }
+    Unknown: { code: MISC, product_category: MS, role: MISC,       seq: 1050 }
 
   floor_rooms:
     Level 1:
       bom_id: FLOOR_DX_L1_STD
-      bom_category: L1
+      product_category: L1
       spaces:
         - { name: LIVING,    template_bom: LIVING_SET,               role: LIVING,    seq: 10, aabb_mm: [7191, 800, 1170] }
         - { name: DINING,    template_bom: DINING_SET,               role: DINING,    seq: 20, aabb_mm: [4200, 900, 750] }
@@ -35,7 +35,7 @@ building:
 
     Level 2:
       bom_id: FLOOR_DX_L2_STD
-      bom_category: L2
+      product_category: L2
       spaces:
         - { name: BEDROOM,  template_bom: BED_SET,               role: BEDROOM,  seq: 10, aabb_mm: [1200, 600, 2000] }
         - { name: MASTER,   template_bom: BED_SET_MASTER,        role: MASTER,   seq: 20, aabb_mm: [1200, 600, 2000] }

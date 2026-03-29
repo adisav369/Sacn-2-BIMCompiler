@@ -10,16 +10,16 @@ building:
   prefix: WT
   building_bom_id: BUILDING_WT_STD
   doc_sub_type: WT
-  doc_base_type: CO
+  product_category: CO
   name: BimWhale Tall Building
   dsl_file: dsl_wt.bim
 
   storeys:
-    "Level 1": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 18 elements
-    "Level 2": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 14 elements
-    "Level 4": { code: L4, bom_category: L4, role: UPPER_FLOOR, seq: 1030 }  # 11 elements
-    "Level 5": { code: L5, bom_category: L5, role: UPPER_FLOOR, seq: 1040 }  # 11 elements
-    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1050 }  # 1 elements
+    "Level 1": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 18 elements
+    "Level 2": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 14 elements
+    "Level 4": { code: L4, product_category: L4, role: UPPER_FLOOR, seq: 1030 }  # 11 elements
+    "Level 5": { code: L5, product_category: L5, role: UPPER_FLOOR, seq: 1040 }  # 11 elements
+    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1050 }  # 1 elements
 
   # MEP disciplines: defaults to all 6 for CO (§10.4.11 T3.4)
 

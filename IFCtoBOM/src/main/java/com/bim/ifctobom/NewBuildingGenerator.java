@@ -143,7 +143,7 @@ public class NewBuildingGenerator {
         sb.append("  prefix: ").append(prefix).append('\n');
         sb.append("  building_bom_id: BUILDING_").append(prefix).append("_STD\n");
         sb.append("  doc_sub_type: ").append(prefix).append('\n');
-        sb.append("  doc_base_type: ").append(docBase).append('\n');
+        sb.append("  product_category: ").append(docBase).append('\n');
         sb.append("  name: ").append(humanName).append('\n');
         sb.append("  dsl_file: dsl_").append(prefixLower).append(".bim\n\n");
         sb.append("  storeys:\n");
@@ -152,14 +152,14 @@ public class NewBuildingGenerator {
             sb.append("    # TODO: Replace with actual storey names from extracted DB\n");
             sb.append("    # Run: sqlite3 DAGCompiler/lib/input/{Type}_extracted.db \\\n");
             sb.append("    #      \"SELECT storey, COUNT(*) FROM elements_meta GROUP BY storey\"\n");
-            sb.append("    \"Ground Floor\": { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1010 }\n");
-            sb.append("    \"Roof\":         { code: RF, bom_category: RF, role: ROOF,         seq: 1020 }\n");
+            sb.append("    \"Ground Floor\": { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1010 }\n");
+            sb.append("    \"Roof\":         { code: RF, product_category: RF, role: ROOF,         seq: 1020 }\n");
         } else {
             int seqNo = 1010;
             for (StoreyInfo s : storeys) {
                 String code = inferCode(s.name());
                 String role = inferRole(s.name());
-                sb.append(String.format("    \"%s\": { code: %s, bom_category: %s, role: %s, seq: %d }  # %d elements%n",
+                sb.append(String.format("    \"%s\": { code: %s, product_category: %s, role: %s, seq: %d }  # %d elements%n",
                         s.name(), code, code, role, seqNo, s.elementCount()));
                 seqNo += 10;
             }
@@ -169,7 +169,7 @@ public class NewBuildingGenerator {
         sb.append("  # floor_rooms:           # uncomment if building has named rooms with AABB scope\n");
         sb.append("  #   \"Ground Floor\":\n");
         sb.append("  #     bom_id: FLOOR_").append(prefix).append("_GF_STD\n");
-        sb.append("  #     bom_category: GF\n");
+        sb.append("  #     product_category: GF\n");
         sb.append("  #     spaces:\n");
         sb.append("  #       - { name: ROOM_NAME, template_bom: ").append(prefix).append("_ROOM_SET, role: LIVING, seq: 10,\n");
         sb.append("  #           aabb_mm: [width, depth, height], origin_m: [x, y, z] }\n\n");

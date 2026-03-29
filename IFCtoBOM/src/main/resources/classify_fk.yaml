@@ -11,19 +11,19 @@ building:
   prefix: FK
   building_bom_id: BUILDING_FK_STD
   doc_sub_type: FK
-  doc_base_type: RE                    # Residential
+  product_category: RE                    # Residential
   name: FZK-Haus
   jurisdiction: MY
   dsl_file: dsl_fk.bim                # BIM COBOL script for DAGCompiler
 
   storeys:
-    Erdgeschoss:  { code: EG, bom_category: EG, role: GROUND_FLOOR, seq: 1010 }
-    Dachgeschoss: { code: DG, bom_category: DG, role: UPPER_FLOOR,  seq: 1020 }
+    Erdgeschoss:  { code: EG, product_category: EG, role: GROUND_FLOOR, seq: 1010 }
+    Dachgeschoss: { code: DG, product_category: DG, role: UPPER_FLOOR,  seq: 1020 }
 
   floor_rooms:
     Erdgeschoss:
       bom_id: FLOOR_FK_EG_STD
-      bom_category: EG
+      product_category: EG
       spaces:
         # Origins and AABBs from IfcSpace geometry (extract.py + ifcopenshell)
         - { name: FLUR,         template_bom: FK_CORRIDOR_SET,  role: CORRIDOR, seq: 10,
@@ -40,7 +40,7 @@ building:
             aabb_mm: [4395, 3710, 2500], origin_m: [2.498, 2.155, 1.250] }
     Dachgeschoss:
       bom_id: FLOOR_FK_DG_STD
-      bom_category: DG
+      product_category: DG
       spaces:
         - { name: GALERIE,      template_bom: FK_GALLERY_SET,   role: GALLERY,  seq: 10,
             aabb_mm: [11400, 9400, 3387], origin_m: [6.000, 5.000, 4.393] }

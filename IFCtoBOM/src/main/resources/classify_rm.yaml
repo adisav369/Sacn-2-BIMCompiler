@@ -10,16 +10,16 @@ building:
   prefix: RM
   building_bom_id: BUILDING_RM_STD
   doc_sub_type: RM
-  doc_base_type: RE
+  product_category: RE
   name: Revit MEP
   dsl_file: dsl_rm.bim
 
   storeys:
-    "Level 2": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1010 }  # 1783 elements
-    "Level 1": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1020 }  # 1411 elements
-    "Level 3": { code: L3, bom_category: L3, role: UPPER_FLOOR, seq: 1030 }  # 1411 elements
-    "Roof Level": { code: ROOF, bom_category: ROOF, role: ROOF, seq: 1040 }  # 66 elements
-    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1050 }  # 2116 elements
+    "Level 2": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1010 }  # 1783 elements
+    "Level 1": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1020 }  # 1411 elements
+    "Level 3": { code: L3, product_category: L3, role: UPPER_FLOOR, seq: 1030 }  # 1411 elements
+    "Roof Level": { code: ROOF, product_category: ROOF, role: ROOF, seq: 1040 }  # 66 elements
+    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1050 }  # 2116 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

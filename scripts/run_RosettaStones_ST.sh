@@ -8,7 +8,7 @@ cd "$(dirname "$SCRIPT_DIR")"
 
 YAMLS=()
 for f in "${YAML_DIR}"/classify_*.yaml; do
-    dbt=$(grep -E '^\s+doc_base_type:' "$f" | head -1 | sed 's/.*:\s*//' | tr -d '\r' | xargs)
+    dbt=$(grep -E '^\s+product_category:' "$f" | head -1 | sed 's/.*:\s*//' | tr -d '\r' | xargs)
     [ "$dbt" = "ST" ] && YAMLS+=("$f")
 done
 

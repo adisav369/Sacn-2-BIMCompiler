@@ -37,7 +37,7 @@ prepare_compile_db() {
     local bom_db="library/${prefix}_BOM.db"
     local building_type="$2"
     local doc_sub_type="$3"
-    local doc_base_type="$4"
+    local product_category="$4"
     local name="$5"
     local building_bom_id="$6"
     local yaml_file="$7"

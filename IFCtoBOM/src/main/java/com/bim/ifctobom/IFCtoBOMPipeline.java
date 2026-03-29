@@ -252,8 +252,8 @@ public class IFCtoBOMPipeline {
             CategoryLookup catLookup = CategoryLookup.load(discConn);
             BIMLogger.fine("PIPELINE", "CategoryLookup loaded: {} categories from ERP.db", catLookup.size());
 
-            // 6-8. Build BOMs — dispatch based on m_product_category_id (was doc_base_type)
-            BIMLogger.stage(4, "BuildBOMs", config.docBaseType() + " path");
+            // 6-8. Build BOMs — dispatch based on m_product_category_id
+            BIMLogger.stage(4, "BuildBOMs", config.productCategory() + " path");
             //   RE → Scope + Composition + Structural + FloorRoom
             //   CO → DisciplineBomBuilder (BUILDING → FLOOR → DISCIPLINE → LEAF)
             BuildResult structural;
@@ -261,7 +261,7 @@ public class IFCtoBOMPipeline {
             CompositionResult composition;
             int roomLines;
 
-            if ("CO".equals(config.docBaseType()) || "IN".equals(config.docBaseType())) {
+            if ("CO".equals(config.productCategory()) || "IN".equals(config.productCategory())) {
                 // CO/IN path: discipline-stratified hierarchy (IN = infrastructure)
                 structural = DisciplineBomBuilder.build(bomConn, config, storeyElements, catLookup);
                 scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0);
@@ -358,7 +358,7 @@ public class IFCtoBOMPipeline {
             // 10b. Write C_DocType row (R27: spec says it belongs in {PREFIX}_BOM.db)
             // Implementing LAST_MILE_PROBLEM.md R27 — Witness: W-R27-DOCTYPE
             {
-                String docTypeId = config.docBaseType() + "_" + config.docSubType();
+                String docTypeId = config.productCategory() + "_" + config.docSubType();
                 String outputPath = "DAGCompiler/lib/output/"
                         + config.buildingType().toLowerCase() + ".db";
                 String refPath = "DAGCompiler/lib/input/"

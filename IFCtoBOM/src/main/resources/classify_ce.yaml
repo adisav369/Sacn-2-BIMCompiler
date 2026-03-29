@@ -10,13 +10,13 @@ building:
   prefix: CE
   building_bom_id: BUILDING_CE_STD
   doc_sub_type: CE
-  doc_base_type: RE
+  product_category: RE
   name: Clinic Electrical
   dsl_file: dsl_ce.bim
 
   storeys:
-    "Level 1": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 1177 elements
-    "Level 2": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 933 elements
+    "Level 1": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 1177 elements
+    "Level 2": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 933 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

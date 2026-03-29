@@ -3,8 +3,8 @@
 # BIM Compiler — Rosetta Stone Compilation Functions
 #
 # Sourced by run_RosettaStones.sh. Provides:
-#   singularity_check <label> <output_db> <bom_db> [doc_base_type]
-#   compile_building  <label> <base> <bom_db> <compile_db> [doc_base_type]
+#   singularity_check <label> <output_db> <bom_db> [product_category]
+#   compile_building  <label> <base> <bom_db> <compile_db> [product_category]
 #   run_contracts     — standalone contract tests
 #
 # Requires: log_helper.sh (verdict), lib_rosetta_helpers.sh (print_header)
@@ -15,7 +15,7 @@ singularity_check() {
     local label="$1"
     local output_db="$2"
     local bom_db="$3"  # *_BOM.db path (building-specific, not legacy BOM.db)
-    local doc_base_type="${4:-RE}"
+    local product_category="${4:-RE}"
 
     echo ""
     echo "  Singularity rule check (${label}):"
@@ -24,7 +24,7 @@ singularity_check() {
     BLDG_BOMID=$(sqlite3 "$bom_db" "
         SELECT b.bom_id FROM m_bom b
         LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID
-        WHERE b.bom_type = 'BUILDING' AND mpc.Value = '${doc_base_type}'
+        WHERE b.bom_type = 'BUILDING' AND mpc.Value = '${product_category}'
           AND b.doc_sub_type = '${label}' AND b.is_active = 1
         ORDER BY b.seq_no LIMIT 1
     " 2>/dev/null)
@@ -54,17 +54,17 @@ compile_building() {
     local base="$2"
     local bom_db="$3"
     local compile_db="$4"   # per-building: library/_SH_compile.db
-    local doc_base_type="${5:-RE}"
+    local product_category="${5:-RE}"
 
     print_header "COMPILE ${label}"
 
     echo ""
-    echo "  Compiling (DocBaseType=${doc_base_type}, bom.db=${compile_db})..."
+    echo "  Compiling (ProductCategory=${product_category}, bom.db=${compile_db})..."
     local CC_OUTPUT CC_RC
     CC_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="BuildingRegistryTest" \
         -Dbom.db="${compile_db}" \
-        -Ddoc.base.type="${doc_base_type}" \
+        -Dproduct.category="${product_category}" \
         -Dpipeline.tests.skip=false \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && CC_RC=0 || CC_RC=$?
@@ -83,7 +83,7 @@ compile_building() {
         echo "  !! NO OUTPUT DB produced"
     fi
 
-    singularity_check "$label" "${base}.db" "$bom_db" "$doc_base_type"
+    singularity_check "$label" "${base}.db" "$bom_db" "$product_category"
 
     # S74 compat: co_empty_space tables removed from BuildingWriter but G6 still queries them.
     # Add empty stubs so the SELECT doesn't throw "no such table".
@@ -100,7 +100,7 @@ compile_building() {
     CT_OUTPUT=$(mvn test -pl DAGCompiler \
         -Dtest="RosettaStoneGateTest,TotalityContractTest,RotationContractTest" \
         -Dbom.db="${compile_db}" \
-        -Ddoc.base.type="${doc_base_type}" \
+        -Dproduct.category="${product_category}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && CT_RC=0 || CT_RC=$?
 

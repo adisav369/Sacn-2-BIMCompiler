@@ -10,15 +10,15 @@ building:
   prefix: GH
   building_bom_id: BUILDING_GH_STD
   doc_sub_type: GH
-  doc_base_type: RE
+  product_category: RE
   name: AC9 Haus G-H
   dsl_file: dsl_gh.bim
 
   storeys:
-    "Dachgeschoss": { code: ROOF, bom_category: ROOF, role: ROOF, seq: 1010 }  # 27 elements
-    "Obergeschoss": { code: OBER, bom_category: OBER, role: UPPER_FLOOR, seq: 1020 }  # 54 elements
-    "Erdgeschoss": { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1030 }  # 58 elements
-    "Keller": { code: FDN, bom_category: FDN, role: BASEMENT, seq: 1040 }  # 54 elements
+    "Dachgeschoss": { code: ROOF, product_category: ROOF, role: ROOF, seq: 1010 }  # 27 elements
+    "Obergeschoss": { code: OBER, product_category: OBER, role: UPPER_FLOOR, seq: 1020 }  # 54 elements
+    "Erdgeschoss": { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1030 }  # 58 elements
+    "Keller": { code: FDN, product_category: FDN, role: BASEMENT, seq: 1040 }  # 54 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

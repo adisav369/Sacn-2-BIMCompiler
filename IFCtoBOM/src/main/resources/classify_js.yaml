@@ -10,14 +10,14 @@ building:
   prefix: JS
   building_bom_id: BUILDING_JS_STD
   doc_sub_type: JS
-  doc_base_type: RE
+  product_category: RE
   name: AC90 Jasmin Sun
   dsl_file: dsl_js.bim
 
   storeys:
-    "Keller": { code: FDN, bom_category: FDN, role: BASEMENT, seq: 1010 }  # 13 elements
-    "Erdgeschoss": { code: GF, bom_category: GF, role: GROUND_FLOOR, seq: 1020 }  # 31 elements
-    "Dachgeschoss": { code: ROOF, bom_category: ROOF, role: ROOF, seq: 1030 }  # 17 elements
+    "Keller": { code: FDN, product_category: FDN, role: BASEMENT, seq: 1010 }  # 13 elements
+    "Erdgeschoss": { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1020 }  # 31 elements
+    "Dachgeschoss": { code: ROOF, product_category: ROOF, role: ROOF, seq: 1030 }  # 17 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

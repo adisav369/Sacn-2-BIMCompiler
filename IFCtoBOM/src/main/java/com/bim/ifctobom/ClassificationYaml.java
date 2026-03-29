@@ -56,7 +56,7 @@ public class ClassificationYaml {
 
     public record BuildingConfig(
             String buildingType, String prefix, String buildingBomId,
-            String docSubType, String docBaseType, String name,
+            String docSubType, String productCategory, String name,
             String provenance,
             Map<String, StoreyConfig> storeys,
             Map<String, FloorRoomConfig> floorRooms,
@@ -116,7 +116,7 @@ public class ClassificationYaml {
                 Map<String, Object> s = (Map<String, Object>) e.getValue();
                 storeys.put(e.getKey(), new StoreyConfig(
                         getString(s, "code"),
-                        getString(s, "bom_category"),
+                        getString(s, "product_category"),
                         getString(s, "role"),
                         getInt(s, "seq", 0)
                 ));
@@ -158,7 +158,7 @@ public class ClassificationYaml {
                 }
                 floorRooms.put(e.getKey(), new FloorRoomConfig(
                         getString(fr, "bom_id"),
-                        getString(fr, "bom_category"),
+                        getString(fr, "product_category"),
                         spaces
                 ));
             }
@@ -240,7 +240,7 @@ public class ClassificationYaml {
                 getString(bldg, "prefix"),
                 getString(bldg, "building_bom_id"),
                 getString(bldg, "doc_sub_type"),
-                getString(bldg, "doc_base_type"),
+                getString(bldg, "product_category"),
                 getString(bldg, "name"),
                 getString(bldg, "provenance"),
                 storeys, floorRooms, staticChildren, composition,

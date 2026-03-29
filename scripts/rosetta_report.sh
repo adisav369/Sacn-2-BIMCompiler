@@ -64,7 +64,7 @@ for yf in "$YAML_DIR"/classify_*.yaml; do
     p=$(parse_yaml "$yf" "prefix")
     bt=$(parse_yaml "$yf" "building_type")
     nm=$(parse_yaml "$yf" "name")
-    db=$(parse_yaml "$yf" "doc_base_type")
+    db=$(parse_yaml "$yf" "product_category")
     ds=$(parse_yaml "$yf" "doc_sub_type")
 
     if [ ${#FILTER_PREFIXES[@]} -gt 0 ]; then

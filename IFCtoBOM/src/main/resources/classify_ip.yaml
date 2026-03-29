@@ -10,12 +10,12 @@ building:
   prefix: IP
   building_bom_id: BUILDING_IP_STD
   doc_sub_type: IP
-  doc_base_type: IN
+  product_category: IN
   name: PCERT Infra Plumbing
   dsl_file: dsl_ip.bim
 
   storeys:
-    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1010 }  # 27 elements
+    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1010 }  # 27 elements
 
   # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)
 

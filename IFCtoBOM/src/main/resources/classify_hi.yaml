@@ -10,17 +10,17 @@ building:
   prefix: HI
   building_bom_id: BUILDING_HI_STD
   doc_sub_type: HI
-  doc_base_type: RE
+  product_category: RE
   name: HITOS Building
   dsl_file: dsl_hi.bim
 
   storeys:
-    "u.etg": { code: U.ET, bom_category: U.ET, role: UPPER_FLOOR, seq: 1010 }  # 534 elements
-    "2.etg": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 659 elements
-    "1.etg": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1030 }  # 458 elements
-    "3.etg": { code: L3, bom_category: L3, role: UPPER_FLOOR, seq: 1040 }  # 323 elements
-    "kjeller": { code: KJEL, bom_category: KJEL, role: UPPER_FLOOR, seq: 1050 }  # 90 elements
-    "fundamentetasje": { code: FDN, bom_category: FDN, role: FOUNDATION, seq: 1060 }  # 4 elements
+    "u.etg": { code: U.ET, product_category: U.ET, role: UPPER_FLOOR, seq: 1010 }  # 534 elements
+    "2.etg": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 659 elements
+    "1.etg": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1030 }  # 458 elements
+    "3.etg": { code: L3, product_category: L3, role: UPPER_FLOOR, seq: 1040 }  # 323 elements
+    "kjeller": { code: KJEL, product_category: KJEL, role: UPPER_FLOOR, seq: 1050 }  # 90 elements
+    "fundamentetasje": { code: FDN, product_category: FDN, role: FOUNDATION, seq: 1060 }  # 4 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

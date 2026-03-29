@@ -29,7 +29,7 @@
 #   prefix          → BOM DB name ({PREFIX}_BOM.db)
 #   building_type   → extraction source
 #   doc_sub_type    → compilation parameter
-#   doc_base_type   → compilation parameter
+#   product_category   → compilation parameter
 #   building_bom_id → singularity check
 #
 # Modules (sourced):
@@ -140,7 +140,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
     PREFIX=$(parse_yaml "$yaml_file" "prefix")
     BUILDING_TYPE=$(parse_yaml "$yaml_file" "building_type")
     DOC_SUB_TYPE=$(parse_yaml "$yaml_file" "doc_sub_type")
-    DOC_BASE_TYPE=$(parse_yaml "$yaml_file" "doc_base_type")
+    PRODUCT_CATEGORY=$(parse_yaml "$yaml_file" "product_category")
     BLDG_NAME=$(parse_yaml "$yaml_file" "name")
     BUILDING_BOM_ID=$(parse_yaml "$yaml_file" "building_bom_id")
     PROVENANCE=$(parse_yaml "$yaml_file" "provenance")
@@ -152,7 +152,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
     echo "  YAML:           $(basename "$yaml_file")"
     echo "  BOM DB:         ${BOM_DB}"
     echo "  Building type:  ${BUILDING_TYPE}"
-    echo "  DocType:        ${DOC_BASE_TYPE}_${DOC_SUB_TYPE}"
+    echo "  DocType:        ${PRODUCT_CATEGORY}_${DOC_SUB_TYPE}"
     echo "  Building BOM:   ${BUILDING_BOM_ID}"
     echo "  Provenance:     ${PROVENANCE:-EXTRACTED}"
     echo "  Output base:    ${OUTPUT_BASE}"
@@ -184,7 +184,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
             DSL_FILE="IFCtoBOM/src/main/resources/dsl_${PREFIX,,}.bim"
             if [ -f "$DSL_FILE" ] && [ -f "$BOM_DB" ]; then
                 DSL_CONTENT=$(cat "$DSL_FILE")
-                sqlite3 "$BOM_DB" "UPDATE C_DocType SET DSLContent = '$(echo "$DSL_CONTENT" | sed "s/'/''/g")' WHERE C_DocType_ID = '${DOC_BASE_TYPE}_${DOC_SUB_TYPE}'" 2>/dev/null || true
+                sqlite3 "$BOM_DB" "UPDATE C_DocType SET DSLContent = '$(echo "$DSL_CONTENT" | sed "s/'/''/g")' WHERE C_DocType_ID = '${PRODUCT_CATEGORY}_${DOC_SUB_TYPE}'" 2>/dev/null || true
             fi
         else
             # ── EXTRACTED path: normal IFCtoBOM pipeline ──
@@ -236,9 +236,9 @@ for yaml_file in "${YAML_FILES[@]}"; do
         fi
 
         # Prepare per-building compile DB (e.g. library/_SH_compile.db)
-        if prepare_compile_db "$PREFIX" "$BUILDING_TYPE" "$DOC_SUB_TYPE" "$DOC_BASE_TYPE" "$BLDG_NAME" "$BUILDING_BOM_ID" "$yaml_file"; then
+        if prepare_compile_db "$PREFIX" "$BUILDING_TYPE" "$DOC_SUB_TYPE" "$PRODUCT_CATEGORY" "$BLDG_NAME" "$BUILDING_BOM_ID" "$yaml_file"; then
             # Run compilation — passes -Dbom.db to Maven
-            compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB" "$DOC_BASE_TYPE"
+            compile_building "$DOC_SUB_TYPE" "$OUTPUT_BASE" "$BOM_DB" "$COMPILE_DB" "$PRODUCT_CATEGORY"
             cleanup_compile_db
 
             # G0 check: verify output has c_order rows (not extraction-only)

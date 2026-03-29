@@ -86,13 +86,13 @@
                 <version>3.2.5</version>
                 <!-- Pipeline tests: run via scripts/run_tests.sh -->
                 <!-- Forward CLI -D properties to the forked JVM.
-                     Shell passes: -Dbom.db=... -Ddoc.base.type=...
+                     Shell passes: -Dbom.db=... -Dproduct.category=...
                      Without this, System.getProperty() returns null in tests. -->
                 <configuration>
                     <skipTests>${pipeline.tests.skip}</skipTests>
                     <systemPropertyVariables>
                         <bom.db>${bom.db}</bom.db>
-                        <doc.base.type>${doc.base.type}</doc.base.type>
+                        <product.category>${product.category}</product.category>
                         <bim.log.level>${bim.log.level}</bim.log.level>
                     </systemPropertyVariables>
                     <!-- BIM_COBOL on test classpath for RouteExecutor SPI (§10.4.11 T3.1).

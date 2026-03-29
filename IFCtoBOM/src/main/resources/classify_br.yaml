@@ -10,21 +10,21 @@ building:
   prefix: BR
   building_bom_id: BUILDING_BR_STD
   doc_sub_type: BR
-  doc_base_type: IN                          # IN = Infrastructure
+  product_category: IN                          # IN = Infrastructure
   name: IFC Infra Bridge Sample
   dsl_file: dsl_br.bim                       # EN-BLOC only — extracted, not generative
 
   # Infrastructure uses `segments:` — alias for `storeys:`.
   # Each segment is an IfcBridgePart (pier, deck, superstructure, etc.)
   segments:
-    railbridge - superstructure: { code: RSUP, bom_category: SUP, role: SUPERSTRUCTURE, seq: 1010 }
-    road river bridge - pier:    { code: RPIR, bom_category: PIR, role: PIER,            seq: 1020 }
-    rail bridge - pier:          { code: RLPR, bom_category: PIR, role: PIER,            seq: 1030 }
-    road rail bridge - superstructure: { code: RRSUP, bom_category: SUP, role: SUPERSTRUCTURE, seq: 1040 }
-    road rail bridge - deck:     { code: RDCK, bom_category: DCK, role: DECK,            seq: 1050 }
-    road rail bridge - approach: { code: RAPR, bom_category: APR, role: APPROACH,        seq: 1060 }
-    bridge road - abutment:      { code: ABUT, bom_category: ABT, role: ABUTMENT,       seq: 1070 }
-    Unknown:                     { code: MISC, bom_category: MS,  role: MISC,            seq: 9000 }
+    railbridge - superstructure: { code: RSUP, product_category: SUP, role: SUPERSTRUCTURE, seq: 1010 }
+    road river bridge - pier:    { code: RPIR, product_category: PIR, role: PIER,            seq: 1020 }
+    rail bridge - pier:          { code: RLPR, product_category: PIR, role: PIER,            seq: 1030 }
+    road rail bridge - superstructure: { code: RRSUP, product_category: SUP, role: SUPERSTRUCTURE, seq: 1040 }
+    road rail bridge - deck:     { code: RDCK, product_category: DCK, role: DECK,            seq: 1050 }
+    road rail bridge - approach: { code: RAPR, product_category: APR, role: APPROACH,        seq: 1060 }
+    bridge road - abutment:      { code: ABUT, product_category: ABT, role: ABUTMENT,       seq: 1070 }
+    Unknown:                     { code: MISC, product_category: MS,  role: MISC,            seq: 9000 }
 
   static_children: []
   # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)

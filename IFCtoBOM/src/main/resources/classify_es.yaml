@@ -10,19 +10,19 @@ building:
   prefix: ES
   building_bom_id: BUILDING_ES_STD
   doc_sub_type: ES
-  doc_base_type: RE
+  product_category: RE
   name: Esplanades
   dsl_file: dsl_es.bim
 
   storeys:
-    "1.korrus": { code: L1, bom_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 436 elements
-    "2.korrus": { code: L2, bom_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 311 elements
-    "3.korrus": { code: L3, bom_category: L3, role: UPPER_FLOOR, seq: 1030 }  # 315 elements
-    "4.korrus": { code: L4, bom_category: L4, role: UPPER_FLOOR, seq: 1040 }  # 315 elements
-    "5.korrus": { code: L5, bom_category: L5, role: UPPER_FLOOR, seq: 1050 }  # 293 elements
-    "Katus": { code: ROOF, bom_category: ROOF, role: ROOF, seq: 1060 }  # 206 elements
-    "Vundament": { code: VUND, bom_category: VUND, role: UPPER_FLOOR, seq: 1070 }  # 45 elements
-    "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1080 }  # 20 elements
+    "1.korrus": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 436 elements
+    "2.korrus": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1020 }  # 311 elements
+    "3.korrus": { code: L3, product_category: L3, role: UPPER_FLOOR, seq: 1030 }  # 315 elements
+    "4.korrus": { code: L4, product_category: L4, role: UPPER_FLOOR, seq: 1040 }  # 315 elements
+    "5.korrus": { code: L5, product_category: L5, role: UPPER_FLOOR, seq: 1050 }  # 293 elements
+    "Katus": { code: ROOF, product_category: ROOF, role: ROOF, seq: 1060 }  # 206 elements
+    "Vundament": { code: VUND, product_category: VUND, role: UPPER_FLOOR, seq: 1070 }  # 45 elements
+    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1080 }  # 20 elements
 
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies

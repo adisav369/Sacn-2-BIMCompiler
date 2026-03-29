@@ -60,7 +60,7 @@ public class BomTemplateContract {
     public static TemplateReport check(Connection conn, String docSubType)
             throws SQLException {
 
-        // Derive template root from docSubType → C_DocType → docBaseType → doc_type
+        // Derive template root from docSubType → C_DocType → product_category
         String templateRoot = "RE"; // fallback
         MCDocType docType = MCDocType.getByDocSubType(conn, docSubType);
         if (docType != null) {
