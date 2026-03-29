@@ -480,6 +480,77 @@ this: off by default, on when you need the proof chain.
 - Tier 3: "Does this building satisfy conservation laws?" (aggregate)
 - Tier 4: "Does this output match its source or design intent?" (provenance)
 
+#### P33 PATTERN_MATCH — Vocabulary-Based Generative Verification
+
+For generative buildings (no extraction source), P33 verifies against the
+**spatial vocabulary** learned from Rosetta Stone GEO data.
+
+**Input:** GEO TACK data from the building under test + vocabulary database
+built from verified Rosetta Stones (`geo_verify.py` output).
+
+**Vocabulary structure:**
+
+```
+vocabulary.db:
+  spatial_pattern(
+    pattern_id    INTEGER PK,
+    archetype     TEXT,      -- PLACE, CLUSTER, TILE, ROUTE, FRAME
+    ifc_class     TEXT,      -- IfcDoor, IfcWall, IfcFurnishingElement
+    parent_class  TEXT,      -- parent BOM category (ROOM, FLOOR, SET)
+    offset_range  TEXT,      -- min/max dx,dy,dz from verified examples
+    sibling_count_range TEXT, -- min/max siblings in this pattern
+    source_buildings TEXT,   -- which Rosetta Stones contributed this pattern
+    instance_count INTEGER   -- how many verified examples
+  )
+```
+
+Populated by scanning GEO logs from verified buildings. Each TACK LEAF
+line contributes an observation: "IfcDoor in ROOM parent, offset
+(10.74, 2.18, 0.47), 2 sibling doors." Aggregated across 35 buildings,
+the pattern becomes: "IfcDoor in ROOM: dx=[0.1–15.5], dy=[0.1–8.7],
+dz=[0.4–0.5], siblings=[1–5]."
+
+**Proof logic:**
+
+```
+∀ element e in generative output:
+  1. Classify: archetype from verb_ref, ifc_class, parent category
+  2. Match: find spatial_pattern WHERE archetype AND ifc_class AND parent match
+  3. Check: e.offset within pattern.offset_range AND
+           e.sibling_count within pattern.sibling_count_range
+  Result:
+    CONSISTENT — matches a proven pattern (with confidence = instance_count / total)
+    NOVEL — no pattern match (new arrangement, needs human review)
+    ANOMALOUS — matches pattern type but offset outside proven range
+```
+
+**Example: DemoHouse (DM) — generative, composed from SH + FK:**
+
+```
+P33 IfcDoor in ROOM: offset=(10.74, 2.18, 0.47) — CONSISTENT
+    (matches SH pattern, 3 verified instances, range dx=[10.7–12.2])
+
+P33 IfcFurnishingElement in SET: offset=(0.42, 2.60, 0.00) — CONSISTENT
+    (matches SH BED_SET pattern, 1 verified instance, exact match)
+
+P33 IfcFlowTerminal in ROOM: offset=(2.10, 1.50, 0.85) — NOVEL
+    (no FlowTerminal pattern in vocabulary — FP discipline, new to DM)
+
+P33 IfcWall floating dz=2000mm above slab — ANOMALOUS
+    (wall patterns have dz=[0.0–470mm], this is 4x outside range)
+```
+
+**What P33 tells you without visual inspection:**
+- Doors are where doors should be (CONSISTENT)
+- Furniture arrangements match proven sets (CONSISTENT)
+- Fire protection terminals are new — review but not alarming (NOVEL)
+- A floating wall is wrong (ANOMALOUS)
+
+**Implementation:** Java class `PatternMatchProof` in BIMEyes. Reads
+vocabulary from SQLite. Runs as Tier 4 proof alongside P29-P32.
+Vocabulary built offline by `scripts/geo_verify.py --build-vocabulary`
+scanning all verified GEO logs.
+
 ### 4.8 Research Direction — Tack Signatures as Geometric Semantics
 
 > **Status:** Research question, not implementation spec. Documented here
