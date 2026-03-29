@@ -67,6 +67,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
+    /** Parent BOM ID for each placement (parallel to placements list). For GEO sibling-only pairs. */
+    private final List<String> placementParents = new ArrayList<>();
+
+    /** Current parent BOM stack — tracks the innermost MAKE ancestor for each leaf. */
+    private final Deque<String> parentBomIdStack = new ArrayDeque<>();
+
     /** Count of sub-assemblies entered (onSubAssembly calls, depth > 0). */
     private int subAssemblyCount = 0;
 
@@ -209,10 +215,16 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 bomOriginX, bomOriginY, bomOriginZ,
                 newAnchor[0], newAnchor[1], newAnchor[2]);
         }
+
+        // Track parent BOM for sibling-only GEO pairs
+        parentBomIdStack.push(childBomId != null ? childBomId : "ROOT");
     }
 
     @Override
     public void onSubAssemblyComplete(BOMWalker.NodeContext ctx) {
+        // Pop parent BOM tracker
+        if (!parentBomIdStack.isEmpty()) parentBomIdStack.pop();
+
         // Log 2: EXIT — proves stack unwind happened
         if (!anchorStack.isEmpty()) {
             MBOMLine exitLine = ctx.line();
@@ -414,6 +426,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 productId
             );
             placements.add(p);
+            placementParents.add(parentBomIdStack.isEmpty() ? "ROOT" : parentBomIdStack.peek());
         }
     }
 
@@ -768,24 +781,31 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     /**
      * Emit a GEO SUMMARY line comparing compiled placements against extraction
-     * source positions. Uses all-pairs relative offset deltas — cancels world
-     * origin, proves tack chain is lossless.
+     * source positions. Uses relative offset deltas — cancels world origin,
+     * proves tack chain is lossless.
+     *
+     * <p>For small buildings (n &le; 10000): all-pairs O(n²).
+     * For large buildings: sibling-only pairs (same parent BOM) — proves
+     * tack chain at each hierarchy level without O(n²) explosion.
      *
      * <p>Only runs when {@code bim.geo.debug=true}. Opens the extraction DB
-     * once, runs O(n²) comparison, emits one summary line.
+     * once, emits one summary line.
      *
      * @param extractionDbPath path to *_extracted.db (elements_meta + elements_rtree)
      */
     public void emitGeoSummary(String extractionDbPath) {
         if (!BIMLogger.geoMatch("")) return;  // GEO mode off → skip
 
-        // Collect compiled placements with valid IFC GUIDs
+        // Collect compiled placements with valid IFC GUIDs + their parent BOM
         List<String> guids = new ArrayList<>();
         List<double[]> compiledLbd = new ArrayList<>();
-        for (PlacementLoader.Placement p : placements) {
+        List<String> parents = new ArrayList<>();
+        for (int idx = 0; idx < placements.size(); idx++) {
+            PlacementLoader.Placement p = placements.get(idx);
             if (p.elementRef() != null && IFC_GUID.matcher(p.elementRef()).matches()) {
                 guids.add(p.elementRef());
                 compiledLbd.add(new double[]{p.minX(), p.minY(), p.minZ()});
+                parents.add(idx < placementParents.size() ? placementParents.get(idx) : "ROOT");
             }
         }
 
@@ -816,49 +836,64 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             return;
         }
 
-        // All-pairs relative offset comparison
-        // For each pair (i,j): compiled delta vs extraction delta
-        // Drift = max axis difference between the two deltas
-        int matched = 0;
+        // Choose strategy: all-pairs for small, sibling-only for large
+        boolean siblingOnly = guids.size() > 10000;
+
         int pairs = 0;
         int driftCount = 0;
         double worstDrift = 0.0;
         double driftThreshold = 1.0;  // 1mm
 
-        for (int i = 0; i < guids.size(); i++) {
-            double[] extI = extPos.get(guids.get(i));
-            if (extI == null) continue;
-            for (int j = i + 1; j < guids.size(); j++) {
-                double[] extJ = extPos.get(guids.get(j));
-                if (extJ == null) continue;
-                pairs++;
-
-                // Compiled relative offset (LBD_i - LBD_j)
-                double cdx = compiledLbd.get(i)[0] - compiledLbd.get(j)[0];
-                double cdy = compiledLbd.get(i)[1] - compiledLbd.get(j)[1];
-                double cdz = compiledLbd.get(i)[2] - compiledLbd.get(j)[2];
-
-                // Extraction relative offset
-                double edx = extI[0] - extJ[0];
-                double edy = extI[1] - extJ[1];
-                double edz = extI[2] - extJ[2];
-
-                // Max axis delta in mm
-                double drift = Math.max(Math.abs(cdx - edx),
-                               Math.max(Math.abs(cdy - edy),
-                                        Math.abs(cdz - edz))) * 1000.0;
-
-                if (drift > worstDrift) worstDrift = drift;
-                if (drift > driftThreshold) {
-                    driftCount++;
-                } else {
-                    matched++;
+        if (siblingOnly) {
+            // Group indices by parent BOM — compare within each group only
+            java.util.Map<String, List<Integer>> groups = new java.util.LinkedHashMap<>();
+            for (int i = 0; i < guids.size(); i++) {
+                if (extPos.containsKey(guids.get(i))) {
+                    groups.computeIfAbsent(parents.get(i), k -> new ArrayList<>()).add(i);
                 }
             }
+            for (List<Integer> group : groups.values()) {
+                for (int a = 0; a < group.size(); a++) {
+                    int i = group.get(a);
+                    double[] extI = extPos.get(guids.get(i));
+                    for (int b = a + 1; b < group.size(); b++) {
+                        int j = group.get(b);
+                        double[] extJ = extPos.get(guids.get(j));
+                        pairs++;
+                        double drift = pairDrift(compiledLbd.get(i), compiledLbd.get(j), extI, extJ);
+                        if (drift > worstDrift) worstDrift = drift;
+                        if (drift > driftThreshold) driftCount++;
+                    }
+                }
+            }
+            int elementsWithExt = (int) guids.stream().filter(extPos::containsKey).count();
+            int groupCount = groups.size();
+            BIMLogger.geo("TACK", "SUMMARY {} elements, {} sibling-pairs across {} groups, worst={:.3f}mm, DRIFT={}",
+                elementsWithExt, pairs, groupCount, worstDrift, driftCount);
+        } else {
+            // All-pairs for small buildings
+            for (int i = 0; i < guids.size(); i++) {
+                double[] extI = extPos.get(guids.get(i));
+                if (extI == null) continue;
+                for (int j = i + 1; j < guids.size(); j++) {
+                    double[] extJ = extPos.get(guids.get(j));
+                    if (extJ == null) continue;
+                    pairs++;
+                    double drift = pairDrift(compiledLbd.get(i), compiledLbd.get(j), extI, extJ);
+                    if (drift > worstDrift) worstDrift = drift;
+                    if (drift > driftThreshold) driftCount++;
+                }
+            }
+            int elementsWithExt = (int) guids.stream().filter(extPos::containsKey).count();
+            BIMLogger.geo("TACK", "SUMMARY {} elements, {} pairs, worst={:.3f}mm, DRIFT={}",
+                elementsWithExt, pairs, worstDrift, driftCount);
         }
+    }
 
-        int elementsWithExt = (int) guids.stream().filter(extPos::containsKey).count();
-        BIMLogger.geo("TACK", "SUMMARY {} elements, {} pairs, worst={:.3f}mm, DRIFT={}",
-            elementsWithExt, pairs, worstDrift, driftCount);
+    /** Compute max-axis drift (mm) between a compiled pair and extraction pair. */
+    private static double pairDrift(double[] cI, double[] cJ, double[] eI, double[] eJ) {
+        return Math.max(Math.abs((cI[0] - cJ[0]) - (eI[0] - eJ[0])),
+               Math.max(Math.abs((cI[1] - cJ[1]) - (eI[1] - eJ[1])),
+                        Math.abs((cI[2] - cJ[2]) - (eI[2] - eJ[2])))) * 1000.0;
     }
 }
