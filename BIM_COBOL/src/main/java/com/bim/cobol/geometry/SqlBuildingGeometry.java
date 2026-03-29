@@ -16,7 +16,7 @@ import java.util.List;
  * <p>All geometry comes from ARC-compiled data. No invention. Positions are in mm
  * (c_orderline.dx/dy/dz), converted to Point3D meters where needed.
  */
-// Implementing DISC_VALIDATION_DB_SRS §10.4.10 — SqlBuildingGeometry
+// Implementing DISC_VALIDATION_DB_SRS §10.4.10 — SqlBuildingGeometry BOM host_type fix
 public class SqlBuildingGeometry implements BuildingGeometry {
 
     private static final String TAG = "CRAWL";
@@ -58,7 +58,7 @@ public class SqlBuildingGeometry implements BuildingGeometry {
         List<FloorLevel> floors = new ArrayList<>();
         try (PreparedStatement ps = compileDb.prepareStatement(
                 "SELECT family_ref, dz FROM C_OrderLine"
-                        + " WHERE host_type = 'IfcBuildingStorey' AND IsActive = 1"
+                        + " WHERE host_type = 'FLOOR' AND IsActive = 1"
                         + " ORDER BY dz ASC")) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -81,7 +81,7 @@ public class SqlBuildingGeometry implements BuildingGeometry {
                 "SELECT ol.family_ref, ol.dx, ol.dy, ol.dz, ol.Discipline"
                         + " FROM C_OrderLine ol"
                         + " JOIN C_OrderLine parent ON ol.Parent_OrderLine_ID = parent.C_OrderLine_ID"
-                        + " WHERE parent.family_ref = ? AND ol.host_type = 'IfcSpace'"
+                        + " WHERE parent.family_ref = ? AND ol.host_type = 'ROOM'"
                         + " AND ol.IsActive = 1")) {
             ps.setString(1, floorRef);
             try (ResultSet rs = ps.executeQuery()) {
@@ -130,7 +130,8 @@ public class SqlBuildingGeometry implements BuildingGeometry {
         // Look for STR slab element on this floor
         try (PreparedStatement ps = compileDb.prepareStatement(
                 "SELECT aabb_height_mm FROM C_OrderLine"
-                        + " WHERE family_ref LIKE ? AND host_type = 'IfcSlab'"
+                        + " WHERE family_ref LIKE ? AND host_type = 'LEAF'"
+                        + " AND Discipline = 'STR' AND family_ref LIKE '%SLAB%'"
                         + " AND IsActive = 1 LIMIT 1")) {
             ps.setString(1, "%" + floorRef + "%");
             try (ResultSet rs = ps.executeQuery()) {
