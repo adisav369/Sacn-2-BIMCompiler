@@ -2653,6 +2653,61 @@ would block smooth daily use.
 
 ---
 
+### 28.8 BOM Drop Configurator Component Types (S53)
+
+iDempiere BOM Drop pattern maps to construction:
+
+| Component Type | Meaning | Construction Example |
+|---------------|---------|---------------------|
+| **Component** (compulsory) | Must be in every order | Foundation, structural frame |
+| **Optional** (checkbox) | User enables/disables | Porch, balcony, fence |
+| **Variant** (qty adjustable) | User changes quantity | Sprinkler heads, light fixtures |
+| **Radio Group** (exclusive) | Pick one from swap pool | Roof type (gable/hip/flat) |
+
+Chooser filters candidates by `m_product_category_id` + AABB fit — same as
+M_Product_Category browse in iDempiere. C_Order Complete (CO) triggers compilation.
+
+### 28.9 Click-to-Place — Interactive Discipline Placement
+
+Two complementary placement modes:
+
+| Mode | Trigger | How |
+|------|---------|-----|
+| **DocEvent (batch)** | Compile button | YAML declares discipline, rules auto-place at compile time |
+| **Click-to-Place (interactive)** | User clicks viewport | User selects discipline, clicks area, rules auto-place LOD objects contextually |
+
+Click-to-Place generalises across all disciplines: FP (sprinklers), ELEC (lights),
+SP (bathroom fixtures), ARC (furniture sets), ACMV (diffusers). Clicking defines
+area/context, rules define content. Data already exists in `ad_space_type_mep_bom`
++ `ad_space_type_furniture`.
+
+**Status:** G-8+ feature (needs BlenderBridge pipe for real-time click events).
+Spec after G-7 assembly builder is wired.
+
+### 28.10 Macro Actions (10 designer-level operations)
+
+Higher-level operations that decompose into the 4 mutation primitives from
+[ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) §1.1 (Replace, Remove,
+Compress, Add) + DiffVerb + ASI:
+
+| Macro | Primitives | Scope |
+|-------|-----------|-------|
+| MOVE BATCH | Replace (dx/dy/dz) | Selected OrderLines |
+| SWAP RANGE | Replace (product_id) | Category-filtered range |
+| COPY FLOOR | Add (clone BOM subtree) | Floor BOM → new floor |
+| MIRROR FLOOR | Add + Replace (negate dx) | Floor → mirrored copy |
+| ADD DISCIPLINE | Add (discipline BOM lines) | Floor or building |
+| REMOVE DISCIPLINE | Remove (by AD_Org_ID) | Floor or building |
+| RETYPE ROOM | Replace (category + rules cascade) | Room BOM node |
+| ROUTE OVERRIDE | Replace (FOLLOW params) | Pipe/duct route |
+| SPACING OVERRIDE | Replace (qty via ASI) | Discipline spread |
+| STAMP TEMPLATE | Add (apply template BOM) | Empty room/floor |
+
+Each macro = AD_Process with AD_Process_Para (iDempiere pattern).
+Filter + Mutation + Cascade scope. No new primitive needed.
+
+---
+
 *References:
 [BIM_Designer.md](BIM_Designer.md) (architecture, §17 Design Mode, §18 UI Strategy) |
 [BIM_Designer_UserGuide.md §13](BIM_Designer_UserGuide.md) (Web UI spec — tab layout, tech stack) |

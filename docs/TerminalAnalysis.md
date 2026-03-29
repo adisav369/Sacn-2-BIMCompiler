@@ -1156,6 +1156,21 @@ TILE SURFACE verb compression to ~20 panel formulas.
 
 At the YAML/OrderLine layer: ~235 declarations → 48,428 placements = **206x**.
 
+### CP-4 Geometric Archetype (S44)
+
+The compiler must not branch on IFC class — 43 decision points were identified
+switching on IFC class strings, violating BBC.md §2.2.1 (class-agnostic compilation).
+TE's 33,324 IfcPlate elements are actually Metal Deck (107×150×500mm, planarity=0.21)
+— Compiler treated all as CURTAIN_PANEL based on IFC class label.
+
+Three-layer solution:
+1. **Geometric archetype** (PLANAR/ELONGATED/COMPACT/MIXED + scale band) from dimensions
+2. **Component library** (component_definitions, M_Product, placement_rules) for semantic identity
+3. **IFC class** — traceability metadata only, never a decision variable
+
+Foundation delivered S44: `GeometricFingerprint.java`, `P10_SHAPE_IDENTITY`,
+`GeometricFingerprintTest.java`. Phases 4a–4e in ACTION_ROADMAP.md §CP-4.
+
 ---
 
 ## Coding Specs — TE-5B: 216 IfcSlab Gap Fix (2026-03-17)
