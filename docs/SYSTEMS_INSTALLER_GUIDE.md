@@ -50,7 +50,7 @@ mvn compile -q
 ```
 orm-core          → base ORM, BIMLogger
 ORMSandbox        → DAO smoke tests
-DAGCompiler       → 9-stage compilation pipeline
+DAGCompiler       → 12-stage compilation pipeline
 2D_Layout         → floor plan generation
 TopologyMaker     → grid strategy, PO lifecycle
 BIM_COBOL         → 63 domain verbs, witness engine
@@ -459,7 +459,7 @@ sqlite3 library/ERP.db < migration/DV007_infra_road_rules.sql
 BIMCompiler/
 ├── orm-core/              # Base ORM, BIMLogger, shared utilities
 ├── ORMSandbox/            # DAO smoke tests, BuildingInspector
-├── DAGCompiler/           # 9-stage compilation pipeline (G1-G6 gates)
+├── DAGCompiler/           # 12-stage compilation pipeline (G1-G6 gates)
 ├── 2D_Layout/             # Floor plan generation
 ├── TopologyMaker/         # Grid strategy, production order lifecycle
 ├── BIM_COBOL/             # 63 domain verbs, witness engine

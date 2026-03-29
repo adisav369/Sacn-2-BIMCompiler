@@ -38,8 +38,7 @@ building:
     - { child_product_id: FLOOR_SLAB_GF, role: GROUND_SLAB, seq: 5, dz: 0.0 }
     - { child_product_id: ROOF_ASSEMBLY, role: ROOF, seq: 15, dz: 3.0 }
 
-  # Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.4 Implementation — Witness: W-RE-SUBSET-1
-  # RE subset: only these MEP disciplines get OrderLines during compilation
-  mep_disciplines: [ELEC, SP]
+  # MEP disciplines: RE default [ELEC, SP] from Callout (§10.4.11 T3.4)
+  # Override with remove_disciplines: [SP] to narrow, add_disciplines: [FP] to widen
 
   # composition: null  — simple building, no paired units

@@ -174,8 +174,6 @@ building:
   building_type: {BuildingType}          # must match extracted DB name
   prefix: {XX}                           # 2-3 char code (uppercase)
   building_bom_id: BUILDING_{XX}_STD     # BOM root ID
-  doc_sub_type: {XX}                     # deprecated — redundant with prefix (DATA_MODEL.md §7)
-  doc_base_type: RE                      # deprecated — redundant with M_Product_Category (DATA_MODEL.md §7)
   name: {Human Name}
   dsl_file: dsl_{xx}.bim                 # BIM COBOL script (Step 4)
 
@@ -256,8 +254,6 @@ Add a block to `scripts/construction_manifest.yaml`:
     prefix: {XX}
     doc_type_id: {RE}_{XX}               # RE_ or CO_ prefix
     name: {Human Name}
-    doc_sub_type: {XX}                    # deprecated — redundant with prefix (DATA_MODEL.md §7)
-    doc_base_type: {RE}                   # deprecated — redundant with M_Product_Category (DATA_MODEL.md §7)
     description: "{schema} {name} — {description}"
     provenance: EXTRACTED
     climate: SCAN                         # SCAN=scanned, INST=institutional
@@ -463,6 +459,6 @@ Review and adjust rule IDs before applying. See [WorkOrderGuide.md](WorkOrderGui
 
 > **Further reading:**
 > [WorkOrderGuide.md](WorkOrderGuide.md) — field dictionary, drift guards, what NOT to do |
-> [BIM_COBOL.md](BIM_COBOL.md) — verb catalog (76 verbs) |
+> [BIM_COBOL.md](BIM_COBOL.md) — verb catalog (77 verbs) |
 > [TestArchitecture.md](TestArchitecture.md) — G1-G6 gate definitions |
 > [ACInstituteAnalysis.md](ACInstituteAnalysis.md) — worked example (699 elements, 5 storeys)

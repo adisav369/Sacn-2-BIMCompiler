@@ -1003,16 +1003,59 @@ ad_room_boundary. Gate must also check system_edges > 0.
 
 ##### T3.4 Implementation — RE Subset
 
-**B3 — RE callout skips.** OrderLineProductCallout line 43 returns 0 for RE.
-RE buildings need a discipline whitelist from classification YAML:
+**B3 — Callout pre-populates by category, YAML removes exceptions.**
+
+The Callout inserts a **sensible default** per M_Product_Category. The user
+(or YAML) always sees something — never starts from blank:
+
+| Category | Callout default | Rationale |
+|----------|----------------|-----------|
+| CO (Commercial) | all 6 MEP (FP, ELEC, ACMV, CW, SP, LPG) | Commercial buildings need full MEP |
+| RE (Residential) | ELEC, SP | Every house needs electrical + plumbing at minimum |
+| IN (Infrastructure) | none | Roads/bridges have no building MEP |
+
+**Two-phase flow:**
+
+1. **Callout fires** → inserts default discipline OrderLines for the category
+2. **YAML handling** → reads `remove_disciplines`, deactivates (`IsActive='N'`)
+   those entries. The OrderLine row stays visible so the user can re-enable.
 
 ```yaml
-mep_disciplines: [ELEC, SP]
+# RE house — default [ELEC, SP] already inserted by Callout
+# No YAML key needed — user sees ELEC + SP and can add/remove in GUI
+
+# RE house that doesn't want plumbing
+remove_disciplines: [SP]    # deactivates SP, keeps ELEC
+
+# CO warehouse that doesn't need gas
+remove_disciplines: [LPG]   # deactivates LPG, keeps 5 others
+
+# RE house that wants fire protection added beyond default
+add_disciplines: [FP]       # adds FP to the ELEC + SP default
 ```
 
-When `mep_disciplines` is present, callout creates only the listed disciplines.
-When absent, CO/IN get all 6 (existing behavior). RE with no key gets 0
-(backward compat).
+This is the iDempiere Configure-to-Order pattern: category provides the
+template, user modifies by exception. Deactivation (not deletion) preserves
+the discipline row for audit trail and re-enablement.
+
+**BIM Designer GUI equivalent:** user selects building category → discipline
+OrderLines appear pre-populated. Toggle switch per discipline to
+enable/disable. Same `IsActive` column that YAML's `remove_disciplines`
+controls. Adding a discipline not in the default = `addDiscipline()` mutation
+(Session A).
+
+**Code changes needed:**
+
+1. `OrderLineProductCallout.onProductChanged()` — add RE default set
+   `[ELEC, SP]`. Currently RE returns 0 unless YAML whitelist present.
+   New logic: if no YAML override, insert category default. IN stays at 0.
+
+2. New: `applyYamlOverrides()` — after callout, read `remove_disciplines`
+   from ad_sysconfig, SET `IsActive='N'` on matching DISCIPLINE OrderLines.
+   Read `add_disciplines`, insert any not already present.
+
+3. Remove current `mep_disciplines` whitelist logic (lines 56-60, 87-91)
+   — replaced by the two-phase default+override pattern.
 
 SH: `mep_disciplines: [ELEC, SP]` → 2 DISCIPLINE OrderLines + ARC + STR = 4.
 
@@ -1107,6 +1150,138 @@ P94  (BomWriter)     ──→ T1.x (new BOM lines need single write path)
 **T0.1 is the critical first task.** If the category-match query doesn't
 return the right room coordinates, the entire parasitic model breaks.
 Prove it on SH first (small, fast, 7/7 GREEN).
+
+### 10.4.12 Routing Architecture Assessment — Industry Position & Known Gaps
+
+The CrawlRouter (§10.4.10) is a **prescriptive recipe engine**: each discipline
+builder encodes a standard installation pattern as a sequence of CrawlOps.
+This section assesses the approach against industry practice and documents
+known gaps for future work.
+
+#### Industry Comparison
+
+| Approach | Used by | How it works |
+|----------|---------|-------------|
+| Search-based (A*/Dijkstra on voxel grid) | Revit auto-route, GenMEP, academia | Voxelize building → pathfind → connect endpoints |
+| Pathway/spine fill | EVOLVE MEP | User defines routing spine, tool fills segments along it |
+| Port-to-port connector | Bentley OpenPlant | Shortest path between two component connection ports |
+| **Prescriptive recipe** | **This compiler (CrawlOp)** | Discipline builder encodes installation pattern as ops |
+| AI/generative | Auto BIM Route AI | ML generates candidate routes within constraints |
+
+No other tool produces **BOM-integrated, discipline-aware, deterministic routing**.
+Search-based tools produce geometry first; BOM is an afterthought. Our CrawlOp
+model produces the BOM as primary output — segments and fittings are product
+references with diameter, length, and position. Geometry is derived from the BOM.
+
+#### Strengths of Prescriptive Recipe
+
+1. **BOM is primary output.** Every segment and fitting is an M_Product with
+   qty, UOM, and cost. No post-processing step to extract material take-off.
+
+2. **Deterministic.** Same building + same recipe = same output, always.
+   Auditable: every segment traces to a CrawlOp in a spec-cited builder.
+
+3. **Discipline-aware.** Each builder encodes domain knowledge — FP knows
+   riser→header→branch (NFPA 13), SP knows gravity drainage (MS 1228 gradient
+   1:40), ACMV knows duct sizing (ASHRAE 62.1). A* does not know any of this.
+
+4. **O(n) not O(V log V).** No voxel grid needed. Routing scales linearly
+   with op count, not building volume.
+
+5. **IFC-compatible.** `system_edges`/`system_nodes` map to
+   `IfcRelConnectsPorts` + `IfcFlowSegment`/`IfcFlowFitting`. CrawlOp is the
+   generation engine; IFC is the serialization target.
+
+#### Known Gaps
+
+##### Gap 1: Ceiling void routing
+
+**Problem:** All 6 builders route at `floor.zMm()` (floor slab top). In
+practice, pipes and ducts run in the ceiling void — underside of the slab
+above, minus clearance.
+
+**Fix needed:** Add `BuildingGeometry.ceilingHeight(floorRef)` =
+`nextFloor.zMm - slabThickness(nextFloor) - clearanceMm`. Each builder's
+horizontal FOLLOW ops should use ceiling Z, not floor Z.
+
+**Industry practice:** Revit requires manual elevation offset. GenMEP uses a
+voxel cost function that penalizes routing outside the void. EVOLVE MEP lets
+the user set a pathway elevation. Our fix is simpler — derive ceiling Z from
+the ARC data we already have.
+
+##### Gap 2: No obstacle avoidance during routing
+
+**Problem:** CrawlOps execute sequentially with no spatial awareness of other
+routes or ARC elements. If FP riser and ACMV duct occupy the same shaft,
+the router does not detect or avoid the conflict.
+
+**Current mitigation:** `CheckClashVerb` (BIM COBOL verb) runs in VerbStage
+(Step 7) as a post-route R-tree overlap check with 50mm clearance
+(`BIMConstants.MEP_STRUCTURE_CLEARANCE`). Clash is detected after the fact,
+not prevented.
+
+**Industry practice:** GenMEP and academia use obstacle-aware A* (voxels
+blocked by existing elements). This is the main advantage of search-based
+routing.
+
+**Future hybrid:** Prescriptive recipes for the discipline skeleton
+(riser→header→branch pattern) + search-based pathfinding for last-mile
+segment paths within each branch. BlenderBIM Issue #6521 proposes a
+voxel-A* orthogonal pathfinder that could serve as the last-mile solver.
+
+##### Gap 3: Verb bypass
+
+**Problem:** The spec (§10.4.10) describes verb-driven routing —
+`FOLLOW CEILING`, `BEND 90`, `BRANCH TEE`. But the 6 RouteBuilders compose
+CrawlOps directly in Java, bypassing VerbRegistry entirely. `FollowVerb`
+(verb #77) exists and wraps CrawlRouter, proving the bridge works.
+
+**Impact:** Two parallel systems do the same thing — `.bimcobol` scripts
+dispatch through VerbRegistry, RouteBuilders compose CrawlOps directly.
+Routing is not auditable as verb lines in the pipeline log.
+
+**Fix:** RouteBuilders should emit verb line strings and dispatch through
+VerbRegistry. This unifies the two paths and makes every routing decision
+visible in the FINE log as a BIM COBOL statement.
+
+##### Gap 4: Missing real-world concerns
+
+| Concern | Status | Path to fix |
+|---------|--------|-------------|
+| Hanger/support spacing | EXISTS (`HangVerb`, SMACNA 1200mm) | Already a verb — wire into RouteBuilder output |
+| Insulation | MISSING | Add insulation product as BOM child of pipe/duct segment. Thickness from `ad_sysconfig` per discipline |
+| Soffit clearance | MISSING | Derive from ceiling void height. Minimum 50mm below soffit per MS 1525 |
+| Access/maintenance points | MISSING | Valves and cleanouts at branch points. SP needs cleanout access per MS 1228 §5 |
+| LPG wall thickness | BUG | `LpgRouteBuilder` calls `slabThickness()` for wall penetration — should query wall thickness |
+
+##### Gap 5: Standard citation depth
+
+RouteBuilders cite standards (NFPA 13, MS 1228, MS 1525, MS 830, ASHRAE 62.1)
+but do not trace parameters to specific clauses. For example:
+
+- FP riser 50mm → which NFPA 13 clause? (§8.15.8 pipe sizing tables)
+- SP gradient 1:40 → MS 1228 §5.5.2 minimum gradient for 100mm pipe
+- ACMV stock length 3000mm → ASHRAE duct construction standard, not 62.1
+
+This matters for ComplianceStage (Step 12) — jurisdiction proof chains need
+clause-level traceability. Each builder should carry a `standardRef()` map
+linking parameters to clause numbers.
+
+#### Proof Consumption (P15/P16/P17)
+
+The three BIMEyes proofs that consume routing edges are fully implemented:
+
+| Proof | What it checks | Data consumed | Status |
+|-------|---------------|---------------|--------|
+| P15 PIPE_IN_HOST | Pipe bbox within host room bbox | PlacementData + RoomData | Gated by relational data |
+| P16 WASTE_GRADIENT | SP pipes slope downward | CONNECTS_TO edges, `fromZ >= toZ` | Gated by system_edges > 0 |
+| P17 SYSTEM_CONNECTED | BFS — every terminal reaches a source | CONNECTS_TO adjacency graph | Gated by system_edges > 0 |
+
+Gate at ProveStage (Step 11): `hasRelationalData() OR isGenerative() OR hasSystemEdges()`.
+Currently blocked for most buildings because `ad_element_dependency` (the
+CONNECTS_TO edge source for P16/P17) is populated only for legacy buildings.
+The RouteStage edges land in `system_edges`/`system_nodes` — wiring these
+into P16/P17 is the next integration step.
 
 ### 10.5 Investigation Tasks
 

@@ -25,7 +25,7 @@ Single-page entry point. All active docs by tier.
 |-----|------|
 | [BOMBasedCompilation.md](BOMBasedCompilation.md) | MASTER SPEC: tack, walker, BUFFER, compilation model |
 | [DATA_MODEL.md](DATA_MODEL.md) | Schema reference, tack columns, 4-DB architecture |
-| [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 76 verbs, TILE/CLUSTER/ROUTE/FRAME/FORGE |
+| [BIM_COBOL.md](BIM_COBOL.md) | Verb grammar, 77 verbs, TILE/CLUSTER/ROUTE/FRAME/FORGE |
 | [ACTION_ROADMAP.md](ACTION_ROADMAP.md) | Navigation hub: "I need to..." → spec pointer. Known debt. Go-to-market |
 | [SourceCodeGuide.md](SourceCodeGuide.md) | Code navigation, entry points, DAO patterns, glossary |
 

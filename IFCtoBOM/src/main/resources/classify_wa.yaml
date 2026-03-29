@@ -26,6 +26,8 @@ building:
     "4 - Fourth Floor": { code: L4, bom_category: L4, role: UPPER_FLOOR, seq: 1090 }  # 47 elements
     "5 - Fifth Floor": { code: L5, bom_category: L5, role: UPPER_FLOOR, seq: 1100 }  # 47 elements
 
+  # MEP disciplines: defaults to all 6 for CO (§10.4.11 T3.4)
+
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies
   # composition: null      # uncomment for mirrored/paired buildings

@@ -70,10 +70,10 @@ The real input is a [Construction Order](ProjectOrderBlueprint.md) ([C_Order](MA
 |--------|------------------|------------|
 | **C_Order → C_OrderLine** | What to build — the construction order with exceptions | [BIM Designer](BIM_Designer_UserGuide.md) (interactive) or YAML (test harness) |
 | `{PREFIX}_BOM.db` | Assembly recipes — the BOM dictionary the order references | [IFCtoBOM pipeline](DATA_MODEL.md) (once per building type) |
-| `component_library.db` | Product geometry, meshes, materials, orientation | Extraction + curation |
+| `component_library.db` | Product geometry, meshes, materials, orientation + `ad_slab_spec` (per-building slab overrides) | Extraction + curation |
 | `ERP.db` | Validation rules — fire protection, MEP spacing, jurisdiction | [DocValidate](DocValidate.md) rule packs |
 | `*.bimcobol` | Verb recipes: PLACE BOM, ROUTE, WIRE, TRIM | [BIM COBOL](BIM_COBOL.md) scripts |
-| `BIMConstants.java` | Dimensional defaults (ceiling height, slab thickness) | Code constants |
+| `BIMConstants.java` | Dimensional fallbacks (wall thickness, door/window dims) | Code constants — `ad_slab_spec` overrides slab thickness |
 
 **Note:** `classify_*.yaml` is how the test harness represents a C_Order — it seeds the order and BOM for Rosetta Stone verification. In production, the [BIM Designer](BIM_Designer_UserGuide.md) creates the C_Order interactively via [BOM Drop](BOMBasedCompilation.md#34-bom-drop--interactive-modification).
 
@@ -123,9 +123,9 @@ Doors and windows must face the correct direction. `host_element_ref` links each
 ### 10. Who Checks the Tests?
 **Spec:** [TestArchitecture](TestArchitecture.md) §Anti-Drift — no silent re-seal, no weakened assertions.
 
-The tamper seal (SHA256 of 73 critical files) detects if a test was weakened to make it pass. Every seal change requires a full git diff review. T18-T20 tamper rules cross-validate. C8/C9 provide independent arithmetic verification that tests didn't drift.
+The tamper seal (SHA256 of 77 critical files) detects if a test was weakened to make it pass. Every seal change requires a full git diff review. T18-T20 tamper rules cross-validate. C8/C9 provide independent arithmetic verification that tests didn't drift.
 
-**Verdict:** PASS — Seal v9 (73 files). Version counter reset during S100 PK migration series.
+**Verdict:** PASS — Seal v14 (77 files). Version bumped during S100 script refactoring (4 shell modules added).
 
 ### 11. Factorization?
 **Spec:** [BBC §6](BOMBasedCompilation.md) verb factorization — N elements → 1 BOM line with qty=N.
@@ -157,8 +157,8 @@ Both stages now fire on SH and FK:
 
 | Stage | Step | Code | Gate condition | Result (SH) |
 |-------|------|------|---------------|-------------|
-| ProveStage | 10 | `BomTreeProver` | `elementCount() == 0` | P-SIBLING 93/93 PASS. P-PARENT 15/28, P-QTY delta=2, P-TACK 0/28 (advisory WARNs). |
-| ComplianceStage | 11 | `ComplianceStage` | `jurisdiction != null` | jurisdiction=MY, 53ms, 8 proof lines, submission package written. |
+| ProveStage | 11 | `BomTreeProver` | `elementCount() == 0` | P-SIBLING 93/93 PASS. P-PARENT 15/28, P-QTY delta=2, P-TACK 0/28 (advisory WARNs). |
+| ComplianceStage | 12 | `ComplianceStage` | `jurisdiction != null` | jurisdiction=MY, 53ms, 8 proof lines, submission package written. |
 
 **Remaining advisory WARNs (non-blocking):**
 - P-PARENT: room origins from YAML `origin_m` not persisted in c_orderline → parent extent check uses container tacks only
@@ -238,7 +238,8 @@ Following the Compiere/iDempiere convention, the pipeline uses Java's `java.util
 [INFO ] PIPELINE     PIPELINE: Sample House [EXTRACTED]
 [INFO ] PIPELINE     STEP 1: METADATA VALIDATION — starting
 [INFO ] PIPELINE     STEP 3: COMPILE TO BUILDINGSPEC — starting
-[INFO ] PIPELINE     STEP 6: VERB STAGE (BIM COBOL) — starting
+[INFO ] PIPELINE     STEP 4: ROUTE STAGE — starting
+[INFO ] PIPELINE     STEP 7: VERB STAGE (BIM COBOL) — starting
 [INFO ] PIPELINE     PIPELINE COMPLETE: Sample House — 58 elements
 ```
 

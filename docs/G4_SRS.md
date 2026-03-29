@@ -59,8 +59,6 @@ DesignerAPIImpl.createNew(request)
 │      │
 │      ├── 3b. INSERT W_BuildingConfig (embedded YAML + identity)
 │      │       → yaml_content  = full classify_{prefix}.yaml text
-│      │       → doc_base_type = from YAML building.doc_base_type ('RE')  # deprecated — see DATA_MODEL.md §7
-│      │       → doc_sub_type  = from YAML building.doc_sub_type ('DM')  # deprecated — see DATA_MODEL.md §7
 │      │       → jurisdiction  = from request.jurisdiction ('MY')
 │      │       → aabb_*_mm     = from request site dimensions
 │      │       → provenance    = 'GENERATIVE'

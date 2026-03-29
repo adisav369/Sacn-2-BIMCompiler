@@ -3,7 +3,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md) · [ACTION_ROADMAP](ACTION_ROADMAP.md)
 
 <div class="bim-banner" markdown>
-<b>Where to start reading.</b> Entry points, DAO patterns, the 9-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.
+<b>Where to start reading.</b> Entry points, DAO patterns, the 12-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.
 </div>
 
 **Version 3.0**
@@ -267,19 +267,22 @@ Every element has a **tack point** — Left-Back-Down (LBD) corner = (0,0,0) in 
 
 ---
 
-## §6 — The 9-Stage Pipeline
+## §6 — The 12-Stage Pipeline
 
 ```java
 List<CompilerStage> STAGES = List.of(
     new MetadataValidator(),  // 1 — validate before use
-    new ParseStage(),         // 2 — read DSL
-    new CompileStage(),       // 3 — walk BOM tree, resolve geometry
-    new TemplateStage(),      // 4 — AABB matching (ST mode only)
-    new WriteStage(),         // 5 — serialize to output.db
-    new VerbStage(),          // 6 — BIM COBOL script hook
-    new DigestStage(),        // 7 — SHA-256 spatial fingerprint
-    new GeometryStage(),      // 8 — mesh integrity validation
-    new ProveStage()          // 9 — mathematical placement proofs
+    new ParseStage(),         // 2 — read DSL (null DSL = BOM walk path)
+    new CompileStage(),       // 3 — BOM walk: root → tree → placements
+    new RouteStage(),         // 4 — discipline routing (callout + RouteDocEvent)
+    new TemplateStage(),      // 5 — AABB matching (ST mode only)
+    new WriteStage(),         // 6 — serialize to output.db + system_edges/nodes
+    new VerbStage(),          // 7 — BIM COBOL script hook
+    new ValidationStage(),    // 8 — iDempiere DocEvent + ASI + AD_Val_Rule
+    new DigestStage(),        // 9 — SHA-256 spatial fingerprint
+    new GeometryStage(),      // 10 — mesh integrity validation
+    new ProveStage(),         // 11 — BOM tree proofs (P-PARENT/SIBLING/QTY/TACK)
+    new ComplianceStage()     // 12 — jurisdiction proof chain
 );
 ```
 
@@ -293,7 +296,7 @@ Creates C_Order + walks m_bom/m_bom_line recursively. IsBOM products (matching m
 leaves become C_OrderLine LEAF rows. Returns `BomTreeNode` for Outliner (expand/collapse).
 DocAction: Save(validate) → Approve(new product config) → Complete(compile+viewport).
 
-**CO mode (Terminal/Institutional):** CompileStage is skipped for M_Product_Category=CO buildings. All elements come from BOM extraction — no DSL compilation path needed.
+**Single path (S100-p72):** All buildings — RE, CO, IN — compile through the same BOM walk in CompileStage. No CO passthrough, no skip. DSL is optional (ParseStage handles null DSL).
 
 > **Full pipeline spec:** [`BOMBasedCompilation.md`](BOMBasedCompilation.md) — per-stage walkthrough, CO mode forensics, data integrity chain.
 
@@ -332,7 +335,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 
 Core interfaces: `Verb<T>` (execute → `VerbResult<T>`), `VerbContext` (3 connections: bom/component/output), `VerbRegistry` (longest-prefix dispatch).
 
-5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 76 verbs, 202 witnesses.
+5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 77 verbs, 202 witnesses.
 
 > **Full verb catalog, grammar, witnesses:** [`BIM_COBOL.md`](BIM_COBOL.md) §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)
 
@@ -516,7 +519,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 
 | Class | Role |
 |-------|------|
-| `CompilationPipeline` | 9-stage orchestrator |
+| `CompilationPipeline` | 12-stage orchestrator |
 | `BuildingCompiler` | Stage 3 — BOM tree walk + geometry resolution |
 | `BuildingRegistry` | C_DocType → building identity |
 | `BOMWalker` | Tree traversal engine (3-way dispatch) |
@@ -528,7 +531,7 @@ Proven on 34 buildings. Step 7 now includes DV010 dimension validation — every
 | Class | Role |
 |-------|------|
 | `Verb<T>` | Interface: keyword + execute → VerbResult |
-| `VerbRegistry` | Longest-prefix dispatch (76 verbs) |
+| `VerbRegistry` | Longest-prefix dispatch (77 verbs) |
 | `VerbContext` | 3 connections: bom/component/output |
 
 ### Java — ORM
@@ -569,7 +572,7 @@ component_library.db                    ERP.db
   ├─ m_bom (BUILDING → FLOOR → SET)
   ├─ m_bom_line (child placements: dx/dy/dz)
   └─ C_DocType (building identity)
-    │ DAGCompiler (9-stage pipeline)
+    │ DAGCompiler (12-stage pipeline)
     ▼
 output.db
   ├─ elements_meta (ifc_class, storey, material)

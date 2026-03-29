@@ -17,4 +17,6 @@ building:
   storeys:
     "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1010 }  # 27 elements
 
+  # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)
+
   # composition: null — infrastructure, single-level plumbing network

@@ -211,8 +211,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 | bom_name | TEXT | Display name |
 | bom_type | TEXT | Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type-deprecation) |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
-| doc_base_type | TEXT | Domain classification (RE/CO/IN) — see m_product_category_id |
-| doc_sub_type | TEXT | Building prefix (SH/DX/TE) — derived from bom_id |
+| m_product_category_id | INTEGER FK | Domain classification (RE/CO/IN) — see M_Product_Category |
 | origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
 | aabb_width_mm, aabb_depth_mm, aabb_height_mm | INTEGER | Envelope dimensions |
 | group_by | TEXT | Grouping key |
@@ -486,14 +485,14 @@ See [MANIFESTO.md](MANIFESTO.md) §Three Concerns for the WHAT/HOW/WHERE rationa
 ## 7. DocBaseType → M_Product_Category Migration
 
 **Status: Steps 1–7 DONE.** Classification lives on `m_product_category_id` at every BOM level.
-`doc_base_type` and `doc_sub_type` are deprecated (kept for backward compatibility).
+`doc_base_type` removed (S84, W012). `doc_sub_type` removed — prefix on bom_id carries this.
 `AD_Org_ID` replaces `bom_category` strings for discipline routing. C_DocType = ONE "Construction Order".
 
 ### 7.1 What Was Done
 
 - S75: M_Product_Category DV018 migration (117 rows), BUILDING BOM backfill
 - S76: disc_validation.db renamed to ERP.db (~100 files)
-- S77: Java routing migrated from doc_base_type to m_product_category_id (19 source + 12 test files)
+- S77: Java routing migrated to m_product_category_id (19 source + 12 test files)
 - S78: AD_Org_ID FK on m_bom, C_OrderLine (W009 migration)
 - S79: Discipline enum replaces deriveDiscipline() in compile path
 

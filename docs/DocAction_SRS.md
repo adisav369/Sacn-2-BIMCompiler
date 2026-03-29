@@ -254,7 +254,7 @@ Compile to output.db. The order is now a built building.
 ```
 completeIt(compile DB → output.db):                  DocStatus: IP → CO
   │
-  ├── CompilationPipeline.run() — same 9-stage pipeline
+  ├── CompilationPipeline.run() — same 12-stage pipeline
   │   → BOM walker reads C_OrderLine tree from compile DB
   │   → Resolves LODs from component_library.db
   │   → Writes elements + spatial + geometry to output.db

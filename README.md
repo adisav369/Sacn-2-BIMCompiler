@@ -25,7 +25,7 @@ Every output element traces to a library input. Nothing is invented. No AI insid
 
 | | |
 |:---|:---|
-| **35 buildings** compiled (48,428 elements largest) | **76 verbs**, 2,475 products |
+| **35 buildings** compiled (48,428 elements largest) | **77 verbs**, 2,475 products |
 | **6 mathematical gates** prove every output | **392 tests**, all GREEN |
 | **ERP-native** data model ([iDempiere](https://idempiere.org/)) | **[Blender](https://www.blender.org/)/[Bonsai](https://bonsaibim.org/)** live GUI |
 
@@ -63,7 +63,7 @@ IFC file → extract → classify.yaml → IFCtoBOM → BOM.db → compile → o
 
 ```
 bim-compiler/
-├── DAGCompiler/           # 9-stage compilation pipeline (G1-G6 gates)
+├── DAGCompiler/           # 12-stage compilation pipeline (G1-G6 gates)
 ├── BIM_COBOL/             # 64 domain verbs, witness engine
 ├── BIMEyes/               # Geometric comprehension: 28 shape proofs
 ├── IFCtoBOM/              # IFC extraction → BOM database pipeline

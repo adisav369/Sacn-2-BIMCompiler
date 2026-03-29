@@ -10,7 +10,7 @@
 
 | Asset | Measure |
 |-------|---------|
-| **Compilation pipeline** | 9 stages, 76 verbs, BOM-walk compiler |
+| **Compilation pipeline** | 12 stages, 77 verbs, BOM-walk compiler |
 | **Buildings proven** | 35 (20 ALL GREEN, 9 WARN, 3 FAIL, 2 stall, 1 generative) |
 | **Product library** | 2,475 products in component library |
 | **Database architecture** | 4-DB split (ERP, BOM, output, component library) |
@@ -167,7 +167,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 
 | Metric | Count |
 |--------|-------|
-| **Java** | 187K lines — compilation pipeline, 76 verbs, ORM, Forge engines |
+| **Java** | 187K lines — compilation pipeline, 77 verbs, ORM, Forge engines |
 | **Python** | 31K lines — Blender/Bonsai Federation addon, IFC extraction |
 | **SQL** | 59K lines — 4 databases, migrations, seed data, validation rules |
 | **Specs** | 101K lines across 61 published docs |

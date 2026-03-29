@@ -97,8 +97,8 @@ before any code changes** (per `memory/feedback_srs_before_code.md`).
 |---|------|---------|----------|----------|
 | **G1** | BBC.md §1 | "A building is a manufactured product" | Infrastructure is a **linear asset**, not a manufactured product. Road sections are poured layers, not assembled components. The manufacturing metaphor breaks for in-situ work. | **Conceptual — does not block extraction pipeline**. M_Product_Category=IN covers infrastructure (see MANIFESTO.md §Category Cascade) |
 | **G2** | DATA_MODEL.md §1.3 | "Storey-to-Floor BOM Mapping" | Infrastructure has no storeys. Segments are functional (pier, deck, carriageway), not spatial (ground floor, level 1). | **Naming only** — the mapping logic is generic, just the column name `storey` and YAML key `storeys:` are misleading |
-| **G3** | DATA_MODEL.md §1.4 | `bom_type = 'BUILDING'`, `doc_base_type = 'RE'` | Infrastructure needs different vocabulary | **RESOLVED** — root identified by tree structure (no parent), not `bom_type` string. Tier selection uses M_Product_Category. `doc_base_type` replaced by M_Product_Category (S84). See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type--tree-structure-and-m_product_category) |
-| **G4** | WorkOrderGuide.md §Schema v1 | `doc_base_type: RE` "always RE for residential" | Infrastructure is not residential. M_Product_Category=IN covers infrastructure. | **Spec text corrected (S71)** — doc_base_type deprecated, M_Product_Category carries classification |
+| **G3** | DATA_MODEL.md §1.4 | `bom_type = 'BUILDING'` | Infrastructure needs different vocabulary | **RESOLVED** — root identified by tree structure (no parent), not `bom_type` string. Tier selection uses M_Product_Category (S84). See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type--tree-structure-and-m_product_category) |
+| **G4** | WorkOrderGuide.md §Schema v1 | M_Product_Category | Infrastructure is not residential. M_Product_Category=IN covers infrastructure. | **RESOLVED (S84)** — M_Product_Category carries classification |
 | **G5** | WorkOrderGuide.md §storeys | "required" | Infrastructure has no storeys. The key should accept `segments:` as alias. | **Parser change needed** — ClassificationYaml.java reads hardcoded key `"storeys"` |
 | **G6** | BomValidator.java:49 | `WORLD_COORD_THRESHOLD_M = 500` | Infrastructure elements within a facility span max ~80m (these demo files). The 500m guard applies to **parent-relative offsets**, not absolute coords. **Actually safe** — but needs explicit documentation. | **No conflict** — the guard is correct as-is (checks dx/dy/dz on m_bom_line, which are parent-relative). Document this explicitly. |
 | **G7** | BomValidator.java:114 | `buildingCount == 1` | Multi-facility IFC files would violate this if extracted whole. | **Blocked by extraction strategy** — if we extract per-facility (§2.4 option a), this is not hit |
@@ -244,7 +244,7 @@ See [`DISC_VALIDATION_DB_SRS.md`](DISC_VALIDATION_DB_SRS.md) §5.2 and
 | `StructuralBomBuilder.java:70,75,107,112` | Parameterize "BUILDING"/"FLOOR" literals from config | G3 |
 | `BomValidator.java:114` | Accept multi-facility if extraction splits per-facility (no change if option a) | G7 |
 | `ExtractionPopulator.java:240` | Extend orientation classification to infra element types | G11 |
-| `WorkOrderGuide.md` | Update M_Product_Category docs: RE/CO/IN (doc_base_type deprecated S71) | G4 |
+| `WorkOrderGuide.md` | Update M_Product_Category docs: RE/CO/IN | G4 |
 | `DATA_MODEL.md §1.3` | Rename "Storey-to-Floor" → "Segment Mapping" in prose | G2 |
 
 ### 6.3 Component Library (one-time LOD)

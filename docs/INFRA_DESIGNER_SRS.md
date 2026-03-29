@@ -39,8 +39,7 @@
 
 The parallel session established the infra Rosetta Stone pattern. Key decisions:
 
-**`doc_base_type: IN`** is the infrastructure discriminator in YAML (deprecated — will migrate
-to M_Product_Category=IN, see DATA_MODEL.md §7). All infra YAMLs use this.
+**`M_Product_Category=IN`** is the infrastructure discriminator. All infra YAMLs use this.
 The Designer API checks the top-level M_Product_Category to select infra mode.
 
 **`segments:` is an alias for `storeys:`** in the YAML schema. The pipeline treats
@@ -52,7 +51,6 @@ them identically — same hierarchy, different label. This preserves the
 ```
 building_type: Infra_Road
 prefix: RD
-doc_base_type: IN
 segments:
   road  - carriageway:            { code: CW1,  bom_category: CW,  role: CARRIAGEWAY }
   road carriageway:               { code: CW2,  bom_category: CW,  role: CARRIAGEWAY }
@@ -87,7 +85,6 @@ BUILDING "Infra_Road" type:INFRASTRUCTURE profile:"IFC4X3_Road" {
 ```
 building_type: Infra_Rail
 prefix: RL
-doc_base_type: IN
 segments:
   Rail track:  { code: TRK,  bom_category: TRK, role: TRACK }
   Unknown:     { code: MISC, bom_category: MS,  role: MISC }

@@ -337,7 +337,7 @@ tools — we don't rebuild them.
 
 **1. BOM-to-cost pipeline.** Revit counts doors. It cannot produce the
 purchase order, material cost per line item, labour hours, or schedule
-impact. We can — the BOM IS the model. 76 verbs, 2475 products.
+impact. We can — the BOM IS the model. 77 verbs, 2475 products.
 *Status: PRODUCTION — 35 buildings compiled.*
 
 **2. IFC as native format.** Every proprietary tool treats IFC as an

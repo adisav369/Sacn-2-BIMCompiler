@@ -20,7 +20,7 @@
 The BIM Designer (Phase G) does not start from scratch. Three Rosetta Stone
 buildings — SH (55), DX (1,099), TE (48,428 elements) — have proven the
 full pipeline end-to-end: IFC extraction → component library → BOM dictionary
-→ 9-stage compilation → verified output. All gates GREEN (G1–G6).
+→ 12-stage compilation → verified output. All gates GREEN (G1–G6).
 
 The designer works on these **already-proven artifacts:**
 
@@ -67,7 +67,7 @@ The Bonsai addon's Federation menu has three entry points:
 
 | Item | Action | Data source | Use case |
 |------|--------|-------------|----------|
-| **0. Compile** | Runs 9-stage pipeline → fresh output.db | YAML + BOM DB + component library | Design iteration: edit → compile → view |
+| **0. Compile** | Runs 12-stage pipeline → fresh output.db | YAML + BOM DB + component library | Design iteration: edit → compile → view |
 | **1. Preview / Full Load** | Loads extracted reference DB directly | `*_extracted.db` (raw IFC data) | Inspection: view the reference as-is |
 | **2. Create New** | Spawns settings dialog → generates BOM → compiles | User choices + component library | Generative: design a new building from scratch |
 
@@ -138,7 +138,7 @@ User drags element in Bonsai viewport (output.db coordinates)
   │  ├─ Attribute change?  → M_AttributeSetInstance (per-instance params)
   │  └─ Rule override?    → C_OrderLine ASI (guarded by Val_Rule)
   │
-  ├─ Recompile (9-stage pipeline)
+  ├─ Recompile (12-stage pipeline)
   │
   └─ Bonsai reloads output.db → viewport updates
 ```
@@ -169,7 +169,7 @@ a document: Draft → Process → Complete.
 │  refresh                   writes                  │ │
 │     │                         │                    │ │
 │  Addon Panel ──→ subprocess ──→ Java Compiler      │ │
-│  (Python)                       (9-stage pipeline) │ │
+│  (Python)                       (12-stage pipeline) │ │
 │                                                    │ │
 │  choosers/sliders → BIM COBOL verbs → compile → DB │ │
 │                                                    │ │
@@ -181,7 +181,7 @@ a document: Draft → Process → Complete.
 spatial DB. Bonsai reads it. IFC export is a final step for permit submission.
 
 **Batch model:** The user edits parameters, clicks "Process" (iDempiere
-DocAction pattern). The 9-stage pipeline runs end-to-end. Results appear in
+DocAction pattern). The 12-stage pipeline runs end-to-end. Results appear in
 the viewport. No keystroke-triggered recompile.
 
 **What Bonsai provides free:** LOD400 3D rendering, section cuts, element
@@ -600,7 +600,7 @@ INTENT: "3-bedroom terrace house, 9900x8500"
     ├─ MEP distribution (per-room rules from ad_space_type_mep)
     │   Outlets, lights, switches placed per spacing rules
     │
-    └─ Compile → 9-stage pipeline → output.db → Bonsai viewport
+    └─ Compile → 12-stage pipeline → output.db → Bonsai viewport
 ```
 
 ### 6.2 The Compounding Effect
@@ -625,7 +625,7 @@ The GUI is Phase G in the [ACTION_ROADMAP.md](ACTION_ROADMAP.md). Prerequisites:
 
 | Prerequisite | Status |
 |-------------|--------|
-| 9-stage compilation pipeline | DONE |
+| 12-stage compilation pipeline | DONE |
 | BOM selection cascade | DONE |
 | Tack convention + placement algebra | DONE |
 | BIM COBOL verbs (38 verbs, 111 witnesses) | DONE |
@@ -1023,9 +1023,9 @@ adapter, not a compiler.
 
 | Capability | Rides on | How |
 |-----------|----------|-----|
-| **Compilation** | `CompilationPipeline.run(BuildingEntry)` | Wraps the 9-stage pipeline via `BuildingRegistry.loadById()` → `CompilationPipeline.run()`. Same code path as `run_RosettaStones.sh` |
+| **Compilation** | `CompilationPipeline.run(BuildingEntry)` | Wraps the 12-stage pipeline via `BuildingRegistry.loadById()` → `CompilationPipeline.run()`. Same code path as `run_RosettaStones.sh` |
 | **Building discovery** | `BuildingRegistry.loadActive()` | Reads `C_DocType` from BOM.db — YAML-opaque. Adding a building type = adding BOM data, not code |
-| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 76 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
+| **Verb dispatch** | `VerbRegistry.createDefault().dispatch(ctx, line)` | 77 verbs via longest-prefix match. GUI emits verb lines, server dispatches them |
 | **Product catalog** | `component_library.db` via existing `compConn` pattern | Same connection pooling as the pipeline. No new DB access layer |
 | **Output writing** | `WriteStage` → `FederatedModel` schema | Same output.db schema that Bonsai's FederatedDBReader already reads |
 | **Data governance** | `EntityType` guards on PO layer | D (dictionary) = read-only, U (user) = mutable. Same guards as pipeline |
@@ -1551,7 +1551,7 @@ class BIM_OT_designer_create_new(Operator):
 |---------|-------|-----|
 | Viewport rendering | Federation addon (IfcOpenShell repo) | Full Load, materials, collections — already proven |
 | Spatial queries | Federation addon (R-tree, clash) | Already works at 48K scale |
-| Compilation | Java server (bim-compiler repo) | 9-stage pipeline, BOM validation |
+| Compilation | Java server (bim-compiler repo) | 12-stage pipeline, BOM validation |
 | Validation rules | ERP.db + PlacementValidator (bim-compiler) | DocValidate OSGi component |
 | TCP protocol | client.py (bim-compiler) → DesignerServer (bim-compiler) | Both ends in same repo |
 | Panel UI | bonsai_bim_designer/ (bim-compiler) | Registers into Federation's panel tree |

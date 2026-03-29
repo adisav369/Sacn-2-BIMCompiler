@@ -1273,7 +1273,7 @@ Session A provides:
 
 The 5 README commits (0822ce1..bf99c80) slimmed README from ~209 lines to 80 lines. Current state:
 
-- **Stats table accurate:** 35 buildings, 76 verbs, 2,475 products, 408+ tests — all match PROGRESS.md
+- **Stats table accurate:** 35 buildings, 77 verbs, 2,475 products, 408+ tests — all match PROGRESS.md
 - **Quick Start works:** clone → compile → run gates → run tests
 - **Docs link correct:** points to https://red1oon.github.io/BIMCompiler/ (verified HTTP 200)
 - **YouTube link present:** walkthrough of Claude pair programming

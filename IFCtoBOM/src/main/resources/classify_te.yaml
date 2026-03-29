@@ -24,6 +24,9 @@ building:
 
   static_children: []
 
+  # MEP disciplines: defaults to all 6 for CO (§10.4.11 T3.4)
+  # Override with mep_disciplines: [FP, ELEC] to narrow
+
   # Discipline classification (REB deferred — IfcOpenShell Python)
   disciplines:
     ARC:  [IfcPlate, IfcWall, IfcWindow, IfcDoor, IfcFurniture,

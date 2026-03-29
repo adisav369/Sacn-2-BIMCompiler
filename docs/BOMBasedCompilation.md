@@ -967,7 +967,7 @@ C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).
 
 ## 6. BIM COBOL — Verb-Driven BOM Mutation
 
-The GUI emits BIM COBOL verbs, never direct SQL. 76 verbs in 5 tiers:
+The GUI emits BIM COBOL verbs, never direct SQL. 77 verbs in 5 tiers:
 
 | Tier | Verbs | Purpose |
 |------|-------|---------|

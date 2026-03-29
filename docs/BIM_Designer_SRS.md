@@ -120,7 +120,7 @@ stated scale or the UX falls apart — slow tools teach users not to iterate.
 | UX-N-07 | BOM Chooser search | < 100ms | 24K products | SQL LIKE + AABB pre-filter, paginated | P1 |
 | UX-N-08 | Recall version | < 500ms | 50 OrderLines | COPY rows between sub-orders | P1 |
 | UX-N-09 | Full compile (SH-scale) | < 3s | 55 elements | Existing pipeline, no scope limiting | P1 |
-| UX-N-10 | Full compile (TE-scale) | < 30s | 48K elements | Existing pipeline, full 9-stage | P2 |
+| UX-N-10 | Full compile (TE-scale) | < 30s | 48K elements | Existing pipeline, full 12-stage | P2 |
 
 ### 3.2 Capacity Contracts
 
@@ -1226,7 +1226,7 @@ All methods share state. Functional for development and demo.
 ### 22.1 The Gap
 
 `DesignerAPIImpl.compile()` is a stub. It returns fake element counts without
-running the real 9-stage compilation pipeline. This is the single most
+running the real 12-stage compilation pipeline. This is the single most
 impactful missing connection — it would turn design bboxes into actual 3D
 buildings in the Blender viewport.
 
@@ -1874,7 +1874,7 @@ frame are already proven. The user only adds/swaps items.
 
 **Designer (GUI):** Render tree, accept edits, write C_OrderLine to output.db, call `bomDrop()`/`compile()`. NEVER walks BOMs, resolves products, or computes geometry.
 
-**Engine (backend):** `bomDrop()` explodes BOM tree for GUI; `compile()` runs 9-stage pipeline. Owns BOMWalker, PlacementCollector, VerbRegistry, MeshBinder, BIMEyes, gate checks.
+**Engine (backend):** `bomDrop()` explodes BOM tree for GUI; `compile()` runs 12-stage pipeline. Owns BOMWalker, PlacementCollector, VerbRegistry, MeshBinder, BIMEyes, gate checks.
 
 Same pattern as existing `compile()` — `DesignerAPIImpl` delegates to `CompilationPipeline`.
 

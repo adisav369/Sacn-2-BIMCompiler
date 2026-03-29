@@ -133,7 +133,7 @@ swapProduct(orderLineId, buildingId, newProductId)
 - W-TC4-3: swapProduct(roof, FK_DG_STR) → success
 - W-TC4-4: FK_DG_STR has >30 leaf lines
 
-**Gap:** No test compiles after the swap. W-TC4-1..4 verify the OrderLine/BOM state but don't run the 9-stage pipeline on the swapped tree.
+**Gap:** No test compiles after the swap. W-TC4-1..4 verify the OrderLine/BOM state but don't run the 12-stage pipeline on the swapped tree.
 
 ## 6. FP Discipline — Readiness Assessment
 
@@ -198,7 +198,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).
 4. Pipeline's 9 stages all fire for SH-based compilation — **GREEN**
 
 ### What's Needed (Session 2)
-1. **Post-swap compilation test:** Run 9-stage pipeline on swapped tree, verify element count = 55 − 2 + 42 = 95
+1. **Post-swap compilation test:** Run 12-stage pipeline on swapped tree, verify element count = 55 − 2 + 42 = 95
 2. **TRIM on FK roof:** Add test case in TrimVerbTest with FK roof dimensions on SH walls
 3. **FP OrderLine insertion:** API to add discipline=FP OrderLine to existing Order
 4. **FPValidationTest:** New test class for sprinkler placement + NFPA 13 spacing

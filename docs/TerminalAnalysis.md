@@ -326,7 +326,7 @@ Step 1: EXTRACT — Python IfcOpenShell → component_library.db
    └── Output: component_library.db tables populated
 
 Step 2: CLASSIFY — YAML declares building identity + discipline mapping
-   ├── classify_te.yaml: prefix, building_type, M_Product_Category (doc_base_type/doc_sub_type deprecated — §7)
+   ├── classify_te.yaml: prefix, building_type, M_Product_Category
    ├── disciplines: map ifc_class → discipline code (ARC, STR, FP, ...)
    ├── storey_bands: Z-centroid ranges → storey names
    └── Output: YAML file (only human invention in the chain)
@@ -1775,7 +1775,7 @@ STEP 5b: BOM DROP (Java — NEVER REACHED for TE)
   TE:     ❌ NEVER RUNS — no compile DB → no test invocation
           c_order = 0, c_orderline = 0
 
-STEP 6: COMPILE (Java DAGCompiler — 9-stage pipeline)
+STEP 6: COMPILE (Java DAGCompiler — 12-stage pipeline)
 ────────────────────────────────────────────────────
   Shell:  run_RosettaStones.sh:210 compile_building()
           → mvn test -Dtest="BuildingRegistryTest" -Dbom.db="${compile_db}"

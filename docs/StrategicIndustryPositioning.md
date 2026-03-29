@@ -206,7 +206,7 @@ core. [Most tools treat IFC as a file format](https://bimcorner.com/the-ifc-conf
 not a data model. We treat it as structured input to a database pipeline.
 
 **5. Domain-agnostic compilation — one pipeline for any facility type.**
-The same 9-stage pipeline that compiles a 55-element house also compiles a
+The same 12-stage pipeline that compiles a 55-element house also compiles a
 48,428-element airport terminal, a 48-element bridge, a 53-element road, and a
 73-element railway. No code changes per domain — only a ~30-line YAML mapping
 segments and disciplines. VerbDetector, BOMWalker, tack convention, delta tests,
@@ -351,7 +351,7 @@ itself after every edit.**
 │  │                                                    │  │
 │  │  IFC → Extract → Classify → BOM → Compile → Prove │  │
 │  │  48,428 elements → 700 BOM lines → C_Order        │  │
-│  │  76 verbs · 202 witnesses · G1-G6 proven           │  │
+│  │  77 verbs · 202 witnesses · G1-G6 proven           │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │                   ERP / PROCUREMENT                     │
@@ -438,7 +438,7 @@ This model exists in every mature engineering discipline. BIM is the outlier.
 | Manufacturing | BOM + Work Order | Factory/MRP | Product | Product Master |
 | Chip Design | Verilog | Synthesis | GDSII | Standard cells |
 | **BIM (traditional)** | *None — geometry IS source* | *None* | *IFC IS output AND source* | *Embedded per project* |
-| **BIM Intent Compiler** | YAML + Order + ASI | 9-stage pipeline | output.db | component_library.db |
+| **BIM Intent Compiler** | YAML + Order + ASI | 12-stage pipeline | output.db | component_library.db |
 
 BIM is the only major engineering domain that ships compiled output as
 source of truth.

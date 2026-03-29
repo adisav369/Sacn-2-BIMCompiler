@@ -21,6 +21,8 @@ building:
     "Level 5": { code: L5, bom_category: L5, role: UPPER_FLOOR, seq: 1040 }  # 11 elements
     "Unknown": { code: MISC, bom_category: MISC, role: MISC, seq: 1050 }  # 1 elements
 
+  # MEP disciplines: defaults to all 6 for CO (§10.4.11 T3.4)
+
   # floor_rooms:           # uncomment if building has named rooms
   # static_children:       # uncomment for fixed assemblies
   # composition: null      # uncomment for mirrored/paired buildings

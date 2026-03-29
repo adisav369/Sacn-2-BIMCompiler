@@ -24,6 +24,7 @@ building:
     Unknown:                       { code: MISC, bom_category: MS,  role: MISC,          seq: 9000 }
 
   static_children: []
+  # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)
 
   # Infrastructure discipline mapping
   disciplines:

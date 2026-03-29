@@ -544,8 +544,6 @@ building:
   building_type: Ifc4_FZKHaus        # must match {name}_extracted.db
   prefix: FK                          # → FK_BOM.db
   building_bom_id: BUILDING_FK_STD
-  doc_sub_type: FK                    # deprecated — redundant with prefix (see DATA_MODEL.md §7)
-  doc_base_type: RE                   # deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)
   name: FZK-Haus
   dsl_file: dsl_fk.bim               # BIM COBOL script
 
