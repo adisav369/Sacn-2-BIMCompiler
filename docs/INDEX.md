@@ -77,7 +77,7 @@ Single-page entry point. All active docs by tier.
 | Doc | What |
 |-----|------|
 | [BIMERPPaper.md](BIMERPPaper.md) | Academic paper: BIM as ERP |
-| [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) | Academic paper: Deterministic spatial compilation — 0.002mm verified, cross-domain (protein/robotics) |
+| [SPATIAL_COMPILATION_PAPER.md](SPATIAL_COMPILATION_PAPER.md) | Academic paper: Deterministic spatial compilation — 0.002mm verified, cross-domain (protein/robotics). *Along the way, we wrote to the Nobel Prize Committee for Physics.* |
 | [StrategicIndustryPositioning.md](StrategicIndustryPositioning.md) | Market positioning, 4 moats, IFC scorecard |
 | [BIM_Compiler_Market_Impact_Report.pdf](BIM_Compiler_Market_Impact_Report.pdf) | Market impact: USD 10B BIM market, MY mandate, go-to-market timeline, risk assessment |
 | [TheRosettaStoneStrategy.md](TheRosettaStoneStrategy.md) | Why real buildings are ground truth: deterministic proofs, no AI in gates |

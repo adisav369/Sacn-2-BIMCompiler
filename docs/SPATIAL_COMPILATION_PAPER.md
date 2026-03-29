@@ -211,6 +211,14 @@ This log contains the complete TACK chain for all 58 elements across 3 compilati
 
 The key difference: AlphaFold learns spatial relationships implicitly in network weights. The BIM Compiler stores them explicitly as BOM tack offsets. This makes every spatial decision **auditable** — the TACK log shows the exact arithmetic chain from parent anchor to child position.
 
+#### 5.1.1 What This Method Offers Protein Science
+
+1. **From approximation to precision.** AlphaFold achieves 1–3 Angstrom residual error through stochastic refinement. Deterministic spatial compilation achieves 0.002mm (0.02 Angstrom equivalent) through pure arithmetic. If protein spatial relationships could be captured as hierarchical tack offsets (bond angles, torsion, side-chain rotamers), the reconstruction would be exact — not predicted.
+
+2. **Auditable motif analysis.** When AlphaFold's prediction diverges from the crystal structure, researchers cannot determine which learned motif caused the error — the neural network is opaque. Per-element identity tracing through a TACK chain would enable **motif-level diagnosis**: "this helix-turn-helix at residues 42-58 matches the template to 0.5 Angstrom, but this loop at residues 103-115 drifted 3.2 Angstrom because the refinement overrode the template offset."
+
+3. **All-pairs distance geometry.** Protein structure validation uses bulk RMSD (root mean square deviation across all atoms). All-pairs relative verification would catch errors that RMSD averages away — a single misplaced side chain that shifts a binding pocket by 2 Angstrom while RMSD remains acceptable at 1.1 Angstrom overall.
+
 ### 5.2 Comparison with Robotics
 
 | Aspect | Robotics (FK) | BIM Compiler |
@@ -224,15 +232,25 @@ The key difference: AlphaFold learns spatial relationships implicitly in network
 
 The key difference: robots verify only the end effector. We verify every element. Robots drift over time due to physical degradation. Our round-trip is pure arithmetic — no physical process introduces error.
 
+#### 5.2.1 What This Method Offers Robotics
+
+1. **Continuous multi-point verification.** Standard FK verifies the end effector (tool tip) against a sensor reading. This method enables **every link in the kinematic chain** to be verified independently, every cycle. A 6-DOF arm with this approach would verify 6 link positions per motion, not 1.
+
+2. **Diagnostic identity tracing.** By assigning a persistent identity (analogous to IFC GUID) to every joint and link, the system can perform **joint-by-joint diagnosis**: "joint 3 has drifted 0.15mm on the Z axis over 10,000 cycles — replace bearing before tolerance breach." Current calibration finds the total error but cannot localise it to a specific joint without disassembly.
+
+3. **Arithmetic zero-drift reference.** The compiled kinematic chain (pure arithmetic, no physical degradation) serves as a **reference standard** for the physical robot. The delta between computed and measured position at each joint IS the mechanical wear — continuously monitored, not batch-calibrated.
+
 ### 5.3 Transferable Contributions
 
 Three capabilities developed for building compilation are transferable to other domains:
 
-1. **Per-element identity tracing.** The GUID chain through decomposition → recipe → compilation enables diagnosis of which specific element drifted and by how much. Applicable to: robot joint diagnosis (which joint degraded), protein motif analysis (which template region diverged).
+| Capability | Construction use | Protein science use | Robotics use |
+|-----------|-----------------|-------------------|-------------|
+| **Per-element identity tracing** | Trace compiled element to IFC source GUID | Trace predicted atom to template motif | Trace computed position to joint serial |
+| **Interpretable TACK chain** | Audit every spatial decision in compilation log | Explain which template/refinement caused divergence | Diagnose which link contributes to end-effector error |
+| **All-pairs relative verification** | 1,653 pairs, 0.002mm worst | Catch binding pocket shifts masked by bulk RMSD | Detect tolerance stack-up across multi-axis motion |
 
-2. **Interpretable spatial inference.** The TACK log provides a named, auditable chain of spatial operations. Each position has a traceable explanation. Applicable to: explainable AI for spatial prediction, manufacturing quality audit trails.
-
-3. **All-pairs relative verification.** Verifying every pairwise spatial relationship (not just individual positions) catches errors that per-element checks miss. Applicable to: tolerance stack-up analysis in manufacturing, molecular distance geometry in structural biology.
+The common thread: moving from **bulk verification** (RMSD, end-effector check, element count) to **per-element, identity-traced, relationship-level verification** — knowing not just that something is wrong, but exactly which piece, by how much, and why.
 
 ---
 
