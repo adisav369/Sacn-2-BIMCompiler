@@ -204,6 +204,52 @@ competitive analysis and market positioning.
 
 ---
 
+## Why Nobody Else Can Self-Verify
+
+The industry doesn't decompose real buildings into reusable BOMs. They either
+author from scratch (Revit), scan and compare snapshots (Navisworks), or
+classify finished models (Solibri). None of them can answer: "is this
+compiled wall in the same position as the extracted source wall, and can you
+prove it with a number?"
+
+The Rosetta Stone approach enables self-verification because the round-trip
+is inherent to the architecture:
+
+```
+IFC file → EXTRACT → BOM dictionary (tack offsets + IFC GUIDs)
+                              ↓
+              COMPILE ← BOM dictionary
+                              ↓
+           output.db → VERIFY against extraction source
+```
+
+Each compiled element carries its **IFC GUID** through the BOM chain
+(`m_bom_line_ma`). At compile time, GEO debug mode (`-Dbim.geo.debug=true`)
+compares the compiled position against the extraction source for that GUID
+and emits MATCH or DRIFT with a millimetre delta per axis. No human
+arithmetic — the log is the verdict. See [LMP §7](LAST_MILE_PROBLEM.md#7-separate-from-input).
+
+**Why this is impossible without Rosetta Stones:**
+
+- **No BOM decomposition → no tack offsets → no recompilation.** Revit stores
+  geometry directly. There's no BOM to compile from, so there's no round-trip
+  to verify.
+
+- **No IFC GUID chain → no element-level traceability.** Digital twin platforms
+  carry GUIDs for lifecycle tracking, but they don't recompile geometry from
+  BOMs. The GUID is a label, not a provenance proof.
+
+- **No extraction source → no comparison target.** Solibri checks rules on a
+  model. It doesn't know what the model *should* look like — only what rules
+  it should satisfy. The Rosetta Stone IS the comparison target.
+
+The BOM dictionary is the learned relationship. The GEO proof is the evidence
+that the learning was preserved. Together they make this the only BIM tool
+that can compile a building from a recipe and prove every element landed
+where the source building says it should.
+
+---
+
 > **Full historical record:** Terminal decomposition phases (TE-1 through TE-8),
 > score history, benchmark baselines, known gaps (resolved), testing code
 > description, and synthetic Rosetta Stone details are preserved in
