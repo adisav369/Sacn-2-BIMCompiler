@@ -2647,7 +2647,7 @@ would block smooth daily use.
 - Design Mode Phase 1 (wireframe, snap, validate, BOM chooser, jurisdiction switch)
 - Web UI tabs 1D/9/10 (Order, BOM, Colour — fully functional)
 - Bonsai ↔ Browser viewport sync (selection push, color schemes, bbox preview)
-- 77 verbs, 10-stage compilation pipeline, 24/34 ALL GREEN
+- 77 verbs, 12-stage compilation pipeline, 24/34 ALL GREEN
 - 18 report generators (4 existing + 14 new from p78–p83)
 - Federation layer (ColorScheme, DimensionQuery, WorkPackage, NLP backend)
 
