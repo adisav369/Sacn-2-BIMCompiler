@@ -104,24 +104,57 @@ The 1mm rounding (maxZ: 2.474 input → 2.473 output from `allocated_height_mm=2
 
 **Verdict:** PASS — T18 guards enforced, BOM tree forensic verified.
 
-**Smoking gun: GEO debug mode (P123).** `BIM.properties` or `-Dbim.geo.debug=true`
-activates a dedicated `[GEO] TACK` channel in `PlacementCollectorVisitor`.
-Each TACK line sits on the exact Java line that computed the value — if it
-emits, the code executed; if it doesn't, the element was placed by another
-path (drift signal). Two things proven in one log line:
+**Smoking gun: GEO debug mode (P123).** `-Dbim.geo.debug=true` activates a
+self-verifying `[GEO] TACK` channel in `PlacementCollectorVisitor`. The log
+does not require human arithmetic — it says MATCH or DRIFT per element.
 
-- **A (tack math):** `anchor + offset + half → centroid LBD` — the formula ran
-- **B (IFC provenance):** `guid=3cUkl32yn9qRSPvBJVyZVU` — the IFC entity
-  this element traces to, carried through `m_bom_line_ma` from extraction
+**How it works:** At each LEAF placement (line 325), GEO mode:
 
-Filter with `-Dbim.geo.filter=Desk` to inspect specific elements without
-48K lines of output. Verified for SH_BED_SET: relative offset 0.000mm error,
-desk−bed matches BOM dx/dy exactly.
+1. Emits the **tack chain** — `anchor + offset + half → computed LBD`
+2. Looks up the **extraction source** — queries `*_extracted.db` for the
+   same GUID's original `elements_rtree` position
+3. Compares and emits **verdict** — delta per axis, MATCH (≤1mm) or DRIFT
 
+```
+[GEO] TACK LEAF Furniture_Desk guid=3cUkl32...
+  computed  LBD=(13.7710, 6.2940, 0.4700)
+  extracted LBD=(13.7710, 6.2940, 0.4700)
+  delta=(0.000mm, 0.000mm, 0.000mm) MATCH
+```
+
+If any element drifts:
+```
+[GEO] TACK LEAF SomeWall guid=2x8Kp...
+  computed  LBD=(4.500, 2.100, 0.000)
+  extracted LBD=(4.500, 2.300, 0.000)
+  delta=(0.000mm, 200.000mm, 0.000mm) DRIFT Y=200mm
+```
+
+**Three proofs in one log line:**
+
+- **A (formula execution):** the TACK line emits from line 325 using local
+  variables. If it emits, the tack math ran. If absent, the element was
+  placed by another path — drift signal.
+- **B (data provenance):** `guid=3cUkl32...` traces this compiled element
+  back to its IFC source entity via `m_bom_line_ma`.
+- **C (positional accuracy):** MATCH/DRIFT with delta. No human arithmetic.
+  The log itself is the verdict.
+
+**T18 exemption:** GEO mode opens a read-only connection to `*_extracted.db`
+for comparison. This is a debug verification channel, not compilation. The
+connection is gated behind `bim.geo.debug=true` — normal compilation never
+touches extraction (T18 enforced). Same principle as a debugger attaching
+to a running process.
+
+**Usage:**
 ```bash
-# Activate GEO mode for any building
+# Self-verifying GEO proof for SH
 ./scripts/run_RosettaStones.sh classify_sh.yaml -Dbim.geo.debug=true
-grep "GEO.*TACK LEAF" logs/pipeline_Sample\ House*.log
+grep "GEO.*DRIFT" logs/pipeline_Sample\ House*.log
+# Empty output = all elements MATCH. Any DRIFT line = position error.
+
+# Filter to specific elements (avoids 48K lines on TE)
+-Dbim.geo.filter=Desk
 ```
 
 ### 8. Visual Fidelity?
