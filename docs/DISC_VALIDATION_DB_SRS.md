@@ -1283,6 +1283,109 @@ CONNECTS_TO edge source for P16/P17) is populated only for legacy buildings.
 The RouteStage edges land in `system_edges`/`system_nodes` — wiring these
 into P16/P17 is the next integration step.
 
+#### Room-Aware Branching (Level 2)
+
+Gaps 1–5 fix the routing **skeleton** — correct Z, auditable verbs,
+traceable standards, missing products. This section addresses the next
+layer: making branches spatially intelligent within rooms.
+
+##### Current behaviour
+
+When a route branches to a room, every builder does the same thing:
+
+```java
+RoomDimensions roomDims = geo.roomDimensions(room.ref());
+double roomRun = roomDims != null ? roomDims.longestAxis() : 3000;
+branchOps.add(new FollowOp(roomRun, STOCK_LENGTH_MM));
+```
+
+The branch enters the room and follows the longest axis for its full length.
+It does not know where it enters, where fixtures are, or how the room is
+shaped. Every room gets the same treatment regardless of discipline.
+
+##### What each discipline actually needs
+
+| Discipline | In-room behaviour | Standard | What's missing |
+|-----------|-------------------|----------|----------------|
+| **FP** | Grid of sprinkler heads at ceiling, max spacing per hazard class | NFPA 13 §8.6.2 (LH 4.6m), §8.6.3 (OH 4.0m) | Grid layout from room AABB, head count = `ceil(width/spacing) × ceil(depth/spacing)` |
+| **ELEC** | Perimeter run at dado height (sockets), ceiling run (lights) | MS IEC 60364, IES lux tables | Two sub-routes per room: ceiling grid + wall perimeter |
+| **CW** | Drop from ceiling to fixture positions (basin, sink, WC) | MS 1228 fixture unit table | Fixture type → position offset from room origin. `ad_fixture_type` table |
+| **SP** | Drop from fixture to floor waste, connect to horizontal waste | MS 1228 §5 gradient tables | Gravity: fixture height → floor level. Gradient maintained on horizontal |
+| **ACMV** | Ceiling diffuser grid, spacing per air changes/hour | ASHRAE 62.1, MS 1525 §6 | Diffuser count = `room_volume × ACH / diffuser_capacity`. Room height matters |
+| **LPG** | Single drop from ceiling to gas point (kitchen range, heater) | MS 830 §4 | One connection point per room. Gas cock fitting at drop |
+
+##### Data already available
+
+`RoomTarget` has `ref`, `position`, `discipline`. `RoomDimensions` has
+`widthMm`, `depthMm`, `heightMm`. This is enough for grid layouts
+(FP sprinklers, ACMV diffusers) and perimeter runs (ELEC sockets).
+
+What's **not** available: fixture positions within a room. CW needs to know
+where the basin is. SP needs to know where the WC is. These come from the
+BOM — `m_bom_line` LEAF elements with product category matching
+`IfcSanitaryTerminal`, `IfcFlowTerminal`, etc. The BOM walker (CompileStage,
+Step 3) already placed these elements with world coordinates.
+
+##### Proposed: `BuildingGeometry.fixturesInRoom(roomRef, discipline)`
+
+New query method on the interface:
+
+```
+record FixtureTarget(String ref, Point3D position, String ifcClass, String product)
+List<FixtureTarget> fixturesInRoom(String roomRef, String discipline)
+```
+
+Implementation in `SqlBuildingGeometry`: query `elements_meta` or
+`c_orderline` LEAF rows whose parent chain includes the room and whose
+discipline matches. These are the ARC-placed elements from CompileStage —
+real positions, not invented.
+
+##### Branch sub-route composition
+
+With fixture positions available, each discipline's branch becomes a
+mini-route within the room:
+
+**FP (sprinkler grid):**
+```
+enter room at ceiling Z → compute grid from AABB + NFPA spacing
+  → FOLLOW to first row → BRANCH to each head position
+  → FOLLOW to next row → BRANCH to each head position
+```
+
+**CW (fixture drops):**
+```
+enter room at ceiling Z → for each fixture:
+  → FOLLOW along ceiling to fixture X,Y
+  → BEND 90° down → FOLLOW to fixture Z (basin height ~850mm)
+  → fitting: stop valve + connector
+```
+
+**SP (waste collection):**
+```
+for each fixture → DROP to floor (fixture Z → floor Z)
+  → FOLLOW along floor to waste pipe (gradient 1:40)
+  → connect to floor waste header
+```
+
+Each sub-route uses the same CrawlOps (FollowOp, BendOp, BranchOp) but
+now with real target positions instead of "follow longest axis."
+
+##### Phasing
+
+Level 2 builds on Gaps 1–5:
+
+| Phase | Prereq | Scope |
+|-------|--------|-------|
+| L2.1 | P118 (ceiling Z) | `fixturesInRoom()` query on BuildingGeometry |
+| L2.2 | L2.1 | FP grid layout — sprinkler head spacing from NFPA 13 per room AABB |
+| L2.3 | L2.2 | CW/SP fixture drops — real fixture positions from BOM |
+| L2.4 | L2.3 | ELEC dual-route — ceiling lights + perimeter sockets |
+| L2.5 | L2.4 | ACMV diffuser grid — air changes per room volume |
+
+Each phase is one bounded task for a coder. FP grid (L2.2) is the natural
+first because sprinkler spacing is the most formula-driven (NFPA 13 table
+lookup from hazard class + room AABB → grid dimensions → head count).
+
 ### 10.5 Investigation Tasks
 
 1. Count Java files that read M_Product from component_library.db vs ERP.db

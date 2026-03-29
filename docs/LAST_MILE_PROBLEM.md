@@ -104,6 +104,26 @@ The 1mm rounding (maxZ: 2.474 input → 2.473 output from `allocated_height_mm=2
 
 **Verdict:** PASS — T18 guards enforced, BOM tree forensic verified.
 
+**Smoking gun: GEO debug mode (P123).** `BIM.properties` or `-Dbim.geo.debug=true`
+activates a dedicated `[GEO] TACK` channel in `PlacementCollectorVisitor`.
+Each TACK line sits on the exact Java line that computed the value — if it
+emits, the code executed; if it doesn't, the element was placed by another
+path (drift signal). Two things proven in one log line:
+
+- **A (tack math):** `anchor + offset + half → centroid LBD` — the formula ran
+- **B (IFC provenance):** `guid=3cUkl32yn9qRSPvBJVyZVU` — the IFC entity
+  this element traces to, carried through `m_bom_line_ma` from extraction
+
+Filter with `-Dbim.geo.filter=Desk` to inspect specific elements without
+48K lines of output. Verified for SH_BED_SET: relative offset 0.000mm error,
+desk−bed matches BOM dx/dy exactly.
+
+```bash
+# Activate GEO mode for any building
+./scripts/run_RosettaStones.sh classify_sh.yaml -Dbim.geo.debug=true
+grep "GEO.*TACK LEAF" logs/pipeline_Sample\ House*.log
+```
+
 ### 8. Visual Fidelity?
 **Spec:** [TestArchitecture](TestArchitecture.md) C8 (geometry diversity) + C9 (axis dimensions) + P06 (overlap).
 
