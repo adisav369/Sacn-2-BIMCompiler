@@ -53,6 +53,17 @@
             <groupId>com.bim</groupId>
             <artifactId>bim-eyes</artifactId>
         </dependency>
+        <!-- POI: transitive dep of BIM_COBOL (loaded via additionalClasspathElements) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -84,6 +95,12 @@
                         <doc.base.type>${doc.base.type}</doc.base.type>
                         <bim.log.level>${bim.log.level}</bim.log.level>
                     </systemPropertyVariables>
+                    <!-- BIM_COBOL on test classpath for RouteExecutor SPI (§10.4.11 T3.1).
+                         Cannot use <dependency> — reactor cycle. additionalClasspathElements
+                         sidesteps Maven dependency resolution. -->
+                    <additionalClasspathElements>
+                        <additionalClasspathElement>${project.parent.basedir}/BIM_COBOL/target/classes</additionalClasspathElement>
+                    </additionalClasspathElements>
                 </configuration>
                 <executions>
                     <!-- Disable the default-test execution; we replace it below -->
