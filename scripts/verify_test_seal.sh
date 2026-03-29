@@ -20,13 +20,13 @@
 #   5. bash scripts/verify_test_seal.sh  (should now say INTACT)
 #   6. git commit -m "[SEAL] Re-seal after <reason>"
 #
-# Sealed: 2026-03-26 (v7: 73 files — 63 test + 9 production + pre-commit hook)
+# Sealed: 2026-03-29 (v14: 77 files — 63 test + 13 production + pre-commit hook)
 # Manifest: docs/TestArchitecture.md
 
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-EXPECTED="585676a41712b20f2441c73acce57f7530ba0a6078e38067537d28dc52d7be7f"
+EXPECTED="a60a9398dc22ebfe7a1e1948befa108040f685ea9419d3ab82438a4c4fbee7a3"
 
 FILES=(
   DAGCompiler/src/test/java/com/bim/compiler/contract/ArchitectureTest.java
@@ -100,6 +100,10 @@ FILES=(
   ORMSandbox/src/main/java/com/bim/ormsandbox/po/MBOMLine.java
   scripts/run_tests.sh
   scripts/run_RosettaStones.sh
+  scripts/lib_rosetta_helpers.sh
+  scripts/rosetta_compile.sh
+  scripts/rosetta_integrity.sh
+  scripts/rosetta_fidelity.sh
   scripts/pre-commit
 )
 
@@ -137,7 +141,7 @@ fi
 ACTUAL=$(sha256sum "${FILES[@]}" | sha256sum | awk '{print $1}')
 
 if [ "$ACTUAL" = "$EXPECTED" ]; then
-  echo "SEAL INTACT — 73 files, super-hash matches"
+  echo "SEAL INTACT — ${#FILES[@]} files, super-hash matches"
   echo "  $ACTUAL"
   exit 0
 fi

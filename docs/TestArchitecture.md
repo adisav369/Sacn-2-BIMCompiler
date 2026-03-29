@@ -230,8 +230,8 @@ SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of
 2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Sealed:** 2026-03-29 (v13: S100-p110 VerbStage hybrid + println cleanup)
-**Super-hash:** `585676a41712b20f2441c73acce57f7530ba0a6078e38067537d28dc52d7be7f`
+**Sealed:** 2026-03-29 (v14: S100-p112 run_RosettaStones.sh split into 4 modules)
+**Super-hash:** `a60a9398dc22ebfe7a1e1948befa108040f685ea9419d3ab82438a4c4fbee7a3`
 
 ```
 bash scripts/verify_test_seal.sh            # quick check
