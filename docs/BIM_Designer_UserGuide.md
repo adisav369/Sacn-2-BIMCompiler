@@ -35,7 +35,7 @@ BIM Designer is Item A of the IfcOpenShell Federation Suite. It adds
 - **Reports** — 4D schedule, 5D cost, 6D carbon, 7D facility management (via Back Office)
 
 The addon is a thin Python layer. All logic lives in the Java server.
-**35 Rosetta Stone buildings** prove the pipeline: SH (55), FK (82), IN (699), DX (1099), TE (48,428 elements). 19 ALL GREEN. 408+ tests GREEN.
+**35 Rosetta Stone buildings** prove the pipeline: SH, FK, IN, DX, TE. 19 ALL GREEN. Current counts in [PROGRESS.md](../PROGRESS.md).
 
 ```
 User clicks button in Blender
@@ -252,7 +252,7 @@ All other buttons are disabled until connected.
 1. Select a building ID
 2. Set BOM DB path
 3. Click Compile
-4. Status shows "Compiled: 55 elements in 847ms"
+4. Status shows "Compiled: 58 elements in 847ms"
 5. Output.db ready for Full Load via Federation #2
 
 ### 5.4 Create New (A.3)

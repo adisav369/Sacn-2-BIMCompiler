@@ -30,7 +30,7 @@ Priority: **P0** = must-have for first usable demo, **P1** = needed for daily us
 ### 1.1 Foundation Guarantee — Zero Delta Compilation
 
 All five Rosetta Stone buildings compile with verified volume:
-SH (55), FK (82), IN (699), DX (1,099), TE (48,428). The compiler is a pure
+SH, FK, IN, DX, TE (counts in [PROGRESS.md](../PROGRESS.md)). The compiler is a pure
 function: same input → same output, always. Every UX claim in this document
 rests on this guarantee. See [MANIFESTO.md §Why This Matters](MANIFESTO.md).
 
@@ -119,7 +119,7 @@ stated scale or the UX falls apart — slow tools teach users not to iterate.
 | UX-N-06 | Save to output.db | < 500ms | 50 OrderLines + ASI | SQLite batch INSERT in transaction | P0 |
 | UX-N-07 | BOM Chooser search | < 100ms | 24K products | SQL LIKE + AABB pre-filter, paginated | P1 |
 | UX-N-08 | Recall version | < 500ms | 50 OrderLines | COPY rows between sub-orders | P1 |
-| UX-N-09 | Full compile (SH-scale) | < 3s | 55 elements | Existing pipeline, no scope limiting | P1 |
+| UX-N-09 | Full compile (SH-scale) | < 3s | 58 elements | Existing pipeline, no scope limiting | P1 |
 | UX-N-10 | Full compile (TE-scale) | < 30s | 48K elements | Existing pipeline, full 12-stage | P2 |
 
 ### 3.2 Capacity Contracts
@@ -1289,7 +1289,7 @@ the full BOM Drop paradigm that supersedes this path.
 
 | Witness | Tests | Requirement | Status |
 |---|---|---|---|
-| W-COMPILE-1 | compile() with SH_BOM.db produces output.db with 55 elements | Pipeline wiring | PASS |
+| W-COMPILE-1 | compile() with SH_BOM.db produces output.db with 58 elements | Pipeline wiring | PASS |
 | W-COMPILE-2 | compile() returns outputDbPath that exists on disk | File creation | PASS |
 | W-COMPILE-3 | compile() returns spatialDigest matching G3-DIGEST format (SHA-256) | Tamper seal | PASS |
 | W-COMPILE-4 | compile() for SH completes in < 3s (549ms actual) | UX-N-09 | PASS |
@@ -1859,7 +1859,7 @@ Step 4: Compile — same compiler, same gates   │
 
 | Mode | User action | Example |
 |------|------------|---------|
-| **Instant Drop** | Pick template, no edits, compile | TC-1: "Give me SH" → 55 elements |
+| **Instant Drop** | Pick template, no edits, compile | TC-1: "Give me SH" → 58 elements |
 | **BOM Drop** | Pick template, navigate tree, swap/add/remove | TC-4: SH + swap roof → pitched |
 | **From Scratch** | No template, autoPopulate fills from cascade | Fallback: topology maker path |
 
@@ -2004,7 +2004,7 @@ effective_dimension = ASI_override ?? allocated_*_mm ?? M_Product.catalog_defaul
 
 ```
 User opens Designer
-  → listBuildingTypes() shows: SH (55 el), FK (82 el), DX (1099 el), ...
+  → listBuildingTypes() shows: SH, FK, DX, ...
   → user clicks "SH — Sample House"
      → bomDrop("BUILDING_SH_STD")
         → C_Order created, 1 C_OrderLine
@@ -2062,7 +2062,7 @@ explode recursively. Unmodified trees fold back to parent line for performance.
 | Witness | Claim | Status |
 |---------|-------|--------|
 | W-DROP-1 | bomDrop creates C_Order + explodes BOM tree into C_OrderLine hierarchy | GREEN (S54) |
-| W-DROP-2 | Instant Drop totalElements = 55 (SH Rosetta Stone match) | GREEN (S54) |
+| W-DROP-2 | Instant Drop totalElements = 58 (SH Rosetta Stone match) | GREEN (S54) |
 | W-DROP-3 | Tree has FLOOR-level children (IsBOM sub-assemblies) | GREEN (S54) |
 | W-DROP-4 | FLOOR_SH_GF_STD contains ROOM sub-assemblies with LEAF children | GREEN (S54) |
 | W-DROP-5 | Non-BOM product (IsBOM=false) returns error | GREEN (S54) |
@@ -2078,7 +2078,7 @@ explode recursively. Unmodified trees fold back to parent line for performance.
 | Requirement | Source | Implementation |
 |-------------|--------|---------------|
 | BOM Drop paradigm | GENERATIVE_HOUSE_SRS.md §2.1 | `DesignerAPI.bomDrop()` — GREEN (S54) |
-| Instant Drop = Rosetta Stone | GENERATIVE_HOUSE_SRS.md §7 TC-1 | `BomDropTest` W-DROP-2: 55 elements |
+| Instant Drop = Rosetta Stone | GENERATIVE_HOUSE_SRS.md §7 TC-1 | `BomDropTest` W-DROP-2: 58 elements |
 | DocAction lifecycle | iDempiere C_Order processing | Save→validate, Approve→promote, Complete→compile |
 | Tree navigation | BIM_Designer.md §17.19 (BOM Outliner) | `getBomTree()` + `explodeBomTree()` |
 | Product swap in tree | BIM_Designer.md §17.11 (ORDER View edit) | `updateOrderLine()` + `family_ref` field |

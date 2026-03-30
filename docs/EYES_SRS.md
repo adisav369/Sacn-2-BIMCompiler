@@ -845,7 +845,7 @@ public static List<Fingerprint> computeFromExtracted(String path) {
 // DAGCompiler/src/test/java/com/bim/compiler/contract/CompilerContractTest.java
 // Witness: W-EYES-NONDISTURB
 @Test void eyes_migration_preserves_SH_results() {
-    // Given: SH Rosetta Stone (55 elements)
+    // Given: SH Rosetta Stone (58 elements)
     // When:  run full pipeline through PlacementProver facade
     // Then:  9/10 PASS (same as pre-migration baseline)
     //        W-BOM-TRACED results unchanged

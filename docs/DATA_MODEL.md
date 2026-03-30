@@ -41,10 +41,12 @@ See DISC_VALIDATION_DB_SRS.md §6.
 Each row is one IFC element with its world-space AABB (min_x/max_x, min_y/max_y, min_z/max_z)
 and a resolved `M_Product_ID` linking to the product catalog.
 
-| Building | building_type | Elements | Storeys |
-|----------|--------------|----------|---------|
-| Sample House | Ifc4_SampleHouse | 55 | Ground Floor(27), Roof(2), Unknown(26) |
-| Duplex | Ifc2x3_Duplex | 1099 | Level 1(571), Level 2(485), Roof(11), T/FDN(7), Unknown(25) |
+| Building | building_type | Type |
+|----------|--------------|------|
+| Sample House | Ifc4_SampleHouse | Single-storey residential |
+| Duplex | Ifc2x3_Duplex | Paired duplex, 2-storey |
+
+Element counts and storey breakdowns: see [PROGRESS.md](../PROGRESS.md) gate table.
 
 ### 1.2 Tack Convention
 
@@ -154,7 +156,7 @@ Each building has its own BOM dictionary, regenerated deterministically:
 
 The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`) — see [`WorkOrderGuide.md`](WorkOrderGuide.md) §Step 5 for full table:
 1. Load classification YAML (Order input) + read IFC extraction to `I_Element_Extraction` (`ExtractionPopulator`)
-2. **Pre-flight:** FAIL if extraction has storeys not in YAML Order config; FAIL on NULL M_Product_ID
+2. **Pre-flight:** Auto-discover spatial containers from extraction (YAML override if present); FAIL on NULL M_Product_ID
 3. `ProductRegistrar.ensureProductCatalog()`: M_Product → component_library.db (persistent, reusable)
 4. `ProductRegistrar.ensureProductImages()`: geometry link (INSERT OR IGNORE)
 5. **Pre-flight:** FAIL if any product has no geometry_hash

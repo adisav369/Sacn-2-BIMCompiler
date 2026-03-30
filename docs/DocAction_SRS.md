@@ -739,7 +739,7 @@ Groups spanning 3+ storeys with <50mm drift = MEP risers.
 
 | Witness | What it Proves | Depends On |
 |---------|---------------|------------|
-| W-DV-ND-SH | Non-Disturbance PASS for SampleHouse (55 elements, ARC only) | DV-T-01 |
+| W-DV-ND-SH | Non-Disturbance PASS for SampleHouse (58 elements, ARC+STR+CW) | DV-T-01 |
 | W-DV-ND-DX | Non-Disturbance PASS for Duplex (1099 elements, multi-discipline) | DV-T-01 |
 | W-DV-ND-TE | Non-Disturbance PASS for Terminal (48428 elements, 8 disciplines) | DV-T-01 |
 | W-DV-T2-CLR | Tier 2 clearance: M12 ELEC-SP detection matches TE_MINING_RESULTS | DV-F-03, DV-F-13 |

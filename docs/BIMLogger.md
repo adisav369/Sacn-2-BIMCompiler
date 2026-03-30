@@ -64,10 +64,10 @@ BIMLogger.debug("SQL",     "Query: {}", sql);
 
 ```java
 // Pipeline stage tracking
-BIMLogger.stage(1, "MetadataValidator", "55 elements");
+BIMLogger.stage(1, "MetadataValidator", "58 elements");
 
 // Gate verdicts (G1-G6)
-BIMLogger.gate("G1-COUNT", "RE_SH", "PASS", "ref=55 out=55 delta=+0");
+BIMLogger.gate("G1-COUNT", "RE_SH", "PASS", "ref=58 out=58 delta=+0");
 
 // Prover results (54 proofs)
 BIMLogger.proof("P05", "PROVEN", "IfcDoor:23", "no duplicate position");
@@ -105,8 +105,8 @@ Tab-aligned, grep-friendly:
 2026-03-19 14:32:01.300 [INFO ] PIPELINE     STEP 1: MetadataValidator — starting
 2026-03-19 14:32:01.450 [INFO ] PIPELINE     STEP 5: WriteStage — starting
 2026-03-19 14:32:02.100 [FINE ] PROVER       [PROVEN] P05 — IfcDoor:23 — no duplicate
-2026-03-19 14:32:02.200 [INFO ] GATE         [G1-COUNT ] RE_SH PASS  ref=55 out=55 delta=+0
-2026-03-19 14:32:02.300 [INFO ] PIPELINE     PIPELINE COMPLETE: Ifc4_SampleHouse — 55 elements
+2026-03-19 14:32:02.200 [INFO ] GATE         [G1-COUNT ] RE_SH PASS  ref=58 out=58 delta=+0
+2026-03-19 14:32:02.300 [INFO ] PIPELINE     PIPELINE COMPLETE: Ifc4_SampleHouse — 58 elements
 # End: 2026-03-19 14:32:02.350
 ```
 

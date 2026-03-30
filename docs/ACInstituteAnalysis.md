@@ -396,7 +396,7 @@ Key mining targets for future session:
 
 | Metric | SH | FK | **IN** | DX | TE |
 |--------|----|----|--------|----|----|
-| Elements | 55 | 82 | **699** | 1099 | 48428 |
+| Elements | 58 | 82 | **699** | 1099 | 48428 |
 | Storeys | 1 | 2 | **5** | 2 | 7 |
 | Spaces | 4 | 7 | **82** | ~20 | — |
 | Windows | 3 | 11 | **206** | ~50 | — |

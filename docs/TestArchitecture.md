@@ -85,7 +85,7 @@ to. Without this mapping, spec changes silently orphan tests.
 | §2.2 Recursive placement | Walker decides BOM-vs-leaf by m_bom existence | BOMWalkerTest | W-DS-15 | PASS |
 | §2.2 component_type ignored | No code branches on BUY/MAKE/PHANTOM | DriftGuardTest | G4-TAMPER | PASS |
 | §3.3 Instant Drop | C_OrderLine → BOM explosion → elements | RosettaStoneGateTest | G1-G6 | PASS |
-| §3.3 Instant Drop | bomDrop() creates C_Order + 55 elements | BomDropTest | W-DROP-1..6 | PASS |
+| §3.3 Instant Drop | bomDrop() creates C_Order + 58 elements | BomDropTest | W-DROP-1..6 | PASS |
 | §3.4 BOM Drop | Interactive tree navigation, swap/add | SelectionCascadeTest | W-GEN-1b | PASS |
 | §3.5 Selection Cascade | Category + AABB fit + volume rank | SelectionCascadeTest | W-GEN-1a..g | PASS |
 | §3 GENERATIVE | DemoHouse BOM + UBBL + BIMEyes | DemoHouseTest | W-DH-1..5 | PASS |
@@ -337,7 +337,7 @@ bcd2af85  rosetta_fidelity.sh
 
 | Gate | SH | FK | IN | DX | TE † | DM |
 |------|----|----|----|----|-------|------|
-| G1-COUNT | PASS (55) | PASS (82) | PASS (699) | PASS (1099) | PASS† (48428) | PASS (60) |
+| G1-COUNT | PASS (58) | PASS (82) | PASS (699) | PASS (1099) | PASS† (48428) | PASS (60) |
 | G2-VOLUME | PASS | PASS | PASS | PASS | PASS† | — |
 | G3-DIGEST | PASS | PASS | PASS | PASS | PASS† | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |

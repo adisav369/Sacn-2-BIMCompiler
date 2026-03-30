@@ -163,7 +163,7 @@ Returns every building in the `library/` directory with aggregated metrics:
   "totalCostRm": 15420000.00,
   "totalCarbonKg": 482000.00,
   "projects": [
-    {"name": "Sample House",     "prefix": "SH", "elements": 55,    "costRm": 245000},
+    {"name": "Sample House",     "prefix": "SH", "elements": 58,    "costRm": 245000},
     {"name": "FZK Haus",         "prefix": "FK", "elements": 82,    "costRm": 312000},
     {"name": "AC11 Institute",   "prefix": "IN", "elements": 699,   "costRm": 1890000},
     {"name": "Duplex",           "prefix": "DX", "elements": 1099,  "costRm": 2340000},
@@ -282,7 +282,7 @@ Asset register with replacement intervals for handover:
 ```json
 {
   "buildingId": "SH",
-  "totalAssets": 55,
+  "totalAssets": 58,
   "nextMaintenanceDate": "2027-04-01",
   "items": [
     {"asset": "Fire Sprinkler Head", "qty": 12, "intervalMonths": 12, "lifespanYears": 15},

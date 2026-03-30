@@ -1781,7 +1781,7 @@ STEP 6: COMPILE (Java DAGCompiler — 12-stage pipeline)
           → mvn test -Dtest="BuildingRegistryTest" -Dbom.db="${compile_db}"
   Entry:  BuildingRegistryTest → CompilationPipeline.run(entry)
 
-  The 9 stages (CompilationPipeline.java:56-66):
+  The 12 stages (CompilationPipeline.java:56-66):
     Stage 1: MetadataValidator    — referential integrity
     Stage 2: ParseStage           — DSL → BuildingDefinition
     Stage 3: CompileStage         — compile → BuildingSpec

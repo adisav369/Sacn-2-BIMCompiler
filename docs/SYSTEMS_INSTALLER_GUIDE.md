@@ -53,7 +53,7 @@ ORMSandbox        → DAO smoke tests
 DAGCompiler       → 12-stage compilation pipeline
 2D_Layout         → floor plan generation
 TopologyMaker     → grid strategy, PO lifecycle
-BIM_COBOL         → 63 domain verbs, witness engine
+BIM_COBOL         → 77 domain verbs, witness engine
 IFCtoBOM          → IFC extraction to BOM database
 BIMBackOffice     → ERP reporting, sessions, portfolio
 BonsaiBIMDesigner → GUI server, validation, assembly
@@ -77,7 +77,7 @@ The `library/` directory contains all SQLite databases. These ship with the repo
 
 | File | Building | Elements | Purpose |
 |------|----------|----------|---------|
-| `SH_BOM.db` | Sample House | 55 | Hello-world residential |
+| `SH_BOM.db` | Sample House | — | Hello-world residential |
 | `FK_BOM.db` | FZK Haus | 82 | Small residential |
 | `DX_BOM.db` | Duplex | 1,099 | Multi-unit residential |
 | `TE_BOM.db` | Terminal | 48,428 | Commercial airport terminal |
@@ -231,7 +231,7 @@ mvn exec:java -pl IFCtoBOM \
 ```
 
 Then follow the 8-step process in **[IFC_ONBOARDING_RUNBOOK.md](IFC_ONBOARDING_RUNBOOK.md)** —
-from IFC extraction through gate verification. Proven on 5 buildings (55–48,428 elements).
+from IFC extraction through gate verification. Proven on 5 Rosetta Stone buildings.
 
 **Quick version** (if YAML + DSL already exist):
 
@@ -462,7 +462,7 @@ BIMCompiler/
 ├── DAGCompiler/           # 12-stage compilation pipeline (G1-G6 gates)
 ├── 2D_Layout/             # Floor plan generation
 ├── TopologyMaker/         # Grid strategy, production order lifecycle
-├── BIM_COBOL/             # 63 domain verbs, witness engine
+├── BIM_COBOL/             # 77 domain verbs, witness engine
 ├── IFCtoBOM/              # IFC extraction → BOM database pipeline
 ├── BIMBackOffice/         # ERP reporting, sessions, portfolio, 4D-7D
 ├── BonsaiBIMDesigner/     # GUI server, validation, assembly, placement

@@ -47,7 +47,7 @@ The pitched roof won't cover the full SH footprint. Two options:
 
 **Decision:** Accept misfit for S59. The BOM Drop → swap → compile flow is the test target, not geometric perfection. Add a note in W-DM-TC4-1 that FK roof does not fully cover SH base.
 
-## 3. Pipeline Walk — 9 Stages for 3-OrderLine Scenario
+## 3. Pipeline Walk — 12 Stages for 3-OrderLine Scenario
 
 Source: `CompilationPipeline.java` (DAGCompiler)
 
@@ -183,7 +183,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).
 | Task | Status | Notes |
 |------|--------|-------|
 | A: Specs | **DONE** | §7 TC-4+TC-5 specified. This analysis doc created. |
-| B: Pipeline | **DONE** | §3 above documents all 9 stages for 3-OrderLine. |
+| B: Pipeline | **DONE** | §3 above documents all 12 stages for 3-OrderLine. |
 | C: TRIM verb | **READY** | Code exists (S53). Cross-building trim is geometry-agnostic. FK-on-SH test needed. |
 | D: BOM Drop cascade | **READY** | bomDrop() + swapProduct() GREEN. BomDropConfigureTest covers TC-4 swap. |
 | E: FP rules | **PARTIAL** | Data + query ready. validateBatch() wiring NOT DONE. |
@@ -195,7 +195,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).
 1. bomDrop(BUILDING_SH_STD) produces 55-element tree — **GREEN** (W-TC4-1)
 2. swapProduct() changes roof OrderLine to FK_DG_STR — **GREEN** (W-TC4-3)
 3. TRIM verb handles any roof shape via tent model — **GREEN** (W-TRIM-1..6)
-4. Pipeline's 9 stages all fire for SH-based compilation — **GREEN**
+4. Pipeline's 12 stages all fire for SH-based compilation — **GREEN**
 
 ### What's Needed (Session 2)
 1. **Post-swap compilation test:** Run 12-stage pipeline on swapped tree, verify element count = 55 − 2 + 42 = 95

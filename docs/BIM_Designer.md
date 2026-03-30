@@ -18,7 +18,7 @@
 ## Phase G Preamble — Proven Artifacts the Designer Builds On
 
 The BIM Designer (Phase G) does not start from scratch. Three Rosetta Stone
-buildings — SH (55), DX (1,099), TE (48,428 elements) — have proven the
+buildings — SH, DX, TE — have proven the
 full pipeline end-to-end: IFC extraction → component library → BOM dictionary
 → 12-stage compilation → verified output. All gates GREEN (G1–G6).
 
@@ -1040,18 +1040,18 @@ dependency. One JSON object per line.
 
 ```
 → {"action":"compile","buildingId":"Ifc4_SampleHouse","bomDbPath":"library/_SH_compile.db"}
-← {"success":true,"elementCount":55,"compileTimeMs":847,"outputDbPath":"..."}
+← {"success":true,"elementCount":58,"compileTimeMs":847,"outputDbPath":"..."}
 
 → {"action":"verb","buildingId":"...","verbLine":"CHECK BOM BUILDING_SH"}
 ← {"success":true,"verb":"CHECK BOM","summary":"7 lines, 218.4m3"}
 
 → {"action":"listBuildings"}
-← [{"docTypeId":"...","name":"Ifc4_SampleHouse","docSubType":"SH","expectedElements":55,...}]
+← [{"docTypeId":"...","name":"Ifc4_SampleHouse","docSubType":"SH","expectedElements":58,...}]
 ```
 
 **Async push** (after ArtifactWatcher detects change + auto-recompile):
 ```
-← {"type":"COMPILE_COMPLETE","buildingId":"...","outputDbPath":"...","elementCount":55}
+← {"type":"COMPILE_COMPLETE","buildingId":"...","outputDbPath":"...","elementCount":58}
 ```
 
 ### 11.5 How It Rides on Blender
@@ -1150,7 +1150,7 @@ The Java compiler is a **deterministic manufacturing engine**. It guarantees:
 | **Compliance gating** | DocValidate fires before output.db | Designer cannot produce illegal geometry |
 | **BOM cascade** | BUILDING→FLOOR→ROOM→LEAF automatic | One slider change ripples correctly through entire tree |
 | **Verb audit trail** | W_Verb_Node records every action | Full undo history, no mystery state |
-| **Multi-scale** | SH (55) to TE (48K) same pipeline | Works for a cottage or an airport |
+| **Multi-scale** | SH to TE same pipeline | Works for a cottage or an airport |
 | **ERP integration** | C_Order/C_OrderLine/M_BOM_Line dx/dy/dz | Costing, scheduling, procurement ready from day 1 |
 
 ### 12.2 What Blender Brings

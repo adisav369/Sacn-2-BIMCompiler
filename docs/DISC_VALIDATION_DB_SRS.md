@@ -1501,6 +1501,59 @@ them (unchanged).
 The current extraction already handles orphans correctly —
 `StructuralBomBuilder` picks up everything not assigned to a SET.
 
+#### IfcRelAggregates extraction (S100-p126)
+
+**Status:** DONE ([48d14537](https://github.com/red1oon/BIMCompiler/commit/48d14537))
+
+New extraction table `rel_aggregates` captures IFC parent-child assembly
+decomposition:
+
+```sql
+CREATE TABLE rel_aggregates (
+    parent_guid TEXT NOT NULL,
+    child_guid  TEXT NOT NULL,
+    PRIMARY KEY (parent_guid, child_guid)
+);
+```
+
+Populated from `IfcRelAggregates` relationships in the IFC file. Results:
+
+- **SH:** 34 rows. 2 assemblies with 13 children each (curtain wall halves),
+  1 with 3, 2 with 2, 2 singletons.
+- **DX:** 38 rows. 2 assemblies with 10 children each (stair assemblies),
+  2 with 5, 1 with 4, 3 singletons.
+
+**Phantom parents:** Parent GUIDs have no entry in `elements_meta` because
+`IfcCurtainWall` and `IfcStair` are not in the extraction class list. Assembly
+structure is visible only via `rel_aggregates` join to `elements_meta` on
+`child_guid`.
+
+Java pipeline unchanged — `rel_aggregates` is read-only context for P129
+(assembly BOMs).
+
+#### Spatial container auto-discovery (S100-p127)
+
+**Status:** DONE ([7745affd](https://github.com/red1oon/BIMCompiler/commit/7745affd))
+
+`StoreyConfig` renamed to `SpatialContainerConfig` — abstract naming that
+works for buildings (storeys) and infrastructure (segments).
+
+**Auto-discovery:** When YAML `storeys:` section is empty, containers are
+auto-discovered from `storeyElements` keys:
+
+- Sort by min Z of their elements (seq: 1010, 1020, ...)
+- `code` = generic abbreviation (first letter of each word, uppercase)
+- No hardcoded name→code mapping — algorithm works for any building
+
+Results:
+
+- **SH:** 3 containers — Ground Floor→GF, Roof→RO, Unknown→UN
+- **DX:** 5 containers — T/FDN→TF, Level 1→L1, Unknown→UN, Level 2→L2, Roof→RO
+
+YAML `storeys:` kept as Order override (backward compat). Empty YAML =
+auto-discover. BOM IDs change with auto-derived codes (e.g. `SH_ROOF_STR` →
+`SH_RO_STR`) — opaque keys, no functional impact.
+
 ### 10.5 Investigation Tasks
 
 1. Count Java files that read M_Product from component_library.db vs ERP.db

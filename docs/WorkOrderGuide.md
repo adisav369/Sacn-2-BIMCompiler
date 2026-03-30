@@ -150,16 +150,16 @@ products and geometry links (skips if already done), runs IFCtoBOM to produce
 
 **Source IFC files** (in `DAGCompiler/lib/input/IFC/`):
 
-| File | Schema | Elements | Status |
-|------|--------|----------|--------|
-| `Ifc4_SampleHouse.ifc` | IFC4 | 55 | Onboarded (SH) |
-| `FZK_Haus_IFC4.ifc` | IFC4 | 82 | Onboarded (FK) |
-| `AC11_Institute_IFC2x3.ifc` | IFC2x3 | 699 | Onboarded (IN) |
-| `Ifc2x3_Duplex_*.ifc` | IFC2x3 | 1,099 | Onboarded (DX) |
-| `SJTII-*.ifc` (7 discipline files) | IFC2x3 | 48,428 | Onboarded (TE) |
-| `PCERT_Infra_Bridge_IFC4X3.ifc` | IFC4X3 | 48 | Onboarded (BR) |
-| `PCERT_Infra_Road_IFC4X3.ifc` | IFC4X3 | 53 | Onboarded (RD) |
-| `PCERT_Infra_Rail_IFC4X3.ifc` | IFC4X3 | 73 | Onboarded (RL) |
+| File | Schema | Status |
+|------|--------|--------|
+| `Ifc4_SampleHouse.ifc` | IFC4 | Onboarded (SH) |
+| `FZK_Haus_IFC4.ifc` | IFC4 | Onboarded (FK) |
+| `AC11_Institute_IFC2x3.ifc` | IFC2x3 | Onboarded (IN) |
+| `Ifc2x3_Duplex_*.ifc` | IFC2x3 | Onboarded (DX) |
+| `SJTII-*.ifc` (7 discipline files) | IFC2x3 | Onboarded (TE) |
+| `PCERT_Infra_Bridge_IFC4X3.ifc` | IFC4X3 | Onboarded (BR) |
+| `PCERT_Infra_Road_IFC4X3.ifc` | IFC4X3 | Onboarded (RD) |
+| `PCERT_Infra_Rail_IFC4X3.ifc` | IFC4X3 | Onboarded (RL) |
 | `FJK_Project_IFC2x3.ifc` | IFC2x3 | — | Not yet onboarded |
 | `Smiley_West_IFC2x3.ifc` | IFC2x3 | — | Not yet onboarded |
 | `Vogel_Gesamt_IFC2x3.ifc` | IFC2x3 | — | Not yet onboarded |
@@ -180,7 +180,7 @@ mvn exec:java -pl IFCtoBOM \
 
 **Classification YAML files:**
 
-- `classify_sh.yaml` — Ifc4_SampleHouse (55 elements)
+- `classify_sh.yaml` — Ifc4_SampleHouse
 - `classify_dx.yaml` — Ifc2x3_Duplex (1,099 elements)
 - `classify_fk.yaml` — Ifc4_FZKHaus (82 elements)
 - `classify_in.yaml` — Ifc2x3_AC11Institute (699 elements)

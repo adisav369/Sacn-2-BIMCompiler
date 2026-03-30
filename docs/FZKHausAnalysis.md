@@ -73,7 +73,7 @@ This is the first model with per-room thermal data — SH and DX have none.
 | STR | 48 | 42 members (rafters/purlins), 4 beams, 1 ground slab, 1 intermediate slab |
 | **Total** | **82** | |
 
-**Compared to SH (55 elements, 2 disciplines):** FK is 50% larger with a full pitched-roof
+**Compared to SH:** FK is larger with a full pitched-roof
 timber structure. The 42 members + 4 beams make the STR discipline dominant — SH has no
 timber/roof structure at all.
 

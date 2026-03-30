@@ -48,7 +48,7 @@ foundation. BlenderBridge adds two things on top:
 
 | Building | Elements | Full Load | Acceptable for edit cycle? |
 |----------|----------|-----------|---------------------------|
-| SH | 55 | <1s | Yes — full reload is fine |
+| SH | small | <1s | Yes — full reload is fine |
 | DX | 1,099 | ~3s | Marginal |
 | TE | 48,428 | ~30s | No — user moved one wall |
 

@@ -2,7 +2,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>55 elements, one storey — the hello-world proof.</b> Smallest Rosetta Stone validates the full pipeline end-to-end with ARC + STR disciplines.
+<b>58 elements, one storey — the hello-world proof.</b> Smallest Rosetta Stone validates the full pipeline end-to-end with ARC + STR + CW disciplines.
 </div>
 
 **Stone:** 1 of 3 (smallest — hello-world proof)
@@ -18,8 +18,8 @@
 | IFC version | IFC4 (single file) |
 | Country | N/A (reference building) |
 | Type | Single-storey residential |
-| Elements | 55 |
-| Disciplines | 2 (ARC: 35, STR: 20) |
+| Elements | 58 |
+| Disciplines | 3 (ARC: 35, STR: 20, CW: 3) |
 | M_Product_Category | RE (Residential) |
 | Prefix | SH |
 | C_DocType_ID | RE_SH |
@@ -32,7 +32,8 @@
 |------------|-------|----------|
 | ARC | 35 | Walls, doors, windows, furniture, slabs, coverings |
 | STR | 20 | Slabs, walls (structural) |
-| **Total** | **55** | |
+| CW | 3 | Cold water pipes |
+| **Total** | **58** | |
 
 ## Key Settings
 
@@ -49,7 +50,7 @@
 
 | Gate | Status | Value |
 |------|--------|-------|
-| G1-COUNT | PASS | 55 |
+| G1-COUNT | PASS | 58 |
 | G2-VOLUME | PASS | +0.00% |
 | G3-DIGEST | PASS | 496022db |
 | G4-TAMPER | PASS | 0 violations / 20 rules |

@@ -23,8 +23,8 @@ Read the [MANIFESTO](MANIFESTO.md) first for the ERP world view.
 | [§2 Compilation Model](#2-the-compilation-model) | The Application Dictionary and BOM contract |
 | [§3 Compilation](#3-compilation) | BOM explosion, placement, selection cascade, ASI |
 | [§4 Tack Convention](#4-tack-convention-the-spatial-handshake) | The dx/dy/dz spatial offset model (LBD) |
-| [§5 Pipeline](#5-the-7-stage-pipeline) | 7-stage compilation pipeline |
-| [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 75 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
+| [§5 Pipeline](#5-the-12-stage-pipeline) | 12-stage compilation pipeline |
+| [§6 Verbs](#6-bim-cobol-verb-driven-bom-mutation) | 77 domain verbs (TILE, ROUTE, FRAME, CLUSTER) |
 | [§7 Verification](#7-verification-the-rosetta-stone-gate) | 6 mathematical gates |
 | [§9 Data Flywheel](#9-the-data-flywheel-emergent-intelligence) | How 35 buildings teach the compiler |
 | [§10 End State](#10-the-compilation-end-state) | What the compiled output looks like |
@@ -288,7 +288,7 @@ without touching any other BOM — the parent owns the attachment point, not the
 
 One `C_OrderLine` referencing a root product compiles an entire building.
 The compiler explodes the full BOM tree — accumulating tack offsets, resolving
-leaves to geometry. SH (55 elements), DX (1099), TE (48,428) all compile
+leaves to geometry. SH, DX, TE all compile
 from a single root line.
 
 **Exception lines name only deviations.** The order says "build me this, but
@@ -984,7 +984,7 @@ product catalog concern — see `DATA_MODEL.md` and `component_library.db` schem
 
 ---
 
-## 5. The 7-Stage Pipeline
+## 5. The 12-Stage Pipeline
 
 | # | Stage | What it does |
 |---|-------|-------------|
@@ -1027,7 +1027,7 @@ Full grammar spec: [`docs/BIM_COBOL.md`](BIM_COBOL.md)
 
 > **Verification gates:** See [`TestArchitecture.md`](TestArchitecture.md) §Verification for the complete G1-G6 gate specification, tamper rules (T1-T16), and the 4-layer defense model.
 
-All 6 gates GREEN for SH (55 elements) and DX (1099 elements).
+All 6 gates GREEN for SH and DX. Current counts in [PROGRESS.md](../PROGRESS.md).
 
 ---
 

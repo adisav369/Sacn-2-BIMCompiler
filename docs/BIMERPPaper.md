@@ -79,14 +79,16 @@ Claims without proof are marketing. This system is built on proof.
 
 **Rosetta Stone buildings** — real IFC models compiled as reproducible benchmarks:
 
-| Building | Elements | Checks Passing | Domain |
-|----------|----------|---------------|--------|
-| Sample House (SH) | 55 | 9/10 | Residential |
-| Duplex (DX) | 1,099 | 7/10 | Multi-unit residential |
-| Terminal (TE) | 48,428 | 8/10 | Commercial (airport) |
-| Bridge (BR) | 48 | 10/10 | Infrastructure |
-| Road (RD) | 53 | 4/4 | Infrastructure |
-| Rail (RL) | 73 | 4/4 | Infrastructure |
+| Building | Checks Passing | Domain |
+|----------|---------------|--------|
+| Sample House (SH) | 9/10 | Residential |
+| Duplex (DX) | 7/10 | Multi-unit residential |
+| Terminal (TE) | 8/10 | Commercial (airport) |
+| Bridge (BR) | 10/10 | Infrastructure |
+| Road (RD) | 4/4 | Infrastructure |
+| Rail (RL) | 4/4 | Infrastructure |
+
+Element counts: see [PROGRESS.md](../PROGRESS.md).
 
 *Checks = 6 gates (G1-G6) plus gate-specific sub-checks (e.g. G5-PROVENANCE has 7 internal checks). A building with 6/6 gates passing may still have sub-check debt. See `docs/TestArchitecture.md` for per-gate breakdown.*
 

@@ -67,7 +67,7 @@ BUILDING "My House" type:SINGLE_UNIT profile:"Malaysian_Residential" {
 # Build from project root
 mvn compile -q
 
-# Compile SampleHouse (UK residential, 55 elements)
+# Compile SampleHouse (UK residential)
 mvn exec:java -pl DAGCompiler \
   -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
@@ -99,12 +99,12 @@ mvn clean package       # Full build
 
 The compiler validates against four buildings spanning three construction traditions:
 
-| Building | Command Class | Elements | Tradition | F1 Score |
-|----------|--------------|----------|-----------|----------|
-| SampleHouse | `SampleHouseEndToEndTest` | 55 | UK residential | **100%** |
-| Duplex | `TBLKTNDuplexEndToEndTest` | 1,085 | US residential | **100%** |
-| Terminal | `TerminalEndToEndTest` | 51,088 | MY institutional | **~100%** |
-| TB-LKTN | `TBLKTNEndToEndTest` | 58 | MY affordable | generative |
+| Building | Command Class | Tradition | F1 Score |
+|----------|--------------|-----------|----------|
+| SampleHouse | `SampleHouseEndToEndTest` | UK residential | **100%** |
+| Duplex | `TBLKTNDuplexEndToEndTest` | US residential | **100%** |
+| Terminal | `TerminalEndToEndTest` | MY institutional | **~100%** |
+| TB-LKTN | `TBLKTNEndToEndTest` | MY affordable | generative |
 
 TB-LKTN is the first *generative* building — compiled purely from relational rules with no IFC reference. It proves the compiler can create, not just replicate.
 
@@ -113,7 +113,7 @@ TB-LKTN is the first *generative* building — compiled purely from relational r
 All commands run from project root. The `-pl DAGCompiler` flag is required.
 
 ```bash
-# SampleHouse (single-storey UK house, 55 elements)
+# SampleHouse (single-storey UK house)
 mvn exec:java -pl DAGCompiler \
   -Dexec.mainClass="com.bim.compiler.dsl.SampleHouseEndToEndTest" -q
 
@@ -584,7 +584,7 @@ To apply new mined rules after onboarding additional buildings:
 
 | Building | Recall | Precision | F1 | Elements |
 |----------|--------|-----------|------|----------|
-| SampleHouse | **100%** | **100%** | **100%** | 55 |
+| SampleHouse | **100%** | **100%** | **100%** | — |
 | Duplex | **100%** | **100%** | **100%** | 1,085 |
 | Terminal | **~100%** | **100%** | **~100%** | 51,088 |
 | TB-LKTN | N/A (generative) | N/A | N/A | 58 |

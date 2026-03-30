@@ -3,7 +3,7 @@
 > **Foundation:** [The Drift](LAST_MILE_PROBLEM.md) · [TestArchitecture](TestArchitecture.md) · [MANIFESTO](MANIFESTO.md)
 
 <div class="bim-banner" markdown>
-<b>77 verbs. 2,475 products. 408 tests. 55 specs. One human. Zero traditional coding.</b> This compiler was built by a Java-literate ERP architect using AI as a force multiplier — domain expertise steers, AI types at the speed of thought.
+<b>One human. Zero traditional coding.</b> This compiler was built by a Java-literate ERP architect using AI as a force multiplier — domain expertise steers, AI types at the speed of thought. Current metrics in [PROGRESS.md](../PROGRESS.md).
 </div>
 
 ---
@@ -142,7 +142,7 @@ The concerns are valid. This project has lived through all of them:
 
 **"You don't understand your own codebase."** Partially true. The architect understands the *architecture* — what each module does, how data flows, what correct output looks like. He does not memorise every Java method signature. This is a feature, not a bug: the spec is the source of truth, not the code. If the code drifts from spec, the code is wrong — regardless of what it says internally.
 
-**"It won't scale."** 48,428 elements in the Terminal building. 77 verbs. 9 pipeline stages. 4 databases. 55 specification documents. The project is larger than most startups' entire codebases. It scales because the architecture scales — not because the AI understands scale.
+**"It won't scale."** Tens of thousands of elements in the Terminal building. Multiple pipeline stages. Multiple databases. Dozens of specification documents. The project is larger than most startups' entire codebases. It scales because the architecture scales — not because the AI understands scale.
 
 ---
 

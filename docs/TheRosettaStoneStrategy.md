@@ -24,16 +24,16 @@ The reference DB has every answer. Read it. Match it. Not through cheating or co
 
 ## Stones
 
-| Stone | Type | Elements | Disciplines | Status |
-|-------|------|----------|-------------|--------|
-| **Sample House (SH)** | UK residential, 1 storey | 55 | ARC | ALL GREEN |
-| **FZK Haus (FK)** | European residential | 82 | ARC | ALL GREEN |
-| **Duplex (DX)** | US residential, 2 storey | 1,099 | ARC+MEP+STR | REGRESSION — severe coordinate failure (S96) |
-| **Terminal (TE)** | MY institutional, 4 storey | 48,428 | 8 disciplines | ALL GREEN |
+| Stone | Type | Disciplines | Status |
+|-------|------|-------------|--------|
+| **Sample House (SH)** | UK residential, 1 storey | ARC, STR, CW | ALL GREEN |
+| **FZK Haus (FK)** | European residential | ARC | ALL GREEN |
+| **Duplex (DX)** | US residential, 2 storey | ARC+MEP+STR | REGRESSION — severe coordinate failure (S96) |
+| **Terminal (TE)** | MY institutional, 4 storey | 8 disciplines | ALL GREEN |
 
 ALL stones must pass. Not 2 of 3. Not "residential only."
 
-35 buildings total (34 extracted + 1 generative). 19 pass all 6 gates.
+Element counts and gate status: see [PROGRESS.md](../PROGRESS.md).
 Full coverage table: [TestArchitecture.md §Rosetta Stone Coverage](TestArchitecture.md#rosetta-stone-coverage-s58c).
 
 ---

@@ -34,7 +34,7 @@ The compiler must produce exactly the same number of elements as the BOM specifi
 
 | Building | Elements | Verdict |
 |----------|----------|---------|
-| SH | 55/55 | PASS |
+| SH | 58/58 | PASS |
 | FK | 82/82 | PASS |
 | IN | 699/699 | PASS (120 window coordinate shifts — CLUSTER debt) |
 | DX | 1099/1099 | PASS (MIRROR dimension swaps accepted) |

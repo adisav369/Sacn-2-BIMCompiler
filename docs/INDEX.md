@@ -55,7 +55,7 @@ Single-page entry point. All active docs by tier.
 
 | Doc | What |
 |-----|------|
-| [SampleHouseAnalysis.md](SampleHouseAnalysis.md) | SH guardrails, 55 elements, hello-world proof |
+| [SampleHouseAnalysis.md](SampleHouseAnalysis.md) | SH guardrails, hello-world proof |
 | [DuplexAnalysis.md](DuplexAnalysis.md) | DX mirror algorithm, partition, MEP symmetry |
 | [TerminalAnalysis.md](TerminalAnalysis.md) | 48K-element TE, verb factorization, guardrails |
 | [FZKHausAnalysis.md](FZKHausAnalysis.md) | FK (FZK Haus) 82-element residential |

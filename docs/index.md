@@ -105,7 +105,7 @@ AI cannot see spatial geometry — been LLM based, it has no native understandin
 
 Real IFC buildings are decomposed into reference databases. The compiler reads a BOM describing the same building and produces output. If every compiled element lands at the **same position** as the reference — same coordinates, same dimensions, same 3D space — the BOM grammar is **certified**.
 
-35 buildings compiled. From a 55-element house to a 48,428-element airport terminal. 19 pass all 6 mathematical gates. Once a stone is certified, any new building composed from its proven grammar inherits the proof — no new reference needed.
+35 buildings compiled — from a single-storey house to a multi-storey airport terminal. 19 pass all 6 mathematical gates. Once a stone is certified, any new building composed from its proven grammar inherits the proof — no new reference needed.
 
 [:octicons-arrow-right-24: Read the full strategy](TheRosettaStoneStrategy.md)
 

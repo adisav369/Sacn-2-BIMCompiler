@@ -301,7 +301,7 @@ Result: 485×2 + 129 structural = **1099 ✓** (enbloc=walkthru, delta=0).
 
 ### 3. SH Regression — VERIFIED (2026-03-14)
 
-SH 7/7 PASS, 55 enbloc=walkthru, 0 delta, 0 geometry divergences.
+SH 7/7 PASS, 58 enbloc=walkthru, 0 delta, 0 geometry divergences.
 
 ### 4. Walker Rotation — VERIFIED (2026-03-14)
 

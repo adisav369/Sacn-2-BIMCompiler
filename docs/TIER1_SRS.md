@@ -588,7 +588,7 @@ end-to-end and capture the result.
 
 1. Run `./scripts/run_RosettaStones.sh classify_sh.yaml` → SH output.db
 2. Open Bonsai, load output.db via Federation addon's "Load Federation DB"
-3. Verify: 55 elements visible, correct storey hierarchy, materials assigned
+3. Verify: 58 elements visible, correct storey hierarchy, materials assigned
 4. Screenshot → `~/Pictures/Screenshots/SH_3D_proof.png`
 5. Add screenshot path to `RosettaStoneGateTest.java` G7 claim comment
 
@@ -596,7 +596,7 @@ end-to-end and capture the result.
 
 ```
 → {"action":"screenshot","buildingId":"Ifc4_SampleHouse","outputPath":"/tmp/sh_3d.png"}
-← {"success":true,"path":"/tmp/sh_3d.png","elementCount":55,"format":"PNG"}
+← {"success":true,"path":"/tmp/sh_3d.png","elementCount":58,"format":"PNG"}
 ```
 
 This is a **convenience action** — the real proof is the manual screenshot.
@@ -606,7 +606,7 @@ The wire action calls `bpy.ops.render.opengl()` via the bridge.
 
 | ID | Claim | Gate |
 |----|-------|------|
-| W-3D-VIS-1 | SH building loads in Bonsai with 55 visible objects | Visual |
+| W-3D-VIS-1 | SH building loads in Bonsai with 58 visible objects | Visual |
 | W-3D-VIS-2 | Storey hierarchy visible in outliner (GF, FF, Roof) | Visual |
 | W-3D-VIS-3 | Screenshot saved to `~/Pictures/Screenshots/` | Visual |
 

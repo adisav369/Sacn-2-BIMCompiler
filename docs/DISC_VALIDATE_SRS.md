@@ -46,7 +46,7 @@ appear in multiple disciplines (FP, CW, SP, LPG). Disambiguation requires
 
 **DX coarse mapping:** DX extraction currently classifies all piping/electrical as
 `MEP` (904 elements). Reclassification into PLB/ELC/FPR needed for fine-grained
-discipline BOMs. SH has no MEP elements (55 ARC+STR only).
+discipline BOMs. SH has 3 CW elements (58 total: ARC+STR+CW).
 
 **SH stays flat:** No discipline wrapper for proven single-discipline stone.
 RosettaStone integrity preserved as-is for sanity.

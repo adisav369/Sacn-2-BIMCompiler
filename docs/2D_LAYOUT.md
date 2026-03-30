@@ -32,7 +32,7 @@ the drawing — sliced at the right plane.
 
 ![Sample House 3D — compiled from BOM, rendered in Bonsai](assets/images/SampleHouseOri.png)
 
-*55 elements compiled from BOM recipe. Glass curtain wall meets pitched roof — the
+*SH compiled from BOM recipe. Glass curtain wall meets pitched roof — the
 TRIM verb adjusts wall panels at the roof intersection. Every element traces to
 component_library.db via G5-PROVENANCE.*
 

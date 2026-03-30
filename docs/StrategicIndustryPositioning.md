@@ -206,8 +206,8 @@ core. [Most tools treat IFC as a file format](https://bimcorner.com/the-ifc-conf
 not a data model. We treat it as structured input to a database pipeline.
 
 **5. Domain-agnostic compilation — one pipeline for any facility type.**
-The same 12-stage pipeline that compiles a 55-element house also compiles a
-48,428-element airport terminal, a 48-element bridge, a 53-element road, and a
+The same 12-stage pipeline that compiles a single-storey house also compiles a
+multi-storey airport terminal, a bridge, a road, and a
 73-element railway. No code changes per domain — only a ~30-line YAML mapping
 segments and disciplines. VerbDetector, BOMWalker, tack convention, delta tests,
 and G1-G6 gates are all domain-agnostic. No competitor validates infrastructure
@@ -548,12 +548,12 @@ No existing BIM tool or standard combines all seven.
 
 | Milestone | Status |
 |-----------|--------|
-| **7 Rosetta Stones (4 building + 3 infra)** | SH (55), FK (82), DX (1099), TE (48,428), BR (48), RD (53), RL (73) |
+| **7 Rosetta Stones (4 building + 3 infra)** | SH, FK, DX, TE, BR, RD, RL (counts in PROGRESS.md) |
 | SH 9/10, FK 9/10, BR 10/10, RD 4/4, RL 4/4 | DX 7/10, TE 8/10 (pre-existing) |
 | **Domain-agnostic pipeline proven** | Same code compiles houses, terminals, bridges, roads, railways |
 | ERP architecture designed | Discipline hierarchy, verb→AttributeSet, Val_Rule |
 | Formula compression | TILE, ROUTE, FRAME, CLUSTER — 93% compression on rail |
-| 63 BIM COBOL verbs, 166+ witnesses | Pipeline: 9 stages, seal v20 (74 files INTACT) |
+| 77 BIM COBOL verbs, 166+ witnesses | Pipeline: 12 stages, seal v20 (74 files INTACT) |
 | **BIM Designer Phase G (G-1..G-7 DONE)** | Design Mode, BBox renderer, Save/Recall, BOM Chooser, Assembly Builder |
 | **Infrastructure UI filtering** | FacilityType enum, snap() with facility type, 30 infra rules |
 | **Terrain-following placement (PoC)** | PlacementContext, AlignmentContext, TerrainSnap, contour-follow on 689-point survey |

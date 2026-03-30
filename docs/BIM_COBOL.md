@@ -2058,7 +2058,7 @@ public VerbResult<CreateRoomPayload> execute(VerbContext ctx, String... args) {
 
 #### The Scale Problem
 
-Residential BOMs are small. SH has 55 elements. DX has 1,099. The BOM trees are 3–4 levels deep. A human can read them. A human WROTE them (as SQL INSERTs).
+Residential BOMs are small (SH is smallest, DX medium). The BOM trees are 3–4 levels deep. A human can read them. A human WROTE them (as SQL INSERTs).
 
 Terminal has **51,088 elements**. No human can manually author that BOM. The extraction pipeline must decompose a federated IFC model — originally authored by 5+ consultant teams in 5+ software tools — into a reusable BOM hierarchy. This requires analysis verbs that no residential-scale compiler needs.
 

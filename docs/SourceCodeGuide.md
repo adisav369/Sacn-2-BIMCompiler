@@ -184,13 +184,15 @@ child.save();        // → INSERT
 
 ### Five Reference Buildings
 
-| Stone | IFC | Elements | Type | Country |
-|-------|-----|----------|------|---------|
-| **SH** | IFC4 | 55 | Single-unit residential | UK |
-| **FK** | IFC4 | 82 | Detached residential | Germany |
-| **IN** | IFC2x3 | 699 | Institutional (ArchiCAD 11) | Germany |
-| **DX** | IFC2x3 | 1,099 | Paired duplex, 2-storey | USA |
-| **TE** | IFC2x3 | 48,428 | Airport terminal | Malaysia |
+| Stone | IFC | Type | Country |
+|-------|-----|------|---------|
+| **SH** | IFC4 | Single-unit residential | UK |
+| **FK** | IFC4 | Detached residential | Germany |
+| **IN** | IFC2x3 | Institutional (ArchiCAD 11) | Germany |
+| **DX** | IFC2x3 | Paired duplex, 2-storey | USA |
+| **TE** | IFC2x3 | Airport terminal | Malaysia |
+
+Element counts: see [PROGRESS.md](../PROGRESS.md) gate table.
 
 ### The 6 Gates
 
