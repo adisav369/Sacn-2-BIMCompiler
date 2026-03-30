@@ -98,6 +98,11 @@ CREATE TABLE IF NOT EXISTS rel_contained_in_space (
     space_guid TEXT,
     PRIMARY KEY (element_guid, space_guid)
 );
+CREATE TABLE IF NOT EXISTS rel_aggregates (
+    parent_guid TEXT NOT NULL,
+    child_guid TEXT NOT NULL,
+    PRIMARY KEY (parent_guid, child_guid)
+);
 CREATE TABLE IF NOT EXISTS surface_styles (
     style_name TEXT PRIMARY KEY,
     surface_r REAL, surface_g REAL, surface_b REAL,
@@ -609,6 +614,30 @@ def extract_reference(ifc_path, output_path, classes=None, exclude=None, dry_run
 
     if not dry_run:
         conn.commit()
+
+    # Extract IfcRelAggregates — parent-child decomposition
+    agg_count = 0
+    if not dry_run:
+        try:
+            for rel in ifc_file.by_type("IfcRelAggregates"):
+                try:
+                    parent = rel.RelatingObject
+                    if not parent or not hasattr(parent, 'GlobalId'):
+                        continue
+                    for child in rel.RelatedObjects:
+                        if not child or not hasattr(child, 'GlobalId'):
+                            continue
+                        conn.execute(
+                            "INSERT OR IGNORE INTO rel_aggregates (parent_guid, child_guid) "
+                            "VALUES (?, ?)", (parent.GlobalId, child.GlobalId))
+                        agg_count += 1
+                except (AttributeError, TypeError):
+                    pass
+            conn.commit()
+        except RuntimeError:
+            pass  # IFC schema may not have these types
+    if agg_count > 0:
+        print(f"  IfcRelAggregates: {agg_count} parent→child decomposition mappings")
 
     # Extract rich surface styles + material layers
     source_tag = f"EXTRACTED:{os.path.basename(ifc_path)}"

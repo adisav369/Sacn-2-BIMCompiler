@@ -150,6 +150,11 @@ REFERENCE_SCHEMA = """
         element_guid TEXT PRIMARY KEY,
         host_guid TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS rel_aggregates (
+        parent_guid TEXT NOT NULL,
+        child_guid TEXT NOT NULL,
+        PRIMARY KEY (parent_guid, child_guid)
+    );
 """
 
 # ---------------------------------------------------------------------------
@@ -514,6 +519,30 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
     except RuntimeError:
         pass  # IFC schema may not have these types
 
+    # R22: Extract IfcRelAggregates — parent-child decomposition
+    # Maps assembly parents (curtain wall, stair, etc.) to their child elements.
+    agg_count = 0
+    try:
+        for rel in ifc_file.by_type("IfcRelAggregates"):
+            try:
+                parent = rel.RelatingObject
+                if not parent or not hasattr(parent, 'GlobalId'):
+                    continue
+                for child in rel.RelatedObjects:
+                    if not child or not hasattr(child, 'GlobalId'):
+                        continue
+                    conn.execute(
+                        "INSERT OR IGNORE INTO rel_aggregates (parent_guid, child_guid) "
+                        "VALUES (?, ?)", (parent.GlobalId, child.GlobalId))
+                    agg_count += 1
+            except (AttributeError, TypeError):
+                pass
+        conn.commit()
+        if agg_count > 0:
+            print(f"    R22: {agg_count} parent→child decomposition mappings from IfcRelAggregates")
+    except RuntimeError:
+        pass  # IFC schema may not have these types
+
     print(f"    Imported: {imported}, Failed: {failed}")
     return imported
 
@@ -737,6 +766,22 @@ def extract_from_db_to_reference(src_path, conn, classes, exclude, disciplines):
         src2.close()
         if fills_count > 0:
             print(f"    R21: Copied {fills_count} door/window→host mappings")
+    except sqlite3.OperationalError:
+        pass  # source DB doesn't have the table yet
+
+    # R22: Copy rel_aggregates if source DB has it
+    agg_count = 0
+    try:
+        src3 = sqlite3.connect(src_path)
+        src3.execute("SELECT 1 FROM rel_aggregates LIMIT 1")
+        for row in src3.execute("SELECT parent_guid, child_guid FROM rel_aggregates"):
+            conn.execute(
+                "INSERT OR IGNORE INTO rel_aggregates (parent_guid, child_guid) VALUES (?, ?)", row)
+            agg_count += 1
+        conn.commit()
+        src3.close()
+        if agg_count > 0:
+            print(f"    R22: Copied {agg_count} parent→child decomposition mappings")
     except sqlite3.OperationalError:
         pass  # source DB doesn't have the table yet
 
