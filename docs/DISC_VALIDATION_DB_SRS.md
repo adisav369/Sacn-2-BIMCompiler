@@ -785,11 +785,44 @@ Category = the substitution shelf (designer can swap products within it).
 Jurisdiction-swappable: same BOM, same Org, different AD_DocEvent_Rule set
 for Malaysian (UBBL) vs US (NFPA) code. BOM and ASI don't change.
 
-For **extracted buildings** (TE, DX), the designer already applied these
-recipes manually. The extraction captured the result. The compiler emits
-at tack offsets (PLACE verb). For **generative buildings**, the compiler
-applies the shared recipes using verb Strategy + DocEvent per Org + ASI.
-AD_Val_Rule validates the output.
+### 10.4.6.1 Discipline Separation — Two-Class Architecture
+
+Discipline separation spans two pipeline classes:
+
+**Class A — IFCtoBOM (extraction):** Produces the ARC+STR envelope only.
+MEP elements (FP, ACMV, ELEC, CW, SP, LPG) are **not** written into the
+per-building `*_BOM.db`. IFCtoBOM counts MEP elements per discipline from
+`elements_meta.discipline` and writes them back into the YAML
+(`disciplines: [{disc: FP, qty: 99}]`) AND to `ad_sysconfig` in BOM DB.
+The YAML becomes the reusable preset template for that building type.
+
+**YAML as chooser:** Designer opens the YAML, sees pre-populated discipline
+qtys from extraction, can reduce scope (e.g., qty: 50 for a partial wing).
+Qty=0 or qty>capacity both mean "fill the whole building per rules" —
+the compiler fills until no more space and stops gracefully, never forces.
+For RE buildings, `mep_disciplines:` controls which DISCs the Callout
+creates (default: ELEC + SP). Deleting a discipline from YAML removes it.
+Without YAML (direct OrderLine), user gets default DISCs from Callout.
+
+**Class B — DAGCompiler (compilation):** Product Callout reads YAML
+`disciplines:` qty, then creates DISCIPLINE OrderLines pointing to shared
+recipes in ERP.db (`FP_SYSTEM`, `ACMV_SYSTEM`, etc.). DocEvent per Org
+fires on each discipline OrderLine — applies jurisdiction rules (NFPA 13,
+UBBL, MS 1228). RouteBuilder/CrawlRouter generates MEP routing until qty
+terminals served. AD_Val_Rule validates the output.
+
+**Current state (S102 — INCORRECT):** `DisciplineBomBuilder` writes ALL
+elements (ARC + MEP) flat under FLOOR with AD_Org_ID as a tag. No
+discipline separation. No ERP.db recipe consumption. RouteBuilders fire
+but produce skeleton only (258 edges for TE vs 8,056 MEP elements).
+The extraction does the compiler's job — MEP elements are placed from
+IFC positions, not from discipline recipes.
+
+**Corrective:** See prompt `00b_discipline_separation.txt`.
+
+For **generative buildings**, the compiler applies the shared recipes
+using verb Strategy + DocEvent per Org + ASI. AD_Val_Rule validates
+the output.
 
 ### 10.4.7 GoF Design Patterns
 
