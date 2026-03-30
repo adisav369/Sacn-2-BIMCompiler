@@ -48,13 +48,23 @@
   10 Maven FAIL (critical proofs): CA(26),CS(4),ES(60),HI(3),JE(6),RM(3),RS(27473),SC(3),TE(71),WA(110)
   CL: extraction FAIL. PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown.
 
-**Next prompts:** 00a (compilation), P133 (fleet triage per 00-supplement R1-R7), P136 (hospital).
+**S103 Discipline Separation DONE (`abc1a233`):**
+  Task A: DisciplineBomBuilder — MEP excluded from BOM, counts to ad_sysconfig + YAML discipline_counts.
+  Task B: OrderLineProductCallout — Callout updates DISC OrderLine Qty from MEP counts.
+  TE: 538 BOM lines → 36,160 ARC+STR instances (was 48,428). QA delta=+0. 5/7 PASS (baseline).
+  Spec: §6.12.1 Compilation Isolation Invariant, §6.12.2 Joint Piece Architecture (IFCtoERP).
+
+**Next prompts (IFCtoERP series — TE + RM test Stones):**
+  00c: IFCtoERP — extract IfcRelConnectsPorts → joint piece M_BOMs in ERP.db (Phase J1)
+  00d: BomDropper walks joint pieces — MEP elements placed via tack chain (Phase J2+J3)
+  00e: AD_Val_Rule — NFPA/MS/ASHRAE post-walk validation + P15/P16/P17 activation (Phase J4)
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
 
+**S103-disc-sep** — Discipline separation (§10.4.6.1) + joint piece architecture spec. Task A: DisciplineBomBuilder filters MEP (AD_Org 3-8) from FLOOR BOM, writes counts to ad_sysconfig + YAML `discipline_counts:`. Task B: OrderLineProductCallout updates DISC OrderLine Qty from MEP counts (handles BomDropper pre-created lines). IFCtoBOMPipeline: reconcileCount for QA/G1, YAML write-back. Spec: §6.12.1 Compilation Isolation Invariant (DAGCompiler SHALL NOT open extraction), §6.12.2 MEP as BOM Walk — joint pieces = Lego pieces in ERP.db, one abstract walker for all disciplines, IFCtoERP as separate extraction phase, standards as validation not generation, CrawlRouter preserved for generative only. SH 7/7 PASS, TE 5/7 (baseline, critical violations 71→2). Prompts 00c/00d/00e written (IFCtoERP series, test on TE+RM).
 **S102-fleet** — Full fleet fresh extraction (34 buildings, DM excluded). PATTERN default ON. Script: per-category scripts archived, single loop, no set -e, streamlined one-line summary + fleet table. Infra (BR/RD/RL/IP): YAML segments removed, auto-discover from IFC spatial structure, PATTERN FLOOR logging added to DisciplineBomBuilder. Results: 212/238 PASS, **19 ALL GREEN** (was ~14). CE clean (was DRIFT=39,900). RD/RL 7/7 (infra auto-discover). PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown elements — storey assignment gaps identified. 10 Maven FAIL on critical proofs. CL extraction FAIL. Prompts 00/00a/00b written.
 **S101-p131** — VerbDetector Z-guard + CLUSTER identity + ROUTE axis matching + GEO permanently ON. Root cause NOT StructuralBomBuilder MAKE dz (math proven correct). Three VerbDetector bugs: (1) detectRoute() Z-uniformity guard (groups with Z-range >0.5m → CLUSTER), (2) computeExpansionOrder() ROUTE 1D axis matching instead of 3D, (3) CLUSTER identity mapping instead of greedy centroid. GEO default ON (LMP proof). IN: DRIFT 35,557→20,475, worst 11,970→91mm, **6/7→7/7** (P05 duplicate was mis-ROUTED group). CE: DRIFT 39,900 unchanged (multi-leg ROUTE). SH: DRIFT=0 (perfect). P131/P132 prompts written.
 **S100-coder-p126-p130** — IFC extraction chain + routing audit + GEO white-box + P06 fleet fix. 10 prompts: P126 (IfcRelAggregates extraction, SH 34 DX 38 rows), P127 (SpatialContainerConfig auto-discovery, storeys unbuckled from YAML), P128 (double-BOM furniture fix, reconciliation +50→0, CompositionBomBuilder scope excludes), P129 (IFC assembly BOMs, curtain walls + stairs grouped from rel_aggregates), P119 (RouteBuilder verb lines via CrawlOp.toVerbLine(), plan() replaces buildRoute()), P120 (standardRefs() on 6 builders: NFPA 13/MS 1228/MS 1525/MS 830/ASHRAE 62.1), P121 (LPG wallThickness() fix + abstract insulationThicknessMm() per discipline), P130 (P06 structural joint tolerance: same pos+dims=CRITICAL, partial overlap=PROVEN — DX 83→0, FK 15→0, fleet 186/208 PASS). GEO white-box: CHAIN (ancestor path), DIMS (W×D×H explicit), CONTAIN (OVERSHOOT/OK). IN finding: OVERSHOOT=0 but DRIFT=35557 (14.6%) — elements assigned correct storey in extraction but MAKE line Z offsets wrong in StructuralBomBuilder for multi-storey buildings. Fleet reconciliation: all delta=+0 except 1 building (delta=-6). RS outlier: 27K genuine P06 duplicates (dense steel framing). Next: P131 (IN Z-anchor fix), P132 (PATTERN + GEO-ROUTE logging channels), P124 (CLUSTER diagnostic).
