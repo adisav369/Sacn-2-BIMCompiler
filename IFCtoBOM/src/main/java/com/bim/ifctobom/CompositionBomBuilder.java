@@ -4,6 +4,7 @@ import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
 import com.bim.ifctobom.ClassificationYaml.CompositionConfig;
 import com.bim.ifctobom.ClassificationYaml.MirrorConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+import com.bim.orm.BIMLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -52,6 +53,7 @@ public class CompositionBomBuilder {
      */
     public static CompositionResult build(Connection bomConn, BuildingConfig config,
                                           Map<String, List<ExtractionElement>> storeyElements,
+                                          Map<String, Set<String>> scopeExcludes,
                                           CategoryLookup catLookup)
             throws SQLException {
 
@@ -62,8 +64,8 @@ public class CompositionBomBuilder {
         CompositionConfig comp = config.composition();
         if (comp == null || !"MIRRORED_PAIR".equals(comp.type()) || comp.mirror() == null) {
             if (comp != null && comp.type() != null && !"MIRRORED_PAIR".equals(comp.type())) {
-                System.err.printf("  [WARN] Unsupported composition type '%s' — "
-                        + "all elements go to structural BOMs%n", comp.type());
+                BIMLogger.warn("COMPOSITION", "Unsupported composition type '{}' — "
+                        + "all elements go to structural BOMs", comp.type());
             }
             return new CompositionResult(Map.of(), 0, 0);
         }
@@ -80,9 +82,16 @@ public class CompositionBomBuilder {
         List<ExtractionElement> spanning = new ArrayList<>();
         Map<String, Set<String>> excludeByStorey = new LinkedHashMap<>();
 
+        int scopeSkipped = 0;
         for (var entry : storeyElements.entrySet()) {
             String storey = entry.getKey();
+            Set<String> excluded = scopeExcludes.getOrDefault(storey, Set.of());
             for (ExtractionElement e : entry.getValue()) {
+                // Skip elements already assigned to SET BOMs by ScopeBomBuilder
+                if (excluded.contains(ScopeBomBuilder.elementKey(e))) {
+                    scopeSkipped++;
+                    continue;
+                }
                 Side side = classify(e, mirror);
                 switch (side) {
                     case SHARED -> spanning.add(e);
@@ -92,10 +101,10 @@ public class CompositionBomBuilder {
             }
         }
 
-        System.out.printf("[CompositionBomBuilder] Tier 1: A=%d, B=%d, spanning=%d%n",
+        BIMLogger.fine("COMPOSITION", "Tier 1: A={}, B={}, spanning={}, scopeSkipped={}",
                 aSide.values().stream().mapToInt(List::size).sum(),
                 bSide.values().stream().mapToInt(List::size).sum(),
-                spanning.size());
+                spanning.size(), scopeSkipped);
 
         // ── Tier 2+3: Pair-match per (M_Product_ID, storey) ──────────────────
         // min(A, B) = paired → half-unit
@@ -150,7 +159,7 @@ public class CompositionBomBuilder {
         int totalA = aSide.values().stream().mapToInt(List::size).sum();
         int excess = (totalA - pairedPerSide) + (totalB - pairedPerSide);
 
-        System.out.printf("[CompositionBomBuilder] Tier 2+3: paired=%d/side, excess=%d, shared=%d%n",
+        BIMLogger.fine("COMPOSITION", "Tier 2+3: paired={}/side, excess={}, shared={}",
                 pairedPerSide, excess, spanning.size() + excess);
 
         // ── Create half-unit BOM ─────────────────────────────────────────────
@@ -233,9 +242,9 @@ public class CompositionBomBuilder {
 
         int pairLines = 2;
 
-        System.out.printf("[CompositionBomBuilder] Half-unit %s: %d lines, Pair %s: 2 children%n",
+        BIMLogger.fine("COMPOSITION", "Half-unit {}: {} lines, Pair {}: 2 children",
                 halfUnitBomId, halfUnitLines, pairBomId);
-        System.out.printf("[CompositionBomBuilder] Stored: %d (half-unit) + %d (shared) = %d%n",
+        BIMLogger.fine("COMPOSITION", "Stored: {} (half-unit) + {} (shared) = {}",
                 halfUnitLines, spanning.size() + excess, halfUnitLines + spanning.size() + excess);
 
         return new CompositionResult(excludeByStorey, halfUnitLines, pairLines);

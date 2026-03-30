@@ -16,27 +16,8 @@ building:
 
   # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
 
-  floor_rooms:
-    Level 1:
-      bom_id: FLOOR_DX_L1_STD
-      product_category: L1
-      spaces:
-        - { name: LIVING,    template_bom: LIVING_SET,               role: LIVING,    seq: 10, aabb_mm: [7191, 800, 1170] }
-        - { name: DINING,    template_bom: DINING_SET,               role: DINING,    seq: 20, aabb_mm: [4200, 900, 750] }
-        - { name: KITCHEN,   template_bom: KITCHEN_CABINET_SET,      role: KITCHEN,   seq: 30, aabb_mm: [7100, 600, 900] }
-        - { name: KITCHEN_A, template_bom: KITCHEN_CABINET_SET_DX_A, role: KITCHEN_A, seq: 32, aabb_mm: [9000, 600, 900] }
-        - { name: KITCHEN_B, template_bom: KITCHEN_CABINET_SET_DX_B, role: KITCHEN_B, seq: 34, aabb_mm: [9000, 600, 900] }
-        - { name: BATHROOM,  template_bom: TOILET_BLOCK_FIXTURES,    role: BATHROOM,  seq: 40, aabb_mm: [0, 0, 0] }
-
-    Level 2:
-      bom_id: FLOOR_DX_L2_STD
-      product_category: L2
-      spaces:
-        - { name: BEDROOM,  template_bom: BED_SET,               role: BEDROOM,  seq: 10, aabb_mm: [1200, 600, 2000] }
-        - { name: MASTER,   template_bom: BED_SET_MASTER,        role: MASTER,   seq: 20, aabb_mm: [1200, 600, 2000] }
-        - { name: WARDROBE, template_bom: WARDROBE_SET,          role: WARDROBE, seq: 30, aabb_mm: [2400, 600, 2100] }
-        - { name: BATHROOM, template_bom: TOILET_BLOCK_FIXTURES, role: BATHROOM, seq: 40, aabb_mm: [0, 0, 0] }
-        - { name: KITCHEN,  template_bom: KITCHEN_CABINET_SET,   role: KITCHEN,  seq: 50, aabb_mm: [7100, 600, 900] }
+  # floor_rooms: removed — IFC spatial containment is the sole source (§10.4.13)
+  # 11 IfcSpaces auto-discovered: A102-A205, B102-B205 (61 furniture elements)
 
   static_children:
     - { child_product_id: FLOOR_SLAB_GF,         role: GROUND_SLAB, seq: 5,   dz: 0.0 }

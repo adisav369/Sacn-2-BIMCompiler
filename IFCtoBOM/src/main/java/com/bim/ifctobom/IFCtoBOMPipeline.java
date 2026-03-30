@@ -282,7 +282,7 @@ public class IFCtoBOMPipeline {
                         scope.setBomIds().size(), scope.totalSetLines(), scope.phantomLines());
 
                 composition = CompositionBomBuilder.build(
-                        bomConn, config, storeyElements, catLookup);
+                        bomConn, config, storeyElements, scope.excludeByStorey(), catLookup);
                 if (composition.halfUnitLines() > 0) {
                     System.out.printf("[IFCtoBOM] Composition: %d half-unit lines, %d pair children%n",
                             composition.halfUnitLines(), composition.pairLines());
