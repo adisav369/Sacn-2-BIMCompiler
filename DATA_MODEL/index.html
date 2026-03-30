@@ -3809,7 +3809,7 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <tr>
 <td>bom_type</td>
 <td>TEXT</td>
-<td>Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See <a href="../DISC_VALIDATION_DB_SRS/#1045-the-bom-is-already-perfect">DISC_VALIDATION_DB_SRS.md §10.4.5</a></td>
+<td>Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See <a href="../DISC_VALIDATION_DB_SRS/#65-the-bom-is-already-perfect">DISC_VALIDATION_DB_SRS.md §6.5</a></td>
 </tr>
 <tr>
 <td>bom_category</td>
@@ -4614,7 +4614,7 @@ rules (63 rules). Same table, different provenance. Distinguished by source colu
 <li><strong><code>_int</code> sidecar columns</strong> (transitional pattern from S90-S92) are dropped as each table completes migration. Phase D dropped M_Product_Category_ID_int (S92).</li>
 <li><strong><code>loadByValue(String)</code></strong> on BasePO enables <code>WHERE Value = ?</code> lookups — replaces the old TEXT PK pattern without changing caller semantics.</li>
 </ol>
-<p>See <a href="../DISC_VALIDATION_DB_SRS/#115-migration-sequence-6-steps-each-independently-committable">DISC_VALIDATION_DB_SRS.md §11.5</a> for the full migration sequence.</p>
+<p>AD_Org unifies discipline identifiers from TEXT strings to integer FK. See <a href="../DISC_VALIDATION_DB_SRS/#6-ad_org-disciplines-as-organizational-units">DISC_VALIDATION_DB_SRS.md §6</a>.</p>
 <hr />
 <p><em>Authoritative reference. See <code>BOMBasedCompilation.md</code> for tack convention and pipeline stages,
 <code>MANIFESTO.md</code> for the three-concern model (WHAT/HOW/WHERE),
