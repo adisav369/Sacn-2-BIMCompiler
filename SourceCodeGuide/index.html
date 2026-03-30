@@ -1251,10 +1251,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-the-9-stage-pipeline" class="md-nav__link">
+  <a href="#6-the-12-stage-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §6 — The 9-Stage Pipeline
+        §6 — The 12-Stage Pipeline
       
     </span>
   </a>
@@ -2469,6 +2469,8 @@
       
         
       
+        
+      
     
     
     
@@ -2641,6 +2643,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3524,10 +3554,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-the-9-stage-pipeline" class="md-nav__link">
+  <a href="#6-the-12-stage-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        §6 — The 9-Stage Pipeline
+        §6 — The 12-Stage Pipeline
       
     </span>
   </a>
@@ -3980,7 +4010,7 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a> · <a href="../ACTION_ROADMAP/">ACTION_ROADMAP</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Where to start reading.</b> Entry points, DAO patterns, the 9-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.</p>
+<p><b>Where to start reading.</b> Entry points, DAO patterns, the 12-stage pipeline — from a 30-line YAML to verified 3D output. If you're new to the codebase, start here.</p>
 </div>
 <p><strong>Version 3.0</strong></p>
 <p><strong>Creator:</strong> Redhuan D. Oon <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;">&#114;&#101;&#100;&#49;&#111;&#114;&#103;&#64;&#103;&#109;&#97;&#105;&#108;&#46;&#99;&#111;&#109;</a>
@@ -4344,7 +4374,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 </table>
 <p>Three-step process: (1) Query output DB for patterns, (2) Write append-only <code>migration/DV00N_*.sql</code>, (3) Apply to <code>ERP.db</code>.</p>
 <blockquote>
-<p><strong>Mining methodology:</strong> <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md"><code>TE_MINING_RESULTS.md</code></a> | Bridge rules → <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> §7.1</p>
+<p><strong>Mining methodology:</strong> <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md"><code>TE_MINING_RESULTS.md</code></a> | Bridge rules → <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code></a> §7.1</p>
 </blockquote>
 <hr />
 <h2 id="5-the-bom-tree">§5 — The BOM Tree<a class="headerlink" href="#5-the-bom-tree" title="Permanent link">&para;</a></h2>
@@ -4390,17 +4420,20 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 <p><strong>Full spec:</strong> <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a> §4 — tack convention, BOMChild record, 3-table authority rule, cascade placement.</p>
 </blockquote>
 <hr />
-<h2 id="6-the-9-stage-pipeline">§6 — The 9-Stage Pipeline<a class="headerlink" href="#6-the-9-stage-pipeline" title="Permanent link">&para;</a></h2>
+<h2 id="6-the-12-stage-pipeline">§6 — The 12-Stage Pipeline<a class="headerlink" href="#6-the-12-stage-pipeline" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="n">List</span><span class="o">&lt;</span><span class="n">CompilerStage</span><span class="o">&gt;</span><span class="w"> </span><span class="n">STAGES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">List</span><span class="p">.</span><span class="na">of</span><span class="p">(</span>
 <span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">MetadataValidator</span><span class="p">(),</span><span class="w">  </span><span class="c1">// 1 — validate before use</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ParseStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 2 — read DSL</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">CompileStage</span><span class="p">(),</span><span class="w">       </span><span class="c1">// 3 — walk BOM tree, resolve geometry</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">TemplateStage</span><span class="p">(),</span><span class="w">      </span><span class="c1">// 4 — AABB matching (ST mode only)</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">WriteStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 5 — serialize to output.db</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">VerbStage</span><span class="p">(),</span><span class="w">          </span><span class="c1">// 6 — BIM COBOL script hook</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">DigestStage</span><span class="p">(),</span><span class="w">        </span><span class="c1">// 7 — SHA-256 spatial fingerprint</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">GeometryStage</span><span class="p">(),</span><span class="w">      </span><span class="c1">// 8 — mesh integrity validation</span>
-<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ProveStage</span><span class="p">()</span><span class="w">          </span><span class="c1">// 9 — mathematical placement proofs</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ParseStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 2 — read DSL (null DSL = BOM walk path)</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">CompileStage</span><span class="p">(),</span><span class="w">       </span><span class="c1">// 3 — BOM walk: root → tree → placements</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">RouteStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 4 — discipline routing (callout + RouteDocEvent)</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">TemplateStage</span><span class="p">(),</span><span class="w">      </span><span class="c1">// 5 — AABB matching (ST mode only)</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">WriteStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 6 — serialize to output.db + system_edges/nodes</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">VerbStage</span><span class="p">(),</span><span class="w">          </span><span class="c1">// 7 — BIM COBOL script hook</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ValidationStage</span><span class="p">(),</span><span class="w">    </span><span class="c1">// 8 — iDempiere DocEvent + ASI + AD_Val_Rule</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">DigestStage</span><span class="p">(),</span><span class="w">        </span><span class="c1">// 9 — SHA-256 spatial fingerprint</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">GeometryStage</span><span class="p">(),</span><span class="w">      </span><span class="c1">// 10 — mesh integrity validation</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ProveStage</span><span class="p">(),</span><span class="w">         </span><span class="c1">// 11 — BOM tree proofs (P-PARENT/SIBLING/QTY/TACK)</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">ComplianceStage</span><span class="p">()</span><span class="w">     </span><span class="c1">// 12 — jurisdiction proof chain</span>
 <span class="p">);</span>
 </code></pre></div>
 <table>
@@ -4428,7 +4461,7 @@ BonsaiBIMDesigner (Blender addon bridge + GUI)
 Creates C_Order + walks m_bom/m_bom_line recursively. IsBOM products (matching m_bom) recurse;
 leaves become C_OrderLine LEAF rows. Returns <code>BomTreeNode</code> for Outliner (expand/collapse).
 DocAction: Save(validate) → Approve(new product config) → Complete(compile+viewport).</p>
-<p><strong>CO mode (Terminal/Institutional):</strong> CompileStage is skipped for M_Product_Category=CO buildings. All elements come from BOM extraction — no DSL compilation path needed.</p>
+<p><strong>Single path (S100-p72):</strong> All buildings — RE, CO, IN — compile through the same BOM walk in CompileStage. No CO passthrough, no skip. DSL is optional (ParseStage handles null DSL).</p>
 <blockquote>
 <p><strong>Full pipeline spec:</strong> <a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code></a> — per-stage walkthrough, CO mode forensics, data integrity chain.</p>
 </blockquote>
@@ -4494,7 +4527,7 @@ ADD LINE TO SY_MY_ROOM CHILD sofa_001 ROLE FURNITURE SEQ 10 DX 0.5 DY 0.3
 FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </code></pre></div>
 <p>Core interfaces: <code>Verb&lt;T&gt;</code> (execute → <code>VerbResult&lt;T&gt;</code>), <code>VerbContext</code> (3 connections: bom/component/output), <code>VerbRegistry</code> (longest-prefix dispatch).</p>
-<p>5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 76 verbs, 202 witnesses.</p>
+<p>5-tier composition: P0 primitives (CREATE BOM, ADD LINE) → L1 room-level → L2 floor → L3 building → L4 catalog. 77 verbs, 202 witnesses.</p>
 <blockquote>
 <p><strong>Full verb catalog, grammar, witnesses:</strong> <a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a> §19 (verb pattern detection, TILE/ROUTE/FRAME/CLUSTER)</p>
 </blockquote>
@@ -4927,7 +4960,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 <tbody>
 <tr>
 <td><code>CompilationPipeline</code></td>
-<td>9-stage orchestrator</td>
+<td>12-stage orchestrator</td>
 </tr>
 <tr>
 <td><code>BuildingCompiler</code></td>
@@ -4966,7 +4999,7 @@ FURNISH ROOM SY_MY_ROOM TEMPLATE SH_LIVING_SET
 </tr>
 <tr>
 <td><code>VerbRegistry</code></td>
-<td>Longest-prefix dispatch (76 verbs)</td>
+<td>Longest-prefix dispatch (77 verbs)</td>
 </tr>
 <tr>
 <td><code>VerbContext</code></td>
@@ -5055,7 +5088,7 @@ component_library.db                    ERP.db
   ├─ m_bom (BUILDING → FLOOR → SET)
   ├─ m_bom_line (child placements: dx/dy/dz)
   └─ C_DocType (building identity)
-    │ DAGCompiler (9-stage pipeline)
+    │ DAGCompiler (12-stage pipeline)
     ▼
 output.db
   ├─ elements_meta (ifc_class, storey, material)

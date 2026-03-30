@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3546,7 +3576,7 @@ The pitched roof won't cover the full SH footprint. Two options:
 - W-TC4-2: Find SH_ROOF_STR node (category=RF)
 - W-TC4-3: swapProduct(roof, FK_DG_STR) → success
 - W-TC4-4: FK_DG_STR has &gt;30 leaf lines</p>
-<p><strong>Gap:</strong> No test compiles after the swap. W-TC4-1..4 verify the OrderLine/BOM state but don't run the 9-stage pipeline on the swapped tree.</p>
+<p><strong>Gap:</strong> No test compiles after the swap. W-TC4-1..4 verify the OrderLine/BOM state but don't run the 12-stage pipeline on the swapped tree.</p>
 <h2 id="6-fp-discipline-readiness-assessment">6. FP Discipline — Readiness Assessment<a class="headerlink" href="#6-fp-discipline-readiness-assessment" title="Permanent link">&para;</a></h2>
 <blockquote>
 <p><strong>Full spec:</strong> <a href="../BIM_Designer_SRS/#3074-fp-trial--first-mep-discipline-via-docevent">BIM_Designer_SRS.md §30.7.4</a> (FP trial via DocEvent).
@@ -3641,7 +3671,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).</p>
 </ol>
 <h3 id="whats-needed-session-2">What's Needed (Session 2)<a class="headerlink" href="#whats-needed-session-2" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>Post-swap compilation test:</strong> Run 9-stage pipeline on swapped tree, verify element count = 55 − 2 + 42 = 95</li>
+<li><strong>Post-swap compilation test:</strong> Run 12-stage pipeline on swapped tree, verify element count = 55 − 2 + 42 = 95</li>
 <li><strong>TRIM on FK roof:</strong> Add test case in TrimVerbTest with FK roof dimensions on SH walls</li>
 <li><strong>FP OrderLine insertion:</strong> API to add discipline=FP OrderLine to existing Order</li>
 <li><strong>FPValidationTest:</strong> New test class for sprinkler placement + NFPA 13 spacing</li>

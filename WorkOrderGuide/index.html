@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3705,7 +3735,7 @@ stand-in</strong> for ERP entities. Each YAML section maps to an iDempiere table
 <tr>
 <td><code>floor_rooms</code></td>
 <td>C_OrderLine + <a href="../MANIFESTO/#m_attributeset-why-product-count-stays-small">M_AttributeSet</a></td>
-<td>Room scope spaces with dimensions</td>
+<td>IFC space → BOM template mapping</td>
 </tr>
 <tr>
 <td><code>static_children</code></td>
@@ -3721,7 +3751,9 @@ stand-in</strong> for ERP entities. Each YAML section maps to an iDempiere table
 </table>
 <p>In the production path, these definitions come from the <a href="../BIM_Designer_UserGuide/">BIM Designer</a>
 UI or future <a href="https://wiki.idempiere.org/en/REST_Web_Services">iDempiere REST</a> integration.
-The YAML is the <strong>extraction and onboarding tool</strong> — how buildings enter the system.</p>
+The YAML is the <strong>Order input and onboarding tool</strong> — how buildings enter the system.
+IFC extraction is IFC-driven (family types, spatial containment). YAML defines
+the Order: how extracted elements are organised into the BOM tree.</p>
 </blockquote>
 <h2 id="quick-start-for-users">Quick Start — For Users<a class="headerlink" href="#quick-start-for-users" title="Permanent link">&para;</a></h2>
 <p>Everything is already built. 34 buildings are onboarded, BOMs are generated, the
@@ -3806,7 +3838,7 @@ mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> 
 <tr>
 <td>Scope spaces</td>
 <td>Element → room assignment</td>
-<td>No — centroid-in-AABB</td>
+<td>No — IFC spatial containment (scope box fallback)</td>
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.java</code></a></td>
 </tr>
 <tr>
@@ -3862,7 +3894,7 @@ compilation (verified). The BOM stores parent-relative offsets, not absolute
 coordinates (verified). But neither fact proves the compiler is faithful to
 the YAML that produced the BOM.</p>
 <p><strong>The process of truth:</strong>
-1. YAML declares intent (storey offsets, static children, scope spaces, products)
+1. YAML declares Order intent (storey mapping, static children, IFC space → template mapping, disciplines)
 2. BOM builders translate YAML → <code>m_bom</code> + <code>m_bom_line</code> with relative dx/dy/dz
 3. BOMWalker walks the hierarchy → output elements
 4. <strong>Proof:</strong> If you mutate a YAML value and recompile, the output must change accordingly</p>
@@ -4153,14 +4185,23 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 - <strong>Each storey <code>code</code> must be unique within the building.</strong> The code becomes the BOM ID (<code>{prefix}_{code}_STR</code>). If two IFC storeys share the same code, the BOM builder creates duplicate BUILDING→FLOOR references and the compiler walks the floor BOM once per duplicate — producing extra elements (S57 finding: RA +31%, JE +29%, WA +220%, MO +2%). When <code>onboard_ifc.sh</code> generates a YAML with colliding codes, disambiguate them before committing (e.g. <code>L1</code> → <code>L1A</code>/<code>L1B</code>, or merge both storeys into one entry if they are architecturally the same floor).</p>
 <h3 id="floor_rooms-optional"><code>floor_rooms</code> (optional)<a class="headerlink" href="#floor_rooms-optional" title="Permanent link">&para;</a></h3>
 <p>Parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:110</code></a>. Consumed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.java</code></a> (scope assignment) and <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a> (room BOM creation).</p>
-<p>Defines room/scope space structure per storey.</p>
+<p>Defines room/scope space structure per storey. Two modes:</p>
+<p><strong>IFC-driven (preferred):</strong> elements assigned by <code>IfcRelContainedInSpatialStructure</code>
+from the extraction DB. YAML maps IFC space names to BOM templates:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">floor_rooms</span><span class="p">:</span>
 <span class="w">  </span><span class="nt">Ground Floor</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FLOOR_SH_GF_STD</span>
-<span class="w">    </span><span class="nt">bom_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GF</span>
+<span class="w">    </span><span class="nt">product_category</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">GF</span>
 <span class="w">    </span><span class="nt">spaces</span><span class="p">:</span>
-<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">LIVING</span><span class="p p-Indicator">,</span><span class="nt"> template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">SH_LIVING_SET</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">LIVING</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">10</span><span class="p p-Indicator">,</span>
-<span class="nt">          aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">8000</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2000</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1200</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-7.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> ifc_space</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;1</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">Living</span><span class="nv"> </span><span class="s">room&quot;</span><span class="p p-Indicator">,</span><span class="nt"> template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">SH_LIVING_SET</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">LIVING</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">10</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> ifc_space</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2</span><span class="nv"> </span><span class="s">-</span><span class="nv"> </span><span class="s">Bedroom&quot;</span><span class="p p-Indicator">,</span><span class="nt"> template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">SH_BED_SET</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">MASTER</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">30</span><span class="w"> </span><span class="p p-Indicator">}</span>
+</code></pre></div>
+<p><strong>Scope box (Order processing only):</strong> for sub-room zone subdivision at
+order time (BIM Designer GUI, BOM Drop). Not used during IFCtoBOM extraction.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Order-time sub-division (not extraction):</span>
+<span class="nt">spaces</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">DINING</span><span class="p p-Indicator">,</span><span class="nt"> template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">SH_DINING_SET</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">DINING</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">20</span><span class="p p-Indicator">,</span>
+<span class="nt">      aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2500</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1500</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1300</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">-6.5</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">-0.3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">0.0</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </code></pre></div>
 <table>
 <thead>
@@ -4171,8 +4212,12 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 </thead>
 <tbody>
 <tr>
+<td><code>ifc_space</code></td>
+<td>IFC IfcSpace name (extraction: <code>rel_contained_in_space</code>)</td>
+</tr>
+<tr>
 <td><code>name</code></td>
-<td>Scope space name</td>
+<td>Scope space name (Order processing fallback)</td>
 </tr>
 <tr>
 <td><code>template_bom</code></td>
@@ -4188,15 +4233,16 @@ aliases. See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.m
 </tr>
 <tr>
 <td><code>aabb_mm</code></td>
-<td><code>[width, depth, height]</code> scope box in mm</td>
+<td>Scope box dimensions in mm (Order processing only)</td>
 </tr>
 <tr>
 <td><code>origin_m</code></td>
-<td><code>[x, y, z]</code> scope box origin in metres (world coords)</td>
+<td>Scope box origin in metres (Order processing only)</td>
 </tr>
 </tbody>
 </table>
-<p>Elements whose centroid falls inside <code>origin_m + aabb_mm</code> are assigned to that scope space.</p>
+<p>IFC-driven: elements assigned by <code>IfcSpace</code> containment from extraction DB.
+Scope box: elements assigned by centroid-in-box test at order time.</p>
 <h3 id="static_children-optional"><code>static_children</code> (optional)<a class="headerlink" href="#static_children-optional" title="Permanent link">&para;</a></h3>
 <p>Parsed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ClassificationYaml.java"><code>ClassificationYaml.java:151</code></a>. Consumed by <a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java"><code>FloorRoomBomBuilder.java</code></a> which inserts MAKE children into the BUILDING BOM.</p>
 <p>Fixed MAKE children added to the BUILDING BOM (slabs, roof, MEP trunk, pair container).</p>
@@ -4742,9 +4788,10 @@ Every guard runs automatically on every build — no human memory required.</p>
 <h3 id="what-the-pipeline-does-not-validate">What the Pipeline Does NOT Validate<a class="headerlink" href="#what-the-pipeline-does-not-validate" title="Permanent link">&para;</a></h3>
 <p>These are documented ASSUMPTION remarks in the code — comment-only, no runtime guard:</p>
 <ul>
-<li><strong>Scope box coordinate frame stability</strong> — <code>origin_m</code> in YAML is assumed to match
-  extraction centroids. If IFC is re-extracted with a different <code>IfcMapConversion</code> offset,
-  scope box containment silently breaks. (ScopeBomBuilder ASSUMPTION)</li>
+<li><strong>Scope box coordinate frame stability</strong> — For buildings still using scope box fallback
+  (no IFC spatial data), <code>origin_m</code> is assumed to match extraction centroids. If IFC is
+  re-extracted with a different <code>IfcMapConversion</code> offset, scope box containment silently
+  breaks. IFC-driven buildings (<code>ifc_space:</code>) are immune. (ScopeBomBuilder ASSUMPTION)</li>
 <li><strong>Composition geometric validity</strong> — Mirror pairing matches by product count per storey,
   not by geometric spatial mirroring. (CompositionBomBuilder ASSUMPTION)</li>
 <li><strong>Cross-discipline product_id uniqueness</strong> — If two disciplines have elements with the
@@ -5015,7 +5062,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 </tr>
 <tr>
 <td>Spatial MRP (construction as ERP II)</td>
-<td><a href="../ConstructionAsERPII.txt"><code>ConstructionAsERPII.txt</code></a></td>
+<td><a href="ConstructionAsERPII.txt"><code>ConstructionAsERPII.txt</code></a></td>
 </tr>
 <tr>
 <td>BOM compilation, tack §4</td>
@@ -5027,7 +5074,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 </tr>
 <tr>
 <td>Conceptual blueprint</td>
-<td><a href="../CONCEPTUAL%20BLUEPRINT.txt"><code>CONCEPTUAL BLUEPRINT.txt</code></a></td>
+<td><a href="CONCEPTUAL%20BLUEPRINT.txt"><code>CONCEPTUAL BLUEPRINT.txt</code></a></td>
 </tr>
 <tr>
 <td>Rosetta Stone strategy</td>
@@ -5080,7 +5127,7 @@ Same IfcOpenShell-writes / Java-reads contract as all Federation PoCs.</p>
 <td><a href="../SourceCodeGuide/"><code>SourceCodeGuide.md</code></a></td>
 </tr>
 <tr>
-<td>BIM COBOL verbs (76 verbs)</td>
+<td>BIM COBOL verbs (77 verbs)</td>
 <td><a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a></td>
 </tr>
 <tr>

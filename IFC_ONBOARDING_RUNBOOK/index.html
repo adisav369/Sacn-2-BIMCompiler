@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3427,8 +3457,6 @@ sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$D
 <span class="w">  </span><span class="nt">building_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">BuildingType</span><span class="p p-Indicator">}</span><span class="w">          </span><span class="c1"># must match extracted DB name</span>
 <span class="w">  </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span><span class="w">                           </span><span class="c1"># 2-3 char code (uppercase)</span>
 <span class="w">  </span><span class="nt">building_bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BUILDING_{XX}_STD</span><span class="w">     </span><span class="c1"># BOM root ID</span>
-<span class="w">  </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span><span class="w">                     </span><span class="c1"># deprecated — redundant with prefix (DATA_MODEL.md §7)</span>
-<span class="w">  </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                      </span><span class="c1"># deprecated — redundant with M_Product_Category (DATA_MODEL.md §7)</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">Human Name</span><span class="p p-Indicator">}</span>
 <span class="w">  </span><span class="nt">dsl_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dsl_{xx}.bim</span><span class="w">                 </span><span class="c1"># BIM COBOL script (Step 4)</span>
 
@@ -3528,8 +3556,6 @@ BUILDING &quot;{BuildingType}&quot; type:{TYPE} profile:&quot;{profile}&quot; {
 <span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span>
 <span class="w">    </span><span class="nt">doc_type_id</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">RE</span><span class="p p-Indicator">}</span><span class="l l-Scalar l-Scalar-Plain">_{XX}</span><span class="w">               </span><span class="c1"># RE_ or CO_ prefix</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">Human Name</span><span class="p p-Indicator">}</span>
-<span class="w">    </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">XX</span><span class="p p-Indicator">}</span><span class="w">                    </span><span class="c1"># deprecated — redundant with prefix (DATA_MODEL.md §7)</span>
-<span class="w">    </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nv">RE</span><span class="p p-Indicator">}</span><span class="w">                   </span><span class="c1"># deprecated — redundant with M_Product_Category (DATA_MODEL.md §7)</span>
 <span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;{schema}</span><span class="nv"> </span><span class="s">{name}</span><span class="nv"> </span><span class="s">—</span><span class="nv"> </span><span class="s">{description}&quot;</span>
 <span class="w">    </span><span class="nt">provenance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">EXTRACTED</span>
 <span class="w">    </span><span class="nt">climate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">SCAN</span><span class="w">                         </span><span class="c1"># SCAN=scanned, INST=institutional</span>
@@ -3586,7 +3612,7 @@ rm<span class="w"> </span>-f<span class="w"> </span>library/<span class="o">{</s
 <tbody>
 <tr>
 <td>IFCtoBOM</td>
-<td>YAML → BOM hierarchy + verb detection</td>
+<td>IFC extraction + Order config → BOM recipe + verb detection</td>
 <td><code>library/{XX}_BOM.db</code></td>
 </tr>
 <tr>
@@ -3931,7 +3957,7 @@ Review and adjust rule IDs before applying. See <a href="../WorkOrderGuide/">Wor
 <blockquote>
 <p><strong>Further reading:</strong>
 <a href="../WorkOrderGuide/">WorkOrderGuide.md</a> — field dictionary, drift guards, what NOT to do |
-<a href="../BIM_COBOL/">BIM_COBOL.md</a> — verb catalog (76 verbs) |
+<a href="../BIM_COBOL/">BIM_COBOL.md</a> — verb catalog (77 verbs) |
 <a href="../TestArchitecture/">TestArchitecture.md</a> — G1-G6 gate definitions |
 <a href="../ACInstituteAnalysis/">ACInstituteAnalysis.md</a> — worked example (699 elements, 5 storeys)</p>
 </blockquote>

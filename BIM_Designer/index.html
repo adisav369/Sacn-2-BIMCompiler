@@ -3458,6 +3458,8 @@
       
         
       
+        
+      
     
     
     
@@ -3630,6 +3632,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -5973,7 +6003,7 @@ M_BOM_Line spatial relationships (dx/dy/dz), BIM COBOL verbs, EntityType governa
 <p>The BIM Designer (Phase G) does not start from scratch. Three Rosetta Stone
 buildings — SH (55), DX (1,099), TE (48,428 elements) — have proven the
 full pipeline end-to-end: IFC extraction → component library → BOM dictionary
-→ 9-stage compilation → verified output. All gates GREEN (G1–G6).</p>
+→ 12-stage compilation → verified output. All gates GREEN (G1–G6).</p>
 <p>The designer works on these <strong>already-proven artifacts:</strong></p>
 <table>
 <thead>
@@ -6060,7 +6090,7 @@ pattern rules, not 48K individual placements. See
 <tbody>
 <tr>
 <td><strong>0. Compile</strong></td>
-<td>Runs 9-stage pipeline → fresh output.db</td>
+<td>Runs 12-stage pipeline → fresh output.db</td>
 <td>YAML + BOM DB + component library</td>
 <td>Design iteration: edit → compile → view</td>
 </tr>
@@ -6200,7 +6230,7 @@ recompiled from sources.</p>
   │  ├─ Attribute change?  → M_AttributeSetInstance (per-instance params)
   │  └─ Rule override?    → C_OrderLine ASI (guarded by Val_Rule)
   │
-  ├─ Recompile (9-stage pipeline)
+  ├─ Recompile (12-stage pipeline)
   │
   └─ Bonsai reloads output.db → viewport updates
 </code></pre></div>
@@ -6224,7 +6254,7 @@ a document: Draft → Process → Complete.</p>
 │  refresh                   writes                  │ │
 │     │                         │                    │ │
 │  Addon Panel ──→ subprocess ──→ Java Compiler      │ │
-│  (Python)                       (9-stage pipeline) │ │
+│  (Python)                       (12-stage pipeline) │ │
 │                                                    │ │
 │  choosers/sliders → BIM COBOL verbs → compile → DB │ │
 │                                                    │ │
@@ -6234,7 +6264,7 @@ a document: Draft → Process → Complete.</p>
 <p><strong>Data flow:</strong> No file handoff during editing. The compiler writes to the
 spatial DB. Bonsai reads it. IFC export is a final step for permit submission.</p>
 <p><strong>Batch model:</strong> The user edits parameters, clicks "Process" (iDempiere
-DocAction pattern). The 9-stage pipeline runs end-to-end. Results appear in
+DocAction pattern). The 12-stage pipeline runs end-to-end. Results appear in
 the viewport. No keystroke-triggered recompile.</p>
 <p><strong>What Bonsai provides free:</strong> LOD400 3D rendering, section cuts, element
 selection, property inspection, dimensioning, Blender's addon panel framework.
@@ -6737,7 +6767,7 @@ NEW:  Intent → GUI → BIM COBOL verbs → BOM data → Compile → Output
     ├─ MEP distribution (per-room rules from ad_space_type_mep)
     │   Outlets, lights, switches placed per spacing rules
     │
-    └─ Compile → 9-stage pipeline → output.db → Bonsai viewport
+    └─ Compile → 12-stage pipeline → output.db → Bonsai viewport
 </code></pre></div>
 <h3 id="62-the-compounding-effect">6.2 The Compounding Effect<a class="headerlink" href="#62-the-compounding-effect" title="Permanent link">&para;</a></h3>
 <p>Every saved arrangement becomes a reusable recipe:</p>
@@ -6763,7 +6793,7 @@ each building makes the next building easier.</p>
 </thead>
 <tbody>
 <tr>
-<td>9-stage compilation pipeline</td>
+<td>12-stage compilation pipeline</td>
 <td>DONE</td>
 </tr>
 <tr>
@@ -7334,7 +7364,7 @@ adapter, not a compiler.</p>
 <tr>
 <td><strong>Compilation</strong></td>
 <td><code>CompilationPipeline.run(BuildingEntry)</code></td>
-<td>Wraps the 9-stage pipeline via <code>BuildingRegistry.loadById()</code> → <code>CompilationPipeline.run()</code>. Same code path as <code>run_RosettaStones.sh</code></td>
+<td>Wraps the 12-stage pipeline via <code>BuildingRegistry.loadById()</code> → <code>CompilationPipeline.run()</code>. Same code path as <code>run_RosettaStones.sh</code></td>
 </tr>
 <tr>
 <td><strong>Building discovery</strong></td>
@@ -7344,7 +7374,7 @@ adapter, not a compiler.</p>
 <tr>
 <td><strong>Verb dispatch</strong></td>
 <td><code>VerbRegistry.createDefault().dispatch(ctx, line)</code></td>
-<td>76 verbs via longest-prefix match. GUI emits verb lines, server dispatches them</td>
+<td>77 verbs via longest-prefix match. GUI emits verb lines, server dispatches them</td>
 </tr>
 <tr>
 <td><strong>Product catalog</strong></td>
@@ -8197,7 +8227,7 @@ same <code>BIM_PT_tabs</code> parent. Proposed slot: between #2 and #3.</p>
 <tr>
 <td>Compilation</td>
 <td>Java server (bim-compiler repo)</td>
-<td>9-stage pipeline, BOM validation</td>
+<td>12-stage pipeline, BOM validation</td>
 </tr>
 <tr>
 <td>Validation rules</td>

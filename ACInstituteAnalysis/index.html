@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3867,8 +3897,8 @@ sqlite3<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$D
 <span class="s2">       ROUND(MIN(r.minZ),2), ROUND(MAX(r.maxZ),2)</span>
 <span class="s2">FROM elements_rtree r&quot;</span>
 
-<span class="c1"># Per-space bounding boxes (for YAML scope spaces)</span>
-<span class="c1"># Use IfcSpace geometry via ifcopenshell (same method as FK)</span>
+<span class="c1"># Per-space containment (IFC-driven via rel_contained_in_space)</span>
+<span class="c1"># IfcSpace names map to BOM templates in YAML Order config</span>
 </code></pre></div>
 <p><strong>Actual results (session 39):</strong>
 - 699 elements, 91 geometries, 5 storeys, 82 spaces

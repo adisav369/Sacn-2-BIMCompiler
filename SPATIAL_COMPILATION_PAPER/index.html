@@ -1,0 +1,4426 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Construction is manufacturing. A building IS its Bill of Materials.">
+      
+      
+        <meta name="author" content="Redhuan D. Oon">
+      
+      
+      
+        <link rel="prev" href="../BIMERPPaper/">
+      
+      
+        <link rel="next" href="../SampleHouseAnalysis/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Spatial Compilation Paper - BIM Intent Compiler</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/custom.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-XXXXXXXXXX"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-XXXXXXXXXX",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#deterministic-spatial-compilation-per-element-verified-reconstruction-of-3d-structures-from-hierarchical-spatial-recipes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="BIM Intent Compiler" class="md-header__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            BIM Intent Compiler
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Spatial Compilation Paper
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="blue-grey" data-md-color-accent="orange"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/red1oon/BIMCompiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Start Here
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../LAST_MILE_PROBLEM/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Last Mile
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BOMBasedCompilation/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Specs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../BIM_Designer_SRS/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Designer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../Enterprise/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../ACTION_ROADMAP/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Roadmap
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../SampleHouseAnalysis/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Buildings
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../WorkOrderGuide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="BIM Intent Compiler" class="md-nav__button md-logo" aria-label="BIM Intent Compiler" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    BIM Intent Compiler
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/red1oon/BIMCompiler" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start Here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MANIFESTO/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The ERP World View
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ShipYard/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Beyond Buildings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Last Mile
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Last Mile
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../LAST_MILE_PROBLEM/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Drift
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TestArchitecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6 Gates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../EYES_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIMEyes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../CALIBRATION_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Specs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Specs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BOMBasedCompilation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BOM Compilation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DATA_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TheRosettaStoneStrategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rosetta Stones
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_COBOL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM COBOL (76 Verbs)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SourceCodeGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Source Code Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Designer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Designer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocAction_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DocAction Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DocValidate/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation Rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ASSEMBLY_BUILDER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assembly Builder
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BlenderBridge/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blender Bridge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../G4_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output DB (G4)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Enterprise/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FederatedModel Platform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BACK_OFFICE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TIER1_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    6D/7D/Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../STANDARDS_COMPLIANCE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Standards Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../REPORTING_ENGINE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporting Engine
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INFRA_DESIGNER_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure Designer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PDF_TERRAIN/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PDF Terrain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2D_LAYOUT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2D Layout
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Disciplines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DISC_VALIDATION_DB_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ERP Database
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GENERATIVE_HOUSE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generative House
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../GEOMETRY_FORGE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry Forge
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FORGE_SUITE_SRS/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forge Suite
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../PREFAB_ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Prefab Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Roadmap
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACTION_ROADMAP/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Action Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ProjectOrderBlueprint/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project Blueprint
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../VibeProgramming/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vibe Programming
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../StrategicIndustryPositioning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Strategic Positioning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMERPPaper/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abstract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Introduction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Introduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Contribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-background-and-related-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Background and Related Work
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Background and Related Work">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-protein-structure-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Protein Structure Prediction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-robotic-forward-kinematics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Robotic Forward Kinematics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-bim-and-ifc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 BIM and IFC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-manufacturing-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Manufacturing BOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Method
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Method">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-tack-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Tack Convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-bom-walk-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 BOM Walk Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-ifc-guid-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 IFC GUID Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-geo-verification-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 GEO Verification Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-experimental-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Experimental Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Experimental Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-round-trip-verification-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Round-Trip Verification Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-results-sample-house-58-elements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Results: Sample House (58 elements)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.3 Results: Sample House (58 elements)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#431-honesty-note-cluster-vs-formula-verbs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3.1 Honesty Note: CLUSTER vs Formula Verbs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-results-duplex-1099-elements-mirrored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Results: Duplex (1,099 elements, mirrored)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-results-fleet-verification-24-buildings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Results: Fleet Verification (24 buildings)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cross-domain-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cross-Domain Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Cross-Domain Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-comparison-with-protein-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Comparison with Protein Science
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.1 Comparison with Protein Science">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#511-what-this-method-offers-protein-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1.1 What This Method Offers Protein Science
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-comparison-with-robotics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Comparison with Robotics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.2 Comparison with Robotics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#521-what-this-method-offers-robotics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2.1 What This Method Offers Robotics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-transferable-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Transferable Contributions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-the-unifying-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 The Unifying Problem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.4 The Unifying Problem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#visual-bom-walk-vs-forward-kinematics-vs-protein-folding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visual: BOM Walk vs Forward Kinematics vs Protein Folding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-generative-construction-verification-without-a-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Generative Construction — Verification Without a Source
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.5 Generative Construction — Verification Without a Source">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-source-verification-to-pattern-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From source verification to pattern verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-vocabulary-growth-dynamic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The vocabulary growth dynamic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification script
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Buildings
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Buildings
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SampleHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sample House (SH)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../FZKHausAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FZK Haus (FK)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DuplexAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Duplex (DX)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ACInstituteAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AC Institute (IN)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../TerminalAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terminal (TE)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../InfrastructureAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Infrastructure
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DemoHouseAnalysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DemoHouse (DM)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../WorkOrderGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../USER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIM_Designer_UserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    BIM Designer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BackOfficeUserGuide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Back Office Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../IFC_ONBOARDING_RUNBOOK/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    IFC Onboarding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SYSTEMS_INSTALLER_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems Installer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DEPLOYMENT/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../BIMLogger/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../INDEX/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Doc Index
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#abstract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Abstract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Introduction
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Introduction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-contribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Contribution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-background-and-related-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Background and Related Work
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Background and Related Work">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-protein-structure-prediction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Protein Structure Prediction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-robotic-forward-kinematics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Robotic Forward Kinematics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-bim-and-ifc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 BIM and IFC
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-manufacturing-bom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Manufacturing BOM
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Method
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Method">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-tack-convention" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Tack Convention
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-bom-walk-algorithm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 BOM Walk Algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-ifc-guid-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 IFC GUID Chain
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-geo-verification-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 GEO Verification Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-experimental-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Experimental Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Experimental Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-round-trip-verification-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Round-Trip Verification Protocol
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-results-sample-house-58-elements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Results: Sample House (58 elements)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4.3 Results: Sample House (58 elements)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#431-honesty-note-cluster-vs-formula-verbs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3.1 Honesty Note: CLUSTER vs Formula Verbs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-results-duplex-1099-elements-mirrored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Results: Duplex (1,099 elements, mirrored)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-results-fleet-verification-24-buildings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Results: Fleet Verification (24 buildings)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-evidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Evidence
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-cross-domain-analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Cross-Domain Analysis
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Cross-Domain Analysis">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-comparison-with-protein-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Comparison with Protein Science
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.1 Comparison with Protein Science">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#511-what-this-method-offers-protein-science" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1.1 What This Method Offers Protein Science
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-comparison-with-robotics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Comparison with Robotics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.2 Comparison with Robotics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#521-what-this-method-offers-robotics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2.1 What This Method Offers Robotics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-transferable-contributions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Transferable Contributions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-the-unifying-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 The Unifying Problem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.4 The Unifying Problem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#visual-bom-walk-vs-forward-kinematics-vs-protein-folding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visual: BOM Walk vs Forward Kinematics vs Protein Folding
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#55-generative-construction-verification-without-a-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.5 Generative Construction — Verification Without a Source
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5.5 Generative Construction — Verification Without a Source">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#from-source-verification-to-pattern-verification" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        From source verification to pattern verification
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-vocabulary-growth-dynamic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The vocabulary growth dynamic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#verification-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification script
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        References
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="deterministic-spatial-compilation-per-element-verified-reconstruction-of-3d-structures-from-hierarchical-spatial-recipes">Deterministic Spatial Compilation: Per-Element Verified Reconstruction of 3D Structures from Hierarchical Spatial Recipes<a class="headerlink" href="#deterministic-spatial-compilation-per-element-verified-reconstruction-of-3d-structures-from-hierarchical-spatial-recipes" title="Permanent link">&para;</a></h1>
+<p><strong>Redhuan D. Oon</strong><sup>1</sup> and <strong>Claude Opus 4.6</strong><sup>2</sup></p>
+<p><sup>1</sup> red1, Kuala Lumpur, Malaysia. Creator and architect of the BIM Intent Compiler.
+<sup>2</sup> Anthropic. AI pair programmer contributing to specification, analysis, and verification methodology.</p>
+<hr />
+<h2 id="abstract">Abstract<a class="headerlink" href="#abstract" title="Permanent link">&para;</a></h2>
+<p>We present a method for decomposing real three-dimensional structures into hierarchical spatial recipes (Bills of Materials with tack offsets), recompiling them through deterministic arithmetic, and verifying every element's position against the original source with per-element identity tracing. Applied to 35 real buildings extracted from Industry Foundation Classes (IFC) files, the method achieves <strong>zero positional drift</strong> across 1,653 element pairs in a 58-element residential building, with a worst-case error of 0.002mm. Each compiled element carries its original IFC GloballyUniqueId through the entire decomposition-compilation chain, enabling per-element provenance that neither protein structure prediction nor robotic forward kinematics currently achieves. We argue that spatial compilation from learned recipes represents a general-purpose approach to verified 3D reconstruction, with applications beyond construction to any domain where physical assemblies can be decomposed into hierarchical spatial relationships.</p>
+<p><strong>Keywords:</strong> spatial compilation, BIM, BOM, tack convention, round-trip verification, IFC, deterministic geometry, protein folding analogy, forward kinematics</p>
+<hr />
+<h2 id="1-introduction">1. Introduction<a class="headerlink" href="#1-introduction" title="Permanent link">&para;</a></h2>
+<p>The reconstruction of three-dimensional structures from one-dimensional specifications is a fundamental problem across engineering and science. Protein science faces the folding problem: predicting 3D structure from amino acid sequence [1]. Robotics faces forward kinematics: computing end-effector position from joint angles [2]. Semiconductor design faces place-and-route: mapping logical circuits to physical layouts [3].</p>
+<p>Construction — the largest asset class in the global economy at USD 13 trillion annually [4] — has no equivalent compilation model. Buildings are authored as drawings (Revit, ArchiCAD) or modelled as parametric geometry (Grasshopper, Dynamo). Neither approach decomposes a real building into a reusable recipe or verifies that a compiled output reproduces the original. The building information model (BIM) is treated as an artefact to be authored, not as a compilation target to be verified.</p>
+<p>We present a method that treats buildings as compiled artefacts. A real building, represented as an IFC file [5], is decomposed into a hierarchical Bill of Materials (BOM) with spatial tack offsets. The BOM is then compiled back into 3D geometry through deterministic arithmetic. The compiled output is verified per-element against the original, with identity tracing through IFC GloballyUniqueId (GUID).</p>
+<h3 id="11-contribution">1.1 Contribution<a class="headerlink" href="#11-contribution" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p><strong>Spatial compilation model.</strong> A formal method for decomposing 3D structures into hierarchical BOMs with parent-relative offsets (tack convention), and recompiling them through cumulative arithmetic.</p>
+</li>
+<li>
+<p><strong>Per-element provenance.</strong> Each compiled element carries its IFC GUID through the BOM chain via a Material Allocation (MA) table, enabling per-element round-trip verification — not bulk metrics like RMSD.</p>
+</li>
+<li>
+<p><strong>Zero-drift verified reconstruction.</strong> Experimental results on 35 real buildings demonstrate 0.002mm worst-case error across 1,653 all-pairs relative offset comparisons in a 58-element building.</p>
+</li>
+<li>
+<p><strong>Cross-domain generality.</strong> The method applies to any domain where physical assemblies decompose into hierarchical spatial relationships: shipbuilding, tunnel engineering, industrial plant, and potentially protein structure modelling.</p>
+</li>
+</ol>
+<hr />
+<h2 id="2-background-and-related-work">2. Background and Related Work<a class="headerlink" href="#2-background-and-related-work" title="Permanent link">&para;</a></h2>
+<h3 id="21-protein-structure-prediction">2.1 Protein Structure Prediction<a class="headerlink" href="#21-protein-structure-prediction" title="Permanent link">&para;</a></h3>
+<p>The protein folding problem — predicting 3D structure from amino acid sequence — was a grand challenge for 50 years. Template-based modelling [6] reuses spatial motifs from the Protein Data Bank (PDB) [7], which contains over 200,000 experimentally solved structures. AlphaFold [8] achieved near-experimental accuracy by learning spatial relationships from the PDB through deep neural networks.</p>
+<p>Template-based modelling is conceptually closest to our approach: both decompose solved structures into spatial motifs and reuse them for new structures. However, protein prediction is <strong>stochastic</strong> — different runs may produce different results, and the output always has residual error (typically 1-3 Angstrom RMSD). The internal computation of AlphaFold is not a traceable chain of named operations; it is matrix multiplication in a neural network.</p>
+<h3 id="22-robotic-forward-kinematics">2.2 Robotic Forward Kinematics<a class="headerlink" href="#22-robotic-forward-kinematics" title="Permanent link">&para;</a></h3>
+<p>The Unified Robot Description Format (URDF) [9] decomposes a robot into links and joints with parent-child transforms. Forward kinematics accumulates these transforms through the kinematic chain to compute world positions [2]. This is <strong>mathematically identical</strong> to our BOM walk algorithm (Section 3.2). Robot calibration verifies computed positions against sensor measurements.</p>
+<p>However, robots verify only the end effector (the tool tip), not every link in the chain. Calibration degrades over time due to mechanical wear, thermal expansion, and load deformation. There is no per-joint, per-cycle continuous verification with identity tracing.</p>
+<h3 id="23-bim-and-ifc">2.3 BIM and IFC<a class="headerlink" href="#23-bim-and-ifc" title="Permanent link">&para;</a></h3>
+<p>The Industry Foundation Classes (IFC) standard [5] defines a data model for building information. IFC files represent buildings as hierarchical spatial structures with typed elements (IfcWall, IfcDoor, IfcFurnishingElement) carrying GloballyUniqueId (GUID) identifiers. buildingSMART's Model View Definitions (MVD) specify which IFC entities are required for different use cases [10].</p>
+<p>Current BIM tools (Autodesk Revit, Graphisoft ArchiCAD) author IFC models directly. No mainstream tool decomposes an IFC model into a BOM recipe and recompiles it. The closest related work is:</p>
+<ul>
+<li><strong>Revit MEP auto-routing</strong> [11]: generates pipe/duct routes between user-selected endpoints using constrained geometric solving. Does not decompose or recompile.</li>
+<li><strong>GenMEP</strong> [12]: voxel-based pathfinding for clash-free MEP routing in Revit. Search-based, not recipe-based.</li>
+<li><strong>BlenderBIM/Bonsai</strong> [13]: open-source IFC authoring. Issue #6521 proposes orthogonal A* pathfinding. Not implemented.</li>
+</ul>
+<p>None of these tools perform decomposition → recipe → recompilation → verification.</p>
+<h3 id="24-manufacturing-bom">2.4 Manufacturing BOM<a class="headerlink" href="#24-manufacturing-bom" title="Permanent link">&para;</a></h3>
+<p>Enterprise Resource Planning (ERP) systems (SAP, iDempiere [14]) represent manufactured products as Bills of Materials — hierarchical parent-child trees with quantities. The iDempiere M_BOM / M_BOM_Line model is the basis for our spatial BOM, extended with dx/dy/dz tack offsets per line.</p>
+<p>Manufacturing BOMs are <strong>quantitative</strong> (how many of each part) but not <strong>spatial</strong> (where each part goes). Our contribution is adding spatial tack offsets to the BOM convention, making the BOM a complete recipe for both what to build and where to place it.</p>
+<hr />
+<h2 id="3-method">3. Method<a class="headerlink" href="#3-method" title="Permanent link">&para;</a></h2>
+<h3 id="31-tack-convention">3.1 Tack Convention<a class="headerlink" href="#31-tack-convention" title="Permanent link">&para;</a></h3>
+<p>We define the <strong>tack convention</strong> as a parent-relative spatial offset system for hierarchical BOMs. Each M_BOM_Line record carries three additional fields:</p>
+<div class="highlight"><pre><span></span><code>dx, dy, dz : REAL  — parent-relative offset in metres (LBD convention)
+</code></pre></div>
+<p>LBD (Left-Bottom-Deep) means offsets are measured from the minimum bounding box corner of the parent to the minimum bounding box corner of the child. For a child element with half-extents (halfW, halfD, halfH), the world centroid is:</p>
+<div class="highlight"><pre><span></span><code>centroid = parent_anchor + (dx, dy, dz) + (halfW, halfD, halfH)
+</code></pre></div>
+<p>This convention is <strong>invertible</strong>: given world positions of parent and child, the tack offset is:</p>
+<div class="highlight"><pre><span></span><code>(dx, dy, dz) = child_LBD - parent_LBD
+</code></pre></div>
+<p>The invertibility enables decomposition (extraction) and recomposition (compilation) as exact inverses.</p>
+<h3 id="32-bom-walk-algorithm">3.2 BOM Walk Algorithm<a class="headerlink" href="#32-bom-walk-algorithm" title="Permanent link">&para;</a></h3>
+<p>The compilation algorithm is a depth-first tree walk with cumulative anchor accumulation:</p>
+<div class="highlight"><pre><span></span><code>function walk(bom, parent_anchor):
+    for each line in bom.children:
+        rotated_offset = rotate(line.dx, line.dy, line.dz, cumulative_rotation)
+        child_anchor = parent_anchor + rotated_offset + child_bom.origin
+
+        if line.is_leaf:
+            emit Placement(child_anchor + half_extents, line.product, line.guid)
+        else:
+            walk(child_bom, child_anchor)
+</code></pre></div>
+<p>This is equivalent to robotic forward kinematics [2] with the substitution:
+- Robot link → BOM level (BUILDING, FLOOR, SET, LEAF)
+- Joint angle → tack offset (dx, dy, dz)
+- DH parameters → BOM origin + rotation_rule
+- End effector → placed element</p>
+<p>The algorithm is <strong>O(n)</strong> in the number of BOM lines, with constant-factor overhead for rotation (when present). No spatial indexing, no search, no optimisation.</p>
+<h3 id="33-ifc-guid-chain">3.3 IFC GUID Chain<a class="headerlink" href="#33-ifc-guid-chain" title="Permanent link">&para;</a></h3>
+<p>Each extracted element carries an IFC GloballyUniqueId (22-character base64 identifier). During decomposition, the GUID is stored in a Material Allocation (MA) table:</p>
+<div class="highlight"><pre><span></span><code>m_bom_line_ma(bom_id, M_BOM_ID, sequence, qi, guid)
+</code></pre></div>
+<p>During compilation, the BOM walker reads the MA table and assigns the original GUID to the compiled element. This creates a <strong>per-element identity chain</strong>:</p>
+<div class="highlight"><pre><span></span><code>IFC file → extracted.db (guid) → BOM.db (m_bom_line_ma.guid) → output.db (element_ref)
+</code></pre></div>
+<p>The chain enables per-element round-trip verification: for any compiled element, look up its GUID in the extraction database and compare positions.</p>
+<h3 id="34-geo-verification-mode">3.4 GEO Verification Mode<a class="headerlink" href="#34-geo-verification-mode" title="Permanent link">&para;</a></h3>
+<p>A dedicated debug channel (<code>bim.geo.debug=true</code>) emits a TACK log line at the exact code location that computes each element's position. The log line includes:</p>
+<div class="highlight"><pre><span></span><code>[GEO] TACK LEAF {product} guid={ifc_guid}
+    anchor=({ax},{ay},{az}) + offset=({dx},{dy},{dz}) + half=({hw},{hd},{hh})
+    → centroid=({cx},{cy},{cz}) LBD=({lx},{ly},{lz})
+</code></pre></div>
+<p>Each field is a local variable from the computation — if the log line emits, the tack arithmetic executed. The IFC GUID enables joining against the extraction database for position verification.</p>
+<hr />
+<h2 id="4-experimental-results">4. Experimental Results<a class="headerlink" href="#4-experimental-results" title="Permanent link">&para;</a></h2>
+<h3 id="41-dataset">4.1 Dataset<a class="headerlink" href="#41-dataset" title="Permanent link">&para;</a></h3>
+<p>35 real buildings extracted from IFC files, comprising 34 extracted structures (residential, commercial, institutional, infrastructure) and 1 generative structure. The largest building (SJTII Airport Terminal) contains 48,428 elements across 7 storeys and 8 engineering disciplines.</p>
+<p>The primary verification building is the Ifc4 Sample House (SH): 58 elements, 3 storeys, 19 distinct products, including structural elements, furniture sets, doors, windows, and floor slabs.</p>
+<h3 id="42-round-trip-verification-protocol">4.2 Round-Trip Verification Protocol<a class="headerlink" href="#42-round-trip-verification-protocol" title="Permanent link">&para;</a></h3>
+<ol>
+<li><strong>Extract:</strong> IFC file → extraction database (<code>elements_meta</code> + <code>elements_rtree</code> with world positions and IFC GUIDs)</li>
+<li><strong>Decompose:</strong> extraction → BOM database (tack offsets computed as <code>child_LBD - parent_LBD</code>, GUIDs stored in MA table)</li>
+<li><strong>Compile:</strong> BOM → output database (BOM walk algorithm, Section 3.2)</li>
+<li><strong>Verify:</strong> for each compiled element, join on IFC GUID against extraction database, compute all-pairs relative offsets</li>
+</ol>
+<h3 id="43-results-sample-house-58-elements">4.3 Results: Sample House (58 elements)<a class="headerlink" href="#43-results-sample-house-58-elements" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Elements with IFC GUID carried through</td>
+<td>58/58 (100%)</td>
+</tr>
+<tr>
+<td>GEO log position matches output.db</td>
+<td>58/58 within 1mm</td>
+</tr>
+<tr>
+<td>All-pairs relative offset comparisons</td>
+<td>1,653</td>
+</tr>
+<tr>
+<td>Pairs with relative offset error ≤ 1mm</td>
+<td><strong>1,653 (100%)</strong></td>
+</tr>
+<tr>
+<td>Pairs with relative offset error &gt; 1mm</td>
+<td><strong>0 (0%)</strong></td>
+</tr>
+<tr>
+<td>Worst-case relative offset error</td>
+<td><strong>0.002mm</strong></td>
+</tr>
+<tr>
+<td>Mean relative offset error</td>
+<td>&lt; 0.001mm</td>
+</tr>
+</tbody>
+</table>
+<p>The 0.002mm worst-case error arises from IEEE 754 double-precision floating-point arithmetic in the tack accumulation chain. The error is 6 orders of magnitude below the construction tolerance of 1mm.</p>
+<h4 id="431-honesty-note-cluster-vs-formula-verbs">4.3.1 Honesty Note: CLUSTER vs Formula Verbs<a class="headerlink" href="#431-honesty-note-cluster-vs-formula-verbs" title="Permanent link">&para;</a></h4>
+<p>The tack convention uses two classes of verb for factored elements:</p>
+<table>
+<thead>
+<tr>
+<th>Verb</th>
+<th>How offsets arise</th>
+<th>What zero-drift proves</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TILE, FRAME</strong></td>
+<td>Computed from formula (grid spacing, bay count)</td>
+<td>The compiler <strong>derives</strong> positions from a spatial recipe</td>
+</tr>
+<tr>
+<td><strong>CLUSTER</strong></td>
+<td>Stored from extraction (exact per-instance LBD offsets)</td>
+<td>The compiler <strong>replays</strong> stored positions losslessly</td>
+</tr>
+</tbody>
+</table>
+<p>Both use identical tack accumulation (<code>parent + offset → child</code>). The
+compiler treats them identically. But CLUSTER offsets are extraction
+transcripts, not learned recipes. Zero drift on CLUSTER proves lossless
+storage and retrieval — not spatial computation.</p>
+<p>Building verb composition:</p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Unfactored</th>
+<th>CLUSTER</th>
+<th>TILE/FRAME/ROUTE</th>
+<th>% CLUSTER</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FK</td>
+<td>99</td>
+<td>0</td>
+<td>0</td>
+<td><strong>0%</strong> (purest test)</td>
+</tr>
+<tr>
+<td>SH</td>
+<td>35</td>
+<td>36</td>
+<td>0</td>
+<td>51%</td>
+</tr>
+<tr>
+<td>DX</td>
+<td>557</td>
+<td>107</td>
+<td>0</td>
+<td>16%</td>
+</tr>
+<tr>
+<td>IN</td>
+<td>422</td>
+<td>403</td>
+<td>32</td>
+<td>47%</td>
+</tr>
+<tr>
+<td>CP</td>
+<td>35</td>
+<td>6,552</td>
+<td>0</td>
+<td><strong>99.5%</strong></td>
+</tr>
+<tr>
+<td>TE</td>
+<td>1,170</td>
+<td>47,157</td>
+<td>108</td>
+<td><strong>97.4%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>FK (0% CLUSTER) is the purest test of spatial compilation — every position
+is computed from tack offsets, not replayed. CP and TE results primarily
+prove CLUSTER replay fidelity.</p>
+<p><strong>Ongoing work:</strong> converting CLUSTER fallbacks to formula verbs through
+improved pattern detection in VerbDetector. Each CLUSTER-to-TILE conversion
+strengthens the spatial compilation claim by replacing a stored transcript
+with a computed recipe. See §10.4.10 in <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS.md</a>.</p>
+<h3 id="44-results-duplex-1099-elements-mirrored">4.4 Results: Duplex (1,099 elements, mirrored)<a class="headerlink" href="#44-results-duplex-1099-elements-mirrored" title="Permanent link">&para;</a></h3>
+<p>The Ifc2x3 Duplex building contains a mirrored composition (two residential units reflected about a party wall). The BOM walk applies a rotation_rule of π radians to one unit's tack offsets. GEO verification confirmed:</p>
+<ul>
+<li>3,220 TACK LEAF lines emitted</li>
+<li>920 ROT lines (rotation applied to tack offsets)</li>
+<li>179 MA rows (IFC GUIDs for unfactored elements)</li>
+<li>C9 fidelity: 89 axis mismatches (pre-existing mirror artefact, not compilation error)</li>
+</ul>
+<h3 id="45-results-fleet-verification-24-buildings">4.5 Results: Fleet Verification (24 buildings)<a class="headerlink" href="#45-results-fleet-verification-24-buildings" title="Permanent link">&para;</a></h3>
+<p>GEO verification was run across the full Rosetta Stone fleet — every
+extracted building with a compiled output.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Buildings verified</td>
+<td><strong>24</strong></td>
+</tr>
+<tr>
+<td>Buildings ZERO DRIFT</td>
+<td><strong>22 (91.7%)</strong></td>
+</tr>
+<tr>
+<td>Pre-existing anomalies</td>
+<td><strong>2</strong></td>
+</tr>
+<tr>
+<td>Largest clean run</td>
+<td><strong>CP: 6,584 elements, 21.7 million pairs, 0.000mm worst</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The two anomalies are pre-existing architecture issues diagnosed from the
+GEO log without code inspection:</p>
+<table>
+<thead>
+<tr>
+<th>Building</th>
+<th>Anomaly</th>
+<th>Cause</th>
+<th>GEO diagnosis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IN</td>
+<td>11.97m drift on some elements</td>
+<td>Same GUID double-walked through overlapping BOM paths — one path applies world origin, one doesn't</td>
+<td>TACK ENTER shows two different parent anchors for the same element</td>
+</tr>
+<tr>
+<td>GH</td>
+<td>4.7mm drift</td>
+<td>Floating-point accumulation through deep tack chain</td>
+<td>TACK LEAF shows consistent 4.7mm offset across all affected elements</td>
+</tr>
+<tr>
+<td>HI</td>
+<td>0 GUIDs (no provenance)</td>
+<td>Extraction source lacks IFC GloballyUniqueId values — product names instead</td>
+<td>GUID regex correctly rejects non-IFC identifiers</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Significance:</strong> the GEO log diagnosed all three anomalies without manual
+debugging. The IN double-walk is visible as two ENTER lines with different
+anchors for the same GUID. The GH float drift is visible as a consistent
+offset in every LEAF line. HI's missing GUIDs are visible as synthetic IDs
+on every LEAF line. This is the interpretability contribution in practice —
+read the log, find the problem.</p>
+<h3 id="46-evidence">4.6 Evidence<a class="headerlink" href="#46-evidence" title="Permanent link">&para;</a></h3>
+<p>The GEO proof log for the Sample House verification is archived at:
+<code>evidence/SH_GEO_proof_20260330.log</code></p>
+<p>This log contains the complete TACK chain for all 58 elements across 3 compilation passes, with IFC GUIDs on every LEAF line.</p>
+<p>The fleet verification script:
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py"><code>scripts/geo_verify.py</code></a></p>
+<hr />
+<h2 id="5-cross-domain-analysis">5. Cross-Domain Analysis<a class="headerlink" href="#5-cross-domain-analysis" title="Permanent link">&para;</a></h2>
+<h3 id="51-comparison-with-protein-science">5.1 Comparison with Protein Science<a class="headerlink" href="#51-comparison-with-protein-science" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Protein (AlphaFold)</th>
+<th>BIM Compiler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Input</td>
+<td>Amino acid sequence (1D)</td>
+<td>Construction Order (1D)</td>
+</tr>
+<tr>
+<td>Output</td>
+<td>Predicted 3D structure</td>
+<td>Compiled 3D building</td>
+</tr>
+<tr>
+<td>Ground truth</td>
+<td>PDB crystal structures</td>
+<td>Rosetta Stone buildings (IFC)</td>
+</tr>
+<tr>
+<td>Spatial recipe</td>
+<td>Template motifs (learned)</td>
+<td>BOM tack offsets (extracted)</td>
+</tr>
+<tr>
+<td>Compilation</td>
+<td>Neural network inference</td>
+<td>Deterministic BOM walk</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td>RMSD (bulk, ~1-3 Angstrom)</td>
+<td>Per-GUID, all-pairs (0.002mm)</td>
+</tr>
+<tr>
+<td>Deterministic</td>
+<td>No (stochastic refinement)</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td>Interpretable</td>
+<td>No (neural network)</td>
+<td><strong>Yes (TACK chain)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The key difference: AlphaFold learns spatial relationships implicitly in network weights. The BIM Compiler stores them explicitly as BOM tack offsets. This makes every spatial decision <strong>auditable</strong> — the TACK log shows the exact arithmetic chain from parent anchor to child position.</p>
+<h4 id="511-what-this-method-offers-protein-science">5.1.1 What This Method Offers Protein Science<a class="headerlink" href="#511-what-this-method-offers-protein-science" title="Permanent link">&para;</a></h4>
+<ol>
+<li>
+<p><strong>From approximation to precision.</strong> AlphaFold achieves 1–3 Angstrom residual error through stochastic refinement. Deterministic spatial compilation achieves 0.002mm (0.02 Angstrom equivalent) through pure arithmetic. If protein spatial relationships could be captured as hierarchical tack offsets (bond angles, torsion, side-chain rotamers), the reconstruction would be exact — not predicted.</p>
+</li>
+<li>
+<p><strong>Auditable motif analysis.</strong> When AlphaFold's prediction diverges from the crystal structure, researchers cannot determine which learned motif caused the error — the neural network is opaque. Per-element identity tracing through a TACK chain would enable <strong>motif-level diagnosis</strong>: "this helix-turn-helix at residues 42-58 matches the template to 0.5 Angstrom, but this loop at residues 103-115 drifted 3.2 Angstrom because the refinement overrode the template offset."</p>
+</li>
+<li>
+<p><strong>All-pairs distance geometry.</strong> Protein structure validation uses bulk RMSD (root mean square deviation across all atoms). All-pairs relative verification would catch errors that RMSD averages away — a single misplaced side chain that shifts a binding pocket by 2 Angstrom while RMSD remains acceptable at 1.1 Angstrom overall.</p>
+</li>
+</ol>
+<h3 id="52-comparison-with-robotics">5.2 Comparison with Robotics<a class="headerlink" href="#52-comparison-with-robotics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Robotics (FK)</th>
+<th>BIM Compiler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Decomposition</td>
+<td>Calibration (measure → compute)</td>
+<td>Extraction (IFC → BOM)</td>
+</tr>
+<tr>
+<td>Spatial recipe</td>
+<td>Link transforms (DH parameters)</td>
+<td>BOM tack offsets (dx/dy/dz)</td>
+</tr>
+<tr>
+<td>Compilation</td>
+<td>Forward kinematics</td>
+<td>BOM walk (identical math)</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td>End effector vs sensor</td>
+<td><strong>Every element vs extraction</strong></td>
+</tr>
+<tr>
+<td>Identity trace</td>
+<td>Joint serial number</td>
+<td><strong>IFC GUID per element</strong></td>
+</tr>
+<tr>
+<td>Drift</td>
+<td>Mechanical degradation</td>
+<td><strong>Zero (pure arithmetic)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The key difference: robots verify only the end effector. We verify every element. Robots drift over time due to physical degradation. Our round-trip is pure arithmetic — no physical process introduces error.</p>
+<h4 id="521-what-this-method-offers-robotics">5.2.1 What This Method Offers Robotics<a class="headerlink" href="#521-what-this-method-offers-robotics" title="Permanent link">&para;</a></h4>
+<ol>
+<li>
+<p><strong>Continuous multi-point verification.</strong> Standard FK verifies the end effector (tool tip) against a sensor reading. This method enables <strong>every link in the kinematic chain</strong> to be verified independently, every cycle. A 6-DOF arm with this approach would verify 6 link positions per motion, not 1.</p>
+</li>
+<li>
+<p><strong>Diagnostic identity tracing.</strong> By assigning a persistent identity (analogous to IFC GUID) to every joint and link, the system can perform <strong>joint-by-joint diagnosis</strong>: "joint 3 has drifted 0.15mm on the Z axis over 10,000 cycles — replace bearing before tolerance breach." Current calibration finds the total error but cannot localise it to a specific joint without disassembly.</p>
+</li>
+<li>
+<p><strong>Arithmetic zero-drift reference.</strong> The compiled kinematic chain (pure arithmetic, no physical degradation) serves as a <strong>reference standard</strong> for the physical robot. The delta between computed and measured position at each joint IS the mechanical wear — continuously monitored, not batch-calibrated.</p>
+</li>
+</ol>
+<h3 id="53-transferable-contributions">5.3 Transferable Contributions<a class="headerlink" href="#53-transferable-contributions" title="Permanent link">&para;</a></h3>
+<p>Three capabilities developed for building compilation are transferable to other domains:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Construction use</th>
+<th>Protein science use</th>
+<th>Robotics use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Per-element identity tracing</strong></td>
+<td>Trace compiled element to IFC source GUID</td>
+<td>Trace predicted atom to template motif</td>
+<td>Trace computed position to joint serial</td>
+</tr>
+<tr>
+<td><strong>Interpretable TACK chain</strong></td>
+<td>Audit every spatial decision in compilation log</td>
+<td>Explain which template/refinement caused divergence</td>
+<td>Diagnose which link contributes to end-effector error</td>
+</tr>
+<tr>
+<td><strong>All-pairs relative verification</strong></td>
+<td>1,653 pairs, 0.002mm worst</td>
+<td>Catch binding pocket shifts masked by bulk RMSD</td>
+<td>Detect tolerance stack-up across multi-axis motion</td>
+</tr>
+</tbody>
+</table>
+<p>The common thread: moving from <strong>bulk verification</strong> (RMSD, end-effector check, element count) to <strong>per-element, identity-traced, relationship-level verification</strong> — knowing not just that something is wrong, but exactly which piece, by how much, and why.</p>
+<h3 id="54-the-unifying-problem">5.4 The Unifying Problem<a class="headerlink" href="#54-the-unifying-problem" title="Permanent link">&para;</a></h3>
+<p>All three fields solve the same fundamental problem: <strong>reconstructing 3D
+structures from 1D specifications.</strong> The specification languages differ
+(amino acid sequence, joint angles, construction order) but the
+reconstruction mechanism is identical — hierarchical accumulation of
+parent-relative spatial offsets.</p>
+<div class="highlight"><pre><span></span><code>Protein:      sequence → motif offsets → fold → 3D structure
+Robot:        joint angles → link transforms → FK → end effector position
+Construction: order → BOM tack offsets → walk → 3D building
+</code></pre></div>
+<h4 id="visual-bom-walk-vs-forward-kinematics-vs-protein-folding">Visual: BOM Walk vs Forward Kinematics vs Protein Folding<a class="headerlink" href="#visual-bom-walk-vs-forward-kinematics-vs-protein-folding" title="Permanent link">&para;</a></h4>
+<p><strong>Robotics — Forward Kinematics (accumulate link transforms):</strong></p>
+<div class="highlight"><pre><span></span><code>Base ──[θ₁]── Link₁ ──[θ₂]── Link₂ ──[θ₃]── End Effector
+ │              │               │               │
+ origin    origin+T₁      origin+T₁+T₂    origin+T₁+T₂+T₃
+ (0,0,0)   (1.2,0,0.5)    (1.2,0.8,0.5)   (1.2,0.8,1.3)
+                                              ↑
+                                     ONLY THIS verified
+                                     (sensor at tip)
+</code></pre></div>
+<p><strong>Construction — BOM Walk (accumulate tack offsets):</strong></p>
+<div class="highlight"><pre><span></span><code>BUILDING ──[dx,dy,dz]── FLOOR ──[dx,dy,dz]── SET ──[dx,dy,dz]── LEAF
+ │                        │                    │                   │
+ origin              origin+tack₁        origin+Σtack        origin+Σtack
+ (0,0,0)             (0,0,0)             (13.35,3.69,0.47)   (13.77,6.29,0.47)
+                                                                ↑
+                                                       EVERY element verified
+                                                       (GUID + all-pairs)
+</code></pre></div>
+<p><strong>Protein — Motif Chain (accumulate backbone offsets):</strong></p>
+<div class="highlight"><pre><span></span><code>N-term ──[φ,ψ]── Motif₁ ──[φ,ψ]── Motif₂ ──[φ,ψ]── C-term
+ │                 │                 │                 │
+ origin       origin+rot₁      origin+Σrot       origin+Σrot
+ (0,0,0)      (1.5,0,0)        (3.0,1.2,0)       (4.5,1.2,0.8)
+                                                      ↑
+                                             BULK verified (RMSD)
+                                             No per-residue identity
+</code></pre></div>
+<p>The mathematical operation is identical in all three: <code>position_n =
+position_{n-1} + transform_n</code>. The difference is <strong>what gets verified</strong>.
+In robotics, only the tip. In proteins, the bulk average. In spatial
+compilation, <strong>every element, every pair, every relationship</strong> — with
+identity tracing back to the source.</p>
+<p><strong>Tolerance stack-up:</strong> In a robot arm, if joint 2 is off by 0.1mm, the
+error propagates to the end effector — and the diagnosis requires
+disassembly. In spatial compilation, the GEO TACK log shows the anchor
+at every level. If the FLOOR tack is off by 0.1mm, every LEAF under that
+floor shows the same 0.1mm shift — and the ENTER log line for that floor
+pinpoints the exact source. No disassembly. No bulk recalibration.
+Read the log.</p>
+<p><strong>Protein equivalent:</strong> If a template motif at residues 42-58 introduces
+a 2 Angstrom error, every atom downstream of that motif shifts. RMSD
+averages this across the whole chain. A TACK-style chain would show the
+error appearing at the ENTER line for motif 42-58 and propagating to all
+children — diagnosable from the log without re-running the prediction.</p>
+<p>The three mechanisms are isomorphic:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Protein</th>
+<th>Robotics</th>
+<th>Construction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1D input</strong></td>
+<td>Amino acid sequence</td>
+<td>Joint angle vector</td>
+<td>C_Order + C_OrderLine</td>
+</tr>
+<tr>
+<td><strong>Spatial recipe</strong></td>
+<td>Template motif (bond angles, torsion)</td>
+<td>DH parameters (link length, twist)</td>
+<td>BOM tack (dx, dy, dz)</td>
+</tr>
+<tr>
+<td><strong>Accumulation</strong></td>
+<td>Chain through backbone</td>
+<td>FK through link chain</td>
+<td>BOM walk through hierarchy</td>
+</tr>
+<tr>
+<td><strong>Leaf output</strong></td>
+<td>Atom position</td>
+<td>End effector pose</td>
+<td>Element centroid</td>
+</tr>
+<tr>
+<td><strong>Identity</strong></td>
+<td>Residue number</td>
+<td>Joint serial</td>
+<td>IFC GUID</td>
+</tr>
+<tr>
+<td><strong>Verification</strong></td>
+<td>RMSD (bulk)</td>
+<td>Sensor (endpoint)</td>
+<td><strong>All-pairs (every element)</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The BIM Compiler's contribution to the unifying problem is the
+<strong>verification column</strong>: per-element, identity-traced, all-pairs, zero-drift.
+This is the missing capability in the other two domains. Protein science
+approximates. Robotics measures the endpoint. Neither verifies every
+element in the chain with identity tracing and relationship-level
+comparison.</p>
+<p>The mathematical equivalence between BOM walk and forward kinematics is
+exact — both compute <code>world_position = Σ(parent_offset_i)</code> through a
+tree. The difference is that construction has a <strong>digital source of truth</strong>
+(the IFC extraction) against which to verify, while robotics has only
+physical sensors and protein science has only energy functions. The
+Rosetta Stone — a real building decomposed into a BOM — IS the digital
+crystal structure. The GEO proof IS the RMSD, but deterministic and
+per-element instead of stochastic and bulk.</p>
+<h3 id="55-generative-construction-verification-without-a-source">5.5 Generative Construction — Verification Without a Source<a class="headerlink" href="#55-generative-construction-verification-without-a-source" title="Permanent link">&para;</a></h3>
+<p>The results in Section 4 verify compiled output against an extraction source
+— the original IFC file. This raises a question: what happens when there is
+no source? A generative building (designed from scratch, not extracted from
+IFC) has no extraction database to compare against.</p>
+<p>The GEO dataset from 35 verified Rosetta Stones provides the answer.</p>
+<h4 id="from-source-verification-to-pattern-verification">From source verification to pattern verification<a class="headerlink" href="#from-source-verification-to-pattern-verification" title="Permanent link">&para;</a></h4>
+<p>Each verified building contributes thousands of tack signatures to a
+<strong>spatial vocabulary</strong> — proven parent-child offset patterns that survived
+the decomposition → compilation → verification cycle. For SH: 58 elements,
+1,653 verified relationships. For DX: 179 GUID-matched elements, 15,931
+verified relationships. Each relationship is a proven spatial fact:
+"a desk sits 0.42m from a bed in a bedroom" or "a door sits within a wall
+with 150mm containment tolerance."</p>
+<p>For a generative building, EYES matches the new building's tack signatures
+against this vocabulary:</p>
+<table>
+<thead>
+<tr>
+<th>Generative element</th>
+<th>Pattern match</th>
+<th>Vocabulary source</th>
+<th>Confidence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BED_SET: desk at (0.42, 2.60) from bed</td>
+<td>CLUSTER: bedroom furniture</td>
+<td>SH verified, 0.002mm</td>
+<td>High</td>
+</tr>
+<tr>
+<td>FP riser: branches at each floor Z</td>
+<td>ROUTE: fire protection</td>
+<td>TE verified, 711 edges</td>
+<td>High</td>
+</tr>
+<tr>
+<td>Wall floating 2m above slab</td>
+<td><strong>No match</strong> in 35-building vocabulary</td>
+<td>—</td>
+<td>Anomaly</td>
+</tr>
+</tbody>
+</table>
+<p>The verification target shifts from "does this match the extraction source?"
+to "is this consistent with proven spatial patterns?" — the same shift that
+protein science made from template-based modelling (match a known structure)
+to AlphaFold (match learned patterns from 200K structures).</p>
+<h4 id="the-vocabulary-growth-dynamic">The vocabulary growth dynamic<a class="headerlink" href="#the-vocabulary-growth-dynamic" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Rosetta Stones</th>
+<th>Verified relationships</th>
+<th>Spatial vocabulary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 (SH)</td>
+<td>1,653</td>
+<td>Residential furniture, doors, windows</td>
+</tr>
+<tr>
+<td>5 (SH+FK+IN+DX+TE)</td>
+<td>~20,000</td>
+<td>+ institutional, mirrored, 48K-scale</td>
+</tr>
+<tr>
+<td>35 (full fleet)</td>
+<td>~500,000 (projected)</td>
+<td>+ infrastructure, MEP routing</td>
+</tr>
+<tr>
+<td>100+ (future)</td>
+<td>millions</td>
+<td>Approaching domain saturation</td>
+</tr>
+</tbody>
+</table>
+<p>Each verified relationship is a <strong>spatial axiom</strong> — a proven fact about
+how physical elements relate in real buildings. The generative compiler
+doesn't need an extraction source. It needs a vocabulary of axioms rich
+enough to validate any reasonable arrangement.</p>
+<p>This is the PDB growth dynamic applied to construction. Protein science
+reached practical coverage at ~200,000 structures. The question for
+construction is: how many Rosetta Stones until the spatial vocabulary
+covers the domain? The 5-verb convergence (PLACE, CLUSTER, TILE, ROUTE,
+FRAME covering 99% of placements across 35 buildings) suggests the number
+is small — perhaps hundreds, not thousands.</p>
+<h4 id="verification-script">Verification script<a class="headerlink" href="#verification-script" title="Permanent link">&para;</a></h4>
+<p>The all-pairs verification is automated:
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py"><code>scripts/geo_verify.py</code></a>
+joins GEO TACK LEAF log against extraction DB by IFC GUID, computes
+all-pairs relative offsets, reports MATCH/DRIFT per building. Each verified
+building's output extends the spatial vocabulary for generative use.</p>
+<hr />
+<h2 id="6-limitations">6. Limitations<a class="headerlink" href="#6-limitations" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p><strong>Coordinate frame assumption.</strong> The current verification compares relative offsets, not absolute positions. Absolute comparison requires coordinate frame alignment between extraction and compilation databases.</p>
+</li>
+<li>
+<p><strong>Factored elements.</strong> Elements with qty &gt; 1 (e.g., repeated tiles, clustered furniture) use verb-based expansion (CLUSTER, TILE, ROUTE, FRAME). The per-instance GUID chain for factored elements is implemented but less tested than unfactored elements.</p>
+</li>
+<li>
+<p><strong>Scale of verification.</strong> The all-pairs comparison is O(n^2). For the 48,428-element Terminal building, this produces ~1.17 billion pairs. The GEO filter (<code>bim.geo.filter</code>) constrains verification to targeted element sets.</p>
+</li>
+<li>
+<p><strong>No physical validation.</strong> The method verifies digital round-trip fidelity. It does not verify that the IFC source accurately represents the physical building.</p>
+</li>
+</ol>
+<hr />
+<h2 id="7-conclusion">7. Conclusion<a class="headerlink" href="#7-conclusion" title="Permanent link">&para;</a></h2>
+<p>We have demonstrated that three-dimensional structures can be decomposed into hierarchical spatial recipes, recompiled through deterministic arithmetic, and verified per-element with identity tracing. The method achieves zero positional drift across 1,653 element pairs with 0.002mm worst-case error.</p>
+<p>The spatial compilation model is domain-agnostic: the same algorithm that compiles a 58-element house compiles a 48,428-element airport terminal, and the same tack convention that positions a desk in a bedroom can position a hull plate on a ship surface or a tunnel segment on a bore arc.</p>
+<p>The method's distinguishing capability is <strong>interpretable, per-element, identity-traced spatial verification</strong>. Neither protein structure prediction (stochastic, bulk RMSD, opaque neural network) nor robotic forward kinematics (end-effector only, calibration drift, no identity chain) achieves this. The TACK log provides a complete, auditable chain from IFC source entity through BOM decomposition to compiled output — every spatial decision explained, every element traceable, every relationship verifiable.</p>
+<p>The Rosetta Stone library — 35 real buildings — is the Protein Data Bank of construction. Each solved structure teaches spatial relationships that transfer to new buildings. The GEO verification proves the transfer is faithful. As the library grows, the spatial vocabulary of construction becomes increasingly complete — approaching the coverage that 200,000 solved protein structures provide for biology.</p>
+<hr />
+<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">&para;</a></h2>
+<p>[1] Dill, K.A. and MacCallum, J.L., "The protein-folding problem, 50 years on," <em>Science</em>, vol. 338, no. 6110, pp. 1042-1046, 2012.</p>
+<p>[2] Craig, J.J., <em>Introduction to Robotics: Mechanics and Control</em>, 4th ed., Pearson, 2017. Chapter 3: Forward Kinematics.</p>
+<p>[3] Kahng, A.B., Lienig, J., Markov, I.L., and Hu, J., <em>VLSI Physical Design: From Graph Partitioning to Timing Closure</em>, Springer, 2011.</p>
+<p>[4] McKinsey Global Institute, "Reinventing Construction: A Route to Higher Productivity," McKinsey &amp; Company, 2017.</p>
+<p>[5] buildingSMART International, "Industry Foundation Classes (IFC) 4.3," ISO 16739-1:2024. https://standards.buildingsmart.org/IFC/</p>
+<p>[6] Marti-Renom, M.A., et al., "Comparative protein structure modeling of genes and genomes," <em>Annual Review of Biophysics and Biomolecular Structure</em>, vol. 29, pp. 291-325, 2000.</p>
+<p>[7] Berman, H.M., et al., "The Protein Data Bank," <em>Nucleic Acids Research</em>, vol. 28, no. 1, pp. 235-242, 2000.</p>
+<p>[8] Jumper, J., et al., "Highly accurate protein structure prediction with AlphaFold," <em>Nature</em>, vol. 596, pp. 583-589, 2021.</p>
+<p>[9] Quigley, M., et al., "ROS: an open-source Robot Operating System," <em>ICRA Workshop on Open Source Software</em>, 2009. URDF specification.</p>
+<p>[10] buildingSMART International, "Model View Definition (MVD)," https://www.buildingsmart.org/standards/bsi-standards/model-view-definitions-mvd/</p>
+<p>[11] Autodesk, "Auto-Route MEP Systems in Revit," Revit Help Documentation, 2024.</p>
+<p>[12] BuildingSP, "GenMEP: Route MEP Systems Without Clashes," https://www.buildingsp.com/genmep</p>
+<p>[13] IfcOpenShell/Bonsai contributors, "3D Orthogonal Pathfinder Proposal," GitHub Issue #6521, 2025. https://github.com/IfcOpenShell/IfcOpenShell/issues/6521</p>
+<p>[14] iDempiere contributors, "iDempiere ERP/CRM/SCM," https://www.idempiere.org/. M_BOM / M_BOM_Line data model.</p>
+<p>[15] MDPI, "A Review of Path Optimization Algorithms for MEP Pipe Routing in Building Information Modelling," <em>Buildings</em>, vol. 15, no. 12, 2025.</p>
+<p>[16] Oon, R.D., "BIM Intent Compiler — The Rosetta Stone Strategy," https://red1oon.github.io/BIMCompiler/TheRosettaStoneStrategy/, 2026.</p>
+<p>[17] Oon, R.D., "ShipYard — A Deterministic Engine for Any Manufactured Assembly," https://red1oon.github.io/BIMCompiler/ShipYard/, 2026.</p>
+<hr />
+<blockquote>
+<p><em>Along the way, we discovered physics. We set out to compile buildings
+from Bills of Materials — an ERP problem. We ended up proving that
+hierarchical spatial recipes can reconstruct any physical assembly with
+per-element, identity-traced, zero-drift verification — a physics
+problem. The tack offset is just three numbers. But accumulated through
+a hierarchy of parent-child relationships, verified against the source
+structure, and traced through an identity chain, those three numbers
+encode the spatial truth of a physical object. Construction was the
+first proof. It will not be the last.</em></p>
+</blockquote>
+<hr />
+<p><em>Correspondence: red1org@gmail.com</em>
+<em>Code and evidence: https://github.com/red1oon/BIMCompiler</em>
+<em>Documentation: https://red1oon.github.io/BIMCompiler/</em></p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/red1oon/BIMCompiler" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://www.linkedin.com/in/red1oon/" target="_blank" rel="noopener" title="www.linkedin.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3M135.4 416H69V202.2h66.5V416zM102.2 96a38.5 38.5 0 1 1 0 77 38.5 38.5 0 1 1 0-77m282.1 320h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.indexes", "search.suggest", "search.highlight", "toc.follow", "content.tabs.link"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

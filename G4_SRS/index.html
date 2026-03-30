@@ -2108,6 +2108,8 @@
       
         
       
+        
+      
     
     
     
@@ -2280,6 +2282,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3262,7 +3292,7 @@
 </div>
 <p><strong>Version:</strong> 1.2 (2026-03-19, session 34 — §2.5 postconditions per action, acceptance criteria)
 <strong>Depends on:</strong> <a href="../BIM_Designer/">BIM_Designer.md</a> §17.10, <a href="../DocValidate/">DocValidate.md</a> §15, <a href="../MANIFESTO/">MANIFESTO.md</a> §2
-<strong>Pre-requisite:</strong> TACK-FIX (see <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TACK_FIX_SPEC.md">TACK_FIX_SPEC.md</a>)</p>
+<strong>Pre-requisite:</strong> TACK-FIX (see <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TACK_FIX_SPEC.md">TACK_FIX_SPEC.md</a>)</p>
 <hr />
 <h2 id="1-scope">1. Scope<a class="headerlink" href="#1-scope" title="Permanent link">&para;</a></h2>
 <p>G-4 delivers:
@@ -3305,8 +3335,6 @@ DesignerAPIImpl.createNew(request)
 │      │
 │      ├── 3b. INSERT W_BuildingConfig (embedded YAML + identity)
 │      │       → yaml_content  = full classify_{prefix}.yaml text
-│      │       → doc_base_type = from YAML building.doc_base_type (&#39;RE&#39;)  # deprecated — see DATA_MODEL.md §7
-│      │       → doc_sub_type  = from YAML building.doc_sub_type (&#39;DM&#39;)  # deprecated — see DATA_MODEL.md §7
 │      │       → jurisdiction  = from request.jurisdiction (&#39;MY&#39;)
 │      │       → aabb_*_mm     = from request site dimensions
 │      │       → provenance    = &#39;GENERATIVE&#39;
@@ -4362,7 +4390,7 @@ grid pitch formula) — both addressable as data changes, no schema changes need
 <a href="../BIM_Designer/">BIM_Designer.md</a> §17.10 (three-tier persistence) |
 <a href="../DocValidate/">DocValidate.md</a> §15 (code-level specs) |
 <a href="../MANIFESTO/">MANIFESTO.md</a> §2 (C_Order model) |
-<a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TACK_FIX_SPEC.md">TACK_FIX_SPEC.md</a> (pre-requisite fix) |
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TACK_FIX_SPEC.md">TACK_FIX_SPEC.md</a> (pre-requisite fix) |
 <a href="../ACTION_ROADMAP/">ACTION_ROADMAP.md</a> Phase G (task list)</em></p>
 
 

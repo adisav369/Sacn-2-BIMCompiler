@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -2383,10 +2413,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#scope-space-origins-for-dx" class="md-nav__link">
+  <a href="#ifc-spatial-containment-for-dx" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scope Space Origins for DX
+        IFC Spatial Containment for DX
       
     </span>
   </a>
@@ -3128,10 +3158,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#scope-space-origins-for-dx" class="md-nav__link">
+  <a href="#ifc-spatial-containment-for-dx" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Scope Space Origins for DX
+        IFC Spatial Containment for DX
       
     </span>
   </a>
@@ -3722,10 +3752,10 @@ element names (e.g., ref <code>Exterior Brick</code> vs output <code>Interior Pa
 for MIRRORED_PAIR buildings. Filed as future enhancement — does not affect
 compilation correctness.</p>
 <h2 id="remaining">Remaining<a class="headerlink" href="#remaining" title="Permanent link">&para;</a></h2>
-<h3 id="scope-space-origins-for-dx">Scope Space Origins for DX<a class="headerlink" href="#scope-space-origins-for-dx" title="Permanent link">&para;</a></h3>
-<p>The DX <code>floor_rooms</code> section has scope boxes without <code>origin_m</code> coordinates.
-These need proper values for scope assignment to work (furniture elements
-assigned to rooms). Currently all scope spaces are empty SETs.
+<h3 id="ifc-spatial-containment-for-dx">IFC Spatial Containment for DX<a class="headerlink" href="#ifc-spatial-containment-for-dx" title="Permanent link">&para;</a></h3>
+<p>DX extraction DB has 61 rows in <code>rel_contained_in_space</code>. Conversion from
+scope boxes to IFC-driven <code>ifc_space</code> mapping is pending (same as SH P125
+pattern). Currently all scope spaces are empty SETs.
 This is a data completeness issue, not a pipeline bug.</p>
 
 

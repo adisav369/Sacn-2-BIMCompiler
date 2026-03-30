@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -4643,8 +4673,6 @@ The YAML is the <strong>single point of human intent</strong> — everything els
 <span class="w">  </span><span class="nt">building_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Ifc4_FZKHaus</span><span class="w">        </span><span class="c1"># must match {name}_extracted.db</span>
 <span class="w">  </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FK</span><span class="w">                          </span><span class="c1"># → FK_BOM.db</span>
 <span class="w">  </span><span class="nt">building_bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">BUILDING_FK_STD</span>
-<span class="w">  </span><span class="nt">doc_sub_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FK</span><span class="w">                    </span><span class="c1"># deprecated — redundant with prefix (see DATA_MODEL.md §7)</span>
-<span class="w">  </span><span class="nt">doc_base_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RE</span><span class="w">                   </span><span class="c1"># deprecated — redundant with M_Product_Category=RE (see DATA_MODEL.md §7)</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FZK-Haus</span>
 <span class="w">  </span><span class="nt">dsl_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">dsl_fk.bim</span><span class="w">               </span><span class="c1"># BIM COBOL script</span>
 
@@ -4657,33 +4685,34 @@ The YAML is the <strong>single point of human intent</strong> — everything els
 <span class="w">    </span><span class="nt">Erdgeschoss</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FLOOR_FK_EG_STD</span>
 <span class="w">      </span><span class="nt">spaces</span><span class="p">:</span>
-<span class="w">        </span><span class="c1"># origins and AABBs come from Step 2c query — adjust after extraction</span>
+<span class="w">        </span><span class="c1"># IFC-driven: IfcSpace names from rel_contained_in_space</span>
+<span class="w">        </span><span class="c1"># FK has 0 rows in rel_contained_in_space — scope box fallback active</span>
+<span class="w">        </span><span class="c1"># When IFC re-exported with IfcSpace data, convert to ifc_space: keys</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">FLUR</span><span class="p p-Indicator">,</span><span class="nt">          template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_CORRIDOR_SET</span><span class="p p-Indicator">,</span><span class="nt">  role</span><span class="p">:</span><span class="w"> </span><span class="nv">CORRIDOR</span><span class="p p-Indicator">,</span><span class="nt">  seq</span><span class="p">:</span><span class="w"> </span><span class="nv">10</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">7110</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1740</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3.855</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4.880</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.250</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">BUERO</span><span class="p p-Indicator">,</span><span class="nt">         template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_OFFICE_SET</span><span class="p p-Indicator">,</span><span class="nt">    role</span><span class="p">:</span><span class="w"> </span><span class="nv">OFFICE</span><span class="p p-Indicator">,</span><span class="nt">    seq</span><span class="p">:</span><span class="w"> </span><span class="nv">20</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3500</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3710</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2.050</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">7.845</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.250</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">BAD</span><span class="p p-Indicator">,</span><span class="nt">           template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_BATHROOM_SET</span><span class="p p-Indicator">,</span><span class="nt">  role</span><span class="p">:</span><span class="w"> </span><span class="nv">BATHROOM</span><span class="p p-Indicator">,</span><span class="nt">  seq</span><span class="p">:</span><span class="w"> </span><span class="nv">30</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">3370</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3710</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">5.725</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">7.845</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.250</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">SCHLAFZIMMER</span><span class="p p-Indicator">,</span><span class="nt">  template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_BEDROOM_SET</span><span class="p p-Indicator">,</span><span class="nt">   role</span><span class="p">:</span><span class="w"> </span><span class="nv">BEDROOM</span><span class="p p-Indicator">,</span><span class="nt">   seq</span><span class="p">:</span><span class="w"> </span><span class="nv">40</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">4050</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">5450</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">9.675</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">6.975</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.250</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">WOHNEN</span><span class="p p-Indicator">,</span><span class="nt">        template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_LIVING_SET</span><span class="p p-Indicator">,</span><span class="nt">    role</span><span class="p">:</span><span class="w"> </span><span class="nv">LIVING</span><span class="p p-Indicator">,</span><span class="nt">    seq</span><span class="p">:</span><span class="w"> </span><span class="nv">50</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">7005</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3710</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">8.197</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.155</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.250</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">KUECHE</span><span class="p p-Indicator">,</span><span class="nt">        template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_KITCHEN_SET</span><span class="p p-Indicator">,</span><span class="nt">   role</span><span class="p">:</span><span class="w"> </span><span class="nv">KITCHEN</span><span class="p p-Indicator">,</span><span class="nt">   seq</span><span class="p">:</span><span class="w"> </span><span class="nv">60</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">4395</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3710</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">2.498</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2.155</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">1.250</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 <span class="w">    </span><span class="nt">Dachgeschoss</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">bom_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FLOOR_FK_DG_STD</span>
 <span class="w">      </span><span class="nt">spaces</span><span class="p">:</span>
 <span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> name</span><span class="p">:</span><span class="w"> </span><span class="nv">GALERIE</span><span class="p p-Indicator">,</span><span class="nt">       template_bom</span><span class="p">:</span><span class="w"> </span><span class="nv">FK_GALLERY_SET</span><span class="p p-Indicator">,</span><span class="nt">   role</span><span class="p">:</span><span class="w"> </span><span class="nv">GALLERY</span><span class="p p-Indicator">,</span><span class="nt">   seq</span><span class="p">:</span><span class="w"> </span><span class="nv">10</span><span class="p p-Indicator">,</span>
-<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">TBD</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
+<span class="nt">            aabb_mm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">11400</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">9400</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3387</span><span class="p p-Indicator">],</span><span class="nt"> origin_m</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">6.000</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">5.000</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4.393</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="p p-Indicator">}</span>
 
 <span class="w">  </span><span class="nt">static_children</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="p p-Indicator">{</span><span class="nt"> child_product_id</span><span class="p">:</span><span class="w"> </span><span class="nv">FLOOR_SLAB_FK_EG</span><span class="p p-Indicator">,</span><span class="nt"> role</span><span class="p">:</span><span class="w"> </span><span class="nv">GROUND_SLAB</span><span class="p p-Indicator">,</span><span class="nt"> seq</span><span class="p">:</span><span class="w"> </span><span class="nv">5</span><span class="p p-Indicator">,</span><span class="nt"> dz</span><span class="p">:</span><span class="w"> </span><span class="nv">0.0</span><span class="w"> </span><span class="p p-Indicator">}</span>
 </code></pre></div>
-<p><strong>Checklist for filling TBD values:</strong>
-1. Run extraction (Step 1) → query bounding boxes per space
-2. Use <code>IfcSpace</code> centroids from the extracted DB to set <code>origin_m</code>
-3. Use <code>IfcSpace</code> extent to set <code>aabb_mm</code>
-4. For rooms without explicit IfcSpace, use element cluster bounding boxes</p>
+<p><strong>IFC-driven conversion:</strong> FK's extraction DB has 0 rows in <code>rel_contained_in_space</code>,
+so scope box fallback is active (values from IfcSpace geometry via ifcopenshell).
+When the IFC source is re-exported with spatial containment data, convert to
+<code>ifc_space:</code> keys (same pattern as SH P125).</p>
 <p>Spec: <code>docs/WorkOrderGuide.md</code> §Schema (v1) — full field reference</p>
 <h3 id="step-4-write-the-bim-cobol-dsl-script">Step 4 — Write the BIM COBOL DSL script<a class="headerlink" href="#step-4-write-the-bim-cobol-dsl-script" title="Permanent link">&para;</a></h3>
 <p>Create <code>IFCtoBOM/src/main/resources/dsl_fk.bim</code>.</p>
@@ -4890,8 +4919,8 @@ Spec: <code>docs/SourceCodeGuide.md</code> §Ch4.Step5, <code>docs/WorkOrderGuid
 </tr>
 <tr>
 <td><code>Space contract FAIL</code></td>
-<td>Elements outside all AABB scope boxes</td>
-<td>Widen <code>aabb_mm</code> or add catch-all scope space</td>
+<td>Elements not in any IFC space (or scope box fallback)</td>
+<td>Add <code>ifc_space:</code> mapping, or widen <code>aabb_mm</code> for fallback buildings</td>
 </tr>
 <tr>
 <td><code>BomValidator FAIL</code></td>

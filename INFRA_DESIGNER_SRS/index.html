@@ -2340,6 +2340,8 @@
       
         
       
+        
+      
     
     
     
@@ -2512,6 +2514,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3815,8 +3845,7 @@
 <h2 id="0-rosetta-stone-bom-model-from-parallel-session-s37b">§0 Rosetta Stone BOM Model (from parallel session S37b)<a class="headerlink" href="#0-rosetta-stone-bom-model-from-parallel-session-s37b" title="Permanent link">&para;</a></h2>
 <h3 id="01-infrastructure-yaml-convention">§0.1 Infrastructure YAML Convention<a class="headerlink" href="#01-infrastructure-yaml-convention" title="Permanent link">&para;</a></h3>
 <p>The parallel session established the infra Rosetta Stone pattern. Key decisions:</p>
-<p><strong><code>doc_base_type: IN</code></strong> is the infrastructure discriminator in YAML (deprecated — will migrate
-to M_Product_Category=IN, see DATA_MODEL.md §7). All infra YAMLs use this.
+<p><strong><code>M_Product_Category=IN</code></strong> is the infrastructure discriminator. All infra YAMLs use this.
 The Designer API checks the top-level M_Product_Category to select infra mode.</p>
 <p><strong><code>segments:</code> is an alias for <code>storeys:</code></strong> in the YAML schema. The pipeline treats
 them identically — same hierarchy, different label. This preserves the
@@ -3824,7 +3853,6 @@ them identically — same hierarchy, different label. This preserves the
 <h3 id="02-road-rosetta-stone-classify_rdyaml">§0.2 Road Rosetta Stone (<code>classify_rd.yaml</code>)<a class="headerlink" href="#02-road-rosetta-stone-classify_rdyaml" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>building_type: Infra_Road
 prefix: RD
-doc_base_type: IN
 segments:
   road  - carriageway:            { code: CW1,  bom_category: CW,  role: CARRIAGEWAY }
   road carriageway:               { code: CW2,  bom_category: CW,  role: CARRIAGEWAY }
@@ -3853,7 +3881,6 @@ subgrade (250mm) → base (120mm) → binder (80mm) → surface (40mm) = 490mm t
 <h3 id="03-rail-rosetta-stone-classify_rlyaml">§0.3 Rail Rosetta Stone (<code>classify_rl.yaml</code>)<a class="headerlink" href="#03-rail-rosetta-stone-classify_rlyaml" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>building_type: Infra_Rail
 prefix: RL
-doc_base_type: IN
 segments:
   Rail track:  { code: TRK,  bom_category: TRK, role: TRACK }
   Unknown:     { code: MISC, bom_category: MS,  role: MISC }

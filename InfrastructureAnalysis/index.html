@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -4031,16 +4061,16 @@ before any code changes</strong> (per <code>memory/feedback_srs_before_code.md</
 <tr>
 <td><strong>G3</strong></td>
 <td>DATA_MODEL.md §1.4</td>
-<td><code>bom_type = 'BUILDING'</code>, <code>doc_base_type = 'RE'</code></td>
+<td><code>bom_type = 'BUILDING'</code></td>
 <td>Infrastructure needs different vocabulary</td>
-<td><strong>RESOLVED</strong> — root identified by tree structure (no parent), not <code>bom_type</code> string. Tier selection uses M_Product_Category. <code>doc_base_type</code> replaced by M_Product_Category (S84). See <a href="../DISC_VALIDATION_DB_SRS/#1045-bom_type--tree-structure-and-m_product_category">DISC_VALIDATION_DB_SRS.md §10.4.5</a></td>
+<td><strong>RESOLVED</strong> — root identified by tree structure (no parent), not <code>bom_type</code> string. Tier selection uses M_Product_Category (S84). See <a href="../DISC_VALIDATION_DB_SRS/#1045-bom_type--tree-structure-and-m_product_category">DISC_VALIDATION_DB_SRS.md §10.4.5</a></td>
 </tr>
 <tr>
 <td><strong>G4</strong></td>
 <td>WorkOrderGuide.md §Schema v1</td>
-<td><code>doc_base_type: RE</code> "always RE for residential"</td>
+<td>M_Product_Category</td>
 <td>Infrastructure is not residential. M_Product_Category=IN covers infrastructure.</td>
-<td><strong>Spec text corrected (S71)</strong> — doc_base_type deprecated, M_Product_Category carries classification</td>
+<td><strong>RESOLVED (S84)</strong> — M_Product_Category carries classification</td>
 </tr>
 <tr>
 <td><strong>G5</strong></td>
@@ -4310,7 +4340,7 @@ See <a href="../DISC_VALIDATION_DB_SRS/"><code>DISC_VALIDATION_DB_SRS.md</code><
 </tr>
 <tr>
 <td><code>WorkOrderGuide.md</code></td>
-<td>Update M_Product_Category docs: RE/CO/IN (doc_base_type deprecated S71)</td>
+<td>Update M_Product_Category docs: RE/CO/IN</td>
 <td>G4</td>
 </tr>
 <tr>

@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3725,7 +3755,7 @@
 <p><b>Full platform setup from source — Java, Maven, SQLite, Blender.</b> Prerequisites, build steps, and verification for sysadmins and developers.</p>
 </div>
 <p><strong>Audience:</strong> Systems administrators, DevOps engineers, and developers setting up the full BIM Compiler platform from source.</p>
-<p><strong>For end-user desktop installation</strong>, see <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md">INSTALLER_SPEC.md</a>.
+<p><strong>For end-user desktop installation</strong>, see <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md">INSTALLER_SPEC.md</a>.
 <strong>For WAN/Docker deployment</strong>, see <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</p>
 <hr />
 <h2 id="1-prerequisites">1. Prerequisites<a class="headerlink" href="#1-prerequisites" title="Permanent link">&para;</a></h2>
@@ -3806,7 +3836,7 @@ mvn<span class="w"> </span>compile<span class="w"> </span>-q
 <p><strong>Module build order</strong> (Maven reactor handles this automatically):</p>
 <div class="highlight"><pre><span></span><code>orm-core          → base ORM, BIMLogger
 ORMSandbox        → DAO smoke tests
-DAGCompiler       → 9-stage compilation pipeline
+DAGCompiler       → 12-stage compilation pipeline
 2D_Layout         → floor plan generation
 TopologyMaker     → grid strategy, PO lifecycle
 BIM_COBOL         → 63 domain verbs, witness engine
@@ -4258,7 +4288,7 @@ curl<span class="w"> </span>-k<span class="w"> </span>https://your-server/api/he
 <div class="highlight"><pre><span></span><code>BIMCompiler/
 ├── orm-core/              # Base ORM, BIMLogger, shared utilities
 ├── ORMSandbox/            # DAO smoke tests, BuildingInspector
-├── DAGCompiler/           # 9-stage compilation pipeline (G1-G6 gates)
+├── DAGCompiler/           # 12-stage compilation pipeline (G1-G6 gates)
 ├── 2D_Layout/             # Floor plan generation
 ├── TopologyMaker/         # Grid strategy, production order lifecycle
 ├── BIM_COBOL/             # 63 domain verbs, witness engine
@@ -4551,7 +4581,7 @@ sqlite3<span class="w"> </span>./library/ERP.db<span class="w"> </span>&lt;<span
 </code></pre></div>
 <hr />
 <p><em>For the project overview paper, see <a href="../BIMERPPaper/">BIMERPPaper.md</a>.</em>
-<em>For the end-user installer specification, see <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/INSTALLER_SPEC.md">INSTALLER_SPEC.md</a>.</em>
+<em>For the end-user installer specification, see <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/INSTALLER_SPEC.md">INSTALLER_SPEC.md</a>.</em>
 <em>For the WAN/Docker deployment guide, see <a href="../DEPLOYMENT/">DEPLOYMENT.md</a>.</em></p>
 
 

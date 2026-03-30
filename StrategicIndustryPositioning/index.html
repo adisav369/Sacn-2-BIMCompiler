@@ -1753,6 +1753,8 @@
       
         
       
+        
+      
     
     
     
@@ -2302,6 +2304,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3919,7 +3949,7 @@ The visual newcomers started with geometry, not IFC. Adding real IFC compliance
 core. <a href="https://bimcorner.com/the-ifc-confusion-why-so-many-still-dont-get-openbim-and-how-to-fix-it/">Most tools treat IFC as a file format</a>,
 not a data model. We treat it as structured input to a database pipeline.</p>
 <p><strong>5. Domain-agnostic compilation — one pipeline for any facility type.</strong>
-The same 9-stage pipeline that compiles a 55-element house also compiles a
+The same 12-stage pipeline that compiles a 55-element house also compiles a
 48,428-element airport terminal, a 48-element bridge, a 53-element road, and a
 73-element railway. No code changes per domain — only a ~30-line YAML mapping
 segments and disciplines. VerbDetector, BOMWalker, tack convention, delta tests,
@@ -3962,8 +3992,8 @@ Federation addon, with all its features, was developed with LLM assistance at a
 pace that would take a conventional team months. This same velocity now applies
 to the ERP compiler framework, where each new verb, witness, or BOM dimension
 is a bounded task that Claude Code completes in one session (see
-<a href="../CONCEPTUAL%20BLUEPRINT.txt"><code>CONCEPTUAL BLUEPRINT</code></a> for layer architecture,
-<a href="../BeyondVerbs.txt"><code>BeyondVerbs</code></a> for the roadmap beyond the current verb set).</p>
+<a href="CONCEPTUAL%20BLUEPRINT.txt"><code>CONCEPTUAL BLUEPRINT</code></a> for layer architecture,
+<a href="BeyondVerbs.txt"><code>BeyondVerbs</code></a> for the roadmap beyond the current verb set).</p>
 <p><strong>4. Symbolic inference over relational data is unique.</strong>
 The Inference Engine (BIM_Designer_SRS §14) evaluates validation rules in
 dependency order using Kahn's topological sort, produces proof trees with
@@ -4042,7 +4072,7 @@ itself after every edit.</strong></p>
 │  │                                                    │  │
 │  │  IFC → Extract → Classify → BOM → Compile → Prove │  │
 │  │  48,428 elements → 700 BOM lines → C_Order        │  │
-│  │  76 verbs · 202 witnesses · G1-G6 proven           │  │
+│  │  77 verbs · 202 witnesses · G1-G6 proven           │  │
 │  └────────────────────┬──────────────────────────────┘  │
 │                       │                                 │
 │                   ERP / PROCUREMENT                     │
@@ -4189,7 +4219,7 @@ digest tamper seals).</p>
 <tr>
 <td><strong>BIM Intent Compiler</strong></td>
 <td>YAML + Order + ASI</td>
-<td>9-stage pipeline</td>
+<td>12-stage pipeline</td>
 <td>output.db</td>
 <td>component_library.db</td>
 </tr>

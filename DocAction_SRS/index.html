@@ -2522,6 +2522,8 @@
       
         
       
+        
+      
     
     
     
@@ -2694,6 +2696,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -4086,12 +4116,12 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>processIt() orchestrates the YAML-to-BOM compilation lifecycle.</b> Maps iDempiere MOrder.processIt() to BIM compilation with DocEvent validation at each stage.</p>
+<p><b>processIt() orchestrates the Order-to-output compilation lifecycle.</b> Maps iDempiere MOrder.processIt() to BIM compilation with DocEvent validation at each stage.</p>
 </div>
 <p><strong>Version:</strong> 1.5 (2026-03-26, session 79 — AD_Org_ID migration, work_output.db cleanup)
-<strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a> §1.2, <a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9-10, <a href="../DocValidate/">DocValidate.md</a> §9-§15, <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a>, <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> §19
+<strong>Depends on:</strong> <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a> §1.2, <a href="../DISC_VALIDATE_SRS/">DISC_VALIDATE_SRS.md</a> §9-10, <a href="../DocValidate/">DocValidate.md</a> §9-§15, <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a>, <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> §19
 <strong>Scope:</strong> The <code>processIt()</code> orchestration — iDempiere MOrder.processIt() mapped to
-BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.</p>
+BIM compilation. How the BOM recipe pipeline and DocEvent Validation interact.</p>
 <blockquote>
 <p><strong>Activation rule (BBC.md §1.2):</strong> Each discipline in YAML has three states:
 <code>{prefix}_BOM</code> (pipeline populates from named BOM), <code>DocEvent</code> (validation
@@ -4229,7 +4259,7 @@ and aborts without modifying the compile DB. No partial state.</p>
 <tbody>
 <tr>
 <td>1</td>
-<td><strong>YAML → BOM pipeline</strong></td>
+<td><strong>BOM recipe pipeline</strong></td>
 <td>Discipline = <code>{prefix}_BOM</code></td>
 <td>Pipeline populates discipline sub-tree from the named BOM database.</td>
 </tr>
@@ -4443,7 +4473,7 @@ world coordinates. This is a simple angle sum (2D), not quaternion composition.<
 <p>Compile to output.db. The order is now a built building.</p>
 <div class="highlight"><pre><span></span><code>completeIt(compile DB → output.db):                  DocStatus: IP → CO
   │
-  ├── CompilationPipeline.run() — same 9-stage pipeline
+  ├── CompilationPipeline.run() — same 12-stage pipeline
   │   → BOM walker reads C_OrderLine tree from compile DB
   │   → Resolves LODs from component_library.db
   │   → Writes elements + spatial + geometry to output.db
@@ -5779,7 +5809,7 @@ Tier 3: fires on building compile or manual trigger (&lt; 500ms)
 <h2 id="10-terminal-db-as-rule-oracle-spatial-evidence-summary">10. Terminal DB as Rule Oracle — Spatial Evidence Summary<a class="headerlink" href="#10-terminal-db-as-rule-oracle-spatial-evidence-summary" title="Permanent link">&para;</a></h2>
 <p>Terminal spatial footprints (48,428 elements, 8 disciplines, 7+ storeys) extracted
 via mining pipeline. Position data from <code>elements_meta</code>, <code>element_transforms</code>,
-<code>spatial_structure</code>. See <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a> for full
+<code>spatial_structure</code>. See <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a> for full
 M1/M4/M5/M6/M12 distributions, discipline footprints, and implied placement rules
 (structural grid, FP coverage, riser continuity, ceiling alignment, z-zone ordering).</p>
 <hr />
@@ -5794,7 +5824,7 @@ M1/M4/M5/M6/M12 distributions, discipline footprints, and implied placement rule
 <hr />
 <p><em>References:
 <a href="../DocValidate/">DocValidate.md</a> (master validation spec) |
-<a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a> (Terminal mining data) |
+<a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md">TE_MINING_RESULTS.md</a> (Terminal mining data) |
 <a href="../BIM_Designer_SRS/">BIM_Designer_SRS.md</a> §18-19 (ambient compliance, inference) |
 <a href="../BOMBasedCompilation/">BOMBasedCompilation.md</a> §3-4 (tack, BUFFER) |
 <a href="../TestArchitecture/">TestArchitecture.md</a> (G1-G6 gates, traceability) |

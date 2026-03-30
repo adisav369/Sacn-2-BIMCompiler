@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -5557,7 +5587,7 @@ Each step is reusable for any new building — only the YAML changes.</p>
    └── Output: component_library.db tables populated
 
 Step 2: CLASSIFY — YAML declares building identity + discipline mapping
-   ├── classify_te.yaml: prefix, building_type, M_Product_Category (doc_base_type/doc_sub_type deprecated — §7)
+   ├── classify_te.yaml: prefix, building_type, M_Product_Category
    ├── disciplines: map ifc_class → discipline code (ARC, STR, FP, ...)
    ├── storey_bands: Z-centroid ranges → storey names
    └── Output: YAML file (only human invention in the chain)
@@ -6145,9 +6175,9 @@ extension of ROUTE-as-BOM-tree. Candidate for G8 gate (connection audit).</p>
 </blockquote>
 <h3 id="m_product_category-hierarchy-shape-by-top-level-category">M_Product_Category — Hierarchy Shape by Top-Level Category<a class="headerlink" href="#m_product_category-hierarchy-shape-by-top-level-category" title="Permanent link">&para;</a></h3>
 <blockquote>
-<p><em>Aligns to MANIFESTO.md §The Category Cascade. DocBaseType/DocSubType are
-deprecated artifacts on C_DocType and m_bom — classification lives on
-M_Product_Category at every cascade level (see DATA_MODEL.md §7).</em></p>
+<p><em>Aligns to MANIFESTO.md §The Category Cascade. Classification lives on
+M_Product_Category at every cascade level (see DATA_MODEL.md §7).
+DocBaseType was removed (S84, W012). DocSubType retained for iDempiere C_DocType compatibility.</em></p>
 </blockquote>
 <p>The top-level M_Product_Category determines the <strong>hierarchy shape</strong>:</p>
 <table>
@@ -7610,7 +7640,7 @@ STEP 5b: BOM DROP (Java — NEVER REACHED for TE)
   TE:     ❌ NEVER RUNS — no compile DB → no test invocation
           c_order = 0, c_orderline = 0
 
-STEP 6: COMPILE (Java DAGCompiler — 9-stage pipeline)
+STEP 6: COMPILE (Java DAGCompiler — 12-stage pipeline)
 ────────────────────────────────────────────────────
   Shell:  run_RosettaStones.sh:210 compile_building()
           → mvn test -Dtest=&quot;BuildingRegistryTest&quot; -Dbom.db=&quot;${compile_db}&quot;

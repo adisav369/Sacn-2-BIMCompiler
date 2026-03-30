@@ -956,10 +956,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#218-what-ifctobom-does-not-do" class="md-nav__link">
+  <a href="#218-ifctobom-bom-recipe-builder" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.1.8 What IFCtoBOM Does NOT Do
+        2.1.8 IFCtoBOM — BOM Recipe Builder
       
     </span>
   </a>
@@ -2501,6 +2501,8 @@
       
         
       
+        
+      
     
     
     
@@ -2673,6 +2675,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3373,10 +3403,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#218-what-ifctobom-does-not-do" class="md-nav__link">
+  <a href="#218-ifctobom-bom-recipe-builder" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2.1.8 What IFCtoBOM Does NOT Do
+        2.1.8 IFCtoBOM — BOM Recipe Builder
       
     </span>
   </a>
@@ -4300,15 +4330,84 @@ VerbDetector mines 4 verb patterns from extraction centroids:</p>
 See <a href="../BIM_COBOL/"><code>BIM_COBOL.md</code></a> §19 for verb taxonomy,
 data flow, and fidelity details.</p>
 <p><strong>Pipeline phases (self-contained):</strong>
-1. <strong>BOM pipeline</strong> (<code>IFCtoBOMPipeline.run()</code>): extracts → populates catalog (idempotent) → writes <code>{PREFIX}_BOM.db</code>
+1. <strong>BOM pipeline</strong> (<code>IFCtoBOMPipeline.run()</code>): reads IFC extraction + YAML Order input → populates catalog (idempotent) → writes <code>{PREFIX}_BOM.db</code>
 2. <strong>Compile</strong> (<code>DAGCompiler</code>): reads <code>{PREFIX}_BOM.db</code> + <code>component_library.db</code> → produces output.db
    <em>(Authoritative output DDL: Java <code>BuildingWriter.initSchema()</code>, not Python <code>output_schema.sql</code>.)</em></p>
-<h3 id="218-what-ifctobom-does-not-do">2.1.8 What IFCtoBOM Does NOT Do<a class="headerlink" href="#218-what-ifctobom-does-not-do" title="Permanent link">&para;</a></h3>
+<h3 id="218-ifctobom-bom-recipe-builder">2.1.8 IFCtoBOM — BOM Recipe Builder<a class="headerlink" href="#218-ifctobom-bom-recipe-builder" title="Permanent link">&para;</a></h3>
+<p>IFCtoBOM produces the <strong>BOM recipe</strong> (<code>{PREFIX}_BOM.db</code>): <code>m_bom</code> + <code>m_bom_line</code> tables
+only. No C_Order, no C_OrderLine, no callouts. Orders are created downstream during
+compilation (<code>processIt()</code>) — the ERP transaction. See <a href="../DocAction_SRS/"><code>DocAction_SRS.md</code></a> §1.</p>
+<p><strong>Two inputs:</strong></p>
+<ol>
+<li>
+<p><strong>IFC extraction DB</strong> (<code>*_extracted.db</code>) — elements, IFC family types (<code>IfcWall</code>,
+   <code>IfcFurniture</code>, <code>IfcSpace</code>), spatial containment (<code>IfcRelContainedInSpatialStructure</code>),
+   host relationships (<code>IfcRelFillsElement</code>). The IFC file is the authoritative source of
+   WHAT exists and WHERE it belongs. Classification is IFC-driven — no YAML involvement.</p>
+</li>
+<li>
+<p><strong>Classification YAML</strong> (<code>classify_*.yaml</code>) — the <strong>Order input</strong>: a human-readable
+   stand-in for C_Order + C_OrderLine. Defines building identity, storey mapping, BOM
+   template references, discipline routing, and static children. YAML tells the pipeline
+   HOW to organise the extracted elements into a BOM tree, not what elements exist.</p>
+</li>
+</ol>
+<p><strong>Separation of concerns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Source</th>
+<th>NOT from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>What elements exist</td>
+<td>IFC extraction DB</td>
+<td>YAML</td>
+</tr>
+<tr>
+<td>Which room an element belongs to</td>
+<td>IFC <code>rel_contained_in_space</code></td>
+<td>YAML scope boxes</td>
+</tr>
+<tr>
+<td>Element IFC class/family type</td>
+<td>IFC extraction DB</td>
+<td>YAML</td>
+</tr>
+<tr>
+<td>BOM tree shape (BUILDING → FLOOR → ROOM → SET)</td>
+<td>YAML Order config</td>
+<td>IFC</td>
+</tr>
+<tr>
+<td>Discipline routing (ARC/STR/FP/ELEC...)</td>
+<td>YAML <code>disciplines:</code></td>
+<td>IFC</td>
+</tr>
+<tr>
+<td>Static children (slabs, roof)</td>
+<td>YAML <code>static_children:</code></td>
+<td>IFC</td>
+</tr>
+<tr>
+<td>Space-to-template mapping</td>
+<td>YAML <code>ifc_space:</code> → <code>template_bom:</code></td>
+<td>IFC</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../DISC_VALIDATION_DB_SRS/#10413-ifc-driven-extraction--replacing-yaml-scope-boxes"><code>DISC_VALIDATION_DB_SRS.md §10.4.13</code></a>.</p>
+<p><strong>IFCtoBOM does NOT:</strong></p>
 <ul>
-<li>Does not invent elements (EXTRACT only — every leaf traces to I_Element_Extraction)</li>
-<li>Does not compute placement rules (layout_strategy, z_rule stay NULL — generative future)</li>
-<li>Does not validate against regulations (see <code>DocValidate.md</code>)</li>
-<li>Does not fill missing pipes or correct gaps (WYSIWYG — DX corners without connecting pipes are preserved as-is)</li>
+<li>Create C_Order or C_OrderLine (that is <code>processIt()</code> during compilation)</li>
+<li>Fire callouts (OrderLineProductCallout fires during compilation, not BOM building)</li>
+<li>Invent elements (every leaf traces to <code>I_Element_Extraction</code>)</li>
+<li>Use YAML scope boxes for room assignment (IFC spatial containment; scope boxes are Order processing)</li>
+<li>Validate against regulations (see <a href="../DocValidate/"><code>DocValidate.md</code></a>)</li>
+<li>Fill missing pipes or correct gaps (WYSIWYG)</li>
 </ul>
 <h3 id="219-bom-write-path">2.1.9 BOM Write Path<a class="headerlink" href="#219-bom-write-path" title="Permanent link">&para;</a></h3>
 <p><strong>Problem:</strong> 18 INSERT statements (7 <code>m_bom</code>, 11 <code>m_bom_line</code>) spread across 6 builder files, each with a different column subset. DDL changes require N-file edits — P92 (AD_Org_ID) proved the drift.</p>
@@ -4743,8 +4842,8 @@ wiring between ARC shell and MEP disciplines.</p>
 </ol>
 <p><strong>ARC rooms as discipline anchors:</strong> The ARC shell must produce room products
 with categories matching each MEP discipline present in the building. If the
-YAML <code>floor_rooms</code> config has no pump room, FP_SYSTEM has nowhere to tack.
-The YAML author (or Designer user) ensures service rooms exist for each
+Order config has no pump room, FP_SYSTEM has nowhere to tack.
+The Order author (YAML or Designer user) ensures service rooms exist for each
 discipline OrderLine they add.</p>
 <p><strong>Compulsory service rooms in CO BOM:</strong> For a CO (Commercial) building, the
 ARC root BOM includes service rooms as <strong>compulsory children</strong> — pump room
@@ -4788,9 +4887,10 @@ callout: select a product kit → callout auto-inserts component lines.
 The callout reads the BOM to discover what lines to create. The user can
 then edit quantities, remove disciplines they don't need, or add custom
 lines.</p>
-<p><strong>YAML equivalent:</strong> For Rosetta Stone testing, the YAML <code>classify_te.yaml</code>
-lists the 8 discipline sections explicitly. The callout is the interactive
-(Designer GUI) equivalent of what YAML does declaratively.</p>
+<p><strong>YAML as Order input:</strong> For Rosetta Stone testing, the YAML <code>classify_te.yaml</code>
+lists the 8 discipline sections explicitly — this is Order data, not extraction
+logic. The callout is the interactive (Designer GUI) equivalent of what YAML
+declares as C_OrderLine configuration.</p>
 <p><strong>Generalisation across building categories:</strong> The callout is not CO-specific.
 It reads the BOM to discover discipline children. Different building categories
 have different discipline sets — the callout discovers them, not hardcodes them.</p>
@@ -5242,8 +5342,8 @@ Qty is always in the product's <strong>cost_uom</strong> (from M_Product):</p>
 </tr>
 </tbody>
 </table>
-<p>During YAML setup, the author peeks at the extracted DB to see what exists:
-<code>SELECT count(*) FROM i_element_extraction WHERE discipline = 'FP'</code> → 47.
+<p>During Order setup (YAML authoring), the author peeks at the extracted DB to see
+what exists: <code>SELECT count(*) FROM i_element_extraction WHERE discipline = 'FP'</code> → 47.
 This becomes the qty on the FP OrderLine.</p>
 <p>In the Designer GUI, the user edits qty directly on the C_OrderLine.
 Recompile → different density. Same BOM recipe, different quantity.</p>
@@ -5269,7 +5369,7 @@ where radius = MIN(width, depth) / 2    ← pipe cross-section
 <p>TE mining (M12): 11 true overlaps ELEC×SP, 35 pairs under 150mm on lower floors.
 Rule: <code>NEC_ELEC_SP_CLEARANCE</code>, min 150mm, WARN severity.</p>
 <p><em>Standards by jurisdiction and discipline: <a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS</a> §10.4.3.
-TE mining data: <a href="https://github.com/red1oon/BIMCompiler/blob/master/specs/TE_MINING_RESULTS.md">TE_MINING_RESULTS</a>.
+TE mining data: <a href="https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md">TE_MINING_RESULTS</a>.
 Shared discipline recipes: DV025 migration in ERP.db (FP_SYSTEM seed, S100-p73).
 DocEvent rule schema: AD_DocEvent_Rule in ERP.db (<a href="../DISC_VALIDATION_DB_SRS/">DISC_VALIDATION_DB_SRS</a> §10.4.3).</em></p>
 <h3 id="37-rosetta-stone">3.7 Rosetta Stone<a class="headerlink" href="#37-rosetta-stone" title="Permanent link">&para;</a></h3>
@@ -5379,9 +5479,11 @@ Centroid is computed <strong>only at the output stage</strong> — never enters 
   Y = -2.746 + 0.0 + 5.2 + 0.1 = 2.554
   Z = -0.470 + 0.0 + 0.5 + 0.0 = 0.030</p>
 <p>Piano centroid = piano_LBD + (piano_width/2, piano_depth/2, piano_height/2)</p>
-<p><strong>Scope box origin (YAML <code>origin_m</code>)</strong> is a <strong>containment filter only</strong> — not a
-spatial reference for offsets. Tack_from comes from the room's measured LBD
-relative to the floor's LBD.</p>
+<p><strong>Scope box origin (<code>origin_m</code>)</strong> was historically a YAML-authored containment
+filter for extraction. Since S100-p125, extraction uses IFC spatial containment
+(<code>rel_contained_in_space</code>) instead. Scope boxes now live in <strong>Order processing</strong>
+only — the BIM Designer GUI uses them for sub-room zone splits at order time.
+Tack_from comes from the room's measured LBD relative to the floor's LBD.</p>
 <h3 id="411-validatebom-the-spatial-analogue">4.1.1 validateBOM() — The Spatial Analogue<a class="headerlink" href="#411-validatebom-the-spatial-analogue" title="Permanent link">&para;</a></h3>
 <p><code>BomValidator.java</code> (9 checks) enforces spatial BOM integrity:
 child within parent AABB, no overlap, SUM(children)+BUFFER = parent, non-negative tack_from.</p>
@@ -5438,12 +5540,12 @@ builders compute from different reference surfaces.</p>
 </table>
 <p>Maps to GD&amp;T tolerance zones: INNER=LMC, OUTER=MMC, STRUCTURAL=Basic, OPENING=Virtual.</p>
 <p><code>ScopeBomBuilder</code>: SET BOMs tagged <code>OUTER</code> (computed from element extents).
-Empty SET BOMs (no assigned elements) tagged <code>INNER</code> (YAML room dims = available space).
-<code>FloorRoomBomBuilder</code>: FLOOR ROOM BOMs tagged <code>INNER</code> (YAML-sourced architect intent).
+Empty SET BOMs (no assigned elements) tagged <code>INNER</code> (Order-defined room dims = available space).
+<code>FloorRoomBomBuilder</code>: FLOOR ROOM BOMs tagged <code>INNER</code> (architect intent from IFC or Order config).
 <code>StructuralBomBuilder</code>/<code>DisciplineBomBuilder</code>: default <code>OUTER</code> (computed from elements).</p>
 <h4 id="422-phantom-spatial-availability-index-session-43">4.2.2 PHANTOM — Spatial Availability Index (session 43)<a class="headerlink" href="#422-phantom-spatial-availability-index-session-43" title="Permanent link">&para;</a></h4>
 <p>PHANTOMs are <code>component_type='PHANTOM'</code> lines in <code>m_bom_line</code>. SAP empty
-storage bin principle: the bin has a capacity (INNER dims from YAML), the
+storage bin principle: the bin has a capacity (INNER dims from Order config), the
 PHANTOM represents remaining capacity after placed elements are subtracted.</p>
 <div class="highlight"><pre><span></span><code>PHANTOM.width  = max(0, parent.INNER.width  - children_bbox.width)
 PHANTOM.depth  = max(0, parent.INNER.depth  - children_bbox.depth)
@@ -5515,7 +5617,7 @@ offsets per §4) and accumulated through the BOM chain into world coordinates.
 C_OrderLine → M_Product → BOM explosion (iDempiere prepareIt pattern).</p>
 <hr />
 <h2 id="6-bim-cobol-verb-driven-bom-mutation">6. BIM COBOL — Verb-Driven BOM Mutation<a class="headerlink" href="#6-bim-cobol-verb-driven-bom-mutation" title="Permanent link">&para;</a></h2>
-<p>The GUI emits BIM COBOL verbs, never direct SQL. 76 verbs in 5 tiers:</p>
+<p>The GUI emits BIM COBOL verbs, never direct SQL. 77 verbs in 5 tiers:</p>
 <table>
 <thead>
 <tr>

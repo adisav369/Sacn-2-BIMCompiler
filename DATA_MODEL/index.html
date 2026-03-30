@@ -2186,6 +2186,8 @@
       
         
       
+        
+      
     
     
     
@@ -2358,6 +2360,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3575,7 +3605,7 @@ See <a href="../InfrastructureAnalysis/"><code>InfrastructureAnalysis.md</code><
 </tr>
 <tr>
 <td>bom_type</td>
-<td><em>(deprecated)</em></td>
+<td>—</td>
 <td>Root = BOM with no parent m_bom_line. Tier = M_Product_Category. See DISC_VALIDATION_DB_SRS.md §10.4.5</td>
 </tr>
 <tr>
@@ -3660,8 +3690,8 @@ Detects external tampering of m_bom_line data.</p>
 ./scripts/run_RosettaStones.sh<span class="w"> </span>classify_dx.yaml<span class="w">   </span><span class="c1"># → DX_BOM.db</span>
 </code></pre></div></p>
 <p>The IFCtoBOM pipeline (<code>IFCtoBOMPipeline.java</code>) — see <a href="../WorkOrderGuide/"><code>WorkOrderGuide.md</code></a> §Step 5 for full table:
-1. Load classification YAML + extract to <code>I_Element_Extraction</code> (<code>ExtractionPopulator</code>)
-2. <strong>Pre-flight:</strong> FAIL if extraction has storeys not in YAML; FAIL on NULL M_Product_ID
+1. Load classification YAML (Order input) + read IFC extraction to <code>I_Element_Extraction</code> (<code>ExtractionPopulator</code>)
+2. <strong>Pre-flight:</strong> FAIL if extraction has storeys not in YAML Order config; FAIL on NULL M_Product_ID
 3. <code>ProductRegistrar.ensureProductCatalog()</code>: M_Product → component_library.db (persistent, reusable)
 4. <code>ProductRegistrar.ensureProductImages()</code>: geometry link (INSERT OR IGNORE)
 5. <strong>Pre-flight:</strong> FAIL if any product has no geometry_hash
@@ -3789,14 +3819,9 @@ for unit tests (in-memory DBs have no BOM pipeline).</p>
 <td>Functional role — FK → M_Product_Category</td>
 </tr>
 <tr>
-<td>doc_base_type</td>
-<td>TEXT</td>
-<td>Domain classification (RE/CO/IN) — see m_product_category_id</td>
-</tr>
-<tr>
-<td>doc_sub_type</td>
-<td>TEXT</td>
-<td>Building prefix (SH/DX/TE) — derived from bom_id</td>
+<td>m_product_category_id</td>
+<td>INTEGER FK</td>
+<td>Domain classification (RE/CO/IN) — see M_Product_Category</td>
 </tr>
 <tr>
 <td>origin_x, origin_y, origin_z</td>
@@ -4507,13 +4532,13 @@ rules (63 rules). Same table, different provenance. Distinguished by source colu
 <hr />
 <h2 id="7-docbasetype-m_product_category-migration">7. DocBaseType → M_Product_Category Migration<a class="headerlink" href="#7-docbasetype-m_product_category-migration" title="Permanent link">&para;</a></h2>
 <p><strong>Status: Steps 1–7 DONE.</strong> Classification lives on <code>m_product_category_id</code> at every BOM level.
-<code>doc_base_type</code> and <code>doc_sub_type</code> are deprecated (kept for backward compatibility).
+<code>doc_base_type</code> removed (S84, W012). <code>doc_sub_type</code> removed — prefix on bom_id carries this.
 <code>AD_Org_ID</code> replaces <code>bom_category</code> strings for discipline routing. C_DocType = ONE "Construction Order".</p>
 <h3 id="71-what-was-done">7.1 What Was Done<a class="headerlink" href="#71-what-was-done" title="Permanent link">&para;</a></h3>
 <ul>
 <li>S75: M_Product_Category DV018 migration (117 rows), BUILDING BOM backfill</li>
 <li>S76: disc_validation.db renamed to ERP.db (~100 files)</li>
-<li>S77: Java routing migrated from doc_base_type to m_product_category_id (19 source + 12 test files)</li>
+<li>S77: Java routing migrated to m_product_category_id (19 source + 12 test files)</li>
 <li>S78: AD_Org_ID FK on m_bom, C_OrderLine (W009 migration)</li>
 <li>S79: Discipline enum replaces deriveDiscipline() in compile path</li>
 </ul>

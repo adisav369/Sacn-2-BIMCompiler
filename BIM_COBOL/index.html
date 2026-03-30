@@ -3536,6 +3536,8 @@
       
         
       
+        
+      
     
     
     
@@ -3708,6 +3710,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -7149,9 +7179,9 @@ MEP (CURRENT — IMPLICIT)
                     ▼  BIM COBOL Compiler
 LEVEL 1: BUILDING SPECIFICATION (current DSL)
          &quot;BUILDING ... STOREY ... ROOM ... WINDOW ...&quot;
-         Structured declarations that the 8-stage pipeline processes.
+         Structured declarations that the 12-stage pipeline processes.
                     │
-                    ▼  8-Stage Pipeline
+                    ▼  12-Stage Pipeline
 LEVEL 0: IFC ASSEMBLER (output.db / Blender)
          IfcPipeSegment(guid, start, end, radius)
          IfcPipeFitting(guid, type, position)
@@ -7169,7 +7199,7 @@ L1 output (generated, not hand-written):
   m_bom_line:             (FP_TE_L01, SPRINKLER_HEAD_K80, BUY, qty=N)
 </code></pre></div>
 <h3 id="32-level-1-level-0-compilation">3.2 Level 1 → Level 0 Compilation<a class="headerlink" href="#32-level-1-level-0-compilation" title="Permanent link">&para;</a></h3>
-<p>Level 1 compiles via the existing 8-stage pipeline into output.db:</p>
+<p>Level 1 compiles via the existing 12-stage pipeline into output.db:</p>
 <div class="highlight"><pre><span></span><code>L1 metadata rows  →  CompileStage resolves positions
                   →  MEPBOMResolver calculates quantities
                   →  WriteStage emits IfcFireSuppressionTerminal elements
@@ -8120,7 +8150,7 @@ Both stay in sync — the text is the COBOL source; the params are the form fiel
 <p><strong>Phase 1 — CURRENT:</strong> Create verb tables in {PREFIX}_BOM.db (DDL above). Additive, no breakage.
 c_orderline becomes WHAT-only — Java PO class has no placement setters.</p>
 <p><strong>Phase 2:</strong> VerbStage fallback logic: W_Verb_Node rows present → VerbRegistry dispatch;
-absent → RelationalResolver fallback (deprecated path).</p>
+absent → RelationalResolver fallback (to be removed in Phase 3).</p>
 <p><strong>Phase 3:</strong> Drop placement columns from c_orderline. Remove RelationalResolver.
 Migrate SH/DX extracted data to verb recipes.</p>
 <p><strong>RESOLVED:</strong> co_empty_space tables removed S74 (W008). Placement via M_BOM_Line dx/dy/dz.
@@ -8159,7 +8189,7 @@ W_Verb_Node links to C_OrderLine directly (no intermediate spatial slot table).<
 <ol>
 <li><strong>Stable LocalCoord.toWorld()</strong> — the coordinate chain must be correct. VerbStage will use the same anchor → world translation as WriteStage. If the translation has bugs (the "last mile"), VerbStage inherits them.</li>
 <li><strong>Spatial slot L2 population</strong> (TODO-ST-3) — VerbStage iterates L2 slots (from M_BOM_Line dx/dy/dz). These must exist for all rooms, not just structural tiers.</li>
-<li><strong>RelationalResolver deprecated</strong> — VerbStage computes placement from room AABB + ad_placement_rule, not from RelationalResolver. The resolver must be out of the critical path.</li>
+<li><strong>RelationalResolver removed from critical path</strong> — VerbStage computes placement from room AABB + ad_placement_rule, not from RelationalResolver.</li>
 </ol>
 <h3 id="163-preparation-work-bim_cobol-side-can-start-now">16.3 Preparation Work (BIM_COBOL Side — Can Start NOW)<a class="headerlink" href="#163-preparation-work-bim_cobol-side-can-start-now" title="Permanent link">&para;</a></h3>
 <p>Four workstreams that build language infrastructure without touching the pipeline:</p>
@@ -8261,7 +8291,7 @@ Step 3: Pipeline replacement
 <tr>
 <td><code>FORGE</code></td>
 <td><code>&lt;piece_type&gt; [key:value ...]</code></td>
-<td>Formula-driven construction piece computation. 6 engines: SLOPE_CUT (rafter trig), STAIR_FLIGHT (rise-over-run + Blondel), PIPE_BEND (arc geometry), DOME_SECTION (ring×segment panels), BARREL_VAULT (rib arc), REBAR_CAGE (slab/beam/column reinforcement with exposure-class cover). Fabrication data persisted to <code>ad_forge_fabrication</code> in output.db. ParametricMesh deprecated. See <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS</a>, <a href="../FORGE_SUITE_SRS/">FORGE_SUITE_SRS</a>.</td>
+<td>Formula-driven construction piece computation. 6 engines: SLOPE_CUT (rafter trig), STAIR_FLIGHT (rise-over-run + Blondel), PIPE_BEND (arc geometry), DOME_SECTION (ring×segment panels), BARREL_VAULT (rib arc), REBAR_CAGE (slab/beam/column reinforcement with exposure-class cover). Fabrication data persisted to <code>ad_forge_fabrication</code> in output.db. ParametricMesh replaced by ForgeEngine. See <a href="../GEOMETRY_FORGE_SRS/">GEOMETRY_FORGE_SRS</a>, <a href="../FORGE_SUITE_SRS/">FORGE_SUITE_SRS</a>.</td>
 <td>W-FORGE-1..11</td>
 </tr>
 </tbody>
@@ -9204,7 +9234,7 @@ The §18.11 verb chaining pipeline and Phase F5 ("script-driven compilation — 
 </tr>
 </tbody>
 </table>
-<p>The COBOL/Java analogy holds in the <em>domain language</em> sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 9-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.</p>
+<p>The COBOL/Java analogy holds in the <em>domain language</em> sense (construction intent compiles to assembler-level IFC), but the implementation does not need a traditional compiler architecture yet. The 12-stage DAGCompiler pipeline already IS the "compiler" — BIM COBOL verbs are a higher-level way to feed it.</p>
 <hr />
 <h2 id="19-verb-pattern-detection-bom-recipe-factorization-factorize-v1">19. Verb Pattern Detection — BOM Recipe Factorization (FACTORIZE-v1)<a class="headerlink" href="#19-verb-pattern-detection-bom-recipe-factorization-factorize-v1" title="Permanent link">&para;</a></h2>
 <p><strong>Status:</strong> LIVE (2026-03-17, CLUSTER optimised 2026-03-18). 48,485 → 1,131 lines (42.8:1 compression).</p>
@@ -9297,7 +9327,7 @@ through to unfactored writes (SH/DX safe).</p>
 ROUTE:X:step:n|Y:step:n|...     — axis-aligned legs chained
 FRAME:x1,x2,...|y1,y2,...        — gridline positions (floor-relative)
 CLUSTER:dx,dy,dz,w,d,h;...      — exact per-instance offsets + dimensions (lossless)
-# SPRAY deprecated — replaced by CLUSTER (session 32)
+# SPRAY removed — replaced by CLUSTER (session 32)
 </code></pre></div>
 <h3 id="data-flow">Data Flow<a class="headerlink" href="#data-flow" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>Phase 1: Populate (one-time, IFCtoBOMMain --populate)

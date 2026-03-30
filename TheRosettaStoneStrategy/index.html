@@ -1120,6 +1120,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#why-nobody-else-can-self-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Nobody Else Can Self-Verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-domain-precedent-the-folding-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Domain Precedent — The Folding Problem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Domain Precedent — The Folding Problem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protein-science-the-closest-cousin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protein science (the closest cousin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#robotics-the-mechanical-cousin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Robotics (the mechanical cousin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#who-does-all-four-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who does all four steps?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-growth-dynamic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The growth dynamic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1963,6 +2035,8 @@
       
         
       
+        
+      
     
     
     
@@ -2135,6 +2209,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -2943,6 +3045,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#why-nobody-else-can-self-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why Nobody Else Can Self-Verify
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cross-domain-precedent-the-folding-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-Domain Precedent — The Folding Problem
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cross-Domain Precedent — The Folding Problem">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#protein-science-the-closest-cousin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Protein science (the closest cousin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#robotics-the-mechanical-cousin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Robotics (the mechanical cousin)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#who-does-all-four-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who does all four steps?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-growth-dynamic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The growth dynamic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3293,6 +3467,195 @@ The BIM Compiler is the only tool that takes a 1D BOM and produces verified 3D
 coordinates with a machine-checkable proof chain.</p>
 <p>See <a href="../StrategicIndustryPositioning/">Strategic Industry Positioning</a> for the full
 competitive analysis and market positioning.</p>
+<hr />
+<h2 id="why-nobody-else-can-self-verify">Why Nobody Else Can Self-Verify<a class="headerlink" href="#why-nobody-else-can-self-verify" title="Permanent link">&para;</a></h2>
+<p>The industry doesn't decompose real buildings into reusable BOMs. They either
+author from scratch (Revit), scan and compare snapshots (Navisworks), or
+classify finished models (Solibri). None of them can answer: "is this
+compiled wall in the same position as the extracted source wall, and can you
+prove it with a number?"</p>
+<p>The Rosetta Stone approach enables self-verification because the round-trip
+is inherent to the architecture:</p>
+<div class="highlight"><pre><span></span><code>IFC file → EXTRACT → BOM dictionary (tack offsets + IFC GUIDs)
+                              ↓
+              COMPILE ← BOM dictionary
+                              ↓
+           output.db → VERIFY against extraction source
+</code></pre></div>
+<p>Each compiled element carries its <strong>IFC GUID</strong> through the BOM chain
+(<code>m_bom_line_ma</code>). At compile time, GEO debug mode (<code>-Dbim.geo.debug=true</code>)
+compares the compiled position against the extraction source for that GUID
+and emits MATCH or DRIFT with a millimetre delta per axis. No human
+arithmetic — the log is the verdict. See <a href="../LAST_MILE_PROBLEM/#7-separate-from-input">LMP §7</a>.</p>
+<p><strong>Why this is impossible without Rosetta Stones:</strong></p>
+<ul>
+<li>
+<p><strong>No BOM decomposition → no tack offsets → no recompilation.</strong> Revit stores
+  geometry directly. There's no BOM to compile from, so there's no round-trip
+  to verify.</p>
+</li>
+<li>
+<p><strong>No IFC GUID chain → no element-level traceability.</strong> Digital twin platforms
+  carry GUIDs for lifecycle tracking, but they don't recompile geometry from
+  BOMs. The GUID is a label, not a provenance proof.</p>
+</li>
+<li>
+<p><strong>No extraction source → no comparison target.</strong> Solibri checks rules on a
+  model. It doesn't know what the model <em>should</em> look like — only what rules
+  it should satisfy. The Rosetta Stone IS the comparison target.</p>
+</li>
+</ul>
+<p>The BOM dictionary is the learned relationship. The GEO proof is the evidence
+that the learning was preserved. Together they make this the only BIM tool
+that can compile a building from a recipe and prove every element landed
+where the source building says it should.</p>
+<hr />
+<h2 id="cross-domain-precedent-the-folding-problem">Cross-Domain Precedent — The Folding Problem<a class="headerlink" href="#cross-domain-precedent-the-folding-problem" title="Permanent link">&para;</a></h2>
+<p>Construction is not the first domain to face this challenge. Two other fields
+solved the same abstract problem: <strong>inferring 3D spatial structure from a 1D
+specification by learning from solved examples.</strong></p>
+<h3 id="protein-science-the-closest-cousin">Protein science (the closest cousin)<a class="headerlink" href="#protein-science-the-closest-cousin" title="Permanent link">&para;</a></h3>
+<p>The protein folding problem consumed 50 years of research: given a sequence
+of amino acids (1D), predict the 3D folded structure. DeepMind's AlphaFold
+solved it in 2020 by learning from the Protein Data Bank (PDB) — 200,000
+experimentally solved structures that served as ground truth.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Protein Science</th>
+<th>BIM Compiler</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1D input</strong></td>
+<td>Amino acid sequence</td>
+<td>Construction Order (C_Order → C_OrderLine)</td>
+</tr>
+<tr>
+<td><strong>3D output</strong></td>
+<td>Folded protein structure</td>
+<td>Compiled building (output.db)</td>
+</tr>
+<tr>
+<td><strong>Ground truth database</strong></td>
+<td>PDB (200K solved structures)</td>
+<td>Rosetta Stones (35 buildings, growing)</td>
+</tr>
+<tr>
+<td><strong>What's learned</strong></td>
+<td>Bond angles, torsion, spatial motifs</td>
+<td>Tack offsets, verb patterns, BOM recipes</td>
+</tr>
+<tr>
+<td><strong>Compilation step</strong></td>
+<td>Homology modelling / AlphaFold inference</td>
+<td>BOM walk (PlacementCollectorVisitor)</td>
+</tr>
+<tr>
+<td><strong>Verification</strong></td>
+<td>RMSD against crystal structure / energy minimisation</td>
+<td>GEO MATCH/DRIFT + G1-G6 gates</td>
+</tr>
+<tr>
+<td><strong>Reuse unit</strong></td>
+<td>Protein domain (reusable fold motif)</td>
+<td>BOM assembly (reusable spatial recipe)</td>
+</tr>
+</tbody>
+</table>
+<p>Template-based modelling in protein science works because spatial
+relationships <strong>transfer</strong>: a helix-turn-helix motif in one protein predicts
+the same fold in another protein with a similar sequence. Our BOM assemblies
+work the same way — a BED_SET tack arrangement from SH compiles correctly
+in any building with a bedroom of compatible dimensions.</p>
+<h3 id="robotics-the-mechanical-cousin">Robotics (the mechanical cousin)<a class="headerlink" href="#robotics-the-mechanical-cousin" title="Permanent link">&para;</a></h3>
+<p>URDF (Unified Robot Description Format) decomposes a robot into links and
+joints with parent-child transforms. Forward kinematics accumulates these
+transforms through the chain to compute world positions — mathematically
+identical to PlacementCollectorVisitor's anchor stack. Robot calibration
+verifies computed positions against sensor readings — their version of
+GEO MATCH/DRIFT.</p>
+<h3 id="who-does-all-four-steps">Who does all four steps?<a class="headerlink" href="#who-does-all-four-steps" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th style="text-align: center;">Decompose real thing?</th>
+<th style="text-align: center;">Store spatial recipe?</th>
+<th style="text-align: center;">Recompile?</th>
+<th style="text-align: center;">Self-verify?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VLSI</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes (DRC)</td>
+</tr>
+<tr>
+<td>Automotive</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Partial</td>
+</tr>
+<tr>
+<td>Game engines</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td><strong>Robotics</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td><strong>Protein/Rosetta</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+<tr>
+<td>Shipbuilding</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">Yes</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td><strong>BIM Compiler</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+<td style="text-align: center;"><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Only robotics, protein science, and this compiler do all four. Construction
+is the last major engineering domain to gain a compilation model that learns
+from real structures.</p>
+<h3 id="the-growth-dynamic">The growth dynamic<a class="headerlink" href="#the-growth-dynamic" title="Permanent link">&para;</a></h3>
+<p>The PDB grew from a few hundred structures to 200,000 over 50 years. Each
+solved structure made the next prediction more accurate — because spatial
+motifs transfer. Our Rosetta Stone library is at 35 buildings. The same
+growth dynamic applies: each new building type adds proven tack arrangements,
+verb patterns, and product resolutions to the dictionary. A residential
+BED_SET, a commercial FP_RISER, an infrastructure bridge deck — each is a
+solved spatial motif that transfers to the next building of that type.</p>
+<p>AlphaFold's breakthrough was proving that learned spatial relationships
+<strong>generalise</strong>. The BIM Compiler's thesis is the same: the spatial
+relationships in 35 real buildings, captured as BOM tack offsets, are
+sufficient to compile any building of similar type — and the GEO proof
+chain verifies it with millimetre precision.</p>
 <hr />
 <blockquote>
 <p><strong>Full historical record:</strong> Terminal decomposition phases (TE-1 through TE-8),

@@ -2622,6 +2622,8 @@
       
         
       
+        
+      
     
     
     
@@ -2794,6 +2796,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -4299,7 +4329,7 @@
 - <code>FixtureWorker</code> → deleted (merged into <code>FurnitureWorker</code>)
 - <code>BOMAssemblerAD</code> → deleted (BOM traversal now via <code>BOMWalker</code> + <code>AssemblyStructureVisitor</code>)
 - <code>RelationalResolver</code> → deleted (PlacementLoader now loads from <code>{PREFIX}_BOM.db</code> via <code>loadFromBOM()</code>)
-- <code>ad_room_slot</code> dispatch → deprecated by <code>bom_category</code> on M_BOM
+- <code>ad_room_slot</code> dispatch → replaced by <code>bom_category</code> on M_BOM
 - <code>ARCHITECTURE.md</code> → archived (use <code>MANIFESTO.md</code> + <code>SourceCodeGuide.md</code>)</p>
 <p>Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
 Core BOM hierarchy content is current. Examples referencing deleted classes have been updated below.</p>
@@ -5554,7 +5584,7 @@ ad_product_dim ── conn_points JSON (existing, Level 0 components only)
 </tr>
 <tr>
 <td>3-way routing (now unified in <code>BOMTierResolver</code>)</td>
-<td><code>ad_room_slot</code> unified slot table (deprecated by <code>bom_category</code> on M_BOM)</td>
+<td><code>ad_room_slot</code> unified slot table (replaced by <code>bom_category</code> on M_BOM)</td>
 </tr>
 <tr>
 <td>Implicit MEP pipe routing (hardcoded Z offsets)</td>

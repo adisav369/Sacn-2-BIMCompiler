@@ -2096,6 +2096,8 @@
       
         
       
+        
+      
     
     
     
@@ -2268,6 +2270,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -3340,6 +3370,12 @@
 <td>SPEC</td>
 <td>G5-PROVENANCE Check 6: zero GEO_ hashes. 28 call sites identified</td>
 </tr>
+<tr>
+<td>C14</td>
+<td>GEO all-pairs relative offset</td>
+<td>DONE</td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/geo_verify.py"><code>scripts/geo_verify.py</code></a>: SH 1,653 pairs 0.002mm, DX 15,931 pairs 0.004mm. ZERO DRIFT. See <a href="../LAST_MILE_PROBLEM/#7-separate-from-input">LMP §7</a></td>
+</tr>
 </tbody>
 </table>
 <h3 id="high-fixes-h1h7">HIGH Fixes (H1–H7)<a class="headerlink" href="#high-fixes-h1h7" title="Permanent link">&para;</a></h3>
@@ -3956,8 +3992,8 @@ To cheat D-1 through D-5, you'd have to fake the IFC source files themselves.</p
 1. <strong>Hash seal (L1)</strong> — any byte change = SEAL BROKEN
 2. <strong>Structural guards (L2)</strong> — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. <strong>Git diff review (L3)</strong> — every <code>[SEAL]</code> commit shows exact diff</p>
-<p><strong>Sealed:</strong> 2026-03-28 (v46: S100-p86 iDempiere PK conformance Phase A)
-<strong>Super-hash:</strong> <code>af3f00d934e23aa5adfd87720472d038edb9000a3543eb4d2f35809a6fa11232</code></p>
+<p><strong>Sealed:</strong> 2026-03-30 (v17: S100-p123c GEO SUMMARY in CompilationPipeline)
+<strong>Super-hash:</strong> <code>af3bcae75d8aef4b996e42b6216e5667b52e583d98cf2004363976af83c15b8d</code></p>
 <div class="highlight"><pre><span></span><code>bash scripts/verify_test_seal.sh            # quick check
 bash scripts/verify_test_seal.sh --detail   # show which files changed
 </code></pre></div>
@@ -3969,34 +4005,34 @@ d32f0a2f  library/AnchorComputationTest.java
 233fddba  coordinate/LocalCoordTest.java
 cb37cde4  contract/PhantomLayoutTest.java
 27b8d845  contract/PlacementCollectorVisitorTest.java
-7f837e14  contract/BOMWalkerTest.java
+f0f59e2f  contract/BOMWalkerTest.java
 d00d791c  library/StallDividerParamsTest.java
-49211783  contract/VerbStageTest.java
+f5a3df1e  contract/VerbStageTest.java
 863473a7  contract/ExtractedGeometryTruthTest.java
-7c0986ba  contract/EdgeVertexTest.java
+02c431f4  contract/EdgeVertexTest.java
 b9d57454  contract/OutputTemplateTest.java
-4ba30be3  contract/BOMDigestVerifyTest.java
+b2527197  contract/BOMDigestVerifyTest.java
 9709b84b  contract/StructuralCrossCheckTest.java
-e9b6bcbc  arch/DriftGuardTest.java
-ead7c516  contract/CompilerContractTest.java
+e5d6bcbc  arch/DriftGuardTest.java
+fd65b3f6  contract/CompilerContractTest.java
 26eb8b47  contract/RosettaStoneGateTest.java
-8acdaac0  contract/ExtractedBOMWalkTest.java
-0e21e5e5  contract/BomChainIntegrityTest.java
-46e2e2f2  contract/BOMChainMathTest.java
-75dfd1a5  contract/SpatialPlacementVisitorTest.java
-304eb7ea  contract/StTemplatePipelineTest.java
-da1a6610  contract/BuildingRegistryTest.java
-1cedf232  contract/IntraBOMRelativeTest.java
-028950d9  contract/MetadataIntegrityTest.java
-82919c68  contract/DataIntegrityTest.java
-bc39a88e  contract/FurnitureGeometryTest.java
+4371b836  contract/ExtractedBOMWalkTest.java
+284951e2  contract/BomChainIntegrityTest.java
+c1b54166  contract/BOMChainMathTest.java
+a0ce0436  contract/SpatialPlacementVisitorTest.java
+e3f80cdc  contract/StTemplatePipelineTest.java
+8bafb5b8  contract/BuildingRegistryTest.java
+3a91a827  contract/IntraBOMRelativeTest.java
+cc7e581e  contract/MetadataIntegrityTest.java
+c3fdd0fd  contract/DataIntegrityTest.java
+6c97940b  contract/FurnitureGeometryTest.java
 a0287085  contract/StackedDuplexWitnessTest.java
 </code></pre></div>
 <h3 id="bim_cobol-tests-27-files">BIM_COBOL Tests (27 files)<a class="headerlink" href="#bim_cobol-tests-27-files" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>9f35fe2f  CheckBomVerbTest.java
 142bb5c6  CoverWithRoofVerbTest.java
 6a1e1293  RouteSprinklersVerbTest.java
-07afaa08  RosettaStoneTest.java
+25cc1c08  RosettaStoneTest.java
 0f1130c0  ConnectFittingsVerbTest.java
 6c88148d  CheckPlacementClashTest.java
 46ff4ef3  CheckRoomComplianceTest.java
@@ -4004,41 +4040,45 @@ a0287085  contract/StackedDuplexWitnessTest.java
 539d485b  VerifyPlacementVerbTest.java
 81ca9121  TileSurfaceVerbTest.java
 7c9c693c  ArrayVerbTest.java
-130ff90c  VerbStageIntegrationTest.java
-b3855232  VerbNodePersisterTest.java
+b617201c  VerbStageIntegrationTest.java
+72299520  VerbNodePersisterTest.java
 ad490cdc  verb/PlaceBomVerbTest.java
 4f9b6563  verb/FloorVerbTest.java
-58590f5b  verb/ConvenienceVerbTest.java
+42e3958d  verb/ConvenienceVerbTest.java
 31fb92d8  VerbRegistryTest.java
 6e3a37c4  verb/ReportVerbTest.java
-97a9ba51  F5IntegrationTest.java
-ee8d3478  HelloWorldVerbTest.java
-ec71dd2f  verb/SyntheticBomPrimitiveTest.java
-431eae11  verb/BuildingVerbTest.java
+faae62bb  F5IntegrationTest.java
+80bb92d7  HelloWorldVerbTest.java
+77b9bf60  verb/SyntheticBomPrimitiveTest.java
+171b655b  verb/BuildingVerbTest.java
 255c02b9  verb/UtilityVerbTest.java
 1e6dfc0d  verb/OverrideRoofVerbTest.java
 db2b0c62  verb/FixOpeningBboxVerbTest.java
 92ee1dab  verb/BuildSpatialStructureVerbTest.java
-05af480e  PrimeRuleWitnessTest.java
+cc2906e9  PrimeRuleWitnessTest.java
 </code></pre></div>
 <h3 id="ormsandbox-topologymaker-tests-6-files">ORMSandbox + TopologyMaker Tests (6 files)<a class="headerlink" href="#ormsandbox-topologymaker-tests-6-files" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>181e34fa  EmptySpaceTest.java
-0d2a3c77  W_Verb_NodeTest.java
-1a0321a3  BuildingInspectorTest.java
-20ead299  OrderLineInterfaceContractTest.java
+da2e12d2  W_Verb_NodeTest.java
+3cabff5d  BuildingInspectorTest.java
+f86d52fe  OrderLineInterfaceContractTest.java
 50f65541  BasePOTest.java
-13ad060c  TopologyBatchProcessTest.java
+aeaa7e09  TopologyBatchProcessTest.java
 </code></pre></div>
 <h3 id="critical-production-files-hook-10-files">Critical Production Files + Hook (10 files)<a class="headerlink" href="#critical-production-files-hook-10-files" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>88dfd94f  CompilationPipeline.java
+<div class="highlight"><pre><span></span><code>414e8816  CompilationPipeline.java
 fd1cd3d9  BuildingCompiler.java
-e455d42a  PlaceBomVerb.java
-a1909001  EnBlocVerb.java
-af068cf9  WalkThruVerb.java
-ef278ec6  MBOM.java
-9e6a380e  MBOMLine.java
+7a1b759c  PlaceBomVerb.java
+87f8aa95  EnBlocVerb.java
+a1ce5479  WalkThruVerb.java
+b366f5e8  MBOM.java
+4970aa07  MBOMLine.java
 38f498ae  run_tests.sh
-c92fd30c  run_RosettaStones.sh
+c2d7932a  run_RosettaStones.sh
+e6ac9ef2  lib_rosetta_helpers.sh
+77ebf32c  rosetta_compile.sh
+0f77a8a4  rosetta_integrity.sh
+bcd2af85  rosetta_fidelity.sh
 39839729  pre-commit
 </code></pre></div>
 <h3 id="rosetta-stone-coverage">Rosetta Stone Coverage<a class="headerlink" href="#rosetta-stone-coverage" title="Permanent link">&para;</a></h3>

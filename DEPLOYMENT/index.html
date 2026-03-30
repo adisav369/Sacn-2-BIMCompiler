@@ -1751,6 +1751,8 @@
       
         
       
+        
+      
     
     
     
@@ -1923,6 +1925,34 @@
     
   
     BIM-ERP Paper
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../SPATIAL_COMPILATION_PAPER/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spatial Compilation Paper
   
 
     
@@ -2642,6 +2672,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pipeline-script-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Script Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Script Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#re-extract-triggers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Re-extract triggers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orchestrator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dev-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dev workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#git-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2928,6 +3019,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pipeline-script-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pipeline Script Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pipeline Script Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phases" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phases
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#re-extract-triggers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Re-extract triggers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#orchestrator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Orchestrator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dev-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dev workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#git-operations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3207,6 +3359,101 @@ docker-compose<span class="w"> </span>restart<span class="w"> </span>nginx
 </table>
 <p>The DAO abstraction isolates all database access — swapping SQLite for PostgreSQL
 changes the connection factory, not the business logic.</p>
+<h2 id="pipeline-script-architecture">Pipeline Script Architecture<a class="headerlink" href="#pipeline-script-architecture" title="Permanent link">&para;</a></h2>
+<p>The pipeline has three independent lifecycle phases. Each phase is a separate
+subscript, callable alone or via the fleet orchestrator.</p>
+<h3 id="phases">Phases<a class="headerlink" href="#phases" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Phase</th>
+<th>Script</th>
+<th>Input</th>
+<th>Output</th>
+<th>When to run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Extract</strong></td>
+<td><code>extract_bom.sh &lt;prefix&gt;</code></td>
+<td>IFC source + classify YAML</td>
+<td><code>library/{PREFIX}_BOM.db</code></td>
+<td>IFC source changed OR extraction logic changed</td>
+</tr>
+<tr>
+<td><strong>Populate</strong></td>
+<td><code>populate_geometry.sh &lt;prefix&gt;</code></td>
+<td><code>*_extracted.db</code></td>
+<td><code>component_library.db</code> rows</td>
+<td>Already smart — skips if populated</td>
+</tr>
+<tr>
+<td><strong>Compile</strong></td>
+<td><code>compile.sh &lt;prefix&gt;</code></td>
+<td><code>*_BOM.db</code> + <code>component_library.db</code></td>
+<td><code>output.db</code></td>
+<td>Every time (fast — reads BOM, writes output)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="re-extract-triggers">Re-extract triggers<a class="headerlink" href="#re-extract-triggers" title="Permanent link">&para;</a></h3>
+<p>The BOM.db is stale when either the <strong>source</strong> or the <strong>logic</strong> changes:</p>
+<table>
+<thead>
+<tr>
+<th>Trigger</th>
+<th>What changed</th>
+<th>How to detect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IFC re-export</td>
+<td>New IFC file from Revit/ArchiCAD</td>
+<td>SHA-256 of IFC source file ≠ hash stored in <code>ad_sysconfig</code></td>
+</tr>
+<tr>
+<td>Extraction code</td>
+<td>Java in <code>IFCtoBOM/src/main/**</code></td>
+<td><code>git diff --name-only HEAD~1</code> includes IFCtoBOM paths</td>
+</tr>
+<tr>
+<td>Classify YAML</td>
+<td><code>classify_{prefix}.yaml</code> modified</td>
+<td>File mtime or git diff</td>
+</tr>
+<tr>
+<td>Migration SQL</td>
+<td><code>migration/DV*</code> applied</td>
+<td>Migration version &gt; BOM.db version stamp</td>
+</tr>
+</tbody>
+</table>
+<p><code>extract_bom.sh</code> checks these triggers and skips if unchanged. The integrity
+hash already exists in <code>ad_sysconfig</code> — extend it to include source IFC hash
+and extraction code hash (e.g. <code>git rev-parse HEAD:IFCtoBOM/</code>).</p>
+<h3 id="orchestrator">Orchestrator<a class="headerlink" href="#orchestrator" title="Permanent link">&para;</a></h3>
+<p><code>run_RosettaStones.sh</code> becomes a thin loop that calls the three subscripts per
+building. For fleet runs, it parallelises extraction (CPU-bound) and serialises
+compilation (writes to shared <code>output.db</code>).</p>
+<div class="highlight"><pre><span></span><code>run_RosettaStones.sh [classify_XX.yaml]
+  for each building:
+    extract_bom.sh &lt;prefix&gt;       # skips if BOM.db current
+    populate_geometry.sh &lt;prefix&gt;  # skips if already populated
+    compile.sh &lt;prefix&gt;            # always runs (fast)
+    gate_test.sh &lt;prefix&gt;          # G1-G6 + contract tests
+</code></pre></div>
+<h3 id="dev-workflow">Dev workflow<a class="headerlink" href="#dev-workflow" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Changed extraction logic → re-extract one building</span>
+./scripts/extract_bom.sh<span class="w"> </span>te
+
+<span class="c1"># Changed pipeline code → compile only (BOM.db unchanged)</span>
+./scripts/compile.sh<span class="w"> </span>te
+
+<span class="c1"># Full fleet CI</span>
+./scripts/run_RosettaStones.sh
+</code></pre></div>
 <h2 id="git-operations">Git Operations<a class="headerlink" href="#git-operations" title="Permanent link">&para;</a></h2>
 <h3 id="gitignore-large-files">.gitignore — Large Files<a class="headerlink" href="#gitignore-large-files" title="Permanent link">&para;</a></h3>
 <ul>
