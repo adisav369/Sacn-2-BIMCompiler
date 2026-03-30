@@ -29,6 +29,11 @@ public record BendOp(double angleDeg) implements CrawlOp {
         builder.addFitting(new CrawlRouter.FittingSpec(
                 state.position(), fittingType, state.diameterMm(),
                 state.diameterMm(), angleDeg));
+        // Implementing EYES_SRS §4.7 — GEO-ROUTE proof coverage for MEP segments
+        BIMLogger.geo("ROUTE", "FITTING {}: pos=({:.0f},{:.0f},{:.0f}) type={} angle={:.0f}deg",
+                state.product(),
+                state.position().x() * 1000, state.position().y() * 1000, state.position().z() * 1000,
+                fittingType, angleDeg);
         CrawlState after = state.turn(angleDeg);
         BIMLogger.fine(TAG, "BEND: done dir={}", after.direction());
         return after;

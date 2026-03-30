@@ -33,6 +33,11 @@ public record BranchOp(List<List<CrawlOp>> branchOps,
         builder.addFitting(new CrawlRouter.FittingSpec(
                 state.position(), fittingType, state.diameterMm(),
                 branchDiameterMm, 0));
+        // Implementing EYES_SRS §4.7 — GEO-ROUTE proof coverage for MEP segments
+        BIMLogger.geo("ROUTE", "FITTING {}: pos=({:.0f},{:.0f},{:.0f}) type={} angle={:.0f}deg",
+                state.product(),
+                state.position().x() * 1000, state.position().y() * 1000, state.position().z() * 1000,
+                fittingType, 0.0);
 
         // Execute each branch sub-route
         for (int b = 0; b < branchOps.size(); b++) {

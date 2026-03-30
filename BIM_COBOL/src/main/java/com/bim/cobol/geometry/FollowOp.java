@@ -32,10 +32,17 @@ public record FollowOp(double distanceMm, double stockLengthMm) implements Crawl
                 state.position(), state.direction(), distanceMm, stockLengthMm, segmentCount);
         for (int i = 0; i < segmentCount; i++) {
             double segLen = Math.min(stockLengthMm, distanceMm - i * stockLengthMm);
+            CrawlState endState = state.advance(segLen);
             builder.addSegment(new CrawlRouter.SegmentSpec(
-                    state.position(), state.advance(segLen).position(),
+                    state.position(), endState.position(),
                     state.diameterMm(), state.product(), segLen));
-            state = state.advance(segLen);
+            // Implementing EYES_SRS §4.7 — GEO-ROUTE proof coverage for MEP segments
+            BIMLogger.geo("ROUTE", "SEGMENT {}: start=({:.0f},{:.0f},{:.0f}) end=({:.0f},{:.0f},{:.0f}) len={:.0f}mm dia={:.0f}mm",
+                    state.product(),
+                    state.position().x() * 1000, state.position().y() * 1000, state.position().z() * 1000,
+                    endState.position().x() * 1000, endState.position().y() * 1000, endState.position().z() * 1000,
+                    segLen, state.diameterMm());
+            state = endState;
         }
         BIMLogger.fine(TAG, "FOLLOW: done pos={}", state.position());
         return state;

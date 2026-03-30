@@ -82,6 +82,10 @@ public final class CrawlRouter {
         BIMLogger.fine(TAG, "CrawlRouter: done segments={} fittings={} edges={} totalLen={:.0f}mm",
                 result.segments().size(), result.fittings().size(),
                 result.edges().size(), result.totalLengthMm());
+        // Implementing EYES_SRS §4.7 — GEO-ROUTE proof coverage for MEP segments
+        BIMLogger.geo("ROUTE", "DONE {}: {} segments, {} fittings, {} edges, total={:.0f}mm",
+                initial.product(), result.segments().size(), result.fittings().size(),
+                result.edges().size(), result.totalLengthMm());
         return result;
     }
 

@@ -253,6 +253,10 @@ public class StructuralBomBuilder {
             double makeDy = fMinY - allMinY;
             double makeDz = fMinZ - allMinZ;
 
+            // Implementing DISC_VALIDATION_DB_SRS §10.4.10 — PATTERN logging channel
+            BIMLogger.pattern("FLOOR", "Storey '{}' (code={}): {} elements, fMinZ={:.3f}m, makeDz={:.3f}m",
+                    storeyName, storeyInfo.code(), elems.size(), fMinZ, makeDz);
+
             insertBomLine(bomConn, buildingBomId, floorBomId, "MAKE",
                     storeyInfo.role(), storeyInfo.seq(), "0",
                     makeDx, makeDy, makeDz,

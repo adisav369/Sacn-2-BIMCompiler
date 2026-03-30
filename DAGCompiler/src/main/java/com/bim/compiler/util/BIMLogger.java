@@ -36,6 +36,7 @@ public class BIMLogger {
 
     public static void geo(String c, String f, Object... a) { com.bim.orm.BIMLogger.geo(c, f, a); }
     public static boolean geoMatch(String productId) { return com.bim.orm.BIMLogger.geoMatch(productId); }
+    public static void pattern(String c, String f, Object... a) { com.bim.orm.BIMLogger.pattern(c, f, a); }
 
     public static void stage(int step, String name, String detail) { com.bim.orm.BIMLogger.stage(step, name, detail); }
     public static void gate(String gId, String tag, String status, String detail) { com.bim.orm.BIMLogger.gate(gId, tag, status, detail); }

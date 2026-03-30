@@ -46,6 +46,11 @@ public record PenetrateOp(String barrierType, double thicknessMm,
                     state.diameterMm(), 0));
         }
 
+        // Implementing EYES_SRS §4.7 — GEO-ROUTE proof coverage for MEP segments
+        BIMLogger.geo("ROUTE", "PENETRATE {}: through={} at=({:.0f},{:.0f},{:.0f})",
+                state.product(), barrierType,
+                state.position().x() * 1000, state.position().y() * 1000, state.position().z() * 1000);
+
         // Position jumps through barrier
         CrawlState after = state.advance(thicknessMm);
         BIMLogger.fine(TAG, "PENETRATE: done pos={}", after.position());

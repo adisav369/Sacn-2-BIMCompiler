@@ -1,5 +1,6 @@
 package com.bim.ifctobom;
 
+import com.bim.orm.BIMLogger;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.*;
@@ -52,12 +53,18 @@ public class ClassificationYaml {
 
             Map<String, SpatialContainerConfig> result = new LinkedHashMap<>();
             int seq = 1010;
+            int seqIdx = 0;
             for (Entry entry : sorted) {
+                seqIdx++;
                 String code = abbreviate(entry.name());
                 String role = entry.name().toUpperCase().replaceAll("[^A-Z0-9]+", "_");
                 // Trim trailing underscores
                 if (role.endsWith("_")) role = role.substring(0, role.length() - 1);
                 result.put(entry.name(), new SpatialContainerConfig(code, code, role, seq));
+                // Implementing DISC_VALIDATION_DB_SRS §10.4.10 — PATTERN logging channel
+                int elemCount = containerElements.get(entry.name()).size();
+                BIMLogger.pattern("STOREY", "Container '{}': minZ={:.3f}m, {} elements, seq={}",
+                        entry.name(), entry.minZ(), elemCount, seqIdx);
                 seq += 10;
             }
             return result;
