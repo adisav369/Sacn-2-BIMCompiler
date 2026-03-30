@@ -2,195 +2,17 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>ERP.db holds discipline metadata AND compliance rules, separate from products and BOMs.</b> Schedules, placement rules, alias cascades, mined dimension rules, and validation rules (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — the HOW concern of the 4-DB split. validation.db merged into ERP.db.
+<b>ERP.db holds discipline metadata AND compliance rules, separate from products and BOMs.</b> Schedules, placement rules, alias cascades, mined dimension rules, and validation rules (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class) — the HOW concern per [MANIFESTO](MANIFESTO.md) §Three Concerns.
 </div>
 
-**Version:** 1.2 (2026-03-19) — Phase 1 DONE, Phase 2 STARTED (CalibrationDAO dual-read)
+**Version:** 1.3 (2026-03-31)
 **Depends on:** [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocAction_SRS.md](DocAction_SRS.md) §1.3, [CALIBRATION_SRS.md](CALIBRATION_SRS.md)
 
 ---
 
-## 1. Problem — Confused Boundaries (Resolved)
+## 1. Schema — ERP.db (22 tables)
 
-Original state mixed three concerns into two databases. **Resolution:** discipline
-metadata migrated from component_library.db to ERP.db; validation.db merged into
-ERP.db. Architecture is now 4-DB (component_library / ERP / BOM / output).
-
-```
-component_library.db (23,888 component_definitions + 23,901 geometries)
-├── LOD concern:       M_Product, component_definitions, component_geometries  ← CORRECT
-├── Discipline concern: ad_space_type_mep_bom, ad_element_mep, ad_fp_coverage  ← MIGRATED → ERP.db
-├── Space concern:     ad_space_type, ad_wall_face, placement_rules            ← MIGRATED → ERP.db
-└── Assembly concern:  ad_assembly_connector, ad_assembly_manifest             ← MIGRATED → ERP.db
-
-ERP.db (consolidated — includes former validation.db)
-├── Discipline:   all ad_* discipline metadata tables                          ← DONE
-├── Rules (mined): ad_val_rule + ad_val_rule_param (415 mined dimension rules) ← DONE
-├── Rules (compliance): AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class         ← MERGED from validation.db
-└── Results:      AD_Validation_Result, ad_pattern_rule                        ← MERGED from validation.db
-```
-
-**Problem:** `component_library.db` is 23,901 geometry rows — it's a product
-catalog. Discipline metadata (what MEP goes where, how many, what spacing,
-what connects to what) is NOT product geometry. Mixing them means:
-
-1. Querying "how many sprinklers in a bedroom?" loads 23K geometry rows into the connection
-2. Updating discipline rules risks touching the LOD catalog
-3. No clean separation between "what the product looks like" (LOD) and
-   "where the product goes" (discipline placement)
-
----
-
-## 2. Solution — ERP.db (Third Database)
-
-```
-component_library.db — WHAT things look like (LOD catalog)
-├── M_Product (608 products: dimensions, ifc_class)
-├── component_definitions (23,888 LOD attachments)
-├── component_geometries (23,901 mesh data)
-└── surface_styles, material_layers
-
-ERP.db — WHERE things go + HOW they connect (discipline metadata)
-├── Discipline schedule:  ad_space_type_mep_bom (186 rows)
-├── MEP element types:    ad_element_mep (12 rows)
-├── FP coverage rules:    ad_fp_coverage (4 hazard classes)
-├── Space types:          ad_space_type (41 types)
-├── Assembly connectors:  ad_assembly_connector (10 rows)
-├── Placement rules:      placement_rules (4,801 rows)
-├── Wall faces:           ad_wall_face (204 rows)
-├── Space adjacency:      ad_space_adjacency
-├── FP triggers:          ad_fp_trigger
-├── Code requirements:    ad_code_requirement
-├── IFC alias cascade:    ad_element_mep_alias (84 rows, DV003)
-├── IFC class map:        ad_ifc_class_map (46 rows, DV005) — authority table for extract.py
-├── Calibration results:  W_Calibration_Result (from CalibrationTest)
-├── Schema config:        AD_SysConfig
-├── Shared recipes:       M_BOM (1 FP_SYSTEM, DV025) — §10.4.6
-└── Recipe lines:         M_BOM_Line (3 FP children, DV025)
-
-ERP.db also contains (compliance — formerly validation.db, now merged):
-├── AD_Val_Rule + AD_Val_Rule_Param (thresholds)
-├── AD_Clash_Rule (cross-discipline pairs)
-├── AD_Occupancy_Class (occupancy classification)
-└── AD_Validation_Result (pass/warn/block verdicts)
-```
-
-### 2.1 Three Concerns, Two Shared Databases
-
-> **Note:** validation.db is now merged into ERP.db. All compliance rules live in ERP.db.
-
-| Database | Concern | Opened By | Read/Write | Size |
-|----------|---------|-----------|------------|------|
-| `component_library.db` | Product LOD (geometry, dimensions) | Compile pipeline, Designer LOD fetch | Read-only at runtime | ~5 MB (23K geometries) |
-| `ERP.db` | Discipline metadata + compliance rules + verdicts | DocEvent engine, CalibrationTest, PlacementValidator | Read at runtime, write at seed/migrate | ~70 KB |
-
-### 2.2 Reference Pointers — No LOD Copies
-
-ERP.db references component_library.db products by **name**, not
-by FK or by copying LOD data:
-
-```
-ERP.db                          component_library.db
-┌─────────────────────────┐                ┌──────────────────────┐
-│ ad_element_mep          │                │ M_Product            │
-│   element_type: SPRINKLER──── name ────▶│   name: SPRINKLER    │
-│   ifc_class: IfcFire... │                │   width, depth, height│
-│   discipline: FP        │                │   ifc_class          │
-│   ports: [{"IN":0.015}] │                └──────────┬───────────┘
-└─────────────────────────┘                           │
-                                                      ▼
-┌─────────────────────────┐                ┌──────────────────────┐
-│ ad_space_type_mep_bom   │                │ component_definitions│
-│   mep_product_id: SPRINKLER── name ────▶│   name LIKE '%sprink%│
-│   qty_normal: 0         │                │   geometry_hash      │
-│   per_area_normal: 0.07 │                │   attachment_face    │
-│   placement_rule: GRID  │                └──────────┬───────────┘
-└─────────────────────────┘                           │
-                                                      ▼
-                                           ┌──────────────────────┐
-                                           │ component_geometries │
-                                           │   vertices, faces    │
-                                           └──────────────────────┘
-```
-
-**The join is at runtime, in Java**, not via SQL FK. When DocEvent places a
-SPRINKLER, it:
-1. Reads discipline metadata from `ERP.db` (how many, where)
-2. Reads product dimensions + LOD from `component_library.db` (what it looks like)
-3. The link is `ad_element_mep.element_type` = `ad_space_type_mep_bom.mep_product_id`
-   → at LOD fetch time, resolves to `M_Product` via alias cascade (§5.1)
-
-**No geometry in ERP.db. No discipline metadata in component_library.db.**
-
----
-
-## 3. Tables — What Moves, What Stays, What's New
-
-### 3.1 Tables Moving FROM component_library.db TO ERP.db
-
-| Table | Rows | Why It Moves |
-|-------|------|-------------|
-| `ad_space_type_mep_bom` | 186 | Discipline schedule — not product geometry |
-| `ad_element_mep` | 12 | MEP element type definitions — not LODs |
-| `ad_fp_coverage` | 4 | FP hazard class thresholds — rule data |
-| `ad_space_type` | 41 | Space type taxonomy — not product data |
-| `ad_space_adjacency` | ~20 | Space relationship rules |
-| `ad_assembly_connector` | 10 | Connection topology — not geometry |
-| `ad_assembly_manifest` | ~5 | Assembly composition |
-| `ad_wall_face` | 204 | Room boundary faces — spatial, not LOD |
-| `placement_rules` | 4,801 | Placement strategy rules |
-| `ad_fp_trigger` | ~10 | FP trigger conditions |
-| `ad_code_requirement` | ~20 | Building code refs |
-| `ad_room_slot` | ~50 | Room slot definitions |
-| `ad_space_dim` | ~30 | Space dimension rules |
-| `ad_space_exterior_rule` | ~10 | Exterior exposure rules |
-| `ad_space_type_opening` | ~20 | Opening requirements per space |
-| `ad_space_type_furniture` | ~20 | Furniture schedule per space |
-| `ad_space_type_mep` | ~20 | MEP services per space |
-
-### 3.2 Tables STAYING in component_library.db
-
-| Table | Rows | Why It Stays |
-|-------|------|-------------|
-| `M_Product` | 608 | Product catalog — dimensions, ifc_class |
-| `component_definitions` | 23,888 | LOD mesh attachments |
-| `component_geometries` | 23,901 | Actual mesh data (vertices, faces, normals) |
-| `surface_styles` | ~50 | Material appearance |
-| `material_layers` | ~20 | Wall/slab layer composition |
-| `I_Geometry_Map` | ~200 | Extraction geometry mapping |
-| `M_Product_Image` | ~10 | Product thumbnails |
-
-### 3.3 Compliance Tables in ERP.db
-
-| Table | Rows | Why It Stays |
-|-------|------|-------------|
-| `AD_Val_Rule` | ~30 | Compliance rule definitions |
-| `AD_Val_Rule_Param` | ~100 | Rule threshold parameters |
-| `AD_Clash_Rule` | ~10 | Cross-discipline clash pairs |
-| `AD_Occupancy_Class` | 6 | Occupancy classifications |
-| `AD_Val_Rule_Occupancy` | ~15 | Rule-occupancy links |
-| `AD_Val_Rule_Exception` | ~5 | Documented exceptions |
-| `AD_Val_Rule_Mining_Source` | ~15 | Mining provenance |
-| `AD_Validation_Result` | writes | Runtime validation results |
-
-### 3.4 NEW Tables in ERP.db
-
-| Table | Purpose | Source |
-|-------|---------|--------|
-| `ad_element_mep_alias` | IFC version-agnostic product resolution (84 rows) | DV003: IFC4 spec + DX/TE mined |
-| `ad_ifc_class_map` | IFC class extraction authority (46 rows): discipline, category, attachment per IFC type. Read by `extract.py` at startup — adding a new IFC type = one INSERT, zero code changes. | DV005: building + IFC4X3 infra census |
-| `W_Calibration_Result` | Calibration test results (DocEvent vs Terminal) | CalibrationTest.java |
-| `AD_SysConfig` | Schema version tracking | Standard |
-
----
-
-## 4. Schema — ERP.db
-
-**Authoritative schema:** `migration/DV001_ERP_schema.sql` (DDL),
-`migration/DV003_element_mep_alias.sql` (alias cascade).
-Schemas match the actual column layout in component_library.db source tables.
-
-### 4.1 Table Summary (22 tables)
+**Authoritative DDL:** `migration/DV001_ERP_schema.sql`, `migration/DV003_element_mep_alias.sql`
 
 | Table | PK | Rows | Purpose |
 |-------|----|------|---------|
@@ -211,35 +33,49 @@ Schemas match the actual column layout in component_library.db source tables.
 | `ad_space_type_opening` | (space_type_id, opening_role, family_id) | 103 | Opening requirements per space |
 | `ad_space_type_furniture` | space_type_id | 37 | Furniture schedule per space |
 | `ad_space_type_mep` | space_type_id | 22 | MEP service requirements per space |
-| `ad_element_mep_alias` | alias_id | 84 | IFC version-agnostic product resolution (§5.1) |
-| `ad_ifc_class_map` | ifc_class | 46 | IFC class extraction authority — discipline, category, attachment, domain per type. `extract.py` reads at startup. See §5.2. |
-| `ad_val_rule` | ad_val_rule_id | 415 | Mined dimension rules: typical W/D/H per (ifc_class, storey) from 20 buildings. DV010 migration. |
-| `ad_val_rule_param` | ad_val_rule_param_id | 1245 | Rule parameters (typical_width_mm, typical_depth_mm, typical_height_mm). |
+| `ad_element_mep_alias` | alias_id | 84 | IFC version-agnostic product resolution (§2.1) |
+| `ad_ifc_class_map` | ifc_class | 46 | IFC class extraction authority (§2.2) |
+| `ad_val_rule` | ad_val_rule_id | 415 | Mined dimension rules: typical W/D/H per (ifc_class, storey) |
+| `ad_val_rule_param` | ad_val_rule_param_id | 1245 | Rule parameters (typical_width_mm, typical_depth_mm, typical_height_mm) |
 | `W_Calibration_Result` | id | 0 | CalibrationTest output (runtime writes) |
 | `AD_SysConfig` | Name | 3 | Schema/seed/alias version tracking |
 
+Compliance tables (AD_Val_Rule, AD_Clash_Rule, AD_Occupancy_Class, AD_Validation_Result)
+and shared discipline recipes (M_BOM, M_BOM_Line) also live in ERP.db. Full compliance
+schema: see [DocValidate.md](DocValidate.md).
+
 ---
 
-## 5. Reference Pointer Pattern — No FK Across Databases
+## 2. Cross-Database References
 
-SQLite does not support cross-database foreign keys. The reference is by
-**name convention** — same pattern as iDempiere's `AD_Reference` lookups:
+SQLite has no cross-database FK. References use **name convention** — same
+pattern as iDempiere `AD_Reference` lookups:
 
-| ERP.db column | Resolves to | Resolution method |
-|--------------------------|-------------|-------------------|
+| ERP.db column | Resolves to | Method |
+|--------------------------|-------------|--------|
 | `ad_element_mep.element_type` | `M_Product` by alias cascade | Java: try ifc_class → predefined_type → type_class → element_name LIKE |
 | `ad_space_type_mep_bom.mep_product_id` | `ad_element_mep.element_type` | SQL within ERP.db (same DB) |
 | `ad_assembly_connector.assembly_id` | `M_Product.name` | Java: `SELECT * FROM M_Product WHERE name = ?` |
 | `placement_rules.element_name` | `M_Product.name` or `m_bom.bom_id` | Java: lookup by name |
 
-### 5.1 IFC Version-Agnostic Resolution — `ad_element_mep_alias` (DV003)
+```
+ERP.db                          component_library.db
+┌─────────────────────────┐                ┌──────────────────────┐
+│ ad_element_mep          │                │ M_Product            │
+│   element_type: SPRINKLER──── name ────▶│   name: SPRINKLER    │
+│   ifc_class: IfcFire... │                │   width, depth, height│
+│   discipline: FP        │                │   ifc_class          │
+│   ports: [{"IN":0.015}] │                └──────────────────────┘
+└─────────────────────────┘
+```
 
-**Problem:** IFC2x3 lumps all MEP into generic classes (IfcFlowTerminal,
-IfcFlowController). IFC4 splits them into specific subtypes (IfcOutlet,
-IfcSwitchingDevice). Real-world IFC files use vendor-specific naming.
-Matching by `ifc_class` alone fails for 8/12 canonical types.
+No geometry in ERP.db. No discipline metadata in component_library.db.
 
-**Solution:** 4-tier resolution cascade using `ad_element_mep_alias`:
+### 2.1 IFC Version-Agnostic Resolution — `ad_element_mep_alias`
+
+IFC2x3 lumps all MEP into generic classes (IfcFlowTerminal). IFC4 splits
+them into specific subtypes (IfcOutlet). Real-world IFC files use
+vendor-specific naming. 4-tier resolution cascade:
 
 ```
 Priority 1: ifc_class        — IfcOutlet → OUTLET (IFC4 direct match)
@@ -248,52 +84,13 @@ Priority 3: type_class       — IfcOutletType → OUTLET (IFC2x3 via IfcRelDefi
 Priority 4: element_name     — %Receptacle% → OUTLET (name pattern, last resort)
 ```
 
-**Java resolver pseudocode:**
-```java
-String resolve(String ifcClass, String predefinedType, String typeClass, String elementName) {
-    // Try each priority in order — first match wins
-    for (Alias a : aliases) {  // sorted by priority ASC
-        if ("ifc_class".equals(a.matchField) && a.matchValue.equals(ifcClass)) return a.canonicalType;
-        if ("predefined_type".equals(a.matchField) && a.matchValue.equals(predefinedType)) return a.canonicalType;
-        if ("type_class".equals(a.matchField) && a.matchValue.equals(typeClass)) return a.canonicalType;
-        if ("element_name".equals(a.matchField) && likeMatch(elementName, a.matchValue)) return a.canonicalType;
-    }
-    return null; // unresolvable
-}
-```
+84 aliases covering all 12 canonical MEP types. DX resolution: 101/119 distinct
+MEP names (85%).
 
-**Coverage (seeded from DX + TE reference models):**
-- IFC4 class: 14 aliases (all 12 canonical types)
-- PredefinedType: 24 aliases (IFC4 standard enums)
-- IFC2x3 type class: 12 aliases (via IfcRelDefinesByType)
-- Element name: 34 aliases (mined from DX=12, TE=22 patterns)
-- DX resolution: 101/119 distinct MEP names (85%)
-- Unmatched: kitchen appliances (Range, Microwave, Refrigerator), plumbing valves
+### 2.2 IFC Class Extraction Authority — `ad_ifc_class_map`
 
-**The Java DAO joins across databases.** Each method receives the connections
-it needs:
-
-```java
-// DocEvent placement: reads ERP.db + component_library.db
-void placeElements(Connection discConn, Connection compConn, ...)
-
-// Calibration: reads ERP.db (discipline + compliance) + TE reference DB
-void calibrate(Connection discConn, Connection teConn, ...)
-
-// LOD fetch: reads component_library.db only
-Geometry fetchLOD(Connection compConn, String productName)
-```
-
-### 5.2 IFC Class Extraction Authority — `ad_ifc_class_map` (DV005)
-
-**Problem:** `extract.py` hardcoded 4 Python dicts (REFERENCE_CLASSES, DISCIPLINE_MAP,
-CATEGORY_MAP, ATTACHMENT_MAP). Adding a new IFC element type required editing Python code.
-Infrastructure IFC4X3 brought 11 new types (IfcTrackElement, IfcCourse, etc.) and more
-will appear as new IFC domains are encountered.
-
-**Solution:** Authority table `ad_ifc_class_map` in ERP.db. `extract.py`
-reads this table at startup and populates all 4 maps from it. Falls back to hardcoded
-defaults if DB is unavailable.
+Authority table for `extract.py`. Read at startup — adding a new IFC type
+= one INSERT, zero code changes.
 
 ```
 ad_ifc_class_map (46 rows)
@@ -308,156 +105,61 @@ ad_ifc_class_map (46 rows)
 └──────────────────────┴────────────┴─────────────────┴─────────────────┴──────────┴───────────┘
 ```
 
-**Adding a new IFC type:**
-```sql
-INSERT INTO ad_ifc_class_map
-    (ifc_class, discipline, category, attachment_face, ifc_schema, domain, description)
-VALUES
-    ('IfcCableCarrierSegment', 'ELEC', 'CABLE_TRAY', 'BOTTOM', 'IFC4', 'BUILDING', 'Cable tray');
-```
-
-Zero code changes. Same data-not-code pattern as AD_Val_Rule.
-
-**Columns:**
-
-| Column | Type | Purpose |
-|--------|------|---------|
-| `ifc_class` | TEXT PK | IFC entity type name |
-| `discipline` | TEXT | Extraction discipline: ARC, STR, MEP, FP, ELEC, ACMV, ROAD, RAIL, GEO, LAND, SIGN |
-| `category` | TEXT | Component library category: BEAM, SPRINKLER, TRACK_ELEMENT, etc. |
-| `attachment_face` | TEXT | Placement attachment: TOP, BOTTOM, SIDE, ENDS, CENTER |
-| `ifc_schema` | TEXT | Schema version: IFC2X3, IFC4, IFC4X3 |
-| `domain` | TEXT | Domain: BUILDING, ROAD, BRIDGE, RAIL, LANDSCAPE, MEP |
-| `is_active` | INTEGER | Toggle without deleting (1=active, 0=disabled) |
-| `description` | TEXT | Human-readable description |
-
-**Migration:** `DV005_ifc_class_map.sql`. See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.3.
+See [`InfrastructureAnalysis.md`](InfrastructureAnalysis.md) §3.3.
 
 ---
 
-## 6. Migration Plan — Phased, Non-Destructive
+## 3. Connection Map
 
-### Phase 1: Create ERP.db (DV001+DV002+DV003+DV005) — DONE (session 33-34)
-1. `DV001_ERP_schema.sql` — 19 tables matching component_library.db schemas
-2. `DV002_seed_from_component.sql` — ATTACH + INSERT OR IGNORE (17 tables, 5613 rows)
-3. `DV003_element_mep_alias.sql` — IFC version-agnostic alias cascade (84 rows)
-4. `DV005_ifc_class_map.sql` — IFC class extraction authority (46 rows, building + infra)
-4. `DiscValidationDBTest.java` — 12/12 witnesses pass (SCHEMA, SEED, REF, ALIAS, ND)
-
-### Phase 2–3: COMPLETE (sessions 36b–41)
-
-All discipline metadata migrated. Java code (CalibrationDAO, MEPAD, MEPBOMResolver,
-ManifestResolver) reads from ERP.db. component_library.db reduced from
-81→21 tables. See [`database/DATABASE_SCHEMA.md`](https://github.com/red1oon/BIMCompiler/blob/master/database/DATABASE_SCHEMA.md)
-for the current table inventory.
-
----
-
-## 7. Connection Map — Who Opens What
-
-### Current (4 DBs)
 ```
-CompilationPipeline     → component_library.db (LOD only — 21 tables)
+CompilationPipeline     → component_library.db (LOD)
 PlacementValidator      → ERP.db (compliance rules)
 CalibrationDAO          → ERP.db + TE_BOM.db
 MEPAD/MEPBOMResolver    → ERP.db (discipline metadata)
 ManifestResolver        → ERP.db (discipline metadata)
-DocEvent (future)       → ERP.db (schedules) + component_library.db (LOD fetch)
+DocEvent                → ERP.db (schedules) + component_library.db (LOD fetch)
 Handler cascade H1-H6  → ERP.db (discipline metadata + compliance rules)
 ```
 
-### Connection parameter naming convention
 ```java
 Connection compConn;   // component_library.db — LOD catalog
 Connection discConn;   // ERP.db               — discipline metadata + compliance rules
 Connection bomConn;    // {prefix}_BOM.db       — building BOM
-Connection outConn;    // output.db             — compile output
-Connection teConn;     // TE reference DB       — Terminal oracle (tests only)
 ```
 
 ---
 
-## 8. File Location
+## 4. File Location
 
 ```
 library/
 ├── component_library.db     ← LOD catalog (M_Product, geometries)
 ├── ERP.db                   ← discipline metadata + compliance rules
-├── SH_BOM.db                ← Sample House BOM
-├── DX_BOM.db                ← Duplex BOM
-└── TE_BOM.db                ← Terminal BOM
+└── {PREFIX}_BOM.db          ← per-building BOM
 
 migration/
-├── DV001_ERP_schema.sql               ← schema DDL (19 tables)
-├── DV002_seed_from_component.sql      ← seed via ATTACH (17 tables)
-├── DV003_element_mep_alias.sql        ← IFC alias cascade (84 rows)
-├── V001..V006                         ← compliance rule migrations (now in ERP.db)
+├── DV001_ERP_schema.sql     ← schema DDL (19 tables)
+├── DV002_seed_from_component.sql ← seed via ATTACH (17 tables)
+├── DV003_element_mep_alias.sql   ← IFC alias cascade (84 rows)
+├── DV005_ifc_class_map.sql       ← IFC class extraction authority (46 rows)
+└── V001..V006               ← compliance rule migrations
 ```
 
 ---
 
-## 9. Traceability
+## 5. Traceability
 
 | Witness | What it Proves | Test |
 |---------|---------------|------|
-| W-DV-DB-SCHEMA | DV001+DV003 creates all 20 required tables | DiscValidationDBTest |
+| W-DV-DB-SCHEMA | DDL creates all 20 required tables | DiscValidationDBTest |
 | W-DV-DB-SEED | Seed data matches component_library.db source counts | DiscValidationDBTest |
 | W-DV-DB-REF | Reference pointers resolve across databases | DiscValidationDBTest |
 | W-DV-DB-ALIAS | Alias cascade resolves IFC2x3↔IFC4 (84 rows, 4 tiers) | DiscValidationDBTest |
-| W-DV-DB-ND | Migration does not disturb component_library.db | DiscValidationDBTest |
+| W-DV-DB-ND | Schema changes do not disturb component_library.db | DiscValidationDBTest |
 
 ---
 
----
-
-## 10. Open Question — Application Dictionary Database (S62)
-
-> **Status:** INVESTIGATE. Raised during S62 FP trial when M_Product_Category was
-> added to component_library.db. Another session found M_Product rows dropped to 19
-> after schema alignment — suggesting the DB boundaries need clarification.
-
-### 10.1 Problem — M_Product Is Master Data, Not Geometry
-
-`component_library.db` currently holds two unrelated concerns:
-
-1. **Geometry catalog** — component_definitions (23,888), component_geometries (23,901),
-   surface_styles, material_layers. This is LOD data: what things look like.
-2. **Master data** — M_Product (product dimensions, IFC class), M_Product_Category
-   (discipline hierarchy), 66 AD tables (ad_space_type, ad_wall_face, etc. — see §11.6.7).
-   This is ERP configuration: what things are and where they belong.
-
-In iDempiere, M_Product and all AD tables live in the central application database.
-Geometry is an attachment, not co-located. Mixing them means:
-
-- Schema changes to AD tables (e.g., adding M_Product_Category) risk disturbing
-  23K geometry rows
-- Querying "what products exist in FP category?" opens a 221MB geometry connection
-- Migration scripts that target master data must be careful not to touch geometry
-- DiscValidationDBTest.componentLibraryUndisturbed check fails when AD tables change
-
-### 10.2 Options
-
-**Option A: Split component_library.db** — Move M_Product, M_Product_Category, and
-all 34 AD tables to ERP.db (renamed to `ad_dictionary.db`). Keep
-component_library.db as pure geometry (component_definitions + component_geometries +
-surface_styles + material_layers). The runtime join by name (§2.2) already supports this.
-
-**Option B: Expand ERP.db** — Same as A but keep the ERP.db name.
-Add M_Product + M_Product_Category there. component_library.db becomes geometry-only.
-
-**Option C: Keep current split, fix the guard** — Leave M_Product in component_library.db
-but update DiscValidationDBTest to expect schema evolution (M_Product_Category column,
-product count changes). Accept the mixed concern.
-
-### 10.3 Decision Criteria
-
-- Which option minimizes code changes? (How many Java files open component_library.db
-  to read M_Product vs component_definitions?)
-- Which option aligns with iDempiere AD pattern? (M_Product belongs with AD tables)
-- Which option avoids breaking the 5-table LOD chain (§9.1)?
-- Does the BOM DB need M_Product? (m_bom_line.child_product_id resolves to M_Product)
-
-### 10.4 AD_Org — Disciplines as Organizational Units
+## 6. AD_Org — Disciplines as Organizational Units
 
 iDempiere uses AD_Org to partition data by organizational unit. In construction,
 disciplines ARE organizational units — each is a trade with its own contractor,
@@ -491,16 +193,13 @@ only to the FP trade. Shared infrastructure (`AD_Org = '*'`) is visible to all.
 This enables per-discipline BOM views, validation scoping, and trade-specific
 product catalogs — all from a single FK.
 
-### 10.4.1 Spatial Model — Space + Occupant + Verb + Rule
+### 6.1 Spatial Model — Space + Occupant + Verb + Rule
 
 > *A discipline is a contractor with a checklist, not a room with walls.*
 
-**TE finding (S99):** `DisciplineBomBuilder` created DISCIPLINE SET BOMs as
-spatial containers between FLOOR and LEAF. This forced each discipline into
-its own AABB — but disciplines are not spatial containers. A fire protection
-pipe network spans the entire floor. Result: 471 tack overflows, 36
-unbalanced BOMs. Root cause: discipline modelled as a tree level instead of
-a line attribute. See [TerminalAnalysis.md §Compilation Status](TerminalAnalysis.md#te-compilation-status--honesty-report-s99-2026-03-27).
+Disciplines are not spatial containers — a fire protection pipe network
+spans the entire floor. Discipline is a line attribute (AD_Org_ID), not a
+tree level. See [TerminalAnalysis.md §Compilation Status](TerminalAnalysis.md#te-compilation-status--honesty-report-s99-2026-03-27).
 
 The BOM hierarchy is recursive and abstract:
 
@@ -567,7 +266,7 @@ metadata, not from code — same as iDempiere's DocAction pattern.
 INSIDE: child sits AT a point within the parent space (tack offset = position).
 COVERING: child SPANS the parent space (verb determines pattern, rule determines density).
 
-### 10.4.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement
+### 6.2 Discipline Profiles — Abstract Recipe, Space-Dependent Placement
 
 Each discipline has a **recipe** (BOM cascade from its top-level Category)
 and **Org defaults** (discipline-wide practice). The parent space determines
@@ -595,7 +294,7 @@ follows iDempiere order: DocEvent per Org (1st, discipline blanket +
 government standards) → ASI resolution per instance (2nd) → AD_Val_Rule
 user override on specific lines (3rd, on demand).
 
-### 10.4.3 Three-Stage Validation — iDempiere Processing Order
+### 6.3 Three-Stage Validation — iDempiere Processing Order
 
 | Stage | iDempiere parallel | What it does | Fires | Example |
 |-------|-------------------|-------------|-------|---------|
@@ -678,10 +377,9 @@ Migration path: copy qualifying rows into AD_DocEvent_Rule with
 
 #### AD_Val_Rule — 3rd Stage (ERP.db, compliance rules)
 
-The V001 schema stays as-is within ERP.db. Its purpose changes:
-
-- **Before (wrong):** Government standards, post-hoc compliance
-- **After (correct):** User-initiated per-line rule addition/change/waiver
+The V001 schema stays as-is within ERP.db. AD_Val_Rule is a user-initiated
+per-line rule addition/change/waiver (government standards are 1st-stage
+DocEvent, not 3rd-stage AD_Val_Rule).
 
 The user opens an exploded order, sees specific sub-lines, and attaches:
 - **ADD:** "Apply stricter 3000mm spacing to THIS branch" (new rule on line)
@@ -691,25 +389,22 @@ The user opens an exploded order, sees specific sub-lines, and attaches:
 This is exactly how iDempiere's AD_Val_Rule works — a lookup filter that
 the user configures on a specific field/line to narrow or adjust what's valid.
 
-### 10.4.4 Impact on the BOM Tree
+### 6.4 BOM Tree Structure
 
-**Before (wrong):** `BUILDING → FLOOR → DISCIPLINE SET → LEAF` — discipline
-as tree level with own AABB → 471 tack overflows.
-
-**After (correct):** `BUILDING → FLOOR → LEAF` — same depth as SH/DX.
+`BUILDING → FLOOR → LEAF` — same depth for all building categories.
 Tack is `element.minX - floor.minX`. Always positive. Discipline resolves
-from the child product, not from the line: `m_bom_line.child_product_id →
-M_Product → M_Product_Category → AD_Org_ID`. This is standard iDempiere —
+from the child product: `m_bom_line.child_product_id →
+M_Product → M_Product_Category → AD_Org_ID`. Standard iDempiere —
 every record carries AD_Org, the line is just a relationship.
 
-| Component | Change |
-|-----------|--------|
-| `DisciplineBomBuilder` | Remove DISCIPLINE SET BOM. LEAF lines directly under FLOOR |
-| `BomValidator` | W-TACK-1/W-BUFFER-1 check FLOOR→LEAF, not SET→LEAF |
-| `CompilationPipeline` | Delete CO skip hack (line 352-354) |
+| Component | Responsibility |
+|-----------|----------------|
+| `DisciplineBomBuilder` | LEAF lines directly under FLOOR (no DISCIPLINE SET level) |
+| `BomValidator` | W-TACK-1/W-BUFFER-1 check FLOOR→LEAF |
+| `CompilationPipeline` | Single walk path, no category skip hack |
 | `PlacementCollectorVisitor` | Resolve AD_Org_ID from child product, not discipline stack |
 
-### 10.4.5 The BOM Is Already Perfect
+### 6.5 The BOM Is Already Perfect
 
 A BOM is a BOM — same as manufacturing a car. You don't label an engine
 assembly with a tier tag. It's a product with children. The tree
@@ -727,7 +422,7 @@ interchangeable products at each level (same shelf = same swap pool).
 **VIEW_CONTRACTS.md `v_qualified_bom`** currently uses a legacy `bom_type`
 bind parameter. Migration pending to use M_Product_Category instead.
 
-### 10.4.6 Shared Discipline Recipes in ERP.db
+### 6.6 Shared Discipline Recipes in ERP.db
 
 Discipline BOMs are **shared across all buildings.** FP is FP — one recipe,
 all buildings, same rules. ACMV is ACMV. The recipe does not change; the
@@ -785,7 +480,7 @@ Category = the substitution shelf (designer can swap products within it).
 Jurisdiction-swappable: same BOM, same Org, different AD_DocEvent_Rule set
 for Malaysian (UBBL) vs US (NFPA) code. BOM and ASI don't change.
 
-### 10.4.6.1 Discipline Separation — Two-Class Architecture
+### 6.6.1 Discipline Separation — Two-Class Architecture
 
 Discipline separation spans two pipeline classes:
 
@@ -811,20 +506,16 @@ fires on each discipline OrderLine — applies jurisdiction rules (NFPA 13,
 UBBL, MS 1228). RouteBuilder/CrawlRouter generates MEP routing until qty
 terminals served. AD_Val_Rule validates the output.
 
-**Current state (S102 — INCORRECT):** `DisciplineBomBuilder` writes ALL
-elements (ARC + MEP) flat under FLOOR with AD_Org_ID as a tag. No
-discipline separation. No ERP.db recipe consumption. RouteBuilders fire
-but produce skeleton only (258 edges for TE vs 8,056 MEP elements).
-The extraction does the compiler's job — MEP elements are placed from
-IFC positions, not from discipline recipes.
-
-**Corrective:** See prompt `00b_discipline_separation.txt`.
+**Pending:** `DisciplineBomBuilder` currently writes all elements flat
+under FLOOR. Corrective in prompt `00b_discipline_separation.txt` —
+IFCtoBOM produces ARC+STR only, MEP comes from ERP.db shared recipes
+via DAGCompiler Callout.
 
 For **generative buildings**, the compiler applies the shared recipes
 using verb Strategy + DocEvent per Org + ASI. AD_Val_Rule validates
 the output.
 
-### 10.4.7 GoF Design Patterns
+### 6.7 GoF Design Patterns
 
 | Pattern | Application |
 |---------|-------------|
@@ -833,7 +524,7 @@ the output.
 | **Strategy** | Verb determines placement method (DocEvent + ASI) |
 | **Specification** | AD_DocEvent_Rule validates during walk (1st, blanket + standards). AD_Val_Rule = user override (3rd, per-line) |
 
-### 10.4.8 Cross-References
+### 6.8 Cross-References
 
 | Building | Disciplines | Concern |
 |----------|-------------|---------|
@@ -842,7 +533,7 @@ the output.
 | **FK** | 2 (ARC,STR) + ROOF debate | [FZKHausAnalysis.md](FZKHausAnalysis.md) |
 | **Infrastructure** | ROAD,RAIL,GEO,LAND,SIGN | Extended codes. [InfrastructureAnalysis.md](InfrastructureAnalysis.md) |
 
-### 10.4.9 Stair Validation Rules — Candidate AD Table Extensions (S100-p84)
+### 6.9 Stair Validation Rules — Candidate AD Table Extensions (S100-p84)
 
 Existing infrastructure: `ad_stair_requirement` (7 rows in BOM.db, seeded by
 `scripts/create_ad_vertical_circulation.py`), `VerticalCirculationAD.java`,
@@ -867,7 +558,7 @@ required, min 2 stairs. These rules + ASI (per-instance run length, landing widt
 resolve stair geometry without manual pattern recognition. See
 [TerminalAnalysis.md §Stair Validation Rules](TerminalAnalysis.md).
 
-### 10.4.10 Movement Verbs — Routing Linear Elements Through Buildings
+### 6.10 Movement Verbs — Routing Linear Elements Through Buildings
 
 Linear MEP elements (pipes, ducts, cables) don't just get placed at points.
 They **move** through the building — following surfaces, bending at corners,
@@ -952,7 +643,7 @@ ASI carries per-instance overrides (actual angle, actual diameter).
 SP flows **downward by gravity**. FOLLOW must maintain minimum gradient
 (1:40 for 100mm pipe). The verb checks slope at each segment.
 
-### 10.4.11 Parasitic Discipline Implementation Tasks
+### 6.11 Parasitic Discipline Implementation Tasks
 
 Implementation in 4 phases: POC first to prove assumptions, then build out.
 
@@ -1184,7 +875,7 @@ P94  (BomWriter)     ──→ T1.x (new BOM lines need single write path)
 return the right room coordinates, the entire parasitic model breaks.
 Prove it on SH first (small, fast, 7/7 GREEN).
 
-### 10.4.12 Routing Architecture Assessment — Industry Position & Known Gaps
+### 6.12 Routing Architecture Assessment — Industry Position & Known Gaps
 
 The CrawlRouter (§10.4.10) is a **prescriptive recipe engine**: each discipline
 builder encodes a standard installation pattern as a sequence of CrawlOps.
@@ -1407,7 +1098,173 @@ Each phase is one bounded task for a coder. FP grid (L2.2) is the natural
 first because sprinkler spacing is the most formula-driven (NFPA 13 table
 lookup from hazard class + room AABB → grid dimensions → head count).
 
-### 10.4.13 IFC-Driven Extraction — Replacing YAML Scope Boxes
+### 6.12.1 Compilation Isolation Invariant (S103)
+
+**Rule:** The DAGCompiler SHALL NOT open any extraction DB, IFC file, or `input/`
+source during compilation. The only permitted connections are:
+
+| Connection | Purpose | Direction |
+|-----------|---------|-----------|
+| `bom.db` (System.getProperty) | BOM recipes, C_OrderLine, ad_sysconfig | Read + Write |
+| `library/ERP.db` | Shared discipline recipes, products, validation rules | Read-only |
+| `output.db` | Compilation output (elements_rtree, c_orderline, system_edges) | Write |
+
+**Verification:** GEO (PlacementCollectorVisitor.emitGeoSummary) opens the extraction
+DB in a **separate proof stage** (read-only comparison). It cannot feed back into the
+walk. GEO is an auditor, not a participant.
+
+**Why this matters for LMP:** The tack chain in `m_bom_line.dx/dy/dz` was computed
+at extraction time from IFC positions. At compilation time, the BOM walker reads
+only `m_bom_line` — it never sees the IFC source. The BUILDING origin is the single
+anchor point; everything below cascades parent-relative. No absolute borrowing.
+
+**Enforcement:** Code review. No `*_extracted.db` or `*_input*` import exists in
+`DAGCompiler/src/main/java/`. Any future addition must pass this gate.
+
+### 6.12.2 MEP as BOM Walk — Joint Piece Architecture (S103)
+
+**Principle:** Placing a sprinkler on a pipe = placing a sofa in a room. Same
+walker. Same tack chain. No special routing engine needed.
+
+MEP "routing" is not a computation problem — it is an intensive BOM walk with
+small pieces. Each piece is a basic Lego joint: one parent connects to one child
+with a relative tack offset. The walker picks pieces from a toolbox and chains
+them together, exactly as it chains wall→room→furniture for ARC.
+
+#### Why Not Compute?
+
+The IFC already contains the complete MEP topology — `IfcRelConnectsPorts`,
+pipe-to-fitting-to-terminal chains with spatial relationships. The S100
+RouteBuilders (CrawlRouter + 6 discipline builders) discard this topology at
+extraction and try to reinvent it from engineering rules. This is backwards:
+
+- **Extraction:** IFC says pipe A connects to tee B at offset (dx, dy, dz).
+  This is a spatial fact, not a computation.
+- **Current approach:** Throw away the connection, then RouteBuilder
+  recomputes "riser → header → branch" from NFPA rules.
+- **Correct approach:** Extract the connection AS a BOM piece. Walk it.
+
+#### The Toolbox — Joint Pieces in ERP.db
+
+Each joint piece is a minimal M_BOM: one parent, one child, one tack offset.
+Extracted from IFC connection relationships, not invented. As basic as joining
+two pieces, or one piece to one base.
+
+```
+ERP.db M_BOM — MEP joint pieces (extracted from IFC, shared across buildings)
+
+JOINT_PIPE_STRAIGHT    parent=PipeSegment   child=PipeSegment    dx=L  dy=0  dz=0
+JOINT_PIPE_TEE         parent=PipeSegment   child=TeeFitting     dx=0  dy=0  dz=0
+JOINT_TEE_BRANCH       parent=TeeFitting    child=PipeSegment    dx=0  dy=B  dz=0
+JOINT_PIPE_ELBOW       parent=PipeSegment   child=ElbowFitting   dx=0  dy=0  dz=0
+JOINT_ELBOW_TURN       parent=ElbowFitting  child=PipeSegment    dx=0  dy=0  dz=R
+JOINT_PIPE_REDUCER     parent=PipeSegment   child=ReducerFitting dx=0  dy=0  dz=0
+JOINT_PIPE_TERMINAL    parent=PipeSegment   child=SprinklerHead  dx=0  dy=0  dz=-D
+JOINT_PIPE_VALVE       parent=PipeSegment   child=StopValve      dx=V  dy=0  dz=0
+JOINT_DUCT_TEE         parent=DuctSegment   child=DuctTee        dx=0  dy=0  dz=0
+JOINT_DUCT_DIFFUSER    parent=DuctSegment   child=AirDiffuser    dx=0  dy=0  dz=-D
+JOINT_TRAY_FIXTURE     parent=CableTray     child=LightFixture   dx=0  dy=0  dz=-H
+```
+
+Each piece has the same structure as any `m_bom_line`: parent product, child
+product, relative offset (dx/dy/dz), qty=1. The walker reads them identically
+to a wall-in-a-room or a slab-on-a-floor. Nothing to compute. Just walk.
+
+#### Extraction — IFCtoBOM Reads IFC Joints
+
+New extraction step in IFCtoBOM for CO/IN buildings:
+
+1. Walk `IfcRelConnectsPorts` in the IFC — each relationship gives:
+   parent element, child element, port positions, connection type
+2. Compute relative offset: `child.position - parent.position` (same
+   maths as ARC extraction for `m_bom_line.dx/dy/dz`)
+3. Classify the joint pattern: straight, tee, elbow, terminal, reducer
+4. Write to ERP.db as a shared M_BOM recipe if the pattern is new, or
+   increment qty if the pattern already exists
+
+The joint pieces are **shared** — a pipe-to-tee joint in TE is the same piece
+as in MO. Only the qty and arrangement differ per building. Building-specific
+arrangement is what `discipline_counts` in YAML captures.
+
+#### Compilation — Same BOM Walk, No Special Engine
+
+At compile time, the flow is identical to ARC/STR:
+
+```
+Callout → DISC OrderLine (FP, qty=6863 from YAML)
+  → BomDropper explodes FP_SYSTEM recipe from ERP.db
+    → walks joint pieces: JOINT_PIPE_STRAIGHT → JOINT_PIPE_TEE → ...
+      → PlacementCollectorVisitor accumulates tack offsets
+        → elements_rtree in output.db
+```
+
+The `PlacementCollectorVisitor` does not know or care that it is placing MEP
+elements. It reads `m_bom_line.dx/dy/dz`, accumulates from parent, writes
+to `elements_rtree`. Same code path as placing furniture. The walker picks
+from the joint piece toolbox like a worker picking from a box of Lego pieces —
+intensively, thousands of joints, but each pick is the same atomic operation.
+
+#### Role of Standards — Validation, Not Generation
+
+NFPA 13, MS 1228, ASHRAE 62.1 etc. become what they should be:
+**validation rules** in `AD_Val_Rule`, checked after placement.
+
+| Standard | Current role (WRONG) | Correct role |
+|----------|---------------------|--------------|
+| NFPA 13 §8.6 | RouteBuilder computes sprinkler grid | `AD_Val_Rule` checks spacing after walk |
+| MS 1228 §5 | RouteBuilder computes waste gradient | `AD_Val_Rule` checks gradient after walk |
+| ASHRAE 62.1 | RouteBuilder computes diffuser count | `AD_Val_Rule` checks coverage after walk |
+| MS 830 §4 | RouteBuilder computes gas drop | `AD_Val_Rule` checks clearance after walk |
+
+The IFC source already satisfies these standards (it was designed by engineers).
+The extracted joint pieces carry that compliance. Validation confirms it.
+
+#### Role of CrawlRouter — Generative Buildings Only
+
+CrawlRouter (§10.4.10) and the 6 RouteBuilders remain for one case:
+**GENERATIVE buildings** (no IFC source, e.g., DM). When no IFC MEP topology
+exists, the RouteBuilder computes from engineering rules using CrawlOps.
+This is the fallback path, not the primary path.
+
+For EXTRACTED buildings (34 of 35 in the fleet), joint pieces from IFC
+are the primary path. No CrawlRouter needed.
+
+#### Coverage Tracking
+
+`discipline_counts` in YAML (S103) provides the denominator:
+
+- YAML says `FP: 6863` elements from extraction
+- Joint piece extraction produces N joint BOMs
+- BOM walk places M elements from those joints
+- Delta = `6863 - M` = coverage gap, per discipline per building
+- Target: delta → 0 for all disciplines in buildings with IFC MEP data
+
+#### Phasing
+
+| Phase | Scope | Prereq |
+|-------|-------|--------|
+| J1 | IFCtoBOM: extract `IfcRelConnectsPorts` → joint piece BOMs in ERP.db | S103 discipline separation |
+| J2 | BomDropper: walk joint piece recipes (same as ARC — no new code) | J1 |
+| J3 | GEO: verify MEP placement drift (same proof, now covers MEP too) | J2 |
+| J4 | Validation: wire `AD_Val_Rule` for NFPA/MS/ASHRAE post-walk checks | J3 |
+| J5 | Fleet: re-extract all 34 buildings, measure coverage delta per discipline | J4 |
+
+J1 is the key task — the rest follows from existing infrastructure.
+
+#### Skeleton Routing (S100) — Preserved for Generative
+
+The existing skeleton (258 edges, 3% coverage for TE) is preserved as the
+GENERATIVE path. For extracted buildings, it is superseded by joint piece walk.
+
+| Component | Status | Future role |
+|-----------|--------|-------------|
+| CrawlRouter | DONE (S100-p100) | Generative buildings only |
+| 6 RouteBuilders (FP/ELEC/CW/SP/ACMV/LPG) | DONE (S100-p101) | Generative buildings only |
+| 5 CrawlOps (Follow/Bend/Branch/Reduce/Penetrate) | DONE (S100-p100) | Generative buildings only |
+| BuildingGeometry / SqlBuildingGeometry | DONE (S100-p100) | Both paths (room queries) |
+| system_edges / system_nodes | DONE (S100-p105) | Both paths (P15/P16/P17 proofs) |
+
+### 6.13 IFC-Driven Extraction
 
 **Status:** DONE (S100-p125, commit [3e056227](https://github.com/red1oon/BIMCompiler/commit/3e056227)). SH IFC-driven, FK scope box fallback.
 
@@ -1437,18 +1294,9 @@ Dry run on SH (58 elements): 14 elements assigned to spaces by IFC, 44
 orphans (structural: walls, slabs, ceilings, curtain wall). The orphans
 are correctly structural — not in any room.
 
-#### Current vs proposed extraction flow
+#### Extraction flow
 
-**Legacy (YAML scope boxes — replaced by P125):**
-```
-YAML defines: LIVING origin=(-7.0,2.5) aabb=(8000,2000,1200)
-              DINING origin=(-6.5,-0.3) aabb=(2500,1500,1300)
-ScopeBomBuilder: for each element, test centroid ∈ scope box
-  → 12 elements assigned to LIVING/DINING/MASTER
-  → VerbDetector groups by product → CLUSTER fallback
-```
-
-**Current (IFC spatial containment — S100-p125):**
+**IFC spatial containment (S100-p125):**
 ```
 Read rel_contained_in_space from extracted.db
   → "1 - Living room" contains 12 elements
@@ -1458,22 +1306,8 @@ YAML maps: ifc_space "1 - Living room" → template SH_LIVING_SET
 VerbDetector groups within each IFC space
 ```
 
-#### YAML simplification
+#### YAML format
 
-Before (legacy):
-```yaml
-floor_rooms:
-  Ground Floor:
-    bom_id: FLOOR_SH_GF_STD
-    product_category: GF
-    spaces:
-      - { name: LIVING, template_bom: SH_LIVING_SET, role: LIVING, seq: 10,
-          aabb_mm: [8000, 2000, 1200], origin_m: [-7.0, 2.5, 0.0] }
-      - { name: DINING, template_bom: SH_DINING_SET, role: DINING, seq: 20,
-          aabb_mm: [2500, 1500, 1300], origin_m: [-6.5, -0.3, 0.0] }
-```
-
-After (current — S100-p125):
 ```yaml
 floor_rooms:
   Ground Floor:
@@ -1484,15 +1318,11 @@ floor_rooms:
       - { ifc_space: "2 - Bedroom", template_bom: SH_BED_SET, role: MASTER, seq: 30 }
 ```
 
-No `origin_m`, no `aabb_mm`. IFC does the containment. YAML maps space
-names to BOM templates.
-
-**Scope boxes are removed from IFCtoBOM extraction.** IFC spatial
-containment is the sole source during extraction. Scope boxes move to
-**Order processing** — the BIM Designer GUI and BOM Drop use scope boxes
-when the user defines sub-room zones at order time (e.g., splitting a
-Living room into dining + seating zones). This is a C_OrderLine concern,
-not an extraction concern.
+No `origin_m`, no `aabb_mm`. IFC spatial containment is the sole source
+during extraction. YAML maps space names to BOM templates. Scope boxes are
+an **Order processing** concern — the BIM Designer GUI and BOM Drop use
+scope boxes when the user defines sub-room zones at order time (e.g.,
+splitting a Living room into dining + seating zones).
 
 For buildings without IfcSpace data, extraction groups by storey only
 (existing `StructuralBomBuilder` behaviour). Sub-room grouping is deferred
@@ -1600,421 +1430,7 @@ link FLOOR → ASSEMBLY. Elements not in any assembly stay as flat leaves.
 Phantom parents (IfcCurtainWall, IfcStair) have no `elements_meta` entry —
 assembly structure visible only via `rel_aggregates` child_guid join.
 
-### 10.5 Investigation Tasks
-
-1. Count Java files that read M_Product from component_library.db vs ERP.db
-2. Count Java files that read component_definitions from component_library.db
-3. Map the M_Product→component_definitions join path (is it by name? by FK?)
-4. Check if BOM databases carry their own M_Product (TE_BOM.db has M_Product with
-   different schema — 28 columns vs 9 in component_library.db)
-5. Audit all `bom_category` / `discipline` string usage — candidates for AD_Org FK
-6. Propose the split and migration plan (including AD_Org table placement)
-
 ---
-
-## 11. Investigation Report — §10.5 Tasks 1–6 (S64, 2026-03-23)
-
-> **Status:** COMPLETE (investigation). No code changes. Findings ready for implementation review.
-> **Method:** Grep + read of all Java source, SQL migrations, schema snapshots.
-> **Cross-referenced against:** AUDIT_S51_FOCUSED.md Appendix F, MANIFESTO.md, BBC.md §2.
-
----
-
-### 11.1 Task 1 — Java Files Reading M_Product by Database
-
-**85 Java files** reference M_Product. Breakdown by connection:
-
-| Connection | Database | Files | Key Readers |
-|------------|----------|-------|-------------|
-| `compConn` | component_library.db | ~20 | BOMWalker, OrderLineWalker, ProductRegistrar, 4 BackOffice DAOs, ProductGeometry, MetadataValidator |
-| `bomConn` | {PREFIX}_BOM.db | ~8 | PlacementCollectorVisitor (fallback dims), BomValidator (counts), BomDropper (FK ref only) |
-| `conn` (PO layer) | any DB with M_Product | ~12 | MProduct.java, X_MProduct.java, X_M_BOM.java, X_M_BOMLine.java |
-| Test files | mixed | ~45 | DataIntegrityTest, MetadataIntegrityTest, DiscValidationDBTest, Tier1Test, etc. |
-
-**Key finding:** Zero files read M_Product from ERP.db. The discipline DB has no
-M_Product table. All master product reads go through component_library.db (compConn).
-
-**Column read patterns by purpose:**
-
-| Purpose | Columns | Connection | Files |
-|---------|---------|------------|-------|
-| Identity | product_id, product_type, ifc_class, is_active | compConn | BOMWalker, OrderLineWalker, ProductRegistrar |
-| Dimensions | width, depth, height (METRES, not mm) | compConn/bomConn | PlacementCollectorVisitor, MetadataValidator |
-| 5D Cost | unit_cost_rm, currency_code, cost_source, cost_uom | compConn | CostDAO |
-| 4D Schedule | construction_phase, construction_sequence, labor_resource, crew_size, productivity_rate | compConn | ScheduleDAO |
-| 6D Sustainability | carbon_kg_per_unit, recyclability, eol_strategy | compConn | SustainabilityDAO |
-| 7D Facility Mgmt | maintenance_schedule, warranty_period, replacement_cost | compConn | FacilityMgmtDAO |
-| Geometry link | M_Product_ID (from M_Product_Image) | compConn | ProductGeometry, ComponentLibrary |
-
-**Dead code alert:** ProductRegistrar.ensureProducts() still copies M_Product from
-component_library.db to BOM DB, but BOMWalker was refactored (R7, S36) to read only
-from compConn. The BOM DB copy is no longer read by production code.
-
----
-
-### 11.2 Task 2 — Java Files Reading component_definitions / component_geometries
-
-**18 files** reference component_definitions or component_geometries. All read from
-component_library.db exclusively.
-
-| File | What It Reads | Also Reads M_Product? |
-|------|--------------|----------------------|
-| ComponentLibrary.java | component_definitions: geometry_hash, local bounds, attachment_face, vertex/face counts | No |
-| DoorWindowLibraryMapper.java | component_definitions: name, geometry_hash, local bounds, forward_axis via JOIN component_types | No |
-| StairLibraryMapper.java | component_definitions: geometry_hash, local bounds via JOIN component_types | No |
-| StandardsResolver.java | component_definitions: hardcoded geometry_hash lookups (FP components) | No |
-| ExtractionPopulator.java | component_geometries: geometry_hash, vertices, faces (write path) | No |
-| ProductGeometry.java | M_Product_Image JOIN component_geometries ON geometry_hash | Yes — via M_Product_Image.M_Product_ID |
-| MetadataValidator.java | I_Geometry_Map + component_geometries (referential integrity check) | Yes — checks M_Product dimensions |
-| MeshBinder.java | component_geometries indirectly via ComponentLibrary.resolveByProduct() | No |
-| MEPWriter.java | component_geometries indirectly via DoorWindowLibraryMapper | No |
-
-**Key finding:** M_Product and component_definitions are accessed by **different code paths**.
-Only ProductGeometry.java and MetadataValidator.java touch both — and they join through
-M_Product_Image, not directly. This confirms the tables can live in separate databases
-with zero SQL JOIN impact.
-
----
-
-### 11.3 Task 3 — M_Product → component_definitions Join Path
-
-**The join is INDIRECT through M_Product_Image:**
-
-```
-M_Product.product_id
-    → M_Product_Image.M_Product_ID  (name match)
-    → M_Product_Image.geometry_hash
-    → component_geometries.geometry_hash  (PK)
-```
-
-component_definitions is a **parallel path**, not part of the M_Product chain:
-
-```
-component_types.id
-    → component_definitions.type_id  (FK)
-    → component_definitions.geometry_hash
-    → component_geometries.geometry_hash  (PK)
-```
-
-**No direct SQL JOIN between M_Product and component_definitions exists anywhere in
-the codebase.** X_MProduct.java defines a `component_id` column (logical FK →
-component_definitions) but it is **vestigial** — never populated or queried.
-
-**Production resolution code (ProductGeometry.java:69-79):**
-```java
-SELECT mpi.M_Product_ID, mpi.geometry_hash, mpi.up_axis, mpi.forward_axis,
-       mpi.attachment_face, cg.vertex_count, cg.face_count
-FROM M_Product_Image mpi
-JOIN component_geometries cg ON mpi.geometry_hash = cg.geometry_hash
-```
-
-**Implication for split:** M_Product can move to a different database without breaking
-any JOIN. The runtime link (M_Product_Image → component_geometries) stays in
-component_library.db alongside the geometry. M_Product_Image.M_Product_ID is a text
-key resolved in Java, not a SQL FK.
-
----
-
-### 11.4 Task 4 — BOM Database M_Product Schema
-
-**YES: BOM databases carry their own M_Product tables.** Schema differs from component_library.db.
-
-| Aspect | BOM M_Product | Component Library M_Product |
-|--------|---------------|-----------------------------|
-| Columns | 29 | 27 |
-| Rows | 7–348 (varies by building) | ~2,472 (master catalog) |
-| Has clearance rules | YES (clear_front/back/left/right/above/below) | NO |
-| Has fitting rules | YES (fits_in, requires_host, host_min_width/height) | NO |
-| Has qty rules | YES (qty_per_area, qty_per_room, qty_per_person, max_spacing) | NO |
-| Has ERP columns | NO | YES (unit_cost, labor_*, carbon_*, maintenance_*) |
-| Has conn_points | YES | NO |
-| Populated by | schema_snapshot_bom.sql (DDL only) | ProductRegistrar (IFCtoBOM pipeline) |
-
-**Schema mismatch is significant.** BOM M_Product has placement/fitting rules (LEGO
-connection semantics). Component Library M_Product has ERP/lifecycle columns (4D–7D).
-These are two different concerns wearing the same table name.
-
-**BOM M_Product is effectively unused by production code.** After R7 refactor (S36),
-BOMWalker reads M_Product from compConn (component_library.db), not bomConn. The BOM
-copy exists for backward compatibility of single-arg constructors (to be removed).
-
-**m_bom_line → M_Product resolution (structural, not FK):**
-1. `m_bom_line.child_product_id` → try as `m_bom.bom_id` → sub-assembly (recurse)
-2. Else → `MProduct.get(compConn, childProductId)` → leaf product from component_library.db
-3. Else → dangling reference (warn + skip)
-
----
-
-### 11.5 Task 5 — Discipline String Usage Audit
-
-**All discipline identifiers are currently TEXT/String.** No AD_Org FK exists anywhere.
-
-**9 discipline codes** (from enhanced_federation_GI.db, defined in Discipline.java enum):
-ARC (35338 elements), FP (6884), REB (2660), ACMV (1621), CW (1431), STR (1429),
-ELEC (1172), SP (979), LPG (209).
-
-**Discipline columns across the schema:**
-
-| Table.Column | DB | Type | Current Value | AD_Org candidate? |
-|-------------|-----|------|---------------|-------------------|
-| C_OrderLine.Discipline | compile DB | TEXT DEFAULT 'ARC' | String literal | YES — primary |
-| component_types.discipline | component_library.db | TEXT NOT NULL | 'ELEC', 'ACMV', 'FP' | YES |
-| m_bom.bom_category | BOM DB | TEXT | 'RF', 'STR', 'FP', 'MEP' | YES (proxy for discipline) |
-| AD_Val_Rule.discipline | ERP.db | TEXT nullable | 'FPR', 'ELC', 'PLB' | YES |
-| AD_Clash_Rule.discipline_a/b | ERP.db | TEXT NOT NULL | 'ELC' vs 'PLB' | YES |
-| ad_ifc_class_map.discipline | ERP.db | TEXT | 'ARC','STR','FP','ELEC','ACMV' etc. | YES |
-| ad_element_mep.discipline | ERP.db | TEXT | 'FP','ELEC','ACMV','CW','SP' | YES |
-| bad_discipline_priority.higher/lower | component_library.db | TEXT NOT NULL | Priority pairs | YES |
-
-**Java code patterns:**
-
-| Pattern | Files | Current Type |
-|---------|-------|-------------|
-| `getDiscipline()` / `setDiscipline(String)` | X_C_OrderLine.java | String getter/setter |
-| `Discipline.fromString(s)` | Discipline.java | Enum conversion |
-| `disciplineStack.push(productCategory)` | PlacementCollectorVisitor.java | Deque\<String\> |
-| `rs.getString("discipline")` | FederatedDBReader, MEPAD, OrderLineWalker | Raw string from DB |
-| `rs.getString("bom_category")` | SustainabilityDAO, FacilityMgmtDAO | Proxy discipline |
-| TypeDisciplineMapping (static) | TypeDisciplineMapping.java | EnumMap (in-memory, not DB) |
-
-**W003_orderline_discipline.sql backfill logic:**
-```sql
-UPDATE C_OrderLine SET Discipline = CASE
-    WHEN bom_category IN ('RF', 'STR', 'SL') THEN 'STR'
-    WHEN bom_category = 'FP' THEN 'FPR'
-    WHEN bom_category IN ('MEP', 'ELEC', 'PLB', 'ACMV') THEN bom_category
-    ELSE 'ARC'
-END;
-```
-
-**Inconsistency:** compliance rules use 'FPR'/'ELC'/'PLB' (3-char codes) while
-everywhere else uses 'FP'/'ELEC'/'SP' (variable-length). AD_Org would unify this.
-
----
-
-### 11.6 Task 6 — Proposed Split and AD_Org Migration Plan
-
-#### 11.6.1 Decision: Option A — Three Clean Databases
-
-Based on investigation findings, **Option A** is confirmed as the right answer:
-
-```
-component_library.db  — WHAT things look like (geometry-only, 7 tables)
-├── component_types           (taxonomy of geometry families)
-├── component_definitions     (LOD mesh metadata: bounds, attachment)
-├── component_geometries      (vertices, faces, normals — bulk data)
-├── surface_styles            (material appearance)
-├── material_layers           (wall/slab layer composition)
-├── I_Geometry_Map            (extraction geometry mapping)
-└── M_Product_Image           (product → geometry_hash link)
-
-ERP.db  — WHERE things go + WHO owns them (AD Dictionary, ~30 tables)
-├── AD_Org                    (NEW: discipline org units — 10 rows)
-├── AD_Org_Type               (NEW: org type enum — DISCIPLINE, SHARED)
-├── M_Product                 (MOVED: product master data — 2,472 rows)
-├── M_Product_Category        (MOVED: product taxonomy — 46 rows)
-├── ad_space_type             (existing: 41 space types)
-├── ad_element_mep            (existing: 12 MEP types)
-├── ad_space_type_mep_bom     (existing: 186 schedule rows)
-├── ad_ifc_class_map          (existing: 46 IFC class authority)
-├── ad_element_mep_alias      (existing: 84 alias rows)
-├── placement_rules           (existing: 4,801 rules)
-├── ad_wall_face              (existing: 204 faces)
-├── component_types           (SHARED: discipline column → AD_Org_ID)
-├── ... (remaining 15+ AD tables already in ERP.db)
-├── bad_discipline_priority   (MOVED from component_library.db)
-└── AD_SysConfig              (existing: version tracking)
-
-ERP.db also contains — RULES + VERDICTS (compliance engine)
-├── AD_Val_Rule + params      (compliance rules)
-├── AD_Clash_Rule             (cross-discipline clearance)
-└── AD_Validation_Result      (runtime verdicts)
-```
-
-#### 11.6.2 AD_Org Table Design
-
-```sql
-CREATE TABLE AD_Org (
-    AD_Org_ID     INTEGER PRIMARY KEY,
-    AD_Client_ID  INTEGER NOT NULL DEFAULT 1,     -- BIM_PROJECT tenant
-    Value         TEXT    NOT NULL UNIQUE,          -- 'ARC', 'STR', 'FP', etc.
-    Name          TEXT    NOT NULL,                 -- 'Architecture', 'Structural', etc.
-    Description   TEXT,
-    IsSummary     TEXT    NOT NULL DEFAULT 'N',     -- 'Y' for roll-up orgs
-    IsActive      TEXT    NOT NULL DEFAULT 'Y',
-    AD_Org_Type   TEXT    NOT NULL DEFAULT 'DISCIPLINE',  -- DISCIPLINE | SHARED
-    element_count INTEGER DEFAULT 0                -- TE census count (informational)
-);
-
--- Seed data (from Discipline.java enum + '*' shared org)
-INSERT INTO AD_Org (AD_Org_ID, Value, Name, AD_Org_Type, element_count) VALUES
-    (0,  '*',    'Shared',              'SHARED',     0),
-    (1,  'ARC',  'Architecture',        'DISCIPLINE', 35338),
-    (2,  'STR',  'Structural',          'DISCIPLINE', 1429),
-    (3,  'FP',   'Fire Protection',     'DISCIPLINE', 6884),
-    (4,  'ELEC', 'Electrical',          'DISCIPLINE', 1172),
-    (5,  'ACMV', 'HVAC',               'DISCIPLINE', 1621),
-    (6,  'CW',   'Cold Water',          'DISCIPLINE', 1431),
-    (7,  'SP',   'Sanitary/Plumbing',   'DISCIPLINE', 979),
-    (8,  'LPG',  'Gas Piping',          'DISCIPLINE', 209),
-    (9,  'REB',  'Reinforcement',       'DISCIPLINE', 2660);
-```
-
-**Placement:** AD_Org lives in ERP.db (the AD Dictionary). All databases
-reference it by `AD_Org_ID` (integer FK) or `Value` (text lookup for human-readable
-contexts). Same pattern as iDempiere: AD_Org is a central lookup table.
-
-#### 11.6.3 What AD_Org Replaces
-
-| Current | Table.Column | New | Migration |
-|---------|-------------|-----|-----------|
-| `m_bom.bom_category` = 'FP' | BOM DB | `m_bom.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
-| `C_OrderLine.Discipline` = 'FP' | compile DB | `C_OrderLine.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
-| `component_types.discipline` = 'FP' | component_library.db | `component_types.AD_Org_ID` = 3 | ALTER + UPDATE CASE |
-| `AD_Val_Rule.discipline` = 'FPR' | ERP.db | `AD_Val_Rule.AD_Org_ID` = 3 | ALTER + UPDATE (unify codes) |
-| `AD_Clash_Rule.discipline_a` = 'ELC' | ERP.db | `AD_Clash_Rule.AD_Org_A_ID` = 4 | ALTER + UPDATE |
-| `ad_ifc_class_map.discipline` = 'FP' | ERP.db | `ad_ifc_class_map.AD_Org_ID` = 3 | ALTER + UPDATE |
-| `ad_element_mep.discipline` = 'FP' | ERP.db | `ad_element_mep.AD_Org_ID` = 3 | ALTER + UPDATE |
-| `bad_discipline_priority.higher_discipline` | component_library.db | `bad_discipline_priority.higher_AD_Org_ID` | MOVE table + ALTER |
-
-**Bonus: unifies the code inconsistency.** 'FPR' (compliance rules) and 'FP' (everywhere
-else) both become `AD_Org_ID = 3`. 'ELC' and 'ELEC' both become `AD_Org_ID = 4`.
-
-#### 11.6.3a Design Note — Inference vs Data (deriveDiscipline retirement)
-
-The S60 wiring (BomDropper → C_OrderLine.Discipline → NodeContext → PlacementCollectorVisitor)
-is **directionally correct** — it moves discipline from inference to data. AD_Org completes
-this trajectory. Three patterns currently coexist:
-
-1. **Data-driven (correct):** C_OrderLine.Discipline populated from m_bom.bom_category at
-   BomDrop time. Discipline flows through the order context, not guessed.
-2. **Inference-driven (legacy):** `ProductCategory.deriveDiscipline(ifcClass)` and
-   `TypeDisciplineMapping` infer discipline from IFC class. This bypasses the org hierarchy
-   — every element gets discipline guessed from its class, not inherited from its context.
-3. **Stack-driven (transitional):** PlacementCollectorVisitor.disciplineStack pushes
-   bom_category at SET level. Runtime hack for what should be AD_Org inheritance.
-
-**When AD_Org is implemented:**
-- Pattern 1 becomes: `C_OrderLine.AD_Org_ID` = FK to AD_Org (single source of truth)
-- Pattern 2 (`deriveDiscipline()`) becomes a **fallback for extraction only** — when
-  ingesting a new IFC file with no order context, infer AD_Org_ID from ifc_class via
-  `ad_ifc_class_map.AD_Org_ID`. Once the element enters the order pipeline, AD_Org_ID
-  is data, not inference. deriveDiscipline() should NOT be called in the compile path.
-- Pattern 3 (disciplineStack) disappears — AD_Org_ID is on C_OrderLine, inherited down
-  the BOM tree via the walker, not pushed/popped manually.
-
-**The 77-file M_Product_Category cleanup (S60-S2 Task 5) is the same refactor.** bom_category
-is a string proxy for AD_Org. Once AD_Org_ID exists on m_bom, bom_category becomes a
-derived display field (or drops entirely). The 40+ files touching discipline strings
-converge to a single FK lookup pattern.
-
-**M_Product_Category already models this.** The 4 discipline-level categories (ARC, STR,
-FP, MEP) in M_Product_Category ARE the AD_Org tree expressed as product taxonomy. AD_Org
-makes the relationship explicit: `M_Product_Category.AD_Org_ID` links each product
-category to its owning discipline. This enables per-discipline product catalog views,
-validation scoping, and BOM filtering — all from standard iDempiere patterns.
-
-#### 11.6.4 Java Code Impact
-
-| Change | Files | Effort |
-|--------|-------|--------|
-| X_C_OrderLine: getDiscipline() → getAD_Org_ID() | 1 | LOW — PO column rename |
-| OrderLineWalker: pass AD_Org_ID instead of String | 1 | LOW — type change |
-| PlacementCollectorVisitor: disciplineStack → Deque\<Integer\> | 1 | LOW |
-| BOMWalker.NodeContext: discipline field String → int | 1 | LOW |
-| BomDropper: set AD_Org_ID from bom.AD_Org_ID | 1 | LOW |
-| Discipline.java enum: add AD_Org_ID field | 1 | LOW |
-| SustainabilityDAO/FacilityMgmtDAO: GROUP BY AD_Org_ID | 2 | LOW |
-| BackOffice DAOs: compConn M_Product → discConn M_Product | 4 | MED — connection param change |
-| ProductRegistrar: write M_Product to ERP.db | 1 | MED — target DB change |
-| MProduct.get(): accept discConn instead of compConn | 1 | LOW — param type same |
-| ComponentLibrary: no change (reads component_definitions only) | 0 | NONE |
-| MeshBinder: no change (resolves via M_Product_Image → geometry) | 0 | NONE |
-
-**Total: ~14 production files changed, ~10 test files changed, ~25 geometry files unchanged.**
-No geometry code touched. File counts are estimates — implementation session should
-grep for exact numbers before starting (audit concern #1, #2).
-
-#### 11.6.5 Migration Sequence (6 steps, each independently committable)
-
-**Step 0: Drop dead tables** (prerequisite, R18 debt)
-- DROP: ad_bom, ad_bom_child, ad_bom_child_param, ad_product_dim from component_library.db
-- Net: −4 tables, zero code impact (unused per Known Debt audit)
-
-**Step 1: Create AD_Org in ERP.db**
-- DDL: AD_Org table + seed 10 rows (0='*', 1–9=disciplines)
-- Migration: `DV013_ad_org.sql` (DV011/DV012 already taken — audit concern #4)
-- Gate: DiscValidationDBTest adds W-DV-DB-ORG witness
-
-**Step 2: Add AD_Org_ID columns alongside existing TEXT columns**
-- ALTER TABLE ad_ifc_class_map ADD COLUMN AD_Org_ID INTEGER
-- ALTER TABLE ad_element_mep ADD COLUMN AD_Org_ID INTEGER
-- UPDATE ... SET AD_Org_ID = (SELECT AD_Org_ID FROM AD_Org WHERE Value = discipline)
-- Same for component_types, placement_rules
-- Migration: `DV014_ad_org_columns.sql`
-- Gate: dual-column reads pass, no code changes yet
-
-**Step 3: Move M_Product + M_Product_Category to ERP.db** ⚠️ HIGH RISK — **DONE (S65)**
-- Migration: `DV015_move_m_product.sql` — ATTACH + INSERT OR IGNORE. 2,475 M_Product + 46 M_Product_Category rows.
-- Java: 13 files changed. All compConn/compLibConn M_Product reads → ERP.db.
-  ProductRegistrar dual-writes (compConn for geometry join + discConn for master catalog).
-  BOMWalker, OrderLineWalker, PlacementLoader, BuildingWriter, 3 BIM_COBOL verbs,
-  BackOfficeServer, DesignerAPIImpl — all read M_Product from ERP.db.
-- M_Product_Image stays in component_library.db (geometry link intact).
-- component_library.db M_Product NOT deleted (Step 6).
-- Gate: SH 7/7, FK 7/7 PASS. DiscValidationDBTest 27/27 GREEN (+3 product witnesses).
-
-**Step 4: Move remaining AD tables from component_library.db**
-- bad_discipline_priority, bad_rule, bad_rule_category, bad_rule_param → ERP.db
-- Remove 15 duplicate tables from component_library.db (already in ERP.db)
-- Net: component_library.db drops from ~66 tables to ~7
-- Gate: DiscValidationDBTest updated. Rosetta Stones GREEN.
-
-**Step 5: Switch Java code from TEXT discipline to AD_Org_ID**
-- Update PO classes, walkers, DAOs to use integer FK
-- Remove Discipline string columns (or keep as computed/derived)
-- Gate: full test suite GREEN. Discipline.java enum gains AD_Org_ID field.
-
-**Step 6: Clean up**
-- Drop vestigial TEXT discipline columns (or leave for human readability)
-- Drop M_Product from BOM databases (production code no longer reads it)
-- Update schema snapshots
-- Gate: all Rosetta Stones GREEN. Schema docs updated.
-
-#### 11.6.6 Risks and Mitigations
-
-| Risk | Mitigation |
-|------|-----------|
-| component_library.db is SACRED (no git operations) | Steps 3-4 only ATTACH+read from it. No schema changes to component_library.db until Step 4 (table drops). |
-| BOM DB M_Product removal breaks backward compat | Step 6 only — verify zero reads from bomConn M_Product first (Task 4 confirms this). |
-| 15 duplicate tables: which copy is authoritative? | ERP.db copy is authoritative (Phase 2-3 migration already completed). component_library.db copies are stale remnants. |
-| AD_Org_ID = 0 ('*') conflicts with SQLite auto-increment | Use explicit INSERT, not AUTOINCREMENT. iDempiere convention: 0 = system org. |
-| BackOffice DAOs need connection parameter change | All 4 DAOs (Cost, Schedule, Sustainability, FacilityMgmt) already receive compLibConn — just rename to discConn. Same JDBC pattern. |
-
-#### 11.6.7 Appendix F Corrections
-
-AUDIT_S51_FOCUSED.md Appendix F states "34 AD tables" in component_library.db.
-**Actual count: 66 `ad_*` tables** (confirmed by Appendix F itself, which corrected
-this in the audit). §10.1 should be updated from "34 AD tables" to "66 AD tables"
-when implementation begins.
-
----
-
-### 11.7 Summary — Decision Matrix
-
-| Criterion | Option A (Split) | Option B (Expand DV) | Option C (Fix guard) |
-|-----------|-----------------|---------------------|---------------------|
-| Code changes | ~14 prod + ~10 test files | ~14 + ~10 (same) | ~2 files |
-| iDempiere alignment | **FULL** — M_Product with AD tables | FULL (same as A) | PARTIAL — mixed DB |
-| Geometry isolation | **CLEAN** — 7 tables, pure LOD | CLEAN (same) | MIXED — 66+ tables |
-| LOD chain breakage | **NONE** — M_Product_Image stays in geometry DB | NONE | N/A |
-| Future maintainability | **HIGH** — clear concern boundaries | HIGH | LOW — grows worse |
-| Discipline unification | **YES** — AD_Org eliminates 'FPR'/'FP' inconsistency | YES | NO |
-| Risk | MED overall, **HIGH for Step 3** (M_Product move) | MED/HIGH (same) | LOW |
-
-**Recommendation: Option A.** It's the same work as Option B but with a clearer name
-(ERP.db is already the AD Dictionary in practice). The 6-step migration
-is independently committable, each step gated by existing Rosetta Stone tests.
 
 ---
 
@@ -2022,5 +1438,4 @@ is independently committable, each step gated by existing Rosetta Stone tests.
 [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9 (5-table LOD chain) |
 [DocAction_SRS.md](DocAction_SRS.md) §1.3 (processIt DocEvent) |
 [CALIBRATION_SRS.md](CALIBRATION_SRS.md) (DocEvent vs Terminal) |
-[G4_SRS.md](G4_SRS.md) §2 (output.db pattern) |
-[AUDIT_S51_FOCUSED.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/AUDIT_S51_FOCUSED.md) Appendix F (database reality check)*
+[G4_SRS.md](G4_SRS.md) §2 (output.db pattern)*

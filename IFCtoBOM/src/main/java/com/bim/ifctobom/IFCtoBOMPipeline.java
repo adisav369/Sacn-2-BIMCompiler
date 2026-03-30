@@ -338,8 +338,17 @@ public class IFCtoBOMPipeline {
             // GUARD: This runs BEFORE commit so broken data never reaches disk.
             // Previously ran post-commit (read-only) which let broken BOM.db persist
             // and silently produce 0 placements at compile time.
+            // §10.4.6.1: For CO/IN, reconcile against ARC+STR count (MEP deferred)
+            int reconcileCount = extractionCount;
+            if ("CO".equals(config.productCategory()) || "IN".equals(config.productCategory())) {
+                try (Statement st = bomConn.createStatement();
+                     ResultSet rs = st.executeQuery(
+                         "SELECT COALESCE(SUM(CAST(config_value AS INTEGER)),0) FROM ad_sysconfig WHERE config_key LIKE 'MEP_%_COUNT'")) {
+                    if (rs.next()) reconcileCount = extractionCount - rs.getInt(1);
+                }
+            }
             int qaFails = BomValidator.validateAndReport(bomConn,
-                    extractionCount, composition.halfUnitLines());
+                    reconcileCount, composition.halfUnitLines());
             if (qaFails > 0) {
                 System.err.printf("[IFCtoBOM] ABORTING — %d QA check(s) FAILED. "
                         + "Fix the data source and re-run.%n", qaFails);
@@ -397,7 +406,7 @@ public class IFCtoBOMPipeline {
                     ps.setString(4, config.buildingType());
                     ps.setString(5, outputPath);
                     ps.setString(6, refPath);
-                    ps.setInt(7, extractionCount);
+                    ps.setInt(7, reconcileCount);
                     ps.setDouble(8, structural.aabbWidthMm());
                     ps.setDouble(9, structural.aabbDepthMm());
                     ps.setDouble(10, structural.aabbHeightMm());
@@ -418,14 +427,27 @@ public class IFCtoBOMPipeline {
             }
 
             // 10c. Store expected element count (R13: no I_Element_Extraction — BOM carries the count)
+            // 10c. Store expected element count — reuse reconcileCount from step 9
+            // §10.4.6.1: For CO/IN, MEP deferred → expected = ARC+STR only
+            if (reconcileCount != extractionCount) {
+                BIMLogger.info("PIPELINE", "EXPECTED_ELEMENTS: {} (extraction={}, MEP deferred={})",
+                        reconcileCount, extractionCount, extractionCount - reconcileCount);
+            }
             try (PreparedStatement ps = bomConn.prepareStatement(
                     "INSERT OR REPLACE INTO ad_sysconfig (config_key, config_value, description) " +
                     "VALUES ('EXPECTED_ELEMENTS', ?, 'Active extraction element count for compilation')")) {
-                ps.setString(1, String.valueOf(extractionCount));
+                ps.setString(1, String.valueOf(reconcileCount));
                 ps.executeUpdate();
             }
 
-            // 10c-2. Store mep_disciplines whitelist (§10.4.11 T3.4: RE subset)
+            // 10c-2. Write MEP counts back to YAML (§10.4.6.1: YAML is primary source of truth)
+            // Designer can edit YAML discipline_counts to reduce scope (e.g., partial wing).
+            // In production, Orders from BIM Designer carry Qty directly on OrderLine.
+            if (reconcileCount != extractionCount) {
+                writeDisciplineCountsToYaml(yamlPath, bomConn);
+            }
+
+            // 10c-3. Store mep_disciplines whitelist (§10.4.11 T3.4: RE subset)
             if (config.mepDisciplines() != null && !config.mepDisciplines().isEmpty()) {
                 String mepCsv = String.join(",", config.mepDisciplines());
                 try (PreparedStatement ps = bomConn.prepareStatement(
@@ -505,6 +527,92 @@ public class IFCtoBOMPipeline {
             compConn.close();
             discConn.close();
         }
+    }
+
+    /**
+     * Write MEP discipline counts back to the YAML file.
+     * §10.4.6.1: YAML is the primary source of truth for discipline quantities.
+     * Each RosettaStone building has its own YAML — this writes the extraction
+     * counts as preset defaults that the designer can later edit.
+     * In production, BIM Designer populates OrderLine.Qty directly (no YAML needed).
+     */
+    private static void writeDisciplineCountsToYaml(Path yamlPath, Connection bomConn)
+            throws IOException, SQLException {
+        // Read MEP counts from ad_sysconfig (already written by DisciplineBomBuilder)
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        try (Statement st = bomConn.createStatement();
+             ResultSet rs = st.executeQuery(
+                 "SELECT config_key, config_value FROM ad_sysconfig "
+                 + "WHERE config_key LIKE 'MEP_%_COUNT' ORDER BY config_key")) {
+            while (rs.next()) {
+                String key = rs.getString(1);            // MEP_FP_COUNT
+                String disc = key.substring(4, key.length() - 6);  // FP
+                int qty = Integer.parseInt(rs.getString(2));
+                counts.put(disc, qty);
+            }
+        }
+        if (counts.isEmpty()) return;
+
+        // Read YAML, replace or append discipline_counts section
+        List<String> lines = Files.readAllLines(yamlPath);
+        int insertIdx = -1;
+        int removeStart = -1;
+        int removeEnd = -1;
+
+        // Find existing discipline_counts: section (indented under building:)
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            if (line.matches("\\s+discipline_counts:.*")) {
+                removeStart = i;
+                // Remove until next non-indented-deeper line or end
+                for (int j = i + 1; j < lines.size(); j++) {
+                    String next = lines.get(j);
+                    if (next.isBlank() || next.matches("\\s{4}\\w.*")) {
+                        removeEnd = j;
+                        break;
+                    }
+                    removeEnd = j + 1;
+                }
+                break;
+            }
+            // Insert after disciplines: section (last line of it)
+            if (line.matches("\\s+disciplines:.*") || line.matches("\\s+#.*REB.*")) {
+                insertIdx = i + 1;
+            }
+        }
+
+        // Build the YAML block
+        StringBuilder block = new StringBuilder();
+        block.append("\n  # MEP element counts from extraction (editable — reduce for partial scope)\n");
+        block.append("  discipline_counts:\n");
+        for (Map.Entry<String, Integer> e : counts.entrySet()) {
+            block.append(String.format("    %s: %d%n", e.getKey(), e.getValue()));
+        }
+
+        if (removeStart >= 0) {
+            // Replace existing section
+            for (int i = removeEnd - 1; i >= removeStart; i--) {
+                lines.remove(i);
+            }
+            // Also remove preceding comment if it's ours
+            if (removeStart > 0 && lines.get(removeStart - 1).contains("MEP element counts from extraction")) {
+                lines.remove(removeStart - 1);
+                removeStart--;
+            }
+            if (removeStart > 0 && lines.get(removeStart - 1).isBlank()) {
+                lines.remove(removeStart - 1);
+                removeStart--;
+            }
+            lines.add(removeStart, block.toString().stripTrailing());
+        } else if (insertIdx >= 0) {
+            lines.add(insertIdx, block.toString().stripTrailing());
+        } else {
+            // Append at end
+            lines.add(block.toString().stripTrailing());
+        }
+
+        Files.write(yamlPath, lines);
+        BIMLogger.info("PIPELINE", "YAML discipline_counts written to {}", yamlPath.getFileName());
     }
 
     /**

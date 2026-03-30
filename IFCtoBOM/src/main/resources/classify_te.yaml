@@ -40,3 +40,12 @@ building:
     SP:   [IfcPipeSegment, IfcPipeFitting, IfcFlowTerminal, IfcValve]
     LPG:  [IfcPipeFitting, IfcPipeSegment, IfcValve]
     # REB: DEFERRED — IfcReinforcingBar handled by IfcOpenShell Python
+
+  # MEP element counts from extraction (editable — reduce for partial scope)
+  discipline_counts:
+    ACMV: 1621
+    CW: 1431
+    ELEC: 1172
+    FP: 6863
+    LPG: 209
+    SP: 979

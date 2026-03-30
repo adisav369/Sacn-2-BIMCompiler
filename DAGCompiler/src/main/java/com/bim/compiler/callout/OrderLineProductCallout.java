@@ -107,10 +107,20 @@ public class OrderLineProductCallout {
                     continue;
                 }
 
-                // Idempotent: skip if discipline OrderLine already exists for this order
+                // §10.4.6.1 Class B: read MEP element count from ad_sysconfig (written by IFCtoBOM)
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.6.1 — Witness: W-DISC-SEP-2
+                int mepQty = 0;
+                String countStr = readSysconfig(compileDb, "MEP_" + disc.name() + "_COUNT");
+                if (countStr != null) {
+                    try { mepQty = Integer.parseInt(countStr); } catch (NumberFormatException ignored) {}
+                }
+
+                // If BomDropper already created this DISC line (via Add mutation), update Qty
                 if (disciplineLineExists(compileDb, orderId, adOrgId)) {
-                    BIMLogger.fine("CALLOUT", "Discipline {} (AD_Org={}) already exists for order {} — skipping",
-                            disc.name(), adOrgId, orderId);
+                    updateDisciplineQty(compileDb, orderId, adOrgId, mepQty);
+                    BIMLogger.fine("CALLOUT", "Discipline {} (AD_Org={}) exists — updated Qty={} for order {}",
+                            disc.name(), adOrgId, mepQty, orderId);
+                    inserted++;
                     continue;
                 }
 
@@ -118,11 +128,11 @@ public class OrderLineProductCallout {
                 int seq = adOrgId * 10;
 
                 insertDisciplineLine(compileDb, orderId, buildingLineId, seq,
-                        bomValue, disc.name(), adOrgId);
+                        bomValue, disc.name(), adOrgId, mepQty);
                 inserted++;
 
-                BIMLogger.fine("CALLOUT", "Discipline callout: {} (AD_Org={}, seq={}) inserted for order {}",
-                        disc.name(), adOrgId, seq, orderId);
+                BIMLogger.fine("CALLOUT", "Discipline callout: {} (AD_Org={}, seq={}, qty={}) inserted for order {}",
+                        disc.name(), adOrgId, seq, mepQty, orderId);
             }
         }
 
@@ -173,9 +183,14 @@ public class OrderLineProductCallout {
                     if (!addList.contains(disc.name().trim())) continue;
                     if (disciplineLineExists(compileDb, orderId, adOrgId)) continue;
                     int seq = adOrgId * 10;
+                    int mepQty = 0;
+                    String countStr = readSysconfig(compileDb, "MEP_" + disc.name() + "_COUNT");
+                    if (countStr != null) {
+                        try { mepQty = Integer.parseInt(countStr); } catch (NumberFormatException ignored) {}
+                    }
                     insertDisciplineLine(compileDb, orderId, buildingLineId, seq,
-                            bomValue, disc.name(), adOrgId);
-                    BIMLogger.info("CALLOUT", "YAML override: added discipline {} for order {}", disc.name(), orderId);
+                            bomValue, disc.name(), adOrgId, mepQty);
+                    BIMLogger.info("CALLOUT", "YAML override: added discipline {} (qty={}) for order {}", disc.name(), mepQty, orderId);
                 }
             }
         }
@@ -335,6 +350,19 @@ public class OrderLineProductCallout {
         }
     }
 
+    /** Update Qty on an existing discipline OrderLine (BomDropper creates with Qty=0). */
+    private static void updateDisciplineQty(Connection conn, String orderId,
+                                             int adOrgId, int qty) throws SQLException {
+        String sql = "UPDATE C_OrderLine SET Qty = ? "
+                   + "WHERE C_Order_ID = ? AND AD_Org_ID = ? AND host_type = 'DISCIPLINE'";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, qty);
+            ps.setString(2, orderId);
+            ps.setInt(3, adOrgId);
+            ps.executeUpdate();
+        }
+    }
+
     /**
      * Check if a discipline OrderLine already exists for this order + AD_Org_ID.
      */
@@ -351,17 +379,18 @@ public class OrderLineProductCallout {
 
     /**
      * Insert a single discipline C_OrderLine into the compile DB.
-     * host_type=DISCIPLINE, qty=0 (fill-all), dx/dy/dz=0 (no placement — parasitic).
+     * host_type=DISCIPLINE, dx/dy/dz=0 (no placement — parasitic).
+     * Qty from ad_sysconfig MEP count (0 = fill-all fallback).
      */
     private static void insertDisciplineLine(Connection conn, String orderId,
                                               Integer parentLineId, int seq,
                                               String bomValue, String discipline,
-                                              int adOrgId) throws SQLException {
+                                              int adOrgId, int qty) throws SQLException {
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
                    + " m_product_category_id, dx, dy, dz, M_Product_ID, Discipline, AD_Org_ID, Qty, "
                    + " locator_ref) "
-                   + "VALUES (?, ?, ?, ?, 'DISCIPLINE', ?, 0, 0, 0, ?, ?, ?, 0, ?)";
+                   + "VALUES (?, ?, ?, ?, 'DISCIPLINE', ?, 0, 0, 0, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
             if (parentLineId != null) ps.setInt(2, parentLineId);
@@ -372,7 +401,8 @@ public class OrderLineProductCallout {
             ps.setString(6, bomValue);       // M_Product_ID = discipline BOM Value
             ps.setString(7, discipline);     // Discipline
             ps.setInt(8, adOrgId);           // AD_Org_ID
-            ps.setString(9, discipline);     // locator_ref = discipline code
+            ps.setInt(9, qty);               // Qty from extraction MEP count
+            ps.setString(10, discipline);    // locator_ref = discipline code
             ps.executeUpdate();
         }
     }

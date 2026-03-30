@@ -88,6 +88,7 @@ public class DisciplineBomBuilder {
         // ── Process each storey ───────────────────────────────────────────
         int totalLines = 0;
         List<String> floorBomIds = new ArrayList<>();
+        Map<String, Integer> mepCounts = new LinkedHashMap<>();
 
         for (Map.Entry<String, SpatialContainerConfig> storeyEntry : containers.entrySet()) {
             String storeyName = storeyEntry.getKey();
@@ -127,22 +128,26 @@ public class DisciplineBomBuilder {
                 byDiscipline.computeIfAbsent(disc, k -> new ArrayList<>()).add(e);
             }
 
-            // ── Flat LEAF writes under FLOOR (discipline = grouping only) ──
-            // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-TACK-1
-            // Discipline is AD_Org on the line, not a BOM level. LEAF lines
-            // write directly under FLOOR; discipline grouping is for verb
-            // factorization only (same-product grouping per discipline).
+            // ── Discipline separation (§10.4.6.1): ARC+STR to BOM, MEP to ad_sysconfig ──
+            // Implementing DISC_VALIDATION_DB_SRS.md §10.4.6.1 — Witness: W-DISC-SEP-1
+            // BOM = spatial structure (ARC+STR+REB). MEP elements counted and deferred
+            // to Callout — positions come from RouteBuilders, not IFC tack chain.
             int discSeq = 100;
             for (Map.Entry<String, List<ExtractionElement>> discEntry : byDiscipline.entrySet()) {
                 String discCode = discEntry.getKey();
                 List<ExtractionElement> discElems = discEntry.getValue();
-
-                // Resolve discipline code → AD_Org_ID for persisting on m_bom_line
-                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.4 — Witness: W-DV-DISC-ORG
-                // AD_Org_ID values match ERP.db AD_Org table (DV013 migration)
                 int adOrgId = resolveAdOrgId(discCode);
 
-                // F-2: Factored LEAF writes directly under FLOOR BOM
+                if (isMep(adOrgId)) {
+                    // MEP: count only — deferred to Callout + RouteBuilder
+                    mepCounts.merge(discCode, discElems.size(), Integer::sum);
+                    BIMLogger.pattern("MEP", "Deferred to Callout: {}/{} {} elements (AD_Org={})",
+                            storeyName, discCode, discElems.size(), adOrgId);
+                    continue;
+                }
+
+                // ARC/STR/REB: write to BOM as spatial structure
+                // Implementing DISC_VALIDATION_DB_SRS.md §10.4.1 — Witness: W-TACK-1
                 VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
                         bomConn, floorBomId, discElems, fMinX, fMinY, fMinZ, discSeq, true, adOrgId);
                 totalLines += fr.linesWritten();
@@ -168,7 +173,29 @@ public class DisciplineBomBuilder {
                     null, null, 0, null, null, null);
         }
 
+        // ── Write MEP counts to ad_sysconfig (§10.4.6.1 Class A) ─────────
+        // Implementing DISC_VALIDATION_DB_SRS.md §10.4.6.1 — Witness: W-DISC-SEP-1
+        if (!mepCounts.isEmpty()) {
+            String upsert = "INSERT OR REPLACE INTO ad_sysconfig "
+                    + "(config_key, config_value, description) VALUES (?, ?, ?)";
+            try (PreparedStatement ps = bomConn.prepareStatement(upsert)) {
+                for (Map.Entry<String, Integer> mc : mepCounts.entrySet()) {
+                    String key = "MEP_" + mc.getKey() + "_COUNT";
+                    ps.setString(1, key);
+                    ps.setString(2, String.valueOf(mc.getValue()));
+                    ps.setString(3, "MEP element count from extraction (discipline separation)");
+                    ps.executeUpdate();
+                    BIMLogger.info("EXTRACTION", "ad_sysconfig: {}={}", key, mc.getValue());
+                }
+            }
+        }
+
         return new BuildResult(totalLines, aabbW, aabbD, aabbH, floorBomIds);
+    }
+
+    /** MEP disciplines: AD_Org_ID 3-8 (FP, ELEC, ACMV, CW, SP, LPG). */
+    private static boolean isMep(int adOrgId) {
+        return adOrgId >= 3 && adOrgId <= 8;
     }
 
     // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
