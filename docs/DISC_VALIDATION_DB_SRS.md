@@ -1121,164 +1121,192 @@ anchor point; everything below cascades parent-relative. No absolute borrowing.
 **Enforcement:** Code review. No `*_extracted.db` or `*_input*` import exists in
 `DAGCompiler/src/main/java/`. Any future addition must pass this gate.
 
-### 6.12.2 MEP as BOM Walk — Joint Piece Architecture (S103)
+### 6.12.2 MEP Generative Walk — Joint Piece Architecture (S103)
 
-**Principle:** Placing a sprinkler on a pipe = placing a sofa in a room. Same
-walker. Same tack chain. No special routing engine needed.
+**Two fundamentally different operations in one compiler:**
 
-MEP "routing" is not a computation problem — it is an intensive BOM walk with
-small pieces. Each piece is a basic Lego joint: one parent connects to one child
-with a relative tack offset. The walker picks pieces from a toolbox and chains
-them together, exactly as it chains wall→room→furniture for ARC.
+| | ARC/STR | MEP |
+|---|---------|-----|
+| **Operation** | Deterministic replay | Generative walk-to-cover |
+| **Position source** | IFC extraction → m_bom_line.dx/dy/dz | Walker computes by pathfinding |
+| **Termination** | BOM lines exhausted | Coverage rule satisfied |
+| **What the BOM carries** | Exact per-element positions | Vocabulary of joinable pieces |
 
-#### Why Not Compute?
+ARC walks to PLACE — each element has a known position. MEP walks to COVER —
+keep laying pipe until the room is served. Same CrawlRouter walker, different
+termination condition.
 
-The IFC already contains the complete MEP topology — `IfcRelConnectsPorts`,
-pipe-to-fitting-to-terminal chains with spatial relationships. The S100
-RouteBuilders (CrawlRouter + 6 discipline builders) discard this topology at
-extraction and try to reinvent it from engineering rules. This is backwards:
+#### 1. The Toolbox — Joint Pieces in ERP.db (Vocabulary)
 
-- **Extraction:** IFC says pipe A connects to tee B at offset (dx, dy, dz).
-  This is a spatial fact, not a computation.
-- **Current approach:** Throw away the connection, then RouteBuilder
-  recomputes "riser → header → branch" from NFPA rules.
-- **Correct approach:** Extract the connection AS a BOM piece. Walk it.
-
-#### The Toolbox — Joint Pieces in ERP.db
-
-Each joint piece is a minimal M_BOM: one parent, one child, one tack offset.
-Extracted from IFC connection relationships, not invented. As basic as joining
-two pieces, or one piece to one base.
+Each joint piece is a minimal Lego brick: one parent connects to one child.
+Extracted from IFC RosettaStones — the sample relationships teach us what
+pieces exist and how they typically chain. Not per-building positions.
 
 ```
-ERP.db M_BOM — MEP joint pieces (extracted from IFC, shared across buildings)
+ERP.db M_Product — MEP joint piece vocabulary (shared, ~30-50 types)
 
-JOINT_PIPE_STRAIGHT    parent=PipeSegment   child=PipeSegment    dx=L  dy=0  dz=0
-JOINT_PIPE_TEE         parent=PipeSegment   child=TeeFitting     dx=0  dy=0  dz=0
-JOINT_TEE_BRANCH       parent=TeeFitting    child=PipeSegment    dx=0  dy=B  dz=0
-JOINT_PIPE_ELBOW       parent=PipeSegment   child=ElbowFitting   dx=0  dy=0  dz=0
-JOINT_ELBOW_TURN       parent=ElbowFitting  child=PipeSegment    dx=0  dy=0  dz=R
-JOINT_PIPE_REDUCER     parent=PipeSegment   child=ReducerFitting dx=0  dy=0  dz=0
-JOINT_PIPE_TERMINAL    parent=PipeSegment   child=SprinklerHead  dx=0  dy=0  dz=-D
-JOINT_PIPE_VALVE       parent=PipeSegment   child=StopValve      dx=V  dy=0  dz=0
-JOINT_DUCT_TEE         parent=DuctSegment   child=DuctTee        dx=0  dy=0  dz=0
-JOINT_DUCT_DIFFUSER    parent=DuctSegment   child=AirDiffuser    dx=0  dy=0  dz=-D
-JOINT_TRAY_FIXTURE     parent=CableTray     child=LightFixture   dx=0  dy=0  dz=-H
+JOINT_PIPE_STRAIGHT    parent=PipeSegment   child=PipeSegment    typical_L=6000mm
+JOINT_PIPE_TEE         parent=PipeSegment   child=TeeFitting     branch_angle=90°
+JOINT_TEE_BRANCH       parent=TeeFitting    child=PipeSegment    typical_L=3000mm
+JOINT_PIPE_ELBOW       parent=PipeSegment   child=ElbowFitting   angle=90°/45°
+JOINT_PIPE_REDUCER     parent=PipeSegment   child=ReducerFitting in_dia/out_dia
+JOINT_PIPE_TERMINAL    parent=PipeSegment   child=SprinklerHead  drop=300mm
+JOINT_PIPE_VALVE       parent=PipeSegment   child=StopValve      inline
+JOINT_DUCT_TEE         parent=DuctSegment   child=DuctTee        branch_angle=90°
+JOINT_DUCT_DIFFUSER    parent=DuctSegment   child=AirDiffuser    drop=200mm
+JOINT_TRAY_FIXTURE     parent=CableTray     child=LightFixture   drop=150mm
 ```
 
-Each piece has the same structure as any `m_bom_line`: parent product, child
-product, relative offset (dx/dy/dz), qty=1. The walker reads them identically
-to a wall-in-a-room or a slab-on-a-floor. Nothing to compute. Just walk.
+IFCtoERP (Phase J1) extracts these from IfcRelConnectsPorts across the fleet.
+Each building may contribute new patterns — `INSERT OR IGNORE`. The toolbox
+grows. A tee is a tee everywhere.
 
-#### Extraction — IFCtoBOM Reads IFC Joints
+#### 2. Rule-Driven Element Definitions in AD_Val_Rule
 
-New extraction step in IFCtoBOM for CO/IN buildings:
-
-1. Walk `IfcRelConnectsPorts` in the IFC — each relationship gives:
-   parent element, child element, port positions, connection type
-2. Compute relative offset: `child.position - parent.position` (same
-   maths as ARC extraction for `m_bom_line.dx/dy/dz`)
-3. Classify the joint pattern: straight, tee, elbow, terminal, reducer
-4. Write to ERP.db as a shared M_BOM recipe if the pattern is new, or
-   increment qty if the pattern already exists
-
-The joint pieces are **shared** — a pipe-to-tee joint in TE is the same piece
-as in MO. Only the qty and arrangement differ per building. Building-specific
-arrangement is what `discipline_counts` in YAML captures.
-
-#### Compilation — Same BOM Walk, No Special Engine
-
-At compile time, the flow is identical to ARC/STR:
+The rules don't just validate — they DEFINE what each room needs. The walker
+reads the rule to know what to build:
 
 ```
-Callout → DISC OrderLine (FP, qty=6863 from YAML)
-  → BomDropper explodes FP_SYSTEM recipe from ERP.db
-    → walks joint pieces: JOINT_PIPE_STRAIGHT → JOINT_PIPE_TEE → ...
-      → PlacementCollectorVisitor accumulates tack offsets
-        → elements_rtree in output.db
+AD_Val_Rule: FP_ROOM_COVERAGE
+  trigger:    room.type IN (KITCHEN, OFFICE, CORRIDOR, STORE)
+  elements:
+    SPRINKLER_HEAD   spacing_max=4600mm  mount=CEILING  qty=ceil(area/spacing²)
+    PIPE_BRANCH      connects_to=SPRINKLER_HEAD  diameter=25mm
+    TEE_FITTING      connects_to=PIPE_BRANCH from PIPE_HEADER
+    PIPE_HEADER      diameter=32mm  runs_along=CEILING_LONGEST_AXIS
+  standard:   NFPA 13 §8.6.2 (LH hazard class)
 ```
 
-The `PlacementCollectorVisitor` does not know or care that it is placing MEP
-elements. It reads `m_bom_line.dx/dy/dz`, accumulates from parent, writes
-to `elements_rtree`. Same code path as placing furniture. The walker picks
-from the joint piece toolbox like a worker picking from a box of Lego pieces —
-intensively, thousands of joints, but each pick is the same atomic operation.
+The rule specifies WHAT elements, HOW they connect, WHERE they mount, HOW
+MANY, and WHEN the walker can stop. The rule IS the recipe — expressed as
+constraints on the joint piece vocabulary.
 
-#### Role of Standards — Validation, Not Generation
+| Standard | Rule defines | Walker uses |
+|----------|-------------|-------------|
+| NFPA 13 §8.6 | Sprinkler grid: spacing, mount surface, qty formula | Pick TERMINAL pieces at grid intervals until area covered |
+| MS 1228 §5 | Waste gradient: slope, direction, diameter reduction | Pick STRAIGHT + REDUCER pieces maintaining gradient |
+| ASHRAE 62.1 | Diffuser coverage: ACH, room volume, diffuser capacity | Pick DUCT_DIFFUSER pieces until air changes satisfied |
+| MS 1228 §4 | Fixture supply: fixture types, unit capacity | Pick PIPE_TERMINAL pieces at each fixture position |
+| MS 830 §4 | Gas supply: clearance, single drop per gas point | Pick PIPE_TERMINAL + VALVE at each gas point |
 
-NFPA 13, MS 1228, ASHRAE 62.1 etc. become what they should be:
-**validation rules** in `AD_Val_Rule`, checked after placement.
+Post-walk, the SAME rules validate: did the walk satisfy the constraint?
 
-| Standard | Current role (WRONG) | Correct role |
-|----------|---------------------|--------------|
-| NFPA 13 §8.6 | RouteBuilder computes sprinkler grid | `AD_Val_Rule` checks spacing after walk |
-| MS 1228 §5 | RouteBuilder computes waste gradient | `AD_Val_Rule` checks gradient after walk |
-| ASHRAE 62.1 | RouteBuilder computes diffuser count | `AD_Val_Rule` checks coverage after walk |
-| MS 830 §4 | RouteBuilder computes gas drop | `AD_Val_Rule` checks clearance after walk |
+#### 3. The Compile Canvas — Spatial Awareness During Walk
 
-The IFC source already satisfies these standards (it was designed by engineers).
-The extracted joint pieces carry that compliance. Validation confirms it.
+The walker needs to SEE the building — what's free, what's blocked, what's
+already served. A temp working surface per floor:
 
-#### Role of CrawlRouter — Universal MEP Walker
-
-The compiler IS a walker — it never stops walking. Joint pieces are the
-**materials** (WHAT to pick). CrawlRouter is the **walker** (HOW to walk).
-Both are needed. Without the walk, joint pieces are data sitting in a table.
-
-```
-CrawlRouter walks the route path:
-  FOLLOW  → picks JOINT_PIPE_STRAIGHT from toolbox
-  BEND    → picks JOINT_PIPE_ELBOW from toolbox
-  BRANCH  → picks JOINT_PIPE_TEE from toolbox
-  REDUCE  → picks JOINT_PIPE_REDUCER from toolbox
-  end     → picks JOINT_PIPE_TERMINAL from toolbox
+```sql
+compile_canvas (temp table — per floor, per discipline, dropped after compile)
+  cell_x  INTEGER,     -- grid position X
+  cell_y  INTEGER,     -- grid position Y
+  surface TEXT,        -- CEILING / WALL_N / WALL_S / WALL_E / WALL_W / FLOOR
+  state   TEXT,        -- FREE / OCCUPIED / BLOCKED / SERVED
+  occupied_by TEXT,    -- element_ref if placed, structural_ref if blocked
+  discipline  TEXT     -- which DISC owns this cell
 ```
 
-The walk path (CrawlOp sequence) comes from two sources:
+**Priming:** ARC compiled output → room boundaries become cells, beams/columns
+become BLOCKED. The canvas is the map the walker reads.
 
-| Source | Walk path origin | Joint pieces |
-|--------|-----------------|--------------|
-| **EXTRACTED** | IFC connection graph → serialized as CrawlOps | Extracted from IFC via IFCtoERP |
-| **GENERATIVE** | RouteBuilder computes from engineering rules | Same shared toolbox in ERP.db |
+**During walk:** Walker finds FREE cells, places a joint piece, marks SERVED.
+Other disciplines' placements are OCCUPIED — walker routes around them.
 
-CrawlRouter is the same either way. The 6 RouteBuilders still provide
-`plan()` — for EXTRACTED buildings, the plan comes from IFC topology
-(connection graph → CrawlOp sequence). For GENERATIVE buildings, the plan
-comes from engineering rules (NFPA spacing, room geometry, etc.).
+**Coverage check:** All cells within rule spacing SERVED? → done. Not yet? →
+keep walking.
 
-One abstract walker. One toolbox. Two sources for the walk path.
+#### 4. Discipline Anchors — Continuity Across Floors
 
-#### Coverage Tracking
+The riser punches through floors. Its exit on Floor 1 = entry on Floor 2.
+Persisted across floor canvases:
 
-`discipline_counts` in YAML (S103) provides the denominator:
+```sql
+discipline_anchors (persisted across floor canvases for full building compile)
+  discipline   TEXT,    -- FP, CW, ELEC, etc.
+  anchor_type  TEXT,    -- SOURCE / ENTRY / EXIT / TERMINAL_BLOCK
+  floor_ref    TEXT,    -- which floor
+  x REAL, y REAL, z REAL,  -- position
+  diameter_mm  REAL,    -- pipe/duct size at this point
+  direction    TEXT     -- UP / DOWN / NORTH / SOUTH / EAST / WEST
+```
 
-- YAML says `FP: 6863` elements from extraction
-- Joint piece extraction produces N joint BOMs
-- BOM walk places M elements from those joints
-- Delta = `6863 - M` = coverage gap, per discipline per building
-- Target: delta → 0 for all disciplines in buildings with IFC MEP data
+**Flow across floors:**
+```
+Floor 0 (pump room):
+  canvas → place FP_PUMP → mark EXIT(5, 3, 3.0, UP, 50mm)
+  → persist to discipline_anchors
 
-#### Phasing
+Floor 1:
+  canvas → read ENTRY from anchors → walker starts at (5, 3, ceiling_z)
+  → walk header along ceiling, branch to each room, place terminals
+  → mark EXIT(5, 3, 6.0, UP, 50mm) for next floor
+  → persist to discipline_anchors
+
+Floor 2:
+  canvas → read ENTRY → continue from riser position → walk this floor
+```
+
+Each discipline starts from its source: FP from pump room (UP), CW from
+tank (DOWN from roof), SP from fixtures (DOWN to drain), ELEC from DB room
+(OUT). Anchors carry position + diameter + direction between floors.
+
+#### 5. The Generative Walk Sequence
+
+```
+For each floor (bottom to top):
+  1. Prime canvas from ARC output (rooms, ceilings, structural → BLOCKED)
+  2. For each discipline (ordered by priority: FP > ELEC > ACMV > CW > SP > LPG):
+     a. Read ENTRY anchor (or SOURCE if first floor for this disc)
+     b. Read AD_Val_Rule demand for each room on this floor
+     c. Walk: pick joint pieces from toolbox, chain along ceiling/wall,
+        branch to rooms, place terminals until coverage rule satisfied
+     d. Mark placed cells as OCCUPIED on canvas
+     e. Write EXIT anchor for next floor
+     f. Emit system_edges (P15/P16/P17 proof input)
+  3. Drop canvas
+```
+
+The walker generates the per-building MEP BOM at compile time. It doesn't
+replay extracted positions — it finds its own path through the ARC canvas,
+constrained by rules, using joint pieces as vocabulary.
+
+#### 6. What IFC RosettaStones Teach Us
+
+The IFC extraction does NOT give us per-building positions to replay. It gives
+us the Lego set:
+
+| From IFC | To ERP.db | Purpose |
+|----------|-----------|---------|
+| `IfcRelConnectsPorts` | Joint piece M_Products | What types of joints exist |
+| Port diameters, angles | Joint piece dimensions | Typical sizes per joint type |
+| Connection patterns | Rule element definitions | How pieces typically chain |
+| Discipline assignment | AD_Val_Rule trigger | Which rooms need which DISC |
+
+~30-50 distinct joint types from TE alone. The fleet confirms and extends.
+Once the toolbox has these pieces, ANY building compiles — extracted or
+generative. The RosettaStones are the sounding board, not the answer.
+
+#### 7. Phasing
 
 | Phase | Scope | Prereq |
 |-------|-------|--------|
-| J1 | IFCtoBOM: extract `IfcRelConnectsPorts` → joint piece BOMs in ERP.db | S103 discipline separation |
-| J2 | BomDropper: walk joint piece recipes (same as ARC — no new code) | J1 |
-| J3 | GEO: verify MEP placement drift (same proof, now covers MEP too) | J2 |
-| J4 | Validation: wire `AD_Val_Rule` for NFPA/MS/ASHRAE post-walk checks | J3 |
-| J5 | Fleet: re-extract all 34 buildings, measure coverage delta per discipline | J4 |
+| J1 | IFCtoERP: extract `IfcRelConnectsPorts` → joint piece vocabulary in ERP.db | S103 |
+| J2 | AD_Val_Rule: rule-driven element definitions (what each room needs) | J1 |
+| J3 | compile_canvas + discipline_anchors: temp spatial awareness tables | J2 |
+| J4 | CrawlRouter walk-to-cover: generative walk picking pieces from toolbox | J3 |
+| J5 | Post-walk validation: same rules confirm coverage + P15/P16/P17 proofs | J4 |
+| J6 | Fleet: TE + RM, measure coverage per discipline per room | J5 |
 
-J1 is the key task — the rest follows from existing infrastructure.
+#### Existing Infrastructure (S100) — Foundation for Walk-to-Cover
 
-#### Existing Infrastructure (S100) — Reused for Both Paths
-
-| Component | Status | Role |
-|-----------|--------|------|
-| CrawlRouter | DONE (S100-p100) | Universal MEP walker — executes CrawlOps, picks joint pieces |
-| 6 RouteBuilders (FP/ELEC/CW/SP/ACMV/LPG) | DONE (S100-p101) | `plan()` produces CrawlOp sequence — from IFC graph or rules |
-| 5 CrawlOps (Follow/Bend/Branch/Reduce/Penetrate) | DONE (S100-p100) | Walk instructions — same ops, different source |
-| BuildingGeometry / SqlBuildingGeometry | DONE (S100-p100) | Room queries for both paths |
-| system_edges / system_nodes | DONE (S100-p105) | P15/P16/P17 proof input |
+| Component | Status | Role in generative walk |
+|-----------|--------|------------------------|
+| CrawlRouter | DONE (S100-p100) | Walk engine — executes ops, picks joint pieces |
+| 6 RouteBuilders | DONE (S100-p101) | `plan()` — now reads canvas + rules instead of hardcoded patterns |
+| 5 CrawlOps | DONE (S100-p100) | Walk instructions — FOLLOW/BEND/BRANCH/REDUCE/PENETRATE |
+| BuildingGeometry | DONE (S100-p100) | Primes canvas: room boundaries, ceiling Z, slab thickness |
+| system_edges | DONE (S100-p105) | P15/P16/P17 proof input from walk |
+| AD_Val_Rule | EXISTS (ERP.db) | Table exists — needs MEP element definitions (J2) |
 
 The existing skeleton (258 edges, 3%) used rule-computed CrawlOps. After
 IFCtoERP, the same CrawlRouter walks IFC-extracted CrawlOps with joint
