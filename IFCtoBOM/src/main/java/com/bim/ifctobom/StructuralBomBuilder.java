@@ -34,6 +34,7 @@ public class StructuralBomBuilder {
      * Build structural BOMs from extraction data.
      *
      * @param bomConn     writable connection to output BOM DB
+     * @param extractionConn read-only connection to *_extracted.db (for rel_aggregates), may be null
      * @param config      building classification (Order identity)
      * @param containers  resolved spatial container configs (auto-discovered or YAML override)
      * @param storeyElements extraction elements grouped by container name
@@ -41,7 +42,10 @@ public class StructuralBomBuilder {
      *                        skipped from FLOOR STR BOMs. May be empty.
      * @return build result with counts
      */
-    public static BuildResult build(Connection bomConn, BuildingConfig config,
+    // Implementing BBC.md §2 + DISC_VALIDATION_DB_SRS §10.4.13 — IFC assembly BOMs
+    // IfcRelAggregates defines parent-child structure, no heuristic grouping
+    public static BuildResult build(Connection bomConn, Connection extractionConn,
+                                    BuildingConfig config,
                                     Map<String, SpatialContainerConfig> containers,
                                     Map<String, List<ExtractionElement>> storeyElements,
                                     Map<String, Set<String>> excludeByStorey,
@@ -80,6 +84,38 @@ public class StructuralBomBuilder {
                 config.docSubType(), config.productCategory(),
                 aabbW, aabbD, aabbH,
                 allMinX, allMinY, allMinZ, catLookup);
+
+        // ── Load IFC assembly groups from rel_aggregates ─────────────────────
+        // child_guid → parent_guid (only assemblies with ≥2 matched extraction children)
+        Map<String, String> childToParent = new LinkedHashMap<>();
+        Map<String, List<String>> parentToChildren = new LinkedHashMap<>();
+        if (extractionConn != null) {
+            try (Statement stmt = extractionConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                    "SELECT ra.parent_guid, ra.child_guid "
+                    + "FROM rel_aggregates ra "
+                    + "JOIN elements_meta em ON em.guid = ra.child_guid "
+                    + "ORDER BY ra.parent_guid")) {
+                while (rs.next()) {
+                    String parent = rs.getString(1);
+                    String child = rs.getString(2);
+                    parentToChildren.computeIfAbsent(parent, k -> new ArrayList<>()).add(child);
+                }
+            } catch (SQLException e) {
+                // rel_aggregates may not exist — proceed without assemblies
+            }
+            // Only keep assemblies with ≥2 children (singletons stay flat)
+            parentToChildren.entrySet().removeIf(e -> e.getValue().size() < 2);
+            for (var entry : parentToChildren.entrySet()) {
+                for (String child : entry.getValue()) {
+                    childToParent.put(child, entry.getKey());
+                }
+            }
+            if (!parentToChildren.isEmpty()) {
+                BIMLogger.fine("STR", "IFC assemblies: {} groups, {} children",
+                        parentToChildren.size(), childToParent.size());
+            }
+        }
 
         // ── Process each storey ──────────────────────────────────────────────
         int totalLines = 0;
@@ -134,10 +170,77 @@ public class StructuralBomBuilder {
                 floorElems.add(e);
             }
 
+            // ── Partition into assembly groups vs flat elements ──────────────
+            // Elements whose GUID is a child in rel_aggregates get grouped into
+            // ASSEMBLY BOMs. Elements not in any assembly stay as flat leaves.
+            Map<String, List<ExtractionElement>> assemblyGroups = new LinkedHashMap<>();
+            List<ExtractionElement> flatElems = new ArrayList<>();
+            for (ExtractionElement e : floorElems) {
+                String parentGuid = (e.guid() != null) ? childToParent.get(e.guid()) : null;
+                if (parentGuid != null) {
+                    assemblyGroups.computeIfAbsent(parentGuid, k -> new ArrayList<>()).add(e);
+                } else {
+                    flatElems.add(e);
+                }
+            }
+
+            // ── Create ASSEMBLY BOMs for IFC aggregates ─────────────────────
+            int asmSeq = 10;
+            int asmCount = 0;
+            for (var asmEntry : assemblyGroups.entrySet()) {
+                List<ExtractionElement> asmElems = asmEntry.getValue();
+                if (asmElems.size() < 2) {
+                    // Singleton in this storey — treat as flat
+                    flatElems.addAll(asmElems);
+                    continue;
+                }
+                asmCount++;
+                String asmBomId = prefix + "_" + storeyInfo.code() + "_ASM_" + asmCount;
+
+                // Compute assembly AABB
+                double aMinX = asmElems.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
+                double aMaxX = asmElems.stream().mapToDouble(ExtractionElement::maxX).max().orElse(0);
+                double aMinY = asmElems.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
+                double aMaxY = asmElems.stream().mapToDouble(ExtractionElement::maxY).max().orElse(0);
+                double aMinZ = asmElems.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+                double aMaxZ = asmElems.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(0);
+
+                double asmW = (aMaxX - aMinX) * 1000;
+                double asmD = (aMaxY - aMinY) * 1000;
+                double asmH = (aMaxZ - aMinZ) * 1000;
+
+                ProductRegistrar.ensureAssemblyStub(bomConn, asmBomId, "ASSEMBLY");
+                BomWriter.insertBom(bomConn, new BomWriter.BomRowBuilder(
+                        asmBomId, prefix + " Assembly " + asmCount, "ASSEMBLY", "STOREY")
+                        .aabb((int) asmW, (int) asmD, (int) asmH)
+                        .build());
+
+                // Insert LEAF children into assembly BOM
+                VerbFactorizer.FactorResult asmFr = VerbFactorizer.factorize(
+                        bomConn, asmBomId, asmElems, aMinX, aMinY, aMinZ, 10);
+                totalLines += asmFr.linesWritten();
+
+                // Add MAKE line from FLOOR → ASSEMBLY
+                double asmDx = aMinX - fMinX;
+                double asmDy = aMinY - fMinY;
+                double asmDz = aMinZ - fMinZ;
+                insertBomLine(bomConn, floorBomId, asmBomId, "MAKE",
+                        "ASM_" + asmCount, asmSeq, "0",
+                        asmDx, asmDy, asmDz,
+                        0, 0, 0, null, null, 0, null, null, null);
+                asmSeq += 10;
+                totalLines++;  // the MAKE line itself
+
+                BIMLogger.fine("STR", "{} ASM_{}: {} children → {}",
+                        storeyName, asmCount, asmElems.size(), asmBomId);
+            }
+
+            // ── Insert flat (non-assembly) element lines ────────────────────
             // BBC.md §4 — write IFC GUIDs to m_bom_line_ma for traceability
             // 7-arg overload: writes MA rows, keeps element_ref as product name (RE path)
             VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
-                    bomConn, floorBomId, floorElems, fMinX, fMinY, fMinZ, 10);
+                    bomConn, floorBomId, flatElems, fMinX, fMinY, fMinZ,
+                    asmSeq > 10 ? asmSeq : 10);
             totalLines += fr.linesWritten();
             if (fr.verbMatched() > 0) {
                 BIMLogger.fine("STR", "{} STR: {} verb patterns ({} instances), {} unfactored",

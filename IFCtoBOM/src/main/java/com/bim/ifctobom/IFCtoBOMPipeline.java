@@ -291,7 +291,7 @@ public class IFCtoBOMPipeline {
                 Map<String, Set<String>> allExclude = mergeExcludes(
                         scope.excludeByStorey(), composition.excludeByStorey());
                 structural = StructuralBomBuilder.build(
-                        bomConn, config, containers, storeyElements, allExclude, catLookup);
+                        bomConn, extractionConn, config, containers, storeyElements, allExclude, catLookup);
                 BIMLogger.fine("EXTRACTION", "{}: {} structural + {} scope + {} composition lines, AABB={}x{}x{}mm",
                         config.buildingType(), structural.totalLines(),
                         scope.totalSetLines(), composition.halfUnitLines() + composition.pairLines(),
