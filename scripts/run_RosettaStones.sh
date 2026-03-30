@@ -231,6 +231,22 @@ for yaml_file in "${YAML_FILES[@]}"; do
             else
                 verdict "IFCTOBOM_${PREFIX}" "PASS" "${BOM_DB} produced"
             fi
+
+            # ── IFCtoERP: Joint piece + shim extraction (§6.12.2 J1+J2) ──
+            JE_OUTPUT=""
+            JE_RC=0
+            JE_OUTPUT=$(mvn exec:java -pl IFCtoBOM \
+                -Dexec.mainClass="com.bim.ifctobom.IFCtoBOMMain" \
+                -Dexec.args="--joint-extract --classify ${yaml_file}" \
+                -q 2>&1) && JE_RC=0 || JE_RC=$?
+            echo "$JE_OUTPUT" | grep -E '^\[joint-extract\]|^\[IFCtoERP\]' || true
+
+            if [ "$JE_RC" -ne 0 ]; then
+                verdict "JOINT_EXTRACT_${PREFIX}" "FAIL" "joint piece extraction failed"
+                echo "$JE_OUTPUT" | grep -E "ERROR|Exception|FAIL" | head -5 | sed 's/^/    /'
+            else
+                verdict "JOINT_EXTRACT_${PREFIX}" "PASS" "joint pieces extracted"
+            fi
         fi
 
         # Prepare per-building compile DB (e.g. library/_SH_compile.db)

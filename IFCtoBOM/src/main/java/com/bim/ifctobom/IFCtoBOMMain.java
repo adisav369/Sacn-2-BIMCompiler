@@ -48,10 +48,12 @@ public class IFCtoBOMMain {
         Path compDbPath = Path.of("library/component_library.db");
         Path schemaPath = Path.of("library/schema_snapshot_bom.sql");
         boolean populateOnly = false;
+        boolean jointExtract = false;
 
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--populate" -> populateOnly = true;
+                case "--joint-extract" -> jointExtract = true;
                 case "--classify" -> yamlPath = Path.of(args[++i]);
                 case "--bom-db"   -> bomDbPath = Path.of(args[++i]);
                 case "--comp-db"  -> compDbPath = Path.of(args[++i]);
@@ -77,6 +79,11 @@ public class IFCtoBOMMain {
         if (!Files.exists(compDbPath)) {
             System.err.println("[ERROR] component_library.db not found: " + compDbPath);
             System.exit(1);
+        }
+
+        if (jointExtract) {
+            runJointExtract(yamlPath);
+            return;
         }
 
         if (populateOnly) {
@@ -145,8 +152,31 @@ public class IFCtoBOMMain {
         }
     }
 
+    /**
+     * Extract MEP joint piece vocabulary from extracted DB → ERP.db.
+     * Implementing §6.12.2 Phase J1+J2.
+     */
+    private static void runJointExtract(Path yamlPath) throws Exception {
+        ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
+        BuildingConfig config = yaml.getBuilding();
+        String buildingType = config.buildingType();
+
+        System.out.printf("[joint-extract] Building: %s (%s)%n", config.name(), buildingType);
+
+        try (Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+            // Phase J1: Extract joint piece types
+            IFCtoERP.Result r = IFCtoERP.extract(erpConn, buildingType);
+
+            // Phase J2: Create shim products (idempotent — runs once across fleet)
+            int shims = IFCtoERP.createShimProducts(erpConn);
+
+            System.out.printf("[joint-extract] %s complete — %d MEP elements, %d joint types, %d new products, %d shims%n",
+                    buildingType, r.mepElements(), r.stagedTypes(), r.newProducts(), shims);
+        }
+    }
+
     private static void printUsage() {
         System.err.println("Usage: IFCtoBOMMain --classify <yaml> " +
-                "[--populate] [--bom-db <path>] [--comp-db <path>] [--schema <sql>]");
+                "[--populate] [--joint-extract] [--bom-db <path>] [--comp-db <path>] [--schema <sql>]");
     }
 }
