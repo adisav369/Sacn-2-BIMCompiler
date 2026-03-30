@@ -49,7 +49,7 @@ public class BuildingRegistryTest {
             ? BuildingRegistry.loadByProductCategory(productCategory)
             : BuildingRegistry.loadActive();
         assertFalse(buildings.isEmpty(),
-            "C_DocType must have active building types"
+            "BuildingRegistry must have active buildings"
                 + (productCategory != null ? " for ProductCategory=" + productCategory : ""));
 
         List<DynamicTest> tests = new ArrayList<>();

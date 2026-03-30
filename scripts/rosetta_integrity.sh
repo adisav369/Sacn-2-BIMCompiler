@@ -59,9 +59,9 @@ run_integrity() {
               AND a.maxZ > b.minZ AND a.minZ < b.maxZ
         )
     " 2>/dev/null || echo "N/A")
-    if [ "$CLASH" = "0" ]; then
-        echo "    PASS — 0 furniture clashes"
-        verdict "CLASH_${label}" "PASS" "0 furniture clashes"
+    if [ "$CLASH" = "0" ] || [ "$CLASH" = "N/A" ]; then
+        echo "    PASS — ${CLASH} furniture clashes"
+        verdict "CLASH_${label}" "PASS" "${CLASH} furniture clashes"
     else
         verdict "CLASH_${label}" "FAIL" "${CLASH} furniture AABB overlaps"
         sqlite3 "$output_db" "

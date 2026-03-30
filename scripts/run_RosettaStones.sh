@@ -88,10 +88,17 @@ for arg in "$@"; do
     esac
 done
 
-# Default: run ALL classify_*.yaml in resources/ (no category grouping)
+# Default: run all EXTRACTED classify_*.yaml (skip GENERATIVE — BIM Designer domain)
 if [ ${#YAML_FILES[@]} -eq 0 ]; then
     for f in "${YAML_DIR}"/classify_*.yaml; do
-        [ -f "$f" ] && YAML_FILES+=("$f")
+        if [ -f "$f" ]; then
+            prov=$(parse_yaml "$f" "provenance")
+            if [ "$prov" = "GENERATIVE" ]; then
+                echo "  [skip] $(basename "$f") — GENERATIVE (BIM Designer domain)"
+            else
+                YAML_FILES+=("$f")
+            fi
+        fi
     done
 fi
 
@@ -118,8 +125,16 @@ fi
 
 echo ""
 
+# Fleet result collectors (for summary table at end)
+declare -a FLEET_LINES=()
+FLEET_IDX=0
+
 # Process each building
 for yaml_file in "${YAML_FILES[@]}"; do
+    # Save verdict counters at start of this building
+    _BLDG_PASS_START=$LOG_PASS
+    _BLDG_FAIL_START=$LOG_FAIL
+    _BLDG_WARN_START=$LOG_WARN
     # Parse building identity from YAML
     PREFIX=$(parse_yaml "$yaml_file" "prefix")
     BUILDING_TYPE=$(parse_yaml "$yaml_file" "building_type")
@@ -252,6 +267,41 @@ for yaml_file in "${YAML_FILES[@]}"; do
                 -q 2>&1 | tail -1
         fi
     fi
+
+    # ── Per-building one-line summary ──
+    _BP=$((LOG_PASS - _BLDG_PASS_START))
+    _BF=$((LOG_FAIL - _BLDG_FAIL_START))
+    _BW=$((LOG_WARN - _BLDG_WARN_START))
+    _BT=$((_BP + _BF + _BW))
+
+    # PATTERN: storey assignment from latest ifctobom log
+    _PATRN_LOG=$(ls -t logs/pipeline_"${BUILDING_TYPE}"_ifctobom_*.log 2>/dev/null | head -1)
+    _STOREYS="-"; _UNKNOWN="-"; _TOTAL_EL="-"
+    if [ -n "$_PATRN_LOG" ] && [ -f "$_PATRN_LOG" ]; then
+        _STOREYS=$(grep -c "\[PATRN\] FLOOR" "$_PATRN_LOG" 2>/dev/null || echo 0)
+        _UNKNOWN=$(grep "\[PATRN\] FLOOR.*Unknown" "$_PATRN_LOG" 2>/dev/null | grep -oP '\d+ elements' | head -1 | grep -oP '\d+' || echo 0)
+        _TOTAL_EL=$(grep "\[PATRN\] FLOOR" "$_PATRN_LOG" 2>/dev/null | grep -oP '\d+ elements' | grep -oP '\d+' | paste -sd+ | bc 2>/dev/null || echo "?")
+    fi
+    # Fallback: element count from BOM.db
+    if [ "$_TOTAL_EL" = "-" ] || [ "$_TOTAL_EL" = "?" ]; then
+        _TOTAL_EL=$(sqlite3 "$BOM_DB" "SELECT SUM(qty) FROM m_bom_line WHERE component_type='LEAF' OR component_type='MAKE'" 2>/dev/null || echo "?")
+    fi
+
+    # Status word
+    if [ "$_BF" -gt 0 ]; then _STATUS="FAIL"
+    elif [ "$_BW" -gt 0 ]; then _STATUS="WARN"
+    else _STATUS="PASS"; fi
+
+    # Collect for fleet table
+    FLEET_LINES[$FLEET_IDX]=$(printf "%-4s %-24s %5s  %2s/%2s  %s storeys  unk=%s" \
+        "$PREFIX" "$BLDG_NAME" "$_TOTAL_EL" "$_BP" "$_BT" "$_STOREYS" "$_UNKNOWN")
+    FLEET_IDX=$((FLEET_IDX + 1))
+
+    # Print one-line summary
+    echo ""
+    printf "  ▸ %-4s  %5s el  %s/%s gates  %s storeys  unk=%-5s  %s\n" \
+        "$PREFIX" "$_TOTAL_EL" "$_BP" "$_BT" "$_STOREYS" "$_UNKNOWN" "$_STATUS"
+    echo ""
 done
 
 # ── Validation rule extraction (idempotent — INSERT OR IGNORE) ──
@@ -270,18 +320,16 @@ for yaml_file in "${YAML_FILES[@]}"; do
     fi
 done
 
-# ── Summary ──────────────────────────────────────────────────
-print_header "ROSETTA STONE SUMMARY"
-echo "  Pipeline: IFC → *_BOM.db → DAGCompiler → output.db"
+# ── Fleet Summary Table ──────────────────────────────────────
+print_header "FLEET SUMMARY"
 echo ""
-echo "  Single compilation path: C_OrderLine → BOM explosion → elements."
-echo "  Contract tests (G1-G6) + fidelity (C8/C9) verify correctness."
-echo ""
-echo "  Buildings processed: ${#YAML_FILES[@]}"
-for yf in "${YAML_FILES[@]}"; do
-    yf_prefix=$(parse_yaml "$yf" "prefix")
-    echo "    ${yf_prefix} → library/${yf_prefix}_BOM.db"
+printf "  %-4s %-24s %5s  %5s  %7s  %7s\n" "PFX" "BUILDING" "EL" "GATES" "STOREYS" "UNKNOWN"
+printf "  %-4s %-24s %5s  %5s  %7s  %7s\n" "----" "------------------------" "-----" "-----" "-------" "-------"
+for ((i=0; i<FLEET_IDX; i++)); do
+    echo "  ${FLEET_LINES[$i]}"
 done
+echo ""
+echo "  Pipeline: IFC → *_BOM.db → DAGCompiler → output.db"
 echo ""
 finish_log
 
