@@ -1,8 +1,9 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
-import com.bim.ifctobom.ClassificationYaml.StoreyConfig;
+import com.bim.ifctobom.ClassificationYaml.SpatialContainerConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+import com.bim.orm.BIMLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -33,13 +34,15 @@ public class StructuralBomBuilder {
      * Build structural BOMs from extraction data.
      *
      * @param bomConn     writable connection to output BOM DB
-     * @param config      building classification from YAML
-     * @param storeyElements extraction elements grouped by storey
-     * @param excludeByStorey element keys assigned to scope spaces (per storey),
+     * @param config      building classification (Order identity)
+     * @param containers  resolved spatial container configs (auto-discovered or YAML override)
+     * @param storeyElements extraction elements grouped by container name
+     * @param excludeByStorey element keys assigned to scope spaces (per container),
      *                        skipped from FLOOR STR BOMs. May be empty.
      * @return build result with counts
      */
     public static BuildResult build(Connection bomConn, BuildingConfig config,
+                                    Map<String, SpatialContainerConfig> containers,
                                     Map<String, List<ExtractionElement>> storeyElements,
                                     Map<String, Set<String>> excludeByStorey,
                                     CategoryLookup catLookup)
@@ -82,9 +85,9 @@ public class StructuralBomBuilder {
         int totalLines = 0;
         List<String> floorBomIds = new ArrayList<>();
 
-        for (Map.Entry<String, StoreyConfig> storeyEntry : config.storeys().entrySet()) {
+        for (Map.Entry<String, SpatialContainerConfig> storeyEntry : containers.entrySet()) {
             String storeyName = storeyEntry.getKey();
-            StoreyConfig storeyInfo = storeyEntry.getValue();
+            SpatialContainerConfig storeyInfo = storeyEntry.getValue();
 
             List<ExtractionElement> elems = storeyElements.get(storeyName);
             if (elems == null || elems.isEmpty()) continue;
@@ -137,7 +140,7 @@ public class StructuralBomBuilder {
                     bomConn, floorBomId, floorElems, fMinX, fMinY, fMinZ, 10);
             totalLines += fr.linesWritten();
             if (fr.verbMatched() > 0) {
-                System.out.printf("  [verb] %s STR: %d verb patterns (%d instances), %d unfactored%n",
+                BIMLogger.fine("STR", "{} STR: {} verb patterns ({} instances), {} unfactored",
                         storeyName, fr.verbMatched(), fr.verbInstances(), fr.unfactored());
             }
 
@@ -152,27 +155,6 @@ public class StructuralBomBuilder {
                     makeDx, makeDy, makeDz,
                     0, 0, 0,  // MAKE children don't carry allocated size
                     null, null, 0, null, null, null);
-        }
-
-        // ASSUMPTION: Every storey name in the extraction DB has a matching key
-        // in the YAML storeys map. Elements in unmapped storeys are silently
-        // dropped from all BOMs — they appear in storeyElements but are never
-        // iterated by any builder. If you see this warning, either add the
-        // storey to the classify YAML or verify the extraction storey names.
-        Set<String> mapped = config.storeys().keySet();
-        Set<String> found = storeyElements.keySet();
-        int droppedElements = 0;
-        for (String s : found) {
-            if (!mapped.contains(s)) {
-                int count = storeyElements.get(s).size();
-                droppedElements += count;
-                System.err.printf("  [WARN] Unmapped storey in %s: %s (%d elements dropped)%n",
-                        config.buildingType(), s, count);
-            }
-        }
-        if (droppedElements > 0) {
-            System.err.printf("  [WARN] Total elements dropped from unmapped storeys: %d%n",
-                    droppedElements);
         }
 
         return new BuildResult(totalLines, aabbW, aabbD, aabbH, floorBomIds);

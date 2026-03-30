@@ -1,7 +1,7 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
-import com.bim.ifctobom.ClassificationYaml.StoreyConfig;
+import com.bim.ifctobom.ClassificationYaml.SpatialContainerConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.ifctobom.StructuralBomBuilder.BuildResult;
 
@@ -48,6 +48,7 @@ public class DisciplineBomBuilder {
      * for pipeline compatibility.
      */
     public static BuildResult build(Connection bomConn, BuildingConfig config,
+                                    Map<String, SpatialContainerConfig> containers,
                                     Map<String, List<ExtractionElement>> storeyElements,
                                     CategoryLookup catLookup)
             throws SQLException {
@@ -87,9 +88,9 @@ public class DisciplineBomBuilder {
         int totalLines = 0;
         List<String> floorBomIds = new ArrayList<>();
 
-        for (Map.Entry<String, StoreyConfig> storeyEntry : config.storeys().entrySet()) {
+        for (Map.Entry<String, SpatialContainerConfig> storeyEntry : containers.entrySet()) {
             String storeyName = storeyEntry.getKey();
-            StoreyConfig storeyInfo = storeyEntry.getValue();
+            SpatialContainerConfig storeyInfo = storeyEntry.getValue();
 
             List<ExtractionElement> elems = storeyElements.get(storeyName);
             if (elems == null || elems.isEmpty()) continue;

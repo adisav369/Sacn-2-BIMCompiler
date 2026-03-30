@@ -15,10 +15,8 @@ building:
   jurisdiction: MY
   dsl_file: dsl_sh.bim                  # BIM COBOL script for DAGCompiler
 
-  storeys:
-    Ground Floor: { code: GF, product_category: GF, role: GROUND_FLOOR, seq: 1010 }
-    Roof:         { code: ROOF, product_category: RF, role: ROOF, seq: 1020 }
-    Unknown:      { code: CW, product_category: CW, role: CURTAIN_WALL, seq: 1030 }
+  # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
+  # IfcBuildingStorey entries read from extraction DB, Z-ordered.
 
   # floor_rooms: removed — IFC spatial containment is the sole source (§10.4.13)
   # IfcSpaces auto-discovered from extraction DB: "1 - Living room", "2 - Bedroom"

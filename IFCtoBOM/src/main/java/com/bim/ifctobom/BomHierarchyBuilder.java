@@ -1,6 +1,7 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
+import com.bim.ifctobom.ClassificationYaml.SpatialContainerConfig;
 import com.bim.ifctobom.ClassificationYaml.StaticChildConfig;
 import com.bim.ifctobom.ScopeBomBuilder.SetBomInfo;
 
@@ -39,6 +40,7 @@ public class BomHierarchyBuilder {
      * @return number of BOM lines created
      */
     public static int build(Connection bomConn, BuildingConfig config,
+                            Map<String, SpatialContainerConfig> containers,
                             Map<String, double[]> storeyLbdWorld,
                             Map<String, double[]> childLbdPositions,
                             double bldgMinX, double bldgMinY, double bldgMinZ,
@@ -54,7 +56,7 @@ public class BomHierarchyBuilder {
                 String storeyName = entry.getKey();
                 List<SetBomInfo> children = entry.getValue();
 
-                var storey = config.storeys().get(storeyName);
+                var storey = containers.get(storeyName);
                 if (storey == null) continue;
 
                 // Intermediate parent BOM for this storey's children

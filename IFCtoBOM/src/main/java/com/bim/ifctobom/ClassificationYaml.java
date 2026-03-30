@@ -24,7 +24,70 @@ public class ClassificationYaml {
 
     // ── Records ──────────────────────────────────────────────────────────────
 
-    public record StoreyConfig(String code, String productCategory, String role, int seq) {}
+    /**
+     * Spatial container metadata — abstract over storeys (buildings) and segments (infra).
+     * All fields derivable from extraction data; YAML is optional Order override.
+     */
+    public record SpatialContainerConfig(String code, String productCategory, String role, int seq) {
+
+        /**
+         * Auto-discover spatial containers from extraction data.
+         * Derives code/category/role/seq generically — no hardcoded name mappings.
+         *
+         * @param containerElements elements grouped by container name (from ExtractionPopulator)
+         * @return ordered map of container configs, sorted by Z position
+         */
+        public static Map<String, SpatialContainerConfig> discover(
+                Map<String, List<ExtractionReader.ExtractionElement>> containerElements) {
+            // Sort containers by min Z of their elements
+            record Entry(String name, double minZ) {}
+            List<Entry> sorted = new ArrayList<>();
+            for (var e : containerElements.entrySet()) {
+                double minZ = e.getValue().stream()
+                        .mapToDouble(ExtractionReader.ExtractionElement::minZ)
+                        .min().orElse(0);
+                sorted.add(new Entry(e.getKey(), minZ));
+            }
+            sorted.sort(Comparator.comparingDouble(Entry::minZ));
+
+            Map<String, SpatialContainerConfig> result = new LinkedHashMap<>();
+            int seq = 1010;
+            for (Entry entry : sorted) {
+                String code = abbreviate(entry.name());
+                String role = entry.name().toUpperCase().replaceAll("[^A-Z0-9]+", "_");
+                // Trim trailing underscores
+                if (role.endsWith("_")) role = role.substring(0, role.length() - 1);
+                result.put(entry.name(), new SpatialContainerConfig(code, code, role, seq));
+                seq += 10;
+            }
+            return result;
+        }
+
+        /**
+         * Generic abbreviation: first letter of each word, uppercase.
+         * Single-word names take first 2 chars. Digits pass through.
+         * "Ground Floor" → "GF", "Level 1" → "L1", "Roof" → "RF", "T/FDN" → "TFDN"
+         */
+        static String abbreviate(String name) {
+            String[] parts = name.split("[\\s/]+");
+            if (parts.length == 1) {
+                // Single word: take first 2 chars (or all if shorter)
+                String w = parts[0].toUpperCase();
+                return w.length() <= 2 ? w : w.substring(0, 2);
+            }
+            StringBuilder sb = new StringBuilder();
+            for (String p : parts) {
+                if (p.isEmpty()) continue;
+                // Digits pass through whole; words take first char
+                if (Character.isDigit(p.charAt(0))) {
+                    sb.append(p);
+                } else {
+                    sb.append(Character.toUpperCase(p.charAt(0)));
+                }
+            }
+            return sb.toString();
+        }
+    }
 
     public record SpaceConfig(String name, String templateBom, String role, int seq,
                               int aabbW, int aabbD, int aabbH,
@@ -63,7 +126,7 @@ public class ClassificationYaml {
             String buildingType, String prefix, String buildingBomId,
             String docSubType, String productCategory, String name,
             String provenance,
-            Map<String, StoreyConfig> storeys,
+            Map<String, SpatialContainerConfig> spatialContainers,
             Map<String, FloorRoomConfig> floorRooms,
             List<StaticChildConfig> staticChildren,
             CompositionConfig composition,
@@ -109,9 +172,10 @@ public class ClassificationYaml {
             throw new IOException("Missing 'building' section in " + path);
         }
 
-        // Parse storeys (or segments — alias for infrastructure IFCs)
+        // Parse spatial containers (YAML keys: storeys / segments — Order override)
+        // If absent, auto-discovered from extraction data in IFCtoBOMPipeline.
         // See docs/InfrastructureAnalysis.md §3.1 G5, WorkOrderGuide.md §storeys
-        Map<String, StoreyConfig> storeys = new LinkedHashMap<>();
+        Map<String, SpatialContainerConfig> spatialContainers = new LinkedHashMap<>();
         Map<String, Object> storeyMap = (Map<String, Object>) bldg.get("storeys");
         if (storeyMap == null) {
             storeyMap = (Map<String, Object>) bldg.get("segments");
@@ -119,7 +183,7 @@ public class ClassificationYaml {
         if (storeyMap != null) {
             for (Map.Entry<String, Object> e : storeyMap.entrySet()) {
                 Map<String, Object> s = (Map<String, Object>) e.getValue();
-                storeys.put(e.getKey(), new StoreyConfig(
+                spatialContainers.put(e.getKey(), new SpatialContainerConfig(
                         getString(s, "code"),
                         getString(s, "product_category"),
                         getString(s, "role"),
@@ -249,7 +313,7 @@ public class ClassificationYaml {
                 getString(bldg, "product_category"),
                 getString(bldg, "name"),
                 getString(bldg, "provenance"),
-                storeys, floorRooms, staticChildren, composition,
+                spatialContainers, floorRooms, staticChildren, composition,
                 disciplines,
                 getString(bldg, "dsl_file"),
                 getInt(bldg, "geometry_fail_threshold", 0),

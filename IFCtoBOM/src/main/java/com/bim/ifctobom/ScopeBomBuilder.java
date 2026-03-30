@@ -2,6 +2,7 @@ package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+import com.bim.orm.BIMLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -154,7 +155,7 @@ public class ScopeBomBuilder {
             setBomsByStorey.computeIfAbsent(storeyName, k -> new ArrayList<>())
                     .add(new SetBomInfo(setBomId, space.spaceName(), role, seq));
 
-            System.out.printf("  [IFC] storey='%s' space='%s' → %d elements → %s%n",
+            BIMLogger.fine("SCOPE", "storey='{}' space='{}' → {} elements → {}",
                     storeyName, space.spaceName(), assigned.size(), setBomId);
         }
 

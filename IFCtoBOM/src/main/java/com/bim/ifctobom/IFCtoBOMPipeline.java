@@ -1,6 +1,7 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
+import com.bim.ifctobom.ClassificationYaml.SpatialContainerConfig;
 import com.bim.ifctobom.CompositionBomBuilder.CompositionResult;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.ifctobom.ScopeBomBuilder.ScopeResult;
@@ -181,32 +182,24 @@ public class IFCtoBOMPipeline {
                 }
             }
 
-            // ── PRE-FLIGHT: Storey mapping validation ─────────────────────────
-            // GUARD: Every storey in the extraction DB MUST have a matching key
-            // in the YAML storeys section. Unmapped storeys = silent element loss.
-            // This catches YAML/extraction divergence before builders run.
-            // Also applies to future infrastructure IFC4X3 buildings
-            // (reference/infrastructure/) where spatial containers may differ.
-            {
-                Set<String> yamlStoreys = config.storeys().keySet();
-                List<String> unmapped = new ArrayList<>();
-                int unmappedCount = 0;
-                for (Map.Entry<String, List<ExtractionElement>> entry : storeyElements.entrySet()) {
-                    if (!yamlStoreys.contains(entry.getKey())) {
-                        unmapped.add(entry.getKey() + " (" + entry.getValue().size() + " elements)");
-                        unmappedCount += entry.getValue().size();
+            // ── Resolve spatial containers (auto-discover or YAML override) ────
+            // Implementing DISC_VALIDATION_DB_SRS §10.4.13 — spatial container auto-discovery
+            // IFC spatial structure replaces YAML storeys/segments dependency
+            Map<String, SpatialContainerConfig> containers;
+            if (config.spatialContainers().isEmpty()) {
+                // Auto-discover from extraction data — Z-ordered, generic metadata
+                containers = SpatialContainerConfig.discover(storeyElements);
+                BIMLogger.info("PIPELINE", "{}: auto-discovered {} spatial containers from extraction: {}",
+                        config.buildingType(), containers.size(), containers.keySet());
+            } else {
+                // YAML Order override — use as-is
+                containers = config.spatialContainers();
+                // Warn about extraction containers not in YAML (silent element loss)
+                for (String name : storeyElements.keySet()) {
+                    if (!containers.containsKey(name)) {
+                        BIMLogger.warn("PIPELINE", "{}: extraction container '{}' ({} elements) not in YAML — elements dropped",
+                                config.buildingType(), name, storeyElements.get(name).size());
                     }
-                }
-                if (!unmapped.isEmpty()) {
-                    String msg = String.format(
-                            "[FAIL] Extraction has %d storey(s) not in YAML: %s "
-                            + "(%d elements would be silently dropped). "
-                            + "Add these storeys to %s or verify extraction storey names.",
-                            unmapped.size(), String.join(", ", unmapped),
-                            unmappedCount, yamlPath.getFileName());
-                    System.err.println(msg);
-                    bomConn.rollback();
-                    throw new SQLException(msg);
                 }
             }
 
@@ -263,7 +256,7 @@ public class IFCtoBOMPipeline {
 
             if ("CO".equals(config.productCategory()) || "IN".equals(config.productCategory())) {
                 // CO/IN path: discipline-stratified hierarchy (IN = infrastructure)
-                structural = DisciplineBomBuilder.build(bomConn, config, storeyElements, catLookup);
+                structural = DisciplineBomBuilder.build(bomConn, config, containers, storeyElements, catLookup);
                 scope = new ScopeResult(Map.of(), 0, List.of(), Map.of(), 0, Map.of());
                 composition = new CompositionResult(Map.of(), 0, 0);
                 roomLines = 0;
@@ -298,7 +291,7 @@ public class IFCtoBOMPipeline {
                 Map<String, Set<String>> allExclude = mergeExcludes(
                         scope.excludeByStorey(), composition.excludeByStorey());
                 structural = StructuralBomBuilder.build(
-                        bomConn, config, storeyElements, allExclude, catLookup);
+                        bomConn, config, containers, storeyElements, allExclude, catLookup);
                 BIMLogger.fine("EXTRACTION", "{}: {} structural + {} scope + {} composition lines, AABB={}x{}x{}mm",
                         config.buildingType(), structural.totalLines(),
                         scope.totalSetLines(), composition.halfUnitLines() + composition.pairLines(),
@@ -330,7 +323,7 @@ public class IFCtoBOMPipeline {
                     }
                 }
 
-                roomLines = BomHierarchyBuilder.build(bomConn, config,
+                roomLines = BomHierarchyBuilder.build(bomConn, config, containers,
                         storeyLbdWorld, scope.setLbdPositions(),
                         bldgMinX, bldgMinY, bldgMinZ, catLookup,
                         scope.setBomsByStorey());

@@ -14,12 +14,7 @@ building:
   name: Duplex
   dsl_file: dsl_dx.bim                     # BIM COBOL script for DAGCompiler
 
-  storeys:
-    Level 1: { code: L1,   product_category: L1, role: LEVEL_1,    seq: 1010 }
-    Level 2: { code: L2,   product_category: L2, role: LEVEL_2,    seq: 1020 }
-    Roof:    { code: ROOF, product_category: RF, role: ROOF,       seq: 1030 }
-    T/FDN:   { code: FDN,  product_category: FN, role: FOUNDATION, seq: 1040 }
-    Unknown: { code: MISC, product_category: MS, role: MISC,       seq: 1050 }
+  # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
 
   floor_rooms:
     Level 1:
