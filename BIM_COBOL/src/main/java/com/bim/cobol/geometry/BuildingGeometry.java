@@ -40,6 +40,9 @@ public interface BuildingGeometry {
     /** Slab thickness for a floor (from STR data or default 150mm). */
     double slabThickness(String floorRef);
 
+    /** Wall thickness for a floor (from ARC wall data or default 200mm). */
+    double wallThickness(String floorRef);
+
     // Implementing DISC_VALIDATION_DB_SRS §10.4.12 Gap 1 — ceiling void routing
     // ceilingHeight = nextFloor.zMm - slabThickness(nextFloor) - clearanceMm
 

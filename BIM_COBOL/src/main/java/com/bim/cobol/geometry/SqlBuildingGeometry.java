@@ -173,6 +173,35 @@ public class SqlBuildingGeometry implements BuildingGeometry {
         return DEFAULT_SLAB_THICKNESS_MM;
     }
 
+    private static final double DEFAULT_WALL_THICKNESS_MM = 200;
+
+    @Override
+    public double wallThickness(String floorRef) {
+        try (PreparedStatement ps = compileDb.prepareStatement(
+                "SELECT MIN(CASE WHEN aabb_width_mm < aabb_depth_mm"
+                        + " THEN aabb_width_mm ELSE aabb_depth_mm END) AS wall_thickness"
+                        + " FROM C_OrderLine"
+                        + " WHERE family_ref LIKE ? AND host_type = 'LEAF'"
+                        + " AND family_ref LIKE '%Wall%'"
+                        + " AND IsActive = 1")) {
+            ps.setString(1, "%" + floorRef + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    double thickness = rs.getDouble("wall_thickness");
+                    if (thickness > 0) {
+                        BIMLogger.fine(TAG, "wallThickness: floor={} thickness={:.0f}mm (from ARC)",
+                                floorRef, thickness);
+                        return thickness;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            BIMLogger.warn(TAG, "wallThickness query failed: {}", e.getMessage());
+        }
+        BIMLogger.fine(TAG, "wallThickness: floor={} default={:.0f}mm", floorRef, DEFAULT_WALL_THICKNESS_MM);
+        return DEFAULT_WALL_THICKNESS_MM;
+    }
+
     @Override
     public double ceilingHeightMm(String floorRef) {
         // Implementing DISC_VALIDATION_DB_SRS §10.4.12 Gap 1 — ceiling void routing

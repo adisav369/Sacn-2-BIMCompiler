@@ -39,6 +39,7 @@ public final class LpgRouteBuilder implements DisciplineRouteBuilder {
     @Override public double mainDiameterMm() { return MAIN_DIAMETER_MM; }
     @Override public double branchDiameterMm() { return BRANCH_DIAMETER_MM; }
     @Override public double stockLengthMm() { return STOCK_LENGTH_MM; }
+    @Override public double insulationThicknessMm() { return 25; }  // gas pipe protection
     @Override public java.util.Map<String, String> standardRefs() {
         return java.util.Map.of(
             "main_diameter_mm", "MS 830 §4.3",
@@ -67,8 +68,8 @@ public final class LpgRouteBuilder implements DisciplineRouteBuilder {
             double riseDistance = ceilingZMm - currentZ;
             if (riseDistance > 0) {
                 ops.add(new FollowOp(riseDistance, STOCK_LENGTH_MM));
-                // LPG does not penetrate slabs — runs along external wall
-                ops.add(new PenetrateOp("WALL", geo.slabThickness(floor.ref()), false));
+                // LPG penetrates external wall — use wall thickness, not slab
+                ops.add(new PenetrateOp("WALL", geo.wallThickness(floor.ref()), true));
             }
 
             // Bend to horizontal

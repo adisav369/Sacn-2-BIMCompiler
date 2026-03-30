@@ -52,6 +52,10 @@ public interface DisciplineRouteBuilder {
     /** Map of parameter name → standard clause reference for compliance traceability. */
     Map<String, String> standardRefs();
 
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.12 Gap 4 — insulation per discipline
+    /** Insulation thickness in mm (0 = no insulation). */
+    default double insulationThicknessMm() { return 0; }
+
     /**
      * Build the route: plan → log verb lines → execute via CrawlRouter.
      * Default implementation — builders only need to implement {@link #plan(BuildingGeometry)}.
@@ -79,10 +83,17 @@ public interface DisciplineRouteBuilder {
             }
         }
 
+        // Log insulation
+        double insulMm = insulationThicknessMm();
+        if (insulMm > 0) {
+            BIMLogger.info("ROUTE", "  [INSULATION] {}mm per segment ({})",
+                    (int) insulMm, discipline());
+        }
+
         // Execute
         CrawlRouter.RouteResult result = CrawlRouter.execute(rp.initial(), rp.ops());
         return new DisciplineRouteResult(discipline(), result, verbLines,
-                rp.floorCount(), rp.roomCount(), rp.pattern());
+                insulMm, rp.floorCount(), rp.roomCount(), rp.pattern());
     }
 
     /** Resolve actual parameter value for standard citation logging. */
@@ -109,6 +120,7 @@ public interface DisciplineRouteBuilder {
             String discipline,
             CrawlRouter.RouteResult routeResult,
             List<String> verbLines,
+            double insulationThicknessMm,
             int floorCount,
             int roomCount,
             String pattern
@@ -116,5 +128,6 @@ public interface DisciplineRouteBuilder {
         public int segmentCount() { return routeResult.segments().size(); }
         public int fittingCount() { return routeResult.fittings().size(); }
         public double totalLengthMm() { return routeResult.totalLengthMm(); }
+        public boolean hasInsulation() { return insulationThicknessMm > 0; }
     }
 }

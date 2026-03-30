@@ -38,6 +38,7 @@ public final class AcmvRouteBuilder implements DisciplineRouteBuilder {
     @Override public double mainDiameterMm() { return MAIN_DIAMETER_MM; }
     @Override public double branchDiameterMm() { return BRANCH_DIAMETER_MM; }
     @Override public double stockLengthMm() { return STOCK_LENGTH_MM; }
+    @Override public double insulationThicknessMm() { return 50; }  // thermal duct insulation
     @Override public java.util.Map<String, String> standardRefs() {
         return java.util.Map.of(
             "main_diameter_mm", "ASHRAE 62.1 §6.2",
