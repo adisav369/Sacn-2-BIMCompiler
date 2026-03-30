@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- BR: IFC Infra Bridge Sample (Infra_Bridge)
 -- Source: DAGCompiler/lib/output/infra_bridge.db
--- Generated: 2026-03-28 22:03
+-- Generated: 2026-03-30 07:44
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

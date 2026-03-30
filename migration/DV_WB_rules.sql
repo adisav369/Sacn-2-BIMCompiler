@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- WB: BimWhale Basic House (BimWhale_Basic)
 -- Source: DAGCompiler/lib/output/bimwhale_basic.db
--- Generated: 2026-03-28 21:43
+-- Generated: 2026-03-30 07:44
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

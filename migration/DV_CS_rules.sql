@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CS: Clinic Structural (Clinic_Structural)
 -- Source: DAGCompiler/lib/output/clinic_structural.db
--- Generated: 2026-03-28 21:55
+-- Generated: 2026-03-30 07:45
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

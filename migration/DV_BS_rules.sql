@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- BS: PCERT Building Structural (Building_Structural)
 -- Source: DAGCompiler/lib/output/building_structural.db
--- Generated: 2026-03-28 21:38
+-- Generated: 2026-03-30 07:53
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

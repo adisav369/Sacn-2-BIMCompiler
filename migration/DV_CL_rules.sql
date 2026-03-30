@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CL: Sample Castle (SampleCastle)
 -- Source: DAGCompiler/lib/output/samplecastle.db
--- Generated: 2026-03-28 21:40
+-- Generated: 2026-03-30 07:49
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
