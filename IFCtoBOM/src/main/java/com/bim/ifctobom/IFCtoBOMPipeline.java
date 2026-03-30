@@ -308,29 +308,30 @@ public class IFCtoBOMPipeline {
                         structural.totalLines(),
                         structural.aabbWidthMm(), structural.aabbDepthMm(), structural.aabbHeightMm());
 
-                // Compute floor LBD data for FloorRoomBomBuilder (§4 tack convention)
+                // Compute floor LBD data for BomHierarchyBuilder (§4 tack convention)
                 // Building LBD = minimum corner of all elements (world coords)
                 double bldgMinX = allElements.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
                 double bldgMinY = allElements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
                 double bldgMinZ = allElements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
 
-                // floorLbdWorld: storey → [worldMinX, worldMinY, worldMinZ] (world coords)
-                // Used to compute: BUILDING→FLOOR offset = floorWorld - bldgWorld
-                //                  FLOOR→SET offset     = setWorld - floorWorld
-                Map<String, double[]> floorLbdWorld = new LinkedHashMap<>();
-                for (var floorEntry : config.floorRooms().entrySet()) {
-                    String storeyName = floorEntry.getKey();
-                    List<ExtractionElement> elems = storeyElements.get(storeyName);
+                // storeyLbdWorld: storey → [worldMinX, worldMinY, worldMinZ] (world coords)
+                // Computed from ALL storey elements (not YAML floor_rooms — IFC is sole source)
+                // Used to compute: BUILDING→STOREY offset = storeyWorld - bldgWorld
+                //                  STOREY→CHILD offset    = childWorld - storeyWorld
+                Map<String, double[]> storeyLbdWorld = new LinkedHashMap<>();
+                for (var storeyEntry : storeyElements.entrySet()) {
+                    String storeyName = storeyEntry.getKey();
+                    List<ExtractionElement> elems = storeyEntry.getValue();
                     if (elems != null && !elems.isEmpty()) {
                         double fMinX = elems.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
                         double fMinY = elems.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
                         double fMinZ = elems.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
-                        floorLbdWorld.put(storeyName, new double[]{fMinX, fMinY, fMinZ});
+                        storeyLbdWorld.put(storeyName, new double[]{fMinX, fMinY, fMinZ});
                     }
                 }
 
-                roomLines = FloorRoomBomBuilder.build(bomConn, config,
-                        floorLbdWorld, scope.setLbdPositions(),
+                roomLines = BomHierarchyBuilder.build(bomConn, config,
+                        storeyLbdWorld, scope.setLbdPositions(),
                         bldgMinX, bldgMinY, bldgMinZ, catLookup,
                         scope.setBomsByStorey());
                 System.out.printf("[IFCtoBOM] Room BOMs: %d lines%n", roomLines);

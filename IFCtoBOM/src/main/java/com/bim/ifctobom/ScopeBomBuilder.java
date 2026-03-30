@@ -43,7 +43,7 @@ public class ScopeBomBuilder {
             Map<String, List<SetBomInfo>> setBomsByStorey
     ) {}
 
-    /** Info about an auto-discovered SET BOM for FloorRoomBomBuilder. */
+    /** Info about an auto-discovered SET BOM for BomHierarchyBuilder. */
     public record SetBomInfo(String setBomId, String spaceName, String role, int seq) {}
 
     /**
@@ -127,7 +127,7 @@ public class ScopeBomBuilder {
             double setAabbD = (maxY - minY) * 1000;
             double setAabbH = (maxZ - minZ) * 1000;
 
-            // Record SET LBD position for FloorRoomBomBuilder (§4 tack convention)
+            // Record SET LBD position for BomHierarchyBuilder (§4 tack convention)
             setLbdPositions.put(setBomId, new double[]{minX, minY, minZ});
 
             // Create M_Product assembly stub
@@ -149,7 +149,7 @@ public class ScopeBomBuilder {
                     bomConn, setBomId, assigned, minX, minY, minZ, 10);
             totalSetLines += vfr.linesWritten();
 
-            // Track for FloorRoomBomBuilder hierarchy
+            // Track for BomHierarchyBuilder hierarchy
             int seq = setBomsByStorey.getOrDefault(storeyName, List.of()).size() * 10 + 10;
             setBomsByStorey.computeIfAbsent(storeyName, k -> new ArrayList<>())
                     .add(new SetBomInfo(setBomId, space.spaceName(), role, seq));

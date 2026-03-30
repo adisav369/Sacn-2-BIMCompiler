@@ -597,7 +597,7 @@ public class BomValidator {
         int fails = 0;
         try (Statement stmt = conn.createStatement()) {
             // Count extraction-sourced LEAF instances (SUM(qty), not COUNT(*)).
-            // Template refs from FloorRoomBomBuilder and static_children
+            // Template refs from BomHierarchyBuilder and static_children
             // don't have element_ref — they're BOM-to-BOM links, not elements.
             // FACTORIZE-v1: SUM(qty) handles both unfactored (qty=1 per row)
             // and factored (qty=N per type line) BOMs correctly.
