@@ -9,9 +9,9 @@
 
 ## Abstract
 
-We present a method for decomposing real three-dimensional structures into hierarchical spatial recipes (Bills of Materials with tack offsets), recompiling them through deterministic arithmetic, and verifying every element's position against the original source with per-element identity tracing. Applied to 35 real buildings extracted from Industry Foundation Classes (IFC) files, the method achieves **zero positional drift** across 1,653 element pairs in a 58-element residential building, with a worst-case error of 0.002mm. Each compiled element carries its original IFC GloballyUniqueId through the entire decomposition-compilation chain, enabling per-element provenance that neither protein structure prediction nor robotic forward kinematics currently achieves. We argue that spatial compilation from learned recipes represents a general-purpose approach to verified 3D reconstruction, with applications beyond construction to any domain where physical assemblies can be decomposed into hierarchical spatial relationships.
+We present a method for decomposing real three-dimensional structures into hierarchical spatial recipes (Bills of Materials with tack offsets), recompiling them through deterministic arithmetic, and verifying every element's position against the original source with per-element identity tracing. Applied to 35 real buildings extracted from Industry Foundation Classes (IFC) files, the method achieves **zero positional drift** across 1,653 element pairs in a 58-element residential building, with a worst-case error of 0.002mm. Each compiled element carries its original IFC GloballyUniqueId through the entire decomposition-compilation chain, enabling per-element provenance that neither protein structure prediction nor robotic forward kinematics currently achieves. We further demonstrate that the construction industry's 4D-8D dimensions (scheduling, costing, carbon, facility management, compliance) are not separate analyses but **projections of the same hierarchical BOM** — analogous to how protein tertiary structure determines function, binding affinity, and degradation pathway. The spatial recipe that produces verified 3D geometry simultaneously encodes construction sequence (BOM depth), cost (leaf quantities × prices), and standards compliance (constraint rules on the fold). We argue that spatial compilation from learned recipes represents a general-purpose approach to verified multi-dimensional reconstruction, with applications beyond construction to any domain where physical assemblies can be decomposed into hierarchical spatial relationships governed by standards.
 
-**Keywords:** spatial compilation, BIM, BOM, tack convention, round-trip verification, IFC, deterministic geometry, protein folding analogy, forward kinematics
+**Keywords:** spatial compilation, BIM, BOM, tack convention, round-trip verification, IFC, deterministic geometry, protein folding analogy, forward kinematics, dimensional folding, standards-driven compilation
 
 ---
 
@@ -32,6 +32,8 @@ We present a method that treats buildings as compiled artefacts. A real building
 3. **Zero-drift verified reconstruction.** Experimental results on 35 real buildings demonstrate 0.002mm worst-case error across 1,653 all-pairs relative offset comparisons in a 58-element building.
 
 4. **Cross-domain generality.** The method applies to any domain where physical assemblies decompose into hierarchical spatial relationships: shipbuilding, tunnel engineering, industrial plant, and potentially protein structure modelling.
+
+5. **Dimensional folding.** The observation that 4D-8D BIM dimensions (schedule, cost, carbon, lifecycle, compliance) are projections of the same hierarchical BOM — not separate analyses — with implications for any standards-governed manufactured assembly.
 
 ---
 
@@ -478,6 +480,82 @@ joins GEO TACK LEAF log against extraction DB by IFC GUID, computes
 all-pairs relative offsets, reports MATCH/DRIFT per building. Each verified
 building's output extends the spatial vocabulary for generative use.
 
+### 5.6 Dimensional Folding: 4D-8D as Projections of the Spatial Recipe
+
+The method presented in Sections 3-4 compiles 3D geometry from a hierarchical BOM. The construction industry defines eight "dimensions" of BIM: 3D geometry, 4D scheduling, 5D costing, 6D sustainability, 7D facility management, 8D safety [18]. These are conventionally treated as separate analyses performed on a finished 3D model.
+
+We observe that **dimensions 4D-8D are not separate analyses. They are projections of the same hierarchical BOM that produces the 3D geometry.** The BOM walk that compiles geometry simultaneously determines schedule, cost, carbon, and lifecycle — because all of these are functions of the BOM structure.
+
+#### 5.6.1 The folding hierarchy
+
+The relationship between the BOM and each dimension is analogous to protein structure hierarchy, where primary structure (sequence) determines secondary (local motifs), tertiary (3D fold), and quaternary (multi-chain assembly):
+
+| BOM walk level | Construction dimension | What it determines | Protein analogy |
+|---------------|----------------------|-------------------|-----------------|
+| Product selection (M_Product) | **1D** — Bill of Materials | What parts exist | Primary (amino acid sequence) |
+| Tack offsets (dx/dy/dz) | **3D** — Spatial geometry | Where parts sit | Secondary/Tertiary (fold) |
+| BOM tree depth (parent before child) | **4D** — Construction schedule | When parts are built | Folding pathway (co-translational) |
+| Product properties × quantity | **5D/6D** — Cost and carbon | How much it costs/emits | Binding affinity / stability |
+| Product lifecycle attributes | **7D** — Facility management | When parts need maintenance | Degradation pathway |
+| AD_Val_Rule constraints | **8D** — Standards compliance | What rules govern the assembly | Energy constraints on the fold |
+
+#### 5.6.2 Schedule folds from BOM depth
+
+The 4D construction schedule is the BOM tree walked in dependency order. A child cannot be installed before its parent: a wall requires a slab, a door requires a wall, furniture requires a room. This dependency IS the BOM hierarchy:
+
+```
+BOM depth 0:  BUILDING  (site preparation — first)
+BOM depth 1:  FLOOR     (structural slab — after site)
+BOM depth 2:  ROOM SET  (partition walls — after slab)
+BOM depth 3:  FURNITURE (fitout — after walls)
+```
+
+IFC4.3 provides evidence: `IfcTask` entities linked to `IfcProduct` via `IfcRelAssignsToProduct`, with `IfcRelSequence` encoding predecessor/successor relationships [5]. Analysis of the IFC4.3 construction scheduling sample model confirms that the task sequence mirrors the BOM tree depth — the 4D schedule is encoded in the same hierarchical structure that produces the 3D geometry.
+
+#### 5.6.3 Cost and carbon fold from BOM explosion
+
+The 5D cost is `Σ(qty_i × unit_price_i)` over all BOM leaves. The 6D carbon is `Σ(qty_i × carbon_factor_i)` over the same leaves. Both are computed by the same BOM walk that produces 3D geometry — the walk accumulates spatial offsets AND material quantities simultaneously. No separate cost model or carbon model is needed. The BOM IS the cost model.
+
+#### 5.6.4 Lifecycle folds from placed products
+
+A product's maintenance schedule depends on where it is placed: a pipe in an accessible ceiling void has different maintenance cost than a pipe buried in a wall cavity. The spatial placement (Level 3D) determines the maintenance access (Level 7D). The BOM encodes both: the product has lifecycle attributes (M_Product), and the BOM line has the spatial placement (dx/dy/dz). The 7D projection is: "what products are installed, where, and what is their maintenance interval?"
+
+#### 5.6.5 Standards constrain the fold
+
+AD_Val_Rule entries (jurisdiction-scoped compliance rules) constrain every level: which products are acceptable (1D), what spatial arrangements are legal (3D), what construction sequences are mandated (4D), and what lifecycle inspections are required (7D). The rules are the energy function — they constrain which folds are stable.
+
+This is directly analogous to protein thermodynamics: the energy function (van der Waals, electrostatic, hydrogen bonding) constrains which folds are physically realisable. In construction, the standards (UBBL, IBC, Eurocode, DNV) constrain which assemblies are legally realisable. Both serve the same mathematical role: a constraint function on the space of valid structures.
+
+The constraint model is implemented as a single table with jurisdiction scope:
+
+```
+AD_Val_Rule (rule_key, jurisdiction, threshold, comparator, error_level, citation)
+```
+
+The same schema governs any standards body. A building code rule, a ship classification rule, a pharmaceutical GMP rule, and an aircraft airworthiness rule all reduce to the same structure: a named constraint, scoped to a regulatory jurisdiction, with a threshold, a comparison operator, and a citation to the governing clause. The validation engine (`ComplianceStage`) evaluates rules in dependency order using topological sort, produces proof trees with citations, and blocks compilation when upstream rules fail. This mechanism is standards-agnostic — new domains require new AD_Val_Rule rows, not new code.
+
+| Domain | Standard body | Example rule | Same AD_Val_Rule schema |
+|--------|--------------|-------------|------------------------|
+| Construction | UBBL (Malaysia) | MIN_ROOM_AREA ≥ 3000mm, §39(1) | Yes |
+| Marine | DNV (classification) | MIN_PLATE_THICKNESS ≥ 8.0mm, Pt.3 Ch.1 §3.2.1 | Yes |
+| Pharmaceutical | FDA 21 CFR | PRESSURE_CASCADE ≥ 15Pa, Sterile Drugs §V.B | Yes |
+| Aerospace | FAA 14 CFR 25 | SEAT_PITCH ≥ 787mm (31in), §25.785 | Yes |
+| Nuclear | NRC 10 CFR | SHIELDING_THICKNESS per dose calculation, §50.34 | Yes |
+| Data centre | TIA-942 | POWER_DENSITY ≤ rated W/m², Annex G | Yes |
+| Rail | EN 13848 | TRACK_GAUGE = 1435mm ±N, §4.2 | Yes |
+
+The compilation pipeline — extract structure, validate against standards, compile spatial output, prove with GEO evidence — is the same for all rows in this table. The domain lives in the rule data, not in the engine.
+
+#### 5.6.6 Implications
+
+The dimensional folding observation has three implications for the spatial compilation method:
+
+1. **No separate 4D-8D engines.** A system that compiles 3D geometry from a hierarchical BOM automatically has the data for 4D-8D analysis. Adding cost estimation does not require a cost engine — it requires reading the product prices that already exist in the BOM leaves. This is consistent with the ERP manufacturing model [14], where a single BOM explosion drives material planning (3D), production scheduling (4D), and cost rollup (5D) through the same data structure.
+
+2. **Cross-domain transfer of dimensional motifs.** A construction scheduling motif learned from one Rosetta Stone (e.g., "slab before walls before fitout") transfers to any building with the same BOM structure — AND to any domain with the same assembly hierarchy. A ship's construction schedule ("keel before frames before plating") follows the same BOM-depth principle. A tunnel's schedule ("rings before lining before services") follows the same principle. The dimensional motif is universal.
+
+3. **Auditable dimensional chain.** The GEO TACK log (Section 4.2) provides per-element spatial audit. The PATTERN log (extraction-side assignment audit) provides per-storey structural audit. Together they produce a dimensional audit trail: for any element, the log shows WHERE it is (3D, GEO CHAIN), WHEN it should be built (4D, BOM depth), WHAT it costs (5D, product price × qty), and WHAT rules it satisfies (8D, AD_Val_Rule citation). This level of dimensional traceability has no equivalent in current BIM practice, where each dimension is computed by a separate tool with no shared provenance.
+
 ---
 
 ## 6. Limitations
@@ -501,6 +579,10 @@ The spatial compilation model is domain-agnostic: the same algorithm that compil
 The method's distinguishing capability is **interpretable, per-element, identity-traced spatial verification**. Neither protein structure prediction (stochastic, bulk RMSD, opaque neural network) nor robotic forward kinematics (end-effector only, calibration drift, no identity chain) achieves this. The TACK log provides a complete, auditable chain from IFC source entity through BOM decomposition to compiled output — every spatial decision explained, every element traceable, every relationship verifiable.
 
 The Rosetta Stone library — 35 real buildings — is the Protein Data Bank of construction. Each solved structure teaches spatial relationships that transfer to new buildings. The GEO verification proves the transfer is faithful. As the library grows, the spatial vocabulary of construction becomes increasingly complete — approaching the coverage that 200,000 solved protein structures provide for biology.
+
+The dimensional folding observation (Section 5.6) extends the contribution beyond 3D geometry. The BOM walk that produces verified spatial coordinates simultaneously encodes construction sequence (4D), cost (5D), carbon (6D), and lifecycle (7D) — because all are functions of the same hierarchical recipe. Standards compliance (8D) constrains the fold, analogous to the energy function that constrains protein structure. This means a system that compiles 3D geometry from a hierarchical BOM automatically possesses the data for 4D-8D analysis. The dimensional chain is not a feature roadmap to be implemented — it is an inherent property of the spatial recipe, waiting to be projected.
+
+The pattern — extract spatial motifs from solved structures, compile new structures from learned motifs, verify every element with identity tracing, unfold dimensional projections from the same recipe — is universal. It applies wherever manufactured assemblies are governed by standards: construction (building codes), marine (classification rules), pharmaceutical (GMP), aerospace (airworthiness), nuclear (safety regulations). The domain changes. The pattern does not.
 
 ---
 
@@ -539,6 +621,8 @@ The Rosetta Stone library — 35 real buildings — is the Protein Data Bank of 
 [16] Oon, R.D., "BIM Intent Compiler — The Rosetta Stone Strategy," https://red1oon.github.io/BIMCompiler/TheRosettaStoneStrategy/, 2026.
 
 [17] Oon, R.D., "ShipYard — A Deterministic Engine for Any Manufactured Assembly," https://red1oon.github.io/BIMCompiler/ShipYard/, 2026.
+
+[18] Kalinichuk, S., "BIM Dimensions — 3D, 4D, 5D, 6D, 7D, 8D BIM Explained," *United BIM*, 2023. https://www.united-bim.com/bim-dimensions-3d-4d-5d-6d-7d-8d-bim-explained/
 
 ---
 

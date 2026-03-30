@@ -11,7 +11,7 @@
 | Asset | Measure |
 |-------|---------|
 | **Compilation pipeline** | 12 stages, 77 verbs, BOM-walk compiler |
-| **Buildings proven** | 35 (20 ALL GREEN, 9 WARN, 3 FAIL, 2 stall, 1 generative) |
+| **Buildings proven** | 35 compiled, 187/208 gate PASS. IFC library: 109 files across 10+ domains |
 | **Product library** | 2,475 products in component library |
 | **Database architecture** | 4-DB split (ERP, BOM, output, component library) |
 | **Geometry Forge** | Formula-driven construction pieces — rafter, stair, pipe bend, dome, vault, rebar. 6 engines, 11 witnesses. [GEOMETRY_FORGE_SRS](GEOMETRY_FORGE_SRS.md) |
@@ -34,17 +34,24 @@
 
 ---
 
-## Phase 1 — Fleet Convergence (~10 days → early April)
+## Phase 1 — Fleet Convergence (~10 days → mid-April)
 
 *Get every building to GREEN.*
 
-| Deliverable | Est. | Detail |
-|-------------|------|--------|
-| Fix CA, CL, WA failures | 3d | Recently unblocked — extraction pipeline fixes |
-| Resolve C9 axis warnings (7 buildings) | 2d | Library mesh orientation alignment, not compiler bug |
-| RD, RL infrastructure walker | 3d | Non-standard IFC hierarchy — extend walker for rail/road elements |
-| DM generative convergence | 2d | Generative path alignment to BOM-walk compiler |
-| **Exit criterion** | | 34/34 ALL GREEN (DM tracked separately as generative) |
+**Progress (S100-S101):** P125-P132 delivered IFC-driven extraction, assembly BOMs, P06 joint tolerance, VerbDetector Z-guard, PATTERN/GEO-ROUTE logging, CLUSTER diagnostics. Fleet 140→187/208 PASS. IN 6/7→7/7. GEO permanently ON.
+
+| Deliverable | Est. | Status | Detail |
+|-------------|------|--------|--------|
+| IFC-driven extraction | — | **DONE** (P125-P129) | Auto-discover storeys, assembly BOMs, scope excludes |
+| VerbDetector Z-guard | — | **DONE** (P131) | ROUTE Z-uniformity, axis matching, CLUSTER identity |
+| P06 structural joints | — | **DONE** (P130) | White-box: same pos+dims=CRITICAL, partial=PROVEN |
+| GEO + PATTERN logging | — | **DONE** (P132) | Full audit trail: extraction + compilation |
+| CLUSTER diagnostics | — | **DONE** (P124) | Per-group failure reasons visible in log |
+| CE multi-leg ROUTE drift | 2d | **NEXT** | 11 elements, worst=12,858mm. ROUTE verb improvement |
+| Fleet triage (CA/CL/WA + remaining) | 3d | **NEXT** (P133) | Diagnose all non-GREEN, fix biggest group |
+| RD, RL infrastructure walker | 3d | PENDING | Non-standard IFC hierarchy — extend walker |
+| DM generative convergence | 2d | PENDING | Generative path alignment |
+| **Exit criterion** | | | 34/34 ALL GREEN (DM tracked separately) |
 
 ---
 
@@ -140,7 +147,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 | C_Project multi-building | Site grid generation, compile-once-copy-many, consolidated output. [ProjectOrderBlueprint](ProjectOrderBlueprint.md) |
 | Click-to-place | Interactive 3D element placement via BlenderBridge |
 | Freehand drawing → BOM | Viewport geometry becomes BOM mutation |
-| MIRROR verb for duplex | Automated mirrored-unit compilation (DX: 85 axis mismatches) |
+| ~~MIRROR verb for duplex~~ | **DONE** (P128 scope excludes, DX delta=+0, C9 111→50) |
 | Spatial predicate verbs | DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST |
 | Infrastructure designer | Terrain, alignment, cut-and-fill for road/rail/bridge. [INFRA_DESIGNER_SRS](INFRA_DESIGNER_SRS.md) |
 | Self-orienting BOMs | Phantom spatial children (WALL_BACK, FACE_TOWARD, CLEARANCE) — fixture rotation from data, not heuristics |
