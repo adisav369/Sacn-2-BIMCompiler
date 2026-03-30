@@ -6215,18 +6215,23 @@ for Malaysian (UBBL) vs US (NFPA) code. BOM and ASI don't change.</p>
 <p>Discipline separation spans two pipeline classes:</p>
 <p><strong>Class A — IFCtoBOM (extraction):</strong> Produces the ARC+STR envelope only.
 MEP elements (FP, ACMV, ELEC, CW, SP, LPG) are <strong>not</strong> written into the
-per-building <code>*_BOM.db</code>. IFCtoBOM extracts element counts per discipline
-from <code>elements_meta.discipline</code> and writes them as qty hints to <code>ad_sysconfig</code>
-in the BOM DB (e.g., <code>FP_QTY=99</code>). YAML carries user intent for discipline
-qty override: <code>disciplines: [{disc: FP, qty: 99}]</code>. If qty=0 or absent,
-the compiler generates for the whole building per discipline rules.</p>
-<p><strong>Class B — DAGCompiler (compilation):</strong> Product Callout reads ARC+STR
-OrderLine, then creates DISCIPLINE OrderLines pointing to shared recipes
-in ERP.db (<code>FP_SYSTEM</code>, <code>ACMV_SYSTEM</code>, etc.). Each discipline OrderLine
-carries Qty from ad_sysconfig (or YAML override). DocEvent per Org fires
-on each discipline OrderLine — applies jurisdiction rules (NFPA 13, UBBL,
-MS 1228). RouteBuilder/CrawlRouter generates MEP routing until Qty
-terminals are served. AD_Val_Rule validates the output.</p>
+per-building <code>*_BOM.db</code>. IFCtoBOM counts MEP elements per discipline from
+<code>elements_meta.discipline</code> and writes them back into the YAML
+(<code>disciplines: [{disc: FP, qty: 99}]</code>) AND to <code>ad_sysconfig</code> in BOM DB.
+The YAML becomes the reusable preset template for that building type.</p>
+<p><strong>YAML as chooser:</strong> Designer opens the YAML, sees pre-populated discipline
+qtys from extraction, can reduce scope (e.g., qty: 50 for a partial wing).
+Qty=0 or qty&gt;capacity both mean "fill the whole building per rules" —
+the compiler fills until no more space and stops gracefully, never forces.
+For RE buildings, <code>mep_disciplines:</code> controls which DISCs the Callout
+creates (default: ELEC + SP). Deleting a discipline from YAML removes it.
+Without YAML (direct OrderLine), user gets default DISCs from Callout.</p>
+<p><strong>Class B — DAGCompiler (compilation):</strong> Product Callout reads YAML
+<code>disciplines:</code> qty, then creates DISCIPLINE OrderLines pointing to shared
+recipes in ERP.db (<code>FP_SYSTEM</code>, <code>ACMV_SYSTEM</code>, etc.). DocEvent per Org
+fires on each discipline OrderLine — applies jurisdiction rules (NFPA 13,
+UBBL, MS 1228). RouteBuilder/CrawlRouter generates MEP routing until qty
+terminals served. AD_Val_Rule validates the output.</p>
 <p><strong>Current state (S102 — INCORRECT):</strong> <code>DisciplineBomBuilder</code> writes ALL
 elements (ARC + MEP) flat under FLOOR with AD_Org_ID as a tag. No
 discipline separation. No ERP.db recipe consumption. RouteBuilders fire
