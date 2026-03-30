@@ -43,7 +43,7 @@
 | Origin convention | BUILDING has world LBD; FLOOR/ROOM zeroed (R16) | BBC.md §4.1 |
 | YAML | `classify_sh.yaml` | Single storey, 5 rooms |
 | Mirror | None (single unit) | — |
-| Scope boxes | `floor_rooms:` section with room origins | classify_sh.yaml |
+| Scope spaces | `floor_rooms:` IFC space → BOM template mapping | classify_sh.yaml |
 
 ## Gate Status
 

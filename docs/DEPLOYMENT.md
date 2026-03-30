@@ -115,6 +115,62 @@ This deployment handles 3-10 concurrent users on a single server. For larger tea
 The DAO abstraction isolates all database access — swapping SQLite for PostgreSQL
 changes the connection factory, not the business logic.
 
+## Pipeline Script Architecture
+
+The pipeline has three independent lifecycle phases. Each phase is a separate
+subscript, callable alone or via the fleet orchestrator.
+
+### Phases
+
+| Phase | Script | Input | Output | When to run |
+|-------|--------|-------|--------|-------------|
+| **Extract** | `extract_bom.sh <prefix>` | IFC source + classify YAML | `library/{PREFIX}_BOM.db` | IFC source changed OR extraction logic changed |
+| **Populate** | `populate_geometry.sh <prefix>` | `*_extracted.db` | `component_library.db` rows | Already smart — skips if populated |
+| **Compile** | `compile.sh <prefix>` | `*_BOM.db` + `component_library.db` | `output.db` | Every time (fast — reads BOM, writes output) |
+
+### Re-extract triggers
+
+The BOM.db is stale when either the **source** or the **logic** changes:
+
+| Trigger | What changed | How to detect |
+|---------|-------------|---------------|
+| IFC re-export | New IFC file from Revit/ArchiCAD | SHA-256 of IFC source file ≠ hash stored in `ad_sysconfig` |
+| Extraction code | Java in `IFCtoBOM/src/main/**` | `git diff --name-only HEAD~1` includes IFCtoBOM paths |
+| Classify YAML | `classify_{prefix}.yaml` modified | File mtime or git diff |
+| Migration SQL | `migration/DV*` applied | Migration version > BOM.db version stamp |
+
+`extract_bom.sh` checks these triggers and skips if unchanged. The integrity
+hash already exists in `ad_sysconfig` — extend it to include source IFC hash
+and extraction code hash (e.g. `git rev-parse HEAD:IFCtoBOM/`).
+
+### Orchestrator
+
+`run_RosettaStones.sh` becomes a thin loop that calls the three subscripts per
+building. For fleet runs, it parallelises extraction (CPU-bound) and serialises
+compilation (writes to shared `output.db`).
+
+```
+run_RosettaStones.sh [classify_XX.yaml]
+  for each building:
+    extract_bom.sh <prefix>       # skips if BOM.db current
+    populate_geometry.sh <prefix>  # skips if already populated
+    compile.sh <prefix>            # always runs (fast)
+    gate_test.sh <prefix>          # G1-G6 + contract tests
+```
+
+### Dev workflow
+
+```bash
+# Changed extraction logic → re-extract one building
+./scripts/extract_bom.sh te
+
+# Changed pipeline code → compile only (BOM.db unchanged)
+./scripts/compile.sh te
+
+# Full fleet CI
+./scripts/run_RosettaStones.sh
+```
+
 ## Git Operations
 
 ### .gitignore — Large Files

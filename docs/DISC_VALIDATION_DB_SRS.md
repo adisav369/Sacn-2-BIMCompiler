@@ -1388,7 +1388,7 @@ lookup from hazard class + room AABB → grid dimensions → head count).
 
 ### 10.4.13 IFC-Driven Extraction — Replacing YAML Scope Boxes
 
-**Status:** Spec complete (S100 SpecsPerson session). No code changes yet.
+**Status:** DONE (S100-p125, commit [3e056227](https://github.com/red1oon/BIMCompiler/commit/3e056227)). SH IFC-driven, FK scope box fallback.
 
 #### The finding
 
@@ -1418,7 +1418,7 @@ are correctly structural — not in any room.
 
 #### Current vs proposed extraction flow
 
-**Current (YAML scope boxes):**
+**Legacy (YAML scope boxes — replaced by P125):**
 ```
 YAML defines: LIVING origin=(-7.0,2.5) aabb=(8000,2000,1200)
               DINING origin=(-6.5,-0.3) aabb=(2500,1500,1300)
@@ -1427,7 +1427,7 @@ ScopeBomBuilder: for each element, test centroid ∈ scope box
   → VerbDetector groups by product → CLUSTER fallback
 ```
 
-**Proposed (IFC spatial containment):**
+**Current (IFC spatial containment — S100-p125):**
 ```
 Read rel_contained_in_space from extracted.db
   → "1 - Living room" contains 12 elements
@@ -1439,7 +1439,7 @@ VerbDetector groups within each IFC space
 
 #### YAML simplification
 
-Before (current):
+Before (legacy):
 ```yaml
 floor_rooms:
   Ground Floor:
@@ -1452,7 +1452,7 @@ floor_rooms:
           aabb_mm: [2500, 1500, 1300], origin_m: [-6.5, -0.3, 0.0] }
 ```
 
-After (proposed):
+After (current — S100-p125):
 ```yaml
 floor_rooms:
   Ground Floor:
@@ -1637,7 +1637,7 @@ These are two different concerns wearing the same table name.
 
 **BOM M_Product is effectively unused by production code.** After R7 refactor (S36),
 BOMWalker reads M_Product from compConn (component_library.db), not bomConn. The BOM
-copy exists for backward compatibility of deprecated single-arg constructors.
+copy exists for backward compatibility of single-arg constructors (to be removed).
 
 **m_bom_line → M_Product resolution (structural, not FK):**
 1. `m_bom_line.child_product_id` → try as `m_bom.bom_id` → sub-assembly (recurse)

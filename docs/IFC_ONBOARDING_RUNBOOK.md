@@ -318,7 +318,7 @@ rm -f library/{XX}_BOM.db
 
 | Phase | What | Output |
 |-------|------|--------|
-| IFCtoBOM | YAML → BOM hierarchy + verb detection | `library/{XX}_BOM.db` |
+| IFCtoBOM | IFC extraction + Order config → BOM recipe + verb detection | `library/{XX}_BOM.db` |
 | Compile | C_OrderLine → BOM explosion → elements | `{type}.db` |
 | Contracts | G1-G6 gate tests | PASS/FAIL per gate |
 | Integrity | Rule 8 + clash check | PASS/FAIL |

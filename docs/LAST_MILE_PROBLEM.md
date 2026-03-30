@@ -244,7 +244,7 @@ Both stages now fire on SH and FK:
 | ComplianceStage | 12 | `ComplianceStage` | `jurisdiction != null` | jurisdiction=MY, 53ms, 8 proof lines, submission package written. |
 
 **Remaining advisory WARNs (non-blocking):**
-- P-PARENT: room origins from YAML `origin_m` not persisted in c_orderline → parent extent check uses container tacks only
+- P-PARENT: room origins (from IFC spatial containment) not persisted in c_orderline → parent extent check uses container tacks only
 - P-QTY: delta=2 between LEAF qty sum and output count (static children counted differently)
 - P-TACK: BOM walker applies room origins internally; c_orderline LEAF dx/dy/dz are post-walk world positions, not raw tack accumulations. Reconstruction gap = room origins not in output DB.
 

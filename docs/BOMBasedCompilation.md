@@ -140,16 +140,50 @@ See [`BIM_COBOL.md`](BIM_COBOL.md) §19 for verb taxonomy,
 data flow, and fidelity details.
 
 **Pipeline phases (self-contained):**
-1. **BOM pipeline** (`IFCtoBOMPipeline.run()`): extracts → populates catalog (idempotent) → writes `{PREFIX}_BOM.db`
+1. **BOM pipeline** (`IFCtoBOMPipeline.run()`): reads IFC extraction + YAML Order input → populates catalog (idempotent) → writes `{PREFIX}_BOM.db`
 2. **Compile** (`DAGCompiler`): reads `{PREFIX}_BOM.db` + `component_library.db` → produces output.db
    *(Authoritative output DDL: Java `BuildingWriter.initSchema()`, not Python `output_schema.sql`.)*
 
-### 2.1.8 What IFCtoBOM Does NOT Do
+### 2.1.8 IFCtoBOM — BOM Recipe Builder
 
-- Does not invent elements (EXTRACT only — every leaf traces to I_Element_Extraction)
-- Does not compute placement rules (layout_strategy, z_rule stay NULL — generative future)
-- Does not validate against regulations (see `DocValidate.md`)
-- Does not fill missing pipes or correct gaps (WYSIWYG — DX corners without connecting pipes are preserved as-is)
+IFCtoBOM produces the **BOM recipe** (`{PREFIX}_BOM.db`): `m_bom` + `m_bom_line` tables
+only. No C_Order, no C_OrderLine, no callouts. Orders are created downstream during
+compilation (`processIt()`) — the ERP transaction. See [`DocAction_SRS.md`](DocAction_SRS.md) §1.
+
+**Two inputs:**
+
+1. **IFC extraction DB** (`*_extracted.db`) — elements, IFC family types (`IfcWall`,
+   `IfcFurniture`, `IfcSpace`), spatial containment (`IfcRelContainedInSpatialStructure`),
+   host relationships (`IfcRelFillsElement`). The IFC file is the authoritative source of
+   WHAT exists and WHERE it belongs. Classification is IFC-driven — no YAML involvement.
+
+2. **Classification YAML** (`classify_*.yaml`) — the **Order input**: a human-readable
+   stand-in for C_Order + C_OrderLine. Defines building identity, storey mapping, BOM
+   template references, discipline routing, and static children. YAML tells the pipeline
+   HOW to organise the extracted elements into a BOM tree, not what elements exist.
+
+**Separation of concerns:**
+
+| Concern | Source | NOT from |
+|---------|--------|----------|
+| What elements exist | IFC extraction DB | YAML |
+| Which room an element belongs to | IFC `rel_contained_in_space` | YAML scope boxes |
+| Element IFC class/family type | IFC extraction DB | YAML |
+| BOM tree shape (BUILDING → FLOOR → ROOM → SET) | YAML Order config | IFC |
+| Discipline routing (ARC/STR/FP/ELEC...) | YAML `disciplines:` | IFC |
+| Static children (slabs, roof) | YAML `static_children:` | IFC |
+| Space-to-template mapping | YAML `ifc_space:` → `template_bom:` | IFC |
+
+See [`DISC_VALIDATION_DB_SRS.md §10.4.13`](DISC_VALIDATION_DB_SRS.md#10413-ifc-driven-extraction--replacing-yaml-scope-boxes).
+
+**IFCtoBOM does NOT:**
+
+- Create C_Order or C_OrderLine (that is `processIt()` during compilation)
+- Fire callouts (OrderLineProductCallout fires during compilation, not BOM building)
+- Invent elements (every leaf traces to `I_Element_Extraction`)
+- Use YAML scope boxes for room assignment (IFC spatial containment; scope boxes are Order processing)
+- Validate against regulations (see [`DocValidate.md`](DocValidate.md))
+- Fill missing pipes or correct gaps (WYSIWYG)
 
 ### 2.1.9 BOM Write Path
 
@@ -481,8 +515,8 @@ wiring between ARC shell and MEP disciplines.
 
 **ARC rooms as discipline anchors:** The ARC shell must produce room products
 with categories matching each MEP discipline present in the building. If the
-YAML `floor_rooms` config has no pump room, FP_SYSTEM has nowhere to tack.
-The YAML author (or Designer user) ensures service rooms exist for each
+Order config has no pump room, FP_SYSTEM has nowhere to tack.
+The Order author (YAML or Designer user) ensures service rooms exist for each
 discipline OrderLine they add.
 
 **Compulsory service rooms in CO BOM:** For a CO (Commercial) building, the
@@ -535,9 +569,10 @@ The callout reads the BOM to discover what lines to create. The user can
 then edit quantities, remove disciplines they don't need, or add custom
 lines.
 
-**YAML equivalent:** For Rosetta Stone testing, the YAML `classify_te.yaml`
-lists the 8 discipline sections explicitly. The callout is the interactive
-(Designer GUI) equivalent of what YAML does declaratively.
+**YAML as Order input:** For Rosetta Stone testing, the YAML `classify_te.yaml`
+lists the 8 discipline sections explicitly — this is Order data, not extraction
+logic. The callout is the interactive (Designer GUI) equivalent of what YAML
+declares as C_OrderLine configuration.
 
 **Generalisation across building categories:** The callout is not CO-specific.
 It reads the BOM to discover discipline children. Different building categories
@@ -712,8 +747,8 @@ Qty is always in the product's **cost_uom** (from M_Product):
 | `qty = 47` | Distribute exactly 47 items (EA) or 47 units of measure. Walker stops when count reached. |
 | `qty = 0` (or blank) | No limit — distribute until all eligible rooms are covered. |
 
-During YAML setup, the author peeks at the extracted DB to see what exists:
-`SELECT count(*) FROM i_element_extraction WHERE discipline = 'FP'` → 47.
+During Order setup (YAML authoring), the author peeks at the extracted DB to see
+what exists: `SELECT count(*) FROM i_element_extraction WHERE discipline = 'FP'` → 47.
 This becomes the qty on the FP OrderLine.
 
 In the Designer GUI, the user edits qty directly on the C_OrderLine.
@@ -866,9 +901,11 @@ Piano world LBD:
 
 Piano centroid = piano_LBD + (piano_width/2, piano_depth/2, piano_height/2)
 
-**Scope box origin (YAML `origin_m`)** is a **containment filter only** — not a
-spatial reference for offsets. Tack_from comes from the room's measured LBD
-relative to the floor's LBD.
+**Scope box origin (`origin_m`)** was historically a YAML-authored containment
+filter for extraction. Since S100-p125, extraction uses IFC spatial containment
+(`rel_contained_in_space`) instead. Scope boxes now live in **Order processing**
+only — the BIM Designer GUI uses them for sub-room zone splits at order time.
+Tack_from comes from the room's measured LBD relative to the floor's LBD.
 
 ### 4.1.1 validateBOM() — The Spatial Analogue
 
@@ -913,14 +950,14 @@ builders compute from different reference surfaces.
 Maps to GD&T tolerance zones: INNER=LMC, OUTER=MMC, STRUCTURAL=Basic, OPENING=Virtual.
 
 `ScopeBomBuilder`: SET BOMs tagged `OUTER` (computed from element extents).
-Empty SET BOMs (no assigned elements) tagged `INNER` (YAML room dims = available space).
-`FloorRoomBomBuilder`: FLOOR ROOM BOMs tagged `INNER` (YAML-sourced architect intent).
+Empty SET BOMs (no assigned elements) tagged `INNER` (Order-defined room dims = available space).
+`FloorRoomBomBuilder`: FLOOR ROOM BOMs tagged `INNER` (architect intent from IFC or Order config).
 `StructuralBomBuilder`/`DisciplineBomBuilder`: default `OUTER` (computed from elements).
 
 #### 4.2.2 PHANTOM — Spatial Availability Index (session 43)
 
 PHANTOMs are `component_type='PHANTOM'` lines in `m_bom_line`. SAP empty
-storage bin principle: the bin has a capacity (INNER dims from YAML), the
+storage bin principle: the bin has a capacity (INNER dims from Order config), the
 PHANTOM represents remaining capacity after placed elements are subtracted.
 
 ```

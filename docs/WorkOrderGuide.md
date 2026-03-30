@@ -12,13 +12,15 @@
 > |---|---|---|
 > | `building` | [C_Order](ProjectOrderBlueprint.md) | Which product to build (one order = one building) |
 > | `storeys` / `segments` | [C_OrderLine](ProjectOrderBlueprint.md) | BOM explosion levels (floors, segments) |
-> | `floor_rooms` | C_OrderLine + [M_AttributeSet](MANIFESTO.md#m_attributeset-why-product-count-stays-small) | Room scope spaces with dimensions |
+> | `floor_rooms` | C_OrderLine + [M_AttributeSet](MANIFESTO.md#m_attributeset-why-product-count-stays-small) | IFC space → BOM template mapping |
 > | `static_children` | C_OrderLine (static entries) | Fixed components (slabs, roof, MEP trunk) |
 > | `composition` | [Ref_Order_ID](ProjectOrderBlueprint.md) (inheritance) | Mirror/repeat pattern |
 >
 > In the production path, these definitions come from the [BIM Designer](BIM_Designer_UserGuide.md)
 > UI or future [iDempiere REST](https://wiki.idempiere.org/en/REST_Web_Services) integration.
-> The YAML is the **extraction and onboarding tool** — how buildings enter the system.
+> The YAML is the **Order input and onboarding tool** — how buildings enter the system.
+> IFC extraction is IFC-driven (family types, spatial containment). YAML defines
+> the Order: how extracted elements are organised into the BOM tree.
 
 ## Quick Start — For Users
 
@@ -67,7 +69,7 @@ The classification YAML (`classify_*.yaml`) is the **only human-crafted artifact
 | Geometry gap fill | Import missing meshes from ref DB | No — copies blobs | [`ExtractionPopulator.fillGeometryGaps()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) |
 | Product images | `M_Product_ID → geometry_hash` | No — join | [`ProductRegistrar.ensureProductImages()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) |
 | Product registration | M_Product in component_library.db | No — from extraction | [`ProductRegistrar.ensureProductCatalog()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) |
-| Scope spaces | Element → room assignment | No — centroid-in-AABB | [`ScopeBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) |
+| Scope spaces | Element → room assignment | No — IFC spatial containment (scope box fallback) | [`ScopeBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) |
 | Composition | Mirror partition → half-unit BOM | No — axis-agnostic algo | [`CompositionBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java) |
 | Structural BOM | BUILDING + FLOOR STR BOMs | No — from extraction | [`StructuralBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) |
 | Room BOMs | Static children from YAML | No — template refs | [`FloorRoomBomBuilder.java`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java) |
@@ -88,7 +90,7 @@ The classification YAML (`classify_*.yaml`) is the **only human-crafted artifact
 > the YAML that produced the BOM.
 >
 > **The process of truth:**
-> 1. YAML declares intent (storey offsets, static children, scope spaces, products)
+> 1. YAML declares Order intent (storey mapping, static children, IFC space → template mapping, disciplines)
 > 2. BOM builders translate YAML → `m_bom` + `m_bom_line` with relative dx/dy/dz
 > 3. BOMWalker walks the hierarchy → output elements
 > 4. **Proof:** If you mutate a YAML value and recompile, the output must change accordingly
@@ -587,9 +589,10 @@ Every guard runs automatically on every build — no human memory required.
 
 These are documented ASSUMPTION remarks in the code — comment-only, no runtime guard:
 
-- **Scope box coordinate frame stability** — `origin_m` in YAML is assumed to match
-  extraction centroids. If IFC is re-extracted with a different `IfcMapConversion` offset,
-  scope box containment silently breaks. (ScopeBomBuilder ASSUMPTION)
+- **Scope box coordinate frame stability** — For buildings still using scope box fallback
+  (no IFC spatial data), `origin_m` is assumed to match extraction centroids. If IFC is
+  re-extracted with a different `IfcMapConversion` offset, scope box containment silently
+  breaks. IFC-driven buildings (`ifc_space:`) are immune. (ScopeBomBuilder ASSUMPTION)
 - **Composition geometric validity** — Mirror pairing matches by product count per storey,
   not by geometric spatial mirroring. (CompositionBomBuilder ASSUMPTION)
 - **Cross-discipline product_id uniqueness** — If two disciplines have elements with the

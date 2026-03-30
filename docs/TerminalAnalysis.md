@@ -742,9 +742,9 @@ correspondence between BIM construction hierarchy and ERP document flow.
 
 ### M_Product_Category — Hierarchy Shape by Top-Level Category
 
-> *Aligns to MANIFESTO.md §The Category Cascade. DocBaseType/DocSubType are
-> deprecated artifacts on C_DocType and m_bom — classification lives on
-> M_Product_Category at every cascade level (see DATA_MODEL.md §7).*
+> *Aligns to MANIFESTO.md §The Category Cascade. Classification lives on
+> M_Product_Category at every cascade level (see DATA_MODEL.md §7).
+> DocBaseType was removed (S84, W012). DocSubType retained for iDempiere C_DocType compatibility.*
 
 The top-level M_Product_Category determines the **hierarchy shape**:
 

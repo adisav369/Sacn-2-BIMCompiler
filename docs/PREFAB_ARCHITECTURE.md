@@ -16,7 +16,7 @@
 > - `FixtureWorker` → deleted (merged into `FurnitureWorker`)
 > - `BOMAssemblerAD` → deleted (BOM traversal now via `BOMWalker` + `AssemblyStructureVisitor`)
 > - `RelationalResolver` → deleted (PlacementLoader now loads from `{PREFIX}_BOM.db` via `loadFromBOM()`)
-> - `ad_room_slot` dispatch → deprecated by `bom_category` on M_BOM
+> - `ad_room_slot` dispatch → replaced by `bom_category` on M_BOM
 > - `ARCHITECTURE.md` → archived (use `MANIFESTO.md` + `SourceCodeGuide.md`)
 >
 > Assembly hierarchy (§2) and MRP BOM Drop (§above) remain accurate.
@@ -949,7 +949,7 @@ ad_product_dim ── conn_points JSON (existing, Level 0 components only)
 |---|---|
 | Hardcoded fixture clearances (formerly `FixturePlacer`) | `ad_assembly_manifest` clearance values per face |
 | `ad_product_dim.conn_points` JSON | `ad_assembly_connector` relational table (Level -1 and 0.5) |
-| 3-way routing (now unified in `BOMTierResolver`) | `ad_room_slot` unified slot table (deprecated by `bom_category` on M_BOM) |
+| 3-way routing (now unified in `BOMTierResolver`) | `ad_room_slot` unified slot table (replaced by `bom_category` on M_BOM) |
 | Implicit MEP pipe routing (hardcoded Z offsets) | `ad_assembly_connector` typed hookups |
 | `ad_unit_type_room` fractional bounds [0..1] | `prefab_bom` absolute mm offsets |
 | `FloorPlateBOMResolver.fill_remaining` runtime | `prefab_product` pre-computed floor layout |

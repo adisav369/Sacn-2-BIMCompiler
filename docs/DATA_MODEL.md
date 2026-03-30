@@ -96,7 +96,7 @@ Each extracted building produces one BUILDING-type `m_bom` with:
 | Field | Value | Source |
 |-------|-------|--------|
 | bom_id | BUILDING_SH_STD / BUILDING_DX_STD | Convention |
-| bom_type | *(deprecated)* | Root = BOM with no parent m_bom_line. Tier = M_Product_Category. See DISC_VALIDATION_DB_SRS.md §10.4.5 |
+| bom_type | — | Root = BOM with no parent m_bom_line. Tier = M_Product_Category. See DISC_VALIDATION_DB_SRS.md §10.4.5 |
 | m_product_category_id | RE / CO / IN | Top-level M_Product_Category — classification axis |
 | origin_x/y/z | Building world LBD (only BUILDING BOM); (0,0,0) for children — see §4 in BOMBasedCompilation.md | Extraction min corner |
 | aabb_width/depth/height_mm | Building envelope | (max - min) × 1000 |
@@ -153,8 +153,8 @@ Each building has its own BOM dictionary, regenerated deterministically:
 ```
 
 The IFCtoBOM pipeline (`IFCtoBOMPipeline.java`) — see [`WorkOrderGuide.md`](WorkOrderGuide.md) §Step 5 for full table:
-1. Load classification YAML + extract to `I_Element_Extraction` (`ExtractionPopulator`)
-2. **Pre-flight:** FAIL if extraction has storeys not in YAML; FAIL on NULL M_Product_ID
+1. Load classification YAML (Order input) + read IFC extraction to `I_Element_Extraction` (`ExtractionPopulator`)
+2. **Pre-flight:** FAIL if extraction has storeys not in YAML Order config; FAIL on NULL M_Product_ID
 3. `ProductRegistrar.ensureProductCatalog()`: M_Product → component_library.db (persistent, reusable)
 4. `ProductRegistrar.ensureProductImages()`: geometry link (INSERT OR IGNORE)
 5. **Pre-flight:** FAIL if any product has no geometry_hash

@@ -1149,7 +1149,7 @@ This replaces `placeMEPSprinklers()`, `placeHVAC()`, `placeElectrical()`, `mepBo
 > c_orderline becomes WHAT-only — Java PO class has no placement setters.
 >
 > **Phase 2:** VerbStage fallback logic: W_Verb_Node rows present → VerbRegistry dispatch;
-> absent → RelationalResolver fallback (deprecated path).
+> absent → RelationalResolver fallback (to be removed in Phase 3).
 >
 > **Phase 3:** Drop placement columns from c_orderline. Remove RelationalResolver.
 > Migrate SH/DX extracted data to verb recipes.
@@ -1182,7 +1182,7 @@ Before VerbStage can be wired in:
 
 1. **Stable LocalCoord.toWorld()** — the coordinate chain must be correct. VerbStage will use the same anchor → world translation as WriteStage. If the translation has bugs (the "last mile"), VerbStage inherits them.
 2. **Spatial slot L2 population** (TODO-ST-3) — VerbStage iterates L2 slots (from M_BOM_Line dx/dy/dz). These must exist for all rooms, not just structural tiers.
-3. **RelationalResolver deprecated** — VerbStage computes placement from room AABB + ad_placement_rule, not from RelationalResolver. The resolver must be out of the critical path.
+3. **RelationalResolver removed from critical path** — VerbStage computes placement from room AABB + ad_placement_rule, not from RelationalResolver.
 
 ### 16.3 Preparation Work (BIM_COBOL Side — Can Start NOW)
 
@@ -1267,7 +1267,7 @@ Same building, same geometry, same BOM — but MEP elements placed by BIM COBOL 
 | Keyword | Args | What it does | Witnesses |
 |---------|------|-------------|-----------|
 | `TRIM WALLS TO ROOF` | (none) | Measure roof AABB surface at each wall centroid. Ridge along longer axis, linear slope from eave (minZ) to crown (maxZ). Walls exceeding roof surface by >50mm flagged for trimming. Flat roofs (minZ≈maxZ) → slope≈0 naturally. Returns slope angle, direction, and profile type per entry. | W-TRIM-1 through W-TRIM-7 |
-| `FORGE` | `<piece_type> [key:value ...]` | Formula-driven construction piece computation. 6 engines: SLOPE_CUT (rafter trig), STAIR_FLIGHT (rise-over-run + Blondel), PIPE_BEND (arc geometry), DOME_SECTION (ring×segment panels), BARREL_VAULT (rib arc), REBAR_CAGE (slab/beam/column reinforcement with exposure-class cover). Fabrication data persisted to `ad_forge_fabrication` in output.db. ParametricMesh deprecated. See [GEOMETRY_FORGE_SRS](GEOMETRY_FORGE_SRS.md), [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md). | W-FORGE-1..11 |
+| `FORGE` | `<piece_type> [key:value ...]` | Formula-driven construction piece computation. 6 engines: SLOPE_CUT (rafter trig), STAIR_FLIGHT (rise-over-run + Blondel), PIPE_BEND (arc geometry), DOME_SECTION (ring×segment panels), BARREL_VAULT (rib arc), REBAR_CAGE (slab/beam/column reinforcement with exposure-class cover). Fabrication data persisted to `ad_forge_fabrication` in output.db. ParametricMesh replaced by ForgeEngine. See [GEOMETRY_FORGE_SRS](GEOMETRY_FORGE_SRS.md), [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md). | W-FORGE-1..11 |
 
 ### 17.2 Proposed (Not Yet Implemented)
 
@@ -2203,7 +2203,7 @@ TILE:nx:ny:stepX:stepY           — 2D grid, nx*ny instances
 ROUTE:X:step:n|Y:step:n|...     — axis-aligned legs chained
 FRAME:x1,x2,...|y1,y2,...        — gridline positions (floor-relative)
 CLUSTER:dx,dy,dz,w,d,h;...      — exact per-instance offsets + dimensions (lossless)
-# SPRAY deprecated — replaced by CLUSTER (session 32)
+# SPRAY removed — replaced by CLUSTER (session 32)
 ```
 
 ### Data Flow

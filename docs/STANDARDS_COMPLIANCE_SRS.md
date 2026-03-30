@@ -228,7 +228,7 @@ building:
   building_type: DemoHouse_MY
   prefix: DM
   building_bom_id: BUILDING_DM_STD
-  doc_sub_type: DM                    # deprecated — redundant with prefix
+  doc_sub_type: DM                    # redundant with prefix, retained for iDempiere C_DocType compatibility
   name: Demo House (Malaysia)
   dsl_file: null
   jurisdiction: MY                    # ← NEW — activates ComplianceStage

@@ -214,8 +214,8 @@ SELECT ROUND(MIN(r.minX),2), ROUND(MAX(r.maxX),2),
        ROUND(MIN(r.minZ),2), ROUND(MAX(r.maxZ),2)
 FROM elements_rtree r"
 
-# Per-space bounding boxes (for YAML scope spaces)
-# Use IfcSpace geometry via ifcopenshell (same method as FK)
+# Per-space containment (IFC-driven via rel_contained_in_space)
+# IfcSpace names map to BOM templates in YAML Order config
 ```
 
 **Actual results (session 39):**

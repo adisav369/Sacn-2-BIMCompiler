@@ -879,7 +879,7 @@ W-BOM-TRACED 97% across 90K elements is the acceptance bar.
 
 **Non-Disturbance decision:**
 - Types move to com.bim.eyes.shape package
-- DAGCompiler GeometricFingerprint.java becomes thin wrapper with deprecated type aliases
+- DAGCompiler GeometricFingerprint.java becomes thin wrapper with type aliases
 - Phase 3 removes wrappers after all consumers migrate
 
 ### 9.3 SpatialDiff
@@ -939,7 +939,7 @@ lives in DAGCompiler.
 1. ~~Implement P25 ROOM_VALIDITY~~ DONE — `RoomValidityProof.java` (162 lines)
 2. ~~Implement P26 BUILDING_COMPLETENESS~~ DONE — `BuildingCompletenessProof.java` (159 lines)
 3. ~~Wire DimensionRangeValidator to use ShapeClassifier (P24 alignment)~~ DONE — uses `EyesConstants.DIM_RANGE_RATIO`
-4. Remove deprecated wrappers from DAGCompiler — **DEFERRED** (wrappers harmless, flagged deprecated)
+4. Remove DAGCompiler wrappers — **DEFERRED** (wrappers harmless)
 5. ~~Update TestArchitecture.md traceability matrix~~ DONE — 9 FL-2/FL-5 witnesses added
 
 **FL-5 Integration (session 50):**

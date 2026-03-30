@@ -2,13 +2,13 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>processIt() orchestrates the YAML-to-BOM compilation lifecycle.</b> Maps iDempiere MOrder.processIt() to BIM compilation with DocEvent validation at each stage.
+<b>processIt() orchestrates the Order-to-output compilation lifecycle.</b> Maps iDempiere MOrder.processIt() to BIM compilation with DocEvent validation at each stage.
 </div>
 
 **Version:** 1.5 (2026-03-26, session 79 — AD_Org_ID migration, work_output.db cleanup)
 **Depends on:** [BOMBasedCompilation.md](BOMBasedCompilation.md) §1.2, [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) §9-10, [DocValidate.md](DocValidate.md) §9-§15, [TE_MINING_RESULTS.md](https://github.com/red1oon/BIMCompiler/blob/master/internal/TE_MINING_RESULTS.md), [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §19
 **Scope:** The `processIt()` orchestration — iDempiere MOrder.processIt() mapped to
-BIM compilation. How YAML→BOM pipeline and DocEvent Validation interact.
+BIM compilation. How the BOM recipe pipeline and DocEvent Validation interact.
 
 > **Activation rule (BBC.md §1.2):** Each discipline in YAML has three states:
 > `{prefix}_BOM` (pipeline populates from named BOM), `DocEvent` (validation
@@ -73,7 +73,7 @@ disciplines:
 
 | # | Concern | Trigger | What It Does |
 |---|---------|---------|-------------|
-| 1 | **YAML → BOM pipeline** | Discipline = `{prefix}_BOM` | Pipeline populates discipline sub-tree from the named BOM database. |
+| 1 | **BOM recipe pipeline** | Discipline = `{prefix}_BOM` | Pipeline populates discipline sub-tree from the named BOM database. |
 | 2 | **DocEvent Validation** | Discipline = `DocEvent` | Discovers applicable AD_Val_Rule for this discipline, places elements from mined rules, validates against standards. |
 
 **Shared/common rules** (non-clash, regulatory, AABB containment, vertical

@@ -325,9 +325,9 @@ compilation correctness.
 
 ## Remaining
 
-### Scope Space Origins for DX
+### IFC Spatial Containment for DX
 
-The DX `floor_rooms` section has scope boxes without `origin_m` coordinates.
-These need proper values for scope assignment to work (furniture elements
-assigned to rooms). Currently all scope spaces are empty SETs.
+DX extraction DB has 61 rows in `rel_contained_in_space`. Conversion from
+scope boxes to IFC-driven `ifc_space` mapping is pending (same as SH P125
+pattern). Currently all scope spaces are empty SETs.
 This is a data completeness issue, not a pipeline bug.

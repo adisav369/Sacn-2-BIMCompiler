@@ -556,34 +556,35 @@ building:
     Erdgeschoss:
       bom_id: FLOOR_FK_EG_STD
       spaces:
-        # origins and AABBs come from Step 2c query — adjust after extraction
+        # IFC-driven: IfcSpace names from rel_contained_in_space
+        # FK has 0 rows in rel_contained_in_space — scope box fallback active
+        # When IFC re-exported with IfcSpace data, convert to ifc_space: keys
         - { name: FLUR,          template_bom: FK_CORRIDOR_SET,  role: CORRIDOR,  seq: 10,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [7110, 1740, 2500], origin_m: [3.855, 4.880, 1.250] }
         - { name: BUERO,         template_bom: FK_OFFICE_SET,    role: OFFICE,    seq: 20,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [3500, 3710, 2500], origin_m: [2.050, 7.845, 1.250] }
         - { name: BAD,           template_bom: FK_BATHROOM_SET,  role: BATHROOM,  seq: 30,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [3370, 3710, 2500], origin_m: [5.725, 7.845, 1.250] }
         - { name: SCHLAFZIMMER,  template_bom: FK_BEDROOM_SET,   role: BEDROOM,   seq: 40,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [4050, 5450, 2500], origin_m: [9.675, 6.975, 1.250] }
         - { name: WOHNEN,        template_bom: FK_LIVING_SET,    role: LIVING,    seq: 50,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [7005, 3710, 2500], origin_m: [8.197, 2.155, 1.250] }
         - { name: KUECHE,        template_bom: FK_KITCHEN_SET,   role: KITCHEN,   seq: 60,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [4395, 3710, 2500], origin_m: [2.498, 2.155, 1.250] }
     Dachgeschoss:
       bom_id: FLOOR_FK_DG_STD
       spaces:
         - { name: GALERIE,       template_bom: FK_GALLERY_SET,   role: GALLERY,   seq: 10,
-            aabb_mm: [TBD], origin_m: [TBD] }
+            aabb_mm: [11400, 9400, 3387], origin_m: [6.000, 5.000, 4.393] }
 
   static_children:
     - { child_product_id: FLOOR_SLAB_FK_EG, role: GROUND_SLAB, seq: 5, dz: 0.0 }
 ```
 
-**Checklist for filling TBD values:**
-1. Run extraction (Step 1) → query bounding boxes per space
-2. Use `IfcSpace` centroids from the extracted DB to set `origin_m`
-3. Use `IfcSpace` extent to set `aabb_mm`
-4. For rooms without explicit IfcSpace, use element cluster bounding boxes
+**IFC-driven conversion:** FK's extraction DB has 0 rows in `rel_contained_in_space`,
+so scope box fallback is active (values from IfcSpace geometry via ifcopenshell).
+When the IFC source is re-exported with spatial containment data, convert to
+`ifc_space:` keys (same pattern as SH P125).
 
 Spec: `docs/WorkOrderGuide.md` §Schema (v1) — full field reference
 
@@ -704,7 +705,7 @@ Spec: `docs/SourceCodeGuide.md` §Ch4.Step5, `docs/WorkOrderGuide.md` §Step 7
 | `0 elements extracted` | IFC class not in `ad_ifc_class_map` | Step 0a — add missing types |
 | `NULL M_Product_ID` | Extraction bug or renamed element | Check `I_Element_Extraction` in component_library.db |
 | `Storey not in YAML` | YAML storey key doesn't match extracted storey name | `sqlite3 extracted.db "SELECT DISTINCT storey FROM elements_meta"` and fix YAML |
-| `Space contract FAIL` | Elements outside all AABB scope boxes | Widen `aabb_mm` or add catch-all scope space |
+| `Space contract FAIL` | Elements not in any IFC space (or scope box fallback) | Add `ifc_space:` mapping, or widen `aabb_mm` for fallback buildings |
 | `BomValidator FAIL` | BOM structure error (orphan lines, missing parent) | Check YAML `building_bom_id` matches, `static_children` refs exist |
 | `Delta count mismatch` | EN-BLOC ≠ WALK-THRU element count | Check DSL script storey DZ values, floor_rooms coverage |
 | `Geometry hash mismatch` | Different compilation path produced different mesh | Check component_library.db `M_Product_Image` — geometry_hash should be deterministic |

@@ -382,8 +382,8 @@ generation from brief. `GridStrategy.subdivide()` + `UbblValidator` +
 ForgeEngine is the single interface. `ad_forge_formula` is the single
 metadata table. `Mesh2Library.txt` is archived as prior art — its design
 is correct, just renamed. `ParametricMesh` (if it exists in code) is
-either deprecated in favour of ForgeEngine or wrapped by a ForgeEngine
-adapter. TopologyMaker stays separate (batch process, not verb-level).
+replaced by ForgeEngine or wrapped by a ForgeEngine adapter.
+TopologyMaker stays separate (batch process, not verb-level).
 
 One name, one interface, one table. No confusion for future sessions.
 
