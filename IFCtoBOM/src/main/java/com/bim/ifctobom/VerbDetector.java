@@ -1,6 +1,7 @@
 package com.bim.ifctobom;
 
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
+import com.bim.orm.BIMLogger;
 
 import java.util.*;
 
@@ -161,7 +162,17 @@ public class VerbDetector {
 
         // CLUSTER: catch-all exact encoding (replaces SPRAY approximation)
         ClusterResult cluster = detectCluster(elements, floorMinX, floorMinY, floorMinZ);
-        if (cluster != null) return cluster.verbRef();
+        if (cluster != null) {
+            // Implementing DISC_VALIDATION_DB_SRS §10.4.10 — ClusterReprocessor
+            // Diagnostic: why did TILE/FRAME/ROUTE not match?
+            String tileReason = diagnoseTileFailure(elements);
+            String frameReason = diagnoseFrameFailure(elements);
+            String routeReason = diagnoseRouteFailure(elements);
+            String productHint = elements.get(0).elementRef();
+            BIMLogger.fine("VERB", "CLUSTER fallback: {} qty={} tile=[{}] frame=[{}] route=[{}]",
+                productHint, elements.size(), tileReason, frameReason, routeReason);
+            return cluster.verbRef();
+        }
 
         return null;
     }
@@ -231,6 +242,16 @@ public class VerbDetector {
                     || Math.abs(e.heightMm() - first.heightMm()) > 50) {
                 return null;  // non-uniform dimensions → CLUSTER
             }
+        }
+
+        // Z-uniformity guard: ROUTE expansion places all instances at the same Z.
+        // Reject groups where Z varies beyond tolerance — they must be CLUSTER.
+        // Multi-storey buildings can have elements assigned to one storey that
+        // span a wide Z range (e.g., basement windows from Z=-2.1 to Z=6.9).
+        double minZ = elements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+        double maxZ = elements.stream().mapToDouble(ExtractionElement::minZ).max().orElse(0);
+        if (maxZ - minZ > 0.5) {  // 500mm tolerance (generous for slab thickness)
+            return null;  // Z-variation → CLUSTER
         }
 
         // Sort by LBD X then Y (greedy chain).
@@ -513,6 +534,15 @@ public class VerbDetector {
                                                double floorMinX, double floorMinY, double floorMinZ) {
         int n = elements.size();
 
+        // CLUSTER: identity mapping — verb_ref stores offsets in elements-list order.
+        // detectCluster iterates elements[0..n-1] and writes offset[i] = elements[i].pos.
+        // No centroid matching needed — the order is already correct.
+        if (verbRef.startsWith("CLUSTER:")) {
+            int[] identity = new int[n];
+            for (int i = 0; i < n; i++) identity[i] = i;
+            return identity;
+        }
+
         // Compute group LBD origin (same as detect/expandCluster)
         double gMinX = elements.stream().mapToDouble(ExtractionElement::minX).min().orElse(0);
         double gMinY = elements.stream().mapToDouble(ExtractionElement::minY).min().orElse(0);
@@ -527,26 +557,9 @@ public class VerbDetector {
         }
 
         // Expansion positions from verb (relative to group LBD → shift to world)
+        // CLUSTER handled above (identity mapping) — only TILE/ROUTE/FRAME reach here
         double[][] expPositions;
-        if (verbRef.startsWith("CLUSTER:")) {
-            // CLUSTER: offsets are LBD-relative, add gMin to get world coords, then add half-extent
-            String data = verbRef.substring(8);
-            String[] entries = data.split(";");
-            expPositions = new double[entries.length][3];
-            for (int i = 0; i < entries.length; i++) {
-                String[] vals = entries[i].split(",");
-                double dx = Double.parseDouble(vals[0]);
-                double dy = Double.parseDouble(vals[1]);
-                double dz = Double.parseDouble(vals[2]);
-                double w = Double.parseDouble(vals[3]);
-                double d = Double.parseDouble(vals[4]);
-                double h = Double.parseDouble(vals[5]);
-                // LBD offset → centroid = gMin + offset + half-extent
-                expPositions[i][0] = gMinX + dx + w / 2;
-                expPositions[i][1] = gMinY + dy + d / 2;
-                expPositions[i][2] = gMinZ + dz + h / 2;
-            }
-        } else {
+        {
             // TILE/ROUTE/FRAME: formula-based positions are origin-relative LBD offsets
             // Expansion produces LBD positions; add half-extents to recover centroids
             // Use same expansion logic as PlacementCollectorVisitor
@@ -557,7 +570,12 @@ public class VerbDetector {
                     floorMinX, floorMinY, floorMinZ, elements.get(0));
         }
 
-        // Match: for each expansion position, find nearest unmatched element
+        // Match: for each expansion position, find nearest unmatched element.
+        // ROUTE verbs expand along a single axis — use route-axis distance only
+        // to avoid Z-variation mis-matching (elements on one storey can span
+        // wide Z ranges, but ROUTE assumes constant Z for all instances).
+        int routeAxis = detectRouteAxis(verbRef);  // 0=X, 1=Y, -1=not a route
+
         boolean[] used = new boolean[n];
         int[] result = new int[n];
         Arrays.fill(result, -1);
@@ -567,10 +585,17 @@ public class VerbDetector {
             int bestIdx = -1;
             for (int ei = 0; ei < n; ei++) {
                 if (used[ei]) continue;
-                double dist = Math.sqrt(
-                    Math.pow(centroids[ei][0] - expPositions[qi][0], 2) +
-                    Math.pow(centroids[ei][1] - expPositions[qi][1], 2) +
-                    Math.pow(centroids[ei][2] - expPositions[qi][2], 2));
+                double dist;
+                if (routeAxis >= 0) {
+                    // ROUTE: match along route axis only (1D)
+                    dist = Math.abs(centroids[ei][routeAxis] - expPositions[qi][routeAxis]);
+                } else {
+                    // TILE/FRAME/CLUSTER: full 3D matching
+                    dist = Math.sqrt(
+                        Math.pow(centroids[ei][0] - expPositions[qi][0], 2) +
+                        Math.pow(centroids[ei][1] - expPositions[qi][1], 2) +
+                        Math.pow(centroids[ei][2] - expPositions[qi][2], 2));
+                }
                 if (dist < bestDist) {
                     bestDist = dist;
                     bestIdx = ei;
@@ -596,6 +621,14 @@ public class VerbDetector {
     private static boolean containsQi(int[] result, int qi) {
         for (int v : result) if (v == qi) return true;
         return false;
+    }
+
+    /** Detect the primary axis for a ROUTE verb. Returns 0=X, 1=Y, -1=not a route. */
+    private static int detectRouteAxis(String verbRef) {
+        if (verbRef == null || !verbRef.startsWith("ROUTE:")) return -1;
+        // First leg determines primary axis: "ROUTE:X:step:count" or "ROUTE:Y:step:count"
+        char axis = verbRef.charAt(6);
+        return axis == 'X' ? 0 : axis == 'Y' ? 1 : -1;
     }
 
     /** Compute world centroid positions for TILE/ROUTE/FRAME formula verbs. */
@@ -675,6 +708,72 @@ public class VerbDetector {
         // Fallback: return element centroids as-is (identity mapping)
         double[][] pos = new double[n][3];
         return pos;
+    }
+
+    // ── CLUSTER diagnostic helpers (DISC_VALIDATION_DB_SRS §10.4.10) ──
+
+    /**
+     * Diagnose why TILE detection failed for a group of elements.
+     * Returns a concise reason string for diagnostic logging.
+     */
+    private static String diagnoseTileFailure(List<ExtractionElement> elements) {
+        double[] xs = elements.stream().mapToDouble(ExtractionElement::centroidX).sorted().toArray();
+        double[] ys = elements.stream().mapToDouble(ExtractionElement::centroidY).sorted().toArray();
+        List<Double> uniqueX = uniquePositions(xs);
+        List<Double> uniqueY = uniquePositions(ys);
+        if (uniqueX.size() < 2 || uniqueY.size() < 2)
+            return "need >=2 unique positions per axis (X=" + uniqueX.size() + " Y=" + uniqueY.size() + ")";
+        double stepX = uniformStep(uniqueX);
+        if (stepX <= 0) return "X spacing non-uniform (" + uniqueX.size() + " positions)";
+        double stepY = uniformStep(uniqueY);
+        if (stepY <= 0) return "Y spacing non-uniform (" + uniqueY.size() + " positions)";
+        int nx = uniqueX.size(), ny = uniqueY.size();
+        if (nx * ny != elements.size())
+            return "grid occupancy " + elements.size() + "/" + (nx * ny) + " (" + nx + "x" + ny + ")";
+        return "grid verification failed (gaps in grid)";
+    }
+
+    /**
+     * Diagnose why FRAME detection failed for a group of elements.
+     * Returns a concise reason string for diagnostic logging.
+     */
+    private static String diagnoseFrameFailure(List<ExtractionElement> elements) {
+        double[] xs = elements.stream().mapToDouble(ExtractionElement::minX).sorted().toArray();
+        double[] ys = elements.stream().mapToDouble(ExtractionElement::minY).sorted().toArray();
+        List<Double> xLines = uniquePositions(xs);
+        List<Double> yLines = uniquePositions(ys);
+        if (xLines.size() < 2 || yLines.size() < 2)
+            return "need >=2 gridlines per axis (X=" + xLines.size() + " Y=" + yLines.size() + ")";
+        if (xLines.size() * yLines.size() != elements.size())
+            return "incomplete grid " + elements.size() + "/" + (xLines.size() * yLines.size());
+        double minZ = elements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+        double maxZ = elements.stream().mapToDouble(ExtractionElement::minZ).max().orElse(0);
+        if (maxZ - minZ > TOL) return String.format("Z spread %.3fm", maxZ - minZ);
+        return "grid cell verification failed";
+    }
+
+    /**
+     * Diagnose why ROUTE detection failed for a group of elements.
+     * Returns a concise reason string for diagnostic logging.
+     */
+    private static String diagnoseRouteFailure(List<ExtractionElement> elements) {
+        // Dimension uniformity check
+        ExtractionElement first = elements.get(0);
+        for (int di = 1; di < elements.size(); di++) {
+            ExtractionElement e = elements.get(di);
+            if (Math.abs(e.widthMm() - first.widthMm()) > 50
+                    || Math.abs(e.depthMm() - first.depthMm()) > 50
+                    || Math.abs(e.heightMm() - first.heightMm()) > 50) {
+                return "non-uniform dimensions (element " + di + ")";
+            }
+        }
+        // Z-uniformity check
+        double minZ = elements.stream().mapToDouble(ExtractionElement::minZ).min().orElse(0);
+        double maxZ = elements.stream().mapToDouble(ExtractionElement::minZ).max().orElse(0);
+        if (maxZ - minZ > 0.5)
+            return String.format("Z spread %.3fm (>0.5m)", maxZ - minZ);
+        // Chain failure — elements can't form axis-aligned legs
+        return "chain failure (no axis-aligned legs)";
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

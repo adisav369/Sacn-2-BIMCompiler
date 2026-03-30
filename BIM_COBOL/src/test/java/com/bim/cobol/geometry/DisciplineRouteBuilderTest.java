@@ -299,6 +299,11 @@ class DisciplineRouteBuilderTest {
         }
 
         @Override
+        public double wallThickness(String floorRef) {
+            return 200;
+        }
+
+        @Override
         public double ceilingHeightMm(String floorRef) {
             // GF ceiling = L1.z - slab - clearance = 3000 - 150 - 50 = 2800
             // L1 ceiling = L1.z + 3000 - 150 - 50 = 5800 (top floor fallback)

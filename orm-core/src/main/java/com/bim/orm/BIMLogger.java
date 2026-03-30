@@ -46,12 +46,20 @@ public class BIMLogger {
     // ── GEO debug mode — dedicated channel for tack chain logging (BBC.md §4) ──
     // Implementing BBC.md §4 — FINE tack chain logging + IFC GUID traceability
     // Each TACK LEAF line proves: (A) tack math ran, (B) IFC GUID preserved
+    // GEO is permanently ON — it IS the Last Mile Problem proof (LMP §7)
     private static final boolean GEO_ENABLED =
-        "true".equalsIgnoreCase(System.getProperty("bim.geo.debug",
-            readBimProperty("bim.geo.debug", "false")));
+        !"false".equalsIgnoreCase(System.getProperty("bim.geo.debug",
+            readBimProperty("bim.geo.debug", "true")));
     private static final String GEO_FILTER =
         System.getProperty("bim.geo.filter",
             readBimProperty("bim.geo.filter", null));
+
+    // ── PATTERN debug mode — storey/container assignment logging ──
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.10 — PATTERN logging channel
+    // EYES_SRS §4.7 — extraction-side diagnostics (default OFF)
+    private static final boolean PATTERN_ENABLED =
+        "true".equalsIgnoreCase(System.getProperty("bim.pattern.debug",
+            readBimProperty("bim.pattern.debug", "false")));
 
     /**
      * Resolve initial level — iDempiere convention: external properties, not hardcoded.
@@ -208,6 +216,28 @@ public class BIMLogger {
     public static boolean geoMatch(String productId) {
         return GEO_ENABLED && (GEO_FILTER == null || GEO_FILTER.isEmpty()
                 || (productId != null && productId.contains(GEO_FILTER)));
+    }
+
+    // =========================================================================
+    // PATTERN debug mode — storey/container assignment logging
+    // =========================================================================
+
+    /**
+     * Log a PATTERN message — emits ONLY when {@code bim.pattern.debug=true}.
+     * Independent of the general log level (INFO/FINE). Goes to file only.
+     * Used for extraction-side diagnostics: container Z-ordering, storey assignment.
+     */
+    public static void pattern(String component, String format, Object... args) {
+        if (!PATTERN_ENABLED) return;
+        String message = formatMessage(format, args);
+        String timestamp = LocalDateTime.now().format(TIME_FMT);
+        String line = String.format("%s [PATRN] %-12s %s",
+            timestamp, component, message);
+        // PATTERN goes to file only (never console)
+        if (logFile != null) {
+            logFile.println(line);
+            logFile.flush();
+        }
     }
 
     // =========================================================================
