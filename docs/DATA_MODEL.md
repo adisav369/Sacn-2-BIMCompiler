@@ -211,7 +211,7 @@ Read-only at compile time. Each per-building dictionary contains domain config, 
 |--------|------|-------|
 | M_BOM_ID | INTEGER PK | Opaque. Value = BUILDING_SH_STD, SH_GF_STR, BED_SET. See §8 PK convention |
 | bom_name | TEXT | Display name |
-| bom_type | TEXT | Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See [DISC_VALIDATION_DB_SRS.md §10.4.5](DISC_VALIDATION_DB_SRS.md#1045-bom_type-deprecation) |
+| bom_type | TEXT | Legacy tier label. Root is identified by having no parent m_bom_line. Tier selection uses M_Product_Category. See [DISC_VALIDATION_DB_SRS.md §6.5](DISC_VALIDATION_DB_SRS.md#65-the-bom-is-already-perfect) |
 | bom_category | TEXT | Functional role — FK → M_Product_Category |
 | m_product_category_id | INTEGER FK | Domain classification (RE/CO/IN) — see M_Product_Category |
 | origin_x, origin_y, origin_z | REAL | BUILDING BOM: world LBD; all others: (0,0,0). See BOMBasedCompilation.md §4. |
@@ -532,7 +532,7 @@ This is standard iDempiere convention: every `X_` generated class has `getTableN
 3. **`_int` sidecar columns** (transitional pattern from S90-S92) are dropped as each table completes migration. Phase D dropped M_Product_Category_ID_int (S92).
 4. **`loadByValue(String)`** on BasePO enables `WHERE Value = ?` lookups — replaces the old TEXT PK pattern without changing caller semantics.
 
-See [DISC_VALIDATION_DB_SRS.md §11.6.5](DISC_VALIDATION_DB_SRS.md#1165-migration-sequence-6-steps-each-independently-committable) for the full migration sequence.
+AD_Org unifies discipline identifiers from TEXT strings to integer FK. See [DISC_VALIDATION_DB_SRS.md §6](DISC_VALIDATION_DB_SRS.md#6-ad_org-disciplines-as-organizational-units).
 
 ---
 

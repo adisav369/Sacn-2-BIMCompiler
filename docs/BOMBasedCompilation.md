@@ -174,7 +174,7 @@ compilation (`processIt()`) — the ERP transaction. See [`DocAction_SRS.md`](Do
 | Static children (slabs, roof) | YAML `static_children:` | IFC |
 | Space-to-template mapping | YAML `ifc_space:` → `template_bom:` | IFC |
 
-See [`DISC_VALIDATION_DB_SRS.md §10.4.13`](DISC_VALIDATION_DB_SRS.md#10413-ifc-driven-extraction--replacing-yaml-scope-boxes).
+See [`DISC_VALIDATION_DB_SRS.md §6.13`](DISC_VALIDATION_DB_SRS.md#613-ifc-driven-extraction).
 
 **IFCtoBOM does NOT:**
 

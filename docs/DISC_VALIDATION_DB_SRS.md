@@ -1121,196 +1121,171 @@ anchor point; everything below cascades parent-relative. No absolute borrowing.
 **Enforcement:** Code review. No `*_extracted.db` or `*_input*` import exists in
 `DAGCompiler/src/main/java/`. Any future addition must pass this gate.
 
-### 6.12.2 MEP Generative Walk — Joint Piece Architecture (S103)
+### 6.12.2 MEP Placement — Shim + Joint Piece Architecture (S103)
 
-**Two fundamentally different operations in one compiler:**
+MEP placement follows the same BOM principle as ARC/STR. No special routing
+engine. No canvas. No pathfinding. The walker reads M_BOM → M_BOM_Line →
+dx/dy/dz and places — same code path as placing furniture in a room.
 
-| | ARC/STR | MEP |
-|---|---------|-----|
-| **Operation** | Deterministic replay | Generative walk-to-cover |
-| **Position source** | IFC extraction → m_bom_line.dx/dy/dz | Walker computes by pathfinding |
-| **Termination** | BOM lines exhausted | Coverage rule satisfied |
-| **What the BOM carries** | Exact per-element positions | Vocabulary of joinable pieces |
+The key insight: MEP elements attach to ARC/STR surfaces (ceilings, walls,
+floors). The **shim** is the adapter piece that bridges the two BOMs without
+coupling them.
 
-ARC walks to PLACE — each element has a known position. MEP walks to COVER —
-keep laying pipe until the room is served. Same CrawlRouter walker, different
-termination condition.
+#### 1. The Shim — MEP's First Piece
 
-#### 1. The Toolbox — Joint Pieces in ERP.db (Vocabulary)
-
-Each joint piece is a minimal Lego brick: one parent connects to one child.
-Extracted from IFC RosettaStones — the sample relationships teach us what
-pieces exist and how they typically chain. Not per-building positions.
+A shim is an M_Product in ERP.db. It represents a small patch of the host
+surface that the MEP element attaches to. Like the plastic pin-cover that
+comes with a light bulb — it has the exact shape of the connection interface.
+The blind walker matches it to an ARC element by `ifc_class`, and the shim's
+position becomes the MEP tack origin.
 
 ```
-ERP.db M_Product — MEP joint piece vocabulary (shared, ~30-50 types)
+ERP.db M_Product — Shims (host surface adapters, ~10-15 types)
 
-JOINT_PIPE_STRAIGHT    parent=PipeSegment   child=PipeSegment    typical_L=6000mm
-JOINT_PIPE_TEE         parent=PipeSegment   child=TeeFitting     branch_angle=90°
-JOINT_TEE_BRANCH       parent=TeeFitting    child=PipeSegment    typical_L=3000mm
-JOINT_PIPE_ELBOW       parent=PipeSegment   child=ElbowFitting   angle=90°/45°
-JOINT_PIPE_REDUCER     parent=PipeSegment   child=ReducerFitting in_dia/out_dia
-JOINT_PIPE_TERMINAL    parent=PipeSegment   child=SprinklerHead  drop=300mm
-JOINT_PIPE_VALVE       parent=PipeSegment   child=StopValve      inline
-JOINT_DUCT_TEE         parent=DuctSegment   child=DuctTee        branch_angle=90°
-JOINT_DUCT_DIFFUSER    parent=DuctSegment   child=AirDiffuser    drop=200mm
-JOINT_TRAY_FIXTURE     parent=CableTray     child=LightFixture   drop=150mm
+FP_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=5
+ELEC_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=10
+ELEC_WALL_SHIM        host_ifc_class=IfcWall       mount=SIDE     offset_mm=0  height_mm=1200
+CW_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=5
+SP_FLOOR_SHIM         host_ifc_class=IfcSlab       mount=TOP      offset_mm=0
+ACMV_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=50
+LPG_WALL_SHIM         host_ifc_class=IfcWall       mount=SIDE     offset_mm=0  height_mm=2100
 ```
 
-IFCtoERP (Phase J1) extracts these from IfcRelConnectsPorts across the fleet.
-Each building may contribute new patterns — `INSERT OR IGNORE`. The toolbox
-grows. A tee is a tee everywhere.
+The shim is the same scale as the first MEP piece — not room-sized, not
+floor-sized. A small adapter at the exact attachment point. Without it,
+every MEP piece would tack relative to the FLOOR origin with large offsets
+(dx=15000, dy=8000) — the same tack overflow problem that broke TE before
+room-level BOMs were added.
 
-#### 2. Rule-Driven Element Definitions in AD_Val_Rule
+**Why the shim prevents geometry hell:** It absorbs the building-specific
+position lookup ONCE. The shim sits at `ceiling_z - 5mm`. Every piece on
+it uses small relative offsets (`dz=-300mm` for a sprinkler drop). Without
+it, every piece computes `floor_z + storey_height - slab_thickness -
+clearance - 300mm` individually — thousands of chances to drift.
 
-The rules don't just validate — they DEFINE what each room needs. The walker
-reads the rule to know what to build:
+#### 2. Shim Matching — Loose Coupling Between ARC and MEP
 
-```
-AD_Val_Rule: FP_ROOM_COVERAGE
-  trigger:    room.type IN (KITCHEN, OFFICE, CORRIDOR, STORE)
-  elements:
-    SPRINKLER_HEAD   spacing_max=4600mm  mount=CEILING  qty=ceil(area/spacing²)
-    PIPE_BRANCH      connects_to=SPRINKLER_HEAD  diameter=25mm
-    TEE_FITTING      connects_to=PIPE_BRANCH from PIPE_HEADER
-    PIPE_HEADER      diameter=32mm  runs_along=CEILING_LONGEST_AXIS
-  standard:   NFPA 13 §8.6.2 (LH hazard class)
-```
-
-The rule specifies WHAT elements, HOW they connect, WHERE they mount, HOW
-MANY, and WHEN the walker can stop. The rule IS the recipe — expressed as
-constraints on the joint piece vocabulary.
-
-| Standard | Rule defines | Walker uses |
-|----------|-------------|-------------|
-| NFPA 13 §8.6 | Sprinkler grid: spacing, mount surface, qty formula | Pick TERMINAL pieces at grid intervals until area covered |
-| MS 1228 §5 | Waste gradient: slope, direction, diameter reduction | Pick STRAIGHT + REDUCER pieces maintaining gradient |
-| ASHRAE 62.1 | Diffuser coverage: ACH, room volume, diffuser capacity | Pick DUCT_DIFFUSER pieces until air changes satisfied |
-| MS 1228 §4 | Fixture supply: fixture types, unit capacity | Pick PIPE_TERMINAL pieces at each fixture position |
-| MS 830 §4 | Gas supply: clearance, single drop per gas point | Pick PIPE_TERMINAL + VALVE at each gas point |
-
-Post-walk, the SAME rules validate: did the walk satisfy the constraint?
-
-#### 3. The Compile Canvas — Spatial Awareness During Walk
-
-The walker needs to SEE the building — what's free, what's blocked, what's
-already served. A temp working surface per floor:
-
-```sql
-compile_canvas (temp table — per floor, per discipline, dropped after compile)
-  cell_x  INTEGER,     -- grid position X
-  cell_y  INTEGER,     -- grid position Y
-  surface TEXT,        -- CEILING / WALL_N / WALL_S / WALL_E / WALL_W / FLOOR
-  state   TEXT,        -- FREE / OCCUPIED / BLOCKED / SERVED
-  occupied_by TEXT,    -- element_ref if placed, structural_ref if blocked
-  discipline  TEXT     -- which DISC owns this cell
-```
-
-**Priming:** ARC compiled output → room boundaries become cells, beams/columns
-become BLOCKED. The canvas is the map the walker reads.
-
-**During walk:** Walker finds FREE cells, places a joint piece, marks SERVED.
-Other disciplines' placements are OCCUPIED — walker routes around them.
-
-**Coverage check:** All cells within rule spacing SERVED? → done. Not yet? →
-keep walking.
-
-#### 4. Discipline Anchors — Continuity Across Floors
-
-The riser punches through floors. Its exit on Floor 1 = entry on Floor 2.
-Persisted across floor canvases:
-
-```sql
-discipline_anchors (persisted across floor canvases for full building compile)
-  discipline   TEXT,    -- FP, CW, ELEC, etc.
-  anchor_type  TEXT,    -- SOURCE / ENTRY / EXIT / TERMINAL_BLOCK
-  floor_ref    TEXT,    -- which floor
-  x REAL, y REAL, z REAL,  -- position
-  diameter_mm  REAL,    -- pipe/duct size at this point
-  direction    TEXT     -- UP / DOWN / NORTH / SOUTH / EAST / WEST
-```
-
-**Flow across floors:**
-```
-Floor 0 (pump room):
-  canvas → place FP_PUMP → mark EXIT(5, 3, 3.0, UP, 50mm)
-  → persist to discipline_anchors
-
-Floor 1:
-  canvas → read ENTRY from anchors → walker starts at (5, 3, ceiling_z)
-  → walk header along ceiling, branch to each room, place terminals
-  → mark EXIT(5, 3, 6.0, UP, 50mm) for next floor
-  → persist to discipline_anchors
-
-Floor 2:
-  canvas → read ENTRY → continue from riser position → walk this floor
-```
-
-Each discipline starts from its source: FP from pump room (UP), CW from
-tank (DOWN from roof), SP from fixtures (DOWN to drain), ELEC from DB room
-(OUT). Anchors carry position + diameter + direction between floors.
-
-#### 5. The Generative Walk Sequence
+The shim matches to an ARC element at compile time. The match is by
+`ifc_class` + position containment. ARC doesn't know MEP exists. MEP
+doesn't reference the ARC BOM directly. The shim is the interface — like
+OSGi: loosely coupled, highly cohesive.
 
 ```
-For each floor (bottom to top):
-  1. Prime canvas from ARC output (rooms, ceilings, structural → BLOCKED)
-  2. For each discipline (ordered by priority: FP > ELEC > ACMV > CW > SP > LPG):
-     a. Read ENTRY anchor (or SOURCE if first floor for this disc)
-     b. Read AD_Val_Rule demand for each room on this floor
-     c. Walk: pick joint pieces from toolbox, chain along ceiling/wall,
-        branch to rooms, place terminals until coverage rule satisfied
-     d. Mark placed cells as OCCUPIED on canvas
-     e. Write EXIT anchor for next floor
-     f. Emit system_edges (P15/P16/P17 proof input)
-  3. Drop canvas
+Compile time:
+  1. ARC BOM compiled → ceiling element at (3200, 1500, 2700) in *_BOM.db
+  2. Callout creates FP DISC OrderLine
+  3. BomDropper reads FP recipe from ERP.db
+  4. First child = FP_CEILING_SHIM (host_ifc_class=IfcCovering, offset=5mm)
+  5. Walker matches: find ARC element WHERE ifc_class='IfcCovering'
+     AND position contains sprinkler XY → ceiling at (3200, 1500, 2700)
+  6. Shim placed at (3200, 1500, 2695) — cemented to ceiling surface
+  7. Sprinkler tacks to shim at dz=-300 → placed at (3200, 1500, 2395)
 ```
 
-The walker generates the per-building MEP BOM at compile time. It doesn't
-replay extracted positions — it finds its own path through the ARC canvas,
-constrained by rules, using joint pieces as vocabulary.
+The matching is the only new code. Everything after is standard BOM walk.
 
-#### 6. What IFC RosettaStones Teach Us
+#### 3. The Toolbox — Joint Pieces in ERP.db
 
-The IFC extraction does NOT give us per-building positions to replay. It gives
-us the Lego set:
+Joint pieces are the Lego bricks. Each is an M_Product with connection
+properties. Extracted from IFC RosettaStones — the fleet teaches us what
+pieces exist and their typical dimensions.
 
-| From IFC | To ERP.db | Purpose |
-|----------|-----------|---------|
-| `IfcRelConnectsPorts` | Joint piece M_Products | What types of joints exist |
-| Port diameters, angles | Joint piece dimensions | Typical sizes per joint type |
-| Connection patterns | Rule element definitions | How pieces typically chain |
-| Discipline assignment | AD_Val_Rule trigger | Which rooms need which DISC |
+```
+ERP.db M_Product — Joint pieces (~30-50 types from fleet)
 
-~30-50 distinct joint types from TE alone. The fleet confirms and extends.
-Once the toolbox has these pieces, ANY building compiles — extracted or
-generative. The RosettaStones are the sounding board, not the answer.
+PIPE_STRAIGHT_50MM     length=6000mm   diameter=50mm   ports=2 (END,END)
+PIPE_ELBOW_90_50MM     angle=90°       diameter=50mm   ports=2 (END,END)
+PIPE_TEE_50_25MM       main=50mm       branch=25mm     ports=3 (END,END,BRANCH)
+PIPE_REDUCER_50_25MM   in=50mm         out=25mm        ports=2 (END,END)
+SPRINKLER_HEAD_K56     k_factor=5.6    diameter=15mm   ports=1 (IN)
+DUCT_STRAIGHT_300MM    width=300mm     height=200mm    ports=2 (END,END)
+DUCT_TEE_300_150MM     main=300mm      branch=150mm    ports=3
+AIR_DIFFUSER_600MM     size=600mm      capacity=150L/s ports=1 (IN)
+```
+
+**No `IfcRelConnectsPorts` needed.** Our RosettaStone IFCs do not carry port
+connectivity data. The joint pieces are extracted from element geometry and
+`ifc_class` — a pipe segment IS a straight piece, a `IfcPipeFitting` IS a
+tee or elbow (identified by geometry shape or `PredefinedType`). The
+RosettaStones teach us the vocabulary by example.
+
+#### 4. The MEP Recipe — Shim First, Then Chain
+
+Each MEP assembly in ERP.db starts with a shim and chains joint pieces:
+
+```
+M_BOM: FP_SPRINKLER_BRANCH (in ERP.db — shared recipe)
+  line 1: FP_CEILING_SHIM         dz=0        ← matches to ceiling, becomes tack origin
+  line 2: PIPE_STRAIGHT_50MM      dx=0  dz=0  ← header along ceiling from shim
+  line 3: PIPE_TEE_50_25MM        dx=L  dz=0  ← tee at end of header run
+  line 4: PIPE_STRAIGHT_25MM      dy=S  dz=0  ← branch from tee
+  line 5: SPRINKLER_HEAD_K56      dy=0  dz=-300 ← terminal drop from branch
+
+M_BOM: FP_SYSTEM (top-level recipe)
+  line 1: FP_RISER_ASSEMBLY       qty=1        ← sub-BOM (vertical pipe + shims per floor)
+  line 2: FP_FLOOR_HEADER         qty=N        ← sub-BOM (per floor)
+  line 3: FP_SPRINKLER_BRANCH     qty=M        ← sub-BOM (per room needing FP)
+```
+
+The walker recurses: FP_SYSTEM → FP_SPRINKLER_BRANCH → shim → pieces.
+Same recursion as BUILDING → FLOOR → ROOM → FURNITURE. The shim at each
+level resets the tack origin to the host surface. All subsequent offsets
+are small, local, verifiable.
+
+#### 5. What IFC RosettaStones Teach Us
+
+The RosettaStones are the BOM ground truth. The IFC tells us what pieces
+exist, their dimensions, and how they arrange — by example, not by port
+connectivity.
+
+| From IFC | To ERP.db | How |
+|----------|-----------|-----|
+| `IfcPipeSegment` elements | PIPE_STRAIGHT M_Products | Geometry → length, diameter |
+| `IfcPipeFitting` elements | TEE/ELBOW/REDUCER M_Products | `PredefinedType` or shape classification |
+| `IfcFlowTerminal` elements | SPRINKLER/DIFFUSER M_Products | `ifc_class` + dimensions |
+| Element-to-storey containment | Shim host_ifc_class | `IfcRelContainedInSpatialStructure` |
+| Element positions per room | Recipe arrangement (qty, spacing) | Mined patterns → AD_Val_Rule |
+
+The fleet grows the vocabulary. TE contributes ~30 joint types.
+Each new building adds patterns via `INSERT OR IGNORE`.
+
+#### 6. Validation — Standards Confirm the Walk
+
+NFPA 13, MS 1228, ASHRAE 62.1 etc. validate placement AFTER the walk:
+
+| Standard | AD_Val_Rule check | Input |
+|----------|-------------------|-------|
+| NFPA 13 §8.6 | Sprinkler spacing ≤ 4600mm (LH) | Placed sprinkler positions |
+| MS 1228 §5 | Waste gradient ≥ 1:40 | SP pipe segment Z values |
+| ASHRAE 62.1 | Air changes per room | Diffuser count vs room volume |
+| MS 830 §4 | Gas clearance ≥ 150mm | LPG pipe vs ignition sources |
+
+Standards do NOT drive the walk. They confirm it. The BOM IS the walk.
 
 #### 7. Phasing
 
 | Phase | Scope | Prereq |
 |-------|-------|--------|
-| J1 | IFCtoERP: extract `IfcRelConnectsPorts` → joint piece vocabulary in ERP.db | S103 |
-| J2 | AD_Val_Rule: rule-driven element definitions (what each room needs) | J1 |
-| J3 | compile_canvas + discipline_anchors: temp spatial awareness tables | J2 |
-| J4 | CrawlRouter walk-to-cover: generative walk picking pieces from toolbox | J3 |
-| J5 | Post-walk validation: same rules confirm coverage + P15/P16/P17 proofs | J4 |
+| J1 | Joint piece vocabulary: extract M_Products from RosettaStone IFCs into ERP.db | S103 |
+| J2 | Shim products: define host surface adapters in ERP.db (ceiling, wall, floor, slab) | J1 |
+| J3 | MEP recipes: M_BOM assemblies (shim + joint pieces) in ERP.db | J2 |
+| J4 | Shim matching: walker matches shim to ARC element by ifc_class + position | J3 |
+| J5 | Validation: AD_Val_Rule for NFPA/MS/ASHRAE post-walk + P15/P16/P17 proofs | J4 |
 | J6 | Fleet: TE + RM, measure coverage per discipline per room | J5 |
 
-#### Existing Infrastructure (S100) — Foundation for Walk-to-Cover
+J2 is the critical task — without the shim, MEP has no tack origin.
 
-| Component | Status | Role in generative walk |
-|-----------|--------|------------------------|
-| CrawlRouter | DONE (S100-p100) | Walk engine — executes ops, picks joint pieces |
-| 6 RouteBuilders | DONE (S100-p101) | `plan()` — now reads canvas + rules instead of hardcoded patterns |
-| 5 CrawlOps | DONE (S100-p100) | Walk instructions — FOLLOW/BEND/BRANCH/REDUCE/PENETRATE |
-| BuildingGeometry | DONE (S100-p100) | Primes canvas: room boundaries, ceiling Z, slab thickness |
-| system_edges | DONE (S100-p105) | P15/P16/P17 proof input from walk |
-| AD_Val_Rule | EXISTS (ERP.db) | Table exists — needs MEP element definitions (J2) |
+#### Existing Infrastructure
 
-The existing skeleton (258 edges, 3%) used rule-computed CrawlOps. After
-IFCtoERP, the same CrawlRouter walks IFC-extracted CrawlOps with joint
-pieces from the toolbox — higher coverage, same walker.
+| Component | Status | Role |
+|-----------|--------|------|
+| PlacementCollectorVisitor | DONE | Walks M_BOM → M_BOM_Line, accumulates dx/dy/dz — handles MEP identically to ARC |
+| BomDropper | DONE | Explodes recipes recursively — handles MEP sub-BOMs identically to ARC |
+| BuildingGeometry | DONE (S100) | Room dimensions, ceiling Z, wall thickness — input for shim matching |
+| CrawlRouter + RouteBuilders | DONE (S100) | Generative fallback for buildings without IFC MEP data |
+| system_edges | DONE (S100) | P15/P16/P17 proof input |
+| M_BOM / M_BOM_Line | EXISTS (ERP.db) | Tables ready — needs joint piece and shim recipes |
+| ad_element_mep | EXISTS (ERP.db, 12 rows) | Canonical MEP types with ports — connection interface |
 
 ### 6.13 IFC-Driven Extraction
 

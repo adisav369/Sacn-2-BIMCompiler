@@ -714,7 +714,7 @@ These get flat per-element BOM lines (qty=1 each).
 
 > **Discipline is a line attribute, not a tree level.** The per-discipline
 > spatial model (covering vs inside, verb profiles, validation rules, GoF
-> patterns, BOM tree impact) is in [DISC_VALIDATION_DB_SRS.md §10.4.1–10.4.6](DISC_VALIDATION_DB_SRS.md#1041-spatial-model--space--occupant--verb--rule).
+> patterns, BOM tree impact) is in [DISC_VALIDATION_DB_SRS.md §6](DISC_VALIDATION_DB_SRS.md#6-ad_org-disciplines-as-organizational-units).
 > That spec governs all buildings, not just TE. TE is the ground truth.
 
 ## ERP Model Architecture — Terminal as Third Stone

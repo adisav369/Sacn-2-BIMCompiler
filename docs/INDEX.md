@@ -40,7 +40,7 @@ Single-page entry point. All active docs by tier.
 | [DISC_VALIDATE_SRS.md](DISC_VALIDATE_SRS.md) | Multi-discipline BOM tree, LOD resolution, handlers H1-H6 |
 | [ASSEMBLY_BUILDER_SRS.md](ASSEMBLY_BUILDER_SRS.md) | G-7 SRS: layer-by-layer TACK, U-value calc, 17 witnesses |
 | [CALIBRATION_SRS.md](CALIBRATION_SRS.md) | DocEvent generic vs Terminal, density/spacing comparison |
-| [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) | ERP.db: AD Dictionary, 6-step migration, 3-stage validation, discipline recipes, CalibrationDAO |
+| [DISC_VALIDATION_DB_SRS.md](DISC_VALIDATION_DB_SRS.md) | ERP.db: schema, cross-DB references, AD_Org disciplines, 3-stage validation, discipline recipes, routing architecture |
 | [INFRA_DESIGNER_SRS.md](INFRA_DESIGNER_SRS.md) | Infra Designer: terrain, alignment, 5 phases I-1..I-5 |
 | [TIER1_SRS.md](TIER1_SRS.md) | 6D carbon, 7D FM, audit trail, 3D native |
 | [BACK_OFFICE_SRS.md](BACK_OFFICE_SRS.md) | BackOffice HTTP server, SessionManager, portfolio |
