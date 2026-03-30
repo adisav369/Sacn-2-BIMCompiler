@@ -2336,10 +2336,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#gap-1-ceiling-void-routing" class="md-nav__link">
+  <a href="#gap-1-ceiling-void-routing-closed-p118" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gap 1: Ceiling void routing
+        Gap 1: Ceiling void routing — CLOSED (P118)
       
     </span>
   </a>
@@ -4491,10 +4491,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#gap-1-ceiling-void-routing" class="md-nav__link">
+  <a href="#gap-1-ceiling-void-routing-closed-p118" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gap 1: Ceiling void routing
+        Gap 1: Ceiling void routing — CLOSED (P118)
       
     </span>
   </a>
@@ -7016,17 +7016,15 @@ references with diameter, length, and position. Geometry is derived from the BOM
 </li>
 </ol>
 <h4 id="known-gaps">Known Gaps<a class="headerlink" href="#known-gaps" title="Permanent link">&para;</a></h4>
-<h5 id="gap-1-ceiling-void-routing">Gap 1: Ceiling void routing<a class="headerlink" href="#gap-1-ceiling-void-routing" title="Permanent link">&para;</a></h5>
+<h5 id="gap-1-ceiling-void-routing-closed-p118">Gap 1: Ceiling void routing — CLOSED (P118)<a class="headerlink" href="#gap-1-ceiling-void-routing-closed-p118" title="Permanent link">&para;</a></h5>
 <p><strong>Problem:</strong> All 6 builders route at <code>floor.zMm()</code> (floor slab top). In
 practice, pipes and ducts run in the ceiling void — underside of the slab
 above, minus clearance.</p>
-<p><strong>Fix needed:</strong> Add <code>BuildingGeometry.ceilingHeight(floorRef)</code> =
-<code>nextFloor.zMm - slabThickness(nextFloor) - clearanceMm</code>. Each builder's
-horizontal FOLLOW ops should use ceiling Z, not floor Z.</p>
-<p><strong>Industry practice:</strong> Revit requires manual elevation offset. GenMEP uses a
-voxel cost function that penalizes routing outside the void. EVOLVE MEP lets
-the user set a pathway elevation. Our fix is simpler — derive ceiling Z from
-the ARC data we already have.</p>
+<p><strong>Fix (P118, S100-p118):</strong> <code>ceilingHeightMm(floorRef)</code> added to
+<code>BuildingGeometry</code> + <code>SqlBuildingGeometry</code>. All 6 RouteBuilders updated:
+horizontal MEP runs at ceiling void Z (<code>nextFloor.z - slabThickness - 50mm
+clearance</code>). P118b: <code>SqlBuildingGeometry.floors()</code> now uses absolute Z from
+walked placements instead of BOM-relative <code>c_orderline dz</code>.</p>
 <h5 id="gap-2-no-obstacle-avoidance-during-routing">Gap 2: No obstacle avoidance during routing<a class="headerlink" href="#gap-2-no-obstacle-avoidance-during-routing" title="Permanent link">&para;</a></h5>
 <p><strong>Problem:</strong> CrawlOps execute sequentially with no spatial awareness of other
 routes or ARC elements. If FP riser and ACMV duct occupy the same shaft,
@@ -7067,8 +7065,8 @@ SH: ELEC 15 + SP 13 verb lines. DX: ELEC 25 + SP 23.</p>
 </tr>
 <tr>
 <td>Insulation</td>
-<td>MISSING</td>
-<td>Add insulation product as BOM child of pipe/duct segment. Thickness from <code>ad_sysconfig</code> per discipline</td>
+<td><strong>CLOSED</strong> (P121)</td>
+<td>Insulation as BOM child per discipline: FP 25mm (fire-rated), ACMV 50mm (thermal), CW 25mm (condensation), SP/ELEC 0mm</td>
 </tr>
 <tr>
 <td>Soffit clearance</td>
@@ -7082,8 +7080,8 @@ SH: ELEC 15 + SP 13 verb lines. DX: ELEC 25 + SP 23.</p>
 </tr>
 <tr>
 <td>LPG wall thickness</td>
-<td>BUG</td>
-<td><code>LpgRouteBuilder</code> calls <code>slabThickness()</code> for wall penetration — should query wall thickness</td>
+<td><strong>CLOSED</strong> (P121)</td>
+<td><code>wallThickness(floorRef)</code> added to <code>BuildingGeometry</code>. Queries <code>c_orderline</code> for LEAF WALL elements. Fallback: 200mm</td>
 </tr>
 </tbody>
 </table>

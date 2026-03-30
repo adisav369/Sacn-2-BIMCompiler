@@ -4460,7 +4460,7 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 <td>↳ Pre-flight</td>
 <td><code>IFCtoBOMPipeline</code></td>
 <td>—</td>
-<td><strong>FAIL if extraction has storeys not in YAML</strong></td>
+<td>Storeys auto-discovered from extraction Z-bands (P127). YAML <code>storeys:</code> is optional override</td>
 </tr>
 <tr>
 <td>5a. Product catalog</td>
@@ -4490,7 +4490,7 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 <td>6. Scope spaces</td>
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java"><code>ScopeBomBuilder.build()</code></a></td>
 <td><code>*_BOM.db</code></td>
-<td>Assigns elements to rooms by centroid-in-AABB → SET BOMs</td>
+<td>Assigns elements to rooms via IFC <code>rel_contained_in_space</code> → SET BOMs. Scope box fallback for buildings without IfcSpace data (P125)</td>
 </tr>
 <tr>
 <td>7. Composition</td>
@@ -4502,7 +4502,7 @@ the single-transaction orchestrator that produces <code>library/{PREFIX}_BOM.db<
 <td>8. Structural</td>
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java"><code>StructuralBomBuilder.build()</code></a></td>
 <td><code>*_BOM.db</code></td>
-<td>BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children</td>
+<td>BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children. Reads <code>rel_aggregates</code> for IFC assembly BOMs (P129)</td>
 </tr>
 <tr>
 <td>9. Room BOMs</td>
@@ -4540,7 +4540,8 @@ definitions, geometry, and orientation. Products are reused across buildings.</p
 ERP context (C_Order, BOM decisions): <a href="../BOMBasedCompilation/"><code>BBC.md</code></a> §1.
 Schema reference: <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a>.</p>
 <h3 id="step-6-compilation-and-delta-verification">Step 6 — Compilation and delta verification<a class="headerlink" href="#step-6-compilation-and-delta-verification" title="Permanent link">&para;</a></h3>
-<p>The same <code>run_RosettaStones.sh</code> invocation continues after BOM creation:</p>
+<p>The same <code>run_RosettaStones.sh</code> invocation continues after BOM creation.
+Compilation runs the <strong>12-stage pipeline</strong> (<a href="../BOMBasedCompilation/"><code>BOMBasedCompilation.md</code> §5</a>):</p>
 <table>
 <thead>
 <tr>
@@ -4552,13 +4553,13 @@ Schema reference: <a href="../DATA_MODEL/"><code>DATA_MODEL.md</code></a>.</p>
 <tbody>
 <tr>
 <td>Prepare compile DB</td>
-<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh:116</code></a></td>
+<td><a href="https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh"><code>run_RosettaStones.sh</code></a></td>
 <td>Copies <code>*_BOM.db</code> → temp <code>_XX_compile.db</code></td>
 </tr>
 <tr>
-<td>Compile</td>
+<td>Compile (12 stages)</td>
 <td><a href="https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java"><code>CompilationPipeline.java</code></a></td>
-<td>C_OrderLine → BOM explosion → elements</td>
+<td>Metadata → Compile → Write → Route → Verb → Digest → Geometry → Prove (+ 4 internal stages)</td>
 </tr>
 <tr>
 <td>Contracts</td>
