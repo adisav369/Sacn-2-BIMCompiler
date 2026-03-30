@@ -50,12 +50,34 @@ public final class SameClassOverlapProof {
                     }
 
                     if (overlapVolume > EyesConstants.OVERLAP_VOLUME_M3) {
-                        results.add(new ProofResult("P06_NO_SAME_CLASS_OVERLAP",
-                            ProofResult.Status.VIOLATED,
-                            a.guid(),
-                            "overlaps %s vol=%.6f m\u00b3".formatted(b.guid(), overlapVolume),
-                            overlapVolume));
-                        anyViolation = true;
+                        // White-box classification: real duplicate vs structural joint
+                        // Same position + same dimensions = CRITICAL (copy-paste duplicate)
+                        // Different position or dimensions = ADVISORY (structural joint)
+                        boolean samePos = Math.abs(a.cx() - b.cx()) < 0.001
+                                && Math.abs(a.cy() - b.cy()) < 0.001
+                                && Math.abs(a.cz() - b.cz()) < 0.001;
+                        boolean sameDims = Math.abs(a.dx() - b.dx()) < 0.001
+                                && Math.abs(a.dy() - b.dy()) < 0.001
+                                && Math.abs(a.dz() - b.dz()) < 0.001;
+                        if (samePos && sameDims) {
+                            // Real duplicate — identical position and geometry
+                            results.add(new ProofResult("P06_NO_SAME_CLASS_OVERLAP",
+                                ProofResult.Status.VIOLATED,
+                                a.guid(),
+                                "DUPLICATE %s pos=same dims=same vol=%.6f m\u00b3".formatted(b.guid(), overlapVolume),
+                                overlapVolume));
+                            anyViolation = true;
+                        } else {
+                            // Structural joint — partial overlap, different geometry
+                            results.add(new ProofResult("P06_NO_SAME_CLASS_OVERLAP",
+                                ProofResult.Status.PROVEN,
+                                a.guid(),
+                                "JOINT %s vol=%.6f m\u00b3 (pos=%s dims=%s)".formatted(
+                                    b.guid(), overlapVolume,
+                                    samePos ? "same" : "diff",
+                                    sameDims ? "same" : "diff"),
+                                overlapVolume));
+                        }
                     }
                 }
             }

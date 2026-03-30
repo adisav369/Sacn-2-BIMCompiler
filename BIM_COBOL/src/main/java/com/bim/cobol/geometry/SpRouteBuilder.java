@@ -40,6 +40,11 @@ public final class SpRouteBuilder implements DisciplineRouteBuilder {
     @Override public double mainDiameterMm() { return WASTE_DIAMETER_MM; }
     @Override public double branchDiameterMm() { return BRANCH_DIAMETER_MM; }
     @Override public double stockLengthMm() { return STOCK_LENGTH_MM; }
+    @Override public java.util.Map<String, String> standardRefs() {
+        return java.util.Map.of(
+            "main_diameter_mm", "MS 1228 §5.5.2",
+            "branch_diameter_mm", "MS 1228 §5.5.2");
+    }
 
     @Override
     public RoutePlan plan(BuildingGeometry geo) {

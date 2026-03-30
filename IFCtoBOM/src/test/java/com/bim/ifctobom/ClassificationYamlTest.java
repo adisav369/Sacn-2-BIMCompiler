@@ -30,22 +30,13 @@ class ClassificationYamlTest {
     }
 
     @Test
-    void storeys() throws IOException {
+    void spatialContainers() throws IOException {
         Path yaml = Path.of("IFCtoBOM/src/main/resources/classify_sh.yaml");
         var b = ClassificationYaml.load(yaml).getBuilding();
 
-        assertEquals(3, b.storeys().size());
-
-        var gf = b.storeys().get("Ground Floor");
-        assertNotNull(gf);
-        assertEquals("GF", gf.code());
-        assertEquals("GF", gf.productCategory());
-        assertEquals("GROUND_FLOOR", gf.role());
-        assertEquals(1010, gf.seq());
-
-        var roof = b.storeys().get("Roof");
-        assertEquals("ROOF", roof.code());
-        assertEquals(1020, roof.seq());
+        // SH YAML no longer has storeys — auto-discovered from IFC (§10.4.13)
+        assertTrue(b.spatialContainers().isEmpty(),
+            "SH spatial containers should be empty in YAML (auto-discovered at runtime)");
     }
 
     @Test

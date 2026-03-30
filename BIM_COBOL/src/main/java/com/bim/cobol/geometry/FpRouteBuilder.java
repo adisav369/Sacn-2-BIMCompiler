@@ -36,6 +36,12 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
     @Override public double mainDiameterMm() { return MAIN_DIAMETER_MM; }
     @Override public double branchDiameterMm() { return BRANCH_DIAMETER_MM; }
     @Override public double stockLengthMm() { return STOCK_LENGTH_MM; }
+    @Override public java.util.Map<String, String> standardRefs() {
+        return java.util.Map.of(
+            "main_diameter_mm", "NFPA 13 §8.15.8",
+            "branch_diameter_mm", "NFPA 13 §8.15.8",
+            "stock_length_mm", "NFPA 13 §8.15.1");
+    }
 
     @Override
     public RoutePlan plan(BuildingGeometry geo) {

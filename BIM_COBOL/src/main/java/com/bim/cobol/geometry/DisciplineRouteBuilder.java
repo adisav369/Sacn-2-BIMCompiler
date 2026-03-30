@@ -4,6 +4,7 @@ import com.bim.orm.BIMLogger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Discipline-specific route builder — composes CrawlOps for one MEP discipline.
@@ -47,6 +48,10 @@ public interface DisciplineRouteBuilder {
      */
     RoutePlan plan(BuildingGeometry geo);
 
+    // Implementing DISC_VALIDATION_DB_SRS §10.4.12 Gap 5 — standardRef() on RouteBuilders
+    /** Map of parameter name → standard clause reference for compliance traceability. */
+    Map<String, String> standardRefs();
+
     /**
      * Build the route: plan → log verb lines → execute via CrawlRouter.
      * Default implementation — builders only need to implement {@link #plan(BuildingGeometry)}.
@@ -65,10 +70,29 @@ public interface DisciplineRouteBuilder {
             BIMLogger.info("ROUTE", "  {}", line);
         }
 
+        // Log standard citations — compliance audit trail
+        Map<String, String> refs = standardRefs();
+        if (!refs.isEmpty()) {
+            for (var ref : refs.entrySet()) {
+                BIMLogger.info("ROUTE", "  [STD] {}={} ({})",
+                        ref.getKey(), paramValue(ref.getKey()), ref.getValue());
+            }
+        }
+
         // Execute
         CrawlRouter.RouteResult result = CrawlRouter.execute(rp.initial(), rp.ops());
         return new DisciplineRouteResult(discipline(), result, verbLines,
                 rp.floorCount(), rp.roomCount(), rp.pattern());
+    }
+
+    /** Resolve actual parameter value for standard citation logging. */
+    private String paramValue(String paramName) {
+        return switch (paramName) {
+            case "main_diameter_mm", "header_diameter_mm" -> String.format("%.0f", mainDiameterMm());
+            case "branch_diameter_mm" -> String.format("%.0f", branchDiameterMm());
+            case "stock_length_mm" -> String.format("%.0f", stockLengthMm());
+            default -> "—";
+        };
     }
 
     /** Declarative route plan — initial state + ops list. */
