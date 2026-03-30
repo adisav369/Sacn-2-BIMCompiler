@@ -7,7 +7,7 @@
 
 ## Current State
 
-**Gate:** `./scripts/run_RosettaStones.sh` — S102 fleet: 214/243 PASS, 17 ALL GREEN (was ~14). PATTERN+GEO ON. CE now ALL GREEN (was DRIFT=39,900). Script fix: per-category scripts archived, single loop, no set -e. 10 buildings FAIL on critical proofs (P05/P06). CL extraction FAIL. DM stale assertion. RS 27K (dense steel). All `*_BOM.db` fresh.
+**Gate:** `./scripts/run_RosettaStones.sh` — S102 fleet: 212/238 PASS, **19 ALL GREEN** (was ~14). 34 buildings (DM excluded). PATTERN+GEO ON. CE ALL GREEN (was DRIFT=39,900). Infra auto-discover from IFC (no YAML segments). 10 buildings FAIL on critical proofs. CL extraction FAIL. RS 27K (dense steel). All `*_BOM.db` fresh.
 
 | Gate | SH | FK | IN | DX | TE | DM |
 |------|----|----|----|----|------|------|
@@ -42,20 +42,20 @@
 
 **Academic paper:** [SPATIAL_COMPILATION_PAPER.md](docs/SPATIAL_COMPILATION_PAPER.md) — Deterministic Spatial Compilation. 58 elements, 1,653 pairs, 0.002mm worst, zero drift. Cross-domain analysis: protein science (PDB/AlphaFold) + robotics (FK/URDF). GEO proof evidence archived. Target journals: Automation in Construction, Journal of Building Engineering, IEEE RA-L.
 
-**S102 Fleet Findings:**
-  17 ALL GREEN: BA,BH,BR,BS,CE,CH,CP,FK,GH,IN,IP,JS,MO,SH,WI,WL,WT
-  CE: was DRIFT=39,900 → now ALL GREEN (improvement from P131)
+**S102 Fleet Findings (212/238 PASS, 34 buildings):**
+  19 ALL GREEN: BA,BH,BR,BS,CE,CH,CP,FK,GH,IN,IP,JS,MO,RD,RL,SH,WI,WL,WT
+  CE: was DRIFT=39,900 → ALL GREEN. RD/RL: infra auto-discover, 7/7 PASS.
   10 Maven FAIL (critical proofs): CA(26),CS(4),ES(60),HI(3),JE(6),RM(3),RS(27473),SC(3),TE(71),WA(110)
-  CL: extraction FAIL. DM: stale DocType assertion. RD/RL: N/A infra clash.
+  CL: extraction FAIL. PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown.
 
-**Next prompts:** 00a (full compilation), P133 (fleet triage), P134 (CE multi-leg), P135 (infra), P136 (hospital).
+**Next prompts:** 00a (compilation), P133 (fleet triage per 00-supplement R1-R7), P136 (hospital).
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
 
-**S102-fleet** — Full fleet fresh extraction (35 buildings). PATTERN default ON. Script fix: per-category scripts (RE/CO/IN/ST) archived to scripts/archive/, main script loops all buildings directly, no set -e (failures don't kill fleet). Fixed $5 unbound var in rosetta_fidelity.sh. Results: 214/243 PASS, 17 ALL GREEN (CE now clean — was DRIFT=39,900). 10 Maven FAIL on critical proofs. CL extraction FAIL. DM stale assertion. Prompts 00/00a written.
+**S102-fleet** — Full fleet fresh extraction (34 buildings, DM excluded). PATTERN default ON. Script: per-category scripts archived, single loop, no set -e, streamlined one-line summary + fleet table. Infra (BR/RD/RL/IP): YAML segments removed, auto-discover from IFC spatial structure, PATTERN FLOOR logging added to DisciplineBomBuilder. Results: 212/238 PASS, **19 ALL GREEN** (was ~14). CE clean (was DRIFT=39,900). RD/RL 7/7 (infra auto-discover). PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown elements — storey assignment gaps identified. 10 Maven FAIL on critical proofs. CL extraction FAIL. Prompts 00/00a/00b written.
 **S101-p131** — VerbDetector Z-guard + CLUSTER identity + ROUTE axis matching + GEO permanently ON. Root cause NOT StructuralBomBuilder MAKE dz (math proven correct). Three VerbDetector bugs: (1) detectRoute() Z-uniformity guard (groups with Z-range >0.5m → CLUSTER), (2) computeExpansionOrder() ROUTE 1D axis matching instead of 3D, (3) CLUSTER identity mapping instead of greedy centroid. GEO default ON (LMP proof). IN: DRIFT 35,557→20,475, worst 11,970→91mm, **6/7→7/7** (P05 duplicate was mis-ROUTED group). CE: DRIFT 39,900 unchanged (multi-leg ROUTE). SH: DRIFT=0 (perfect). P131/P132 prompts written.
 **S100-coder-p126-p130** — IFC extraction chain + routing audit + GEO white-box + P06 fleet fix. 10 prompts: P126 (IfcRelAggregates extraction, SH 34 DX 38 rows), P127 (SpatialContainerConfig auto-discovery, storeys unbuckled from YAML), P128 (double-BOM furniture fix, reconciliation +50→0, CompositionBomBuilder scope excludes), P129 (IFC assembly BOMs, curtain walls + stairs grouped from rel_aggregates), P119 (RouteBuilder verb lines via CrawlOp.toVerbLine(), plan() replaces buildRoute()), P120 (standardRefs() on 6 builders: NFPA 13/MS 1228/MS 1525/MS 830/ASHRAE 62.1), P121 (LPG wallThickness() fix + abstract insulationThicknessMm() per discipline), P130 (P06 structural joint tolerance: same pos+dims=CRITICAL, partial overlap=PROVEN — DX 83→0, FK 15→0, fleet 186/208 PASS). GEO white-box: CHAIN (ancestor path), DIMS (W×D×H explicit), CONTAIN (OVERSHOOT/OK). IN finding: OVERSHOOT=0 but DRIFT=35557 (14.6%) — elements assigned correct storey in extraction but MAKE line Z offsets wrong in StructuralBomBuilder for multi-storey buildings. Fleet reconciliation: all delta=+0 except 1 building (delta=-6). RS outlier: 27K genuine P06 duplicates (dense steel framing). Next: P131 (IN Z-anchor fix), P132 (PATTERN + GEO-ROUTE logging channels), P124 (CLUSTER diagnostic).
 **S100-specsperson** — SpecsPerson coherence sweep + routing architecture + GEO proof + academic paper. 76→77 verbs (15 docs), 8/9/10→12-stage pipeline (16 docs), doc_base_type cleanup (8 docs), 16 files docs/→internal/. DISC_VALIDATION_DB_SRS §10.4.12 routing architecture assessment (industry comparison, 5 gaps, Level 2 room-aware branching). §10.4.13 IFC-driven extraction spec (scope boxes removed from extraction, moved to Order processing). EYES §4.7 Tier 4 proofs P29-P32 (tack fidelity, GUID chain, relative offset, surface conformance). §4.8 tack signatures research direction. P33 PATTERN_MATCH generative verification. GEO TACK logging spec (LMP §7 smoking gun). Fleet GEO verified: 22/24 ZERO DRIFT, CP 6584 elements 0.000mm. CLUSTER honesty note (§4.3.1). Academic paper: SPATIAL_COMPILATION_PAPER.md — cross-domain analysis (protein/robotics), isomorphism proof, generative construction. TheRosettaStoneStrategy: cross-domain precedent, self-verification. ShipYard: GEO formula verification, Rosetta Stone distinction. Prompts written: P117 (callout defaults), P118 (ceiling void), P119-P121 (routing gaps), P122 (column cleanup), P123 (GEO+GUID), P124 (CLUSTER diagnostic), P125 (IFC extraction).

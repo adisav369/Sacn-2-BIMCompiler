@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CA: Clinic Architecture (Clinic_Architecture)
 -- Source: DAGCompiler/lib/output/clinic_architecture.db
--- Generated: 2026-03-30 23:14
+-- Generated: 2026-03-31 00:20
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
