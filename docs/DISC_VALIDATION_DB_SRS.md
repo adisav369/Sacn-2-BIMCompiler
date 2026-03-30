@@ -1219,15 +1219,34 @@ NFPA 13, MS 1228, ASHRAE 62.1 etc. become what they should be:
 The IFC source already satisfies these standards (it was designed by engineers).
 The extracted joint pieces carry that compliance. Validation confirms it.
 
-#### Role of CrawlRouter — Generative Buildings Only
+#### Role of CrawlRouter — Universal MEP Walker
 
-CrawlRouter (§10.4.10) and the 6 RouteBuilders remain for one case:
-**GENERATIVE buildings** (no IFC source, e.g., DM). When no IFC MEP topology
-exists, the RouteBuilder computes from engineering rules using CrawlOps.
-This is the fallback path, not the primary path.
+The compiler IS a walker — it never stops walking. Joint pieces are the
+**materials** (WHAT to pick). CrawlRouter is the **walker** (HOW to walk).
+Both are needed. Without the walk, joint pieces are data sitting in a table.
 
-For EXTRACTED buildings (34 of 35 in the fleet), joint pieces from IFC
-are the primary path. No CrawlRouter needed.
+```
+CrawlRouter walks the route path:
+  FOLLOW  → picks JOINT_PIPE_STRAIGHT from toolbox
+  BEND    → picks JOINT_PIPE_ELBOW from toolbox
+  BRANCH  → picks JOINT_PIPE_TEE from toolbox
+  REDUCE  → picks JOINT_PIPE_REDUCER from toolbox
+  end     → picks JOINT_PIPE_TERMINAL from toolbox
+```
+
+The walk path (CrawlOp sequence) comes from two sources:
+
+| Source | Walk path origin | Joint pieces |
+|--------|-----------------|--------------|
+| **EXTRACTED** | IFC connection graph → serialized as CrawlOps | Extracted from IFC via IFCtoERP |
+| **GENERATIVE** | RouteBuilder computes from engineering rules | Same shared toolbox in ERP.db |
+
+CrawlRouter is the same either way. The 6 RouteBuilders still provide
+`plan()` — for EXTRACTED buildings, the plan comes from IFC topology
+(connection graph → CrawlOp sequence). For GENERATIVE buildings, the plan
+comes from engineering rules (NFPA spacing, room geometry, etc.).
+
+One abstract walker. One toolbox. Two sources for the walk path.
 
 #### Coverage Tracking
 
@@ -1251,18 +1270,19 @@ are the primary path. No CrawlRouter needed.
 
 J1 is the key task — the rest follows from existing infrastructure.
 
-#### Skeleton Routing (S100) — Preserved for Generative
+#### Existing Infrastructure (S100) — Reused for Both Paths
 
-The existing skeleton (258 edges, 3% coverage for TE) is preserved as the
-GENERATIVE path. For extracted buildings, it is superseded by joint piece walk.
+| Component | Status | Role |
+|-----------|--------|------|
+| CrawlRouter | DONE (S100-p100) | Universal MEP walker — executes CrawlOps, picks joint pieces |
+| 6 RouteBuilders (FP/ELEC/CW/SP/ACMV/LPG) | DONE (S100-p101) | `plan()` produces CrawlOp sequence — from IFC graph or rules |
+| 5 CrawlOps (Follow/Bend/Branch/Reduce/Penetrate) | DONE (S100-p100) | Walk instructions — same ops, different source |
+| BuildingGeometry / SqlBuildingGeometry | DONE (S100-p100) | Room queries for both paths |
+| system_edges / system_nodes | DONE (S100-p105) | P15/P16/P17 proof input |
 
-| Component | Status | Future role |
-|-----------|--------|-------------|
-| CrawlRouter | DONE (S100-p100) | Generative buildings only |
-| 6 RouteBuilders (FP/ELEC/CW/SP/ACMV/LPG) | DONE (S100-p101) | Generative buildings only |
-| 5 CrawlOps (Follow/Bend/Branch/Reduce/Penetrate) | DONE (S100-p100) | Generative buildings only |
-| BuildingGeometry / SqlBuildingGeometry | DONE (S100-p100) | Both paths (room queries) |
-| system_edges / system_nodes | DONE (S100-p105) | Both paths (P15/P16/P17 proofs) |
+The existing skeleton (258 edges, 3%) used rule-computed CrawlOps. After
+IFCtoERP, the same CrawlRouter walks IFC-extracted CrawlOps with joint
+pieces from the toolbox — higher coverage, same walker.
 
 ### 6.13 IFC-Driven Extraction
 
