@@ -1229,20 +1229,16 @@ routing.
 segment paths within each branch. BlenderBIM Issue #6521 proposes a
 voxel-A* orthogonal pathfinder that could serve as the last-mile solver.
 
-##### Gap 3: Verb bypass
+##### Gap 3: Verb bypass — CLOSED (P119)
 
-**Problem:** The spec (§10.4.10) describes verb-driven routing —
-`FOLLOW CEILING`, `BEND 90`, `BRANCH TEE`. But the 6 RouteBuilders compose
-CrawlOps directly in Java, bypassing VerbRegistry entirely. `FollowVerb`
-(verb #77) exists and wraps CrawlRouter, proving the bridge works.
+**Problem:** RouteBuilders composed CrawlOps directly, bypassing VerbRegistry.
+Routing was not auditable as verb lines in the pipeline log.
 
-**Impact:** Two parallel systems do the same thing — `.bimcobol` scripts
-dispatch through VerbRegistry, RouteBuilders compose CrawlOps directly.
-Routing is not auditable as verb lines in the pipeline log.
-
-**Fix:** RouteBuilders should emit verb line strings and dispatch through
-VerbRegistry. This unifies the two paths and makes every routing decision
-visible in the FINE log as a BIM COBOL statement.
+**Fix (P119, [f9fc4bc9](https://github.com/red1oon/BIMCompiler/commit/f9fc4bc9)):**
+`CrawlOp.toVerbLine()` on all 5 ops. `DisciplineRouteBuilder.plan()` replaces
+`buildRoute()` — builders return `RoutePlan`, default `buildRoute()` logs verb
+lines at INFO then executes via CrawlRouter. All 6 builders refactored.
+SH: ELEC 15 + SP 13 verb lines. DX: ELEC 25 + SP 23.
 
 ##### Gap 4: Missing real-world concerns
 
@@ -1254,18 +1250,13 @@ visible in the FINE log as a BIM COBOL statement.
 | Access/maintenance points | MISSING | Valves and cleanouts at branch points. SP needs cleanout access per MS 1228 §5 |
 | LPG wall thickness | BUG | `LpgRouteBuilder` calls `slabThickness()` for wall penetration — should query wall thickness |
 
-##### Gap 5: Standard citation depth
+##### Gap 5: Standard citation depth — CLOSED (P120)
 
-RouteBuilders cite standards (NFPA 13, MS 1228, MS 1525, MS 830, ASHRAE 62.1)
-but do not trace parameters to specific clauses. For example:
+**Problem:** RouteBuilders cited standards but didn't trace to specific clauses.
 
-- FP riser 50mm → which NFPA 13 clause? (§8.15.8 pipe sizing tables)
-- SP gradient 1:40 → MS 1228 §5.5.2 minimum gradient for 100mm pipe
-- ACMV stock length 3000mm → ASHRAE duct construction standard, not 62.1
-
-This matters for ComplianceStage (Step 12) — jurisdiction proof chains need
-clause-level traceability. Each builder should carry a `standardRef()` map
-linking parameters to clause numbers.
+**Fix (P120, [c78c743b](https://github.com/red1oon/BIMCompiler/commit/c78c743b)):**
+`standardRefs()` on all 6 builders — NFPA 13, MS 1228, MS 1525, MS 830,
+ASHRAE 62.1. Logged at INFO with parameter values for compliance audit.
 
 #### Proof Consumption (P15/P16/P17)
 
@@ -1553,6 +1544,31 @@ Results:
 YAML `storeys:` kept as Order override (backward compat). Empty YAML =
 auto-discover. BOM IDs change with auto-derived codes (e.g. `SH_ROOF_STR` →
 `SH_RO_STR`) — opaque keys, no functional impact.
+
+#### Scope excludes for CompositionBomBuilder (S100-p128)
+
+**Status:** DONE ([f807bb3c](https://github.com/red1oon/BIMCompiler/commit/f807bb3c))
+
+Elements assigned to SET BOMs by ScopeBomBuilder are excluded from
+CompositionBomBuilder mirror partition. Fixes DX reconciliation delta +50→0
+(furniture was double-counted in both SET BOMs and half-unit).
+
+DX YAML `floor_rooms` removed — dead code since P125.
+
+#### IFC assembly BOMs (S100-p129)
+
+**Status:** DONE ([1153671c](https://github.com/red1oon/BIMCompiler/commit/1153671c))
+
+StructuralBomBuilder reads `rel_aggregates` from extraction DB. Groups children
+by parent GUID, creates ASSEMBLY BOMs for groups with 2+ children. MAKE lines
+link FLOOR → ASSEMBLY. Elements not in any assembly stay as flat leaves.
+
+- **SH:** 2 curtain wall assemblies (13 children each, factorized to 4 BOM lines)
+- **DX:** 2 stair assemblies (3 children each)
+- **FK/IN:** No rel_aggregates matches — zero regression
+
+Phantom parents (IfcCurtainWall, IfcStair) have no `elements_meta` entry —
+assembly structure visible only via `rel_aggregates` child_guid join.
 
 ### 10.5 Investigation Tasks
 

@@ -1033,7 +1033,7 @@ Let `overlaps(A, B) ≡ A.minX < B.maxX ∧ B.minX < A.maxX ∧ ...` (all 3 axes
 - **P08 (FurnitureInRoom):** `∀ furniture: ∃ room: contains(AABB(room) ⊕ τ, AABB(furniture))`. Furniture must lie within its assigned room.
 - **P09 (FixtureOnSurface):** `∀ fixture: ∃ wall: |centroid(fixture) - face(wall)| < τ_depth`. Fixtures (outlets, switches) must be surface-mounted on a wall face.
 - **P15 (DuplicatePosition):** `∀ e_i, e_j where class(e_i) = class(e_j): ¬(|centroid(e_i) - centroid(e_j)| < ε)`. No two elements of the same IFC class may occupy the same position (detects copy errors).
-- **P06 (SameClassOverlap):** `∀ e_i, e_j where class(e_i) = class(e_j) ∧ i ≠ j: overlap_volume(e_i, e_j) / min(vol(e_i), vol(e_j)) < 0.5`. Same-class elements must not substantially overlap (≥50% volume intersection is a collision).
+- **P06 (SameClassOverlap):** Same position + same dimensions → CRITICAL (real duplicate). Partial overlap → PROVEN (structural joint). P130 ([c78c743b](https://github.com/red1oon/BIMCompiler/commit/c78c743b)) replaced the black-box volume heuristic: DX 83→0 critical, FK 15→0.
 
 **Tier 2 — Wall orientation and roof coverage.** Verified against cardinal geometry:
 

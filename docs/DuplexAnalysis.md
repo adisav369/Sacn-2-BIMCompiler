@@ -2,7 +2,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>Mirror algorithm proof — two units reflected across a party wall.</b> DX exercises the MIRROR verb and multi-storey BOM structure with 1,099 elements.
+<b>Mirror algorithm proof — two units reflected across a party wall.</b> DX exercises the MIRROR verb and multi-storey BOM structure. IFC-driven extraction (P125–P128).
 </div>
 
 **Spec alignment (2026-03-18):** DX BOM uses centroid-floorMin offsets — same
@@ -250,32 +250,42 @@ class PlaneMirrorPartitioner implements MirrorPartitioner {
 Then the pairing (per product per storey, min(A,B) = paired,
 excess → shared) is completely independent of the axis.
 
-## Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+## Recompilation — IFC-Driven (S100-p128, 2026-03-30)
 
-BOM walk recompilation via `CompileStage` → `writeFromBomWalk()`. **6/7 PASS, C9 WARN (89 axis mismatches — rank-match artifact).**
+IFC-driven extraction (P125) + spatial container auto-discovery (P127) +
+scope excludes (P128). BOM walk via `CompileStage`. **5/7, C9 WARN.**
 
 | Metric | Value |
 |--------|-------|
-| Elements | 1099 |
+| Elements | 215 (IFC-driven extraction) |
 | Root BOM | BUILDING_DX_STD, origin=(-0.044, -35.392, -1.250) |
-| Verbs | 992 PLACE, 17 CLUSTER |
-| Disciplines | ARC=1011, STR=2 |
-| LOD binding | 1099 LOD, 0 fallback, 0 missing |
-| H6 WARNs | 57 (MEP schedule vs actual, 13 rooms) |
+| Containers | 5 auto-discovered: TF, L1, UN, L2, RO (P127) |
+| IFC Spaces | 11 IfcSpaces → 61 furniture elements in SET BOMs |
+| Assemblies | 2 stair assemblies (3 children each, P129) |
+| Reconciliation | delta=+0 (161 LEAFs + 54 paired = 215 vs 215 extracted) |
+| C9 | 50 axis mismatches (was 111 before P128 scope fix) |
+
+**P128 scope excludes fix:** Elements assigned to SET BOMs by ScopeBomBuilder
+are now excluded from CompositionBomBuilder mirror partition. This fixed the
+reconciliation delta (+50→0) — furniture was being double-counted in both
+SET BOMs and the half-unit.
+
+**GEO:** `SUMMARY 107 elements, 5671 pairs, worst=0.000mm, DRIFT=0`
 
 **LMP Drift Check:** 6 pass, 0 fail, 2 deferred
 
 | § | Check | Verdict |
 |---|-------|---------|
-| §1 | Input=Output | PASS (1099/1099) |
-| §2 | LOD400 | PASS (1099/1099, 0 warn, 0 fail) |
+| §1 | Input=Output | PASS |
+| §2 | LOD400 | PASS |
 | §3 | Compiler Only | PASS |
 | §6 | Output Path | PASS |
 | §7 | Separate From Input | PASS |
-| §8 | Visual Fidelity | PASS (geometry OK) |
+| §8 | Visual Fidelity | PASS (GEO DRIFT=0) |
 | §4, §9 | Openings, Orientation | deferred (no proof aggregate) |
 
-**C9 WARN (89 mismatches):** Same rank-match artifact documented in §Resolved #5 below. Not a geometry error — position-sorted rank matching shuffles elements near the party wall. Element count is exact (1099=1099).
+**C9 WARN (50 mismatches):** Rank-match artifact documented in §Resolved #5 below.
+Reduced from 89→50 after P128 removed furniture from half-unit pairing.
 
 ## Resolved Issues
 
@@ -323,11 +333,19 @@ element names (e.g., ref `Exterior Brick` vs output `Interior Partition`).
 for MIRRORED_PAIR buildings. Filed as future enhancement — does not affect
 compilation correctness.
 
-## Remaining
+## IFC-Driven Extraction (S100-p125 → p128)
 
-### IFC Spatial Containment for DX
+**Status: DONE.** DX is fully IFC-driven since P125/P127/P128:
 
-DX extraction DB has 61 rows in `rel_contained_in_space`. Conversion from
-scope boxes to IFC-driven `ifc_space` mapping is pending (same as SH P125
-pattern). Currently all scope spaces are empty SETs.
-This is a data completeness issue, not a pipeline bug.
+- **Spatial containment:** 11 IfcSpaces with 61 furniture elements (P125)
+- **Storey auto-discovery:** 5 containers from extraction, no YAML storeys (P127)
+- **Scope excludes:** SET BOM elements excluded from mirror partition (P128)
+- **Assembly BOMs:** 2 stair assemblies from `rel_aggregates` (P129)
+- **YAML floor_rooms removed:** Dead code since P125 (removed in P128)
+
+### Stair Assemblies (P129)
+
+DX has 2 stair assemblies discovered from `rel_aggregates`:
+- DX_UN_ASM_1, DX_UN_ASM_2: each 3 children (2 IfcMember stringers + 1 IfcStairFlight)
+- Land on "Unknown" storey — correct IFC semantics (stairs span storeys)
+- Railings excluded by composition pairing (in half-unit, not structural)

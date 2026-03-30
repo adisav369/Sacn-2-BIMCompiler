@@ -26,7 +26,7 @@ The designer works on these **already-proven artifacts:**
 
 | Artifact | What it is | Where | Designer touches it |
 |----------|-----------|-------|-------------------|
-| `classify_*.yaml` | Building identity + storey/discipline map | `IFCtoBOM/src/main/resources/` | Drafts new building definitions |
+| `classify_*.yaml` | Building identity + Order input (onboarding only) | `IFCtoBOM/src/main/resources/` | Legacy IFC onboarding; generative buildings use Work Orders |
 | `{PREFIX}_BOM.db` | Spatial arrangement — m_bom + m_bom_line | `library/` | Sets attributes, quantities, tack offsets |
 | `component_library.db` | Product catalog + geometry meshes | `library/` | Snaps correct geometry to products |
 | `dsl_*.bim` | Building definition language | `IFCtoBOM/src/main/resources/` | Grid, rooms, openings, construction system |
@@ -95,9 +95,9 @@ to generate a building from scratch. No IFC file, no extraction — pure intent.
 **What happens on "Create":**
 
 ```
-1. Generate classify_*.yaml (building identity + storey map)
+1. Generate C_Order + C_OrderLine (Work Order = building spec)
 2. Generate C_DocType entry (Provenance='GENERATIVE')
-3. Generate m_bom hierarchy (BUILDING → FLOOR → ROOM)
+3. Generate m_bom hierarchy (BUILDING → FLOOR → ROOM) — storeys auto-discovered
 4. DocValidate fires: check each room against AD_Val_Rule for jurisdiction
    → BLOCK if bedroom < 3000mm (UBBL), < 2134mm (IRC), etc.
 5. CompilationPipeline.run() → output.db
@@ -133,7 +133,7 @@ User drags element in Bonsai viewport (output.db coordinates)
   │  (reverse lookup: output GUID → element_ref → m_bom_line.bom_child_id)
   │
   ├─ Writes to source artifact:
-  │  ├─ YAML change?      → classify_*.yaml (storey, discipline scope)
+  │  ├─ Order change?     → C_OrderLine (discipline, room selection)
   │  ├─ BOM change?       → m_bom_line dx/dy/dz in {PREFIX}_BOM.db
   │  ├─ Attribute change?  → M_AttributeSetInstance (per-instance params)
   │  └─ Rule override?    → C_OrderLine ASI (guarded by Val_Rule)
@@ -1896,10 +1896,10 @@ READ-ONLY (templates):
   Designer reads these but NEVER writes to them during design.
 
 DESIGN LAYER (user's work):
-  YAML                    Building definition (type, storeys, discipline map)
+  C_Order                 Building identity (Work Order = building spec)
   C_OrderLine             Which BOM templates are used, in what arrangement
   ASI (AttributeSetInstance)  Per-instance overrides (this room is 4500mm wide)
-  All Design Mode edits live here.
+  All Design Mode edits live here. YAML retired — Work Order IS the spec.
 
 OUTPUT LAYER (committed result):
   output.db               Compiled spatial DB from templates + overrides
@@ -2936,7 +2936,7 @@ Two complementary placement modes work together:
 
 | Mode | Trigger | Who acts | When |
 |------|---------|----------|------|
-| **DocEvent (batch)** | YAML declares discipline | Compiler places all objects per rules at compile time | Compile action |
+| **DocEvent (batch)** | OrderLine callout assigns disciplines | Compiler places all objects per rules at compile time | Compile action |
 | **Click-to-Place (interactive)** | User selects discipline + clicks in viewport | Rules auto-place objects at click location | Design Mode, real-time |
 
 **Click-to-Place** is the interactive complement to batch DocEvent. The user
