@@ -2331,15 +2331,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-pipeline-walk-9-stages-for-3-orderline-scenario" class="md-nav__link">
+  <a href="#3-pipeline-walk-12-stages-for-3-orderline-scenario" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Pipeline Walk — 9 Stages for 3-OrderLine Scenario
+        3. Pipeline Walk — 12 Stages for 3-OrderLine Scenario
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="3. Pipeline Walk — 9 Stages for 3-OrderLine Scenario">
+    <nav class="md-nav" aria-label="3. Pipeline Walk — 12 Stages for 3-OrderLine Scenario">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3048,15 +3048,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-pipeline-walk-9-stages-for-3-orderline-scenario" class="md-nav__link">
+  <a href="#3-pipeline-walk-12-stages-for-3-orderline-scenario" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Pipeline Walk — 9 Stages for 3-OrderLine Scenario
+        3. Pipeline Walk — 12 Stages for 3-OrderLine Scenario
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="3. Pipeline Walk — 9 Stages for 3-OrderLine Scenario">
+    <nav class="md-nav" aria-label="3. Pipeline Walk — 12 Stages for 3-OrderLine Scenario">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -3457,7 +3457,7 @@ The pitched roof won't cover the full SH footprint. Two options:
 1. <strong>Accept misfit</strong> — G2-VOLUME validates replacement fits <em>within</em> building envelope (§10.2). The pitched roof is smaller than the building AABB, so it passes G2 (no protrusion). Coverage gaps are an FP/design concern, not a gate blocker.
 2. <strong>Scale FK roof to SH footprint</strong> — requires <code>SET AABB</code> verb or parametric resize. Per <code>feedback_no_parametric.md</code>, pipeline uses library LODs only, no parametric mesh. <strong>Scaling is out of scope.</strong></p>
 <p><strong>Decision:</strong> Accept misfit for S59. The BOM Drop → swap → compile flow is the test target, not geometric perfection. Add a note in W-DM-TC4-1 that FK roof does not fully cover SH base.</p>
-<h2 id="3-pipeline-walk-9-stages-for-3-orderline-scenario">3. Pipeline Walk — 9 Stages for 3-OrderLine Scenario<a class="headerlink" href="#3-pipeline-walk-9-stages-for-3-orderline-scenario" title="Permanent link">&para;</a></h2>
+<h2 id="3-pipeline-walk-12-stages-for-3-orderline-scenario">3. Pipeline Walk — 12 Stages for 3-OrderLine Scenario<a class="headerlink" href="#3-pipeline-walk-12-stages-for-3-orderline-scenario" title="Permanent link">&para;</a></h2>
 <p>Source: <code>CompilationPipeline.java</code> (DAGCompiler)</p>
 <table>
 <thead>
@@ -3637,7 +3637,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).</p>
 <tr>
 <td>B: Pipeline</td>
 <td><strong>DONE</strong></td>
-<td>§3 above documents all 9 stages for 3-OrderLine.</td>
+<td>§3 above documents all 12 stages for 3-OrderLine.</td>
 </tr>
 <tr>
 <td>C: TRIM verb</td>
@@ -3667,7 +3667,7 @@ alternative within the same category (FP_HEAD → other FP_HEAD).</p>
 <li>bomDrop(BUILDING_SH_STD) produces 55-element tree — <strong>GREEN</strong> (W-TC4-1)</li>
 <li>swapProduct() changes roof OrderLine to FK_DG_STR — <strong>GREEN</strong> (W-TC4-3)</li>
 <li>TRIM verb handles any roof shape via tent model — <strong>GREEN</strong> (W-TRIM-1..6)</li>
-<li>Pipeline's 9 stages all fire for SH-based compilation — <strong>GREEN</strong></li>
+<li>Pipeline's 12 stages all fire for SH-based compilation — <strong>GREEN</strong></li>
 </ol>
 <h3 id="whats-needed-session-2">What's Needed (Session 2)<a class="headerlink" href="#whats-needed-session-2" title="Permanent link">&para;</a></h3>
 <ol>

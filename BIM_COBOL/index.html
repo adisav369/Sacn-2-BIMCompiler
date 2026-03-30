@@ -8959,7 +8959,7 @@ CREATE ROOM DEPARTURE_LOUNGE 40000 30000 4500
 <h3 id="1818-terminal-bom-conversion-multi-discipline-analysis-at-scale">18.18 Terminal BOM Conversion — Multi-Discipline Analysis at Scale<a class="headerlink" href="#1818-terminal-bom-conversion-multi-discipline-analysis-at-scale" title="Permanent link">&para;</a></h3>
 <p><em>The Sultan Johor Terminal II (SJTII) is a 4-storey institutional building with 51,088 elements across 9 disciplines, federated from multiple consultant IFC files into a single reference database. It is the stress test for everything in §18.</em></p>
 <h4 id="the-scale-problem">The Scale Problem<a class="headerlink" href="#the-scale-problem" title="Permanent link">&para;</a></h4>
-<p>Residential BOMs are small. SH has 55 elements. DX has 1,099. The BOM trees are 3–4 levels deep. A human can read them. A human WROTE them (as SQL INSERTs).</p>
+<p>Residential BOMs are small (SH is smallest, DX medium). The BOM trees are 3–4 levels deep. A human can read them. A human WROTE them (as SQL INSERTs).</p>
 <p>Terminal has <strong>51,088 elements</strong>. No human can manually author that BOM. The extraction pipeline must decompose a federated IFC model — originally authored by 5+ consultant teams in 5+ software tools — into a reusable BOM hierarchy. This requires analysis verbs that no residential-scale compiler needs.</p>
 <h4 id="multi-discipline-complexity">Multi-Discipline Complexity<a class="headerlink" href="#multi-discipline-complexity" title="Permanent link">&para;</a></h4>
 <p>Real institutional IFC is not one model. It is a <strong>federation</strong> of discipline-specific models, each from a different consultant, each with different modelling conventions:</p>

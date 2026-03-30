@@ -1898,10 +1898,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-1-fleet-convergence-10-days-early-april" class="md-nav__link">
+  <a href="#phase-1-fleet-convergence-10-days-mid-april" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1 — Fleet Convergence (~10 days → early April)
+        Phase 1 — Fleet Convergence (~10 days → mid-April)
       
     </span>
   </a>
@@ -2820,10 +2820,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#phase-1-fleet-convergence-10-days-early-april" class="md-nav__link">
+  <a href="#phase-1-fleet-convergence-10-days-mid-april" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Phase 1 — Fleet Convergence (~10 days → early April)
+        Phase 1 — Fleet Convergence (~10 days → mid-April)
       
     </span>
   </a>
@@ -2969,7 +2969,7 @@
 </tr>
 <tr>
 <td><strong>Buildings proven</strong></td>
-<td>35 (20 ALL GREEN, 9 WARN, 3 FAIL, 2 stall, 1 generative)</td>
+<td>35 compiled, 187/208 gate PASS. IFC library: 109 files across 10+ domains</td>
 </tr>
 <tr>
 <td><strong>Product library</strong></td>
@@ -3049,41 +3049,78 @@
 </tbody>
 </table>
 <hr />
-<h2 id="phase-1-fleet-convergence-10-days-early-april">Phase 1 — Fleet Convergence (~10 days → early April)<a class="headerlink" href="#phase-1-fleet-convergence-10-days-early-april" title="Permanent link">&para;</a></h2>
+<h2 id="phase-1-fleet-convergence-10-days-mid-april">Phase 1 — Fleet Convergence (~10 days → mid-April)<a class="headerlink" href="#phase-1-fleet-convergence-10-days-mid-april" title="Permanent link">&para;</a></h2>
 <p><em>Get every building to GREEN.</em></p>
+<p><strong>Progress (S100-S101):</strong> P125-P132 delivered IFC-driven extraction, assembly BOMs, P06 joint tolerance, VerbDetector Z-guard, PATTERN/GEO-ROUTE logging, CLUSTER diagnostics. Fleet 140→187/208 PASS. IN 6/7→7/7. GEO permanently ON.</p>
 <table>
 <thead>
 <tr>
 <th>Deliverable</th>
 <th>Est.</th>
+<th>Status</th>
 <th>Detail</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Fix CA, CL, WA failures</td>
-<td>3d</td>
-<td>Recently unblocked — extraction pipeline fixes</td>
+<td>IFC-driven extraction</td>
+<td>—</td>
+<td><strong>DONE</strong> (P125-P129)</td>
+<td>Auto-discover storeys, assembly BOMs, scope excludes</td>
 </tr>
 <tr>
-<td>Resolve C9 axis warnings (7 buildings)</td>
+<td>VerbDetector Z-guard</td>
+<td>—</td>
+<td><strong>DONE</strong> (P131)</td>
+<td>ROUTE Z-uniformity, axis matching, CLUSTER identity</td>
+</tr>
+<tr>
+<td>P06 structural joints</td>
+<td>—</td>
+<td><strong>DONE</strong> (P130)</td>
+<td>White-box: same pos+dims=CRITICAL, partial=PROVEN</td>
+</tr>
+<tr>
+<td>GEO + PATTERN logging</td>
+<td>—</td>
+<td><strong>DONE</strong> (P132)</td>
+<td>Full audit trail: extraction + compilation</td>
+</tr>
+<tr>
+<td>CLUSTER diagnostics</td>
+<td>—</td>
+<td><strong>DONE</strong> (P124)</td>
+<td>Per-group failure reasons visible in log</td>
+</tr>
+<tr>
+<td>CE multi-leg ROUTE drift</td>
 <td>2d</td>
-<td>Library mesh orientation alignment, not compiler bug</td>
+<td><strong>NEXT</strong></td>
+<td>11 elements, worst=12,858mm. ROUTE verb improvement</td>
+</tr>
+<tr>
+<td>Fleet triage (CA/CL/WA + remaining)</td>
+<td>3d</td>
+<td><strong>NEXT</strong> (P133)</td>
+<td>Diagnose all non-GREEN, fix biggest group</td>
 </tr>
 <tr>
 <td>RD, RL infrastructure walker</td>
 <td>3d</td>
-<td>Non-standard IFC hierarchy — extend walker for rail/road elements</td>
+<td>PENDING</td>
+<td>Non-standard IFC hierarchy — extend walker</td>
 </tr>
 <tr>
 <td>DM generative convergence</td>
 <td>2d</td>
-<td>Generative path alignment to BOM-walk compiler</td>
+<td>PENDING</td>
+<td>Generative path alignment</td>
 </tr>
 <tr>
 <td><strong>Exit criterion</strong></td>
 <td></td>
-<td>34/34 ALL GREEN (DM tracked separately as generative)</td>
+<td></td>
+<td>34/34 ALL GREEN (DM tracked separately)</td>
 </tr>
 </tbody>
 </table>
@@ -3377,8 +3414,8 @@
 <td>Viewport geometry becomes BOM mutation</td>
 </tr>
 <tr>
-<td>MIRROR verb for duplex</td>
-<td>Automated mirrored-unit compilation (DX: 85 axis mismatches)</td>
+<td>~~MIRROR verb for duplex~~</td>
+<td><strong>DONE</strong> (P128 scope excludes, DX delta=+0, C9 111→50)</td>
 </tr>
 <tr>
 <td>Spatial predicate verbs</td>

@@ -3477,25 +3477,23 @@ and a resolved <code>M_Product_ID</code> linking to the product catalog.</p>
 <tr>
 <th>Building</th>
 <th>building_type</th>
-<th>Elements</th>
-<th>Storeys</th>
+<th>Type</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Sample House</td>
 <td>Ifc4_SampleHouse</td>
-<td>55</td>
-<td>Ground Floor(27), Roof(2), Unknown(26)</td>
+<td>Single-storey residential</td>
 </tr>
 <tr>
 <td>Duplex</td>
 <td>Ifc2x3_Duplex</td>
-<td>1099</td>
-<td>Level 1(571), Level 2(485), Roof(11), T/FDN(7), Unknown(25)</td>
+<td>Paired duplex, 2-storey</td>
 </tr>
 </tbody>
 </table>
+<p>Element counts and storey breakdowns: see <a href="../PROGRESS.md">PROGRESS.md</a> gate table.</p>
 <h3 id="12-tack-convention">1.2 Tack Convention<a class="headerlink" href="#12-tack-convention" title="Permanent link">&para;</a></h3>
 <p><strong>See <code>BOMBasedCompilation.md</code> §4 for the full specification.</strong></p>
 <p>Every <code>m_bom_line</code> carries <strong>(dx, dy, dz)</strong> — the 3D position within the parent
@@ -3691,7 +3689,7 @@ Detects external tampering of m_bom_line data.</p>
 </code></pre></div></p>
 <p>The IFCtoBOM pipeline (<code>IFCtoBOMPipeline.java</code>) — see <a href="../WorkOrderGuide/"><code>WorkOrderGuide.md</code></a> §Step 5 for full table:
 1. Load classification YAML (Order input) + read IFC extraction to <code>I_Element_Extraction</code> (<code>ExtractionPopulator</code>)
-2. <strong>Pre-flight:</strong> FAIL if extraction has storeys not in YAML Order config; FAIL on NULL M_Product_ID
+2. <strong>Pre-flight:</strong> Auto-discover spatial containers from extraction (YAML override if present); FAIL on NULL M_Product_ID
 3. <code>ProductRegistrar.ensureProductCatalog()</code>: M_Product → component_library.db (persistent, reusable)
 4. <code>ProductRegistrar.ensureProductImages()</code>: geometry link (INSERT OR IGNORE)
 5. <strong>Pre-flight:</strong> FAIL if any product has no geometry_hash

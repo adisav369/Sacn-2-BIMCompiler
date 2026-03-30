@@ -3010,10 +3010,10 @@ Set via: <code>BIMLogger.setLevel(BIMLogger.Level.FINE)</code> or <code>-Dbim.lo
 </code></pre></div>
 <h3 id="specialized-methods">Specialized Methods<a class="headerlink" href="#specialized-methods" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1">// Pipeline stage tracking</span>
-<span class="n">BIMLogger</span><span class="p">.</span><span class="na">stage</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;MetadataValidator&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;55 elements&quot;</span><span class="p">);</span>
+<span class="n">BIMLogger</span><span class="p">.</span><span class="na">stage</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;MetadataValidator&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;58 elements&quot;</span><span class="p">);</span>
 
 <span class="c1">// Gate verdicts (G1-G6)</span>
-<span class="n">BIMLogger</span><span class="p">.</span><span class="na">gate</span><span class="p">(</span><span class="s">&quot;G1-COUNT&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_SH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ref=55 out=55 delta=+0&quot;</span><span class="p">);</span>
+<span class="n">BIMLogger</span><span class="p">.</span><span class="na">gate</span><span class="p">(</span><span class="s">&quot;G1-COUNT&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;RE_SH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PASS&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ref=58 out=58 delta=+0&quot;</span><span class="p">);</span>
 
 <span class="c1">// Prover results (54 proofs)</span>
 <span class="n">BIMLogger</span><span class="p">.</span><span class="na">proof</span><span class="p">(</span><span class="s">&quot;P05&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;PROVEN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;IfcDoor:23&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;no duplicate position&quot;</span><span class="p">);</span>
@@ -3043,8 +3043,8 @@ Set via: <code>BIMLogger.setLevel(BIMLogger.Level.FINE)</code> or <code>-Dbim.lo
 2026-03-19 14:32:01.300 [INFO ] PIPELINE     STEP 1: MetadataValidator — starting
 2026-03-19 14:32:01.450 [INFO ] PIPELINE     STEP 5: WriteStage — starting
 2026-03-19 14:32:02.100 [FINE ] PROVER       [PROVEN] P05 — IfcDoor:23 — no duplicate
-2026-03-19 14:32:02.200 [INFO ] GATE         [G1-COUNT ] RE_SH PASS  ref=55 out=55 delta=+0
-2026-03-19 14:32:02.300 [INFO ] PIPELINE     PIPELINE COMPLETE: Ifc4_SampleHouse — 55 elements
+2026-03-19 14:32:02.200 [INFO ] GATE         [G1-COUNT ] RE_SH PASS  ref=58 out=58 delta=+0
+2026-03-19 14:32:02.300 [INFO ] PIPELINE     PIPELINE COMPLETE: Ifc4_SampleHouse — 58 elements
 # End: 2026-03-19 14:32:02.350
 </code></pre></div>
 <hr />

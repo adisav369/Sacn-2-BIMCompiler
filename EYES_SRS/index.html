@@ -5274,7 +5274,7 @@ product. Centroids are invariant to this asymmetric frame projection.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// DAGCompiler/src/test/java/com/bim/compiler/contract/CompilerContractTest.java</span>
 <span class="c1">// Witness: W-EYES-NONDISTURB</span>
 <span class="nd">@Test</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">eyes_migration_preserves_SH_results</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="c1">// Given: SH Rosetta Stone (55 elements)</span>
+<span class="w">    </span><span class="c1">// Given: SH Rosetta Stone (58 elements)</span>
 <span class="w">    </span><span class="c1">// When:  run full pipeline through PlacementProver facade</span>
 <span class="w">    </span><span class="c1">// Then:  9/10 PASS (same as pre-migration baseline)</span>
 <span class="w">    </span><span class="c1">//        W-BOM-TRACED results unchanged</span>
@@ -5521,7 +5521,7 @@ Let <code>overlaps(A, B) ≡ A.minX &lt; B.maxX ∧ B.minX &lt; A.maxX ∧ ...</
 <li><strong>P08 (FurnitureInRoom):</strong> <code>∀ furniture: ∃ room: contains(AABB(room) ⊕ τ, AABB(furniture))</code>. Furniture must lie within its assigned room.</li>
 <li><strong>P09 (FixtureOnSurface):</strong> <code>∀ fixture: ∃ wall: |centroid(fixture) - face(wall)| &lt; τ_depth</code>. Fixtures (outlets, switches) must be surface-mounted on a wall face.</li>
 <li><strong>P15 (DuplicatePosition):</strong> <code>∀ e_i, e_j where class(e_i) = class(e_j): ¬(|centroid(e_i) - centroid(e_j)| &lt; ε)</code>. No two elements of the same IFC class may occupy the same position (detects copy errors).</li>
-<li><strong>P06 (SameClassOverlap):</strong> <code>∀ e_i, e_j where class(e_i) = class(e_j) ∧ i ≠ j: overlap_volume(e_i, e_j) / min(vol(e_i), vol(e_j)) &lt; 0.5</code>. Same-class elements must not substantially overlap (≥50% volume intersection is a collision).</li>
+<li><strong>P06 (SameClassOverlap):</strong> Same position + same dimensions → CRITICAL (real duplicate). Partial overlap → PROVEN (structural joint). P130 (<a href="https://github.com/red1oon/BIMCompiler/commit/c78c743b">c78c743b</a>) replaced the black-box volume heuristic: DX 83→0 critical, FK 15→0.</li>
 </ul>
 <p><strong>Tier 2 — Wall orientation and roof coverage.</strong> Verified against cardinal geometry:</p>
 <ul>

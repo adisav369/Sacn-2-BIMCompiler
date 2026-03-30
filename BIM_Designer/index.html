@@ -6001,7 +6001,7 @@ M_BOM_Line spatial relationships (dx/dy/dz), BIM COBOL verbs, EntityType governa
 <hr />
 <h2 id="phase-g-preamble-proven-artifacts-the-designer-builds-on">Phase G Preamble — Proven Artifacts the Designer Builds On<a class="headerlink" href="#phase-g-preamble-proven-artifacts-the-designer-builds-on" title="Permanent link">&para;</a></h2>
 <p>The BIM Designer (Phase G) does not start from scratch. Three Rosetta Stone
-buildings — SH (55), DX (1,099), TE (48,428 elements) — have proven the
+buildings — SH, DX, TE — have proven the
 full pipeline end-to-end: IFC extraction → component library → BOM dictionary
 → 12-stage compilation → verified output. All gates GREEN (G1–G6).</p>
 <p>The designer works on these <strong>already-proven artifacts:</strong></p>
@@ -6017,9 +6017,9 @@ full pipeline end-to-end: IFC extraction → component library → BOM dictionar
 <tbody>
 <tr>
 <td><code>classify_*.yaml</code></td>
-<td>Building identity + storey/discipline map</td>
+<td>Building identity + Order input (onboarding only)</td>
 <td><code>IFCtoBOM/src/main/resources/</code></td>
-<td>Drafts new building definitions</td>
+<td>Legacy IFC onboarding; generative buildings use Work Orders</td>
 </tr>
 <tr>
 <td><code>{PREFIX}_BOM.db</code></td>
@@ -6158,9 +6158,9 @@ to generate a building from scratch. No IFC file, no extraction — pure intent.
 </tbody>
 </table>
 <p><strong>What happens on "Create":</strong></p>
-<div class="highlight"><pre><span></span><code>1. Generate classify_*.yaml (building identity + storey map)
+<div class="highlight"><pre><span></span><code>1. Generate C_Order + C_OrderLine (Work Order = building spec)
 2. Generate C_DocType entry (Provenance=&#39;GENERATIVE&#39;)
-3. Generate m_bom hierarchy (BUILDING → FLOOR → ROOM)
+3. Generate m_bom hierarchy (BUILDING → FLOOR → ROOM) — storeys auto-discovered
 4. DocValidate fires: check each room against AD_Val_Rule for jurisdiction
    → BLOCK if bedroom &lt; 3000mm (UBBL), &lt; 2134mm (IRC), etc.
 5. CompilationPipeline.run() → output.db
@@ -6225,7 +6225,7 @@ recompiled from sources.</p>
   │  (reverse lookup: output GUID → element_ref → m_bom_line.bom_child_id)
   │
   ├─ Writes to source artifact:
-  │  ├─ YAML change?      → classify_*.yaml (storey, discipline scope)
+  │  ├─ Order change?     → C_OrderLine (discipline, room selection)
   │  ├─ BOM change?       → m_bom_line dx/dy/dz in {PREFIX}_BOM.db
   │  ├─ Attribute change?  → M_AttributeSetInstance (per-instance params)
   │  └─ Rule override?    → C_OrderLine ASI (guarded by Val_Rule)
@@ -7403,16 +7403,16 @@ adapter, not a compiler.</p>
 dependency. One JSON object per line.</p>
 <p><strong>Request/response examples:</strong></p>
 <div class="highlight"><pre><span></span><code>→ {&quot;action&quot;:&quot;compile&quot;,&quot;buildingId&quot;:&quot;Ifc4_SampleHouse&quot;,&quot;bomDbPath&quot;:&quot;library/_SH_compile.db&quot;}
-← {&quot;success&quot;:true,&quot;elementCount&quot;:55,&quot;compileTimeMs&quot;:847,&quot;outputDbPath&quot;:&quot;...&quot;}
+← {&quot;success&quot;:true,&quot;elementCount&quot;:58,&quot;compileTimeMs&quot;:847,&quot;outputDbPath&quot;:&quot;...&quot;}
 
 → {&quot;action&quot;:&quot;verb&quot;,&quot;buildingId&quot;:&quot;...&quot;,&quot;verbLine&quot;:&quot;CHECK BOM BUILDING_SH&quot;}
 ← {&quot;success&quot;:true,&quot;verb&quot;:&quot;CHECK BOM&quot;,&quot;summary&quot;:&quot;7 lines, 218.4m3&quot;}
 
 → {&quot;action&quot;:&quot;listBuildings&quot;}
-← [{&quot;docTypeId&quot;:&quot;...&quot;,&quot;name&quot;:&quot;Ifc4_SampleHouse&quot;,&quot;docSubType&quot;:&quot;SH&quot;,&quot;expectedElements&quot;:55,...}]
+← [{&quot;docTypeId&quot;:&quot;...&quot;,&quot;name&quot;:&quot;Ifc4_SampleHouse&quot;,&quot;docSubType&quot;:&quot;SH&quot;,&quot;expectedElements&quot;:58,...}]
 </code></pre></div>
 <p><strong>Async push</strong> (after ArtifactWatcher detects change + auto-recompile):
-<div class="highlight"><pre><span></span><code>← {&quot;type&quot;:&quot;COMPILE_COMPLETE&quot;,&quot;buildingId&quot;:&quot;...&quot;,&quot;outputDbPath&quot;:&quot;...&quot;,&quot;elementCount&quot;:55}
+<div class="highlight"><pre><span></span><code>← {&quot;type&quot;:&quot;COMPILE_COMPLETE&quot;,&quot;buildingId&quot;:&quot;...&quot;,&quot;outputDbPath&quot;:&quot;...&quot;,&quot;elementCount&quot;:58}
 </code></pre></div></p>
 <h3 id="115-how-it-rides-on-blender">11.5 How It Rides on Blender<a class="headerlink" href="#115-how-it-rides-on-blender" title="Permanent link">&para;</a></h3>
 <p>The Python addon is a thin layer (~6 files, ~400 lines). It does NOT
@@ -7573,7 +7573,7 @@ caching. Rides on Federation's existing Full Load — adds the fast path.</p>
 </tr>
 <tr>
 <td><strong>Multi-scale</strong></td>
-<td>SH (55) to TE (48K) same pipeline</td>
+<td>SH to TE same pipeline</td>
 <td>Works for a cottage or an airport</td>
 </tr>
 <tr>
@@ -8683,10 +8683,10 @@ governance action (Promote) creates new BOM entries.</p>
   Designer reads these but NEVER writes to them during design.
 
 DESIGN LAYER (user&#39;s work):
-  YAML                    Building definition (type, storeys, discipline map)
+  C_Order                 Building identity (Work Order = building spec)
   C_OrderLine             Which BOM templates are used, in what arrangement
   ASI (AttributeSetInstance)  Per-instance overrides (this room is 4500mm wide)
-  All Design Mode edits live here.
+  All Design Mode edits live here. YAML retired — Work Order IS the spec.
 
 OUTPUT LAYER (committed result):
   output.db               Compiled spatial DB from templates + overrides
@@ -10076,7 +10076,7 @@ product browser (BIMsmith) + speed (TestFit) + semantic source of truth
 <tbody>
 <tr>
 <td><strong>DocEvent (batch)</strong></td>
-<td>YAML declares discipline</td>
+<td>OrderLine callout assigns disciplines</td>
 <td>Compiler places all objects per rules at compile time</td>
 <td>Compile action</td>
 </tr>

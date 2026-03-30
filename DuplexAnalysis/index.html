@@ -2318,10 +2318,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+  <a href="#recompilation-ifc-driven-s100-p128-2026-03-30" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+        Recompilation — IFC-Driven (S100-p128, 2026-03-30)
       
     </span>
   </a>
@@ -2401,22 +2401,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#remaining" class="md-nav__link">
+  <a href="#ifc-driven-extraction-s100-p125-p128" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Remaining
+        IFC-Driven Extraction (S100-p125 → p128)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Remaining">
+    <nav class="md-nav" aria-label="IFC-Driven Extraction (S100-p125 → p128)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ifc-spatial-containment-for-dx" class="md-nav__link">
+  <a href="#stair-assemblies-p129" class="md-nav__link">
     <span class="md-ellipsis">
       
-        IFC Spatial Containment for DX
+        Stair Assemblies (P129)
       
     </span>
   </a>
@@ -3063,10 +3063,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#recompilation-s100-p85-fleet-audit-2026-03-28" class="md-nav__link">
+  <a href="#recompilation-ifc-driven-s100-p128-2026-03-30" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Recompilation (S100-p85 Fleet Audit, 2026-03-28)
+        Recompilation — IFC-Driven (S100-p128, 2026-03-30)
       
     </span>
   </a>
@@ -3146,22 +3146,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#remaining" class="md-nav__link">
+  <a href="#ifc-driven-extraction-s100-p125-p128" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Remaining
+        IFC-Driven Extraction (S100-p125 → p128)
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Remaining">
+    <nav class="md-nav" aria-label="IFC-Driven Extraction (S100-p125 → p128)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ifc-spatial-containment-for-dx" class="md-nav__link">
+  <a href="#stair-assemblies-p129" class="md-nav__link">
     <span class="md-ellipsis">
       
-        IFC Spatial Containment for DX
+        Stair Assemblies (P129)
       
     </span>
   </a>
@@ -3198,7 +3198,7 @@
 <p><strong>Foundation:</strong> <a href="../BOMBasedCompilation/">BBC</a> · <a href="../DATA_MODEL/">DATA_MODEL</a> · <a href="../BIM_COBOL/">BIM_COBOL</a> · <a href="../MANIFESTO/">MANIFESTO</a> · <a href="../TestArchitecture/">TestArchitecture</a></p>
 </blockquote>
 <div class="bim-banner">
-<p><b>Mirror algorithm proof — two units reflected across a party wall.</b> DX exercises the MIRROR verb and multi-storey BOM structure with 1,099 elements.</p>
+<p><b>Mirror algorithm proof — two units reflected across a party wall.</b> DX exercises the MIRROR verb and multi-storey BOM structure. IFC-driven extraction (P125–P128).</p>
 </div>
 <p><strong>Spec alignment (2026-03-18):</strong> DX BOM uses centroid-floorMin offsets — same
 tack convention drift as SH and TE. Must implement <code>BOMBasedCompilation.md</code> §4
@@ -3635,8 +3635,9 @@ the BOM line. Same BOM, different placement = mirror.</p>
 </code></pre></div>
 <p>Then the pairing (per product per storey, min(A,B) = paired,
 excess → shared) is completely independent of the axis.</p>
-<h2 id="recompilation-s100-p85-fleet-audit-2026-03-28">Recompilation (S100-p85 Fleet Audit, 2026-03-28)<a class="headerlink" href="#recompilation-s100-p85-fleet-audit-2026-03-28" title="Permanent link">&para;</a></h2>
-<p>BOM walk recompilation via <code>CompileStage</code> → <code>writeFromBomWalk()</code>. <strong>6/7 PASS, C9 WARN (89 axis mismatches — rank-match artifact).</strong></p>
+<h2 id="recompilation-ifc-driven-s100-p128-2026-03-30">Recompilation — IFC-Driven (S100-p128, 2026-03-30)<a class="headerlink" href="#recompilation-ifc-driven-s100-p128-2026-03-30" title="Permanent link">&para;</a></h2>
+<p>IFC-driven extraction (P125) + spatial container auto-discovery (P127) +
+scope excludes (P128). BOM walk via <code>CompileStage</code>. <strong>5/7, C9 WARN.</strong></p>
 <table>
 <thead>
 <tr>
@@ -3647,30 +3648,39 @@ excess → shared) is completely independent of the axis.</p>
 <tbody>
 <tr>
 <td>Elements</td>
-<td>1099</td>
+<td>215 (IFC-driven extraction)</td>
 </tr>
 <tr>
 <td>Root BOM</td>
 <td>BUILDING_DX_STD, origin=(-0.044, -35.392, -1.250)</td>
 </tr>
 <tr>
-<td>Verbs</td>
-<td>992 PLACE, 17 CLUSTER</td>
+<td>Containers</td>
+<td>5 auto-discovered: TF, L1, UN, L2, RO (P127)</td>
 </tr>
 <tr>
-<td>Disciplines</td>
-<td>ARC=1011, STR=2</td>
+<td>IFC Spaces</td>
+<td>11 IfcSpaces → 61 furniture elements in SET BOMs</td>
 </tr>
 <tr>
-<td>LOD binding</td>
-<td>1099 LOD, 0 fallback, 0 missing</td>
+<td>Assemblies</td>
+<td>2 stair assemblies (3 children each, P129)</td>
 </tr>
 <tr>
-<td>H6 WARNs</td>
-<td>57 (MEP schedule vs actual, 13 rooms)</td>
+<td>Reconciliation</td>
+<td>delta=+0 (161 LEAFs + 54 paired = 215 vs 215 extracted)</td>
+</tr>
+<tr>
+<td>C9</td>
+<td>50 axis mismatches (was 111 before P128 scope fix)</td>
 </tr>
 </tbody>
 </table>
+<p><strong>P128 scope excludes fix:</strong> Elements assigned to SET BOMs by ScopeBomBuilder
+are now excluded from CompositionBomBuilder mirror partition. This fixed the
+reconciliation delta (+50→0) — furniture was being double-counted in both
+SET BOMs and the half-unit.</p>
+<p><strong>GEO:</strong> <code>SUMMARY 107 elements, 5671 pairs, worst=0.000mm, DRIFT=0</code></p>
 <p><strong>LMP Drift Check:</strong> 6 pass, 0 fail, 2 deferred</p>
 <table>
 <thead>
@@ -3684,12 +3694,12 @@ excess → shared) is completely independent of the axis.</p>
 <tr>
 <td>§1</td>
 <td>Input=Output</td>
-<td>PASS (1099/1099)</td>
+<td>PASS</td>
 </tr>
 <tr>
 <td>§2</td>
 <td>LOD400</td>
-<td>PASS (1099/1099, 0 warn, 0 fail)</td>
+<td>PASS</td>
 </tr>
 <tr>
 <td>§3</td>
@@ -3709,7 +3719,7 @@ excess → shared) is completely independent of the axis.</p>
 <tr>
 <td>§8</td>
 <td>Visual Fidelity</td>
-<td>PASS (geometry OK)</td>
+<td>PASS (GEO DRIFT=0)</td>
 </tr>
 <tr>
 <td>§4, §9</td>
@@ -3718,7 +3728,8 @@ excess → shared) is completely independent of the axis.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>C9 WARN (89 mismatches):</strong> Same rank-match artifact documented in §Resolved #5 below. Not a geometry error — position-sorted rank matching shuffles elements near the party wall. Element count is exact (1099=1099).</p>
+<p><strong>C9 WARN (50 mismatches):</strong> Rank-match artifact documented in §Resolved #5 below.
+Reduced from 89→50 after P128 removed furniture from half-unit pairing.</p>
 <h2 id="resolved-issues">Resolved Issues<a class="headerlink" href="#resolved-issues" title="Permanent link">&para;</a></h2>
 <h3 id="1-element-count-gap-1093-vs-1099-fixed-2026-03-14">1. Element Count Gap: 1093 vs 1099 — FIXED (2026-03-14)<a class="headerlink" href="#1-element-count-gap-1093-vs-1099-fixed-2026-03-14" title="Permanent link">&para;</a></h3>
 <p>Pipeline produced 1093 elements instead of expected 1099. Gap = 6 elements.</p>
@@ -3736,7 +3747,7 @@ structural as shared, matching A-side excess behavior.</p>
 <li><code>BuildingWriter</code>: GUID suffix ("_A", "_B") based on elementRef prefix.</li>
 </ul>
 <h3 id="3-sh-regression-verified-2026-03-14">3. SH Regression — VERIFIED (2026-03-14)<a class="headerlink" href="#3-sh-regression-verified-2026-03-14" title="Permanent link">&para;</a></h3>
-<p>SH 7/7 PASS, 55 enbloc=walkthru, 0 delta, 0 geometry divergences.</p>
+<p>SH 7/7 PASS, 58 enbloc=walkthru, 0 delta, 0 geometry divergences.</p>
 <h3 id="4-walker-rotation-verified-2026-03-14">4. Walker Rotation — VERIFIED (2026-03-14)<a class="headerlink" href="#4-walker-rotation-verified-2026-03-14" title="Permanent link">&para;</a></h3>
 <p>DX full delta test: 13 IFC classes, all enbloc=walkthru counts match,
 0 geometry divergences, Rule 8 PASS (all coordinates parent-relative).</p>
@@ -3751,12 +3762,20 @@ element names (e.g., ref <code>Exterior Brick</code> vs output <code>Interior Pa
 <p><strong>Status:</strong> Non-issue. C9 matching needs GUID-based pairing to work correctly
 for MIRRORED_PAIR buildings. Filed as future enhancement — does not affect
 compilation correctness.</p>
-<h2 id="remaining">Remaining<a class="headerlink" href="#remaining" title="Permanent link">&para;</a></h2>
-<h3 id="ifc-spatial-containment-for-dx">IFC Spatial Containment for DX<a class="headerlink" href="#ifc-spatial-containment-for-dx" title="Permanent link">&para;</a></h3>
-<p>DX extraction DB has 61 rows in <code>rel_contained_in_space</code>. Conversion from
-scope boxes to IFC-driven <code>ifc_space</code> mapping is pending (same as SH P125
-pattern). Currently all scope spaces are empty SETs.
-This is a data completeness issue, not a pipeline bug.</p>
+<h2 id="ifc-driven-extraction-s100-p125-p128">IFC-Driven Extraction (S100-p125 → p128)<a class="headerlink" href="#ifc-driven-extraction-s100-p125-p128" title="Permanent link">&para;</a></h2>
+<p><strong>Status: DONE.</strong> DX is fully IFC-driven since P125/P127/P128:</p>
+<ul>
+<li><strong>Spatial containment:</strong> 11 IfcSpaces with 61 furniture elements (P125)</li>
+<li><strong>Storey auto-discovery:</strong> 5 containers from extraction, no YAML storeys (P127)</li>
+<li><strong>Scope excludes:</strong> SET BOM elements excluded from mirror partition (P128)</li>
+<li><strong>Assembly BOMs:</strong> 2 stair assemblies from <code>rel_aggregates</code> (P129)</li>
+<li><strong>YAML floor_rooms removed:</strong> Dead code since P125 (removed in P128)</li>
+</ul>
+<h3 id="stair-assemblies-p129">Stair Assemblies (P129)<a class="headerlink" href="#stair-assemblies-p129" title="Permanent link">&para;</a></h3>
+<p>DX has 2 stair assemblies discovered from <code>rel_aggregates</code>:
+- DX_UN_ASM_1, DX_UN_ASM_2: each 3 children (2 IfcMember stringers + 1 IfcStairFlight)
+- Land on "Unknown" storey — correct IFC semantics (stairs span storeys)
+- Railings excluded by composition pairing (in half-unit, not structural)</p>
 
 
 

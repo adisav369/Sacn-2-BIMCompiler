@@ -7289,7 +7289,7 @@ concrete user journeys. BIM_Designer.md says WHAT and WHY. This document says HO
 <p>Priority: <strong>P0</strong> = must-have for first usable demo, <strong>P1</strong> = needed for daily use, <strong>P2</strong> = polish.</p>
 <h3 id="11-foundation-guarantee-zero-delta-compilation">1.1 Foundation Guarantee — Zero Delta Compilation<a class="headerlink" href="#11-foundation-guarantee-zero-delta-compilation" title="Permanent link">&para;</a></h3>
 <p>All five Rosetta Stone buildings compile with verified volume:
-SH (55), FK (82), IN (699), DX (1,099), TE (48,428). The compiler is a pure
+SH, FK, IN, DX, TE (counts in <a href="../PROGRESS.md">PROGRESS.md</a>). The compiler is a pure
 function: same input → same output, always. Every UX claim in this document
 rests on this guarantee. See <a href="../MANIFESTO/">MANIFESTO.md §Why This Matters</a>.</p>
 <hr />
@@ -7662,7 +7662,7 @@ stated scale or the UX falls apart — slow tools teach users not to iterate.</p
 <td>UX-N-09</td>
 <td>Full compile (SH-scale)</td>
 <td>&lt; 3s</td>
-<td>55 elements</td>
+<td>58 elements</td>
 <td>Existing pipeline, no scope limiting</td>
 <td>P1</td>
 </tr>
@@ -9732,7 +9732,7 @@ the full BOM Drop paradigm that supersedes this path.</p>
 <tbody>
 <tr>
 <td>W-COMPILE-1</td>
-<td>compile() with SH_BOM.db produces output.db with 55 elements</td>
+<td>compile() with SH_BOM.db produces output.db with 58 elements</td>
 <td>Pipeline wiring</td>
 <td>PASS</td>
 </tr>
@@ -11088,7 +11088,7 @@ Step 4: Compile — same compiler, same gates   │
 <tr>
 <td><strong>Instant Drop</strong></td>
 <td>Pick template, no edits, compile</td>
-<td>TC-1: "Give me SH" → 55 elements</td>
+<td>TC-1: "Give me SH" → 58 elements</td>
 </tr>
 <tr>
 <td><strong>BOM Drop</strong></td>
@@ -11459,7 +11459,7 @@ user edits individual items, not during initial BOM Drop.</p>
 </table>
 <h3 id="289-ux-interaction-bom-drop-sequence">28.9 UX Interaction — BOM Drop Sequence<a class="headerlink" href="#289-ux-interaction-bom-drop-sequence" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>User opens Designer
-  → listBuildingTypes() shows: SH (55 el), FK (82 el), DX (1099 el), ...
+  → listBuildingTypes() shows: SH, FK, DX, ...
   → user clicks &quot;SH — Sample House&quot;
      → bomDrop(&quot;BUILDING_SH_STD&quot;)
         → C_Order created, 1 C_OrderLine
@@ -11546,7 +11546,7 @@ explode recursively. Unmodified trees fold back to parent line for performance.<
 </tr>
 <tr>
 <td>W-DROP-2</td>
-<td>Instant Drop totalElements = 55 (SH Rosetta Stone match)</td>
+<td>Instant Drop totalElements = 58 (SH Rosetta Stone match)</td>
 <td>GREEN (S54)</td>
 </tr>
 <tr>
@@ -11614,7 +11614,7 @@ explode recursively. Unmodified trees fold back to parent line for performance.<
 <tr>
 <td>Instant Drop = Rosetta Stone</td>
 <td>GENERATIVE_HOUSE_SRS.md §7 TC-1</td>
-<td><code>BomDropTest</code> W-DROP-2: 55 elements</td>
+<td><code>BomDropTest</code> W-DROP-2: 58 elements</td>
 </tr>
 <tr>
 <td>DocAction lifecycle</td>

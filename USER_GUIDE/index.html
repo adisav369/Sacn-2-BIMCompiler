@@ -4464,7 +4464,7 @@
 <div class="highlight"><pre><span></span><code><span class="c1"># Build from project root</span>
 mvn<span class="w"> </span>compile<span class="w"> </span>-q
 
-<span class="c1"># Compile SampleHouse (UK residential, 55 elements)</span>
+<span class="c1"># Compile SampleHouse (UK residential)</span>
 mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>DAGCompiler<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.compiler.dsl.SampleHouseEndToEndTest&quot;</span><span class="w"> </span>-q
 
@@ -4493,7 +4493,6 @@ mvn<span class="w"> </span>clean<span class="w"> </span>package<span class="w"> 
 <tr>
 <th>Building</th>
 <th>Command Class</th>
-<th>Elements</th>
 <th>Tradition</th>
 <th>F1 Score</th>
 </tr>
@@ -4502,28 +4501,24 @@ mvn<span class="w"> </span>clean<span class="w"> </span>package<span class="w"> 
 <tr>
 <td>SampleHouse</td>
 <td><code>SampleHouseEndToEndTest</code></td>
-<td>55</td>
 <td>UK residential</td>
 <td><strong>100%</strong></td>
 </tr>
 <tr>
 <td>Duplex</td>
 <td><code>TBLKTNDuplexEndToEndTest</code></td>
-<td>1,085</td>
 <td>US residential</td>
 <td><strong>100%</strong></td>
 </tr>
 <tr>
 <td>Terminal</td>
 <td><code>TerminalEndToEndTest</code></td>
-<td>51,088</td>
 <td>MY institutional</td>
 <td><strong>~100%</strong></td>
 </tr>
 <tr>
 <td>TB-LKTN</td>
 <td><code>TBLKTNEndToEndTest</code></td>
-<td>58</td>
 <td>MY affordable</td>
 <td>generative</td>
 </tr>
@@ -4532,7 +4527,7 @@ mvn<span class="w"> </span>clean<span class="w"> </span>package<span class="w"> 
 <p>TB-LKTN is the first <em>generative</em> building — compiled purely from relational rules with no IFC reference. It proves the compiler can create, not just replicate.</p>
 <h3 id="run-commands">Run Commands<a class="headerlink" href="#run-commands" title="Permanent link">&para;</a></h3>
 <p>All commands run from project root. The <code>-pl DAGCompiler</code> flag is required.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># SampleHouse (single-storey UK house, 55 elements)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># SampleHouse (single-storey UK house)</span>
 mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> </span>DAGCompiler<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-Dexec.mainClass<span class="o">=</span><span class="s2">&quot;com.bim.compiler.dsl.SampleHouseEndToEndTest&quot;</span><span class="w"> </span>-q
 
@@ -5337,7 +5332,7 @@ providing dimension sanity checks during interactive design.</p>
 <td><strong>100%</strong></td>
 <td><strong>100%</strong></td>
 <td><strong>100%</strong></td>
-<td>55</td>
+<td>—</td>
 </tr>
 <tr>
 <td>Duplex</td>

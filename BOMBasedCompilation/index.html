@@ -1487,10 +1487,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-the-7-stage-pipeline" class="md-nav__link">
+  <a href="#5-the-12-stage-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. The 7-Stage Pipeline
+        5. The 12-Stage Pipeline
       
     </span>
   </a>
@@ -3934,10 +3934,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-the-7-stage-pipeline" class="md-nav__link">
+  <a href="#5-the-12-stage-pipeline" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. The 7-Stage Pipeline
+        5. The 12-Stage Pipeline
       
     </span>
   </a>
@@ -4109,12 +4109,12 @@ Read the <a href="../MANIFESTO/">MANIFESTO</a> first for the ERP world view.</p>
 <td>The dx/dy/dz spatial offset model (LBD)</td>
 </tr>
 <tr>
-<td><a href="#5-the-7-stage-pipeline">§5 Pipeline</a></td>
-<td>7-stage compilation pipeline</td>
+<td><a href="#5-the-12-stage-pipeline">§5 Pipeline</a></td>
+<td>12-stage compilation pipeline</td>
 </tr>
 <tr>
 <td><a href="#6-bim-cobol-verb-driven-bom-mutation">§6 Verbs</a></td>
-<td>75 domain verbs (TILE, ROUTE, FRAME, CLUSTER)</td>
+<td>77 domain verbs (TILE, ROUTE, FRAME, CLUSTER)</td>
 </tr>
 <tr>
 <td><a href="#7-verification-the-rosetta-stone-gate">§7 Verification</a></td>
@@ -4511,7 +4511,7 @@ without touching any other BOM — the parent owns the attachment point, not the
 <h3 id="33-the-order-is-minimal">3.3 The Order Is Minimal<a class="headerlink" href="#33-the-order-is-minimal" title="Permanent link">&para;</a></h3>
 <p>One <code>C_OrderLine</code> referencing a root product compiles an entire building.
 The compiler explodes the full BOM tree — accumulating tack offsets, resolving
-leaves to geometry. SH (55 elements), DX (1099), TE (48,428) all compile
+leaves to geometry. SH, DX, TE all compile
 from a single root line.</p>
 <p><strong>Exception lines name only deviations.</strong> The order says "build me this, but
 change that child." Product_ID traces directly to the BOM family — no ambiguity.
@@ -5565,7 +5565,7 @@ Zero-cost foam: sits in the BOM, walker skips it, enables spatial queries.</p>
 <p><em>Product classification (shape archetype, scale band, semantic category) is a
 product catalog concern — see <code>DATA_MODEL.md</code> and <code>component_library.db</code> schema.</em></p>
 <hr />
-<h2 id="5-the-7-stage-pipeline">5. The 7-Stage Pipeline<a class="headerlink" href="#5-the-7-stage-pipeline" title="Permanent link">&para;</a></h2>
+<h2 id="5-the-12-stage-pipeline">5. The 12-Stage Pipeline<a class="headerlink" href="#5-the-12-stage-pipeline" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
@@ -5663,7 +5663,7 @@ L1. Never skip layers. Each verb = one file, one keyword, one payload record.</p
 <blockquote>
 <p><strong>Verification gates:</strong> See <a href="../TestArchitecture/"><code>TestArchitecture.md</code></a> §Verification for the complete G1-G6 gate specification, tamper rules (T1-T16), and the 4-layer defense model.</p>
 </blockquote>
-<p>All 6 gates GREEN for SH (55 elements) and DX (1099 elements).</p>
+<p>All 6 gates GREEN for SH and DX. Current counts in <a href="../PROGRESS.md">PROGRESS.md</a>.</p>
 <hr />
 <h2 id="8-what-this-is-not">8. What This Is Not<a class="headerlink" href="#8-what-this-is-not" title="Permanent link">&para;</a></h2>
 <table>

@@ -3839,7 +3839,7 @@ ORMSandbox        → DAO smoke tests
 DAGCompiler       → 12-stage compilation pipeline
 2D_Layout         → floor plan generation
 TopologyMaker     → grid strategy, PO lifecycle
-BIM_COBOL         → 63 domain verbs, witness engine
+BIM_COBOL         → 77 domain verbs, witness engine
 IFCtoBOM          → IFC extraction to BOM database
 BIMBackOffice     → ERP reporting, sessions, portfolio
 BonsaiBIMDesigner → GUI server, validation, assembly
@@ -3888,7 +3888,7 @@ BonsaiBIMDesigner → GUI server, validation, assembly
 <tr>
 <td><code>SH_BOM.db</code></td>
 <td>Sample House</td>
-<td>55</td>
+<td>—</td>
 <td>Hello-world residential</td>
 </tr>
 <tr>
@@ -4061,7 +4061,7 @@ mvn<span class="w"> </span>exec:java<span class="w"> </span>-pl<span class="w"> 
 <span class="w">    </span>-Dexec.args<span class="o">=</span><span class="s2">&quot;--prefix XX --type BuildingType --name &#39;Name&#39;&quot;</span><span class="w"> </span>-q
 </code></pre></div>
 <p>Then follow the 8-step process in <strong><a href="../IFC_ONBOARDING_RUNBOOK/">IFC_ONBOARDING_RUNBOOK.md</a></strong> —
-from IFC extraction through gate verification. Proven on 5 buildings (55–48,428 elements).</p>
+from IFC extraction through gate verification. Proven on 5 Rosetta Stone buildings.</p>
 <p><strong>Quick version</strong> (if YAML + DSL already exist):</p>
 <div class="highlight"><pre><span></span><code>./scripts/run_RosettaStones.sh<span class="w"> </span>classify_xx.yaml
 </code></pre></div>
@@ -4291,7 +4291,7 @@ curl<span class="w"> </span>-k<span class="w"> </span>https://your-server/api/he
 ├── DAGCompiler/           # 12-stage compilation pipeline (G1-G6 gates)
 ├── 2D_Layout/             # Floor plan generation
 ├── TopologyMaker/         # Grid strategy, production order lifecycle
-├── BIM_COBOL/             # 63 domain verbs, witness engine
+├── BIM_COBOL/             # 77 domain verbs, witness engine
 ├── IFCtoBOM/              # IFC extraction → BOM database pipeline
 ├── BIMBackOffice/         # ERP reporting, sessions, portfolio, 4D-7D
 ├── BonsaiBIMDesigner/     # GUI server, validation, assembly, placement

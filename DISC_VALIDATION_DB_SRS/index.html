@@ -2358,10 +2358,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gap-3-verb-bypass" class="md-nav__link">
+  <a href="#gap-3-verb-bypass-closed-p119" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gap 3: Verb bypass
+        Gap 3: Verb bypass — CLOSED (P119)
       
     </span>
   </a>
@@ -2380,10 +2380,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gap-5-standard-citation-depth" class="md-nav__link">
+  <a href="#gap-5-standard-citation-depth-closed-p120" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gap 5: Standard citation depth
+        Gap 5: Standard citation depth — CLOSED (P120)
       
     </span>
   </a>
@@ -2555,6 +2555,50 @@
     <span class="md-ellipsis">
       
         Structural orphans
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ifcrelaggregates-extraction-s100-p126" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IfcRelAggregates extraction (S100-p126)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spatial-container-auto-discovery-s100-p127" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spatial container auto-discovery (S100-p127)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-excludes-for-compositionbombuilder-s100-p128" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope excludes for CompositionBomBuilder (S100-p128)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ifc-assembly-boms-s100-p129" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC assembly BOMs (S100-p129)
       
     </span>
   </a>
@@ -4469,10 +4513,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gap-3-verb-bypass" class="md-nav__link">
+  <a href="#gap-3-verb-bypass-closed-p119" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gap 3: Verb bypass
+        Gap 3: Verb bypass — CLOSED (P119)
       
     </span>
   </a>
@@ -4491,10 +4535,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gap-5-standard-citation-depth" class="md-nav__link">
+  <a href="#gap-5-standard-citation-depth-closed-p120" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Gap 5: Standard citation depth
+        Gap 5: Standard citation depth — CLOSED (P120)
       
     </span>
   </a>
@@ -4666,6 +4710,50 @@
     <span class="md-ellipsis">
       
         Structural orphans
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ifcrelaggregates-extraction-s100-p126" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IfcRelAggregates extraction (S100-p126)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spatial-container-auto-discovery-s100-p127" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spatial container auto-discovery (S100-p127)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scope-excludes-for-compositionbombuilder-s100-p128" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope excludes for CompositionBomBuilder (S100-p128)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ifc-assembly-boms-s100-p129" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IFC assembly BOMs (S100-p129)
       
     </span>
   </a>
@@ -6954,17 +7042,14 @@ routing.</p>
 (riser→header→branch pattern) + search-based pathfinding for last-mile
 segment paths within each branch. BlenderBIM Issue #6521 proposes a
 voxel-A* orthogonal pathfinder that could serve as the last-mile solver.</p>
-<h5 id="gap-3-verb-bypass">Gap 3: Verb bypass<a class="headerlink" href="#gap-3-verb-bypass" title="Permanent link">&para;</a></h5>
-<p><strong>Problem:</strong> The spec (§10.4.10) describes verb-driven routing —
-<code>FOLLOW CEILING</code>, <code>BEND 90</code>, <code>BRANCH TEE</code>. But the 6 RouteBuilders compose
-CrawlOps directly in Java, bypassing VerbRegistry entirely. <code>FollowVerb</code>
-(verb #77) exists and wraps CrawlRouter, proving the bridge works.</p>
-<p><strong>Impact:</strong> Two parallel systems do the same thing — <code>.bimcobol</code> scripts
-dispatch through VerbRegistry, RouteBuilders compose CrawlOps directly.
-Routing is not auditable as verb lines in the pipeline log.</p>
-<p><strong>Fix:</strong> RouteBuilders should emit verb line strings and dispatch through
-VerbRegistry. This unifies the two paths and makes every routing decision
-visible in the FINE log as a BIM COBOL statement.</p>
+<h5 id="gap-3-verb-bypass-closed-p119">Gap 3: Verb bypass — CLOSED (P119)<a class="headerlink" href="#gap-3-verb-bypass-closed-p119" title="Permanent link">&para;</a></h5>
+<p><strong>Problem:</strong> RouteBuilders composed CrawlOps directly, bypassing VerbRegistry.
+Routing was not auditable as verb lines in the pipeline log.</p>
+<p><strong>Fix (P119, <a href="https://github.com/red1oon/BIMCompiler/commit/f9fc4bc9">f9fc4bc9</a>):</strong>
+<code>CrawlOp.toVerbLine()</code> on all 5 ops. <code>DisciplineRouteBuilder.plan()</code> replaces
+<code>buildRoute()</code> — builders return <code>RoutePlan</code>, default <code>buildRoute()</code> logs verb
+lines at INFO then executes via CrawlRouter. All 6 builders refactored.
+SH: ELEC 15 + SP 13 verb lines. DX: ELEC 25 + SP 23.</p>
 <h5 id="gap-4-missing-real-world-concerns">Gap 4: Missing real-world concerns<a class="headerlink" href="#gap-4-missing-real-world-concerns" title="Permanent link">&para;</a></h5>
 <table>
 <thead>
@@ -7002,17 +7087,11 @@ visible in the FINE log as a BIM COBOL statement.</p>
 </tr>
 </tbody>
 </table>
-<h5 id="gap-5-standard-citation-depth">Gap 5: Standard citation depth<a class="headerlink" href="#gap-5-standard-citation-depth" title="Permanent link">&para;</a></h5>
-<p>RouteBuilders cite standards (NFPA 13, MS 1228, MS 1525, MS 830, ASHRAE 62.1)
-but do not trace parameters to specific clauses. For example:</p>
-<ul>
-<li>FP riser 50mm → which NFPA 13 clause? (§8.15.8 pipe sizing tables)</li>
-<li>SP gradient 1:40 → MS 1228 §5.5.2 minimum gradient for 100mm pipe</li>
-<li>ACMV stock length 3000mm → ASHRAE duct construction standard, not 62.1</li>
-</ul>
-<p>This matters for ComplianceStage (Step 12) — jurisdiction proof chains need
-clause-level traceability. Each builder should carry a <code>standardRef()</code> map
-linking parameters to clause numbers.</p>
+<h5 id="gap-5-standard-citation-depth-closed-p120">Gap 5: Standard citation depth — CLOSED (P120)<a class="headerlink" href="#gap-5-standard-citation-depth-closed-p120" title="Permanent link">&para;</a></h5>
+<p><strong>Problem:</strong> RouteBuilders cited standards but didn't trace to specific clauses.</p>
+<p><strong>Fix (P120, <a href="https://github.com/red1oon/BIMCompiler/commit/c78c743b">c78c743b</a>):</strong>
+<code>standardRefs()</code> on all 6 builders — NFPA 13, MS 1228, MS 1525, MS 830,
+ASHRAE 62.1. Logged at INFO with parameter values for compliance audit.</p>
 <h4 id="proof-consumption-p15p16p17">Proof Consumption (P15/P16/P17)<a class="headerlink" href="#proof-consumption-p15p16p17" title="Permanent link">&para;</a></h4>
 <p>The three BIMEyes proofs that consume routing edges are fully implemented:</p>
 <table>
@@ -7281,6 +7360,66 @@ Walls and slabs are floor-level structural → <code>StructuralBomBuilder</code>
 them (unchanged).</p>
 <p>The current extraction already handles orphans correctly —
 <code>StructuralBomBuilder</code> picks up everything not assigned to a SET.</p>
+<h4 id="ifcrelaggregates-extraction-s100-p126">IfcRelAggregates extraction (S100-p126)<a class="headerlink" href="#ifcrelaggregates-extraction-s100-p126" title="Permanent link">&para;</a></h4>
+<p><strong>Status:</strong> DONE (<a href="https://github.com/red1oon/BIMCompiler/commit/48d14537">48d14537</a>)</p>
+<p>New extraction table <code>rel_aggregates</code> captures IFC parent-child assembly
+decomposition:</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">rel_aggregates</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">parent_guid</span><span class="w"> </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">child_guid</span><span class="w">  </span><span class="nb">TEXT</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">parent_guid</span><span class="p">,</span><span class="w"> </span><span class="n">child_guid</span><span class="p">)</span>
+<span class="p">);</span>
+</code></pre></div>
+<p>Populated from <code>IfcRelAggregates</code> relationships in the IFC file. Results:</p>
+<ul>
+<li><strong>SH:</strong> 34 rows. 2 assemblies with 13 children each (curtain wall halves),
+  1 with 3, 2 with 2, 2 singletons.</li>
+<li><strong>DX:</strong> 38 rows. 2 assemblies with 10 children each (stair assemblies),
+  2 with 5, 1 with 4, 3 singletons.</li>
+</ul>
+<p><strong>Phantom parents:</strong> Parent GUIDs have no entry in <code>elements_meta</code> because
+<code>IfcCurtainWall</code> and <code>IfcStair</code> are not in the extraction class list. Assembly
+structure is visible only via <code>rel_aggregates</code> join to <code>elements_meta</code> on
+<code>child_guid</code>.</p>
+<p>Java pipeline unchanged — <code>rel_aggregates</code> is read-only context for P129
+(assembly BOMs).</p>
+<h4 id="spatial-container-auto-discovery-s100-p127">Spatial container auto-discovery (S100-p127)<a class="headerlink" href="#spatial-container-auto-discovery-s100-p127" title="Permanent link">&para;</a></h4>
+<p><strong>Status:</strong> DONE (<a href="https://github.com/red1oon/BIMCompiler/commit/7745affd">7745affd</a>)</p>
+<p><code>StoreyConfig</code> renamed to <code>SpatialContainerConfig</code> — abstract naming that
+works for buildings (storeys) and infrastructure (segments).</p>
+<p><strong>Auto-discovery:</strong> When YAML <code>storeys:</code> section is empty, containers are
+auto-discovered from <code>storeyElements</code> keys:</p>
+<ul>
+<li>Sort by min Z of their elements (seq: 1010, 1020, ...)</li>
+<li><code>code</code> = generic abbreviation (first letter of each word, uppercase)</li>
+<li>No hardcoded name→code mapping — algorithm works for any building</li>
+</ul>
+<p>Results:</p>
+<ul>
+<li><strong>SH:</strong> 3 containers — Ground Floor→GF, Roof→RO, Unknown→UN</li>
+<li><strong>DX:</strong> 5 containers — T/FDN→TF, Level 1→L1, Unknown→UN, Level 2→L2, Roof→RO</li>
+</ul>
+<p>YAML <code>storeys:</code> kept as Order override (backward compat). Empty YAML =
+auto-discover. BOM IDs change with auto-derived codes (e.g. <code>SH_ROOF_STR</code> →
+<code>SH_RO_STR</code>) — opaque keys, no functional impact.</p>
+<h4 id="scope-excludes-for-compositionbombuilder-s100-p128">Scope excludes for CompositionBomBuilder (S100-p128)<a class="headerlink" href="#scope-excludes-for-compositionbombuilder-s100-p128" title="Permanent link">&para;</a></h4>
+<p><strong>Status:</strong> DONE (<a href="https://github.com/red1oon/BIMCompiler/commit/f807bb3c">f807bb3c</a>)</p>
+<p>Elements assigned to SET BOMs by ScopeBomBuilder are excluded from
+CompositionBomBuilder mirror partition. Fixes DX reconciliation delta +50→0
+(furniture was double-counted in both SET BOMs and half-unit).</p>
+<p>DX YAML <code>floor_rooms</code> removed — dead code since P125.</p>
+<h4 id="ifc-assembly-boms-s100-p129">IFC assembly BOMs (S100-p129)<a class="headerlink" href="#ifc-assembly-boms-s100-p129" title="Permanent link">&para;</a></h4>
+<p><strong>Status:</strong> DONE (<a href="https://github.com/red1oon/BIMCompiler/commit/1153671c">1153671c</a>)</p>
+<p>StructuralBomBuilder reads <code>rel_aggregates</code> from extraction DB. Groups children
+by parent GUID, creates ASSEMBLY BOMs for groups with 2+ children. MAKE lines
+link FLOOR → ASSEMBLY. Elements not in any assembly stay as flat leaves.</p>
+<ul>
+<li><strong>SH:</strong> 2 curtain wall assemblies (13 children each, factorized to 4 BOM lines)</li>
+<li><strong>DX:</strong> 2 stair assemblies (3 children each)</li>
+<li><strong>FK/IN:</strong> No rel_aggregates matches — zero regression</li>
+</ul>
+<p>Phantom parents (IfcCurtainWall, IfcStair) have no <code>elements_meta</code> entry —
+assembly structure visible only via <code>rel_aggregates</code> child_guid join.</p>
 <h3 id="105-investigation-tasks">10.5 Investigation Tasks<a class="headerlink" href="#105-investigation-tasks" title="Permanent link">&para;</a></h3>
 <ol>
 <li>Count Java files that read M_Product from component_library.db vs ERP.db</li>

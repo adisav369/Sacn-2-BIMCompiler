@@ -3949,8 +3949,8 @@ The visual newcomers started with geometry, not IFC. Adding real IFC compliance
 core. <a href="https://bimcorner.com/the-ifc-confusion-why-so-many-still-dont-get-openbim-and-how-to-fix-it/">Most tools treat IFC as a file format</a>,
 not a data model. We treat it as structured input to a database pipeline.</p>
 <p><strong>5. Domain-agnostic compilation — one pipeline for any facility type.</strong>
-The same 12-stage pipeline that compiles a 55-element house also compiles a
-48,428-element airport terminal, a 48-element bridge, a 53-element road, and a
+The same 12-stage pipeline that compiles a single-storey house also compiles a
+multi-storey airport terminal, a bridge, a road, and a
 73-element railway. No code changes per domain — only a ~30-line YAML mapping
 segments and disciplines. VerbDetector, BOMWalker, tack convention, delta tests,
 and G1-G6 gates are all domain-agnostic. No competitor validates infrastructure
@@ -4373,7 +4373,7 @@ not screenshots.</p>
 <tbody>
 <tr>
 <td><strong>7 Rosetta Stones (4 building + 3 infra)</strong></td>
-<td>SH (55), FK (82), DX (1099), TE (48,428), BR (48), RD (53), RL (73)</td>
+<td>SH, FK, DX, TE, BR, RD, RL (counts in PROGRESS.md)</td>
 </tr>
 <tr>
 <td>SH 9/10, FK 9/10, BR 10/10, RD 4/4, RL 4/4</td>
@@ -4392,8 +4392,8 @@ not screenshots.</p>
 <td>TILE, ROUTE, FRAME, CLUSTER — 93% compression on rail</td>
 </tr>
 <tr>
-<td>63 BIM COBOL verbs, 166+ witnesses</td>
-<td>Pipeline: 9 stages, seal v20 (74 files INTACT)</td>
+<td>77 BIM COBOL verbs, 166+ witnesses</td>
+<td>Pipeline: 12 stages, seal v20 (74 files INTACT)</td>
 </tr>
 <tr>
 <td><strong>BIM Designer Phase G (G-1..G-7 DONE)</strong></td>

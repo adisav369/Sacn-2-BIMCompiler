@@ -4403,13 +4403,13 @@ end-to-end and capture the result.</p>
 <ol>
 <li>Run <code>./scripts/run_RosettaStones.sh classify_sh.yaml</code> → SH output.db</li>
 <li>Open Bonsai, load output.db via Federation addon's "Load Federation DB"</li>
-<li>Verify: 55 elements visible, correct storey hierarchy, materials assigned</li>
+<li>Verify: 58 elements visible, correct storey hierarchy, materials assigned</li>
 <li>Screenshot → <code>~/Pictures/Screenshots/SH_3D_proof.png</code></li>
 <li>Add screenshot path to <code>RosettaStoneGateTest.java</code> G7 claim comment</li>
 </ol>
 <h3 id="44-wire-action-optional-for-programmatic-screenshot">§4.4 Wire Action (optional — for programmatic screenshot)<a class="headerlink" href="#44-wire-action-optional-for-programmatic-screenshot" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>→ {&quot;action&quot;:&quot;screenshot&quot;,&quot;buildingId&quot;:&quot;Ifc4_SampleHouse&quot;,&quot;outputPath&quot;:&quot;/tmp/sh_3d.png&quot;}
-← {&quot;success&quot;:true,&quot;path&quot;:&quot;/tmp/sh_3d.png&quot;,&quot;elementCount&quot;:55,&quot;format&quot;:&quot;PNG&quot;}
+← {&quot;success&quot;:true,&quot;path&quot;:&quot;/tmp/sh_3d.png&quot;,&quot;elementCount&quot;:58,&quot;format&quot;:&quot;PNG&quot;}
 </code></pre></div>
 <p>This is a <strong>convenience action</strong> — the real proof is the manual screenshot.
 The wire action calls <code>bpy.ops.render.opengl()</code> via the bridge.</p>
@@ -4425,7 +4425,7 @@ The wire action calls <code>bpy.ops.render.opengl()</code> via the bridge.</p>
 <tbody>
 <tr>
 <td>W-3D-VIS-1</td>
-<td>SH building loads in Bonsai with 55 visible objects</td>
+<td>SH building loads in Bonsai with 58 visible objects</td>
 <td>Visual</td>
 </tr>
 <tr>
