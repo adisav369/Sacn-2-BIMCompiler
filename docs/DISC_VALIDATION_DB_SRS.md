@@ -1194,20 +1194,17 @@ references with diameter, length, and position. Geometry is derived from the BOM
 
 #### Known Gaps
 
-##### Gap 1: Ceiling void routing
+##### Gap 1: Ceiling void routing — CLOSED (P118)
 
 **Problem:** All 6 builders route at `floor.zMm()` (floor slab top). In
 practice, pipes and ducts run in the ceiling void — underside of the slab
 above, minus clearance.
 
-**Fix needed:** Add `BuildingGeometry.ceilingHeight(floorRef)` =
-`nextFloor.zMm - slabThickness(nextFloor) - clearanceMm`. Each builder's
-horizontal FOLLOW ops should use ceiling Z, not floor Z.
-
-**Industry practice:** Revit requires manual elevation offset. GenMEP uses a
-voxel cost function that penalizes routing outside the void. EVOLVE MEP lets
-the user set a pathway elevation. Our fix is simpler — derive ceiling Z from
-the ARC data we already have.
+**Fix (P118, S100-p118):** `ceilingHeightMm(floorRef)` added to
+`BuildingGeometry` + `SqlBuildingGeometry`. All 6 RouteBuilders updated:
+horizontal MEP runs at ceiling void Z (`nextFloor.z - slabThickness - 50mm
+clearance`). P118b: `SqlBuildingGeometry.floors()` now uses absolute Z from
+walked placements instead of BOM-relative `c_orderline dz`.
 
 ##### Gap 2: No obstacle avoidance during routing
 
@@ -1245,10 +1242,10 @@ SH: ELEC 15 + SP 13 verb lines. DX: ELEC 25 + SP 23.
 | Concern | Status | Path to fix |
 |---------|--------|-------------|
 | Hanger/support spacing | EXISTS (`HangVerb`, SMACNA 1200mm) | Already a verb — wire into RouteBuilder output |
-| Insulation | MISSING | Add insulation product as BOM child of pipe/duct segment. Thickness from `ad_sysconfig` per discipline |
+| Insulation | **CLOSED** (P121) | Insulation as BOM child per discipline: FP 25mm (fire-rated), ACMV 50mm (thermal), CW 25mm (condensation), SP/ELEC 0mm |
 | Soffit clearance | MISSING | Derive from ceiling void height. Minimum 50mm below soffit per MS 1525 |
 | Access/maintenance points | MISSING | Valves and cleanouts at branch points. SP needs cleanout access per MS 1228 §5 |
-| LPG wall thickness | BUG | `LpgRouteBuilder` calls `slabThickness()` for wall penetration — should query wall thickness |
+| LPG wall thickness | **CLOSED** (P121) | `wallThickness(floorRef)` added to `BuildingGeometry`. Queries `c_orderline` for LEAF WALL elements. Fallback: 200mm |
 
 ##### Gap 5: Standard citation depth — CLOSED (P120)
 

@@ -445,14 +445,14 @@ the single-transaction orchestrator that produces `library/{PREFIX}_BOM.db`:
 | 2. Create schema | [`IFCtoBOMPipeline:234`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Creates `m_bom`, `m_bom_line`, `ad_sysconfig` tables (recipe + integrity hash) |
 | 3. Extract | [`ExtractionPopulator.populate()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionPopulator.java) | `component_library.db` | Reference DB → `I_Element_Extraction`, sets `M_Product_ID = element_ref`, imports missing geometry blobs |
 | 4. Read extraction | [`ExtractionReader.readByStorey()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ExtractionReader.java) | — | Reads `I_Element_Extraction` grouped by storey. **FAIL if NULL M_Product_ID** |
-| ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if extraction has storeys not in YAML** |
+| ↳ Pre-flight | `IFCtoBOMPipeline` | — | Storeys auto-discovered from extraction Z-bands (P127). YAML `storeys:` is optional override |
 | 5a. Product catalog | [`ProductRegistrar.ensureProductCatalog()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Creates M_Product in persistent catalog. **INSERT OR IGNORE = reuse across buildings** |
 | 5b. Product images | [`ProductRegistrar.ensureProductImages()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ProductRegistrar.java) | `component_library.db` | Joins `M_Product × I_Geometry_Map` (on product_id = element_ref, filtered by building_type) → `M_Product_Image` |
 | ↳ Pre-flight | `IFCtoBOMPipeline` | — | **FAIL if any product has no geometry_hash** |
 | ~~5c. Copy products~~ | ~~`ProductRegistrar.ensureProducts()`~~ | ~~`*_BOM.db`~~ | **DEAD CODE (R7):** BOMWalker reads M_Product from component_library.db via `compConn`. Copy to BOM DB is no longer needed — pending removal |
-| 6. Scope spaces | [`ScopeBomBuilder.build()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) | `*_BOM.db` | Assigns elements to rooms by centroid-in-AABB → SET BOMs |
+| 6. Scope spaces | [`ScopeBomBuilder.build()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/ScopeBomBuilder.java) | `*_BOM.db` | Assigns elements to rooms via IFC `rel_contained_in_space` → SET BOMs. Scope box fallback for buildings without IfcSpace data (P125) |
 | 7. Composition | [`CompositionBomBuilder.build()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/CompositionBomBuilder.java) | `*_BOM.db` | Mirror partition → half-unit LEAF lines + pair container (2 children) |
-| 8. Structural | [`StructuralBomBuilder.build()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) | `*_BOM.db` | BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children |
+| 8. Structural | [`StructuralBomBuilder.build()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/StructuralBomBuilder.java) | `*_BOM.db` | BUILDING BOM header + FLOOR STR BOMs with element LEAF lines + MAKE children. Reads `rel_aggregates` for IFC assembly BOMs (P129) |
 | 9. Room BOMs | [`FloorRoomBomBuilder.build()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/FloorRoomBomBuilder.java) | `*_BOM.db` | Static children from YAML + room template LEAF refs |
 | 10. QA gate | [`BomValidator.validateAndReport()`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/BomValidator.java) | — | Pre-commit validation: FAIL → rollback, broken data never reaches disk |
 | 11. Commit | [`IFCtoBOMPipeline`](https://github.com/red1oon/BIMCompiler/blob/master/IFCtoBOM/src/main/java/com/bim/ifctobom/IFCtoBOMPipeline.java) | `*_BOM.db` | Integrity hash + commit transaction |
@@ -477,12 +477,13 @@ Schema reference: [`DATA_MODEL.md`](DATA_MODEL.md).
 
 ### Step 6 — Compilation and delta verification
 
-The same `run_RosettaStones.sh` invocation continues after BOM creation:
+The same `run_RosettaStones.sh` invocation continues after BOM creation.
+Compilation runs the **12-stage pipeline** ([`BOMBasedCompilation.md` §5](BOMBasedCompilation.md)):
 
 | Step | Code | What it does |
 |------|------|--------------|
-| Prepare compile DB | [`run_RosettaStones.sh:116`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | Copies `*_BOM.db` → temp `_XX_compile.db` |
-| Compile | [`CompilationPipeline.java`](https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | C_OrderLine → BOM explosion → elements |
+| Prepare compile DB | [`run_RosettaStones.sh`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | Copies `*_BOM.db` → temp `_XX_compile.db` |
+| Compile (12 stages) | [`CompilationPipeline.java`](https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/main/java/com/bim/compiler/dsl/CompilationPipeline.java) | Metadata → Compile → Write → Route → Verb → Digest → Geometry → Prove (+ 4 internal stages) |
 | Contracts | [`RosettaStoneGateTest.java`](https://github.com/red1oon/BIMCompiler/blob/master/DAGCompiler/src/test/java/com/bim/compiler/contract/RosettaStoneGateTest.java) | G1-G6 gate tests |
 | Rule 8 | [`run_RosettaStones.sh`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | All `M_BOM_Line` offsets within parent AABB envelope |
 | Clash check | [`run_RosettaStones.sh`](https://github.com/red1oon/BIMCompiler/blob/master/scripts/run_RosettaStones.sh) | 0 furniture AABB overlaps |
