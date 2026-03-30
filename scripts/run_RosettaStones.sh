@@ -1,36 +1,23 @@
 #!/bin/bash
 # ============================================================
-# BIM Compiler — YAML-Driven Rosetta Stone Pipeline
+# BIM Compiler — Rosetta Stone Pipeline
 #
-# PURPOSE: Compile buildings from classification YAML, producing:
-#   *_BOM.db   = clean per-building BOM dictionary (IFCtoBOM pipeline)
-#   *.db       = compilation output (C_OrderLine → BOM explosion → elements)
-# Then run contract tests and fidelity checks against reference.
+# PURPOSE: Extract IFC → *_BOM.db, compile → output.db,
+#   then run contract tests (G1-G6) and fidelity checks (C8/C9).
 #
 # ── ANTI-DRIFT: READ BEFORE EDITING ──────────────────────────
 #
 # NO monolithic BOM.db — only per-building *_BOM.db files.
 # Compilation uses a temp _XX_compile.db (e.g. _SH_compile.db)
-# passed to Java via -Dbom.db system property. Java code reads
-# System.getProperty("bom.db") — never hardcodes a path.
+# passed to Java via -Dbom.db system property.
 #
-# Session process (4 steps):
-#   1. rm SH_BOM.db → re-extract (only when IFCtoBOM code changed)
-#   2. rm DX_BOM.db → re-extract (only when IFCtoBOM code changed)
-#   3. rm output/SH_*.db → recompile (only when DAGCompiler code changed)
-#   4. rm output/DX_*.db → recompile (only when DAGCompiler code changed)
+# YAML is Order input only (BIM Designer opt-in). For Rosetta
+# Stone EXTRACTED buildings, the IFC file is the sole spatial
+# source. YAML provides prefix/building_type/rootBOM identity.
 #
-# Analysis docs (read before modifying a building):
-#   SH: docs/DATA_MODEL.md, docs/BOMBasedCompilation.md
-#   DX: docs/DuplexAnalysis.md
-#   TE: docs/TerminalAnalysis.md
-#
-# YAML-DRIVEN: The classification YAML determines everything:
-#   prefix          → BOM DB name ({PREFIX}_BOM.db)
-#   building_type   → extraction source
-#   doc_sub_type    → compilation parameter
-#   product_category   → compilation parameter
-#   building_bom_id → singularity check
+# Per-category scripts (RE/CO/IN/ST) archived to scripts/archive/.
+# All buildings now run in a single loop. Failures are logged,
+# not fatal — the fleet continues through all buildings.
 #
 # Modules (sourced):
 #   lib_rosetta_helpers.sh  — parse_yaml, print_header, prepare/cleanup_compile_db
@@ -39,13 +26,14 @@
 #   rosetta_fidelity.sh     — run_fidelity (C8/C9 geometry checks)
 #
 # Usage:
-#   ./scripts/run_RosettaStones.sh                          # all YAMLs in resources/
+#   ./scripts/run_RosettaStones.sh                          # all buildings
 #   ./scripts/run_RosettaStones.sh classify_sh.yaml         # SH only
-#   ./scripts/run_RosettaStones.sh classify_dx.yaml         # DX only
 #   ./scripts/run_RosettaStones.sh classify_sh.yaml delta   # delta only (skip compile)
 # ============================================================
 
-set -e
+set -uo pipefail
+# NOTE: set -e deliberately omitted — individual building failures must not
+# kill the fleet. Each building handles its own errors via verdict().
 
 SCRIPT_DIR="$(dirname "$0")"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -100,20 +88,11 @@ for arg in "$@"; do
     esac
 done
 
-# Default: run all 4 Product Category groups (RE, CO, IN, ST)
-# DocType = ConstructionOrder (single). Grouping is by M_Product_Category.
+# Default: run ALL classify_*.yaml in resources/ (no category grouping)
 if [ ${#YAML_FILES[@]} -eq 0 ]; then
-    EXTRA_ARGS=""
-    [ "$DELTA_ONLY" = "true" ] && EXTRA_ARGS="$EXTRA_ARGS delta"
-    [ "$DIFF_TSV" = "true" ] && EXTRA_ARGS="$EXTRA_ARGS --diff"
-    for pc in RE CO IN ST; do
-        echo ""
-        echo "╔══════════════════════════════════════════╗"
-        echo "║  M_Product_Category: ${pc}"
-        echo "╚══════════════════════════════════════════╝"
-        "$SCRIPT_DIR/run_RosettaStones_${pc}.sh" $EXTRA_ARGS || true
+    for f in "${YAML_DIR}"/classify_*.yaml; do
+        [ -f "$f" ] && YAML_FILES+=("$f")
     done
-    exit 0
 fi
 
 if [ ${#YAML_FILES[@]} -eq 0 ]; then
@@ -121,22 +100,27 @@ if [ ${#YAML_FILES[@]} -eq 0 ]; then
     exit 1
 fi
 
+echo "  Buildings: ${#YAML_FILES[@]}"
+
 # ── Main Loop ───────────────────────────────────────────────
 
 # Compile Java (unless delta-only)
 if [ "$DELTA_ONLY" != "true" ]; then
     print_header "COMPILE (all modules)"
-    mvn install -pl orm-core,ORMSandbox -DskipTests -q
-    mvn compile -pl DAGCompiler -q
+    if ! mvn install -pl orm-core,ORMSandbox -DskipTests -q; then
+        echo "  [FATAL] Java compile failed"; exit 1
+    fi
+    if ! mvn compile -pl DAGCompiler -q; then
+        echo "  [FATAL] DAGCompiler compile failed"; exit 1
+    fi
     echo "  Compile: OK"
 fi
 
 echo ""
-echo "  YAML files: ${YAML_FILES[*]}"
 
-# Process each YAML
+# Process each building
 for yaml_file in "${YAML_FILES[@]}"; do
-    # Parse YAML fields
+    # Parse building identity from YAML
     PREFIX=$(parse_yaml "$yaml_file" "prefix")
     BUILDING_TYPE=$(parse_yaml "$yaml_file" "building_type")
     DOC_SUB_TYPE=$(parse_yaml "$yaml_file" "doc_sub_type")
@@ -149,10 +133,9 @@ for yaml_file in "${YAML_FILES[@]}"; do
     OUTPUT_BASE="DAGCompiler/lib/output/$(echo "$BUILDING_TYPE" | tr '[:upper:]' '[:lower:]')"
 
     print_header "BUILDING: ${PREFIX} (${BLDG_NAME})"
-    echo "  YAML:           $(basename "$yaml_file")"
     echo "  BOM DB:         ${BOM_DB}"
     echo "  Building type:  ${BUILDING_TYPE}"
-    echo "  DocType:        ${PRODUCT_CATEGORY}_${DOC_SUB_TYPE}"
+    echo "  Category:       ${PRODUCT_CATEGORY}"
     echo "  Building BOM:   ${BUILDING_BOM_ID}"
     echo "  Provenance:     ${PROVENANCE:-EXTRACTED}"
     echo "  Output base:    ${OUTPUT_BASE}"
@@ -289,15 +272,15 @@ done
 
 # ── Summary ──────────────────────────────────────────────────
 print_header "ROSETTA STONE SUMMARY"
-echo "  Pipeline: YAML → IFCtoBOM → *_BOM.db → DAGCompiler → *.db"
+echo "  Pipeline: IFC → *_BOM.db → DAGCompiler → output.db"
 echo ""
 echo "  Single compilation path: C_OrderLine → BOM explosion → elements."
 echo "  Contract tests (G1-G6) + fidelity (C8/C9) verify correctness."
 echo ""
-echo "  YAMLs processed:"
+echo "  Buildings processed: ${#YAML_FILES[@]}"
 for yf in "${YAML_FILES[@]}"; do
     yf_prefix=$(parse_yaml "$yf" "prefix")
-    echo "    $(basename "$yf") → library/${yf_prefix}_BOM.db"
+    echo "    ${yf_prefix} → library/${yf_prefix}_BOM.db"
 done
 echo ""
 finish_log

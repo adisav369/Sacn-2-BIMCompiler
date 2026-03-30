@@ -19,7 +19,7 @@ _c9_query() {
     local ref_db="$2"
     local select_clause="$3"
     local extra_clauses="$4"
-    local sqlite_flags="$5"  # optional: e.g. "-header -column" for detail output
+    local sqlite_flags="${5:-}"  # optional: e.g. "-header -column" for detail output
 
     local IFC_FILTER="'IfcDoor','IfcWindow','IfcFurnishingElement','IfcFurniture','IfcWall','IfcPlate','IfcSlab','IfcRoof'"
     local ORDER_COLS="ROUND(rr.minX*100), ROUND(rr.minY*100), ROUND(rr.minZ*100), ROUND((rr.maxX-rr.minX)*1000), ROUND((rr.maxY-rr.minY)*1000), ROUND((rr.maxZ-rr.minZ)*1000), ROUND(rr.maxX*1000), ROUND(rr.maxY*1000), ROUND(rr.maxZ*1000)"

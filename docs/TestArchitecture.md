@@ -231,8 +231,8 @@ SHA256 hash of 73 files (63 test + 10 critical production). Super-hash = hash of
 2. **Structural guards (L2)** — ArchUnit, G4-TAMPER T1-T16, cross-DB joins, EntityType guards
 3. **Git diff review (L3)** — every `[SEAL]` commit shows exact diff
 
-**Sealed:** 2026-03-30 (v17: S100-p123c GEO SUMMARY in CompilationPipeline)
-**Super-hash:** `af3bcae75d8aef4b996e42b6216e5667b52e583d98cf2004363976af83c15b8d`
+**Sealed:** 2026-03-30 (v18: S102 PATTERN ON + script cleanup)
+**Super-hash:** `2c1d96238b15548cb3ef19dc662eb59a7ebf1934172a04be60199d950221ee49`
 
 ```
 bash scripts/verify_test_seal.sh            # quick check

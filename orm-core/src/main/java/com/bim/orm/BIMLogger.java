@@ -56,10 +56,10 @@ public class BIMLogger {
 
     // ── PATTERN debug mode — storey/container assignment logging ──
     // Implementing DISC_VALIDATION_DB_SRS §10.4.10 — PATTERN logging channel
-    // EYES_SRS §4.7 — extraction-side diagnostics (default OFF)
+    // EYES_SRS §4.7 — extraction-side diagnostics (default ON — it IS the LMP proof)
     private static final boolean PATTERN_ENABLED =
-        "true".equalsIgnoreCase(System.getProperty("bim.pattern.debug",
-            readBimProperty("bim.pattern.debug", "false")));
+        !"false".equalsIgnoreCase(System.getProperty("bim.pattern.debug",
+            readBimProperty("bim.pattern.debug", "true")));
 
     /**
      * Resolve initial level — iDempiere convention: external properties, not hardcoded.

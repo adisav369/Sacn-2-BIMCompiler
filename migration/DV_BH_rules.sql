@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- BH: PCERT Building Hvac (Building_Hvac)
 -- Source: DAGCompiler/lib/output/building_hvac.db
--- Generated: 2026-03-30 07:52
+-- Generated: 2026-03-30 23:14
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

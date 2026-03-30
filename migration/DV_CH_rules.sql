@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CH: Clinic HVAC (Clinic_HVAC)
 -- Source: DAGCompiler/lib/output/clinic_hvac.db
--- Generated: 2026-03-30 07:50
+-- Generated: 2026-03-30 23:14
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
