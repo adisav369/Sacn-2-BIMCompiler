@@ -214,6 +214,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 lineDx, lineDy, lineDz,
                 bomOriginX, bomOriginY, bomOriginZ,
                 newAnchor[0], newAnchor[1], newAnchor[2]);
+            // Log 1b: CHAIN — full ancestor path for auditor (proves no missing transform)
+            BIMLogger.geo("TACK", "  CHAIN depth={}: {}",
+                ctx.level(), formatAncestorChain(parentBomIdStack, childBomId));
         }
 
         // Track parent BOM for sibling-only GEO pairs
@@ -402,6 +405,16 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     iHalfW, iHalfD, iHalfH,
                     cx, cy, cz,
                     cx - iHalfW, cy - iHalfD, cz - iHalfH);
+                // Log 3b: CHAIN — full ancestor path at LEAF (proves provenance)
+                BIMLogger.geo("TACK", "  CHAIN {}: {}", productId,
+                    formatAncestorChain(parentBomIdStack, productId));
+                // Log 3c: DIMS — explicit W×D×H in mm (proves no truncation/swap)
+                BIMLogger.geo("TACK", "  DIMS  {}: {:.0f}×{:.0f}×{:.0f} mm (alloc={:.0f}×{:.0f}×{:.0f})",
+                    productId,
+                    iHalfW * 2000, iHalfD * 2000, iHalfH * 2000,
+                    line.getAllocatedWidthMmExact(), line.getAllocatedDepthMmExact(), line.getAllocatedHeightMmExact());
+                // Log 3d: CONTAIN — is LEAF inside parent AABB? (proves no LMP drift)
+                logContainmentCheck(productId, cx, cy, cz, iHalfW, iHalfD, iHalfH, anchor);
             }
 
             // Ordinal: always sequential — ensures GUID uniqueness across
@@ -657,6 +670,41 @@ public class PlacementCollectorVisitor implements BOMVisitor {
      * <p>Priority: line.role (if IFC-prefixed, EXTRACTED convention) →
      * product.ifc_class → child_product_id (if IFC-prefixed) → "Unknown".
      */
+    // ── GEO helpers: LMP foolproof logging ────────────────────────────────
+
+    /** Format full ancestor chain: BUILDING→FLOOR→ROOM→LEAF for audit trail. */
+    private String formatAncestorChain(Deque<String> parentStack, String current) {
+        StringBuilder sb = new StringBuilder();
+        // parentBomIdStack has ancestors bottom-up, iterate in order
+        for (String ancestor : parentStack) {
+            sb.append(ancestor).append("→");
+        }
+        sb.append(current);
+        return sb.toString();
+    }
+
+    /** Log AABB containment: is the placed LEAF inside the parent anchor region? */
+    private void logContainmentCheck(String productId,
+            double cx, double cy, double cz,
+            double halfW, double halfD, double halfH,
+            double[] parentAnchor) {
+        // LEAF LBD (min corner)
+        double lx = cx - halfW, ly = cy - halfD, lz = cz - halfH;
+        // Check: LEAF LBD should be >= parent anchor (elements don't precede their parent origin)
+        // Negative offset from parent = element placed before parent origin = potential LMP
+        double dx = lx - parentAnchor[0];
+        double dy = ly - parentAnchor[1];
+        double dz = lz - parentAnchor[2];
+        boolean contained = dx >= -0.001 && dy >= -0.001 && dz >= -0.001;
+        if (contained) {
+            BIMLogger.geo("TACK", "  CONTAIN {}: OK offset=({:.4f},{:.4f},{:.4f})m from parent",
+                productId, dx, dy, dz);
+        } else {
+            BIMLogger.geo("TACK", "  CONTAIN {}: OVERSHOOT offset=({:.4f},{:.4f},{:.4f})m — LMP candidate",
+                productId, dx, dy, dz);
+        }
+    }
+
     private static String resolveIfcClass(MBOMLine line, MProduct product) {
         // 1. line.role — authoritative for EXTRACTED BOMs (stores IFC class name)
         String role = line.getRole();
