@@ -2085,6 +2085,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#10461-discipline-separation-two-class-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.6.1 Discipline Separation — Two-Class Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#1047-gof-design-patterns" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4240,6 +4251,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#10461-discipline-separation-two-class-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10.4.6.1 Discipline Separation — Two-Class Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#1047-gof-design-patterns" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -6189,11 +6211,32 @@ Category = the substitution shelf (designer can swap products within it).</p>
 3. <strong>AD_Val_Rule</strong> — user-initiated per-line override/addition on specific exploded sub-lines</p>
 <p>Jurisdiction-swappable: same BOM, same Org, different AD_DocEvent_Rule set
 for Malaysian (UBBL) vs US (NFPA) code. BOM and ASI don't change.</p>
-<p>For <strong>extracted buildings</strong> (TE, DX), the designer already applied these
-recipes manually. The extraction captured the result. The compiler emits
-at tack offsets (PLACE verb). For <strong>generative buildings</strong>, the compiler
-applies the shared recipes using verb Strategy + DocEvent per Org + ASI.
-AD_Val_Rule validates the output.</p>
+<h3 id="10461-discipline-separation-two-class-architecture">10.4.6.1 Discipline Separation — Two-Class Architecture<a class="headerlink" href="#10461-discipline-separation-two-class-architecture" title="Permanent link">&para;</a></h3>
+<p>Discipline separation spans two pipeline classes:</p>
+<p><strong>Class A — IFCtoBOM (extraction):</strong> Produces the ARC+STR envelope only.
+MEP elements (FP, ACMV, ELEC, CW, SP, LPG) are <strong>not</strong> written into the
+per-building <code>*_BOM.db</code>. IFCtoBOM extracts element counts per discipline
+from <code>elements_meta.discipline</code> and writes them as qty hints to <code>ad_sysconfig</code>
+in the BOM DB (e.g., <code>FP_QTY=99</code>). YAML carries user intent for discipline
+qty override: <code>disciplines: [{disc: FP, qty: 99}]</code>. If qty=0 or absent,
+the compiler generates for the whole building per discipline rules.</p>
+<p><strong>Class B — DAGCompiler (compilation):</strong> Product Callout reads ARC+STR
+OrderLine, then creates DISCIPLINE OrderLines pointing to shared recipes
+in ERP.db (<code>FP_SYSTEM</code>, <code>ACMV_SYSTEM</code>, etc.). Each discipline OrderLine
+carries Qty from ad_sysconfig (or YAML override). DocEvent per Org fires
+on each discipline OrderLine — applies jurisdiction rules (NFPA 13, UBBL,
+MS 1228). RouteBuilder/CrawlRouter generates MEP routing until Qty
+terminals are served. AD_Val_Rule validates the output.</p>
+<p><strong>Current state (S102 — INCORRECT):</strong> <code>DisciplineBomBuilder</code> writes ALL
+elements (ARC + MEP) flat under FLOOR with AD_Org_ID as a tag. No
+discipline separation. No ERP.db recipe consumption. RouteBuilders fire
+but produce skeleton only (258 edges for TE vs 8,056 MEP elements).
+The extraction does the compiler's job — MEP elements are placed from
+IFC positions, not from discipline recipes.</p>
+<p><strong>Corrective:</strong> See prompt <code>00b_discipline_separation.txt</code>.</p>
+<p>For <strong>generative buildings</strong>, the compiler applies the shared recipes
+using verb Strategy + DocEvent per Org + ASI. AD_Val_Rule validates
+the output.</p>
 <h3 id="1047-gof-design-patterns">10.4.7 GoF Design Patterns<a class="headerlink" href="#1047-gof-design-patterns" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
