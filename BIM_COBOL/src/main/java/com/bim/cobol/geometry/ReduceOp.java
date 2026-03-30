@@ -18,6 +18,11 @@ public record ReduceOp(double newDiameterMm) implements CrawlOp {
     }
 
     @Override
+    public String toVerbLine() {
+        return String.format("REDUCE %.0f", newDiameterMm);
+    }
+
+    @Override
     public CrawlState apply(CrawlState state, CrawlRouter.ResultBuilder builder) {
         BIMLogger.fine(TAG, "REDUCE: pos={} fromDia={:.0f}mm toDia={:.0f}mm → fitting=REDUCER",
                 state.position(), state.diameterMm(), newDiameterMm);

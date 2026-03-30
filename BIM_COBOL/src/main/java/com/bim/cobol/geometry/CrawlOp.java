@@ -12,4 +12,7 @@ public sealed interface CrawlOp
 
     /** Execute this op against the given state, appending results to the builder. */
     CrawlState apply(CrawlState state, CrawlRouter.ResultBuilder builder);
+
+    /** Declarative verb line for audit logging — the auditor reads these. */
+    String toVerbLine();
 }

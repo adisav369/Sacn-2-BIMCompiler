@@ -17,6 +17,11 @@ public record BendOp(double angleDeg) implements CrawlOp {
     }
 
     @Override
+    public String toVerbLine() {
+        return String.format("BEND %.0f", angleDeg);
+    }
+
+    @Override
     public CrawlState apply(CrawlState state, CrawlRouter.ResultBuilder builder) {
         String fittingType = resolveFittingType(Math.abs(angleDeg));
         BIMLogger.fine(TAG, "BEND: pos={} dir={} angle={:.0f}° → fitting={} diameter={:.0f}mm",

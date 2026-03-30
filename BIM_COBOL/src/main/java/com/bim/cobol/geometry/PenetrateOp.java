@@ -22,6 +22,13 @@ public record PenetrateOp(String barrierType, double thicknessMm,
     }
 
     @Override
+    public String toVerbLine() {
+        return fireRated
+                ? String.format("PENETRATE %s %.0f FIRE_RATED", barrierType, thicknessMm)
+                : String.format("PENETRATE %s %.0f", barrierType, thicknessMm);
+    }
+
+    @Override
     public CrawlState apply(CrawlState state, CrawlRouter.ResultBuilder builder) {
         BIMLogger.fine(TAG, "PENETRATE: pos={} barrier={} thickness={:.0f}mm fireRated={} diameter={:.0f}mm",
                 state.position(), barrierType, thicknessMm, fireRated, state.diameterMm());

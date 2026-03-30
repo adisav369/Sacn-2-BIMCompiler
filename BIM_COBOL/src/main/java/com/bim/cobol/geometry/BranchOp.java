@@ -21,6 +21,11 @@ public record BranchOp(List<List<CrawlOp>> branchOps,
     private static final String TAG = "CRAWL";
 
     @Override
+    public String toVerbLine() {
+        return String.format("BRANCH %d DIAMETER %.0f", branchOps.size(), branchDiameterMm);
+    }
+
+    @Override
     public CrawlState apply(CrawlState state, CrawlRouter.ResultBuilder builder) {
         String fittingType = branchOps.size() > 1 ? "WYE" : "TEE";
         BIMLogger.fine(TAG, "BRANCH: pos={} fitting={} mainDia={:.0f}mm branchDia={:.0f}mm branches={}",

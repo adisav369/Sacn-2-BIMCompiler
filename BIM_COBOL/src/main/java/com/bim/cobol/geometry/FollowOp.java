@@ -21,6 +21,11 @@ public record FollowOp(double distanceMm, double stockLengthMm) implements Crawl
     }
 
     @Override
+    public String toVerbLine() {
+        return String.format("FOLLOW %.0f STOCK_LENGTH %.0f", distanceMm, stockLengthMm);
+    }
+
+    @Override
     public CrawlState apply(CrawlState state, CrawlRouter.ResultBuilder builder) {
         int segmentCount = (int) Math.ceil(distanceMm / stockLengthMm);
         BIMLogger.fine(TAG, "FOLLOW: pos={} dir={} dist={:.0f}mm stock={:.0f}mm → {} segments",

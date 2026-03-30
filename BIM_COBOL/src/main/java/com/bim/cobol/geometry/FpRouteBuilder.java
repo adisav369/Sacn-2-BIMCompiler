@@ -38,42 +38,35 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
     @Override public double stockLengthMm() { return STOCK_LENGTH_MM; }
 
     @Override
-    public DisciplineRouteResult buildRoute(BuildingGeometry geo) {
+    public RoutePlan plan(BuildingGeometry geo) {
         Point3D start = geo.serviceRoomPosition(DISC);
         List<BuildingGeometry.FloorLevel> floors = geo.floors();
-        BIMLogger.fine(TAG, "FP route: start={} floors={}", start, floors.size());
+        BIMLogger.fine(TAG, "FP plan: start={} floors={}", start, floors.size());
 
         List<CrawlOp> ops = new ArrayList<>();
         int roomCount = 0;
 
-        // Initial state: at pump room, direction UP for riser
         CrawlState initial = new CrawlState(
                 start, new Point3D(0, 0, 1), RISER_DIAMETER_MM, segmentProduct(), DISC);
 
-        double currentZ = start.z() * 1000; // convert to mm
+        double currentZ = start.z() * 1000;
 
         for (int f = 0; f < floors.size(); f++) {
             BuildingGeometry.FloorLevel floor = floors.get(f);
-            double floorZMm = floor.zMm();
             double ceilingZMm = geo.ceilingHeightMm(floor.ref());
 
-            // Rise to ceiling void of this floor (if above current Z)
             double riseDistance = ceilingZMm - currentZ;
             if (riseDistance > 0) {
                 ops.add(new FollowOp(riseDistance, STOCK_LENGTH_MM));
-                // Penetrate slab (fire-rated for FP)
                 double slabMm = geo.slabThickness(floor.ref());
                 ops.add(new PenetrateOp("SLAB", slabMm, true));
             }
 
-            // At ceiling void: bend 90° to horizontal, reduce to main diameter
             ops.add(new BendOp(90));
             if (f == 0) {
-                // First floor: reduce from riser to main diameter
                 ops.add(new ReduceOp(MAIN_DIAMETER_MM));
             }
 
-            // Floor header: follow longest axis
             List<BuildingGeometry.RoomTarget> rooms = geo.roomsOnFloor(floor.ref());
             BuildingGeometry.RoomDimensions floorDims = geo.roomDimensions(floor.ref());
             double headerRun = floorDims != null ? floorDims.longestAxis() : 6000;
@@ -81,7 +74,6 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new FollowOp(headerRun, STOCK_LENGTH_MM));
             }
 
-            // Branch to each room
             if (!rooms.isEmpty()) {
                 List<List<CrawlOp>> branchRoutes = new ArrayList<>();
                 for (BuildingGeometry.RoomTarget room : rooms) {
@@ -97,7 +89,6 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
                 ops.add(new BranchOp(branchRoutes, BRANCH_DIAMETER_MM));
             }
 
-            // Bend back to vertical for next floor riser
             if (f < floors.size() - 1) {
                 ops.add(new BendOp(-90));
             }
@@ -105,11 +96,7 @@ public final class FpRouteBuilder implements DisciplineRouteBuilder {
             currentZ = ceilingZMm;
         }
 
-        CrawlRouter.RouteResult result = CrawlRouter.execute(initial, ops);
-        BIMLogger.fine(TAG, "FP route done: segments={} fittings={} rooms={}",
-                result.segments().size(), result.fittings().size(), roomCount);
-
-        return new DisciplineRouteResult(DISC, result, floors.size(), roomCount,
+        return new RoutePlan(initial, ops, floors.size(), roomCount,
                 "Riser→header→branches→sprinklers (NFPA 13)");
     }
 }

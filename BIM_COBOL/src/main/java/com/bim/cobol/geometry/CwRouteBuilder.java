@@ -38,10 +38,10 @@ public final class CwRouteBuilder implements DisciplineRouteBuilder {
     @Override public double stockLengthMm() { return STOCK_LENGTH_MM; }
 
     @Override
-    public DisciplineRouteResult buildRoute(BuildingGeometry geo) {
+    public RoutePlan plan(BuildingGeometry geo) {
         Point3D start = geo.serviceRoomPosition(DISC);
         List<BuildingGeometry.FloorLevel> floors = geo.floors();
-        BIMLogger.fine(TAG, "CW route: start={} floors={}", start, floors.size());
+        BIMLogger.fine(TAG, "CW plan: start={} floors={}", start, floors.size());
 
         List<CrawlOp> ops = new ArrayList<>();
         int roomCount = 0;
@@ -100,11 +100,7 @@ public final class CwRouteBuilder implements DisciplineRouteBuilder {
             currentZ = ceilingZMm;
         }
 
-        CrawlRouter.RouteResult result = CrawlRouter.execute(initial, ops);
-        BIMLogger.fine(TAG, "CW route done: segments={} fittings={} rooms={}",
-                result.segments().size(), result.fittings().size(), roomCount);
-
-        return new DisciplineRouteResult(DISC, result, floors.size(), roomCount,
+        return new RoutePlan(initial, ops, floors.size(), roomCount,
                 "Tank→riser→header→fixtures (MS 1228)");
     }
 }
