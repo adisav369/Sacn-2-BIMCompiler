@@ -14,8 +14,7 @@ building:
   name: PCERT Infra Plumbing
   dsl_file: dsl_ip.bim
 
-  storeys:
-    "Unknown": { code: MISC, product_category: MISC, role: MISC, seq: 1010 }  # 27 elements
+  # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
 
   # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)
 

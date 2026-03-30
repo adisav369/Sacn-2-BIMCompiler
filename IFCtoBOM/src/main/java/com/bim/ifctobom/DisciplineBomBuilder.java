@@ -4,6 +4,7 @@ import com.bim.ifctobom.ClassificationYaml.BuildingConfig;
 import com.bim.ifctobom.ClassificationYaml.SpatialContainerConfig;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.ifctobom.StructuralBomBuilder.BuildResult;
+import com.bim.orm.BIMLogger;
 
 import java.sql.*;
 import java.util.*;
@@ -156,6 +157,9 @@ public class DisciplineBomBuilder {
             double makeDx = fMinX - allMinX;
             double makeDy = fMinY - allMinY;
             double makeDz = fMinZ - allMinZ;
+
+            BIMLogger.pattern("FLOOR", "Container '{}' (code={}): {} elements, fMinZ={:.3f}m, makeDz={:.3f}m",
+                    storeyName, storeyInfo.code(), elems.size(), fMinZ, makeDz);
 
             insertBomLine(bomConn, buildingBomId, floorBomId, "MAKE",
                     storeyInfo.role(), storeyInfo.seq(), "0",

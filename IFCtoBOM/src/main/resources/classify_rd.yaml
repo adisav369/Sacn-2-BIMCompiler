@@ -14,14 +14,8 @@ building:
   name: IFC Infra Road Sample
   dsl_file: dsl_rd.bim                       # EN-BLOC only — extracted, not generative
 
-  # Infrastructure uses `segments:` — alias for `storeys:`.
-  # Each segment is an IfcRoadPart (carriageway, parking, bridge connection)
-  segments:
-    road  - carriageway:           { code: CW1,  product_category: CW,  role: CARRIAGEWAY,  seq: 1010 }
-    road carriageway:              { code: CW2,  product_category: CW,  role: CARRIAGEWAY,  seq: 1020 }
-    road carriageway - bridge road: { code: CWBR, product_category: CW,  role: CARRIAGEWAY,  seq: 1030 }
-    road - parking:                { code: PKG,  product_category: PKG, role: PARKING,       seq: 1040 }
-    Unknown:                       { code: MISC, product_category: MS,  role: MISC,          seq: 9000 }
+  # segments: removed — auto-discovered from IFC spatial structure (§10.4.13)
+  # IfcRoadPart entries read from extraction DB, Z-ordered.
 
   static_children: []
   # MEP disciplines: defaults to none for IN (§10.4.11 T3.4)
