@@ -1,15 +1,209 @@
 -- ════════════════════════════════════════════════════════
 -- TE: Airport Terminal (SJTII_Terminal)
 -- Source: DAGCompiler/lib/output/sjtii_terminal.db
--- Generated: 2026-03-31 08:09
+-- Generated: 2026-03-31 23:26
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
 -- Use: identify typical element sizes for validation rules
 
+-- ifc_class                   storey        cnt    avg_W_mm  avg_D_mm  avg_H_mm  min_W_mm  max_W_mm
+-- --------------------------  ------------  -----  --------  --------  --------  --------  --------
+-- IfcPlate                    Roof          33324  496.0     150.0     106.0     193.0     500.0   
+-- IfcPipeFitting              Ground Floor  968    56.0      56.0      53.0      6.0       223.0   
+-- IfcPipeSegment              Ground Floor  879    481.0     235.0     223.0     3.0       14869.0 
+-- IfcPipeFitting              Roof          791    56.0      50.0      50.0      7.0       222.0   
+-- IfcPipeFitting              Level 4       747    72.0      66.0      69.0      7.0       291.0   
+-- IfcPipeSegment              Roof          677    799.0     249.0     254.0     7.0       6782.0  
+-- IfcPipeFitting              Level 2       652    65.0      55.0      54.0      6.0       292.0   
+-- IfcPipeFitting              Level 1       633    73.0      66.0      64.0      7.0       271.0   
+-- IfcPipeSegment              Level 2       599    865.0     146.0     260.0     4.0       11858.0 
+-- IfcPipeSegment              Level 1       581    950.0     249.0     190.0     21.0      15561.0 
+-- IfcPipeSegment              Level 4       534    1585.0    544.0     145.0     16.0      55618.0 
+-- IfcSlab                     Foundation    413    1910.0    1502.0    17371.0   300.0     9000.0  
+-- IfcPipeSegment              Level 3       406    142.0     218.0     189.0     19.0      19686.0 
+-- IfcPipeFitting              Level 3       348    53.0      60.0      45.0      6.0       242.0   
+-- IfcBuildingElementProxy     Ground Floor  232    469.0     405.0     518.0     8.0       6508.0  
+-- IfcLightFixture             Ground Floor  230    612.0     481.0     100.0     54.0      1244.0  
+-- IfcDuctFitting              Level 4       225    307.0     292.0     219.0     50.0      1600.0  
+-- IfcFireSuppressionTerminal  Level 3       215    38.0      28.0      68.0      32.0      700.0   
+-- IfcFireSuppressionTerminal  Roof          210    35.0      27.0      63.0      32.0      700.0   
+-- IfcDuctFitting              Level 2       200    324.0     304.0     236.0     50.0      1800.0  
+-- IfcMember                   Level 4       187    2443.0    204.0     2191.0    50.0      27450.0 
+-- IfcFireSuppressionTerminal  Level 2       176    39.0      29.0      70.0      32.0      700.0   
+-- IfcFurniture                Ground Floor  176    1869.0    1343.0    754.0     598.0     2957.0  
+-- IfcFireSuppressionTerminal  Level 1       172    32.0      27.0      58.0      32.0      32.0    
+-- IfcLightFixture             Level 2       172    591.0     840.0     89.0      54.0      1244.0  
+-- IfcDuctSegment              Level 4       170    890.0     1172.0    429.0     95.0      4090.0  
+-- IfcLightFixture             Level 3       153    492.0     983.0     90.0      54.0      1220.0  
+-- IfcBeam                     Level 4       146    3022.0    3307.0    746.0     38.0      11750.0 
+-- IfcDuctSegment              Level 2       145    934.0     1349.0    608.0     133.0     4022.0  
+-- IfcPipeSegment              Foundation    145    1482.0    2755.0    120.0     33.0      24467.0 
+-- IfcMember                   Roof          141    3431.0    143.0     4142.0    50.0      31888.0 
+-- IfcFlowTerminal             Ground Floor  140    409.0     430.0     543.0     25.0      3504.0  
+-- IfcBeam                     Level 3       126    3386.0    2602.0    690.0     300.0     11450.0 
+-- IfcFireSuppressionTerminal  Ground Floor  125    53.0      32.0      93.0      32.0      700.0   
+-- IfcBeam                     Level 1       119    3493.0    2626.0    674.0     300.0     11450.0 
+-- IfcWall                     Ground Floor  118    2525.0    2830.0    5678.0    150.0     35650.0 
+-- IfcDuctFitting              Level 1       116    736.0     462.0     440.0     60.0      2250.0  
+-- IfcLightFixture             Level 1       115    1019.0    518.0     93.0      419.0     1244.0  
+-- IfcBuildingElementProxy     Level 2       109    858.0     1798.0    778.0     46.0      13800.0 
+-- IfcDuctFitting              Ground Floor  106    342.0     263.0     263.0     60.0      1188.0  
+-- IfcDuctSegment              Level 1       104    1175.0    1804.0    472.0     200.0     6658.0  
+-- IfcPipeFitting              Foundation    104    126.0     145.0     127.0     13.0      234.0   
+-- IfcWall                     Level 2       96     3747.0    2892.0    8069.0    150.0     59925.0 
+-- IfcWindow                   Level 2       93     917.0     557.0     3246.0    150.0     1390.0  
+-- IfcAirTerminal              Level 2       92     608.0     595.0     120.0     25.0      1276.0  
+-- IfcSlab                     Level 3       89     5168.0    3761.0    156.0     859.0     28933.0 
+-- IfcDuctSegment              Ground Floor  87     791.0     1239.0    535.0     150.0     7775.0  
+-- IfcColumn                   Level 2       82     675.0     649.0     11770.0   450.0     750.0   
+-- IfcBuildingElementProxy     Level 3       81     138.0     154.0     161.0     46.0      2197.0  
+-- IfcLightFixture             Level 4       81     398.0     344.0     535.0     54.0      1260.0  
+-- IfcValve                    Ground Floor  79     120.0     126.0     236.0     50.0      403.0   
+-- IfcSlab                     Level 1       73     4917.0    3088.0    190.0     1410.0    8420.0  
+-- IfcAirTerminal              Level 4       72     600.0     600.0     102.0     600.0     600.0   
+-- IfcWindow                   Ground Floor  64     744.0     972.0     2491.0    135.0     2500.0  
+-- IfcDoor                     Ground Floor  63     628.0     749.0     2259.0    147.0     1850.0  
+-- IfcLightFixture             Roof          63     675.0     611.0     117.0     54.0      1260.0  
+-- IfcWindow                   Level 3       58     637.0     856.0     2879.0    150.0     1312.0  
+-- IfcSlab                     Level 4       57     3640.0    3895.0    177.0     1410.0    24198.0 
+-- IfcAirTerminal              Level 1       56     488.0     1340.0    167.0     145.0     1840.0  
+-- IfcWall                     Level 3       56     2941.0    2651.0    4392.0    150.0     20990.0 
+-- IfcWall                     Roof          53     3035.0    2283.0    4569.0    150.0     19775.0 
+-- IfcFlowTerminal             Level 3       51     485.0     368.0     493.0     25.0      2723.0  
+-- IfcFlowTerminal             Level 2       44     396.0     362.0     438.0     50.0      2747.0  
+-- IfcSlab                     Ground Floor  43     6172.0    8432.0    81.0      1860.0    31355.0 
+-- IfcAlarm                    Ground Floor  41     128.0     132.0     142.0     28.0      300.0   
+-- IfcCovering                 Ground Floor  38     3762.0    5041.0    16.0      628.0     10400.0 
+-- IfcDuctFitting              Level 3       38     507.0     426.0     353.0     88.0      1800.0  
+-- IfcMember                   Ground Floor  35     605.0     1780.0    1279.0    50.0      4030.0  
+-- IfcMember                   Level 2       34     622.0     1832.0    1250.0    50.0      4005.0  
+-- IfcDuctSegment              Roof          32     1053.0    900.0     380.0     200.0     8320.0  
+-- IfcMember                   Level 1       32     658.0     1927.0    1291.0    50.0      4005.0  
+-- IfcColumn                   Ground Floor  31     552.0     482.0     8000.0    450.0     750.0   
+-- IfcAirTerminal              Ground Floor  30     350.0     294.0     100.0     190.0     650.0   
+-- IfcColumn                   Level 3       30     545.0     459.0     3875.0    450.0     600.0   
+-- IfcDuctSegment              Level 3       30     1860.0    2282.0    495.0     250.0     5918.0  
+-- IfcDoor                     Level 2       29     440.0     763.0     2142.0    147.0     1050.0  
+-- IfcDuctFitting              Roof          28     369.0     395.0     298.0     108.0     975.0   
+-- IfcBuildingElementProxy     Level 4       27     696.0     2063.0    554.0     50.0      5276.0  
+-- IfcDoor                     Level 3       27     481.0     789.0     2134.0    147.0     1780.0  
+-- IfcAirTerminal              Level 3       26     477.0     452.0     117.0     300.0     690.0   
+-- IfcSlab                     Level 2       24     7544.0    5567.0    288.0     859.0     31360.0 
+-- IfcBeam                     Roof          21     2757.0    2441.0    631.0     300.0     5675.0  
+-- IfcBeam                     Foundation    20     18755.0   22471.0   750.0     800.0     60000.0 
+-- IfcBuildingElementProxy     Level 1       20     3232.0    1910.0    1028.0    300.0     5681.0  
+-- IfcFlowTerminal             Foundation    18     608.0     725.0     723.0     380.0     993.0   
+-- IfcBuildingElementProxy     Roof          17     1011.0    722.0     734.0     46.0      7692.0  
+-- IfcCovering                 Level 2       16     5254.0    4466.0    16.0      849.0     31350.0 
+-- IfcCovering                 Level 3       16     6182.0    6241.0    16.0      839.0     28928.0 
+-- IfcAlarm                    Level 2       14     141.0     117.0     188.0     28.0      200.0   
+-- IfcAirTerminal              Roof          13     600.0     600.0     102.0     600.0     600.0   
+-- IfcMember                   Level 3       13     817.0     1661.0    1217.0    50.0      4030.0  
+-- IfcWindow                   Level 1       12     1312.0    223.0     3624.0    1312.0    1312.0  
+-- IfcFireSuppressionTerminal  Level 4       11     93.0      43.0      158.0     32.0      700.0   
+-- IfcRailing                  Level 1       11     1412.0    2518.0    3523.0    50.0      3894.0  
+-- IfcValve                    Level 4       11     288.0     198.0     295.0     210.0     380.0   
+-- IfcAlarm                    Level 3       10     162.0     93.0      217.0     86.0      200.0   
+-- IfcRailing                  Level 2       10     2204.0    3064.0    4167.0    1025.0    3904.0  
+-- IfcDoor                     Level 4       9      446.0     917.0     2207.0    147.0     1750.0  
+-- IfcElectricAppliance        Level 3       9      70.0      65.0      87.0      48.0      87.0    
+-- IfcWall                     Level 4       9      4334.0    5263.0    7696.0    150.0     10698.0 
+-- IfcAlarm                    Level 1       8      170.0     170.0     75.0      170.0     170.0   
+-- IfcColumn                   Roof          8      750.0     750.0     4714.0    750.0     750.0   
+-- IfcElectricAppliance        Level 2       8      63.0      72.0      87.0      48.0      87.0    
+-- IfcStairFlight              Ground Floor  8      1424.0    3038.0    2098.0    1402.0    1502.0  
+-- IfcStairFlight              Level 1       8      1437.0    3038.0    1955.0    1402.0    1502.0  
+-- IfcStairFlight              Level 2       8      1418.0    3038.0    1975.0    1352.0    1502.0  
+-- IfcWindow                   Roof          8      1847.0    675.0     2344.0    200.0     7075.0  
+-- IfcCovering                 Roof          7      6108.0    6257.0    16.0      3296.0    8850.0  
+-- IfcDoor                     Roof          7      296.0     902.0     2138.0    147.0     900.0   
+-- IfcFlowController           Ground Floor  7      78.0      74.0      90.0      50.0      118.0   
+-- IfcValve                    Level 3       7      59.0      79.0      73.0      51.0      98.0    
+-- IfcController               Ground Floor  6      169.0     426.0     695.0     169.0     169.0   
+-- IfcSlab                     Roof          6      6483.0    4083.0    37.0      1450.0    15555.0 
+-- IfcFlowController           Roof          5      98.0      87.0      194.0     98.0      98.0    
+-- IfcRailing                  Ground Floor  5      2223.0    3675.0    5156.0    1101.0    3929.0  
+-- IfcValve                    Roof          5      238.0     169.0     202.0     110.0     380.0   
+-- IfcAlarm                    Roof          4      149.0     64.0      195.0     86.0      200.0   
+-- IfcColumn                   Level 4       4      750.0     750.0     10573.0   750.0     750.0   
+-- IfcCovering                 Level 4       4      5072.0    3333.0    16.0      3296.0    5975.0  
+-- IfcFlowController           Level 4       4      82.0      91.0      177.0     75.0      87.0    
+-- IfcRailing                  Level 3       4      3470.0    4113.0    4940.0    1051.0    5100.0  
+-- IfcRailing                  Roof          4      3472.0    4088.0    4940.0    1101.0    5050.0  
+-- IfcStairFlight              Level 4       4      2006.0    2772.0    1975.0    1363.0    3613.0  
+-- IfcValve                    Level 2       4      94.0      124.0     152.0     55.0      210.0   
+-- IfcAlarm                    Level 4       3      152.0     100.0     182.0     86.0      200.0   
+-- IfcColumn                   Level 1       3      750.0     750.0     12000.0   750.0     750.0   
+-- IfcFlowController           Level 3       3      158.0     111.0     90.0      84.0      194.0   
+-- IfcValve                    Foundation    3      159.0     114.0     206.0     51.0      216.0   
+-- IfcElectricAppliance        Ground Floor  2      87.0      48.0      87.0      87.0      87.0    
+-- IfcFlowTerminal             Roof          2      208.0     145.0     605.0     150.0     267.0   
+-- IfcRoof                     Level 1       2      5714.0    16000.0   828.0     5684.0    5744.0  
+-- IfcStairFlight              Level 3       2      1414.0    3325.0    1950.0    1350.0    1479.0  
+-- IfcStairFlight              Roof          2      2531.0    2219.0    2000.0    1450.0    3613.0  
+-- IfcValve                    Level 1       2      145.0     175.0     298.0     80.0      210.0   
 
 -- §2: Material distribution
 
+-- ifc_class                material_name                                                        cnt  
+-- -----------------------  -------------------------------------------------------------------  -----
+-- IfcPlate                 Metal Deck                                                           33324
+-- IfcPipeFitting           <Unnamed>                                                            4243 
+-- IfcDuctFitting           <Unnamed>                                                            713  
+-- IfcLightFixture          <Unnamed>                                                            420  
+-- IfcBeam                  jkrSTm_Concrete - Cast In Place Concrete - C35                       411  
+-- IfcSlab                  Concrete - Cast-in-Place Concrete - 45 MPa                           322  
+-- IfcMember                Metal - Steel 50-355                                                 312  
+-- IfcAirTerminal           <Unnamed>                                                            284  
+-- IfcBuildingElementProxy  Default White                                                        165  
+-- IfcMember                <Unnamed>                                                            130  
+-- IfcFlowTerminal          <Unnamed>                                                            93   
+-- IfcColumn                Concrete - Cast-in-Place Concrete                                    68   
+-- IfcFurniture             <Unnamed>                                                            62   
+-- IfcColumn                jkrAR_wll-f_(ca40)-3 Cat Acrylic Matt Finish                         47   
+-- IfcValve                 <Unnamed>                                                            45   
+-- IfcLightFixture          White                                                                38   
+-- IfcColumn                <Unnamed>                                                            36   
+-- IfcSlab                  jkrAR_flr-f_(ls21)-3 Lepaan Simen 20mm tebal                         35   
+-- IfcCovering              jkrAR_clg-f_(pv60)-3 600mm x 600mm PVC Laminated Gypsum Board        34   
+-- IfcRailing               <Unnamed>                                                            34   
+-- IfcBuildingElementProxy  <Unnamed>                                                            32   
+-- IfcBuildingElementProxy  Default Panel                                                        32   
+-- IfcStairFlight           <Unnamed>                                                            32   
+-- IfcFlowTerminal          jkrAR_mt_(cr01) Chrome                                               28   
+-- IfcAlarm                 <Unnamed>                                                            23   
+-- IfcCovering              jkrAR_clg-f_(cf60)-3 1220 x 1220 x 4.5mm Papan simen gentian         22   
+-- IfcSlab                  jkrAR_flr-f_(jhn21)-3 300 x 300 x 8 mm Jubin Homogeneous "non slip"  22   
+-- IfcBeam                  Concrete, Cast-in-Place gray                                         20   
+-- IfcFlowTerminal          Metal - Steel, Polished                                              18   
+-- IfcSlab                  <Unnamed>                                                            16   
+-- IfcCovering              jkrAR_clg-f_(pv60)-3 600mm x 1200mm PVC Laminated Gypsum Board(1)    15   
+-- IfcCovering              jkrAR_clg-f_(sk)-2 Skim Coat Plastering                              11   
+-- IfcSlab                  jkrAR_flr-f_(jsg20)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        11   
+-- IfcValve                 Fiberglass-Watts-ABS                                                 7    
+-- IfcWall                  jkrAR_wll-b_(bb40)-3 Dinding Batu bata (AHU)                         6    
+-- IfcSlab                  Glass                                                                5    
+-- IfcBuildingElementProxy  Default                                                              4    
+-- IfcBuildingElementProxy  Galvanized Steel                                                     4    
+-- IfcBuildingElementProxy  Stal nierdzewna                                                      4    
+-- IfcFlowTerminal          JohnsonSuisse - Fermo-N - Chrome                                     4    
+-- IfcFlowTerminal          Metal - Chrome Polished                                              4    
+-- IfcFlowTerminal          White                                                                4    
+-- IfcWall                  Concrete - Cast-in-Place Concrete - 45 MPa                           3    
+-- IfcColumn                jkrAR_flr-f_(jsg20)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        2    
+-- IfcColumn                jkrAR_wll-b_(bb40)-3 Dinding Batu bata (AHU)                         2    
+-- IfcColumn                jkrAR_wll-f_(jsg40)-3 300 x 300 x 6mm tbl Jubin Seramic Gilap        2    
+-- IfcDoor                  Aluminum                                                             2    
+-- IfcFlowTerminal          Metal - Chrome                                                       2    
+-- IfcFurniture             Metal Panel                                                          2    
+-- IfcRoof                  Glass                                                                2    
+-- IfcBeam                  Metal - Steel 50-355                                                 1    
+-- IfcBuildingElementProxy  Concrete, Cast In Situ                                               1    
+-- IfcFlowTerminal          Steel - Zurn Industries - Stainless - Type 304                       1    
+-- IfcRampFlight            <Unnamed>                                                            1    
+-- IfcSlab                  Default Floor                                                        1    
+-- IfcSlab                  jkrAR_flr-f_(vy20)-3 Vinyl (Anti static Finishing)                   1    
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X
@@ -17,8 +211,1729 @@
 
 -- §4: IFC class inventory
 
+-- ifc_class                   discipline  cnt  
+-- --------------------------  ----------  -----
+-- IfcPlate                    FP          33324
+-- IfcPipeFitting              FP          3146 
+-- IfcPipeSegment              FP          2672 
+-- IfcFireSuppressionTerminal  FP          909  
+-- IfcLightFixture             ELEC        814  
+-- IfcDuctFitting              ACMV        713  
+-- IfcPipeFitting              CW          638  
+-- IfcPipeSegment              CW          619  
+-- IfcDuctSegment              ACMV        568  
+-- IfcPipeSegment              SP          455  
+-- IfcBeam                     FP          412  
+-- IfcSlab                     STR         409  
+-- IfcMember                   FP          394  
+-- IfcPipeFitting              SP          372  
+-- IfcBuildingElementProxy     ELEC        356  
+-- IfcAirTerminal              ACMV        289  
+-- IfcSlab                     FP          238  
+-- IfcWall                     ELEC        177  
+-- IfcFurniture                ELEC        176  
+-- IfcWall                     FP          156  
+-- IfcFlowTerminal             SP          150  
+-- IfcWindow                   ELEC        122  
+-- IfcWindow                   FP          114  
+-- IfcColumn                   ELEC        112  
+-- IfcFlowTerminal             CW          106  
+-- IfcDoor                     ELEC        90   
+-- IfcPipeFitting              LPG         87   
+-- IfcAlarm                    FP          80   
+-- IfcBuildingElementProxy     FP          75   
+-- IfcPipeSegment              LPG         75   
+-- IfcValve                    CW          57   
+-- IfcCovering                 ELEC        54   
+-- IfcBuildingElementProxy     ACMV        51   
+-- IfcMember                   ELEC        48   
+-- IfcSlab                     ELEC        47   
+-- IfcValve                    LPG         47   
+-- IfcColumn                   FP          45   
+-- IfcDoor                     FP          45   
+-- IfcCovering                 FP          28   
+-- IfcRailing                  FP          25   
+-- IfcStairFlight              FP          22   
+-- IfcBeam                     STR         20   
+-- IfcElectricAppliance        ELEC        19   
+-- IfcFlowController           FP          14   
+-- IfcSlab                     CW          11   
+-- IfcStairFlight              ELEC        10   
+-- IfcRailing                  ELEC        9    
+-- IfcFlowController           CW          7    
+-- IfcController               FP          6    
+-- IfcValve                    FP          5    
+-- IfcBuildingElementProxy     CW          4    
+-- IfcRoof                     FP          2    
+-- IfcValve                    SP          2    
+-- IfcColumn                   CW          1    
+-- IfcRampFlight               FP          1    
 
 -- §5: Candidate validation rules for ERP.db
 -- Review and adjust before applying. Rule IDs are placeholders.
+
+-- Rule: IfcPlate_Roof (33324 instances, avg 496.0x150.0x106.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPlate_Roof', 'IfcPlate', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPlate on Roof: 33324 instances, avg W=496.0 D=150.0 H=106.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '496.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '150.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '106.0');
+
+-- Rule: IfcPipeFitting_Ground_Floor (968 instances, avg 56.0x56.0x53.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Ground_Floor', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Ground Floor: 968 instances, avg W=56.0 D=56.0 H=53.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '56.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '53.0');
+
+-- Rule: IfcPipeSegment_Ground_Floor (879 instances, avg 481.0x235.0x223.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Ground_Floor', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Ground Floor: 879 instances, avg W=481.0 D=235.0 H=223.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '235.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '223.0');
+
+-- Rule: IfcPipeFitting_Roof (791 instances, avg 56.0x50.0x50.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Roof', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Roof: 791 instances, avg W=56.0 D=50.0 H=50.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '56.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '50.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '50.0');
+
+-- Rule: IfcPipeFitting_Level_4 (747 instances, avg 72.0x66.0x69.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Level_4', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Level 4: 747 instances, avg W=72.0 D=66.0 H=69.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '72.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '66.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '69.0');
+
+-- Rule: IfcPipeSegment_Roof (677 instances, avg 799.0x249.0x254.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Roof', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Roof: 677 instances, avg W=799.0 D=249.0 H=254.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '799.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '249.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '254.0');
+
+-- Rule: IfcPipeFitting_Level_2 (652 instances, avg 65.0x55.0x54.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Level_2', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Level 2: 652 instances, avg W=65.0 D=55.0 H=54.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '65.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '55.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '54.0');
+
+-- Rule: IfcPipeFitting_Level_1 (633 instances, avg 73.0x66.0x64.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Level_1', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Level 1: 633 instances, avg W=73.0 D=66.0 H=64.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '73.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '66.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '64.0');
+
+-- Rule: IfcPipeSegment_Level_2 (599 instances, avg 865.0x146.0x260.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Level_2', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Level 2: 599 instances, avg W=865.0 D=146.0 H=260.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '865.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '146.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '260.0');
+
+-- Rule: IfcPipeSegment_Level_1 (581 instances, avg 950.0x249.0x190.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Level_1', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Level 1: 581 instances, avg W=950.0 D=249.0 H=190.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '950.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '249.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '190.0');
+
+-- Rule: IfcPipeSegment_Level_4 (534 instances, avg 1585.0x544.0x145.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Level_4', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Level 4: 534 instances, avg W=1585.0 D=544.0 H=145.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1585.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '544.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '145.0');
+
+-- Rule: IfcSlab_Foundation (413 instances, avg 1910.0x1502.0x17371.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Foundation', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Foundation: 413 instances, avg W=1910.0 D=1502.0 H=17371.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1910.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1502.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '17371.0');
+
+-- Rule: IfcPipeSegment_Level_3 (406 instances, avg 142.0x218.0x189.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Level_3', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Level 3: 406 instances, avg W=142.0 D=218.0 H=189.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '142.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '218.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '189.0');
+
+-- Rule: IfcPipeFitting_Level_3 (348 instances, avg 53.0x60.0x45.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Level_3', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Level 3: 348 instances, avg W=53.0 D=60.0 H=45.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '53.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '60.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '45.0');
+
+-- Rule: IfcBuildingElementProxy_Ground_Floor (232 instances, avg 469.0x405.0x518.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Ground_Floor', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Ground Floor: 232 instances, avg W=469.0 D=405.0 H=518.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '469.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '405.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '518.0');
+
+-- Rule: IfcLightFixture_Ground_Floor (230 instances, avg 612.0x481.0x100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Ground_Floor', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Ground Floor: 230 instances, avg W=612.0 D=481.0 H=100.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '612.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '100.0');
+
+-- Rule: IfcDuctFitting_Level_4 (225 instances, avg 307.0x292.0x219.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Level_4', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Level 4: 225 instances, avg W=307.0 D=292.0 H=219.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '307.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '292.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '219.0');
+
+-- Rule: IfcFireSuppressionTerminal_Level_3 (215 instances, avg 38.0x28.0x68.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Level_3', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Level 3: 215 instances, avg W=38.0 D=28.0 H=68.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '38.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '28.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '68.0');
+
+-- Rule: IfcFireSuppressionTerminal_Roof (210 instances, avg 35.0x27.0x63.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Roof', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Roof: 210 instances, avg W=35.0 D=27.0 H=63.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '35.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '27.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '63.0');
+
+-- Rule: IfcDuctFitting_Level_2 (200 instances, avg 324.0x304.0x236.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Level_2', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Level 2: 200 instances, avg W=324.0 D=304.0 H=236.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '324.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '304.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '236.0');
+
+-- Rule: IfcMember_Level_4 (187 instances, avg 2443.0x204.0x2191.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Level_4', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Level 4: 187 instances, avg W=2443.0 D=204.0 H=2191.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2443.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '204.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2191.0');
+
+-- Rule: IfcFireSuppressionTerminal_Level_2 (176 instances, avg 39.0x29.0x70.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Level_2', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Level 2: 176 instances, avg W=39.0 D=29.0 H=70.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '39.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '29.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '70.0');
+
+-- Rule: IfcFurniture_Ground_Floor (176 instances, avg 1869.0x1343.0x754.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFurniture_Ground_Floor', 'IfcFurniture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFurniture on Ground Floor: 176 instances, avg W=1869.0 D=1343.0 H=754.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1869.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1343.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '754.0');
+
+-- Rule: IfcFireSuppressionTerminal_Level_1 (172 instances, avg 32.0x27.0x58.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Level_1', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Level 1: 172 instances, avg W=32.0 D=27.0 H=58.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '32.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '27.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '58.0');
+
+-- Rule: IfcLightFixture_Level_2 (172 instances, avg 591.0x840.0x89.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Level_2', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Level 2: 172 instances, avg W=591.0 D=840.0 H=89.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '591.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '840.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '89.0');
+
+-- Rule: IfcDuctSegment_Level_4 (170 instances, avg 890.0x1172.0x429.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Level_4', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Level 4: 170 instances, avg W=890.0 D=1172.0 H=429.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '890.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1172.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '429.0');
+
+-- Rule: IfcLightFixture_Level_3 (153 instances, avg 492.0x983.0x90.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Level_3', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Level 3: 153 instances, avg W=492.0 D=983.0 H=90.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '492.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '983.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
+
+-- Rule: IfcBeam_Level_4 (146 instances, avg 3022.0x3307.0x746.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_Level_4', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on Level 4: 146 instances, avg W=3022.0 D=3307.0 H=746.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3022.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3307.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '746.0');
+
+-- Rule: IfcDuctSegment_Level_2 (145 instances, avg 934.0x1349.0x608.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Level_2', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Level 2: 145 instances, avg W=934.0 D=1349.0 H=608.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '934.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1349.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '608.0');
+
+-- Rule: IfcPipeSegment_Foundation (145 instances, avg 1482.0x2755.0x120.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeSegment_Foundation', 'IfcPipeSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeSegment on Foundation: 145 instances, avg W=1482.0 D=2755.0 H=120.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1482.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2755.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '120.0');
+
+-- Rule: IfcMember_Roof (141 instances, avg 3431.0x143.0x4142.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Roof', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Roof: 141 instances, avg W=3431.0 D=143.0 H=4142.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3431.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '143.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4142.0');
+
+-- Rule: IfcFlowTerminal_Ground_Floor (140 instances, avg 409.0x430.0x543.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Ground_Floor', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Ground Floor: 140 instances, avg W=409.0 D=430.0 H=543.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '409.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '430.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '543.0');
+
+-- Rule: IfcBeam_Level_3 (126 instances, avg 3386.0x2602.0x690.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_Level_3', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on Level 3: 126 instances, avg W=3386.0 D=2602.0 H=690.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3386.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2602.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '690.0');
+
+-- Rule: IfcFireSuppressionTerminal_Ground_Floor (125 instances, avg 53.0x32.0x93.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Ground_Floor', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Ground Floor: 125 instances, avg W=53.0 D=32.0 H=93.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '53.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '32.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '93.0');
+
+-- Rule: IfcBeam_Level_1 (119 instances, avg 3493.0x2626.0x674.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_Level_1', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on Level 1: 119 instances, avg W=3493.0 D=2626.0 H=674.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3493.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2626.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '674.0');
+
+-- Rule: IfcWall_Ground_Floor (118 instances, avg 2525.0x2830.0x5678.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Ground_Floor', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Ground Floor: 118 instances, avg W=2525.0 D=2830.0 H=5678.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2525.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2830.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '5678.0');
+
+-- Rule: IfcDuctFitting_Level_1 (116 instances, avg 736.0x462.0x440.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Level_1', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Level 1: 116 instances, avg W=736.0 D=462.0 H=440.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '736.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '462.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '440.0');
+
+-- Rule: IfcLightFixture_Level_1 (115 instances, avg 1019.0x518.0x93.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Level_1', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Level 1: 115 instances, avg W=1019.0 D=518.0 H=93.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1019.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '518.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '93.0');
+
+-- Rule: IfcBuildingElementProxy_Level_2 (109 instances, avg 858.0x1798.0x778.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_2', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 2: 109 instances, avg W=858.0 D=1798.0 H=778.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '858.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1798.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '778.0');
+
+-- Rule: IfcDuctFitting_Ground_Floor (106 instances, avg 342.0x263.0x263.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Ground_Floor', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Ground Floor: 106 instances, avg W=342.0 D=263.0 H=263.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '342.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '263.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '263.0');
+
+-- Rule: IfcDuctSegment_Level_1 (104 instances, avg 1175.0x1804.0x472.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Level_1', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Level 1: 104 instances, avg W=1175.0 D=1804.0 H=472.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1175.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1804.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '472.0');
+
+-- Rule: IfcPipeFitting_Foundation (104 instances, avg 126.0x145.0x127.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcPipeFitting_Foundation', 'IfcPipeFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcPipeFitting on Foundation: 104 instances, avg W=126.0 D=145.0 H=127.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '126.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '145.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '127.0');
+
+-- Rule: IfcWall_Level_2 (96 instances, avg 3747.0x2892.0x8069.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Level_2', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 2: 96 instances, avg W=3747.0 D=2892.0 H=8069.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3747.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2892.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '8069.0');
+
+-- Rule: IfcWindow_Level_2 (93 instances, avg 917.0x557.0x3246.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Level_2', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Level 2: 93 instances, avg W=917.0 D=557.0 H=3246.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '917.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '557.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3246.0');
+
+-- Rule: IfcAirTerminal_Level_2 (92 instances, avg 608.0x595.0x120.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Level_2', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Level 2: 92 instances, avg W=608.0 D=595.0 H=120.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '608.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '595.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '120.0');
+
+-- Rule: IfcSlab_Level_3 (89 instances, avg 5168.0x3761.0x156.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_3', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 3: 89 instances, avg W=5168.0 D=3761.0 H=156.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5168.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3761.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '156.0');
+
+-- Rule: IfcDuctSegment_Ground_Floor (87 instances, avg 791.0x1239.0x535.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Ground_Floor', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Ground Floor: 87 instances, avg W=791.0 D=1239.0 H=535.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '791.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1239.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '535.0');
+
+-- Rule: IfcColumn_Level_2 (82 instances, avg 675.0x649.0x11770.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Level_2', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Level 2: 82 instances, avg W=675.0 D=649.0 H=11770.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '675.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '649.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '11770.0');
+
+-- Rule: IfcBuildingElementProxy_Level_3 (81 instances, avg 138.0x154.0x161.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_3', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 3: 81 instances, avg W=138.0 D=154.0 H=161.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '138.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '154.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '161.0');
+
+-- Rule: IfcLightFixture_Level_4 (81 instances, avg 398.0x344.0x535.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Level_4', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Level 4: 81 instances, avg W=398.0 D=344.0 H=535.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '398.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '344.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '535.0');
+
+-- Rule: IfcValve_Ground_Floor (79 instances, avg 120.0x126.0x236.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Ground_Floor', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Ground Floor: 79 instances, avg W=120.0 D=126.0 H=236.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '120.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '126.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '236.0');
+
+-- Rule: IfcSlab_Level_1 (73 instances, avg 4917.0x3088.0x190.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_1', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 1: 73 instances, avg W=4917.0 D=3088.0 H=190.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4917.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3088.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '190.0');
+
+-- Rule: IfcAirTerminal_Level_4 (72 instances, avg 600.0x600.0x102.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Level_4', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Level 4: 72 instances, avg W=600.0 D=600.0 H=102.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '102.0');
+
+-- Rule: IfcWindow_Ground_Floor (64 instances, avg 744.0x972.0x2491.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Ground_Floor', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Ground Floor: 64 instances, avg W=744.0 D=972.0 H=2491.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '744.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '972.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2491.0');
+
+-- Rule: IfcDoor_Ground_Floor (63 instances, avg 628.0x749.0x2259.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Ground_Floor', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Ground Floor: 63 instances, avg W=628.0 D=749.0 H=2259.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '628.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '749.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2259.0');
+
+-- Rule: IfcLightFixture_Roof (63 instances, avg 675.0x611.0x117.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcLightFixture_Roof', 'IfcLightFixture', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcLightFixture on Roof: 63 instances, avg W=675.0 D=611.0 H=117.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '675.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '611.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '117.0');
+
+-- Rule: IfcWindow_Level_3 (58 instances, avg 637.0x856.0x2879.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Level_3', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Level 3: 58 instances, avg W=637.0 D=856.0 H=2879.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '637.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '856.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2879.0');
+
+-- Rule: IfcSlab_Level_4 (57 instances, avg 3640.0x3895.0x177.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_4', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 4: 57 instances, avg W=3640.0 D=3895.0 H=177.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3640.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3895.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '177.0');
+
+-- Rule: IfcAirTerminal_Level_1 (56 instances, avg 488.0x1340.0x167.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Level_1', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Level 1: 56 instances, avg W=488.0 D=1340.0 H=167.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '488.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1340.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '167.0');
+
+-- Rule: IfcWall_Level_3 (56 instances, avg 2941.0x2651.0x4392.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Level_3', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 3: 56 instances, avg W=2941.0 D=2651.0 H=4392.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2941.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2651.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4392.0');
+
+-- Rule: IfcWall_Roof (53 instances, avg 3035.0x2283.0x4569.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Roof', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Roof: 53 instances, avg W=3035.0 D=2283.0 H=4569.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3035.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2283.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4569.0');
+
+-- Rule: IfcFlowTerminal_Level_3 (51 instances, avg 485.0x368.0x493.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Level_3', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Level 3: 51 instances, avg W=485.0 D=368.0 H=493.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '485.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '368.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '493.0');
+
+-- Rule: IfcFlowTerminal_Level_2 (44 instances, avg 396.0x362.0x438.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Level_2', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Level 2: 44 instances, avg W=396.0 D=362.0 H=438.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '396.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '362.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '438.0');
+
+-- Rule: IfcSlab_Ground_Floor (43 instances, avg 6172.0x8432.0x81.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Ground_Floor', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Ground Floor: 43 instances, avg W=6172.0 D=8432.0 H=81.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6172.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '8432.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '81.0');
+
+-- Rule: IfcAlarm_Ground_Floor (41 instances, avg 128.0x132.0x142.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Ground_Floor', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Ground Floor: 41 instances, avg W=128.0 D=132.0 H=142.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '128.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '132.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '142.0');
+
+-- Rule: IfcCovering_Ground_Floor (38 instances, avg 3762.0x5041.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Ground_Floor', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Ground Floor: 38 instances, avg W=3762.0 D=5041.0 H=16.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3762.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5041.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcDuctFitting_Level_3 (38 instances, avg 507.0x426.0x353.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Level_3', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Level 3: 38 instances, avg W=507.0 D=426.0 H=353.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '507.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '426.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '353.0');
+
+-- Rule: IfcMember_Ground_Floor (35 instances, avg 605.0x1780.0x1279.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Ground_Floor', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Ground Floor: 35 instances, avg W=605.0 D=1780.0 H=1279.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '605.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1780.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1279.0');
+
+-- Rule: IfcMember_Level_2 (34 instances, avg 622.0x1832.0x1250.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Level_2', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Level 2: 34 instances, avg W=622.0 D=1832.0 H=1250.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '622.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1832.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1250.0');
+
+-- Rule: IfcDuctSegment_Roof (32 instances, avg 1053.0x900.0x380.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Roof', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Roof: 32 instances, avg W=1053.0 D=900.0 H=380.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1053.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '900.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '380.0');
+
+-- Rule: IfcMember_Level_1 (32 instances, avg 658.0x1927.0x1291.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Level_1', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Level 1: 32 instances, avg W=658.0 D=1927.0 H=1291.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '658.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1927.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1291.0');
+
+-- Rule: IfcColumn_Ground_Floor (31 instances, avg 552.0x482.0x8000.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Ground_Floor', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Ground Floor: 31 instances, avg W=552.0 D=482.0 H=8000.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '552.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '482.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '8000.0');
+
+-- Rule: IfcAirTerminal_Ground_Floor (30 instances, avg 350.0x294.0x100.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Ground_Floor', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Ground Floor: 30 instances, avg W=350.0 D=294.0 H=100.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '350.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '294.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '100.0');
+
+-- Rule: IfcColumn_Level_3 (30 instances, avg 545.0x459.0x3875.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Level_3', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Level 3: 30 instances, avg W=545.0 D=459.0 H=3875.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '545.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '459.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3875.0');
+
+-- Rule: IfcDuctSegment_Level_3 (30 instances, avg 1860.0x2282.0x495.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctSegment_Level_3', 'IfcDuctSegment', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctSegment on Level 3: 30 instances, avg W=1860.0 D=2282.0 H=495.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1860.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2282.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '495.0');
+
+-- Rule: IfcDoor_Level_2 (29 instances, avg 440.0x763.0x2142.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Level_2', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Level 2: 29 instances, avg W=440.0 D=763.0 H=2142.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '440.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '763.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2142.0');
+
+-- Rule: IfcDuctFitting_Roof (28 instances, avg 369.0x395.0x298.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDuctFitting_Roof', 'IfcDuctFitting', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDuctFitting on Roof: 28 instances, avg W=369.0 D=395.0 H=298.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '369.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '395.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '298.0');
+
+-- Rule: IfcBuildingElementProxy_Level_4 (27 instances, avg 696.0x2063.0x554.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_4', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 4: 27 instances, avg W=696.0 D=2063.0 H=554.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '696.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2063.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '554.0');
+
+-- Rule: IfcDoor_Level_3 (27 instances, avg 481.0x789.0x2134.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Level_3', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Level 3: 27 instances, avg W=481.0 D=789.0 H=2134.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '481.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '789.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2134.0');
+
+-- Rule: IfcAirTerminal_Level_3 (26 instances, avg 477.0x452.0x117.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Level_3', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Level 3: 26 instances, avg W=477.0 D=452.0 H=117.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '477.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '452.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '117.0');
+
+-- Rule: IfcSlab_Level_2 (24 instances, avg 7544.0x5567.0x288.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 2: 24 instances, avg W=7544.0 D=5567.0 H=288.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '7544.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5567.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '288.0');
+
+-- Rule: IfcBeam_Roof (21 instances, avg 2757.0x2441.0x631.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_Roof', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on Roof: 21 instances, avg W=2757.0 D=2441.0 H=631.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2757.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2441.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '631.0');
+
+-- Rule: IfcBeam_Foundation (20 instances, avg 18755.0x22471.0x750.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBeam_Foundation', 'IfcBeam', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBeam on Foundation: 20 instances, avg W=18755.0 D=22471.0 H=750.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '18755.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '22471.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '750.0');
+
+-- Rule: IfcBuildingElementProxy_Level_1 (20 instances, avg 3232.0x1910.0x1028.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Level_1', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Level 1: 20 instances, avg W=3232.0 D=1910.0 H=1028.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3232.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1910.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1028.0');
+
+-- Rule: IfcFlowTerminal_Foundation (18 instances, avg 608.0x725.0x723.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowTerminal_Foundation', 'IfcFlowTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowTerminal on Foundation: 18 instances, avg W=608.0 D=725.0 H=723.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '608.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '725.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '723.0');
+
+-- Rule: IfcBuildingElementProxy_Roof (17 instances, avg 1011.0x722.0x734.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcBuildingElementProxy_Roof', 'IfcBuildingElementProxy', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcBuildingElementProxy on Roof: 17 instances, avg W=1011.0 D=722.0 H=734.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1011.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '722.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '734.0');
+
+-- Rule: IfcCovering_Level_2 (16 instances, avg 5254.0x4466.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Level_2', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Level 2: 16 instances, avg W=5254.0 D=4466.0 H=16.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5254.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4466.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcCovering_Level_3 (16 instances, avg 6182.0x6241.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Level_3', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Level 3: 16 instances, avg W=6182.0 D=6241.0 H=16.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6182.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6241.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcAlarm_Level_2 (14 instances, avg 141.0x117.0x188.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Level_2', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Level 2: 14 instances, avg W=141.0 D=117.0 H=188.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '141.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '117.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '188.0');
+
+-- Rule: IfcAirTerminal_Roof (13 instances, avg 600.0x600.0x102.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAirTerminal_Roof', 'IfcAirTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAirTerminal on Roof: 13 instances, avg W=600.0 D=600.0 H=102.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '102.0');
+
+-- Rule: IfcMember_Level_3 (13 instances, avg 817.0x1661.0x1217.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcMember_Level_3', 'IfcMember', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcMember on Level 3: 13 instances, avg W=817.0 D=1661.0 H=1217.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '817.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '1661.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1217.0');
+
+-- Rule: IfcWindow_Level_1 (12 instances, avg 1312.0x223.0x3624.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Level_1', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Level 1: 12 instances, avg W=1312.0 D=223.0 H=3624.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1312.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '223.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3624.0');
+
+-- Rule: IfcFireSuppressionTerminal_Level_4 (11 instances, avg 93.0x43.0x158.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFireSuppressionTerminal_Level_4', 'IfcFireSuppressionTerminal', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFireSuppressionTerminal on Level 4: 11 instances, avg W=93.0 D=43.0 H=158.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '93.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '43.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '158.0');
+
+-- Rule: IfcRailing_Level_1 (11 instances, avg 1412.0x2518.0x3523.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Level_1', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Level 1: 11 instances, avg W=1412.0 D=2518.0 H=3523.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1412.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2518.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '3523.0');
+
+-- Rule: IfcValve_Level_4 (11 instances, avg 288.0x198.0x295.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Level_4', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Level 4: 11 instances, avg W=288.0 D=198.0 H=295.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '288.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '198.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '295.0');
+
+-- Rule: IfcAlarm_Level_3 (10 instances, avg 162.0x93.0x217.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Level_3', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Level 3: 10 instances, avg W=162.0 D=93.0 H=217.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '162.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '93.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '217.0');
+
+-- Rule: IfcRailing_Level_2 (10 instances, avg 2204.0x3064.0x4167.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Level_2', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Level 2: 10 instances, avg W=2204.0 D=3064.0 H=4167.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2204.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3064.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4167.0');
+
+-- Rule: IfcDoor_Level_4 (9 instances, avg 446.0x917.0x2207.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Level_4', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Level 4: 9 instances, avg W=446.0 D=917.0 H=2207.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '446.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '917.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2207.0');
+
+-- Rule: IfcElectricAppliance_Level_3 (9 instances, avg 70.0x65.0x87.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcElectricAppliance_Level_3', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcElectricAppliance on Level 3: 9 instances, avg W=70.0 D=65.0 H=87.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '70.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '65.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '87.0');
+
+-- Rule: IfcWall_Level_4 (9 instances, avg 4334.0x5263.0x7696.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWall_Level_4', 'IfcWall', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWall on Level 4: 9 instances, avg W=4334.0 D=5263.0 H=7696.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '4334.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5263.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '7696.0');
+
+-- Rule: IfcAlarm_Level_1 (8 instances, avg 170.0x170.0x75.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Level_1', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Level 1: 8 instances, avg W=170.0 D=170.0 H=75.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '170.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '170.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '75.0');
+
+-- Rule: IfcColumn_Roof (8 instances, avg 750.0x750.0x4714.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Roof', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Roof: 8 instances, avg W=750.0 D=750.0 H=4714.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4714.0');
+
+-- Rule: IfcElectricAppliance_Level_2 (8 instances, avg 63.0x72.0x87.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcElectricAppliance_Level_2', 'IfcElectricAppliance', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcElectricAppliance on Level 2: 8 instances, avg W=63.0 D=72.0 H=87.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '63.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '72.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '87.0');
+
+-- Rule: IfcStairFlight_Ground_Floor (8 instances, avg 1424.0x3038.0x2098.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStairFlight_Ground_Floor', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Ground Floor: 8 instances, avg W=1424.0 D=3038.0 H=2098.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1424.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2098.0');
+
+-- Rule: IfcStairFlight_Level_1 (8 instances, avg 1437.0x3038.0x1955.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStairFlight_Level_1', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Level 1: 8 instances, avg W=1437.0 D=3038.0 H=1955.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1437.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1955.0');
+
+-- Rule: IfcStairFlight_Level_2 (8 instances, avg 1418.0x3038.0x1975.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStairFlight_Level_2', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Level 2: 8 instances, avg W=1418.0 D=3038.0 H=1975.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1418.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3038.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1975.0');
+
+-- Rule: IfcWindow_Roof (8 instances, avg 1847.0x675.0x2344.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcWindow_Roof', 'IfcWindow', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcWindow on Roof: 8 instances, avg W=1847.0 D=675.0 H=2344.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1847.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '675.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2344.0');
+
+-- Rule: IfcCovering_Roof (7 instances, avg 6108.0x6257.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Roof', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Roof: 7 instances, avg W=6108.0 D=6257.0 H=16.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6108.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '6257.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcDoor_Roof (7 instances, avg 296.0x902.0x2138.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcDoor_Roof', 'IfcDoor', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcDoor on Roof: 7 instances, avg W=296.0 D=902.0 H=2138.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '296.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '902.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2138.0');
+
+-- Rule: IfcFlowController_Ground_Floor (7 instances, avg 78.0x74.0x90.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowController_Ground_Floor', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on Ground Floor: 7 instances, avg W=78.0 D=74.0 H=90.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '78.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '74.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
+
+-- Rule: IfcValve_Level_3 (7 instances, avg 59.0x79.0x73.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Level_3', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Level 3: 7 instances, avg W=59.0 D=79.0 H=73.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '59.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '79.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '73.0');
+
+-- Rule: IfcController_Ground_Floor (6 instances, avg 169.0x426.0x695.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcController_Ground_Floor', 'IfcController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcController on Ground Floor: 6 instances, avg W=169.0 D=426.0 H=695.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '169.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '426.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '695.0');
+
+-- Rule: IfcSlab_Roof (6 instances, avg 6483.0x4083.0x37.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Roof', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Roof: 6 instances, avg W=6483.0 D=4083.0 H=37.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '6483.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4083.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '37.0');
+
+-- Rule: IfcFlowController_Roof (5 instances, avg 98.0x87.0x194.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowController_Roof', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on Roof: 5 instances, avg W=98.0 D=87.0 H=194.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '98.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '87.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '194.0');
+
+-- Rule: IfcRailing_Ground_Floor (5 instances, avg 2223.0x3675.0x5156.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Ground_Floor', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Ground Floor: 5 instances, avg W=2223.0 D=3675.0 H=5156.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2223.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3675.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '5156.0');
+
+-- Rule: IfcValve_Roof (5 instances, avg 238.0x169.0x202.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Roof', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Roof: 5 instances, avg W=238.0 D=169.0 H=202.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '238.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '169.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '202.0');
+
+-- Rule: IfcAlarm_Roof (4 instances, avg 149.0x64.0x195.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Roof', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Roof: 4 instances, avg W=149.0 D=64.0 H=195.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '149.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '64.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '195.0');
+
+-- Rule: IfcColumn_Level_4 (4 instances, avg 750.0x750.0x10573.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Level_4', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Level 4: 4 instances, avg W=750.0 D=750.0 H=10573.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '10573.0');
+
+-- Rule: IfcCovering_Level_4 (4 instances, avg 5072.0x3333.0x16.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcCovering_Level_4', 'IfcCovering', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcCovering on Level 4: 4 instances, avg W=5072.0 D=3333.0 H=16.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '5072.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '3333.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '16.0');
+
+-- Rule: IfcFlowController_Level_4 (4 instances, avg 82.0x91.0x177.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowController_Level_4', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on Level 4: 4 instances, avg W=82.0 D=91.0 H=177.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '82.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '91.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '177.0');
+
+-- Rule: IfcRailing_Level_3 (4 instances, avg 3470.0x4113.0x4940.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Level_3', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Level 3: 4 instances, avg W=3470.0 D=4113.0 H=4940.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3470.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4113.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4940.0');
+
+-- Rule: IfcRailing_Roof (4 instances, avg 3472.0x4088.0x4940.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcRailing_Roof', 'IfcRailing', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcRailing on Roof: 4 instances, avg W=3472.0 D=4088.0 H=4940.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '3472.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '4088.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '4940.0');
+
+-- Rule: IfcStairFlight_Level_4 (4 instances, avg 2006.0x2772.0x1975.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStairFlight_Level_4', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Level 4: 4 instances, avg W=2006.0 D=2772.0 H=1975.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '2006.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2772.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '1975.0');
+
+-- Rule: IfcValve_Level_2 (4 instances, avg 94.0x124.0x152.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Level_2', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Level 2: 4 instances, avg W=94.0 D=124.0 H=152.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '94.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '124.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '152.0');
+
+-- Rule: IfcAlarm_Level_4 (3 instances, avg 152.0x100.0x182.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcAlarm_Level_4', 'IfcAlarm', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcAlarm on Level 4: 3 instances, avg W=152.0 D=100.0 H=182.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '152.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '100.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '182.0');
+
+-- Rule: IfcColumn_Level_1 (3 instances, avg 750.0x750.0x12000.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcColumn_Level_1', 'IfcColumn', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcColumn on Level 1: 3 instances, avg W=750.0 D=750.0 H=12000.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '750.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '12000.0');
+
+-- Rule: IfcFlowController_Level_3 (3 instances, avg 158.0x111.0x90.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcFlowController_Level_3', 'IfcFlowController', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcFlowController on Level 3: 3 instances, avg W=158.0 D=111.0 H=90.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '158.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '111.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '90.0');
+
+-- Rule: IfcValve_Foundation (3 instances, avg 159.0x114.0x206.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcValve_Foundation', 'IfcValve', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcValve on Foundation: 3 instances, avg W=159.0 D=114.0 H=206.0mm',
+--     'SJTII_Terminal');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '159.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '114.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '206.0');
 
 

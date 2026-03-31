@@ -69,3 +69,4 @@ backup/
 # Archive (local docs, binaries, translations)
 archive/
 site/
+.aider*
