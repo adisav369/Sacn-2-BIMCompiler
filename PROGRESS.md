@@ -54,12 +54,14 @@
   TE: 538 BOM lines → 36,160 ARC+STR instances (was 48,428). QA delta=+0. 5/7 PASS (baseline).
   Spec: §6.12.1 Compilation Isolation Invariant, §6.12.2 Joint Piece Architecture (IFCtoERP).
 
-**S104 IFCtoERP DONE (`7018384e`, `fdc65b4f`):**
+**S104 IFCtoERP (`365fc163`, `abdcd045`):**
   00c DONE: 785 joint piece + 11 shim M_Products in ERP.db (TE 618, RM 167 new).
-  00d PARTIAL: MEP in BOM (shim root, tack columns, ShimMatcher). §6.12.2 rewrite (`7099bd1c`).
-  GAP: tack offsets not extracted (child pos - parent pos). J1 foundation needed.
-  Next: J1 tack extraction on RM (3568 MEP, smaller than TE 11634).
-  00e: AD_Val_Rule — NFPA/MS/ASHRAE post-walk validation (after J1 complete)
+  00d PARTIAL: MEP in BOM (shim root, tack columns, ShimMatcher). §6.12.2 rewrite.
+  00f DONE: InterimWorkshop + c_uom_id UOM model. SH 8/8 PASS. TE 48428 el, 6/8 PASS.
+  C_DocType removed as registry source → m_bom (J4_003). BuildingRegistry/MetadataValidator/PlacementLoader/BuildingWriter updated.
+  GAP: J1 tack offsets not extracted (child pos - parent pos). Blocks real MEP BOM walks.
+  Next: 00g — J1 tack extraction on RM (3568 MEP, smaller than TE 11634).
+  00e: AD_Val_Rule P15/P16/P17 — blocked until 00g (J1) done.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
