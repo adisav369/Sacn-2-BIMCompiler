@@ -67,6 +67,10 @@ public class X_M_BOM extends BasePO {
     public static final String COLUMNNAME_aabb_depth_mm      = "aabb_depth_mm";
     public static final String COLUMNNAME_aabb_height_mm     = "aabb_height_mm";
     public static final String COLUMNNAME_aabb_qualifier     = "aabb_qualifier";
+    // §6.12.2: Shim properties — when set, this BOM is a shim parent
+    public static final String COLUMNNAME_host_ifc_class    = "host_ifc_class";
+    public static final String COLUMNNAME_mount             = "mount";
+    public static final String COLUMNNAME_offset_mm         = "offset_mm";
 
     /** AABB qualifier values — GD&T tolerance zone convention. */
     public static final String AABB_INNER      = "INNER";       // finish-to-finish clear volume
@@ -132,6 +136,11 @@ public class X_M_BOM extends BasePO {
     public double  getOriginX()         { return get_ValueAsDouble(COLUMNNAME_origin_x); }
     public double  getOriginY()         { return get_ValueAsDouble(COLUMNNAME_origin_y); }
     public double  getOriginZ()         { return get_ValueAsDouble(COLUMNNAME_origin_z); }
+    // §6.12.2: Shim properties — null means this BOM is not a shim
+    public String  getHostIfcClass()    { return get_ValueAsString(COLUMNNAME_host_ifc_class); }
+    public String  getMount()           { return get_ValueAsString(COLUMNNAME_mount); }
+    public double  getOffsetMm()        { return get_ValueAsDouble(COLUMNNAME_offset_mm); }
+    public boolean isShim()             { return getHostIfcClass() != null; }
 
     public void setBomId(String v)          { set_Value(COLUMNNAME_bom_id, v); }
     public void setBomName(String v)        { set_Value(COLUMNNAME_bom_name, v); }

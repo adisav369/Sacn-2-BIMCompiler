@@ -87,6 +87,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     private int ordinalCounter = 0;
 
+    /** Shim matcher for MEP tack origin resolution (§6.12.2). */
+    private ShimMatcher shimMatcher;
+
     /** IFC GloballyUniqueId: exactly 22 chars from base64url + '$'. */
     private static final Pattern IFC_GUID = Pattern.compile("^[0-9A-Za-z_$]{22}$");
 
@@ -98,6 +101,14 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         this.bomConn = bomConn;
         this.buildingType = buildingType;
         this.worldOrigin = worldOrigin;
+    }
+
+    /**
+     * Set the shim matcher for MEP host surface resolution.
+     * Must be called before walk begins.
+     */
+    public void setShimMatcher(ShimMatcher matcher) {
+        this.shimMatcher = matcher;
     }
 
     public List<PlacementLoader.Placement> getPlacements() {
@@ -144,6 +155,25 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     if ("SET".equals(childBom.getBomType()) && childBom.getProductCategory() != null) {
                         Discipline setDisc = Discipline.fromString(childBom.getProductCategory());
                         if (setDisc != null) disciplineStack.push(setDisc);
+                    }
+
+                    // Track discipline from MEP sub-BOMs (§6.12.2 shim+joint piece walk)
+                    // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 — Witness: W-J4-MEP-WALK
+                    if ("MEP".equals(childBom.getBomType()) && childBom.getProductCategory() != null) {
+                        Discipline mepDisc = Discipline.fromString(childBom.getProductCategory());
+                        if (mepDisc != null) {
+                            disciplineStack.push(mepDisc);
+                        }
+                        // §6.12.2: Shim is M_BOM parent — log shim entry with host properties
+                        if (childBom.isShim()) {
+                            BIMLogger.geo("SHIM", "SHIM_BOM {} disc={} host={} mount={} offset={}mm depth={}",
+                                    childBomId, mepDisc != null ? mepDisc.name() : "?",
+                                    childBom.getHostIfcClass(), childBom.getMount(),
+                                    childBom.getOffsetMm(), ctx.level());
+                        } else {
+                            BIMLogger.geo("SHIM", "MEP_ENTER bom={} disc={} depth={}",
+                                    childBomId, mepDisc != null ? mepDisc.name() : "?", ctx.level());
+                        }
                     }
                 }
             } catch (SQLException e) {

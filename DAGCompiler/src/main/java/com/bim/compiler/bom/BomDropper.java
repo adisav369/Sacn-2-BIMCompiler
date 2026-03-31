@@ -217,9 +217,24 @@ public class BomDropper {
      */
     private static void createOrder(Connection conn, String orderId, BuildingEntry entry)
             throws SQLException {
+        // Ensure C_Order + C_OrderLine tables exist (test path may skip schema init)
         // Delete any existing order (re-drop is idempotent)
         // Tier 2: C_Order_ID is INTEGER PK. Value holds old text key.
         try (Statement stmt = conn.createStatement()) {
+            stmt.execute("CREATE TABLE IF NOT EXISTS C_Order ("
+                    + "C_Order_ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "Value TEXT NOT NULL UNIQUE, C_DocType_ID TEXT, Name TEXT, DocStatus TEXT, "
+                    + "aabb_width_mm REAL, aabb_depth_mm REAL, aabb_height_mm REAL, "
+                    + "Ref_Order_ID TEXT)");
+            stmt.execute("CREATE TABLE IF NOT EXISTS C_OrderLine ("
+                    + "C_OrderLine_ID INTEGER PRIMARY KEY AUTOINCREMENT, "
+                    + "C_Order_ID TEXT, Parent_OrderLine_ID INTEGER, Line INTEGER, "
+                    + "family_ref TEXT, host_type TEXT, m_product_category_id TEXT, "
+                    + "M_BOM_Line_ID INTEGER, dx REAL DEFAULT 0, dy REAL DEFAULT 0, dz REAL DEFAULT 0, "
+                    + "aabb_width_mm REAL DEFAULT 0, aabb_depth_mm REAL DEFAULT 0, aabb_height_mm REAL DEFAULT 0, "
+                    + "M_Product_ID TEXT, Discipline TEXT DEFAULT 'ARC', AD_Org_ID INTEGER DEFAULT 0, "
+                    + "Qty INTEGER DEFAULT 1, locator_ref TEXT, is_reference_class INTEGER DEFAULT 0, "
+                    + "IsActive TEXT DEFAULT 'Y')");
             stmt.execute("DELETE FROM C_OrderLine WHERE C_Order_ID = '" + orderId + "'");
             stmt.execute("DELETE FROM C_Order WHERE Value = '" + orderId + "'");
             // Note: C_OrderLine.C_Order_ID stores text key (Value). C_Order PK is INTEGER.

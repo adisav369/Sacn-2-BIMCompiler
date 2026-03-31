@@ -2,6 +2,7 @@ package com.bim.compiler.dsl;
 
 import com.bim.compiler.bom.walker.BOMWalker;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
+import com.bim.compiler.bom.walker.ShimMatcher;
 import com.bim.compiler.callout.OrderLineProductCallout;
 import com.bim.compiler.compliance.ComplianceReport;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
@@ -380,6 +381,12 @@ public class CompilationPipeline {
                 double[] worldOrigin = {root.getOriginX(), root.getOriginY(), root.getOriginZ()};
                 PlacementCollectorVisitor visitor = new PlacementCollectorVisitor(
                     bomConn, ctx.entry().projectName(), worldOrigin);
+
+                // Wire ShimMatcher for MEP tack origin resolution (§6.12.2 J4)
+                // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 — Witness: W-J4-SHIM-MATCH
+                ShimMatcher shimMatcher = new ShimMatcher();
+                shimMatcher.loadShimAttributes(compConn);
+                visitor.setShimMatcher(shimMatcher);
 
                 BOMWalker walker = new BOMWalker(bomConn, compConn);
                 walker.walk(root.getValue(), List.of(visitor), ctx.entry().projectName());

@@ -338,15 +338,8 @@ public class IFCtoBOMPipeline {
             // GUARD: This runs BEFORE commit so broken data never reaches disk.
             // Previously ran post-commit (read-only) which let broken BOM.db persist
             // and silently produce 0 placements at compile time.
-            // §10.4.6.1: For CO/IN, reconcile against ARC+STR count (MEP deferred)
+            // §6.12.2: MEP elements now in BOM (shim+joint piece walk), reconcile all
             int reconcileCount = extractionCount;
-            if ("CO".equals(config.productCategory()) || "IN".equals(config.productCategory())) {
-                try (Statement st = bomConn.createStatement();
-                     ResultSet rs = st.executeQuery(
-                         "SELECT COALESCE(SUM(CAST(config_value AS INTEGER)),0) FROM ad_sysconfig WHERE config_key LIKE 'MEP_%_COUNT'")) {
-                    if (rs.next()) reconcileCount = extractionCount - rs.getInt(1);
-                }
-            }
             int qaFails = BomValidator.validateAndReport(bomConn,
                     reconcileCount, composition.halfUnitLines());
             if (qaFails > 0) {
@@ -714,7 +707,10 @@ public class IFCtoBOMPipeline {
                     aabb_depth_mm     INTEGER DEFAULT 0,
                     aabb_height_mm    INTEGER DEFAULT 0,
                     aabb_qualifier    TEXT DEFAULT 'OUTER'
-                        CHECK(aabb_qualifier IN ('INNER','STRUCTURAL','OUTER','OPENING'))
+                        CHECK(aabb_qualifier IN ('INNER','STRUCTURAL','OUTER','OPENING')),
+                    host_ifc_class    TEXT,
+                    mount             TEXT,
+                    offset_mm         REAL DEFAULT 0
                 )
                 """);
 

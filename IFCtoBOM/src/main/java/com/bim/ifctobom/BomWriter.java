@@ -34,6 +34,10 @@ public class BomWriter {
         String aabbQualifier = "OUTER";
         boolean isActive = true;
         boolean orIgnore = false;      // INSERT OR IGNORE vs INSERT OR REPLACE
+        // §6.12.2: Shim properties — when set, this BOM is a shim parent
+        String hostIfcClass;
+        String mount;
+        double offsetMm;
     }
 
     /** Builder for BomRow — callers set only the fields they need. */
@@ -57,6 +61,10 @@ public class BomWriter {
         }
         public BomRowBuilder aabbQualifier(String v) { r.aabbQualifier = v; return this; }
         public BomRowBuilder orIgnore() { r.orIgnore = true; return this; }
+        /** §6.12.2: Set shim properties — makes this BOM a shim parent. */
+        public BomRowBuilder shim(String hostIfcClass, String mount, double offsetMm) {
+            r.hostIfcClass = hostIfcClass; r.mount = mount; r.offsetMm = offsetMm; return this;
+        }
 
         public BomRow build() { return r; }
     }
@@ -66,11 +74,13 @@ public class BomWriter {
             (bom_id, Value, bom_name, bom_type, group_by, entity_type,
              doc_sub_type, m_product_category_id,
              origin_x, origin_y, origin_z,
-             aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
+             aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active,
+             host_ifc_class, mount, offset_mm)
             VALUES (?, ?, ?, ?, ?, ?,
                     ?, ?,
                     ?, ?, ?,
-                    ?, ?, ?, ?, ?)
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?)
             """;
 
     private static final String BOM_INSERT_IGNORE = """
@@ -78,11 +88,13 @@ public class BomWriter {
             (bom_id, Value, bom_name, bom_type, group_by, entity_type,
              doc_sub_type, m_product_category_id,
              origin_x, origin_y, origin_z,
-             aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active)
+             aabb_width_mm, aabb_depth_mm, aabb_height_mm, aabb_qualifier, is_active,
+             host_ifc_class, mount, offset_mm)
             VALUES (?, ?, ?, ?, ?, ?,
                     ?, ?,
                     ?, ?, ?,
-                    ?, ?, ?, ?, ?)
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?)
             """;
 
     /** Insert or replace an m_bom header. All columns explicit. */
@@ -106,6 +118,16 @@ public class BomWriter {
             stmt.setInt(14, r.aabbH);
             stmt.setString(15, r.aabbQualifier);
             stmt.setInt(16, r.isActive ? 1 : 0);
+            // §6.12.2: Shim properties (NULL for non-shim BOMs)
+            if (r.hostIfcClass != null) {
+                stmt.setString(17, r.hostIfcClass);
+                stmt.setString(18, r.mount);
+                stmt.setDouble(19, r.offsetMm);
+            } else {
+                stmt.setNull(17, Types.VARCHAR);
+                stmt.setNull(18, Types.VARCHAR);
+                stmt.setNull(19, Types.REAL);
+            }
             stmt.executeUpdate();
         }
     }

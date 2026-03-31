@@ -139,10 +139,60 @@ public class DisciplineBomBuilder {
                 int adOrgId = resolveAdOrgId(discCode);
 
                 if (isMep(adOrgId)) {
-                    // MEP: count only — deferred to Callout + RouteBuilder
+                    // MEP: count to ad_sysconfig + spatial BOM with shim first line
+                    // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 — Witness: W-J3-MEP-BOM
                     mepCounts.merge(discCode, discElems.size(), Integer::sum);
-                    BIMLogger.pattern("MEP", "Deferred to Callout: {}/{} {} elements (AD_Org={})",
-                            storeyName, discCode, discElems.size(), adOrgId);
+
+                    // ── Create discipline sub-BOM: shim IS the BOM parent ──
+                    String discBomId = floorBomId + "_" + discCode;
+
+                    // Compute discipline AABB within this storey
+                    double dMinX = discElems.stream().mapToDouble(ExtractionElement::minX).min().orElse(fMinX);
+                    double dMinY = discElems.stream().mapToDouble(ExtractionElement::minY).min().orElse(fMinY);
+                    double dMinZ = discElems.stream().mapToDouble(ExtractionElement::minZ).min().orElse(fMinZ);
+                    double dMaxX = discElems.stream().mapToDouble(ExtractionElement::maxX).max().orElse(fMaxX);
+                    double dMaxY = discElems.stream().mapToDouble(ExtractionElement::maxY).max().orElse(fMaxY);
+                    double dMaxZ = discElems.stream().mapToDouble(ExtractionElement::maxZ).max().orElse(fMaxZ);
+                    double dW = (dMaxX - dMinX) * 1000;
+                    double dD = (dMaxY - dMinY) * 1000;
+                    double dH = (dMaxZ - dMinZ) * 1000;
+
+                    // Create discipline sub-BOM header — the BOM IS the shim parent
+                    // §6.12.2 fix: shim is M_BOM parent, not sibling line item
+                    ProductRegistrar.ensureAssemblyStub(bomConn, discBomId, "MEP_ASSEMBLY");
+                    String[] shimProps = resolveShimProperties(discCode);
+                    BomWriter.BomRowBuilder bomBuilder = new BomWriter.BomRowBuilder(
+                            discBomId, prefix + " " + storeyName + " " + discCode,
+                            "MEP", "DISCIPLINE")
+                            .productCategoryId(catLookup.getId(discCode))
+                            .aabb((int) dW, (int) dD, (int) dH);
+                    if (shimProps != null) {
+                        bomBuilder.shim(shimProps[0], shimProps[1], Double.parseDouble(shimProps[2]));
+                        BIMLogger.geo("SHIM", "BOM_SHIM {} host={} mount={} offset={}mm disc={} storey={}",
+                                discBomId, shimProps[0], shimProps[1], shimProps[2],
+                                discCode, storeyName);
+                    }
+                    BomWriter.insertBom(bomConn, bomBuilder.build());
+
+                    // Children: extracted MEP elements as factorized LEAF lines
+                    VerbFactorizer.FactorResult fr = VerbFactorizer.factorize(
+                            bomConn, discBomId, discElems, dMinX, dMinY, dMinZ,
+                            10, true, adOrgId);
+                    totalLines += fr.linesWritten();
+                    BIMLogger.geo("MEP", "BOM {}: {} lines ({} verb, {} unfact) disc={} storey={}",
+                            discBomId, fr.linesWritten(),
+                            fr.verbMatched(), fr.unfactored(), discCode, storeyName);
+
+                    // MAKE child: FLOOR → discipline sub-BOM
+                    double mepDx = dMinX - fMinX;
+                    double mepDy = dMinY - fMinY;
+                    double mepDz = dMinZ - fMinZ;
+                    insertBomLine(bomConn, floorBomId, discBomId, "MAKE",
+                            "MEP_" + discCode, discSeq, "0",
+                            mepDx, mepDy, mepDz,
+                            0, 0, 0,
+                            storeyName, null, 0, null, null, null);
+                    discSeq += 10;
                     continue;
                 }
 
@@ -196,6 +246,24 @@ public class DisciplineBomBuilder {
     /** MEP disciplines: AD_Org_ID 3-8 (FP, ELEC, ACMV, CW, SP, LPG). */
     private static boolean isMep(int adOrgId) {
         return adOrgId >= 3 && adOrgId <= 8;
+    }
+
+    /**
+     * Resolve shim properties for a discipline.
+     * §6.12.2 fix: shim is the M_BOM parent — these properties go on the BOM header.
+     *
+     * @return [hostIfcClass, mount, offsetMm] or null if no shim defined
+     */
+    private static String[] resolveShimProperties(String discCode) {
+        return switch (discCode.toUpperCase()) {
+            case "FP"   -> new String[]{"IfcCovering", "BOTTOM", "5"};
+            case "ELEC" -> new String[]{"IfcCovering", "BOTTOM", "5"};
+            case "ACMV" -> new String[]{"IfcCovering", "BOTTOM", "5"};
+            case "CW"   -> new String[]{"IfcCovering", "BOTTOM", "5"};
+            case "SP"   -> new String[]{"IfcSlab",     "TOP",    "0"};
+            case "LPG"  -> new String[]{"IfcWall",     "SIDE",   "0"};
+            default      -> null;
+        };
     }
 
     // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────
