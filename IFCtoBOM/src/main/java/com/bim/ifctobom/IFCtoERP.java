@@ -389,7 +389,8 @@ public class IFCtoERP {
      */
     public static RecipeResult buildMepBomRecipes(
             Connection erpConn, String buildingType) throws SQLException {
-        // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §7 — Witness: W-J1-TACK
+        // Chain fix: Z-axis FP + direction-change split — Witness: W-J1-CHAIN-FIX
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §7
 
         // DDL — extend existing M_BOM/M_BOM_Line with tack columns (ALTER TABLE, idempotent)
         try (Statement stmt = erpConn.createStatement()) {
@@ -434,14 +435,31 @@ public class IFCtoERP {
         int runsBuilt = 0, linesWritten = 0, shimAnchors = 0;
         Map<String, Integer> runCounters = new LinkedHashMap<>();
 
+        // Idempotency: delete existing MEP recipes for this building before rebuilding
+        // (W-J1-CHAIN-FIX: refined chains replace old 00g output cleanly)
+        try (PreparedStatement delLines = erpConn.prepareStatement(
+                "DELETE FROM M_BOM_Line WHERE M_BOM_ID IN " +
+                "(SELECT M_BOM_ID FROM M_BOM WHERE source_building = ?)")) {
+            delLines.setString(1, buildingType);
+            int deletedLines = delLines.executeUpdate();
+            BIMLogger.fine(TAG, "[GEO] {}: deleted {} stale M_BOM_Line rows before rebuild", buildingType, deletedLines);
+        }
+        try (PreparedStatement delBoms = erpConn.prepareStatement(
+                "DELETE FROM M_BOM WHERE source_building = ?")) {
+            delBoms.setString(1, buildingType);
+            int deletedBoms = delBoms.executeUpdate();
+            BIMLogger.fine(TAG, "[GEO] {}: deleted {} stale M_BOM rows before rebuild", buildingType, deletedBoms);
+        }
+
         for (var entry : groups.entrySet()) {
             String[] parts = entry.getKey().split("\\|", 2);
             String storey = parts[0], disc = parts[1];
             String storeyCode = toStoreyCode(storey);
             List<MepPosElement> group = new ArrayList<>(entry.getValue());
 
-            // Dominant axis: max variance in centroid coordinates
-            char axis = dominantAxisOf(group);
+            // Fix 1: FP (pendant sprinklers) hang vertically — force Z regardless of variance
+            // Witness: W-J1-CHAIN-FIX §7
+            char axis = "FP".equals(disc) ? 'Z' : dominantAxisOf(group);
 
             // Sort along dominant axis by centroid
             Comparator<MepPosElement> sorter = switch (axis) {
@@ -452,9 +470,22 @@ public class IFCtoERP {
             group.sort(sorter);
 
             // 4. Detect chains (gap < 50mm = 0.05m between AABB faces)
-            List<List<MepPosElement>> chains = detectChains(group, axis);
+            List<List<MepPosElement>> rawChains = detectChains(group, axis);
 
-            String discKey = storey + "|" + disc;
+            // Fix 2: split mega-chains at direction changes (perpendicular > 2× along)
+            // Witness: W-J1-CHAIN-FIX §7 — prevents single 651-piece ACMV mega-run
+            String groupLabel = prefix + "_" + disc + "_" + storeyCode;
+            List<List<MepPosElement>> chains = new ArrayList<>();
+            for (List<MepPosElement> raw : rawChains) {
+                chains.addAll(splitByDirectionChange(raw, axis, 2.0, groupLabel));
+            }
+            if (rawChains.size() != chains.size()) {
+                BIMLogger.info(TAG, "[GEO] {}: direction-change split {} raw chains → {} sub-chains",
+                        groupLabel, rawChains.size(), chains.size());
+                System.out.printf("[IFCtoERP][GEO] %s: %d raw chains → %d sub-chains after direction split%n",
+                        groupLabel, rawChains.size(), chains.size());
+            }
+
             int chainsFull = 0;
             for (List<MepPosElement> chain : chains) {
                 if (chain.size() < 2) continue; // skip isolated singles
@@ -665,6 +696,55 @@ public class IFCtoERP {
         }
         chains.add(current);
         return chains;
+    }
+
+    /**
+     * Split a chain at direction changes: when perpendicular displacement > ratio × along displacement.
+     * Implements §6.12.2 §7 direction-change sub-chain detection — Witness: W-J1-CHAIN-FIX
+     * GEO forensic logging: each split emits [GEO] line for spatial audit.
+     */
+    private static List<List<MepPosElement>> splitByDirectionChange(
+            List<MepPosElement> chain, char axis, double ratio, String logLabel) {
+        List<List<MepPosElement>> result = new ArrayList<>();
+        if (chain.isEmpty()) return result;
+
+        List<MepPosElement> current = new ArrayList<>();
+        current.add(chain.get(0));
+
+        for (int i = 1; i < chain.size(); i++) {
+            MepPosElement prev = chain.get(i - 1);
+            MepPosElement curr = chain.get(i);
+
+            double along = switch (axis) {
+                case 'X' -> Math.abs(curr.cx - prev.cx);
+                case 'Y' -> Math.abs(curr.cy - prev.cy);
+                default  -> Math.abs(curr.cz - prev.cz);
+            };
+            double perpB = switch (axis) {
+                case 'X' -> curr.cy - prev.cy;
+                case 'Y' -> curr.cx - prev.cx;
+                default  -> curr.cx - prev.cx;
+            };
+            double perpC = switch (axis) {
+                case 'X' -> curr.cz - prev.cz;
+                case 'Y' -> curr.cz - prev.cz;
+                default  -> curr.cy - prev.cy;
+            };
+            double perpendicular = Math.sqrt(perpB * perpB + perpC * perpC);
+
+            if (along > 0.0 && perpendicular > ratio * along) {
+                // Direction change — close current sub-chain, start new one
+                result.add(current);
+                BIMLogger.fine(TAG, "[GEO] {}: direction-change split idx={} along={:.3f}m perp={:.3f}m",
+                        logLabel, i, along, perpendicular);
+                System.out.printf("[IFCtoERP][GEO] %s: split@idx=%d along=%.4fm perp=%.4fm ratio=%.2f%n",
+                        logLabel, i, along, perpendicular, perpendicular / along);
+                current = new ArrayList<>();
+            }
+            current.add(curr);
+        }
+        result.add(current);
+        return result;
     }
 
     /** Map discipline code → canonical shim product value. */
