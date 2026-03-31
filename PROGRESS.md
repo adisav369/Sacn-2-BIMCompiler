@@ -59,9 +59,8 @@
   00d PARTIAL: MEP in BOM (shim root, tack columns, ShimMatcher). §6.12.2 rewrite.
   00f DONE: InterimWorkshop + c_uom_id UOM model. SH 8/8 PASS. TE 48428 el, 6/8 PASS.
   C_DocType removed as registry source → m_bom (J4_003). BuildingRegistry/MetadataValidator/PlacementLoader/BuildingWriter updated.
-  GAP: J1 tack offsets not extracted (child pos - parent pos). Blocks real MEP BOM walks.
-  Next: 00g — J1 tack extraction on RM (3568 MEP, smaller than TE 11634).
-  00e: AD_Val_Rule P15/P16/P17 — blocked until 00g (J1) done.
+  00g DONE (`088a84e7`): J1 tack offsets — 147 MEP runs, 3703 lines in ERP.db (RM). W-J1-TACK. SH 8/8, RM 6/8 (no regression).
+  Next: 00e — AD_Val_Rule P15/P16/P17 now unblocked. Or: FP Z-axis fix (FP chains show dx≈0, need dominant axis=Z for pendant sprinklers).
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
