@@ -5,21 +5,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Reads C_DocType from BOM.db — building type definitions (constant domain config).
+ * Reads building registry from the BUILDING m_bom row in BOM.db.
  *
- * <p>iDempiere pattern: C_DocType = document type classification (constant).
+ * <p>iDempiere pattern: C_DocType = document type stub for 'Construction Order' only.
  * C_Order = transactional (output.db only, created at compile time).
+ * Building registry (DSL, paths, thresholds) lives in m_bom (J4_003).
  *
- * <p>Each row is a complete compilation template — DSL + paths + thresholds.
- * Adding a new building type = one SQL INSERT into C_DocType, zero Java files.
+ * <p>Each BUILDING m_bom row is a complete compilation template.
+ * Adding a new building = one extraction run, zero Java files.
  */
 public class BuildingRegistry {
 
     private static String dbPath() { return System.getProperty("bom.db"); }
 
     /**
-     * Building type definition from C_DocType.
+     * Building type definition from m_bom BUILDING row.
      * Domain config only — no transactional state (DocStatus, checksums go on C_Order in output.db).
+     * C_DocType is a stub for iDempiere 'Construction Order' compatibility; not the registry source.
      */
     public record BuildingEntry(
         String docTypeId,           // C_DocType.Value ('RE_SH', 'RE_DX', 'ST_SH', 'ST_DX')
@@ -70,14 +72,14 @@ public class BuildingRegistry {
      * Load all active building types ordered by SeqNo.
      */
     public static List<BuildingEntry> loadActive() {
-        return load("WHERE IsActive = 1 ORDER BY SeqNo");
+        return load("ORDER BY b.seq_no");
     }
 
     /**
      * Load a building type by ProjectName (building instance name).
      */
     public static BuildingEntry loadById(String buildingId) {
-        List<BuildingEntry> entries = load("WHERE ProjectName = ?", buildingId);
+        List<BuildingEntry> entries = load("AND b.project_name = ?", buildingId);
         return entries.isEmpty() ? null : entries.get(0);
     }
 
@@ -86,14 +88,14 @@ public class BuildingRegistry {
      * Used by compile_building() to select RE for ENBLOC, ST for WALKTHRU.
      */
     public static List<BuildingEntry> loadByProductCategory(String category) {
-        return load("WHERE MProductCategoryId = ? AND IsActive = 1 ORDER BY SeqNo", category);
+        return load("AND mpc.Value = ? ORDER BY b.seq_no", category);
     }
 
     /**
-     * Load a building type by C_DocType_ID.
+     * Load a building type by docTypeId (e.g. 'RE_RM' = category + '_' + doc_sub_type).
      */
     public static BuildingEntry loadByDocTypeId(String docTypeId) {
-        List<BuildingEntry> entries = load("WHERE Value = ?", docTypeId);
+        List<BuildingEntry> entries = load("AND mpc.Value || '_' || b.doc_sub_type = ?", docTypeId);
         return entries.isEmpty() ? null : entries.get(0);
     }
 
@@ -126,40 +128,32 @@ public class BuildingRegistry {
         return result;
     }
 
-    private static List<BuildingEntry> load(String whereClause, String... params) {
+    // Base SQL: reads building registry from m_bom BUILDING row.
+    // C_DocType is now a stub — do not join it here.
+    // Implementing §J4_003 — registry columns moved from C_DocType to m_bom.
+    private static final String BASE_SQL =
+        "SELECT mpc.Value || '_' || b.doc_sub_type AS C_DocType_ID, "
+        + "b.project_name AS ProjectName, b.Name, "
+        + "mpc.Value AS MProductCategoryId, "
+        + "b.doc_sub_type AS DocSubType, "
+        + "b.dsl_content AS DSLContent, b.output_db_path AS OutputDbPath, "
+        + "b.reference_db_path AS ReferenceDbPath, b.is_active AS IsActive, "
+        + "b.seq_no AS SeqNo, "
+        + "COALESCE(b.expected_elements, 0) AS ExpectedElements, "
+        + "COALESCE(b.provenance, 'EXTRACTED') AS Provenance, "
+        + "b.description AS Description, "
+        + "COALESCE(b.geometry_fail_threshold, 0) AS GeometryFailThreshold, "
+        + "COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm, "
+        + "COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm, "
+        + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm, "
+        + "b.jurisdiction AS Jurisdiction, b.code_edition AS CodeEdition "
+        + "FROM m_bom b "
+        + "JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID "
+        + "WHERE b.bom_type = 'BUILDING' AND b.is_active = 1 ";
+
+    private static List<BuildingEntry> load(String extraClause, String... params) {
         List<BuildingEntry> entries = new ArrayList<>();
-        // AABB + m_product_category_id from BUILDING BOM (m_bom).
-        // W018: DocBaseType/DocSubType dropped from C_DocType. doc_sub_type is the single FK.
-        // ST_SH/ST_DX (m_product_category_id='ST') resolve AABB from M_BomCategory, not BUILDING BOM.
-        // Tier 2: C_DocType_ID is INTEGER PK. Value holds old TEXT key (e.g., 'RE_SH').
-
-        // Check if C_DocType has Jurisdiction column (added S100-p91)
-        boolean hasJurisdiction = false;
-        try (Connection probe = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
-             ResultSet cols = probe.getMetaData().getColumns(null, null, "C_DocType", "Jurisdiction")) {
-            hasJurisdiction = cols.next();
-        } catch (SQLException ignored) { }
-
-        String jurisdictionExpr = hasJurisdiction ? "d.Jurisdiction, d.CodeEdition " : "NULL AS Jurisdiction, NULL AS CodeEdition ";
-
-        String sql = "SELECT d.Value AS C_DocType_ID, d.ProjectName, d.Name, "
-                   + "mpc.Value AS MProductCategoryId, "
-                   + "COALESCE(d.doc_sub_type, b.doc_sub_type) AS DocSubType, "
-                   + "d.DSLContent, d.OutputDbPath, d.ReferenceDbPath, d.IsActive, d.SeqNo, "
-                   + "d.ExpectedElements, d.Provenance, d.Description, "
-                   + "d.GeometryFailThreshold, "
-                   + "COALESCE(b.aabb_width_mm, 0) AS AabbWidthMm, "
-                   + "COALESCE(b.aabb_depth_mm, 0) AS AabbDepthMm, "
-                   + "COALESCE(b.aabb_height_mm, 0) AS AabbHeightMm, "
-                   + jurisdictionExpr
-                   + "FROM C_DocType d "
-                   // Implementing DISC_VALIDATION_DB_SRS.md §10.4.5 — Witness: W-TREE-1
-                   // Root = BOM with no parent m_bom_line (replaces bom_type = 'BUILDING')
-                   + "LEFT JOIN m_bom b ON b.doc_sub_type = d.doc_sub_type "
-                   + "  AND b.Value NOT IN (SELECT child_product_id FROM m_bom_line WHERE is_active = 1) "
-                   + "  AND b.is_active = 1 "
-                   + "LEFT JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID "
-                   + qualifyWhereClause(whereClause);
+        String sql = BASE_SQL + extraClause;
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath());
              PreparedStatement ps = conn.prepareStatement(sql)) {
             for (int i = 0; i < params.length; i++) {
@@ -191,19 +185,9 @@ public class BuildingRegistry {
                 }
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Failed to load building registry from C_DocType: " + e.getMessage(), e);
+            throw new RuntimeException("Failed to load building registry from m_bom: " + e.getMessage(), e);
         }
         return entries;
-    }
-
-    /** Qualify bare column names in WHERE/ORDER clause with table alias. */
-    private static String qualifyWhereClause(String clause) {
-        return clause
-            .replace("IsActive", "d.IsActive")
-            .replace("ProjectName", "d.ProjectName")
-            .replace("Value", "d.Value")
-            .replace("SeqNo", "d.SeqNo")
-            .replace("MProductCategoryId", "mpc.Value");
     }
 
 }

@@ -132,13 +132,13 @@ public class MetadataValidator implements CompilerStage {
     // =====================================================================
 
     private void checkBuildingTypeExists(Connection conn, String buildingType, List<String> errors) throws SQLException {
-        // Check against abstract model: C_DocType.ProjectName (not concrete ad_building)
+        // Check against m_bom BUILDING row. C_DocType is now a stub (J4_003).
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT COUNT(*) FROM C_DocType WHERE ProjectName = ? AND IsActive = 1")) {
+                "SELECT COUNT(*) FROM m_bom WHERE project_name = ? AND bom_type = 'BUILDING' AND is_active = 1")) {
             ps.setString(1, buildingType);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next() || rs.getInt(1) == 0) {
-                    errors.add("building_type '" + buildingType + "' not found in C_DocType.ProjectName");
+                    errors.add("building_type '" + buildingType + "' not found in m_bom.project_name");
                 }
             }
         }

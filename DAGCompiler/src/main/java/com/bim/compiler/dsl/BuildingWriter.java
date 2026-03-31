@@ -1726,11 +1726,11 @@ public class BuildingWriter {
         return ids;
     }
 
-    /** Look up DocSubType from C_DocType by ProjectName. */
+    /** Look up doc_sub_type from m_bom BUILDING row by project_name. */
     private String lookupDocSubType(Connection bomConn, String buildingName) throws SQLException {
         if (buildingName == null) return null;
         try (PreparedStatement ps = bomConn.prepareStatement(
-                "SELECT doc_sub_type FROM C_DocType WHERE ProjectName = ?")) {
+                "SELECT doc_sub_type FROM m_bom WHERE project_name = ? AND bom_type = 'BUILDING' LIMIT 1")) {
             ps.setString(1, buildingName);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getString(1) : null;

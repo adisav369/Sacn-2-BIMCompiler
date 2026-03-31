@@ -363,10 +363,10 @@ public class IFCtoBOMPipeline {
             String hash = IntegrityHash.computeAndStore(bomConn);
             System.out.printf("[IFCtoBOM] Integrity hash: %s%n", hash.substring(0, 16));
 
-            // 10b. Write C_DocType row (R27: spec says it belongs in {PREFIX}_BOM.db)
+            // 10b. Write registry fields onto the BUILDING m_bom row (J4_003).
+            // C_DocType is now a stub — building registry lives in m_bom.
             // Implementing LAST_MILE_PROBLEM.md R27 — Witness: W-R27-DOCTYPE
             {
-                String docTypeId = config.productCategory() + "_" + config.docSubType();
                 String outputPath = "DAGCompiler/lib/output/"
                         + config.buildingType().toLowerCase() + ".db";
                 String refPath = "DAGCompiler/lib/input/"
@@ -381,42 +381,36 @@ public class IFCtoBOMPipeline {
                     }
                 }
 
-                // Tier 2: C_DocType_ID is INTEGER PK AUTOINCREMENT. Old text key → Value.
-                // W018: DocBaseType dropped from C_DocType. doc_sub_type is the single FK to m_bom.
                 try (PreparedStatement ps = bomConn.prepareStatement("""
-                        INSERT OR REPLACE INTO C_DocType (
-                            Value, Name, doc_sub_type, IsActive,
-                            ProjectName, OutputDbPath, ReferenceDbPath,
-                            ExpectedElements, Provenance, SeqNo,
-                            AabbWidthMm, AabbDepthMm, AabbHeightMm,
-                            GeometryFailThreshold, DSLContent,
-                            Jurisdiction
-                        ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, 'EXTRACTED', 10, ?, ?, ?, ?, ?, ?)
+                        UPDATE m_bom SET
+                            project_name            = ?,
+                            output_db_path          = ?,
+                            reference_db_path       = ?,
+                            expected_elements       = ?,
+                            provenance              = 'EXTRACTED',
+                            geometry_fail_threshold = ?,
+                            dsl_content             = ?,
+                            jurisdiction            = ?
+                        WHERE bom_type = 'BUILDING'
                         """)) {
-                    ps.setString(1, docTypeId);
-                    ps.setString(2, config.name());
-                    ps.setString(3, config.docSubType());
-                    ps.setString(4, config.buildingType());
-                    ps.setString(5, outputPath);
-                    ps.setString(6, refPath);
-                    ps.setInt(7, reconcileCount);
-                    ps.setDouble(8, structural.aabbWidthMm());
-                    ps.setDouble(9, structural.aabbDepthMm());
-                    ps.setDouble(10, structural.aabbHeightMm());
-                    ps.setInt(11, config.geometryFailThreshold());
+                    ps.setString(1, config.buildingType());
+                    ps.setString(2, outputPath);
+                    ps.setString(3, refPath);
+                    ps.setInt(4, reconcileCount);
+                    ps.setInt(5, config.geometryFailThreshold());
                     if (dslContent != null) {
-                        ps.setString(12, dslContent);
+                        ps.setString(6, dslContent);
                     } else {
-                        ps.setNull(12, java.sql.Types.VARCHAR);
+                        ps.setNull(6, java.sql.Types.VARCHAR);
                     }
                     if (config.jurisdiction() != null) {
-                        ps.setString(13, config.jurisdiction());
+                        ps.setString(7, config.jurisdiction());
                     } else {
-                        ps.setNull(13, java.sql.Types.VARCHAR);
+                        ps.setNull(7, java.sql.Types.VARCHAR);
                     }
                     ps.executeUpdate();
                 }
-                BIMLogger.info("PIPELINE", "C_DocType: {} written (R27)", docTypeId);
+                BIMLogger.info("PIPELINE", "m_bom BUILDING registry: {} written", config.buildingType());
             }
 
             // 10c. Store expected element count (R13: no I_Element_Extraction — BOM carries the count)
@@ -710,7 +704,17 @@ public class IFCtoBOMPipeline {
                         CHECK(aabb_qualifier IN ('INNER','STRUCTURAL','OUTER','OPENING')),
                     host_ifc_class    TEXT,
                     mount             TEXT,
-                    offset_mm         REAL DEFAULT 0
+                    offset_mm         REAL DEFAULT 0,
+                    -- J4: building registry fields (moved from C_DocType, see J4_003)
+                    project_name      TEXT,
+                    dsl_content       TEXT,
+                    output_db_path    TEXT,
+                    reference_db_path TEXT,
+                    expected_elements INTEGER DEFAULT 0,
+                    provenance        TEXT DEFAULT 'EXTRACTED',
+                    geometry_fail_threshold INTEGER DEFAULT 0,
+                    jurisdiction      TEXT,
+                    code_edition      TEXT
                 )
                 """);
 
@@ -784,33 +788,14 @@ public class IFCtoBOMPipeline {
                 )
                 """);
 
-            // R27: C_DocType belongs in {PREFIX}_BOM.db (was shell-injected)
-            // Tier 2: C_DocType_ID INTEGER PK (iDempiere convention). Old TEXT key → Value.
-            // W018: DocBaseType dropped. doc_sub_type is FK to m_bom.doc_sub_type.
+            // C_DocType: stub for iDempiere 'Construction Order' compatibility only.
+            // Building registry data lives in m_bom (J4_003). Do NOT add registry columns here.
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS C_DocType (
-                    C_DocType_ID         INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Value                TEXT NOT NULL UNIQUE,
-                    Name                 TEXT NOT NULL,
-                    doc_sub_type         TEXT,
-                    IsDefault            INTEGER DEFAULT 0,
-                    IsActive             INTEGER DEFAULT 1,
-                    Description          TEXT,
-                    ProjectName          TEXT,
-                    DSLContent           TEXT,
-                    OutputDbPath         TEXT,
-                    ReferenceDbPath      TEXT,
-                    ExpectedElements     INTEGER,
-                    Provenance           TEXT DEFAULT 'EXTRACTED',
-                    GeometryFailThreshold INTEGER DEFAULT 0,
-                    SeqNo                INTEGER DEFAULT 10,
-                    AabbWidthMm          REAL,
-                    AabbDepthMm          REAL,
-                    AabbHeightMm         REAL,
-                    C_Campaign_ID        TEXT,
-                    SalesRep_ID          INTEGER,
-                    Jurisdiction         TEXT,
-                    CodeEdition          TEXT
+                    C_DocType_ID  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Value         TEXT NOT NULL UNIQUE,
+                    Name          TEXT NOT NULL,
+                    IsActive      INTEGER DEFAULT 1
                 )
                 """);
 

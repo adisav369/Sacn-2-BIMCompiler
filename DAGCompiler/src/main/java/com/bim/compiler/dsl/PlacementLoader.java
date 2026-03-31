@@ -209,11 +209,14 @@ public class PlacementLoader {
         }
     }
 
-    /** Load C_DocType Value (text key) → ProjectName mapping. */
+    /** Load docTypeId (mpc.Value||'_'||doc_sub_type) → project_name mapping from m_bom. */
     private static Map<String, String> loadDocTypeToProjectMap(Connection conn) throws SQLException {
         Map<String, String> map = new HashMap<>();
+        String sql = "SELECT mpc.Value || '_' || b.doc_sub_type AS Value, b.project_name AS ProjectName "
+                   + "FROM m_bom b JOIN M_Product_Category mpc ON b.m_product_category_id = mpc.M_Product_Category_ID "
+                   + "WHERE b.bom_type = 'BUILDING'";
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT Value, ProjectName FROM C_DocType")) {
+             ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
                 map.put(rs.getString("Value"), rs.getString("ProjectName"));
             }
@@ -292,13 +295,14 @@ public class PlacementLoader {
     // loadUnitBoms removed — prefix-based lookup via MBOM.getByBomIdPrefix replaces category-based selection
     // loadWorldOrigin removed (R12) — world origin now stored in m_bom.origin_x/y/z by BOM generation
 
-    /** Load C_DocType.DocSubType → ProjectName mapping. */
+    /** Load doc_sub_type → project_name mapping from m_bom BUILDING rows. */
     private static Map<String, String> loadDocSubTypeMap(Connection conn) throws SQLException {
         Map<String, String> map = new HashMap<>();
         try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT doc_sub_type, ProjectName FROM C_DocType")) {
+             ResultSet rs = stmt.executeQuery(
+                     "SELECT doc_sub_type, project_name FROM m_bom WHERE bom_type = 'BUILDING'")) {
             while (rs.next()) {
-                map.put(rs.getString("doc_sub_type"), rs.getString("ProjectName"));
+                map.put(rs.getString("doc_sub_type"), rs.getString("project_name"));
             }
         }
         return map;
