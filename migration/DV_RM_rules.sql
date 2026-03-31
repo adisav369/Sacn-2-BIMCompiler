@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RM: Revit MEP (Revit_MEP)
 -- Source: DAGCompiler/lib/output/revit_mep.db
--- Generated: 2026-03-31 00:21
+-- Generated: 2026-03-31 06:56
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
