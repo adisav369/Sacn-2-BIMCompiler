@@ -1174,15 +1174,19 @@ OSGi: loosely coupled, highly cohesive.
 Compile time:
   1. ARC BOM compiled → ceiling element at (3200, 1500, 2700) in *_BOM.db
   2. Callout creates FP DISC OrderLine
-  3. BomDropper reads FP recipe from ERP.db
-  4. First child = FP_CEILING_SHIM (host_ifc_class=IfcCovering, offset=5mm)
+  3. BomDropper reads FP_SYSTEM recipe from ERP.db
+  4. Recipe child = FP_CEILING_SHIM (IsBOM=Y, host_ifc_class=IfcCovering, offset=5mm)
   5. Walker matches: find ARC element WHERE ifc_class='IfcCovering'
-     AND position contains sprinkler XY → ceiling at (3200, 1500, 2700)
-  6. Shim placed at (3200, 1500, 2695) — cemented to ceiling surface
-  7. Sprinkler tacks to shim at dz=-300 → placed at (3200, 1500, 2395)
+     AND position contains this room → ceiling at (3200, 1500, 2700)
+  6. Shim becomes parent at (3200, 1500, 2695) — cemented to ceiling surface
+  7. Walker recurses into shim's children:
+     PIPE_STRAIGHT tacks at dx=0 relative to shim
+     SPRINKLER_HEAD tacks at dz=-300 relative to shim → (3200, 1500, 2395)
 ```
 
-The matching is the only new code. Everything after is standard BOM walk.
+The shim is a parent BOM, not a line item. The matching resolves its
+position. Everything below is standard BOM walk — children tack relative
+to the shim.
 
 #### 3. The Toolbox — Joint Pieces in ERP.db
 
@@ -1211,26 +1215,27 @@ RosettaStones teach us the vocabulary by example.
 
 #### 4. The MEP Recipe — Shim First, Then Chain
 
-Each MEP assembly in ERP.db starts with a shim and chains joint pieces:
+The shim is the **M_BOM parent** — not a sibling line item. It IS the
+assembly. Like a ROOM is the parent of furniture, the shim is the parent
+of the MEP pieces that attach to that surface. Children tack relative to
+the shim's position.
 
 ```
-M_BOM: FP_SPRINKLER_BRANCH (in ERP.db — shared recipe)
-  line 1: FP_CEILING_SHIM         dz=0        ← matches to ceiling, becomes tack origin
-  line 2: PIPE_STRAIGHT_50MM      dx=0  dz=0  ← header along ceiling from shim
-  line 3: PIPE_TEE_50_25MM        dx=L  dz=0  ← tee at end of header run
-  line 4: PIPE_STRAIGHT_25MM      dy=S  dz=0  ← branch from tee
-  line 5: SPRINKLER_HEAD_K56      dy=0  dz=-300 ← terminal drop from branch
+M_BOM: FP_CEILING_SHIM (IS the parent — matches to ceiling host, IsBOM=Y)
+  line 1: PIPE_STRAIGHT_50MM      dx=0  dz=0  ← header along ceiling from shim origin
+  line 2: PIPE_TEE_50_25MM        dx=L  dz=0  ← tee at branch point
+  line 3: PIPE_STRAIGHT_25MM      dy=S  dz=0  ← branch from tee
+  line 4: SPRINKLER_HEAD_K56      dy=0  dz=-300 ← terminal drop
 
 M_BOM: FP_SYSTEM (top-level recipe)
   line 1: FP_RISER_ASSEMBLY       qty=1        ← sub-BOM (vertical pipe + shims per floor)
-  line 2: FP_FLOOR_HEADER         qty=N        ← sub-BOM (per floor)
-  line 3: FP_SPRINKLER_BRANCH     qty=M        ← sub-BOM (per room needing FP)
+  line 2: FP_CEILING_SHIM         qty=N        ← shim per room ceiling needing FP
 ```
 
-The walker recurses: FP_SYSTEM → FP_SPRINKLER_BRANCH → shim → pieces.
-Same recursion as BUILDING → FLOOR → ROOM → FURNITURE. The shim at each
-level resets the tack origin to the host surface. All subsequent offsets
-are small, local, verifiable.
+The walker recurses: FP_SYSTEM → FP_CEILING_SHIM → pieces. Same recursion
+as BUILDING → FLOOR → ROOM → FURNITURE. The shim IS the room equivalent
+for MEP — it resets the tack origin to the host surface. All children use
+small, local, verifiable offsets relative to it.
 
 #### 5. What IFC RosettaStones Teach Us
 
