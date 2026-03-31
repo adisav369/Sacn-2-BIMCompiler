@@ -366,6 +366,34 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         // Unit prefix for mirrored compositions
         String unitPrefix = currentUnitPrefix();
 
+        // §6.12.2: UOM-driven InterimWorkshop for variable-length pieces
+        // UOM is the signal — no CUT verb needed (Compiere BOMQty+C_UOM_ID convention).
+        // Dimensions BEFORE positions: this block runs before expandVerb().
+        // Rotation is AFTER recompute — half-extents are in local frame; rotation transforms to world frame.
+        // Guard: qty_type=FIXED (tee, elbow, terminal) → workshop rejected, tack i/o is predetermined.
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §6 — Witness: W-WORKSHOP-1
+        if (line.isLengthBased()) {
+            if (!"VARIABLE".equals(line.getQtyType())) {
+                BIMLogger.geo("WORKSHOP", "REJECT {} qty_type={} — using library dimensions",
+                        productId, line.getQtyType());
+            } else {
+                String fwdAxis = resolveForwardAxis(product);
+                BIMLogger.geo("WORKSHOP", "ENTER {} uom={} qty={} qty_type={} fwd_axis={}",
+                        productId, line.getUomId(), line.getQty(), line.getQtyType(), fwdAxis);
+                double targetM = InterimWorkshop.qtyToMetres(line.getQty(), line.getUomId());
+                double[] trimmed = InterimWorkshop.recompute(product, fwdAxis, targetM);
+                if (trimmed != null) {
+                    BIMLogger.geo("WORKSHOP", "RECOMPUTE {} axis={} original=({:.4f},{:.4f},{:.4f}) → target={:.3f}m → half=({:.4f},{:.4f},{:.4f})",
+                            productId, fwdAxis, halfW, halfD, halfH, targetM, trimmed[0], trimmed[1], trimmed[2]);
+                    halfW = trimmed[0];
+                    halfD = trimmed[1];
+                    halfH = trimmed[2];
+                    BIMLogger.geo("WORKSHOP", "TACK_IO {} inlet=({:.4f},{:.4f},{:.4f}) outlet_offset={:.4f}m along {}",
+                            productId, anchor[0], anchor[1], anchor[2], targetM, fwdAxis);
+                }
+            }
+        }
+
         // ── Verb expansion: compute per-instance positions ────────────
         int qty = line.getQty();
         String verbRef = line.getVerbRef();
@@ -800,6 +828,22 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             if (!prefix.isEmpty()) return prefix;
         }
         return "";
+    }
+
+    /**
+     * Resolve the forward axis for a product from M_Product.forward_axis.
+     *
+     * <p>forward_axis is populated by IFCtoERP from component_library.db at extraction
+     * time (migration J4_002). Used by InterimWorkshop to determine which half-extent
+     * is overridden when a BOM line carries a length-based UOM (MM/M).
+     *
+     * @param product M_Product for this BOM line, or null
+     * @return "X", "Y", or "Z"; defaults to "Y" (library convention for straight pipe/duct)
+     */
+    private static String resolveForwardAxis(MProduct product) {
+        if (product == null) return "Y";
+        String fa = product.getForwardAxis();
+        return (fa != null && !fa.isEmpty()) ? fa : "Y";
     }
 
     /**

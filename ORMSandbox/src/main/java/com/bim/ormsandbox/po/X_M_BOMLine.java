@@ -91,6 +91,7 @@ public class X_M_BOMLine extends BasePO {
     public static final String COLUMNNAME_verb_ref           = "verb_ref";
     public static final String COLUMNNAME_host_element_ref   = "host_element_ref";
     public static final String COLUMNNAME_AD_Org_ID          = "AD_Org_ID";
+    public static final String COLUMNNAME_c_uom_id           = "c_uom_id";
 
     public X_M_BOMLine(Connection conn) { super(conn); }
 
@@ -193,6 +194,23 @@ public class X_M_BOMLine extends BasePO {
     /** AD_Org_ID — discipline FK from extraction. 0 = use category-based fallback. */
     public int getAdOrgId()                       { return get_ValueAsInt(COLUMNNAME_AD_Org_ID); }
     public void setAdOrgId(int v)                 { set_Value(COLUMNNAME_AD_Org_ID, v); }
+
+    /** Unit of Measure — EA (each, default), MM, M, KG, M2, M3.
+     *  When UOM is a length unit (MM/M), qty is the dimension along forward_axis.
+     *  Follows iDempiere C_UOM_ID convention from Compiere BOM Drop (Red1).
+     *  EA is the default — all existing data unchanged (backward compatible). */
+    public String getUomId()  { return get_ValueAsString(COLUMNNAME_c_uom_id); }
+    public void setUomId(String v) { set_Value(COLUMNNAME_c_uom_id, v); }
+
+    /** True if this line's qty represents a length (MM or M), not a count.
+     *  <p>iDempiere lineage: C_UOM_ID from Compiere BOM Drop. For VARIABLE lines,
+     *  the outlet position shifts by the recomputed length; for FIXED pieces
+     *  (tee, elbow, terminal), qty_type=FIXED guards against workshop recompute.
+     *  EA is always false — all existing BOM lines are unaffected. */
+    public boolean isLengthBased() {
+        String uom = getUomId();
+        return "MM".equals(uom) || "M".equals(uom);
+    }
 
     // ── Cheating Maxim guard (Rule 8, RosettaStoneStrategy) ────────────
 

@@ -64,6 +64,8 @@ public class X_MProduct extends BasePO {
     public static final String COLUMNNAME_bom_id             = "bom_id";
     public static final String COLUMNNAME_ifc_class          = "ifc_class";
 
+    public static final String COLUMNNAME_forward_axis        = "forward_axis";
+
     // ── Tier 2: INTEGER PK + iDempiere triad (Phase E) ─────────────────────
     public static final String COLUMNNAME_M_Product_ID      = "M_Product_ID";
     public static final String COLUMNNAME_Value             = "Value";
@@ -102,6 +104,10 @@ public class X_MProduct extends BasePO {
     public int     getComponentId()    { return get_ValueAsInt(COLUMNNAME_component_id); }
     public String  getBomId()          { return get_ValueAsString(COLUMNNAME_bom_id); }
     public String  getIfcClass()       { return get_ValueAsString(COLUMNNAME_ifc_class); }
+    /** Forward axis from component_library.db (X, Y, or Z). Default 'Y'.
+     *  Propagated by IFCtoERP at extraction time. Used by InterimWorkshop
+     *  to determine which half-extent is overridden by a length-based BOM line. */
+    public String  getForwardAxis()    { return get_ValueAsString(COLUMNNAME_forward_axis); }
 
     public void setProductId(String v)     { set_Value(COLUMNNAME_product_id, v); }
     public void setProductType(String v)   { set_Value(COLUMNNAME_product_type, v); }
@@ -131,6 +137,7 @@ public class X_MProduct extends BasePO {
     public void setComponentId(int v)      { set_Value(COLUMNNAME_component_id, v); }
     public void setBomId(String v)         { set_Value(COLUMNNAME_bom_id, v); }
     public void setIfcClass(String v)      { set_Value(COLUMNNAME_ifc_class, v); }
+    public void setForwardAxis(String v)   { set_Value(COLUMNNAME_forward_axis, v); }
 
     // ── Tier 2: INTEGER PK accessors (Phase E) ──────────────────────────────
     /** M_Product_ID integer PK — AUTOINCREMENT surrogate (backfilled by IFCtoBOM). */
