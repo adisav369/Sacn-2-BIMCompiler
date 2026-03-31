@@ -1172,21 +1172,18 @@ OSGi: loosely coupled, highly cohesive.
 
 ```
 Compile time:
-  1. ARC BOM compiled → ceiling element at (3200, 1500, 2700) in *_BOM.db
-  2. Callout creates FP DISC OrderLine
-  3. BomDropper reads FP_SYSTEM recipe from ERP.db
-  4. Recipe child = FP_CEILING_SHIM (IsBOM=Y, host_ifc_class=IfcCovering, offset=5mm)
-  5. Walker matches: find ARC element WHERE ifc_class='IfcCovering'
-     AND position contains this room → ceiling at (3200, 1500, 2700)
-  6. Shim becomes parent at (3200, 1500, 2695) — cemented to ceiling surface
-  7. Walker recurses into shim's children:
+  1. ARC BOM compiled → ceiling in KITCHEN at (3200, 1500, 2700) in *_BOM.db
+  2. ad_space_type_mep_bom says: KITCHEN needs FP
+  3. Callout creates DISC OrderLine: product = FP_CEILING_SHIM on this floor
+  4. Walker matches shim to ARC ceiling by host_ifc_class=IfcCovering
+     → ceiling at (3200, 1500, 2700), offset 5mm → shim at (3200, 1500, 2695)
+  5. Walker recurses into shim's M_BOM children:
      PIPE_STRAIGHT tacks at dx=0 relative to shim
-     SPRINKLER_HEAD tacks at dz=-300 relative to shim → (3200, 1500, 2395)
+     SPRINKLER_HEAD tacks at dz=-300 → placed at (3200, 1500, 2395)
 ```
 
-The shim is a parent BOM, not a line item. The matching resolves its
-position. Everything below is standard BOM walk — children tack relative
-to the shim.
+The shim IS the root BOM for MEP in this room. Matching resolves its
+position. Everything below is standard BOM walk.
 
 #### 3. The Toolbox — Joint Pieces in ERP.db
 
@@ -1215,27 +1212,37 @@ RosettaStones teach us the vocabulary by example.
 
 #### 4. The MEP Recipe — Shim First, Then Chain
 
-The shim is the **M_BOM parent** — not a sibling line item. It IS the
-assembly. Like a ROOM is the parent of furniture, the shim is the parent
-of the MEP pieces that attach to that surface. Children tack relative to
-the shim's position.
+The shim IS the root BOM for MEP in that room. No wrapper. No FP_SYSTEM
+abstraction layer. Like the base plate in a Lego box — the first piece
+you pull out, the one everything else snaps onto.
+
+The Callout reads `ad_space_type_mep_bom`: "KITCHEN needs FP." It creates
+a DISC OrderLine whose product IS `FP_CEILING_SHIM`. One shim per room
+per discipline. The shim matches to the ceiling, gets its position, and
+its M_BOM children are the pieces.
 
 ```
-M_BOM: FP_CEILING_SHIM (IS the parent — matches to ceiling host, IsBOM=Y)
-  line 1: PIPE_STRAIGHT_50MM      dx=0  dz=0  ← header along ceiling from shim origin
-  line 2: PIPE_TEE_50_25MM        dx=L  dz=0  ← tee at branch point
-  line 3: PIPE_STRAIGHT_25MM      dy=S  dz=0  ← branch from tee
-  line 4: SPRINKLER_HEAD_K56      dy=0  dz=-300 ← terminal drop
-
-M_BOM: FP_SYSTEM (top-level recipe)
-  line 1: FP_RISER_ASSEMBLY       qty=1        ← sub-BOM (vertical pipe + shims per floor)
-  line 2: FP_CEILING_SHIM         qty=N        ← shim per room ceiling needing FP
+FLOOR (in *_BOM.db — from ARC extraction)
+  └── DISC OrderLine: product = FP_CEILING_SHIM    ← the base plate IS the root
+        └── PIPE_STRAIGHT_50MM      dx=0  dz=0     ← header from shim origin
+        └── PIPE_TEE_50_25MM        dx=L  dz=0     ← tee at branch point
+        └── PIPE_STRAIGHT_25MM      dy=S  dz=0     ← branch from tee
+        └── SPRINKLER_HEAD_K56      dy=0  dz=-300   ← terminal drop
 ```
 
-The walker recurses: FP_SYSTEM → FP_CEILING_SHIM → pieces. Same recursion
-as BUILDING → FLOOR → ROOM → FURNITURE. The shim IS the room equivalent
-for MEP — it resets the tack origin to the host surface. All children use
-small, local, verifiable offsets relative to it.
+The walker recurses: FLOOR → FP_CEILING_SHIM → pieces. Same recursion
+as FLOOR → ROOM → FURNITURE. The shim IS the room equivalent for MEP.
+All children use small, local, verifiable offsets relative to it.
+
+Multiple rooms needing FP = multiple shim OrderLines on the same floor:
+```
+FLOOR
+  └── FP_CEILING_SHIM  (KITCHEN)    ← matched to kitchen ceiling
+  └── FP_CEILING_SHIM  (CORRIDOR)   ← matched to corridor ceiling
+  └── FP_CEILING_SHIM  (OFFICE)     ← matched to office ceiling
+  └── ELEC_WALL_SHIM   (KITCHEN)    ← matched to kitchen wall at dado height
+  └── SP_FLOOR_SHIM    (BATHROOM)   ← matched to bathroom floor
+```
 
 #### 5. What IFC RosettaStones Teach Us
 
