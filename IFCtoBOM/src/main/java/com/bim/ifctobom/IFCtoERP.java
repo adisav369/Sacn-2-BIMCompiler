@@ -389,10 +389,10 @@ public class IFCtoERP {
      */
     public static RecipeResult buildMepBomRecipes(
             Connection erpConn, String buildingType) throws SQLException {
-        // Chain fix: Z-axis FP + direction-change split — Witness: W-J1-CHAIN-FIX
+        // Chain geometry correctness — Witness: W-J1-GEO
         // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §7
 
-        // DDL — extend existing M_BOM/M_BOM_Line with tack columns (ALTER TABLE, idempotent)
+        // DDL — extend existing M_BOM/M_BOM_Line with tack + geometry columns (ALTER TABLE, idempotent)
         try (Statement stmt = erpConn.createStatement()) {
             for (String alter : new String[]{
                     "ALTER TABLE M_BOM ADD COLUMN bom_type TEXT",
@@ -401,7 +401,8 @@ public class IFCtoERP {
                     "ALTER TABLE M_BOM_Line ADD COLUMN dy REAL DEFAULT 0",
                     "ALTER TABLE M_BOM_Line ADD COLUMN dz REAL DEFAULT 0",
                     "ALTER TABLE M_BOM_Line ADD COLUMN c_uom_id TEXT DEFAULT 'EA'",
-                    "ALTER TABLE M_BOM_Line ADD COLUMN qty_type TEXT DEFAULT 'FIXED'"}) {
+                    "ALTER TABLE M_BOM_Line ADD COLUMN qty_type TEXT DEFAULT 'FIXED'",
+                    "ALTER TABLE M_BOM_Line ADD COLUMN rotation_rule REAL DEFAULT 0.0"}) {
                 try { stmt.execute(alter); }
                 catch (SQLException ignored) {} // column already exists
             }
@@ -423,32 +424,85 @@ public class IFCtoERP {
         }
         BIMLogger.fine(TAG, "{}: {} MEP elements loaded for recipe build", buildingType, elements.size());
 
-        // 2. Group by (storey, disc)
-        Map<String, List<MepPosElement>> groups = new LinkedHashMap<>();
-        for (MepPosElement e : elements) {
-            String disc = discFromClass(e.ifcClass, e.elementType);
-            String key = e.storey + "|" + disc;
-            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(e);
-        }
+        // 2. Coverage topology detection — W-J1-GEO §7
+        // Buildings with >80% null storey (terminals, warehouses) have no routing topology.
+        // Write one archetype per (disc, ifcClass, dz_band) instead of spatial chains.
+        long nullStoreyCount = elements.stream()
+                .filter(e -> e.storey == null || e.storey.isBlank()).count();
+        boolean coverageTopology = (nullStoreyCount * 100 / elements.size()) > 80;
 
-        // 3. Run counter per (storey x disc) group
+        // 3. Load structural AABBs for penetration gap detection (routing mode only)
+        List<double[]> structuralAabbs = coverageTopology
+                ? List.of() : loadStructuralAabbs(refDb);
+
+        // 4. Idempotency: delete stale recipes before rebuild
         int runsBuilt = 0, linesWritten = 0, shimAnchors = 0;
         Map<String, Integer> runCounters = new LinkedHashMap<>();
-
-        // Idempotency: delete existing MEP recipes for this building before rebuilding
-        // (W-J1-CHAIN-FIX: refined chains replace old 00g output cleanly)
         try (PreparedStatement delLines = erpConn.prepareStatement(
                 "DELETE FROM M_BOM_Line WHERE M_BOM_ID IN " +
                 "(SELECT M_BOM_ID FROM M_BOM WHERE source_building = ?)")) {
             delLines.setString(1, buildingType);
-            int deletedLines = delLines.executeUpdate();
-            BIMLogger.fine(TAG, "[GEO] {}: deleted {} stale M_BOM_Line rows before rebuild", buildingType, deletedLines);
+            BIMLogger.fine(TAG, "[GEO] {}: deleted {} stale M_BOM_Line rows", buildingType, delLines.executeUpdate());
         }
         try (PreparedStatement delBoms = erpConn.prepareStatement(
                 "DELETE FROM M_BOM WHERE source_building = ?")) {
             delBoms.setString(1, buildingType);
-            int deletedBoms = delBoms.executeUpdate();
-            BIMLogger.fine(TAG, "[GEO] {}: deleted {} stale M_BOM rows before rebuild", buildingType, deletedBoms);
+            BIMLogger.fine(TAG, "[GEO] {}: deleted {} stale M_BOM rows", buildingType, delBoms.executeUpdate());
+        }
+
+        // ── COVERAGE TOPOLOGY BRANCH ─────────────────────────────────
+        if (coverageTopology) {
+            double ceilingZ = structuralAabbs.isEmpty()
+                    ? elements.stream().mapToDouble(e -> e.cz).max().orElse(0.0)
+                    : loadStructuralAabbs(refDb).stream().mapToDouble(a -> a[5]).max().orElse(0.0);
+            System.out.printf("[IFCtoERP][GEO] %s: COVERAGE TOPOLOGY — %d%% null storey, ceiling_Z=%.3fm%n",
+                    buildingType, nullStoreyCount * 100 / elements.size(), ceilingZ);
+
+            // Group by (disc, ifcClass, dz_standoff in 50mm bands)
+            Map<String, List<MepPosElement>> archetypes = new LinkedHashMap<>();
+            for (MepPosElement e : elements) {
+                String disc = discFromClass(e.ifcClass, e.elementType);
+                double dz = Math.round((e.cz - ceilingZ) * 20.0) / 20.0; // 50mm band
+                archetypes.computeIfAbsent(disc + "|" + e.ifcClass + "|" + dz,
+                        k -> new ArrayList<>()).add(e);
+            }
+
+            for (var entry : archetypes.entrySet()) {
+                String[] kp = entry.getKey().split("\\|", 3);
+                String disc = kp[0];
+                double dzBand = Double.parseDouble(kp[2]);
+                MepPosElement rep = entry.getValue().get(0);
+                String pid = resolveProductIdFor(erpConn, rep);
+                if (pid == null) continue;
+
+                int archNum = runCounters.merge(prefix + "_" + disc, 1, Integer::sum);
+                String bomId = prefix + "_" + disc + "_ARCH_" + archNum;
+                try (PreparedStatement ps = erpConn.prepareStatement("""
+                        INSERT INTO M_BOM (bom_id, Value, Name, bom_type, source_building, BOMType, IsActive)
+                        VALUES (?, ?, ?, 'MEP_RECIPE', ?, 'MEP', 'Y')""")) {
+                    ps.setString(1, bomId); ps.setString(2, bomId);
+                    ps.setString(3, disc + " archetype dz=" + String.format("%.3f", dzBand));
+                    ps.setString(4, buildingType);
+                    ps.executeUpdate();
+                } catch (SQLException ignored) {}
+
+                insertMBomLine(erpConn, bomId, discToShim(disc), 10, 0.0, 0.0, 0.0, 0.0, "EA", "FIXED", 1);
+                insertMBomLine(erpConn, bomId, pid, 20, 0.0, 0.0, dzBand, 0.0, "EA", "FIXED", 1);
+                linesWritten += 2; shimAnchors++; runsBuilt++;
+            }
+            System.out.printf("[IFCtoERP] %s: %d archetypes (coverage topology), ceiling_Z=%.3fm%n",
+                    prefix, archetypes.size(), ceilingZ);
+            BIMLogger.info(TAG, "{}: coverage topology — {} archetypes, {} lines",
+                    buildingType, runsBuilt, linesWritten);
+            return new RecipeResult(runsBuilt, linesWritten, shimAnchors);
+        }
+
+        // ── ROUTING TOPOLOGY BRANCH ──────────────────────────────────
+        // Group by (storey, disc)
+        Map<String, List<MepPosElement>> groups = new LinkedHashMap<>();
+        for (MepPosElement e : elements) {
+            String disc = discFromClass(e.ifcClass, e.elementType);
+            groups.computeIfAbsent(e.storey + "|" + disc, k -> new ArrayList<>()).add(e);
         }
 
         for (var entry : groups.entrySet()) {
@@ -457,11 +511,8 @@ public class IFCtoERP {
             String storeyCode = toStoreyCode(storey);
             List<MepPosElement> group = new ArrayList<>(entry.getValue());
 
-            // Fix 1: FP (pendant sprinklers) hang vertically — force Z regardless of variance
-            // Witness: W-J1-CHAIN-FIX §7
+            // FP pendant sprinklers hang vertically — force Z regardless of variance
             char axis = "FP".equals(disc) ? 'Z' : dominantAxisOf(group);
-
-            // Sort along dominant axis by centroid
             Comparator<MepPosElement> sorter = switch (axis) {
                 case 'X' -> Comparator.comparingDouble(e -> e.cx);
                 case 'Y' -> Comparator.comparingDouble(e -> e.cy);
@@ -469,71 +520,77 @@ public class IFCtoERP {
             };
             group.sort(sorter);
 
-            // 4. Detect chains (gap < 50mm = 0.05m between AABB faces)
-            List<List<MepPosElement>> rawChains = detectChains(group, axis);
+            // Detect chains with penetration gap merging (wall/slab gaps up to 600mm)
+            List<List<MepPosElement>> rawChains = detectChains(group, axis, structuralAabbs);
 
-            // Fix 2: split mega-chains at direction changes (perpendicular > 2× along)
-            // Witness: W-J1-CHAIN-FIX §7 — prevents single 651-piece ACMV mega-run
+            // Split mega-chains at direction changes
             String groupLabel = prefix + "_" + disc + "_" + storeyCode;
-            List<List<MepPosElement>> chains = new ArrayList<>();
-            for (List<MepPosElement> raw : rawChains) {
-                chains.addAll(splitByDirectionChange(raw, axis, 2.0, groupLabel));
-            }
-            if (rawChains.size() != chains.size()) {
-                BIMLogger.info(TAG, "[GEO] {}: direction-change split {} raw chains → {} sub-chains",
-                        groupLabel, rawChains.size(), chains.size());
-                System.out.printf("[IFCtoERP][GEO] %s: %d raw chains → %d sub-chains after direction split%n",
-                        groupLabel, rawChains.size(), chains.size());
-            }
+            List<List<MepPosElement>> splitChains = new ArrayList<>();
+            for (List<MepPosElement> raw : rawChains)
+                splitChains.addAll(splitByDirectionChange(raw, axis, 2.0, groupLabel));
 
+            // Geometry guards: discard degenerate and scattered chains — W-J1-GEO
             int chainsFull = 0;
-            for (List<MepPosElement> chain : chains) {
-                if (chain.size() < 2) continue; // skip isolated singles
+            for (List<MepPosElement> chain : splitChains) {
+                if (chain.size() < 2) continue;
+
+                // Guard 1: total offset < 10mm → degenerate, do not write
+                double totalOffset = 0.0;
+                for (int i = 1; i < chain.size(); i++) {
+                    MepPosElement p = chain.get(i - 1), c = chain.get(i);
+                    totalOffset += Math.abs(c.cx - p.cx) + Math.abs(c.cy - p.cy) + Math.abs(c.cz - p.cz);
+                }
+                if (totalOffset < 0.010) {
+                    System.out.printf("[IFCtoERP][GEO] %s: DISCARD degenerate — %d pieces, total offset=%.3fm%n",
+                            groupLabel, chain.size(), totalOffset);
+                    continue;
+                }
+
+                // Guard 2: collinearity R² < 0.5 → scattered, do not write
+                double r2 = collinearityR2(chain);
+                if (r2 < 0.5) {
+                    System.out.printf("[IFCtoERP][GEO] %s: DISCARD collinearity R²=%.2f — %d pieces (scattered)%n",
+                            groupLabel, r2, chain.size());
+                    continue;
+                }
+                if (r2 < 0.8) {
+                    System.out.printf("[IFCtoERP][GEO] %s: WARN collinearity R²=%.2f — %d pieces (approx linear)%n",
+                            groupLabel, r2, chain.size());
+                }
                 chainsFull++;
 
                 int runNum = runCounters.merge(prefix + "_" + disc + "_" + storeyCode, 1, Integer::sum);
                 String bomId = prefix + "_" + disc + "_" + storeyCode + "_RUN_" + runNum;
-                String shimProduct = discToShim(disc);
 
-                // INSERT M_BOM if bom_id not already present — idempotent across fleet runs
-                boolean isNewBom = false;
-                try (PreparedStatement chk = erpConn.prepareStatement(
-                        "SELECT M_BOM_ID FROM M_BOM WHERE bom_id = ?")) {
-                    chk.setString(1, bomId);
-                    try (ResultSet chkRs = chk.executeQuery()) {
-                        if (!chkRs.next()) {
-                            try (PreparedStatement ps = erpConn.prepareStatement("""
-                                    INSERT INTO M_BOM (bom_id, Value, Name, bom_type, source_building, BOMType, IsActive)
-                                    VALUES (?, ?, ?, 'MEP_RECIPE', ?, 'MEP', 'Y')
-                                    """)) {
-                                ps.setString(1, bomId);
-                                ps.setString(2, bomId);
-                                ps.setString(3, disc + " run " + storeyCode + " #" + runNum);
-                                ps.setString(4, buildingType);
-                                ps.executeUpdate();
-                            }
-                            isNewBom = true;
-                        }
-                    }
-                }
+                try (PreparedStatement ps = erpConn.prepareStatement("""
+                        INSERT INTO M_BOM (bom_id, Value, Name, bom_type, source_building, BOMType, IsActive)
+                        VALUES (?, ?, ?, 'MEP_RECIPE', ?, 'MEP', 'Y')""")) {
+                    ps.setString(1, bomId); ps.setString(2, bomId);
+                    ps.setString(3, disc + " run " + storeyCode + " #" + runNum);
+                    ps.setString(4, buildingType);
+                    ps.executeUpdate();
+                } catch (SQLException ignored) {}
                 runsBuilt++;
 
-                if (!isNewBom) continue; // lines already written in a previous run
+                // Shim at seq=10 (anchor)
+                insertMBomLine(erpConn, bomId, discToShim(disc), 10, 0.0, 0.0, 0.0, 0.0, "EA", "FIXED", 1);
+                shimAnchors++; linesWritten++;
 
-                // Shim as seq=10 (anchor, dx=dy=dz=0)
-                insertMBomLine(erpConn, bomId, shimProduct, 10, 0.0, 0.0, 0.0);
-                shimAnchors++;
-                linesWritten++;
-
-                // First piece at seq=20 (at shim position, offset 0)
+                // First piece at seq=20 (at shim position, zero offset)
                 MepPosElement first = chain.get(0);
                 String pid0 = resolveProductIdFor(erpConn, first);
                 if (pid0 != null) {
-                    insertMBomLine(erpConn, bomId, pid0, 20, 0.0, 0.0, 0.0);
+                    boolean isStraight0 = pid0.contains("STRAIGHT");
+                    int qty0 = isStraight0
+                            ? (int)(Math.abs(axis == 'X' ? first.maxX - first.minX
+                                           : axis == 'Y' ? first.maxY - first.minY
+                                           : first.maxZ - first.minZ) * 1000) : 1;
+                    insertMBomLine(erpConn, bomId, pid0, 20, 0.0, 0.0, 0.0, 0.0,
+                            isStraight0 ? "MM" : "EA", isStraight0 ? "VARIABLE" : "FIXED", qty0);
                     linesWritten++;
                 }
 
-                // Remaining pieces: dx/dy/dz = centroid delta from previous element
+                // Remaining pieces: centroid deltas + rotation hint at direction joints
                 StringBuilder dxLog = new StringBuilder("→0");
                 double cum = 0.0;
                 for (int i = 1; i < chain.size(); i++) {
@@ -542,23 +599,38 @@ public class IFCtoERP {
                     double dx = curr.cx - prev.cx;
                     double dy = curr.cy - prev.cy;
                     double dz = curr.cz - prev.cz;
+
+                    // Rotation at joints: atan2(perpendicular, along) in degrees
+                    double along = switch (axis) {
+                        case 'X' -> Math.abs(dx); case 'Y' -> Math.abs(dy); default -> Math.abs(dz);
+                    };
+                    double pB = switch (axis) { case 'X' -> dy; case 'Y' -> dx; default -> dx; };
+                    double pC = switch (axis) { case 'X' -> dz; case 'Y' -> dz; default -> dy; };
+                    double perp = Math.sqrt(pB * pB + pC * pC);
+                    double rotDeg = (along > 0.0) ? Math.toDegrees(Math.atan2(perp, along)) : 0.0;
+
                     String pid = resolveProductIdFor(erpConn, curr);
                     if (pid != null) {
-                        insertMBomLine(erpConn, bomId, pid, (i + 2) * 10, dx, dy, dz);
+                        boolean isStraight = pid.contains("STRAIGHT");
+                        int qty = isStraight
+                                ? (int)(Math.abs(axis == 'X' ? curr.maxX - curr.minX
+                                               : axis == 'Y' ? curr.maxY - curr.minY
+                                               : curr.maxZ - curr.minZ) * 1000) : 1;
+                        insertMBomLine(erpConn, bomId, pid, (i + 2) * 10, dx, dy, dz, rotDeg,
+                                isStraight ? "MM" : "EA", isStraight ? "VARIABLE" : "FIXED", qty);
                         linesWritten++;
                     }
                     cum += (axis == 'X' ? dx : axis == 'Y' ? dy : dz);
                     dxLog.append("→").append(String.format("%.3f", cum));
                 }
 
-                BIMLogger.info(TAG, "{}: {} pieces, axis={}, dx={}",
-                        bomId, chain.size(), axis, dxLog);
+                BIMLogger.info(TAG, "{}: {} pieces, axis={}, dx={}", bomId, chain.size(), axis, dxLog);
                 System.out.printf("[IFCtoERP] %s: %d pieces, axis=%c, dx=%s%n",
                         bomId, chain.size(), axis, dxLog);
             }
 
-            if (chainsFull == 0) {
-                BIMLogger.warn(TAG, "{} {}/{}: {} elements — 0 chains (all singletons or gap > 50mm)",
+            if (chainsFull == 0 && !group.isEmpty()) {
+                BIMLogger.warn(TAG, "[GEO] {}/{}/{}: {} elements — all chains degenerate or scattered",
                         buildingType, storey, disc, group.size());
             }
         }
@@ -667,11 +739,11 @@ public class IFCtoERP {
     }
 
     /**
-     * Detect connected chains: consecutive elements with AABB face gap < 50mm (0.05m).
-     * List must already be sorted along the dominant axis.
+     * Detect connected chains: AABB face gap < 50mm = touching; up to 600mm = penetration gap
+     * (pipe through wall/slab — verified against structural AABB). W-J1-GEO §7
      */
     private static List<List<MepPosElement>> detectChains(
-            List<MepPosElement> sorted, char axis) {
+            List<MepPosElement> sorted, char axis, List<double[]> structuralAabbs) {
         List<List<MepPosElement>> chains = new ArrayList<>();
         if (sorted.isEmpty()) return chains;
 
@@ -686,7 +758,9 @@ public class IFCtoERP {
                 case 'Y' -> Math.max(0.0, next.minY - prev.maxY);
                 default  -> Math.max(0.0, next.minZ - prev.maxZ);
             };
-            if (gap <= 0.05) { // 50mm threshold
+            boolean connected = gap <= 0.05
+                    || (gap <= 0.60 && isPenetrationGap(prev, next, axis, structuralAabbs));
+            if (connected) {
                 current.add(next);
             } else {
                 chains.add(current);
@@ -696,6 +770,65 @@ public class IFCtoERP {
         }
         chains.add(current);
         return chains;
+    }
+
+    /**
+     * Returns true if the gap between prev and next on the dominant axis is covered by a
+     * structural AABB (wall, slab, column) — meaning this is a building penetration, not a break.
+     * W-J1-GEO: gap up to 600mm tolerated when structure accounts for it.
+     */
+    private static boolean isPenetrationGap(
+            MepPosElement prev, MepPosElement next, char axis, List<double[]> structuralAabbs) {
+        double gapStart = switch (axis) {
+            case 'X' -> prev.maxX; case 'Y' -> prev.maxY; default -> prev.maxZ; };
+        double gapEnd = switch (axis) {
+            case 'X' -> next.minX; case 'Y' -> next.minY; default -> next.minZ; };
+        if (gapEnd <= gapStart) return false; // overlapping, not a gap
+        int lo = axis == 'X' ? 0 : axis == 'Y' ? 2 : 4; // AABB index: [minX,maxX,minY,maxY,minZ,maxZ]
+        for (double[] aabb : structuralAabbs) {
+            if (aabb[lo] <= gapEnd && aabb[lo + 1] >= gapStart) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Collinearity score: fraction of total centroid variance explained by the dominant axis.
+     * 1.0 = perfect line, 0.33 = scattered equally in 3D. Threshold: 0.5 = plausibly linear.
+     * W-J1-GEO: discard chains with R² < 0.5 (scattered, not a routing run).
+     */
+    private static double collinearityR2(List<MepPosElement> chain) {
+        if (chain.size() < 2) return 1.0;
+        double sumX = 0, sumY = 0, sumZ = 0;
+        for (MepPosElement e : chain) { sumX += e.cx; sumY += e.cy; sumZ += e.cz; }
+        double n = chain.size(), mX = sumX / n, mY = sumY / n, mZ = sumZ / n;
+        double vX = 0, vY = 0, vZ = 0;
+        for (MepPosElement e : chain) {
+            vX += (e.cx - mX) * (e.cx - mX);
+            vY += (e.cy - mY) * (e.cy - mY);
+            vZ += (e.cz - mZ) * (e.cz - mZ);
+        }
+        double total = vX + vY + vZ;
+        return total < 1e-9 ? 1.0 : Math.max(vX, Math.max(vY, vZ)) / total;
+    }
+
+    /** Load structural element AABBs from extracted DB for penetration gap detection. W-J1-GEO */
+    private static List<double[]> loadStructuralAabbs(Path refDb) {
+        List<double[]> result = new ArrayList<>();
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + refDb);
+             Statement stmt = conn.createStatement()) {
+            ResultSet rs = stmt.executeQuery("""
+                    SELECT r.minX,r.maxX,r.minY,r.maxY,r.minZ,r.maxZ
+                    FROM elements_meta m JOIN elements_rtree r ON m.id=r.id
+                    WHERE m.ifc_class IN
+                    ('IfcWall','IfcWallStandardCase','IfcSlab','IfcColumn','IfcBeam','IfcMember')
+                    """);
+            while (rs.next())
+                result.add(new double[]{rs.getDouble(1),rs.getDouble(2),rs.getDouble(3),
+                        rs.getDouble(4),rs.getDouble(5),rs.getDouble(6)});
+        } catch (SQLException e) {
+            BIMLogger.warn(TAG, "Could not load structural AABBs from {}: {}", refDb.getFileName(), e.getMessage());
+        }
+        return result;
     }
 
     /**
@@ -785,9 +918,9 @@ public class IFCtoERP {
     }
 
     private static void insertMBomLine(Connection erpConn, String bomId,
-            String childProductId, int seq, double dx, double dy, double dz)
+            String childProductId, int seq, double dx, double dy, double dz,
+            double rotationDeg, String uomId, String qtyType, int qty)
             throws SQLException {
-        // Look up integer M_BOM_ID from bom_id (existing schema uses integer PK)
         int intBomId = -1;
         try (PreparedStatement lookup = erpConn.prepareStatement(
                 "SELECT M_BOM_ID FROM M_BOM WHERE bom_id = ?")) {
@@ -796,21 +929,25 @@ public class IFCtoERP {
                 if (rs.next()) intBomId = rs.getInt(1);
             }
         }
-        if (intBomId < 0) return; // parent BOM not found, skip
+        if (intBomId < 0) return;
 
         try (PreparedStatement ps = erpConn.prepareStatement("""
                 INSERT INTO M_BOM_Line
                 (M_BOM_ID, bom_id, child_product_id, sequence, qty, dx, dy, dz,
-                 component_type, c_uom_id, qty_type, IsActive)
-                VALUES (?, ?, ?, ?, 1, ?, ?, ?, 'LEAF', 'EA', 'FIXED', 'Y')
+                 component_type, c_uom_id, qty_type, rotation_rule, IsActive)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'LEAF', ?, ?, ?, 'Y')
                 """)) {
             ps.setInt(1, intBomId);
             ps.setString(2, bomId);
             ps.setString(3, childProductId);
             ps.setInt(4, seq);
-            ps.setDouble(5, dx);
-            ps.setDouble(6, dy);
-            ps.setDouble(7, dz);
+            ps.setInt(5, qty);
+            ps.setDouble(6, dx);
+            ps.setDouble(7, dy);
+            ps.setDouble(8, dz);
+            ps.setString(9, uomId);
+            ps.setString(10, qtyType);
+            ps.setDouble(11, rotationDeg);
             ps.executeUpdate();
         }
     }
