@@ -1121,13 +1121,15 @@ anchor point; everything below cascades parent-relative. No absolute borrowing.
 **Enforcement:** Code review. No `*_extracted.db` or `*_input*` import exists in
 `DAGCompiler/src/main/java/`. Any future addition must pass this gate.
 
-### 6.12.2 MEP Placement — Shim + Joint Piece Architecture (S103)
+### 6.12.2 MEP Placement — Shim + Joint Piece Architecture (S103/S104)
 
-MEP placement follows the same BOM principle as ARC/STR. The walker reads
-M_BOM → M_BOM_Line → dx/dy/dz and places. Same code path as placing
-furniture in a room. No routing engine. No canvas. No pathfinding.
+**There is no difference between ARC placement and MEP placement.** The walker
+reads M_BOM → M_BOM_Line → dx/dy/dz and accumulates. Same code path for
+placing a wall, a desk, a pipe tee, or a sprinkler head. Same
+PlacementCollectorVisitor. Same maths. Same GEO proof. No routing engine,
+no canvas, no pathfinding, no runtime computation.
 
-#### 1. Tack Point
+#### 1. Tack Point — Same as ARC
 
 A tack point is just a point. Parent tack + dx/dy/dz = child tack. The
 walker accumulates. That's the whole algorithm — same for ARC, same for MEP.
@@ -1138,157 +1140,376 @@ centre of a pipe end, centre of a screw hole. The BOM doesn't care. It
 stores a number. The walker adds numbers. The product's geometry knows
 where to render relative to its tack point.
 
-For MEP joint pieces, the tack point is the **connection face** — where
-two pieces physically touch. A pipe end meets a tee inlet. The tack
-point is the centre of that shared circle. Two pieces pair when their
-mating faces are coplanar and equal diameter.
+#### 2. The Shim — Zero Offset Host Alignment
 
-#### 2. IFCtoERP — Tack Point Extraction
+The shim is a **phantom product** — no geometry, no mass, not rendered.
+It represents the host surface where MEP attaches. The shim **melts into
+the host**: its position IS the host surface position. Zero offset.
 
-Tack points between joined MEP pieces MUST be computed inside IFCtoERP
-while reading the IFC geometry. Only at extraction time does the code
-have both pieces' actual positions from the IFC.
+A shim placed against a wall has the wall's XYZ. A shim placed against a
+ceiling has the ceiling's XYZ. No gap, no clearance, no 5mm standoff.
+The shim IS the surface in coordinate terms.
 
-The maths is simple: each IFC element has an `ObjectPlacement` (world
-coordinates). The tack offset between two joined pieces = child position
-minus parent position. Same subtraction IFCtoBOM already does for walls
-and slabs. No cylindrical geometry computation — just two positions and
-a minus operation.
-
-IFCtoERP extracts and stores on each M_Product in ERP.db:
-- Tack point (connection face centre, from IFC geometry)
-- Diameter at tack point (from `IfcCircleProfileDef` or element dimensions)
-- Piece type (STRAIGHT / TEE / ELBOW / REDUCER / TERMINAL — from `ifc_class` + `PredefinedType`)
-
-The dx/dy/dz on the M_BOM_Line = the vector from parent tack to child
-tack. Extracted once from RosettaStone IFCs. Stored as data. Walked as
-numbers. No recomputation at compile time.
-
-#### 3. The Shim — Base Plate
-
-The shim is the base plate — the first piece out of the Lego box. It
-bridges ARC and MEP without coupling them. An M_Product in ERP.db (no
-LOD geometry, no entry in component_library.db) that represents the host
-surface where MEP attaches.
-
-The shim IS the root BOM for MEP in a room. No FP_SYSTEM wrapper. The
-Callout reads `ad_space_type_mep_bom` ("KITCHEN needs FP") and creates a
-DISC OrderLine whose product IS the shim. One shim per room per discipline.
+The device that attaches to the host (pipe bracket, sprinkler mount)
+carries its own standoff intrinsically. A bracket that sits 5mm proud
+of the wall? That 5mm is in the device's M_BOM_Line dx/dy/dz within the
+recipe — the product knows its own offset. The shim contributes nothing
+except the coordinate frame origin at the host surface.
 
 ```
-ERP.db M_Product — Shims (host surface adapters, ~10-15 types)
+ERP.db M_Product — Shims (phantom host surface anchors, ~10-15 types)
 
-FP_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=5
-ELEC_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=10
-ELEC_WALL_SHIM        host_ifc_class=IfcWall       mount=SIDE     height_mm=1200
-CW_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=5
-SP_FLOOR_SHIM         host_ifc_class=IfcSlab       mount=TOP      offset_mm=0
-ACMV_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=50
-LPG_WALL_SHIM         host_ifc_class=IfcWall       mount=SIDE     height_mm=2100
+FP_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM
+ELEC_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM
+ELEC_WALL_SHIM        host_ifc_class=IfcWall       mount=SIDE
+CW_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM
+SP_FLOOR_SHIM         host_ifc_class=IfcSlab        mount=TOP
+ACMV_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM
+LPG_WALL_SHIM         host_ifc_class=IfcWall       mount=SIDE
 ```
 
-**Why the shim prevents geometry hell:** Without it, every MEP piece tacks
-relative to the FLOOR origin — large offsets (dx=15000, dy=8000), thousands
-of chances to drift. The shim absorbs the building-specific position lookup
-ONCE. Every piece after it uses small relative offsets.
+The shim's position comes from the MAKE line dx/dy/dz in the BOM tree —
+same as any other BOM line. No runtime host matching. No query. No
+ShimMatcher computation. The position was extracted from the IFC once and
+stored as a number on the M_BOM_Line.
 
-**Shim matching (the only new code):** The walker matches the shim to an
-ARC element by `host_ifc_class` + position containment. ARC doesn't know
-MEP exists. MEP doesn't reference the ARC BOM directly. Loosely coupled.
+#### 3. Entry Point — OrderLine → MEP_System BOM
 
-#### 4. Shim Placement — Rules Determine Position
+The MEP walk enters through an OrderLine whose Product has AD_Org = discipline
+(FP, ELEC, ACMV, CW, SP, LPG). That product IS the root MEP_System BOM in
+ERP.db. BomDropper explodes it — finds the shim (phantom parent) — recurses
+into children. Same explosion as ARC OrderLine → BUILDING BOM → FLOOR → ROOM.
 
-The shim's XY position within the room comes from placement rules in
-`ad_space_type_mep_bom`:
+```
+OrderLine (AD_Org=FP, Product=FP_CEILING_SHIM)
+  → BomDropper explodes FP_CEILING_SHIM M_BOM
+    → children: PIPE_STRAIGHT_50MM, PIPE_TEE_50_25MM, SPRINKLER_HEAD_K56...
+      → walker accumulates dx/dy/dz for each child
+```
 
-| layout | origin rule | shim XY relative to room |
-|--------|------------|--------------------------|
-| GRID | Half-spacing from walls (NFPA 13) | (spacing/2, spacing/2) |
-| LINEAR | Centre of long axis | (spacing/2, depth/2) |
-| CENTRE | Room centre | (width/2, depth/2) |
-| AT_FIXTURE | Fixture position from ARC BOM | fixture's dx/dy |
+Each child is identified by **exact product ID** — no fuzzy matching, no
+proximity search. The recipe says `PIPE_STRAIGHT_50MM_POLY_STEEL`, that's
+what gets placed.
 
-The Z comes from the shim's host match (ceiling element Z minus offset).
-Rule + room dimensions + host Z = one exact position. Deterministic.
-
-#### 5. Joint Pieces — The Toolbox
+#### 4. Joint Pieces — The Toolbox
 
 Joint pieces are M_Products in ERP.db. Extracted from RosettaStone IFCs
 by `ifc_class` and `PredefinedType` — a pipe segment IS a straight piece,
 an `IfcPipeFitting` IS a tee or elbow. No `IfcRelConnectsPorts` needed
 (our IFCs don't carry port data). The fleet teaches vocabulary by example.
 
-```
-ERP.db M_Product — Joint pieces (~30-50 types from fleet)
+Each piece in `component_library.db` carries LOD metadata for orientation:
+- `attachment_face` — CENTER / TOP / BOTTOM / SIDE
+- `up_axis` — which local axis points up (Z)
+- `forward_axis` — which local axis is the run direction (Y or X)
+- `orientation` — PENDANT / UPRIGHT / HORIZONTAL / VERTICAL / MIXED
 
-PIPE_STRAIGHT_50MM     diameter=50mm   tack=pipe-end centre
-PIPE_ELBOW_90_50MM     diameter=50mm   angle=90°
-PIPE_TEE_50_25MM       main=50mm       branch=25mm
-PIPE_REDUCER_50_25MM   in=50mm         out=25mm
-SPRINKLER_HEAD_K56     diameter=15mm   (leaf — no outlet)
-DUCT_STRAIGHT_300MM    width=300mm     height=200mm
-AIR_DIFFUSER_600MM     size=600mm      (leaf — no outlet)
-```
+This is facing data only — no tack-in/tack-out ports. Rotation from tack
+point is on `M_BOM_Line.rotation_rule`. The walker reads it, applies it.
+The piece itself is the simplest BOM — one product with orientation metadata.
 
-Each piece's tack point and outlet offset(s) are extracted by IFCtoERP
-from IFC geometry — not computed at compile time.
-
-#### 6. The MEP BOM — Shim Root, Joint Piece Children
+#### 5. The MEP BOM — Shim Root, Joint Piece Children
 
 ```
 FLOOR (in *_BOM.db)
-  └── FP_CEILING_SHIM (KITCHEN)     ← root BOM, matched to ceiling
-        └── PIPE_STRAIGHT_50MM      dx=0  dz=0     ← header from shim tack
-        └── PIPE_TEE_50_25MM        dx=L  dz=0     ← tee at branch point
-        └── PIPE_STRAIGHT_25MM      dy=S  dz=0     ← branch from tee
-        └── SPRINKLER_HEAD_K56      dy=0  dz=-300   ← terminal drop
+  └── FP_CEILING_SHIM (KITCHEN)     ← phantom, melts into ceiling XYZ
+        ├── PIPE_STRAIGHT_50MM      dx=0  dz=-5    ← 5mm below ceiling (device offset)
+        ├── PIPE_TEE_50_25MM        dx=L  dz=-5    ← tee at branch point
+        ├── PIPE_STRAIGHT_25MM      dy=S  dz=-5    ← branch from tee
+        └── SPRINKLER_HEAD_K56      dy=0  dz=-305   ← terminal drop (300mm pendant)
 
 FLOOR
-  └── FP_CEILING_SHIM  (KITCHEN)     ← matched to kitchen ceiling
-  └── FP_CEILING_SHIM  (CORRIDOR)    ← matched to corridor ceiling
-  └── ELEC_WALL_SHIM   (KITCHEN)     ← matched to kitchen wall
-  └── SP_FLOOR_SHIM    (BATHROOM)    ← matched to bathroom floor
+  └── FP_CEILING_SHIM  (KITCHEN)     ← one shim per room per discipline
+  └── FP_CEILING_SHIM  (CORRIDOR)
+  └── ELEC_WALL_SHIM   (KITCHEN)
+  └── SP_FLOOR_SHIM    (BATHROOM)
 ```
 
 The walker recurses: FLOOR → shim → pieces. Same as FLOOR → ROOM →
 FURNITURE. All dx/dy/dz are small, local, verifiable — the shim absorbed
-the building-scale positioning.
+the building-scale positioning. Device standoffs are intrinsic to each
+child's BOM line offset — the shim contributes zero.
 
-#### 7. Validation — Standards Confirm the Walk
+#### 6. InterimWorkshop — Variable-Length Pieces
+
+A pipe run between two fittings may need a non-standard length. Like a
+real contractor who cuts pipe from stock to fit the gap.
+
+##### BOM Line Model Extension (from Compiere/e-Evolution Manufacturing)
+
+The M_BOM_Line gains `c_uom_id` — the Unit of Measure from iDempiere.
+`qty` becomes REAL (was INTEGER). The UOM tells the walker how to
+interpret qty:
+
+| c_uom_id | qty meaning | Walker action |
+|----------|-------------|---------------|
+| EA | Instance count (default) | expandVerb() — TILE/ROUTE/CLUSTER/etc |
+| MM | Length in millimetres | InterimWorkshop — recompute primitive |
+| M | Length in metres | InterimWorkshop — recompute primitive |
+
+When `c_uom_id` is a length unit (MM/M), the walker calls
+InterimWorkshop instead of expandVerb(). No CUT verb needed — the
+**UOM is the signal**. This follows Compiere convention where BOMQty +
+C_UOM_ID drive the BOM Drop interpretation.
+
+`qty_type` (VARIABLE/FIXED) guards the line: VARIABLE allows runtime
+adjustment, FIXED rejects it. A tee fitting is FIXED (tack i/o
+predetermined). A straight pipe is VARIABLE (outlet shifts with length).
+
+##### Mathematical Primitives, Not Parametric
+
+MEP pieces are mathematical primitives — cylinder, box, torus arc.
+The workshop does not stretch or deform an existing mesh. It recomputes
+the primitive from first principles:
+
+```
+Cylinder(diameter=50mm, length=2345mm, LOD=16 faces)
+→ vertices: r*cos(θ), r*sin(θ), z ∈ [0, 2345mm]
+→ 16 side faces + 2 end caps
+```
+
+This is NOT parametric mesh generation (which is forbidden). Parametric
+means exploring design space with arbitrary parameters. This is geometry
+from data — same principle as the entire compiler. The LOD (face count,
+tessellation) comes from the library template. The dimensions come from
+the BOM line. The maths produces the mesh.
+
+Materials are flat RGBA per face (no UV mapping, no textures). A shorter
+cylinder has shorter rectangular side faces with the same uniform colour.
+No stretching, no shrinking artifact.
+
+##### InterimWorkshop Interface
+
+```java
+/**
+ * Runtime mesh computation for variable-length pieces.
+ * Like a contractor's workshop: recompute the primitive at the required
+ * length. LOD from library template. Dimensions from BOM line.
+ * Result is ephemeral — not stored back.
+ */
+public class InterimWorkshop {
+    /** Recompute primitive mesh at target length along forward axis. */
+    static MeshResult recompute(MProduct product, String forwardAxis,
+                                double targetLengthMm, int lodFaceCount);
+}
+```
+
+##### Flat Sibling Pattern — Small BOMs
+
+MEP pieces under the shim are flat siblings, not nested chains. Each
+is a 1-2 piece mini-BOM — like a contractor's work packet:
+
+```
+FP_CEILING_SHIM (KITCHEN)
+  ├── PIPE_STRAIGHT_50MM  dx=0     qty=2345 c_uom_id=MM  qty_type=VARIABLE
+  ├── PIPE_TEE_50_25MM    dx=2.345 qty=1    c_uom_id=EA  qty_type=FIXED
+  ├── PIPE_STRAIGHT_50MM  dx=2.345 qty=1800 c_uom_id=MM  qty_type=VARIABLE
+  ├── PIPE_TEE_50_25MM    dx=4.145 qty=1    c_uom_id=EA  qty_type=FIXED
+  └── SPRINKLER_HEAD_K56  dx=2.345 dy=0.5 dz=-0.3 qty=1 c_uom_id=EA
+```
+
+Fittings are at fixed positions (from spacing rules / extraction).
+Straight pipes fill gaps between fittings — their length (qty in MM)
+is exactly the gap. Each sibling is independently tacked from the shim.
+Shortening one pipe does NOT cascade to neighbours — the next fitting's
+dx is independently defined.
+
+The tack i/o for a VARIABLE piece: inlet = dx (BOM line offset from
+parent). Outlet = dx + qty(mm) along forward_axis. The next sibling's
+dx equals that outlet point. Deterministic, no drift.
+
+#### 7. IFCtoERP — Tack Extraction
+
+Tack offsets between joined MEP pieces are extracted by IFCtoERP while
+reading RosettaStone IFC geometry. Only at extraction time are both
+pieces' positions available. The maths: child_pos - parent_pos = dx/dy/dz.
+Same subtraction as ARC walls and slabs.
+
+IFCtoERP writes directly to ERP.db (no intermediate database):
+- Joint piece M_Products (piece type + diameter from AABB)
+- Shim M_Products (phantom, per discipline x host surface type)
+- M_BOM recipes (shim-rooted, children with dx/dy/dz tack offsets)
+
+The dx/dy/dz on each M_BOM_Line IS the vector from parent tack to child
+tack. Extracted once. Stored as data. Walked as numbers.
+
+#### 8. Slope, Branching, and Risers — Three Triaged Edge Cases
+
+These three patterns are not new walker code. They are **data on the
+BOM line** — the walker already handles them through existing mechanisms
+(dz accumulation, sub-assemblies, rotation). The triage closes each gap
+by defining how the metadata tables express the pattern.
+
+##### 8a. Slope / Gradient (Sanitary Drainage)
+
+MS 1228 §5 requires waste pipes at minimum 1:40 gradient (25mm drop per
+metre). This is NOT a runtime computation — the gradient is baked into
+each successive pipe segment's dz on the M_BOM_Line.
+
+```
+SP_FLOOR_SHIM (BATHROOM)
+  ├── PIPE_STRAIGHT_50MM  dx=0     dz=0       qty=1000 c_uom_id=MM
+  ├── PIPE_STRAIGHT_50MM  dx=1.0   dz=-0.025  qty=1000 c_uom_id=MM  ← 25mm drop
+  ├── PIPE_STRAIGHT_50MM  dx=2.0   dz=-0.050  qty=1000 c_uom_id=MM  ← 50mm drop
+  └── FLOOR_TRAP          dx=0.5   dz=-0.010  qty=1    c_uom_id=EA
+```
+
+The gradient is expressed as metadata in `ad_mep_laying_rule`:
+
+| rule_id | discipline | rule_type | parameter | value | standard | section |
+|---------|------------|-----------|-----------|-------|----------|---------|
+| LAY-SP-001 | SP | GRADIENT | min_slope | 0.025 | MS 1228 | §5.3 |
+| LAY-SP-002 | SP | GRADIENT | max_slope | 0.040 | MS 1228 | §5.3 |
+| LAY-LPG-001 | LPG | GRADIENT | min_slope | 0.010 | MS 830 | §4.2 |
+
+The IFCtoERP extraction computes per-segment dz from IFC positions.
+The validation rule (AD_Val_Rule) checks placed pipe Z-deltas against
+the table. The code is abstract — it reads `min_slope` from the table,
+compares against placed dz/dx ratio. No hardcoded gradients.
+
+##### 8b. Branching at Tees
+
+A tee fitting has 3 connections: main-in, main-out, branch-out. The
+main run continues as flat siblings. The branch is a **nested sub-BOM**
+under the tee — the tee IS a sub-assembly with its own children.
+
+```
+FP_CEILING_SHIM (KITCHEN)
+  ├── PIPE_STRAIGHT_50MM   dx=0      qty=2345 c_uom_id=MM   ← main run
+  ├── PIPE_TEE_50_25MM     dx=2.345  qty=1    c_uom_id=EA   ← tee (sub-assembly)
+  │     └── PIPE_STRAIGHT_25MM  dy=0  qty=1500 c_uom_id=MM  ← branch child
+  │     └── SPRINKLER_HEAD_K56  dy=1.5 dz=-0.3 qty=1 c_uom_id=EA
+  ├── PIPE_STRAIGHT_50MM   dx=2.345  qty=1800 c_uom_id=MM   ← main run continues
+  └── PIPE_TEE_50_25MM     dx=4.145  qty=1    c_uom_id=EA   ← next tee
+```
+
+The tee's branch children have dx/dy/dz relative to the tee's tack
+point (centre of the fitting). The walker recurses into the tee sub-BOM
+(onSubAssembly), walks its children, exits (onSubAssemblyComplete), then
+continues with the next main-run sibling. Standard BOM recursion — no
+branching-specific code.
+
+Branch metadata in `ad_mep_fitting_rule`:
+
+| rule_id | piece_type | connection | axis | offset_rule | standard |
+|---------|------------|------------|------|-------------|----------|
+| FIT-TEE-001 | PIPE_TEE | MAIN_OUT | X | diameter/2 from centre | — |
+| FIT-TEE-002 | PIPE_TEE | BRANCH_OUT | Y | diameter/2 from centre | — |
+| FIT-ELB-001 | PIPE_ELBOW | OUT | varies | angle × bend_radius | — |
+| FIT-RED-001 | PIPE_REDUCER | OUT | X | length along axis | — |
+
+The table defines each fitting's connection offsets. IFCtoERP reads
+these when building M_BOM recipes. The walker doesn't know about fittings
+— it just sees sub-assemblies with dx/dy/dz.
+
+##### 8c. Vertical Risers
+
+A riser is a pipe running vertically through floors. The BOM line
+carries `rotation_rule` = 90° around the horizontal axis, rotating the
+pipe's forward_axis from Y (horizontal default) to Z (vertical).
+
+```
+BUILDING
+  └── FP_RISER_ASSEMBLY (bom_type=MEP)
+        ├── PIPE_STRAIGHT_50MM  dz=0     rotation_rule=PI/2  qty=3000 c_uom_id=MM
+        ├── PIPE_STRAIGHT_50MM  dz=3.0   rotation_rule=PI/2  qty=3000 c_uom_id=MM
+        └── PIPE_STRAIGHT_50MM  dz=6.0   rotation_rule=PI/2  qty=3000 c_uom_id=MM
+```
+
+The walker's existing rotation stack handles this — cumulative rotation
+is pushed on onSubAssembly, applied to dx/dy/dz in onLeaf, popped on
+exit. InterimWorkshop recomputes along the library's forward_axis (Y);
+the walker's rotation transforms the half-extents to world frame (Z).
+
+Riser metadata in `ad_mep_riser_rule`:
+
+| rule_id | discipline | parameter | value | standard | section |
+|---------|------------|-----------|-------|----------|---------|
+| RSR-FP-001 | FP | max_floor_height_mm | 4000 | NFPA 13 | §8.15 |
+| RSR-FP-002 | FP | riser_diameter_mm | 65 | NFPA 13 | §8.15.1 |
+| RSR-CW-001 | CW | min_pressure_kpa | 150 | MS 1228 | §3.4 |
+| RSR-SP-001 | SP | stack_min_diameter_mm | 100 | MS 1228 | §5.7 |
+
+#### 9. Metadata Tables — Standards as Data, Code as Abstract Walker
+
+All laying rules, fitting rules, and riser rules live in ERP.db as
+metadata tables. The code reads them. The code never embeds standard
+numbers, gradient values, spacing limits, or diameter rules.
+
+```
+ERP.db metadata tables (read by walker + validation, never by user):
+
+ad_mep_laying_rule     — slope gradients, clearances, material rules
+ad_mep_fitting_rule    — connection offsets per fitting type
+ad_mep_riser_rule      — vertical run constraints per discipline
+ad_val_rule            — post-walk validation (existing, P15/P16/P17)
+ad_space_type_mep_bom  — room type → discipline mapping (existing, 186 rows)
+```
+
+**Why this matters for usability:** A user (engineer, project manager)
+can open ERP.db, read the laying rule table, see "MS 1228 §5.3: min
+slope = 0.025", and understand exactly what the system enforces. No
+source code reading required. Changing a regulation = updating a row
+in the table, not editing Java. The compiler is truly user-friendly
+when the rules are visible metadata and the code is an abstract walker.
+
+**Validation flow:**
+1. Walker places pieces (accumulates dx/dy/dz, calls InterimWorkshop)
+2. AD_Val_Rule reads placed positions from output.db
+3. Compares against `ad_mep_laying_rule` / `ad_mep_riser_rule` thresholds
+4. Emits PASS/FAIL per rule per element — no hardcoded thresholds in code
+
+#### 10. Validation — Standards Confirm the Walk
 
 Standards validate placement AFTER the walk. They do NOT drive it.
 
-| Standard | AD_Val_Rule check | Input |
-|----------|-------------------|-------|
-| NFPA 13 §8.6 | Sprinkler spacing ≤ 4600mm (LH) | Placed sprinkler positions |
-| MS 1228 §5 | Waste gradient ≥ 1:40 | SP pipe Z values along chain |
-| ASHRAE 62.1 | Air changes per room | Diffuser count vs room volume |
-| MS 830 §4 | Gas clearance ≥ 150mm | LPG pipe vs ignition sources |
+| Standard | AD_Val_Rule check | Source table | Input |
+|----------|-------------------|-------------|-------|
+| NFPA 13 §8.6 | Sprinkler spacing ≤ 4600mm (LH) | ad_mep_laying_rule | Placed sprinkler positions |
+| NFPA 13 §8.15 | Riser diameter ≥ 65mm | ad_mep_riser_rule | Riser product dimensions |
+| MS 1228 §5.3 | Waste gradient ≥ 1:40 | ad_mep_laying_rule | SP pipe dz/dx ratio |
+| MS 1228 §3.4 | Min pressure at highest fixture | ad_mep_riser_rule | Riser height vs pressure |
+| ASHRAE 62.1 | Air changes per room | ad_mep_laying_rule | Diffuser count vs room volume |
+| MS 830 §4.2 | Gas clearance ≥ 150mm | ad_mep_laying_rule | LPG pipe vs ignition sources |
+| MS 830 §4.2 | Gas pipe gradient ≥ 1:100 | ad_mep_laying_rule | LPG pipe dz/dx ratio |
 
-#### 8. Phasing
+#### 11. Phasing
 
 | Phase | Scope | Prereq |
 |-------|-------|--------|
-| J1 | IFCtoERP: extract joint piece M_Products + tack points from RosettaStone IFCs | S103 |
-| J2 | Shim products: define host surface adapters in ERP.db | J1 |
-| J3 | MEP recipes: shim-rooted M_BOM assemblies in ERP.db | J2 |
-| J4 | Shim matching: walker matches shim to ARC element by host_ifc_class | J3 |
-| J5 | Validation: AD_Val_Rule post-walk + P15/P16/P17 proofs | J4 |
-| J6 | Fleet: TE + RM, measure coverage per discipline per room | J5 |
+| J1 | IFCtoERP: extract joint piece M_Products + tack offsets from RosettaStone IFCs → ERP.db | S103 |
+| J2 | Shim products: phantom host surface anchors in ERP.db (zero offset) | J1 |
+| J3 | MEP recipes: shim-rooted M_BOM assemblies with dx/dy/dz in ERP.db | J2 |
+| J4 | M_BOM_Line model: c_uom_id (EA/MM/M), qty→REAL, qty_type guard (FIXED/VARIABLE) | J3 |
+| J5 | InterimWorkshop: mathematical primitive recomputation for length-unit lines | J4 |
+| J6 | Metadata tables: ad_mep_laying_rule, ad_mep_fitting_rule, ad_mep_riser_rule | J5 |
+| J7 | Validation: AD_Val_Rule reads metadata tables, post-walk PASS/FAIL per rule | J6 |
+| J8 | Fleet: TE + RM, measure coverage per discipline per room | J7 |
 
-J1 is the foundation — tack points must be extracted from IFC geometry
-inside IFCtoERP. They cannot be computed later.
+J1-J3 are data preparation (ERP.db). J4 is the BOM line model extension
+(iDempiere convention: BOMQty + C_UOM_ID). J5 is the only new walker code
+(mathematical primitive recomputation — not parametric). J6 defines the
+metadata tables that make standards visible to users without reading code.
+J7-J8 are verification. The walker itself (PlacementCollectorVisitor)
+gains a UOM check in onLeaf() but no MEP-specific logic — UOM drives
+the dispatch. The code stays abstract; the rules live in tables.
 
 #### Existing Infrastructure
 
 | Component | Status | Role |
 |-----------|--------|------|
-| PlacementCollectorVisitor | DONE | Walks M_BOM, accumulates dx/dy/dz — same for ARC and MEP |
-| BomDropper | DONE | Explodes recipes recursively — same for ARC and MEP |
-| BuildingGeometry | DONE (S100) | Room dimensions, ceiling Z, wall thickness — shim matching input |
+| PlacementCollectorVisitor | DONE | Walks M_BOM, accumulates dx/dy/dz — identical for ARC and MEP |
+| BomDropper | DONE | Explodes recipes recursively — identical for ARC and MEP |
+| IFCtoERP | DONE (J1+J2) | 785 joint piece + 11 shim M_Products in ERP.db |
+| DisciplineBomBuilder | DONE (J3) | MEP elements in BOM with shim as parent |
+| X_M_BOMLine | EXTEND (J4) | Add c_uom_id, qty→REAL, qty_type FIXED/VARIABLE guard |
+| InterimWorkshop | PROMPT (00f) | Primitive recomputation: cylinder/box/torus from LOD + dimensions |
+| ad_mep_laying_rule | NEW (J6) | Slope gradients, clearances, spacing — standards as visible data |
+| ad_mep_fitting_rule | NEW (J6) | Connection offsets per fitting type (tee, elbow, reducer) |
+| ad_mep_riser_rule | NEW (J6) | Vertical run constraints per discipline |
 | CrawlRouter + RouteBuilders | DONE (S100) | Generative fallback (buildings without IFC MEP data) |
 | system_edges | DONE (S100) | P15/P16/P17 proof input |
-| ad_space_type_mep_bom | EXISTS (ERP.db, 186 rows) | Room type → discipline mapping + placement_rule |
+| ad_space_type_mep_bom | EXISTS (ERP.db, 186 rows) | Room type → discipline mapping |
 
 ### 6.13 IFC-Driven Extraction
 

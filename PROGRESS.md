@@ -54,16 +54,19 @@
   TE: 538 BOM lines → 36,160 ARC+STR instances (was 48,428). QA delta=+0. 5/7 PASS (baseline).
   Spec: §6.12.1 Compilation Isolation Invariant, §6.12.2 Joint Piece Architecture (IFCtoERP).
 
-**Next prompts (IFCtoERP series — TE + RM test Stones):**
-  00c: IFCtoERP — extract IfcRelConnectsPorts → joint piece M_BOMs in ERP.db (Phase J1)
-  00d: BomDropper walks joint pieces — MEP elements placed via tack chain (Phase J2+J3)
-  00e: AD_Val_Rule — NFPA/MS/ASHRAE post-walk validation + P15/P16/P17 activation (Phase J4)
+**S104 IFCtoERP DONE (`7018384e`, `fdc65b4f`):**
+  00c DONE: 785 joint piece + 11 shim M_Products in ERP.db (TE 618, RM 167 new).
+  00d PARTIAL: MEP in BOM (shim root, tack columns, ShimMatcher). §6.12.2 rewrite (`7099bd1c`).
+  GAP: tack offsets not extracted (child pos - parent pos). J1 foundation needed.
+  Next: J1 tack extraction on RM (3568 MEP, smaller than TE 11634).
+  00e: AD_Val_Rule — NFPA/MS/ASHRAE post-walk validation (after J1 complete)
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
 
+**S104-J1-J3** — IFCtoERP joint piece extraction + MEP BOM walk architecture. 00c: IFCtoERP.java extracts 11 MEP IFC classes into 31 piece types, 785 joint + 11 shim M_Products in ERP.db. 00d: Design session rewrote §6.12.2 — tack point is just a point (not AABB/LBD), shim IS root BOM (no FP_SYSTEM wrapper), tack offsets extracted at IFCtoERP time (child pos - parent pos). DisciplineBomBuilder writes MEP to BOM (was deferred). ShimMatcher + GEO logging. m_bom gains host_ifc_class/mount/offset_mm. X_M_BOM: isShim(). GAP: inter-piece tack offsets not yet extracted — J1 foundation. SH 8/8 PASS.
 **S103-disc-sep** — Discipline separation (§10.4.6.1) + joint piece architecture spec. Task A: DisciplineBomBuilder filters MEP (AD_Org 3-8) from FLOOR BOM, writes counts to ad_sysconfig + YAML `discipline_counts:`. Task B: OrderLineProductCallout updates DISC OrderLine Qty from MEP counts (handles BomDropper pre-created lines). IFCtoBOMPipeline: reconcileCount for QA/G1, YAML write-back. Spec: §6.12.1 Compilation Isolation Invariant (DAGCompiler SHALL NOT open extraction), §6.12.2 MEP as BOM Walk — joint pieces = Lego pieces in ERP.db, one abstract walker for all disciplines, IFCtoERP as separate extraction phase, standards as validation not generation, CrawlRouter preserved for generative only. SH 7/7 PASS, TE 5/7 (baseline, critical violations 71→2). Prompts 00c/00d/00e written (IFCtoERP series, test on TE+RM).
 **S102-fleet** — Full fleet fresh extraction (34 buildings, DM excluded). PATTERN default ON. Script: per-category scripts archived, single loop, no set -e, streamlined one-line summary + fleet table. Infra (BR/RD/RL/IP): YAML segments removed, auto-discover from IFC spatial structure, PATTERN FLOOR logging added to DisciplineBomBuilder. Results: 212/238 PASS, **19 ALL GREEN** (was ~14). CE clean (was DRIFT=39,900). RD/RL 7/7 (infra auto-discover). PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown elements — storey assignment gaps identified. 10 Maven FAIL on critical proofs. CL extraction FAIL. Prompts 00/00a/00b written.
 **S101-p131** — VerbDetector Z-guard + CLUSTER identity + ROUTE axis matching + GEO permanently ON. Root cause NOT StructuralBomBuilder MAKE dz (math proven correct). Three VerbDetector bugs: (1) detectRoute() Z-uniformity guard (groups with Z-range >0.5m → CLUSTER), (2) computeExpansionOrder() ROUTE 1D axis matching instead of 3D, (3) CLUSTER identity mapping instead of greedy centroid. GEO default ON (LMP proof). IN: DRIFT 35,557→20,475, worst 11,970→91mm, **6/7→7/7** (P05 duplicate was mis-ROUTED group). CE: DRIFT 39,900 unchanged (multi-leg ROUTE). SH: DRIFT=0 (perfect). P131/P132 prompts written.

@@ -132,6 +132,7 @@ VerbDetector mines 4 verb patterns from extraction centroids:
 | TILE | 3 | 12 | PASS (0.0m) | 2D uniform grid (roof plates) |
 | FRAME | 2 | 78 | PASS (1.08m max) | Grid intersections (structural bays) |
 | ROUTE | 2 | 18 | PASS (0.32m max) | Axis-aligned uniform-step runs |
+| (UOM=MM/M) | — | — | — | Variable-length: InterimWorkshop recomputes primitive mesh (§6.12.2) |
 | flat | 770 | 770 | exact | Irregular placements |
 
 Step-uniformity guard (R8): each ROUTE leg's consecutive gaps must be within
