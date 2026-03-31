@@ -377,6 +377,364 @@ public class IFCtoERP {
         return raw.toUpperCase().replaceAll("[^A-Z0-9_]", "_");
     }
 
+    // ── MEP BOM recipe building (J1 tack offsets) ───────────────────
+
+    /**
+     * Build shim-rooted M_BOM recipes in ERP.db from spatial chain detection.
+     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §7 — Witness: W-J1-TACK
+     *
+     * @param erpConn      writable connection to ERP.db
+     * @param buildingType e.g. "Revit_MEP"
+     * @return RecipeResult with run/line/shim counts
+     */
+    public static RecipeResult buildMepBomRecipes(
+            Connection erpConn, String buildingType) throws SQLException {
+        // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 §7 — Witness: W-J1-TACK
+
+        // DDL — extend existing M_BOM/M_BOM_Line with tack columns (ALTER TABLE, idempotent)
+        try (Statement stmt = erpConn.createStatement()) {
+            for (String alter : new String[]{
+                    "ALTER TABLE M_BOM ADD COLUMN bom_type TEXT",
+                    "ALTER TABLE M_BOM ADD COLUMN source_building TEXT",
+                    "ALTER TABLE M_BOM_Line ADD COLUMN dx REAL DEFAULT 0",
+                    "ALTER TABLE M_BOM_Line ADD COLUMN dy REAL DEFAULT 0",
+                    "ALTER TABLE M_BOM_Line ADD COLUMN dz REAL DEFAULT 0",
+                    "ALTER TABLE M_BOM_Line ADD COLUMN c_uom_id TEXT DEFAULT 'EA'",
+                    "ALTER TABLE M_BOM_Line ADD COLUMN qty_type TEXT DEFAULT 'FIXED'"}) {
+                try { stmt.execute(alter); }
+                catch (SQLException ignored) {} // column already exists
+            }
+        }
+
+        Path refDb = Path.of("DAGCompiler/lib/input", buildingType + "_extracted.db");
+        if (!Files.exists(refDb)) {
+            BIMLogger.warn(TAG, "{}: reference DB not found for recipe build — skipping", buildingType);
+            return new RecipeResult(0, 0, 0);
+        }
+
+        String prefix = buildBomPrefix(buildingType);
+
+        // 1. Read MEP elements with world positions from extracted DB (read-only)
+        List<MepPosElement> elements = readMepElementsWithPositions(refDb);
+        if (elements.isEmpty()) {
+            BIMLogger.info(TAG, "{}: no MEP elements with positions — skipping recipe build", buildingType);
+            return new RecipeResult(0, 0, 0);
+        }
+        BIMLogger.fine(TAG, "{}: {} MEP elements loaded for recipe build", buildingType, elements.size());
+
+        // 2. Group by (storey, disc)
+        Map<String, List<MepPosElement>> groups = new LinkedHashMap<>();
+        for (MepPosElement e : elements) {
+            String disc = discFromClass(e.ifcClass, e.elementType);
+            String key = e.storey + "|" + disc;
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(e);
+        }
+
+        // 3. Run counter per (storey x disc) group
+        int runsBuilt = 0, linesWritten = 0, shimAnchors = 0;
+        Map<String, Integer> runCounters = new LinkedHashMap<>();
+
+        for (var entry : groups.entrySet()) {
+            String[] parts = entry.getKey().split("\\|", 2);
+            String storey = parts[0], disc = parts[1];
+            String storeyCode = toStoreyCode(storey);
+            List<MepPosElement> group = new ArrayList<>(entry.getValue());
+
+            // Dominant axis: max variance in centroid coordinates
+            char axis = dominantAxisOf(group);
+
+            // Sort along dominant axis by centroid
+            Comparator<MepPosElement> sorter = switch (axis) {
+                case 'X' -> Comparator.comparingDouble(e -> e.cx);
+                case 'Y' -> Comparator.comparingDouble(e -> e.cy);
+                default  -> Comparator.comparingDouble(e -> e.cz);
+            };
+            group.sort(sorter);
+
+            // 4. Detect chains (gap < 50mm = 0.05m between AABB faces)
+            List<List<MepPosElement>> chains = detectChains(group, axis);
+
+            String discKey = storey + "|" + disc;
+            int chainsFull = 0;
+            for (List<MepPosElement> chain : chains) {
+                if (chain.size() < 2) continue; // skip isolated singles
+                chainsFull++;
+
+                int runNum = runCounters.merge(prefix + "_" + disc + "_" + storeyCode, 1, Integer::sum);
+                String bomId = prefix + "_" + disc + "_" + storeyCode + "_RUN_" + runNum;
+                String shimProduct = discToShim(disc);
+
+                // INSERT M_BOM if bom_id not already present — idempotent across fleet runs
+                boolean isNewBom = false;
+                try (PreparedStatement chk = erpConn.prepareStatement(
+                        "SELECT M_BOM_ID FROM M_BOM WHERE bom_id = ?")) {
+                    chk.setString(1, bomId);
+                    try (ResultSet chkRs = chk.executeQuery()) {
+                        if (!chkRs.next()) {
+                            try (PreparedStatement ps = erpConn.prepareStatement("""
+                                    INSERT INTO M_BOM (bom_id, Value, Name, bom_type, source_building, BOMType, IsActive)
+                                    VALUES (?, ?, ?, 'MEP_RECIPE', ?, 'MEP', 'Y')
+                                    """)) {
+                                ps.setString(1, bomId);
+                                ps.setString(2, bomId);
+                                ps.setString(3, disc + " run " + storeyCode + " #" + runNum);
+                                ps.setString(4, buildingType);
+                                ps.executeUpdate();
+                            }
+                            isNewBom = true;
+                        }
+                    }
+                }
+                runsBuilt++;
+
+                if (!isNewBom) continue; // lines already written in a previous run
+
+                // Shim as seq=10 (anchor, dx=dy=dz=0)
+                insertMBomLine(erpConn, bomId, shimProduct, 10, 0.0, 0.0, 0.0);
+                shimAnchors++;
+                linesWritten++;
+
+                // First piece at seq=20 (at shim position, offset 0)
+                MepPosElement first = chain.get(0);
+                String pid0 = resolveProductIdFor(erpConn, first);
+                if (pid0 != null) {
+                    insertMBomLine(erpConn, bomId, pid0, 20, 0.0, 0.0, 0.0);
+                    linesWritten++;
+                }
+
+                // Remaining pieces: dx/dy/dz = centroid delta from previous element
+                StringBuilder dxLog = new StringBuilder("→0");
+                double cum = 0.0;
+                for (int i = 1; i < chain.size(); i++) {
+                    MepPosElement prev = chain.get(i - 1);
+                    MepPosElement curr = chain.get(i);
+                    double dx = curr.cx - prev.cx;
+                    double dy = curr.cy - prev.cy;
+                    double dz = curr.cz - prev.cz;
+                    String pid = resolveProductIdFor(erpConn, curr);
+                    if (pid != null) {
+                        insertMBomLine(erpConn, bomId, pid, (i + 2) * 10, dx, dy, dz);
+                        linesWritten++;
+                    }
+                    cum += (axis == 'X' ? dx : axis == 'Y' ? dy : dz);
+                    dxLog.append("→").append(String.format("%.3f", cum));
+                }
+
+                BIMLogger.info(TAG, "{}: {} pieces, axis={}, dx={}",
+                        bomId, chain.size(), axis, dxLog);
+                System.out.printf("[IFCtoERP] %s: %d pieces, axis=%c, dx=%s%n",
+                        bomId, chain.size(), axis, dxLog);
+            }
+
+            if (chainsFull == 0) {
+                BIMLogger.warn(TAG, "{} {}/{}: {} elements — 0 chains (all singletons or gap > 50mm)",
+                        buildingType, storey, disc, group.size());
+            }
+        }
+
+        BIMLogger.info(TAG, "{}: recipe build complete — {} MEP runs, {} lines, {} shim anchors",
+                buildingType, runsBuilt, linesWritten, shimAnchors);
+        return new RecipeResult(runsBuilt, linesWritten, shimAnchors);
+    }
+
+    // ── recipe helpers ──────────────────────────────────────────────
+
+    private static List<MepPosElement> readMepElementsWithPositions(Path refDb) throws SQLException {
+        List<MepPosElement> result = new ArrayList<>();
+        String url = "jdbc:sqlite:" + refDb;
+        try (Connection conn = DriverManager.getConnection(url);
+             Statement stmt = conn.createStatement()) {
+            ResultSet rs = stmt.executeQuery("""
+                    SELECT m.ifc_class, m.element_type, m.storey,
+                           r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                    FROM elements_meta m
+                    JOIN elements_rtree r ON m.id = r.id
+                    WHERE m.ifc_class IN (
+                        'IfcPipeSegment','IfcPipeFitting',
+                        'IfcDuctSegment','IfcDuctFitting',
+                        'IfcFireSuppressionTerminal','IfcAirTerminal',
+                        'IfcFlowTerminal','IfcFlowController','IfcLightFixture',
+                        'IfcFlowSegment','IfcFlowFitting')
+                    """);
+            while (rs.next()) {
+                double minX = rs.getDouble(4), maxX = rs.getDouble(5);
+                double minY = rs.getDouble(6), maxY = rs.getDouble(7);
+                double minZ = rs.getDouble(8), maxZ = rs.getDouble(9);
+                double cx = (minX + maxX) / 2.0;
+                double cy = (minY + maxY) / 2.0;
+                double cz = (minZ + maxZ) / 2.0;
+                result.add(new MepPosElement(
+                        rs.getString(1), rs.getString(2), rs.getString(3),
+                        cx, cy, cz, minX, maxX, minY, maxY, minZ, maxZ));
+            }
+        }
+        return result;
+    }
+
+    /** Classify IFC class → discipline code (FP/ACMV/CW/SP/ELEC). */
+    private static String discFromClass(String ifcClass, String elementType) {
+        return switch (ifcClass) {
+            case "IfcFireSuppressionTerminal" -> "FP";
+            case "IfcDuctSegment", "IfcDuctFitting", "IfcAirTerminal" -> "ACMV";
+            case "IfcLightFixture" -> "ELEC";
+            case "IfcFlowTerminal" -> {
+                String et = elementType != null ? elementType.toLowerCase() : "";
+                yield (et.contains("drain") || et.contains("waste") || et.contains("soil")
+                       || et.contains("inspection") || et.contains("interceptor")) ? "SP" : "CW";
+            }
+            case "IfcPipeSegment", "IfcPipeFitting", "IfcFlowController" -> {
+                String et = elementType != null ? elementType.toLowerCase() : "";
+                yield (et.contains("soil") || et.contains("drain") || et.contains("sp_"))
+                        ? "SP" : "CW";
+            }
+            default -> "CW"; // IfcFlowSegment, IfcFlowFitting → CW as default
+        };
+    }
+
+    /** Derive short BOM prefix from buildingType: "Revit_MEP" → "RM". */
+    private static String buildBomPrefix(String buildingType) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : buildingType.split("_")) {
+            if (!part.isEmpty()) sb.append(Character.toUpperCase(part.charAt(0)));
+        }
+        return sb.toString();
+    }
+
+    /** Convert storey name to short code: "Level 1" → "L1", "Roof Level" → "RL". */
+    private static String toStoreyCode(String storey) {
+        if (storey == null || storey.isBlank()) return "L0";
+        String s = storey.trim();
+        // "Level N" → "LN"
+        if (s.matches("(?i)level\\s+\\d+")) {
+            return "L" + s.replaceAll("(?i)level\\s+", "");
+        }
+        // Collect uppercase letters + digits
+        StringBuilder sb = new StringBuilder();
+        for (char c : s.toCharArray()) {
+            if (Character.isUpperCase(c) || Character.isDigit(c)) sb.append(c);
+        }
+        String code = sb.toString();
+        return code.isEmpty() ? s.replaceAll("[^A-Za-z0-9]", "").toUpperCase() : code;
+    }
+
+    /** Determine dominant axis (max centroid variance) for a group. */
+    private static char dominantAxisOf(List<MepPosElement> group) {
+        if (group.isEmpty()) return 'X';
+        double sumX = 0, sumY = 0, sumZ = 0;
+        for (MepPosElement e : group) { sumX += e.cx; sumY += e.cy; sumZ += e.cz; }
+        double n = group.size();
+        double meanX = sumX / n, meanY = sumY / n, meanZ = sumZ / n;
+        double varX = 0, varY = 0, varZ = 0;
+        for (MepPosElement e : group) {
+            varX += (e.cx - meanX) * (e.cx - meanX);
+            varY += (e.cy - meanY) * (e.cy - meanY);
+            varZ += (e.cz - meanZ) * (e.cz - meanZ);
+        }
+        if (varX >= varY && varX >= varZ) return 'X';
+        if (varY >= varX && varY >= varZ) return 'Y';
+        return 'Z';
+    }
+
+    /**
+     * Detect connected chains: consecutive elements with AABB face gap < 50mm (0.05m).
+     * List must already be sorted along the dominant axis.
+     */
+    private static List<List<MepPosElement>> detectChains(
+            List<MepPosElement> sorted, char axis) {
+        List<List<MepPosElement>> chains = new ArrayList<>();
+        if (sorted.isEmpty()) return chains;
+
+        List<MepPosElement> current = new ArrayList<>();
+        current.add(sorted.get(0));
+
+        for (int i = 1; i < sorted.size(); i++) {
+            MepPosElement prev = sorted.get(i - 1);
+            MepPosElement next = sorted.get(i);
+            double gap = switch (axis) {
+                case 'X' -> Math.max(0.0, next.minX - prev.maxX);
+                case 'Y' -> Math.max(0.0, next.minY - prev.maxY);
+                default  -> Math.max(0.0, next.minZ - prev.maxZ);
+            };
+            if (gap <= 0.05) { // 50mm threshold
+                current.add(next);
+            } else {
+                chains.add(current);
+                current = new ArrayList<>();
+                current.add(next);
+            }
+        }
+        chains.add(current);
+        return chains;
+    }
+
+    /** Map discipline code → canonical shim product value. */
+    private static String discToShim(String disc) {
+        return switch (disc) {
+            case "FP"   -> "FP_CEILING_SHIM";
+            case "ACMV" -> "ACMV_CEILING_SHIM";
+            case "ELEC" -> "ELEC_CEILING_SHIM";
+            case "SP"   -> "SP_FLOOR_SHIM";
+            default     -> "CW_CEILING_SHIM"; // CW and others
+        };
+    }
+
+    /** Resolve product_id from ERP.db for a given MEP element. Returns null if not found. */
+    private static String resolveProductIdFor(Connection erpConn, MepPosElement e)
+            throws SQLException {
+        String pieceType = classifyPieceType(e.ifcClass, e.elementType);
+        // Reconstruct the key used in classifyElements/promoteToProduct
+        double dx = (e.maxX - e.minX) * 1000.0; // metres → mm
+        double dy = (e.maxY - e.minY) * 1000.0;
+        double dz = (e.maxZ - e.minZ) * 1000.0;
+        double[] dims = {dx, dy, dz};
+        Arrays.sort(dims);
+        double diameter = (dims[0] + dims[1]) / 2.0;
+        double roundedDia = Math.round(diameter / 5.0) * 5.0;
+        String material = extractMaterial(e.elementType);
+        String productId = pieceType + "_" + (int) roundedDia + "MM"
+                + (material != null ? "_" + material : "");
+
+        // Verify it exists in M_Product
+        try (PreparedStatement ps = erpConn.prepareStatement(
+                "SELECT 1 FROM M_Product WHERE product_id = ?")) {
+            ps.setString(1, productId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? productId : null;
+            }
+        }
+    }
+
+    private static void insertMBomLine(Connection erpConn, String bomId,
+            String childProductId, int seq, double dx, double dy, double dz)
+            throws SQLException {
+        // Look up integer M_BOM_ID from bom_id (existing schema uses integer PK)
+        int intBomId = -1;
+        try (PreparedStatement lookup = erpConn.prepareStatement(
+                "SELECT M_BOM_ID FROM M_BOM WHERE bom_id = ?")) {
+            lookup.setString(1, bomId);
+            try (ResultSet rs = lookup.executeQuery()) {
+                if (rs.next()) intBomId = rs.getInt(1);
+            }
+        }
+        if (intBomId < 0) return; // parent BOM not found, skip
+
+        try (PreparedStatement ps = erpConn.prepareStatement("""
+                INSERT INTO M_BOM_Line
+                (M_BOM_ID, bom_id, child_product_id, sequence, qty, dx, dy, dz,
+                 component_type, c_uom_id, qty_type, IsActive)
+                VALUES (?, ?, ?, ?, 1, ?, ?, ?, 'LEAF', 'EA', 'FIXED', 'Y')
+                """)) {
+            ps.setInt(1, intBomId);
+            ps.setString(2, bomId);
+            ps.setString(3, childProductId);
+            ps.setInt(4, seq);
+            ps.setDouble(5, dx);
+            ps.setDouble(6, dy);
+            ps.setDouble(7, dz);
+            ps.executeUpdate();
+        }
+    }
+
     private static int writeStagingRows(Connection erpConn,
                                         Map<String, JointPieceType> types) throws SQLException {
         String sql = """
@@ -446,5 +804,13 @@ public class IFCtoERP {
                           double diameterMm, double lengthMm, double angleDeg,
                           String material, String sourceBuilding, int count) {}
 
+    /** MEP element with world centroid and AABB bounds (metres), for recipe building. */
+    record MepPosElement(String ifcClass, String elementType, String storey,
+                         double cx, double cy, double cz,
+                         double minX, double maxX, double minY, double maxY,
+                         double minZ, double maxZ) {}
+
     public record Result(int mepElements, int stagedTypes, int newProducts) {}
+
+    public record RecipeResult(int runsBuilt, int linesWritten, int shimAnchors) {}
 }

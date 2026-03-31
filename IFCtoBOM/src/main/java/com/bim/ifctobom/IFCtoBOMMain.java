@@ -172,6 +172,11 @@ public class IFCtoBOMMain {
 
             System.out.printf("[joint-extract] %s complete — %d MEP elements, %d joint types, %d new products, %d shims%n",
                     buildingType, r.mepElements(), r.stagedTypes(), r.newProducts(), shims);
+
+            // J1 tack offsets — inter-piece dx/dy/dz chain (Witness: W-J1-TACK)
+            IFCtoERP.RecipeResult rr = IFCtoERP.buildMepBomRecipes(erpConn, buildingType);
+            System.out.printf("[IFCtoERP] %s: %d MEP runs, %d recipe lines, %d shim anchors%n",
+                    buildingType, rr.runsBuilt(), rr.linesWritten(), rr.shimAnchors());
         }
     }
 
