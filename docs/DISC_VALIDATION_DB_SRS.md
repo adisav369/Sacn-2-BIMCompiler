@@ -1123,181 +1123,172 @@ anchor point; everything below cascades parent-relative. No absolute borrowing.
 
 ### 6.12.2 MEP Placement — Shim + Joint Piece Architecture (S103)
 
-MEP placement follows the same BOM principle as ARC/STR. No special routing
-engine. No canvas. No pathfinding. The walker reads M_BOM → M_BOM_Line →
-dx/dy/dz and places — same code path as placing furniture in a room.
+MEP placement follows the same BOM principle as ARC/STR. The walker reads
+M_BOM → M_BOM_Line → dx/dy/dz and places. Same code path as placing
+furniture in a room. No routing engine. No canvas. No pathfinding.
 
-The key insight: MEP elements attach to ARC/STR surfaces (ceilings, walls,
-floors). The **shim** is the adapter piece that bridges the two BOMs without
-coupling them.
+#### 1. Tack Point
 
-#### 1. The Shim — MEP's First Piece
+A tack point is just a point. Parent tack + dx/dy/dz = child tack. The
+walker accumulates. That's the whole algorithm — same for ARC, same for MEP.
 
-A shim is an M_Product in ERP.db. It represents a small patch of the host
-surface that the MEP element attaches to. Like the plastic pin-cover that
-comes with a light bulb — it has the exact shape of the connection interface.
-The blind walker matches it to an ARC element by `ifc_class`, and the shim's
-position becomes the MEP tack origin.
+The tack point is NOT tied to AABB or LBD convention. What the point
+physically represents depends on the product — LBD corner of a wall,
+centre of a pipe end, centre of a screw hole. The BOM doesn't care. It
+stores a number. The walker adds numbers. The product's geometry knows
+where to render relative to its tack point.
+
+For MEP joint pieces, the tack point is the **connection face** — where
+two pieces physically touch. A pipe end meets a tee inlet. The tack
+point is the centre of that shared circle. Two pieces pair when their
+mating faces are coplanar and equal diameter.
+
+#### 2. IFCtoERP — Tack Point Extraction
+
+Tack points between joined MEP pieces MUST be computed inside IFCtoERP
+while reading the IFC geometry. Only at extraction time does the code
+have both pieces' actual positions from the IFC.
+
+The maths is simple: each IFC element has an `ObjectPlacement` (world
+coordinates). The tack offset between two joined pieces = child position
+minus parent position. Same subtraction IFCtoBOM already does for walls
+and slabs. No cylindrical geometry computation — just two positions and
+a minus operation.
+
+IFCtoERP extracts and stores on each M_Product in ERP.db:
+- Tack point (connection face centre, from IFC geometry)
+- Diameter at tack point (from `IfcCircleProfileDef` or element dimensions)
+- Piece type (STRAIGHT / TEE / ELBOW / REDUCER / TERMINAL — from `ifc_class` + `PredefinedType`)
+
+The dx/dy/dz on the M_BOM_Line = the vector from parent tack to child
+tack. Extracted once from RosettaStone IFCs. Stored as data. Walked as
+numbers. No recomputation at compile time.
+
+#### 3. The Shim — Base Plate
+
+The shim is the base plate — the first piece out of the Lego box. It
+bridges ARC and MEP without coupling them. An M_Product in ERP.db (no
+LOD geometry, no entry in component_library.db) that represents the host
+surface where MEP attaches.
+
+The shim IS the root BOM for MEP in a room. No FP_SYSTEM wrapper. The
+Callout reads `ad_space_type_mep_bom` ("KITCHEN needs FP") and creates a
+DISC OrderLine whose product IS the shim. One shim per room per discipline.
 
 ```
 ERP.db M_Product — Shims (host surface adapters, ~10-15 types)
 
 FP_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=5
 ELEC_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=10
-ELEC_WALL_SHIM        host_ifc_class=IfcWall       mount=SIDE     offset_mm=0  height_mm=1200
+ELEC_WALL_SHIM        host_ifc_class=IfcWall       mount=SIDE     height_mm=1200
 CW_CEILING_SHIM       host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=5
 SP_FLOOR_SHIM         host_ifc_class=IfcSlab       mount=TOP      offset_mm=0
 ACMV_CEILING_SHIM     host_ifc_class=IfcCovering   mount=BOTTOM   offset_mm=50
-LPG_WALL_SHIM         host_ifc_class=IfcWall       mount=SIDE     offset_mm=0  height_mm=2100
+LPG_WALL_SHIM         host_ifc_class=IfcWall       mount=SIDE     height_mm=2100
 ```
 
-The shim is the same scale as the first MEP piece — not room-sized, not
-floor-sized. A small adapter at the exact attachment point. Without it,
-every MEP piece would tack relative to the FLOOR origin with large offsets
-(dx=15000, dy=8000) — the same tack overflow problem that broke TE before
-room-level BOMs were added.
+**Why the shim prevents geometry hell:** Without it, every MEP piece tacks
+relative to the FLOOR origin — large offsets (dx=15000, dy=8000), thousands
+of chances to drift. The shim absorbs the building-specific position lookup
+ONCE. Every piece after it uses small relative offsets.
 
-**Why the shim prevents geometry hell:** It absorbs the building-specific
-position lookup ONCE. The shim sits at `ceiling_z - 5mm`. Every piece on
-it uses small relative offsets (`dz=-300mm` for a sprinkler drop). Without
-it, every piece computes `floor_z + storey_height - slab_thickness -
-clearance - 300mm` individually — thousands of chances to drift.
+**Shim matching (the only new code):** The walker matches the shim to an
+ARC element by `host_ifc_class` + position containment. ARC doesn't know
+MEP exists. MEP doesn't reference the ARC BOM directly. Loosely coupled.
 
-#### 2. Shim Matching — Loose Coupling Between ARC and MEP
+#### 4. Shim Placement — Rules Determine Position
 
-The shim matches to an ARC element at compile time. The match is by
-`ifc_class` + position containment. ARC doesn't know MEP exists. MEP
-doesn't reference the ARC BOM directly. The shim is the interface — like
-OSGi: loosely coupled, highly cohesive.
+The shim's XY position within the room comes from placement rules in
+`ad_space_type_mep_bom`:
 
-```
-Compile time:
-  1. ARC BOM compiled → ceiling in KITCHEN at (3200, 1500, 2700) in *_BOM.db
-  2. ad_space_type_mep_bom says: KITCHEN needs FP
-  3. Callout creates DISC OrderLine: product = FP_CEILING_SHIM on this floor
-  4. Walker matches shim to ARC ceiling by host_ifc_class=IfcCovering
-     → ceiling at (3200, 1500, 2700), offset 5mm → shim at (3200, 1500, 2695)
-  5. Walker recurses into shim's M_BOM children:
-     PIPE_STRAIGHT tacks at dx=0 relative to shim
-     SPRINKLER_HEAD tacks at dz=-300 → placed at (3200, 1500, 2395)
-```
+| layout | origin rule | shim XY relative to room |
+|--------|------------|--------------------------|
+| GRID | Half-spacing from walls (NFPA 13) | (spacing/2, spacing/2) |
+| LINEAR | Centre of long axis | (spacing/2, depth/2) |
+| CENTRE | Room centre | (width/2, depth/2) |
+| AT_FIXTURE | Fixture position from ARC BOM | fixture's dx/dy |
 
-The shim IS the root BOM for MEP in this room. Matching resolves its
-position. Everything below is standard BOM walk.
+The Z comes from the shim's host match (ceiling element Z minus offset).
+Rule + room dimensions + host Z = one exact position. Deterministic.
 
-#### 3. The Toolbox — Joint Pieces in ERP.db
+#### 5. Joint Pieces — The Toolbox
 
-Joint pieces are the Lego bricks. Each is an M_Product with connection
-properties. Extracted from IFC RosettaStones — the fleet teaches us what
-pieces exist and their typical dimensions.
+Joint pieces are M_Products in ERP.db. Extracted from RosettaStone IFCs
+by `ifc_class` and `PredefinedType` — a pipe segment IS a straight piece,
+an `IfcPipeFitting` IS a tee or elbow. No `IfcRelConnectsPorts` needed
+(our IFCs don't carry port data). The fleet teaches vocabulary by example.
 
 ```
 ERP.db M_Product — Joint pieces (~30-50 types from fleet)
 
-PIPE_STRAIGHT_50MM     length=6000mm   diameter=50mm   ports=2 (END,END)
-PIPE_ELBOW_90_50MM     angle=90°       diameter=50mm   ports=2 (END,END)
-PIPE_TEE_50_25MM       main=50mm       branch=25mm     ports=3 (END,END,BRANCH)
-PIPE_REDUCER_50_25MM   in=50mm         out=25mm        ports=2 (END,END)
-SPRINKLER_HEAD_K56     k_factor=5.6    diameter=15mm   ports=1 (IN)
-DUCT_STRAIGHT_300MM    width=300mm     height=200mm    ports=2 (END,END)
-DUCT_TEE_300_150MM     main=300mm      branch=150mm    ports=3
-AIR_DIFFUSER_600MM     size=600mm      capacity=150L/s ports=1 (IN)
+PIPE_STRAIGHT_50MM     diameter=50mm   tack=pipe-end centre
+PIPE_ELBOW_90_50MM     diameter=50mm   angle=90°
+PIPE_TEE_50_25MM       main=50mm       branch=25mm
+PIPE_REDUCER_50_25MM   in=50mm         out=25mm
+SPRINKLER_HEAD_K56     diameter=15mm   (leaf — no outlet)
+DUCT_STRAIGHT_300MM    width=300mm     height=200mm
+AIR_DIFFUSER_600MM     size=600mm      (leaf — no outlet)
 ```
 
-**No `IfcRelConnectsPorts` needed.** Our RosettaStone IFCs do not carry port
-connectivity data. The joint pieces are extracted from element geometry and
-`ifc_class` — a pipe segment IS a straight piece, a `IfcPipeFitting` IS a
-tee or elbow (identified by geometry shape or `PredefinedType`). The
-RosettaStones teach us the vocabulary by example.
+Each piece's tack point and outlet offset(s) are extracted by IFCtoERP
+from IFC geometry — not computed at compile time.
 
-#### 4. The MEP Recipe — Shim First, Then Chain
-
-The shim IS the root BOM for MEP in that room. No wrapper. No FP_SYSTEM
-abstraction layer. Like the base plate in a Lego box — the first piece
-you pull out, the one everything else snaps onto.
-
-The Callout reads `ad_space_type_mep_bom`: "KITCHEN needs FP." It creates
-a DISC OrderLine whose product IS `FP_CEILING_SHIM`. One shim per room
-per discipline. The shim matches to the ceiling, gets its position, and
-its M_BOM children are the pieces.
+#### 6. The MEP BOM — Shim Root, Joint Piece Children
 
 ```
-FLOOR (in *_BOM.db — from ARC extraction)
-  └── DISC OrderLine: product = FP_CEILING_SHIM    ← the base plate IS the root
-        └── PIPE_STRAIGHT_50MM      dx=0  dz=0     ← header from shim origin
+FLOOR (in *_BOM.db)
+  └── FP_CEILING_SHIM (KITCHEN)     ← root BOM, matched to ceiling
+        └── PIPE_STRAIGHT_50MM      dx=0  dz=0     ← header from shim tack
         └── PIPE_TEE_50_25MM        dx=L  dz=0     ← tee at branch point
         └── PIPE_STRAIGHT_25MM      dy=S  dz=0     ← branch from tee
         └── SPRINKLER_HEAD_K56      dy=0  dz=-300   ← terminal drop
-```
 
-The walker recurses: FLOOR → FP_CEILING_SHIM → pieces. Same recursion
-as FLOOR → ROOM → FURNITURE. The shim IS the room equivalent for MEP.
-All children use small, local, verifiable offsets relative to it.
-
-Multiple rooms needing FP = multiple shim OrderLines on the same floor:
-```
 FLOOR
-  └── FP_CEILING_SHIM  (KITCHEN)    ← matched to kitchen ceiling
-  └── FP_CEILING_SHIM  (CORRIDOR)   ← matched to corridor ceiling
-  └── FP_CEILING_SHIM  (OFFICE)     ← matched to office ceiling
-  └── ELEC_WALL_SHIM   (KITCHEN)    ← matched to kitchen wall at dado height
-  └── SP_FLOOR_SHIM    (BATHROOM)   ← matched to bathroom floor
+  └── FP_CEILING_SHIM  (KITCHEN)     ← matched to kitchen ceiling
+  └── FP_CEILING_SHIM  (CORRIDOR)    ← matched to corridor ceiling
+  └── ELEC_WALL_SHIM   (KITCHEN)     ← matched to kitchen wall
+  └── SP_FLOOR_SHIM    (BATHROOM)    ← matched to bathroom floor
 ```
 
-#### 5. What IFC RosettaStones Teach Us
+The walker recurses: FLOOR → shim → pieces. Same as FLOOR → ROOM →
+FURNITURE. All dx/dy/dz are small, local, verifiable — the shim absorbed
+the building-scale positioning.
 
-The RosettaStones are the BOM ground truth. The IFC tells us what pieces
-exist, their dimensions, and how they arrange — by example, not by port
-connectivity.
+#### 7. Validation — Standards Confirm the Walk
 
-| From IFC | To ERP.db | How |
-|----------|-----------|-----|
-| `IfcPipeSegment` elements | PIPE_STRAIGHT M_Products | Geometry → length, diameter |
-| `IfcPipeFitting` elements | TEE/ELBOW/REDUCER M_Products | `PredefinedType` or shape classification |
-| `IfcFlowTerminal` elements | SPRINKLER/DIFFUSER M_Products | `ifc_class` + dimensions |
-| Element-to-storey containment | Shim host_ifc_class | `IfcRelContainedInSpatialStructure` |
-| Element positions per room | Recipe arrangement (qty, spacing) | Mined patterns → AD_Val_Rule |
-
-The fleet grows the vocabulary. TE contributes ~30 joint types.
-Each new building adds patterns via `INSERT OR IGNORE`.
-
-#### 6. Validation — Standards Confirm the Walk
-
-NFPA 13, MS 1228, ASHRAE 62.1 etc. validate placement AFTER the walk:
+Standards validate placement AFTER the walk. They do NOT drive it.
 
 | Standard | AD_Val_Rule check | Input |
 |----------|-------------------|-------|
 | NFPA 13 §8.6 | Sprinkler spacing ≤ 4600mm (LH) | Placed sprinkler positions |
-| MS 1228 §5 | Waste gradient ≥ 1:40 | SP pipe segment Z values |
+| MS 1228 §5 | Waste gradient ≥ 1:40 | SP pipe Z values along chain |
 | ASHRAE 62.1 | Air changes per room | Diffuser count vs room volume |
 | MS 830 §4 | Gas clearance ≥ 150mm | LPG pipe vs ignition sources |
 
-Standards do NOT drive the walk. They confirm it. The BOM IS the walk.
-
-#### 7. Phasing
+#### 8. Phasing
 
 | Phase | Scope | Prereq |
 |-------|-------|--------|
-| J1 | Joint piece vocabulary: extract M_Products from RosettaStone IFCs into ERP.db | S103 |
-| J2 | Shim products: define host surface adapters in ERP.db (ceiling, wall, floor, slab) | J1 |
-| J3 | MEP recipes: M_BOM assemblies (shim + joint pieces) in ERP.db | J2 |
-| J4 | Shim matching: walker matches shim to ARC element by ifc_class + position | J3 |
-| J5 | Validation: AD_Val_Rule for NFPA/MS/ASHRAE post-walk + P15/P16/P17 proofs | J4 |
+| J1 | IFCtoERP: extract joint piece M_Products + tack points from RosettaStone IFCs | S103 |
+| J2 | Shim products: define host surface adapters in ERP.db | J1 |
+| J3 | MEP recipes: shim-rooted M_BOM assemblies in ERP.db | J2 |
+| J4 | Shim matching: walker matches shim to ARC element by host_ifc_class | J3 |
+| J5 | Validation: AD_Val_Rule post-walk + P15/P16/P17 proofs | J4 |
 | J6 | Fleet: TE + RM, measure coverage per discipline per room | J5 |
 
-J2 is the critical task — without the shim, MEP has no tack origin.
+J1 is the foundation — tack points must be extracted from IFC geometry
+inside IFCtoERP. They cannot be computed later.
 
 #### Existing Infrastructure
 
 | Component | Status | Role |
 |-----------|--------|------|
-| PlacementCollectorVisitor | DONE | Walks M_BOM → M_BOM_Line, accumulates dx/dy/dz — handles MEP identically to ARC |
-| BomDropper | DONE | Explodes recipes recursively — handles MEP sub-BOMs identically to ARC |
-| BuildingGeometry | DONE (S100) | Room dimensions, ceiling Z, wall thickness — input for shim matching |
-| CrawlRouter + RouteBuilders | DONE (S100) | Generative fallback for buildings without IFC MEP data |
+| PlacementCollectorVisitor | DONE | Walks M_BOM, accumulates dx/dy/dz — same for ARC and MEP |
+| BomDropper | DONE | Explodes recipes recursively — same for ARC and MEP |
+| BuildingGeometry | DONE (S100) | Room dimensions, ceiling Z, wall thickness — shim matching input |
+| CrawlRouter + RouteBuilders | DONE (S100) | Generative fallback (buildings without IFC MEP data) |
 | system_edges | DONE (S100) | P15/P16/P17 proof input |
-| M_BOM / M_BOM_Line | EXISTS (ERP.db) | Tables ready — needs joint piece and shim recipes |
-| ad_element_mep | EXISTS (ERP.db, 12 rows) | Canonical MEP types with ports — connection interface |
+| ad_space_type_mep_bom | EXISTS (ERP.db, 186 rows) | Room type → discipline mapping + placement_rule |
 
 ### 6.13 IFC-Driven Extraction
 
