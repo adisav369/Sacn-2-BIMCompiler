@@ -71,7 +71,9 @@
     TE DISC LEAF linked: 959→965 (FP parasitic rows now point to ERP.db IDs 1/2/3).
     Finding: bulk of TE DISC LEAF M_BOM_Line_IDs reference TE_BOM.db (local), not ERP.db MEP_RECIPE.
     RM DISC LEAF: 0 rows — ELEC_SYSTEM/SP_SYSTEM have no BOM children; ACMV/CW/FP MEP_RECIPE runs not consumed.
-  Next: deeper ERP.db MEP_RECIPE → c_orderline integration (RM routing topology consumption).
+  00l DONE (`93b62e6b`): RE_DEFAULT expanded {ELEC,SP}→{FP,ELEC,ACMV,CW,SP}. W-J1-RECIPE-FULL. RM now has 5 DISCIPLINE rows (Qty=0). SH 8/8, RM 6/8 — no regression.
+  00m DONE (`8185d9df`): MEP DV rule audit — §6.3.1 gap written. Stage 1: 1 FP DocEvent rule only. Stage 3: 415 DIMENSION_RANGE, no MEP code checks. ad_code_requirement: 23 rows, not wired in.
+  Next: watchdog decides if ad_code_requirement → AD_DocEvent_Rule migration prompt warranted.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
