@@ -30,7 +30,13 @@ public final class DuplicatePositionProof {
                     Math.pow(a.cy() - b.cy(), 2) +
                     Math.pow(a.cz() - b.cz(), 2));
 
-                if (dist < EyesConstants.CENTROID_TOLERANCE_M) {
+                // P05 sameDims guard — Witness: W-RM-DEDUP
+                // Same-class centroid proximity with different dims = architecturally valid co-location.
+                // Implementing TestArchitecture.md §P05 — consistent with P06 DUPLICATE criterion.
+                boolean sameDims = Math.abs(a.dx() - b.dx()) < 0.001
+                        && Math.abs(a.dy() - b.dy()) < 0.001
+                        && Math.abs(a.dz() - b.dz()) < 0.001;
+                if (dist < EyesConstants.CENTROID_TOLERANCE_M && sameDims) {
                     results.add(new ProofResult("P05_NO_DUPLICATE_POSITION",
                         ProofResult.Status.VIOLATED,
                         a.guid(), "duplicate centroid with %s dist=%.6f".formatted(b.guid(), dist),

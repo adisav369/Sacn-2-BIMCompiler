@@ -156,15 +156,31 @@ public class ExtractionPopulator {
                     JOIN elements_rtree r ON m.id = r.id
                     ORDER BY m.ifc_class, m.storey, r.minX, r.minY, r.minZ
                     """;
+            // Extraction-side exact-duplicate filter — Witness: W-RM-DEDUP
+            // Implementing PRIME RULE §EXTRACT — identical position+dims = source model error, keep one.
+            Set<String> seen = new HashSet<>();
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
                 while (rs.next()) {
+                    String ifcClass  = rs.getString(1);
+                    String elemName  = rs.getString(2);
+                    double minX = rs.getDouble(5), maxX = rs.getDouble(6);
+                    double minY = rs.getDouble(7), maxY = rs.getDouble(8);
+                    double minZ = rs.getDouble(9), maxZ = rs.getDouble(10);
+                    String dedupKey = ifcClass + "|" + elemName + "|"
+                            + Math.round(minX * 1000) + "|" + Math.round(maxX * 1000) + "|"
+                            + Math.round(minY * 1000) + "|" + Math.round(maxY * 1000) + "|"
+                            + Math.round(minZ * 1000) + "|" + Math.round(maxZ * 1000);
+                    if (!seen.add(dedupKey)) {
+                        double cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
+                        System.err.printf("  [ExtractionPopulator] DEDUP: skipping exact-duplicate %s %s at (%.3f,%.3f,%.3f)%n",
+                                ifcClass, elemName, cx, cy, cz);
+                        continue;
+                    }
                     result.add(new RawElement(
-                            rs.getString(1), rs.getString(2),
+                            ifcClass, elemName,
                             rs.getString(3), rs.getString(4),
-                            rs.getDouble(5), rs.getDouble(6),
-                            rs.getDouble(7), rs.getDouble(8),
-                            rs.getDouble(9), rs.getDouble(10),
+                            minX, maxX, minY, maxY, minZ, maxZ,
                             rs.getString(11), rs.getString(12),
                             rs.getString(13)
                     ));
