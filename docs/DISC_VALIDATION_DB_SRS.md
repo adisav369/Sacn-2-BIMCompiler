@@ -156,6 +156,7 @@ migration/
 | W-DV-DB-REF | Reference pointers resolve across databases | DiscValidationDBTest |
 | W-DV-DB-ALIAS | Alias cascade resolves IFC2x3↔IFC4 (84 rows, 4 tiers) | DiscValidationDBTest |
 | W-DV-DB-ND | Schema changes do not disturb component_library.db | DiscValidationDBTest |
+| W-TACK-STABLE | Tack chain FP error ≤ 0.005mm per pair across all fleet buildings (evidence: ≤ 0.002mm, 1,653 pairs) | GEO gate G3-DIGEST |
 
 ---
 
@@ -1202,6 +1203,21 @@ centre of a pipe end, centre of a screw hole. The BOM doesn't care. It
 stores a number. The walker adds numbers. The product's geometry knows
 where to render relative to its tack point.
 
+**Tack stability invariant:** `PlacementCollectorVisitor` computes each
+element's world absolute tack as:
+
+```
+child_abs = parent_abs + rotated(dx, dy, dz) + bomOrigin
+```
+
+where `parent_abs` is the immediately preceding ancestor's absolute tack,
+read from the anchor stack (`anchorStack.peek()`). Computation is O(1) per
+node — no recomputation from root, no mutable running counter. The stack is
+the cache of all ancestor absolute tacks; each node reads only its direct
+parent. Accumulated FP error across a chain is bounded by the GEO proof
+(evidence: ≤ 0.002mm over 1,653 element pairs, SH/TE/RM fleet). The
+tolerance for GEO gate passage is ≤ 0.005mm per pair (LMP threshold).
+
 #### 2. The Shim — Zero Offset Host Alignment
 
 The shim is a **phantom product** — no geometry, no mass, not rendered.
@@ -1524,6 +1540,20 @@ when the rules are visible metadata and the code is an abstract walker.
 #### 10. Validation — Standards Confirm the Walk
 
 Standards validate placement AFTER the walk. They do NOT drive it.
+
+**Validation layering (three tiers):**
+
+| Tier | Mechanism | When | Scope |
+|------|-----------|------|-------|
+| 1 — GEO proof | G3-DIGEST gate (W-TACK-STABLE) | Per RosettaStone run | Tack FP stability ≤ 0.005mm across all fleet elements |
+| 2 — CheckClashVerb (primary) | AD_Val_Rule clash rules | Post-walk audit pass | Cross-discipline penetration; host-surface clearance |
+| 3 — Per-element soft check (supplementary) | PlacementValidator.isValidPlacement() | During BOM walk, per leaf | Room-bounds overreach; early-warning log only, no throw |
+
+Tier 3 is **supplementary** — it logs early warnings but does not replace Tier 2.
+CheckClashVerb remains the primary clearance enforcement mechanism. A Tier 3
+violation is a warning; a Tier 2 violation is a FAIL. Tier 3 MUST NOT be
+promoted to a hard fail without first confirming CheckClashVerb cannot detect
+the same violation.
 
 | Standard | AD_Val_Rule check | Source table | Input |
 |----------|-------------------|-------------|-------|
