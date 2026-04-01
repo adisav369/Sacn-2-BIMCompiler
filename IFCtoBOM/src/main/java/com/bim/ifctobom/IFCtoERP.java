@@ -216,6 +216,7 @@ public class IFCtoERP {
                         material TEXT,
                         source_building TEXT,
                         count INTEGER DEFAULT 1,
+                        discipline TEXT,
                         UNIQUE(piece_type, diameter_mm, material)
                     )""");
         }
@@ -264,9 +265,12 @@ public class IFCtoERP {
 
         for (MepElement e : elements) {
             String pieceType = classifyPieceType(e.ifcClass, e.elementType);
+            if (pieceType == null) continue; // ELEC light fixture — skip (Task D)
             double diameter = estimateDiameter(e);
             double length = estimateLength(e);
             String material = extractMaterial(e.elementType);
+            // A1: discipline from elements_meta first, fallback to heuristic
+            String discipline = discFromClass(e.ifcClass, e.elementType, e.discipline);
 
             // Round diameter to nearest 5mm for grouping
             double roundedDia = Math.round(diameter / 5.0) * 5.0;
@@ -275,12 +279,12 @@ public class IFCtoERP {
 
             types.merge(key, new JointPieceType(
                     e.ifcClass, e.elementType, pieceType,
-                    roundedDia, length, 0, material, buildingType, 1
+                    roundedDia, length, 0, material, buildingType, 1, discipline
             ), (a, b) -> new JointPieceType(
                     a.ifcClass, a.elementType, a.pieceType,
                     a.diameterMm, Math.max(a.lengthMm, b.lengthMm),
                     a.angleDeg, a.material, a.sourceBuilding,
-                    a.count + b.count));
+                    a.count + b.count, a.discipline));
 
         }
         return types;
@@ -694,6 +698,20 @@ public class IFCtoERP {
         return result;
     }
 
+    /**
+     * Classify IFC class → discipline, preferring extracted discipline from elements_meta.
+     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §5 — G3 fix — Witness: W-G3-FIX
+     */
+    static String discFromClass(String ifcClass, String elementType, String extractedDiscipline) {
+        // If extraction DB already classified it, trust it (G3 fix)
+        if (extractedDiscipline != null && !extractedDiscipline.isBlank()
+                && !extractedDiscipline.equalsIgnoreCase("MEP")) {
+            return extractedDiscipline; // CW, SP, FP, ACMV, ELEC, LPG from elements_meta
+        }
+        // Fallback: keyword heuristic
+        return discFromClass(ifcClass, elementType);
+    }
+
     /** Classify IFC class → discipline code (FP/ACMV/CW/SP/ELEC). */
     private static String discFromClass(String ifcClass, String elementType) {
         return switch (ifcClass) {
@@ -974,11 +992,12 @@ public class IFCtoERP {
 
     private static int writeStagingRows(Connection erpConn,
                                         Map<String, JointPieceType> types) throws SQLException {
+        // A1: include discipline column (added via G1 ALTER TABLE migration)
         String sql = """
                 INSERT OR REPLACE INTO _import_joint_piece_types
                 (ifc_class, element_type, piece_type, diameter_mm, length_mm,
-                 angle_deg, material, source_building, count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 angle_deg, material, source_building, count, discipline)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         int count = 0;
         try (PreparedStatement stmt = erpConn.prepareStatement(sql)) {
@@ -993,6 +1012,7 @@ public class IFCtoERP {
                 stmt.setString(7, t.material);
                 stmt.setString(8, t.sourceBuilding);
                 stmt.setInt(9, t.count);
+                stmt.setString(10, t.discipline);
                 stmt.executeUpdate();
                 count++;
             }
@@ -1039,7 +1059,7 @@ public class IFCtoERP {
 
     record JointPieceType(String ifcClass, String elementType, String pieceType,
                           double diameterMm, double lengthMm, double angleDeg,
-                          String material, String sourceBuilding, int count) {}
+                          String material, String sourceBuilding, int count, String discipline) {}
 
     /** MEP element with world centroid and AABB bounds (metres), for recipe building. */
     record MepPosElement(String ifcClass, String elementType, String storey,

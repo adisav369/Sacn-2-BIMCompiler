@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RM: Revit MEP (Revit_MEP)
 -- Source: DAGCompiler/lib/output/revit_mep.db
--- Generated: 2026-04-01 08:37
+-- Generated: 2026-04-02 03:01
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -49,9 +49,9 @@
 -- IfcSlab                     Unknown     12    1600.0    4109.0    1808.0    1600.0    1600.0  
 -- IfcDuctSegment              Roof Level  9     2056.0    825.0     2118.0    400.0     11875.0 
 -- IfcRailing                  Unknown     8     40.0      7548.0    4411.0    40.0      40.0    
--- IfcSlab                     Level 2     8     36040.0   34852.0   163.0     7105.0    65685.0 
 -- IfcDuctFitting              Roof Level  7     1161.0    1429.0    1327.0    604.0     2425.0  
 -- IfcSlab                     Level 1     7     33656.0   36741.0   171.0     7140.0    65835.0 
+-- IfcSlab                     Level 2     7     40114.0   39031.0   164.0     7105.0    65685.0 
 -- IfcFireSuppressionTerminal  Level 2     6     15.0      15.0      54.0      15.0      15.0    
 -- IfcBuildingElementProxy     Roof Level  5     2594.0    1627.0    2050.0    146.0     6130.0  
 -- IfcColumn                   Roof Level  4     38.0      38.0      2000.0    38.0      38.0    
@@ -90,7 +90,7 @@
 -- IfcDuctFitting              ARC         120 
 -- IfcFlowTerminal             ARC         65  
 -- IfcCovering                 ARC         43  
--- IfcSlab                     STR         33  
+-- IfcSlab                     STR         32  
 -- IfcFlowFitting              ARC         15  
 -- IfcRailing                  ARC         14  
 -- IfcFireSuppressionTerminal  FP          6   
@@ -619,19 +619,6 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '4411.0');
 
--- Rule: IfcSlab_Level_2 (8 instances, avg 36040.0x34852.0x163.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Level 2: 8 instances, avg W=36040.0 D=34852.0 H=163.0mm',
---     'Revit_MEP');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '36040.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '34852.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '163.0');
-
 -- Rule: IfcDuctFitting_Roof_Level (7 instances, avg 1161.0x1429.0x1327.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
@@ -657,6 +644,19 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '36741.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '171.0');
+
+-- Rule: IfcSlab_Level_2 (7 instances, avg 40114.0x39031.0x164.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Level_2', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Level 2: 7 instances, avg W=40114.0 D=39031.0 H=164.0mm',
+--     'Revit_MEP');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '40114.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '39031.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '164.0');
 
 -- Rule: IfcFireSuppressionTerminal_Level_2 (6 instances, avg 15.0x15.0x54.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -749,4 +749,39 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '3806.0');
 
+-- ════════════════════════════════════════════════════════
+-- 00q-A: RouteWalker DDL — Implementing DISC_VALIDATION_DB_SRS.md §6.12.3
+-- ════════════════════════════════════════════════════════
+
+-- A1: G1 fix — add discipline column to _import_joint_piece_types
+ALTER TABLE _import_joint_piece_types ADD COLUMN discipline TEXT;
+
+-- A2: Anchor table — source/terminal XYZ points from RM by IFCtoERP
+CREATE TABLE IF NOT EXISTS ad_mep_anchor (
+    anchor_id    TEXT PRIMARY KEY,
+    source_building TEXT NOT NULL,
+    anchor_type  TEXT NOT NULL CHECK(anchor_type IN ('METER','FIXTURE','VALVE','GENERIC')),
+    x_m          REAL NOT NULL,
+    y_m          REAL NOT NULL,
+    z_m          REAL NOT NULL,
+    storey       TEXT,
+    ifc_guid     TEXT
+);
+
+-- A3: Pattern table — topology step sequences mined from TE (CW+SP)
+CREATE TABLE IF NOT EXISTS ad_mep_pattern (
+    pattern_id       TEXT NOT NULL,
+    discipline       TEXT NOT NULL,
+    building_type    TEXT NOT NULL,
+    sequence         INTEGER NOT NULL,
+    from_node_type   TEXT NOT NULL,
+    to_node_type     TEXT NOT NULL,
+    direction_axis   TEXT NOT NULL,
+    piece_type       TEXT NOT NULL,
+    offset_rule      TEXT,
+    gradient         REAL,
+    notes            TEXT,
+    source_building  TEXT,
+    PRIMARY KEY (pattern_id, sequence)
+);
 
