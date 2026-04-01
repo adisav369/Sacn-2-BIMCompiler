@@ -1748,3 +1748,238 @@ assembly structure visible only via `rel_aggregates` child_guid join.
 [DocAction_SRS.md](DocAction_SRS.md) §1.3 (processIt DocEvent) |
 [CALIBRATION_SRS.md](CALIBRATION_SRS.md) (DocEvent vs Terminal) |
 [G4_SRS.md](G4_SRS.md) §2 (output.db pattern)*
+
+---
+
+## §11 — DISC BOM Single Source of Truth — Audit Findings (S104)
+
+**Audit scope:** Read-only forensics. Two test stones: Revit_MEP (RM) + SJTII_Terminal (TE).
+**DBs queried:** `library/ERP.db`, `DAGCompiler/lib/input/Revit_MEP_extracted.db`, `DAGCompiler/lib/input/Terminal_Extracted.db`.
+
+---
+
+### §11.1 — CW/SP Disambiguation Rule
+
+#### TE (SJTII_Terminal) — RESOLVED
+
+`elements_meta.discipline` carries the sub-discipline per element row in the extraction DB.
+This column is populated at IFC extraction time and is the authoritative source.
+
+Evidence (Terminal_Extracted.db):
+
+```
+ifc_class                    discipline  count
+─────────────────────────────────────────────
+IfcPipeSegment               FP          2672
+IfcPipeSegment               CW           619
+IfcPipeSegment               SP           455
+IfcPipeSegment               LPG           75
+IfcPipeFitting               FP          3146
+IfcPipeFitting               CW           638
+IfcPipeFitting               SP           372
+IfcPipeFitting               LPG           87
+IfcFlowController            FP            14
+IfcFlowController            CW             7
+IfcFlowTerminal              SP           150
+IfcFlowTerminal              CW           106
+IfcFireSuppressionTerminal   FP           909
+```
+
+**CW/SP rule for TE:** read `elements_meta.discipline` → map to AD_Org_ID (CW=6, SP=7, FP=3, LPG=8).
+No keyword heuristic needed. No geometry needed.
+
+#### RM (Revit_MEP) — G2: CW/SP_UNRESOLVABLE
+
+RM uses IFC2x3 generic classes. All pipe/fitting elements have `discipline='MEP'` (flat, no sub-type).
+
+- `mep_systems` table: **0 rows** (system membership not extracted)
+- `system_nodes` table: **0 rows**
+- `element_properties`: only `Reference` with values (FITTING, FRAME, CURTAIN_PANEL) — no system names
+- No `PredefinedType`, `ObjectType`, `FlowDirection`, `SystemType`, or `ServiceType` properties on any pipe element
+- Element names: `Pipe Types:Standard` covers 491 of 1060 IfcFlowSegment/IfcFlowFitting instances — no system info
+
+Partial name-based discrimination exists:
+- "DWV" / "Sanitary" in element_name → SP
+- "Conduit" → ELEC
+- Light fixture names (Recessed/Sconce/Pendant Light) → ELEC
+
+But the dominant generic `Pipe Types:Standard` class (~46% of flow elements) has no IFC attribute that
+distinguishes CW from SP.
+
+**G2: CW/SP_UNRESOLVABLE for RM.**
+
+Resolution path: the RM IFC model requires re-export from Revit with IfcSystem assignments
+(`IfcDistributionSystem.SystemType`) populated per piping network. This is a model quality gap,
+not a compiler gap.
+
+---
+
+### §11.2 — Piece-Type to Discipline Map (RM + TE)
+
+Column headers: `→ discipline` = AD_Org_ID, `source attribute` = what drives the classification.
+
+```
+piece_type            → discipline         source attribute
+──────────────────────────────────────────────────────────────────────
+DUCT_STRAIGHT         → ACMV (5)          IfcDuctSegment (class, unambiguous)
+DUCT_TEE              → ACMV (5)          IfcDuctFitting (class, unambiguous)
+DUCT_ELBOW            → ACMV (5)          IfcDuctFitting (class, unambiguous)
+DUCT_TRANSITION       → ACMV (5)          IfcDuctFitting (class, unambiguous)
+DUCT_CROSS            → ACMV (5)          IfcDuctFitting (class, unambiguous)
+DUCT_TAKEOFF          → ACMV (5)          IfcDuctFitting (class, unambiguous)
+DUCT_WYE              → ACMV (5)          IfcDuctFitting (class, unambiguous)
+DUCT_FITTING          → ACMV (5)          IfcDuctFitting (class, unambiguous)
+AIR_TERMINAL          → ACMV (5)          IfcAirTerminal (class, unambiguous)
+AIR_DIFFUSER          → ACMV (5)          IfcAirTerminal (class, unambiguous)
+AIR_GRILLE            → ACMV (5)          IfcAirTerminal (class, unambiguous)
+SPRINKLER_HEAD        → FP (3)            IfcFireSuppressionTerminal (class, unambiguous)
+HOSE_REEL             → FP (3)            IfcFireSuppressionTerminal (class, unambiguous)
+SMOKE_DETECTOR        → FP (3)            IfcFireSuppressionTerminal (class, unambiguous)
+LIGHT_FIXTURE         → ELEC (4)          IfcLightFixture (class, unambiguous)
+TOILET                → SP (7)            element_type keyword (toilet/wc)
+URINAL                → SP (7)            element_type keyword (urinal)
+FLOOR_TRAP            → SP (7)            element_type keyword (trap)
+BIDET_SPRAY           → SP (7)            element_type keyword (bidet)
+INSPECTION_CHAMBER    → SP (7)            element_type keyword (inspection)
+GREASE_TRAP           → SP (7)            element_type keyword (interceptor/grease)
+
+── AMBIGUOUS — needs elements_meta.discipline ──────────────────────
+
+PIPE_STRAIGHT         → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+                                          RM: UNRESOLVABLE (G2)
+PIPE_ELBOW            → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+                                          RM: UNRESOLVABLE (G2)
+PIPE_TEE              → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+                                          RM: UNRESOLVABLE (G2)
+PIPE_REDUCER          → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+                                          RM: UNRESOLVABLE (G2)
+PIPE_CROSS            → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+                                          RM: UNRESOLVABLE (G2)
+PIPE_COUPLING         → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+                                          RM: UNRESOLVABLE (G2)
+PIPE_FLANGE           → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+PIPE_FITTING          → FP/CW/SP/LPG     elements_meta.discipline (TE: resolved)
+VALVE                 → FP/CW            elements_meta.discipline (TE: FP=14, CW=7)
+SINK                  → CW or SP         elements_meta.discipline (TE: CW=106 via FlowTerminal)
+SHOWER                → CW or SP         elements_meta.discipline
+TAP                   → CW               elements_meta.discipline (TE: CW FlowTerminal)
+PLUMBING_FIXTURE      → CW or SP         elements_meta.discipline (ambiguous by keyword alone)
+
+── RM IFC2x3 generics — AMBIGUOUS (G2 applies) ────────────────────
+
+FLOW_SEGMENT          → MEP (undivided)  IfcFlowSegment, RM only, discipline='MEP'
+FLOW_FITTING          → MEP (undivided)  IfcFlowFitting, RM only, discipline='MEP'
+```
+
+**AMBIGUOUS count:** 14 pipe/fitting/valve/fixture piece types require `elements_meta.discipline`
+to resolve. For TE this is available. For RM the 14 types remain unresolvable (G2).
+
+---
+
+### §11.3 — FP Archetype Pattern + ELEC/ACMV/CW/SP equivalents
+
+#### DISC BOM (abstract layer) — FP_SYSTEM in ERP.db
+
+```
+bom_id      seq  child_product_id      verb_ref
+──────────────────────────────────────────────
+FP_SYSTEM   10   FP_RISER              ROUTE
+FP_SYSTEM   20   FP_SPRINKLER_LAYOUT   ROUTE
+FP_SYSTEM   30   FP_PUMP_LINK          ROUTE
+```
+
+ELEC_SYSTEM, ACMV_SYSTEM, CW_SYSTEM, SP_SYSTEM, LPG_SYSTEM: **0 ROUTE lines** (empty shells).
+
+#### MEP_RECIPE BOMs (spatial layer) — current state
+
+FP recipes confirmed in library/ERP.db:
+- **RM** (routing topology): `RM_FP_L2_RUN_1` = FP_CEILING_SHIM(seq=10) + SPRINKLER_HEAD_15MM(seq=20–70)
+  → maps to **FP_SPRINKLER_LAYOUT** only. No riser or pump recipe.
+- **ST** (coverage topology): 41 archetypes `ST_FP_ARCH_*` = FP_CEILING_SHIM(seq=10) + SPRINKLER_HEAD_30MM(seq=20, dz=standoff)
+  → all map to **FP_SPRINKLER_LAYOUT** archetype (coverage, no routing chain).
+
+FP_RISER and FP_PUMP_LINK are **not yet represented** in any MEP_RECIPE BOM.
+TE has 2672 FP IfcPipeSegment elements (the riser network) but they are not extracted into recipes.
+
+#### FP → ELEC/ACMV/CW/SP archetype equivalents
+
+| DISC BOM verb  | FP piece types         | ACMV equivalent      | CW/SP equivalent    | ELEC equivalent     |
+|----------------|------------------------|----------------------|---------------------|---------------------|
+| FP_RISER       | PIPE_STRAIGHT (FP)     | DUCT_STRAIGHT (ACMV) | PIPE_STRAIGHT (CW/SP)| FLOW_SEGMENT (ELEC) |
+| FP_SPRINKLER_LAYOUT | SPRINKLER_HEAD    | AIR_DIFFUSER/GRILLE  | TOILET/SINK/TAP     | LIGHT_FIXTURE       |
+| FP_PUMP_LINK   | VALVE (FP)             | —                    | VALVE (CW)          | —                   |
+
+Recipe count by discipline (library/ERP.db, bom_type=MEP_RECIPE):
+
+```
+building   FP   ACMV   CW    SP   ELEC
+─────────────────────────────────────
+RM          1    441   341     0     0
+ST (TE)    41    169   582     1    45
+CE (clinic) 0      0   434     0     0
+CH           0      0   588     0     0
+CP           0      0  1005     0     0
+```
+
+Note: CE/CH/CP CW recipe explosion (434/588/1005) from misclassified IfcFlowTerminal light fixtures → see §11.4.
+
+---
+
+### §11.4 — IFCtoERP Discipline Assignment (current state)
+
+Method: `IFCtoERP.discFromClass(String ifcClass, String elementType)` (line 698, IFCtoERP.java).
+
+```java
+case "IfcFireSuppressionTerminal" -> "FP"           // CORRECT — class is unique
+case "IfcDuctSegment", "IfcDuctFitting",
+     "IfcAirTerminal"            -> "ACMV"          // CORRECT — classes are unique
+case "IfcLightFixture"           -> "ELEC"          // CORRECT — class is unique
+case "IfcFlowTerminal"           -> keyword check:  // PARTIAL
+    drain/waste/soil/inspection/interceptor → SP
+    else → CW                                       // BUG: light fixtures in RM are IfcFlowTerminal
+case "IfcPipeSegment", "IfcPipeFitting",
+     "IfcFlowController"         -> keyword check:  // PARTIAL
+    soil/drain/sp_              → SP
+    else → CW                                       // OK for TE, misses LPG
+default                          -> CW              // BUG: IfcFlowSegment/IfcFlowFitting → forced CW
+```
+
+**G3: IFCtoERP_DISCIPLINE_BLIND**
+
+`discFromClass()` does not read `elements_meta.discipline`. It re-derives discipline from IFC class
+and element_type keyword heuristics. Two concrete failures:
+
+1. **RM IfcFlowTerminal → CW (wrong):** RM contains light fixtures as `IfcFlowTerminal`
+   (e.g. `M_Plain Recessed Lighting Fixture`, `M_Pendant Light`). These have no "drain/waste" keyword
+   so they fall through to CW. Effect: CE/CH/CP produce hundreds of CW MEP_RECIPE BOMs for light fixtures.
+
+2. **RM IfcFlowSegment/IfcFlowFitting → CW (default, wrong):** These generic IFC2x3 classes cover
+   all pipe types (CW+SP+FP conduit). Default=CW silently classifies SP drains and electrical conduit as CW.
+
+**Fix scope:** IFCtoERP only. Strategy:
+- In `readMepElementsWithPositions()`, read `elements_meta.discipline` alongside ifc_class.
+- If `discipline` is a known sub-discipline code (FP/CW/SP/ACMV/ELEC/LPG), use it directly.
+- Fall back to `discFromClass()` keyword heuristic only when `discipline` is null or 'MEP'.
+- Add keyword: `IfcFlowTerminal` with "light"/"fixture"/"lamp" → ELEC (catches RM light fixture misclassification).
+
+---
+
+### §11.5 — Gaps Blocking 00q–00t
+
+| Gap | Description | Scope | Resolution |
+|-----|-------------|-------|------------|
+| G1  | `_import_joint_piece_types` has no `discipline`/`AD_Org_ID` column | Schema | Add column in 00q SQL migration; populate from elements_meta.discipline at extract time |
+| G2  | RM CW/SP UNRESOLVABLE — IFC2x3 model lacks system membership, no sub-discipline attribute for generic pipe elements | IFC model (Revit) | Re-export RM from Revit with IfcDistributionSystem assignments; OR accept RM as CW-only (no SP) for current sprint |
+| G3  | IFCtoERP `discFromClass()` ignores `elements_meta.discipline`; defaults IfcFlowTerminal light fixtures to CW; defaults all IfcFlowSegment/FlowFitting to CW | IFCtoERP.java | Fix: read `discipline` column first; keyword fallback only if null/'MEP'; add light-fixture keyword for IfcFlowTerminal |
+
+**00q safe to proceed?**
+
+- **For TE:** YES. `elements_meta.discipline` resolves CW/SP/FP/LPG. G3 fix required to populate
+  `AD_Org_ID` correctly in `_import_joint_piece_types`. G1 schema extension required.
+- **For RM:** PARTIAL. FP, ACMV, ELEC, SPRINKLER_HEAD resolved. CW/SP pipes blocked by G2.
+  RM can proceed for typed-class disciplines (FP=6 elements, ACMV=2081 elements) but CW/SP pipe
+  recipes will be inaccurate until G2 is resolved at the source model level.
+
+**00q prerequisite:** G1 (schema) + G3 (discipline read) must be fixed before writing ROUTE lines
+for ELEC/ACMV/CW/SP/GAS. Otherwise the staging table cannot carry AD_Org_ID per row and the
+single-source-of-truth architecture is broken.

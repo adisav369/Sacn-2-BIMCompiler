@@ -220,3 +220,57 @@ Append a new section to `docs/DISC_VALIDATION_DB_SRS.md`:
 
 # DONE
 
+## Findings (S104 coder report)
+
+### 1. AD_Org_ID in _import_joint_piece_types? → NO — G1
+
+Schema confirmed (library/ERP.db): id, ifc_class, element_type, piece_type, diameter_mm,
+length_mm, angle_deg, material, source_building, count. No discipline or AD_Org_ID column.
+**G1: staging table schema missing discipline/AD_Org_ID.**
+
+### 2. CW/SP disambiguation → TE resolved, RM G2
+
+**TE:** `elements_meta.discipline` carries CW/SP/FP/LPG per row (authoritative).
+  IfcPipeSegment: FP=2672, CW=619, SP=455, LPG=75. No keyword heuristic needed.
+  Rule: read `elements_meta.discipline` → AD_Org_ID (CW=6, SP=7, FP=3, LPG=8).
+
+**RM:** IFC2x3 generic classes only (IfcFlowSegment/IfcFlowFitting), all `discipline='MEP'`.
+  mep_systems=0 rows, system_nodes=0 rows, element_properties=Reference-only (FITTING/FRAME).
+  No PredefinedType/SystemType properties exist. `Pipe Types:Standard` (~491 elements) has
+  no IFC attribute distinguishing CW from SP.
+  **G2: CW/SP_UNRESOLVABLE for RM.** Model must be re-exported from Revit with IfcDistributionSystem.
+
+### 3. Is IFCtoERP discipline-aware? → PARTIAL — G3
+
+`discFromClass()` at IFCtoERP.java:698 re-derives discipline from IFC class + keywords.
+Does NOT read `elements_meta.discipline`.
+
+Two concrete failures:
+- RM `IfcFlowTerminal` light fixtures → misclassified as CW (should be ELEC). Causes CE/CH/CP
+  to produce 434/588/1005 CW MEP_RECIPE BOMs from light fixtures.
+- `IfcFlowSegment`/`IfcFlowFitting` → default CW, wrong for RM's mixed pipe+conduit types.
+- LPG pipe (IfcPipeSegment in TE) → defaults to CW (no "soil/drain/sp_" keyword).
+
+**G3: IFCtoERP_DISCIPLINE_BLIND.** Fix scope: IFCtoERP.java only — read `discipline` column first.
+
+### 4. Piece-type → discipline map: AMBIGUOUS rows
+
+14 piece types require `elements_meta.discipline` to resolve (PIPE_STRAIGHT/ELBOW/TEE/REDUCER/
+CROSS/COUPLING/FLANGE/FITTING, VALVE, SINK/SHOWER/TAP, PLUMBING_FIXTURE + FLOW_SEGMENT/FLOW_FITTING).
+For TE: all 14 resolvable via discipline column. For RM: 14 remain ambiguous (G2).
+Fixed types (10): DUCT_*, AIR_*, SPRINKLER_HEAD, HOSE_REEL, LIGHT_FIXTURE, TOILET, URINAL,
+FLOOR_TRAP, BIDET_SPRAY, INSPECTION_CHAMBER.
+
+### 5. FP archetype pattern confirmed
+
+DISC BOM FP_SYSTEM: FP_RISER(seq=10), FP_SPRINKLER_LAYOUT(seq=20), FP_PUMP_LINK(seq=30).
+MEP_RECIPE BOMs: only FP_SPRINKLER_LAYOUT is populated (CEILING_SHIM + SPRINKLER_HEAD).
+FP_RISER (2672 TE IfcPipeSegment FP elements) and FP_PUMP_LINK (VALVE) not yet in recipes.
+ELEC/ACMV/CW/SP equivalents: see §11.3 table.
+
+### 6. 00q status: BLOCKED on G1+G3; RM further blocked by G2
+
+00q can proceed for TE after G1 (schema) + G3 (discipline read fix) are done.
+RM CW/SP ROUTE lines require G2 resolution (model re-export) — out of 00q scope.
+
+Full findings in: `docs/DISC_VALIDATION_DB_SRS.md §11`
