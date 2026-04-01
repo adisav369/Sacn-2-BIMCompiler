@@ -517,6 +517,9 @@ public class IFCtoERP {
     }
 
     private static String classifyFlowTerminal(String et) {
+        // G3: light fixture names → null (ELEC, not a pipe anchor — keeps CW recipe count honest)
+        if (et.contains("light") || et.contains("lamp") || et.contains("luminaire"))
+            return null;
         if (et.contains("toilet") || et.contains("wc"))       return "TOILET";
         if (et.contains("urinal"))                              return "URINAL";
         if (et.contains("sink") || et.contains("basin"))       return "SINK";
@@ -655,7 +658,7 @@ public class IFCtoERP {
             // Group by (disc, ifcClass, dz_standoff in 50mm bands)
             Map<String, List<MepPosElement>> archetypes = new LinkedHashMap<>();
             for (MepPosElement e : elements) {
-                String disc = discFromClass(e.ifcClass, e.elementType);
+                String disc = discFromClass(e.ifcClass, e.elementType, e.discipline);
                 double dz = Math.round((e.cz - ceilingZ) * 20.0) / 20.0; // 50mm band
                 archetypes.computeIfAbsent(disc + "|" + e.ifcClass + "|" + dz,
                         k -> new ArrayList<>()).add(e);
@@ -841,8 +844,9 @@ public class IFCtoERP {
         String url = "jdbc:sqlite:" + refDb;
         try (Connection conn = DriverManager.getConnection(url);
              Statement stmt = conn.createStatement()) {
+            // G3 fix: read discipline column to pass through to discFromClass(3-arg)
             ResultSet rs = stmt.executeQuery("""
-                    SELECT m.ifc_class, m.element_type, m.storey,
+                    SELECT m.ifc_class, m.element_type, m.storey, m.discipline,
                            r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
                     FROM elements_meta m
                     JOIN elements_rtree r ON m.id = r.id
@@ -854,15 +858,16 @@ public class IFCtoERP {
                         'IfcFlowSegment','IfcFlowFitting')
                     """);
             while (rs.next()) {
-                double minX = rs.getDouble(4), maxX = rs.getDouble(5);
-                double minY = rs.getDouble(6), maxY = rs.getDouble(7);
-                double minZ = rs.getDouble(8), maxZ = rs.getDouble(9);
+                double minX = rs.getDouble(5), maxX = rs.getDouble(6);
+                double minY = rs.getDouble(7), maxY = rs.getDouble(8);
+                double minZ = rs.getDouble(9), maxZ = rs.getDouble(10);
                 double cx = (minX + maxX) / 2.0;
                 double cy = (minY + maxY) / 2.0;
                 double cz = (minZ + maxZ) / 2.0;
                 result.add(new MepPosElement(
                         rs.getString(1), rs.getString(2), rs.getString(3),
-                        cx, cy, cz, minX, maxX, minY, maxY, minZ, maxZ));
+                        cx, cy, cz, minX, maxX, minY, maxY, minZ, maxZ,
+                        rs.getString(4)));
             }
         }
         return result;
@@ -1235,7 +1240,7 @@ public class IFCtoERP {
     record MepPosElement(String ifcClass, String elementType, String storey,
                          double cx, double cy, double cz,
                          double minX, double maxX, double minY, double maxY,
-                         double minZ, double maxZ) {}
+                         double minZ, double maxZ, String discipline) {}
 
     public record Result(int mepElements, int stagedTypes, int newProducts) {}
 
