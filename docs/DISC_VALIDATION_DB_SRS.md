@@ -1573,6 +1573,168 @@ the dispatch. The code stays abstract; the rules live in tables.
 | system_edges | DONE (S100) | P15/P16/P17 proof input |
 | ad_space_type_mep_bom | EXISTS (ERP.db, 186 rows) | Room type → discipline mapping |
 
+### 6.12.3 Hybrid Pattern Architecture — RouteWalker for Unclassified Buildings (S104)
+
+**Problem statement:** Some IFC models (RM and equivalent IFC2x3 buildings) carry MEP geometry
+as generic `IfcFlowSegment`/`IfcFlowFitting` with no sub-discipline attribute. Per §11.1, CW and
+SP cannot be disambiguated at the element level for these buildings (G2). The §6.12.2 shim+recipe
+architecture requires element-level discipline assignment, which G2 blocks.
+
+**Solution:** Pattern-over-anchors. The RouteWalker mines topology patterns from discipline-complete
+buildings (TE: CW 619 segments, SP 455 segments, discipline confirmed via `elements_meta.discipline`)
+and applies them to anchor points extracted from the unclassified building (RM). Individual pipe
+classification is not required — the pattern defines the system.
+
+**This does not violate §6.12.1.** IFCtoERP extracts anchor coordinates from the RM extraction DB
+at extraction time and writes them to ERP.db. DAGCompiler reads ERP.db only. No extraction DB
+access at compile time.
+
+#### 1. Anchors — Source and Terminal Points
+
+An anchor is an extracted coordinate pair (source_xyz, terminal_xyz) representing a connection
+between MEP endpoints. The 491 RM generic pipe elements yield anchor pairs — pipe start and end
+points — without discipline assignment.
+
+Anchor types:
+- **METER** — connection from water source/riser to fixture (identified by flanking fixture presence)
+- **FIXTURE** — terminal endpoint: sink, basin, toilet, WC, floor trap (from element_type keywords)
+- **VALVE** — flow controller (from IfcFlowController)
+- **GENERIC** — pipe endpoint with no identifiable context
+
+IFCtoERP writes anchors to `ad_mep_anchor`:
+
+```sql
+CREATE TABLE ad_mep_anchor (
+    anchor_id    TEXT PRIMARY KEY,
+    source_building TEXT NOT NULL,
+    anchor_type  TEXT NOT NULL CHECK(anchor_type IN ('METER','FIXTURE','VALVE','GENERIC')),
+    x_m          REAL NOT NULL,
+    y_m          REAL NOT NULL,
+    z_m          REAL NOT NULL,
+    storey       TEXT,
+    ifc_guid     TEXT
+);
+```
+
+Anchor extraction rule: for each MEP element AABB in the extraction DB, compute the geometric
+centre (cx, cy, cz). If the element has two spatially distinct ends (length > 3× min AABB dim),
+emit two anchors (start and end). Otherwise emit one anchor at centre. Fixture-type elements
+(toilet/sink/drain keywords) are typed as FIXTURE.
+
+#### 2. Pattern — Topology Rows in `ad_mep_pattern`
+
+A pattern is a sequence of routing steps mined from a discipline-complete building. Each row is
+one step: a node type transition (from → to), the direction axis, and the offset rule. Steps are
+ordered by `sequence`. RouteWalker iterates steps in order against the anchor set.
+
+```sql
+CREATE TABLE ad_mep_pattern (
+    pattern_id       TEXT NOT NULL,
+    discipline       TEXT NOT NULL,    -- CW, SP, FP, ACMV, ELEC
+    building_type    TEXT NOT NULL,    -- COMMERCIAL, RESIDENTIAL, TERMINAL, CLINIC
+    sequence         INTEGER NOT NULL,
+    from_node_type   TEXT NOT NULL,    -- METER, FIXTURE, VALVE, RISER, JUNCTION, STACK
+    to_node_type     TEXT NOT NULL,
+    direction_axis   TEXT NOT NULL,    -- X, Y, Z, GRADIENT
+    piece_type       TEXT NOT NULL,    -- PIPE_STRAIGHT, PIPE_ELBOW, FLOOR_TRAP, etc.
+    offset_rule      TEXT,             -- DIRECT, MIN_GRADIENT, STACK_OFFSET
+    gradient         REAL,             -- for GRADIENT axis: dz per metre (e.g. 0.025 for SP)
+    notes            TEXT,
+    source_building  TEXT,             -- which building this pattern was mined from
+    PRIMARY KEY (pattern_id, sequence)
+);
+```
+
+**CW pattern** (mined from TE, discipline=CW): supply run from meter/riser → horizontal main →
+branch to fixture. Direction: horizontal (X or Y), then vertical drop (Z) to fixture connection.
+
+**SP pattern** (mined from TE, discipline=SP): fixture drain → horizontal run with gradient →
+stack/waste riser. Direction: horizontal with GRADIENT (dz/dx = 0.025), then vertical stack (Z).
+
+Example SP pattern rows (mined from TE 455 SP segments):
+
+```
+pattern_id=SP_TERMINAL_01  discipline=SP  building_type=TERMINAL
+seq  from_node_type  to_node_type  direction_axis  piece_type        offset_rule    gradient
+10   FIXTURE         JUNCTION      GRADIENT        PIPE_STRAIGHT     MIN_GRADIENT   0.025
+20   JUNCTION        JUNCTION      GRADIENT        PIPE_STRAIGHT     MIN_GRADIENT   0.025
+30   JUNCTION        STACK         Z               PIPE_STRAIGHT     STACK_OFFSET   —
+```
+
+Example CW pattern rows:
+
+```
+pattern_id=CW_TERMINAL_01  discipline=CW  building_type=TERMINAL
+seq  from_node_type  to_node_type  direction_axis  piece_type        offset_rule
+10   METER           JUNCTION      X               PIPE_STRAIGHT     DIRECT
+20   JUNCTION        FIXTURE       Y               PIPE_STRAIGHT     DIRECT
+30   JUNCTION        FIXTURE       Z               PIPE_STRAIGHT     DIRECT
+```
+
+Building type matching: RouteWalker selects patterns by `building_type`. RM is RESIDENTIAL.
+TE is TERMINAL. If no exact match, fall back to the nearest pattern by element count similarity.
+Pattern mining from TE is a one-time extraction step (00q-mine prompt).
+
+#### 3. RouteWalker — Pattern Application Within Envelope
+
+RouteWalker takes:
+- **Anchor set** from `ad_mep_anchor` (for the target building)
+- **Pattern** from `ad_mep_pattern` (by discipline + building_type)
+- **Envelope** from compile DB `c_orderline` WHERE `Discipline='ARC'` (walls, slabs, ceilings)
+
+Algorithm:
+1. Select anchors by storey
+2. For each pattern step (seq order): connect nearest unconnected anchor pair matching (from_node_type → to_node_type)
+3. Generate M_BOM_Line entries: piece_type from step row, dz from gradient rule, length from anchor distance
+4. ARC envelope used for constraint: generated pipe must not penetrate ARC AABB (clash check)
+5. Write to compile DB `c_orderline` with `Discipline=discipline`
+
+RouteWalker operates entirely within DAGCompiler. It reads ERP.db (anchors + patterns) and the
+compile DB (ARC envelope from c_orderline). It writes to the compile DB. No extraction DB access.
+
+RouteWalker is NOT a routing engine (no A* pathfinding, no graph search). It is a pattern
+applier: for each pattern step, find the nearest matching anchor pair, emit BOM lines. The
+pattern encodes all routing intelligence. The walker only matches and emits.
+
+#### 4. Witness Claims
+
+**W-PATTERN-CW** — RouteWalker generates CW pipe network for RM:
+> For Revit_MEP, RouteWalker with CW_TERMINAL_01 pattern applied to METER+FIXTURE anchors
+> produces a connected CW network: all FIXTURE anchors reachable from at least one METER anchor,
+> zero CW pipes intersecting ARC AABB (clash=0), all generated segments horizontal or vertical (no
+> diagonal), pipe count within 20% of TE CW segment count scaled by floor area ratio.
+
+**W-PATTERN-SP** — RouteWalker generates SP pipe network for RM:
+> For Revit_MEP, RouteWalker with SP_TERMINAL_01 pattern applied to FIXTURE+STACK anchors
+> produces a connected SP network: all FIXTURE anchors drain to at least one STACK anchor,
+> all generated GRADIENT segments have dz/dx ≥ 0.025 (MS 1228 §5.3), zero SP pipes intersecting
+> ARC AABB (clash=0), STACK anchor count ≥ 1 per storey.
+
+**GEO DRIFT scope:** W-PATTERN-CW and W-PATTERN-SP use clash+gradient assertions, not centroid
+matching. Centroid DRIFT (±50mm) applies only to extracted elements (FP, ACMV in RM; all disciplines
+in TE). Generated CW/SP geometry for RM is not compared against IFC positions (none exist at
+discipline level) — it is validated structurally (clash, connectivity, gradient).
+
+#### 5. Phasing
+
+| Phase | Scope | Prereq |
+|-------|-------|--------|
+| 00q-schema | DDL: `ad_mep_anchor` + `ad_mep_pattern` in ERP.db migration | G1 fix: add discipline to `_import_joint_piece_types` |
+| 00q-mine | Mine CW+SP patterns from TE (Terminal_Extracted.db → ad_mep_pattern rows) | 00q-schema |
+| 00q-anchor | IFCtoERP: extract anchor points from RM into `ad_mep_anchor` | 00q-schema |
+| 00r-walker | DAGCompiler: RouteWalker class — pattern select + anchor match + BOM line emit | 00q-anchor |
+| 00r-envelope | RouteWalker: ARC envelope clash check using compile DB c_orderline | 00r-walker |
+| 00s-witness | W-PATTERN-CW + W-PATTERN-SP gate tests | 00r-envelope |
+| 00t-g3fix | IFCtoERP.discFromClass(): read elements_meta.discipline first (G3 fix) | 00q-anchor |
+
+#### 6. What This Does Not Change
+
+- §6.12.1 Compilation Isolation Invariant: unchanged. IFCtoERP extracts; DAGCompiler compiles.
+- §6.12.2 shim+recipe architecture: unchanged for TE (all disciplines extracted, classified, recipe-walked).
+- GEO DRIFT proof for TE: unchanged (extracted elements, centroid matching).
+- RM FP, ACMV: continue on shim+recipe path (those IFC classes are typed).
+- RouteWalker is additive — it supplements the shim+recipe walk for CW/SP in buildings with G2.
+
 ### 6.13 IFC-Driven Extraction
 
 **Status:** DONE (S100-p125, commit [3e056227](https://github.com/red1oon/BIMCompiler/commit/3e056227)). SH IFC-driven, FK scope box fallback.
