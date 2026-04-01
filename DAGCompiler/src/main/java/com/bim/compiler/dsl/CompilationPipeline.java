@@ -6,6 +6,7 @@ import com.bim.compiler.bom.walker.ShimMatcher;
 import com.bim.compiler.callout.OrderLineProductCallout;
 import com.bim.compiler.compliance.ComplianceReport;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
+import com.bim.compiler.mep.RouteWalker;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.validation.BomTreeProver;
 import com.bim.compiler.validation.GeometryIntegrityChecker;
@@ -462,6 +463,17 @@ public class CompilationPipeline {
                 if (inserted > 0) {
                     int expanded = OrderLineProductCallout.expandDisciplineLines(compileDb, erpDb, orderId);
                     BIMLogger.info("ROUTE", "Parasitic qty: {} child lines expanded", expanded);
+                }
+
+                // 4b. RouteWalker: generate CW/SP for G2 buildings (§6.12.3)
+                // Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §3 — Witness: W-PATTERN-CW, W-PATTERN-SP
+                {
+                    String buildingType = ctx.entry().projectName();
+                    RouteWalker.WalkResult rw = RouteWalker.walk(compileDb, erpDb, buildingType, orderId);
+                    if (rw.cwLines() > 0 || rw.spLines() > 0) {
+                        BIMLogger.info("ROUTE", "RouteWalker: CW={}, SP={}, clash_skipped={}",
+                                rw.cwLines(), rw.spLines(), rw.clashSkipped());
+                    }
                 }
 
                 // 5. Query discipline list from c_orderline
