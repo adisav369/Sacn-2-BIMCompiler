@@ -1,0 +1,115 @@
+# 00t — Remove TE_BOM.db MEP sub-BOMs. Hard fail. GEO proof.
+
+**Spec:** DISC_VALIDATION_DB_SRS.md §6.12.1, §11
+**Prereq:** 00s DONE — RM 8/8 via DISC BOM, ShimMatcher bypass gone
+**Test Stones:** TE — must compile via DISC BOM path, GEO DRIFT ≤ 0.025mm
+**Scope:** Remove TE MEP sub-BOMs from TE_BOM.db. Hard fail if DISC BOM path incomplete.
+
+You are a coder for bim-compiler. One bounded task.
+
+## PRIME RULE
+
+**EXTRACT OR COMPILE ONLY.** No fallbacks. TE MEP must compile via DISC BOM alone.
+
+## Read first
+
+1. `PROGRESS.md` §Current State
+2. `docs/DISC_VALIDATION_DB_SRS.md` §11
+3. `library/TE_BOM.db` — query current MEP sub-BOM structure:
+   ```sql
+   SELECT bom_id, bom_type, COUNT(bl.M_BOM_Line_ID) lines
+   FROM M_BOM b LEFT JOIN M_BOM_Line bl ON b.M_BOM_ID=bl.M_BOM_ID
+   WHERE bom_type='MEP' GROUP BY b.M_BOM_ID ORDER BY bom_id;
+   ```
+4. `docs/TestArchitecture.md` §Anti-Drift
+5. `logs/` — latest TE pipeline log, check GEO SUMMARY baseline before changes
+6. This prompt fully
+
+## Witness claim
+
+**W-DISC-TE:** After removal:
+- TE_BOM.db has zero MEP-type BOM entries
+- TE: element count unchanged (all MEP elements now compiled via DISC BOM Placers)
+- TE GEO DRIFT = 0, worst ≤ 0.025mm (same as pre-change baseline)
+- RM: 8/8 — no regression
+
+## Pre-flight citation
+
+`// Removing TE_BOM.db MEP sub-BOMs — DISC_VALIDATION_DB_SRS §6.12.1 + §11`
+
+## Task A — Baseline
+
+Before any changes, record:
+```bash
+./scripts/run_RosettaStones.sh classify_te.yaml
+grep "GEO.*SUMMARY" logs/pipeline_TE*.log | tail -1
+```
+
+Note TE element count and GEO SUMMARY (worst/DRIFT).
+
+## Task B — Remove TE MEP sub-BOMs from TE_BOM.db
+
+The 36 MEP sub-BOMs (TE_FDN_FP, TE_GF_ACMV, TE_GF_CW, etc.) must be removed.
+These are `bom_type='MEP'` rows in `M_BOM` and their child `M_BOM_Line` rows.
+
+**Do not edit TE_BOM.db by hand.** Find the IFCtoBOM extraction script or
+pipeline step that generated them. Add a flag or filter to exclude MEP rows
+from the TE_BOM.db write. That is the correct removal — at source, not post-hoc deletion.
+
+If no such flag exists: write a SQL DELETE migration applied at pipeline start:
+```sql
+-- Applied to TE_BOM.db before DAGCompiler reads it
+DELETE FROM M_BOM_Line WHERE M_BOM_ID IN (SELECT M_BOM_ID FROM M_BOM WHERE bom_type='MEP');
+DELETE FROM M_BOM WHERE bom_type='MEP';
+```
+
+Add a hard assertion in DAGCompiler's BOM loader:
+```java
+long mepRows = conn.createStatement()
+    .executeQuery("SELECT COUNT(*) FROM M_BOM WHERE bom_type='MEP'").getLong(1);
+if (mepRows > 0) throw new IllegalStateException(
+    "BOM.db contains MEP sub-BOMs — DISC BOM is the single source of truth");
+```
+
+## Task C — Compile + run TE + RM
+
+```bash
+mvn compile -q
+./scripts/run_RosettaStones.sh classify_te.yaml classify_rm.yaml classify_sh.yaml
+grep "GEO.*SUMMARY" logs/pipeline_TE*.log | tail -1
+```
+
+If TE drops element count: a DISC BOM Placer from 00r has a gap for TE.
+Diagnose from the hard fail message — which discipline / piece type is unmatched.
+Fix the Placer. Do NOT restore MEP sub-BOMs.
+
+Expected final state:
+- TE: same element count as baseline, GEO DRIFT ≤ 0.025mm
+- RM: 8/8 unchanged
+- SH: 8/8 unchanged
+
+## Scope boundary
+
+- TE_BOM.db MEP removal only
+- Do NOT touch ARC/STR BOMs in TE_BOM.db
+- Do NOT touch RM_BOM.db
+- Do NOT touch ERP.db abstract DISC BOMs (populated in 00q)
+
+## Report back (append after # DONE)
+
+1. How were MEP sub-BOMs removed — source flag or SQL DELETE?
+2. Hard assertion added in BOM loader?
+3. TE element count: before vs after?
+4. TE GEO SUMMARY: worst / DRIFT?
+5. Any hard fail thrown? Which discipline / piece type?
+6. RM: still 8/8? SH: still 8/8?
+7. Is the DISC BOM path now the single source of truth for RM + TE?
+
+## Commit
+
+`[S104-DISC] 00t: remove TE_BOM.db MEP sub-BOMs — TE via DISC BOM only (W-DISC-TE)`
+
+---
+
+# DONE
+
