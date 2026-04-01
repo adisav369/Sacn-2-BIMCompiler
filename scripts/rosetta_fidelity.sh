@@ -13,7 +13,9 @@
 
 # ── C9 SQL fragment (shared between count + detail queries) ──
 # Consolidated: was duplicated in count query and detail query.
-# Usage: _c9_ranked_cte "$output_db" "$ref_db" "<select_clause>" "<extra_clauses>"
+# Usage: _c9_query "$output_db" "$ref_db" "<select_clause>" "<extra_clauses>"
+# Position-based spatial matching: centroid proximity 50mm window + nearest-neighbour
+# guard via ROW_NUMBER on distance. Eliminates rank-match false positives (W-RM-C9).
 _c9_query() {
     local output_db="$1"
     local ref_db="$2"
@@ -22,43 +24,53 @@ _c9_query() {
     local sqlite_flags="${5:-}"  # optional: e.g. "-header -column" for detail output
 
     local IFC_FILTER="'IfcDoor','IfcWindow','IfcFurnishingElement','IfcFurniture','IfcWall','IfcPlate','IfcSlab','IfcRoof'"
-    local ORDER_COLS="ROUND(rr.minX*100), ROUND(rr.minY*100), ROUND(rr.minZ*100), ROUND((rr.maxX-rr.minX)*1000), ROUND((rr.maxY-rr.minY)*1000), ROUND((rr.maxZ-rr.minZ)*1000), ROUND(rr.maxX*1000), ROUND(rr.maxY*1000), ROUND(rr.maxZ*1000)"
-    local ORDER_COLS_OUT="ROUND(oo.minX*100), ROUND(oo.minY*100), ROUND(oo.minZ*100), ROUND((oo.maxX-oo.minX)*1000), ROUND((oo.maxY-oo.minY)*1000), ROUND((oo.maxZ-oo.minZ)*1000), ROUND(oo.maxX*1000), ROUND(oo.maxY*1000), ROUND(oo.maxZ*1000)"
 
     sqlite3 $sqlite_flags "$output_db" "
         ATTACH '${ref_db}' AS ref;
-        WITH ref_ranked AS (
+        WITH ref_el AS (
             SELECT rem.ifc_class, rem.element_name,
-                   ROUND((rr.maxX - rr.minX) * 1000) AS ref_W,
-                   ROUND((rr.maxY - rr.minY) * 1000) AS ref_D,
-                   ROUND((rr.maxZ - rr.minZ) * 1000) AS ref_H,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY rem.ifc_class
-                       ORDER BY ${ORDER_COLS}
-                   ) AS rn
+                   (rr.minX+rr.maxX)/2 AS cx, (rr.minY+rr.maxY)/2 AS cy, (rr.minZ+rr.maxZ)/2 AS cz,
+                   ROUND((rr.maxX-rr.minX)*1000) AS ref_W,
+                   ROUND((rr.maxY-rr.minY)*1000) AS ref_D,
+                   ROUND((rr.maxZ-rr.minZ)*1000) AS ref_H
             FROM ref.elements_meta rem
             JOIN ref.elements_rtree rr ON rem.id = rr.id
             WHERE rem.ifc_class IN (${IFC_FILTER})
         ),
-        out_ranked AS (
+        out_el AS (
             SELECT oem.ifc_class, oem.element_name,
-                   ROUND((oo.maxX - oo.minX) * 1000) AS out_W,
-                   ROUND((oo.maxY - oo.minY) * 1000) AS out_D,
-                   ROUND((oo.maxZ - oo.minZ) * 1000) AS out_H,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY oem.ifc_class
-                       ORDER BY ${ORDER_COLS_OUT}
-                   ) AS rn
+                   (oo.minX+oo.maxX)/2 AS cx, (oo.minY+oo.maxY)/2 AS cy, (oo.minZ+oo.maxZ)/2 AS cz,
+                   ROUND((oo.maxX-oo.minX)*1000) AS out_W,
+                   ROUND((oo.maxY-oo.minY)*1000) AS out_D,
+                   ROUND((oo.maxZ-oo.minZ)*1000) AS out_H
             FROM elements_meta oem
             JOIN elements_rtree oo ON oem.id = oo.id
             WHERE oem.ifc_class IN (${IFC_FILTER})
+        ),
+        pairs AS (
+            SELECT r.ifc_class, r.element_name,
+                   r.ref_W, r.ref_D, r.ref_H,
+                   o.out_W, o.out_D, o.out_H,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY r.ifc_class, ROUND(r.cx*20), ROUND(r.cy*20), ROUND(r.cz*20)
+                       ORDER BY ABS(r.cx-o.cx)+ABS(r.cy-o.cy)+ABS(r.cz-o.cz)
+                   ) AS match_rank
+            FROM ref_el r
+            JOIN out_el o ON r.ifc_class = o.ifc_class
+                         AND r.element_name = o.element_name
+                         AND ABS(r.cx - o.cx) < 0.05
+                         AND ABS(r.cy - o.cy) < 0.05
+                         AND ABS(r.cz - o.cz) < 0.05
+        ),
+        best AS (
+            SELECT ifc_class, element_name, ref_W, ref_D, ref_H, out_W, out_D, out_H
+            FROM pairs WHERE match_rank = 1
         )
         ${select_clause}
-        FROM ref_ranked r
-        JOIN out_ranked o ON r.ifc_class = o.ifc_class AND r.rn = o.rn
-        WHERE ABS(r.ref_W - o.out_W) > 1
-           OR ABS(r.ref_D - o.out_D) > 1
-           OR ABS(r.ref_H - o.out_H) > 1
+        FROM best r
+        WHERE ABS(r.ref_W - r.out_W) > 1
+           OR ABS(r.ref_D - r.out_D) > 1
+           OR ABS(r.ref_H - r.out_H) > 1
         ${extra_clauses};
         DETACH ref;
     " 2>/dev/null || echo "N/A"
@@ -185,7 +197,7 @@ run_fidelity() {
     local C9_SWAPS
     C9_SWAPS=$(_c9_query "$output_db" "$ref_db" \
         "SELECT COUNT(*) FROM (
-            SELECT r.ifc_class, r.rn, r.ref_W, o.out_W, r.ref_D, o.out_D, r.ref_H, o.out_H" \
+            SELECT r.ifc_class, r.element_name, r.ref_W, r.out_W, r.ref_D, r.out_D, r.ref_H, r.out_H" \
         ")")
 
     if [ "$C9_SWAPS" = "0" ]; then
@@ -195,18 +207,16 @@ run_fidelity() {
         echo "    SKIP — query failed (missing table or window function unsupported?)"
         verdict "C9_AXISDIM_${label}" "SKIP" "query error"
     else
-        # C9 uses rank-based matching (ROW_NUMBER), not GUID. For mirrored-pair
-        # buildings and large extractions, rank shuffles cause false positives.
-        # Documented: DuplexAnalysis.md §5, TerminalAnalysis.md F3.
-        # Downgraded to WARN until GUID-based matching is implemented.
-        verdict "C9_AXISDIM_${label}" "WARN" "${C9_SWAPS} axis mismatch(es) (rank-match artifact)"
+        # C9 uses position-based matching (50mm centroid window). Remaining
+        # mismatches are real axis swaps, not rank-match artifacts (W-RM-C9).
+        verdict "C9_AXISDIM_${label}" "FAIL" "${C9_SWAPS} axis mismatch(es)"
         # Show worst offenders
         _c9_query "$output_db" "$ref_db" \
             "SELECT r.ifc_class, r.element_name AS ref_name,
-                   r.ref_W || '→' || o.out_W AS 'W(ref→out)',
-                   r.ref_D || '→' || o.out_D AS 'D(ref→out)',
-                   r.ref_H || '→' || o.out_H AS 'H(ref→out)'" \
-            "ORDER BY ABS(r.ref_W - o.out_W) + ABS(r.ref_D - o.out_D) + ABS(r.ref_H - o.out_H) DESC
+                   r.ref_W || '→' || r.out_W AS 'W(ref→out)',
+                   r.ref_D || '→' || r.out_D AS 'D(ref→out)',
+                   r.ref_H || '→' || r.out_H AS 'H(ref→out)'" \
+            "ORDER BY ABS(r.ref_W - r.out_W) + ABS(r.ref_D - r.out_D) + ABS(r.ref_H - r.out_H) DESC
             LIMIT 10" \
             "-header -column" \
             | sed 's/^/    /'
