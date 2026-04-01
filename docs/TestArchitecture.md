@@ -36,7 +36,7 @@
 | C6 | Negative tack offsets | OPEN | 3 m_bom_line records with negative dx/dy/dz |
 | C7 | StackedDuplexWitnessTest → JUnit | DONE | Already JUnit 5 |
 | C8 | Geometry diversity (C8 SQL) | DONE | Per-instance GUID resolution via I_Geometry_Map. All 5 buildings PASS |
-| C9 | Per-element axis dimensions | WARN (RM/JE/HI/SC) | W-AXISDIM-1: X→X, Y→Y, Z→Z within 1mm. DX 87 swaps accepted (S58c). Rank-match artifact: `ROW_NUMBER()` sort order misaligns when ref and output element counts differ (e.g., after source dedup). Fix direction: position-based spatial matching — for each ref element find nearest output element of same (ifc_class, element_name) within centroid tolerance, compare dims. Eliminates false positives; deduped elements simply have no output partner. GUID-based matching is blocked for factored products (BOMWalker verb expansion has no per-instance IFC GUID thread). |
+| C9 | Per-element axis dimensions | PASS RM / WARN (JE/HI/SC) | W-AXISDIM-1: X→X, Y→Y, Z→Z within 1mm. DX 87 swaps accepted (S58c). **W-RM-C9 DONE (S104):** `rosetta_fidelity.sh` now uses 50mm centroid proximity join + nearest-neighbour guard (`ROW_NUMBER` on distance) — eliminates rank-match false positives. RM: 160→0. Deduped elements have no output partner in window, skipped. GUID-based matching still blocked for factored products (BOMWalker verb expansion has no per-instance IFC GUID thread) — JE/HI/SC remain WARN. |
 | C10 | Mesh centroid fingerprint | DONE | Advisory — facing direction via mesh centroid offset |
 | C11 | P06 same-class overlap sharpness | DONE | Cross-product exempt, same-product flagged, IfcPlate 50mm tolerance |
 | C12 | G5 GEO_ slab fallback | DONE | Slab flows through MeshBinder to LOD_ library geometry |
@@ -350,4 +350,4 @@ bcd2af85  rosetta_fidelity.sh
 > because output DB IS the federation extraction (same as reference). SH/FK/DM
 > are real BOM compilations. See `logs/pipeline_SJTII_Terminal_ifctobom_*.log`.
 
-**Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM) — position-based matching needed (see C9 note above). TE BOM compilation (IFCtoBOM tack fix).
+**Remaining debt:** G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC) — position-based matching implemented for RM (W-RM-C9); JE/HI/SC still WARN (different root cause). TE BOM compilation (IFCtoBOM tack fix).
