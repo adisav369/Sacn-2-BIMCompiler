@@ -66,11 +66,13 @@ public class OrderLineProductCallout {
     }
 
     // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T3.4 — category defaults + YAML override
-    // CO=all 6, RE=[ELEC,SP], IN=none. YAML remove_disciplines/add_disciplines for exceptions.
+    // CO=all 6, RE=[FP,ELEC,ACMV,CW,SP], IN=none. YAML remove_disciplines/add_disciplines for exceptions.
+    // ERP.db MEP_RECIPE discipline registration — Witness: W-J1-RECIPE-FULL
+    // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 recipe consumption
 
     /** Category default discipline sets. */
     private static final Set<String> CO_DEFAULT = Set.of("FP", "ELEC", "ACMV", "CW", "SP", "LPG");
-    private static final Set<String> RE_DEFAULT = Set.of("ELEC", "SP");
+    private static final Set<String> RE_DEFAULT = Set.of("FP", "ELEC", "ACMV", "CW", "SP");
     private static final Set<String> IN_DEFAULT = Set.of();
 
     /**
