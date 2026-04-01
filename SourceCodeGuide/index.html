@@ -5312,6 +5312,10 @@ VERIFIED ✓ (or drift detected ✗)
 </ul>
 <h3 id="java-compiler">Java / Compiler<a class="headerlink" href="#java-compiler" title="Permanent link">&para;</a></h3>
 <ul>
+<li><strong>BIMEyes proof edits require <code>mvn install -pl BIMEyes -DskipTests</code></strong> — DAGCompiler Maven test
+  picks up <code>.m2/bim-eyes-1.0-SNAPSHOT.jar</code>, not <code>target/classes/</code>. <code>mvn compile</code> alone leaves
+  the stale jar in place; Fix A appeared in bytecode but the old jar ran — diagnosed via
+  <code>ls -la ~/.m2/repository/com/bim/bim-eyes/</code>.</li>
 <li>PlacementProver: P01-P03/P16-P17/P22 = gate (critical); P04-P15/P18-P21/P23 = advisory</li>
 <li>MeshBinder <code>isNS</code>: mesh-proximity comparison, NOT bbox aspect ratio</li>
 <li>GUID ordinal: ALWAYS use <code>++ordinalCounter</code>, NEVER <code>line.getOrdinal()</code></li>

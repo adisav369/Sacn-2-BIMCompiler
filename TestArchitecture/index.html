@@ -3343,8 +3343,8 @@
 <tr>
 <td>C9</td>
 <td>Per-element axis dimensions</td>
-<td>DONE</td>
-<td>W-AXISDIM-1: X→X, Y→Y, Z→Z within 1mm. DX 87 swaps accepted (S58c)</td>
+<td>PASS RM / WARN (JE/HI/SC)</td>
+<td>W-AXISDIM-1: X→X, Y→Y, Z→Z within 1mm. DX 87 swaps accepted (S58c). <strong>W-RM-C9 DONE (S104):</strong> <code>rosetta_fidelity.sh</code> now uses 50mm centroid proximity join + nearest-neighbour guard (<code>ROW_NUMBER</code> on distance) — eliminates rank-match false positives. RM: 160→0. Deduped elements have no output partner in window, skipped. GUID-based matching still blocked for factored products (BOMWalker verb expansion has no per-instance IFC GUID thread) — JE/HI/SC remain WARN.</td>
 </tr>
 <tr>
 <td>C10</td>
@@ -4159,7 +4159,7 @@ empty → BomDrop never runs → c_order=0, c_orderline=0 in output. Gates pass
 because output DB IS the federation extraction (same as reference). SH/FK/DM
 are real BOM compilations. See <code>logs/pipeline_SJTII_Terminal_ifctobom_*.log</code>.</p>
 </blockquote>
-<p><strong>Remaining debt:</strong> G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC/RM). TE BOM compilation (IFCtoBOM tack fix).</p>
+<p><strong>Remaining debt:</strong> G5 GEO_ (RA/JE/ES), C9 axis swaps (JE/HI/SC) — position-based matching implemented for RM (W-RM-C9); JE/HI/SC still WARN (different root cause). TE BOM compilation (IFCtoBOM tack fix).</p>
 
 
 

@@ -3283,6 +3283,12 @@
 <h3 id="3-compiler-only">3. Compiler Only?<a class="headerlink" href="#3-compiler-only" title="Permanent link">&para;</a></h3>
 <p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §2</a> Compilation Model — every element traces to IFC extraction or BOM template. Nothing invented.</p>
 <p>The compiler must never connect to <code>*_extracted.db</code> during compilation. It reads only from <code>{PREFIX}_BOM.db</code> (the dictionary) and writes to <code>output.db</code>. Three tamper rules (T18/T19/T20) enforce zero references to extraction databases in compiler source code.</p>
+<p><strong>MEP_RECIPE cardinal rules</strong> (violation = invention): MEP_RECIPE archetypes are
+abstract patterns — never explode recipe runs into per-instance LEAF rows during
+compilation. Validation Rules determine final expression; the callout only registers
+discipline scope and Qty (= IFC element count). LEAF children come from <code>*_SYSTEM</code>
+BOM only. See: <code>OrderLineProductCallout.java</code> and <code>IFCtoERP.java</code> class Javadoc,
+and <a href="../DISC_VALIDATION_DB_SRS/#62-discipline-as-a-sub-bom">DISC_VALIDATION_DB_SRS §6.2</a>.</p>
 <p><strong>Verdict:</strong> PASS — 0 violations.</p>
 <h3 id="4-openings-and-furniture">4. Openings and Furniture?<a class="headerlink" href="#4-openings-and-furniture" title="Permanent link">&para;</a></h3>
 <p><strong>Spec:</strong> <a href="../BOMBasedCompilation/">BBC §4</a> tack convention — doors sit in walls, windows sit in walls, furniture sits in rooms.</p>
