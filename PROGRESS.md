@@ -65,9 +65,13 @@
     RM: 783 runs, 3157 lines, 2 collinearity discards, 128 non-zero rotation_rule, 0 penetration merges.
     TE: COVERAGE TOPOLOGY triggered (100% null storey), 838 archetypes, ceiling_Z=26.334m.
     Gate: RM 6/8, TE 6/8, SH 8/8 — pre-existing Maven critical proof violations (P05/P06) in RM/TE models.
-  00j written: CE+CH+CP Clinic MEP recipe verification (3 disciplines, routing topology).
-  00k written: ERP.db MEP_RECIPE → c_orderline DISC LEAF bridge (W-J1-RECIPE-LINK).
-  Next: 00k — wire recipe dz/rotation_rule into DisciplineBomBuilder DISC LEAF placement.
+  00jk DONE (`470c2875`): CE+CH+CP 27/27 PASS. RM 6/8, TE 6/8, SH 8/8 — no regression.
+    CE: 434 runs, CH: 588 runs (1 discard), CP: 1005 runs (6 discards). All routing topology.
+    W-J1-RECIPE-LINK: expandDisciplineLines now sets M_BOM_Line_ID+dz from ERP.db BOM line.
+    TE DISC LEAF linked: 959→965 (FP parasitic rows now point to ERP.db IDs 1/2/3).
+    Finding: bulk of TE DISC LEAF M_BOM_Line_IDs reference TE_BOM.db (local), not ERP.db MEP_RECIPE.
+    RM DISC LEAF: 0 rows — ELEC_SYSTEM/SP_SYSTEM have no BOM children; ACMV/CW/FP MEP_RECIPE runs not consumed.
+  Next: deeper ERP.db MEP_RECIPE → c_orderline integration (RM routing topology consumption).
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
