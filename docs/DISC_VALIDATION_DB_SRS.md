@@ -386,6 +386,57 @@ Migration path: copy qualifying rows into AD_DocEvent_Rule with
 `rule_type='DIMENSION'`, `check_method='DIMENSION_RANGE'`,
 `provenance='MINED:{building}'`.
 
+#### 6.3.1 Current DV Rule Coverage — MEP Gap
+
+Audit findings (S104-closeout, 2026-04-01). Queries run against `library/ERP.db`.
+
+**Stage 1 — AD_DocEvent_Rule (8 rows total):**
+- 7 rows at AD_Org_ID=0 (blanket/ARC): UBBL dimension rules (room area, kitchen dim,
+  corridor width, staircase width, ceiling height, bathroom area, egress distance).
+  All `FiringEvent=BEFORE_COMPILE`. CheckMethods: MIN_AREA, MIN_DIMENSION, MIN_WIDTH,
+  MIN_HEIGHT, MAX_DISTANCE.
+- 1 row at AD_Org_ID=3 (FP): `UBBL_PVII_SPRINKLER_SPACING` — SPACING, MAX_SPACING.
+- **Gap:** ACMV, CW, ELEC, SP, LPG have zero Stage 1 DocEvent rules. §6.3 declares
+  "FP: NFPA 13 spacing, UBBL fire rating, general pipe sizing rules" — only UBBL
+  sprinkler spacing is present. NFPA 13 coverage area, pipe sizing, flow rate rules
+  are absent from AD_DocEvent_Rule.
+
+**Stage 3 — ad_val_rule (415 rows):**
+- All rows are `check_method='DIMENSION_RANGE'` (physical dimension observations
+  mined from 34 buildings). No AD_Org_ID column — mapped by ifc_class.
+- MEP IFC classes covered: IfcAirTerminal (3), IfcDuctFitting (4), IfcDuctSegment (4),
+  IfcFireSuppressionTerminal (1), IfcFlowController (5), IfcFlowFitting (10),
+  IfcFlowSegment (11), IfcFlowTerminal (29). Total MEP dimension rules: ~67 rows.
+- These are mined dimension ranges (W/D/H observations), not code requirement checks.
+  No spacing limits, flow rates, clearance requirements, or coverage area rules.
+- **Gap:** No Stage 3 rules that enforce NFPA, IMC, IPC, NEC, UBBL MEP clauses.
+
+**Hardcoded Java thresholds (geometric heuristics, not code requirements):**
+- `RoutingConstraints.java` (all values extracted from PATTERN G3, IFC-mined):
+  - Wall clearance by discipline: ACMV 175mm, FP 173mm, CW 216mm, SP 223mm, LPG 106mm
+  - Ceiling clearance averages and minimums per discipline
+  - 50mm wall clearance tolerance (`isValidWallClearance` line 101)
+  - 10mm ceiling clearance tolerance (`isValidCeilingClearance` line 116)
+- `FederationConstants.java:94`: MEP-to-structure minimum clearance constant
+- Assessment: these are geometric routing heuristics from observed IFC data, **not**
+  codified requirements. They belong in `RoutingConstraints.java` or could migrate
+  to `ad_code_requirement` but are not missing from any DV stage.
+
+**ad_code_requirement table (23 rows):**
+- Populated with real code requirements: NFPA_13 (sprinkler spacing/coverage by room),
+  NEC_2020 (outlet spacing, GFCI, lighting, switch clearance), IMC_2021 (exhaust fan),
+  IPC_2021 (sink/toilet), MS_1184 (door/toilet), MS_1228 (floor trap), NFPA_101
+  (emergency lighting distance).
+- Schema has: `max_spacing_m`, `min_clearance_m`, `coverage_radius`, `qty_per_area` etc.
+- **Not yet connected to DV rule generation.** No query path from `ad_code_requirement`
+  → `AD_DocEvent_Rule` or `ad_val_rule`. This table is the intended home for NFPA/UBBL
+  MEP code requirements (confirmed by schema), but migration to Stage 1 is not done.
+
+**Conclusion:** MEP DV rule coverage is a real gap. Stage 1 has 1 FP rule (UBBL sprinkler
+spacing). Stages 2–3 have no MEP code requirement checks. `ad_code_requirement` has the
+right data but is not wired into the validation pipeline. A future migration prompt should
+bridge `ad_code_requirement` → `AD_DocEvent_Rule` for each discipline's code references.
+
 #### AD_Val_Rule — 3rd Stage (ERP.db, compliance rules)
 
 The V001 schema stays as-is within ERP.db. AD_Val_Rule is a user-initiated
