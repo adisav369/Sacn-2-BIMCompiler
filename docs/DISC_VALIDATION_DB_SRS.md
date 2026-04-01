@@ -2161,8 +2161,18 @@ and element_type keyword heuristics. Two concrete failures:
 | Gap | Description | Scope | Resolution |
 |-----|-------------|-------|------------|
 | G1  | `_import_joint_piece_types` has no `discipline`/`AD_Org_ID` column | Schema | Add column in 00q SQL migration; populate from elements_meta.discipline at extract time |
-| G2  | RM CW/SP UNRESOLVABLE — IFC2x3 model lacks system membership, no sub-discipline attribute for generic pipe elements | IFC model (Revit) | Re-export RM from Revit with IfcDistributionSystem assignments; OR accept RM as CW-only (no SP) for current sprint |
+| G2  | RM CW/SP UNRESOLVABLE — IFC2x3 model lacks system membership, no sub-discipline attribute for generic pipe elements | IFC model (Revit) | RESOLVED via RouteWalker pattern approach (00r/00s). RM Rosetta Stone 8/8 PASS. |
 | G3  | IFCtoERP `discFromClass()` ignores `elements_meta.discipline`; defaults IfcFlowTerminal light fixtures to CW; defaults all IfcFlowSegment/FlowFitting to CW | IFCtoERP.java | Fix: read `discipline` column first; keyword fallback only if null/'MEP'; add light-fixture keyword for IfcFlowTerminal |
+
+**G1 RESOLVED (00q):** `_import_joint_piece_types.discipline` column added.
+**G2 RESOLVED (00r/00s):** RouteWalker pattern approach for G2 buildings. RM 8/8.
+**G3 TARGET (00t):** Routing topology branch at IFCtoERP.java line 799 still calls 2-arg `discFromClass`. Fix: pass `e.discipline`. Affects TE (CW/SP/FP/LPG correctly separated) and RM (light fixtures stopped from routing as CW).
+
+**W-TE-DISC** — IFCtoERP correctly assigns discipline from elements_meta for TE:
+> After 00t fix, `_import_joint_piece_types.discipline` breakdown for SJTII_Terminal matches
+> `elements_meta` source counts: IfcPipeSegment CW≥619, SP≥455, FP≥2672, LPG≥75.
+> No IfcFlowTerminal rows assigned CW when element_type contains "light"/"lamp"/"fixture".
+> TE routing topology groups split correctly by discipline (not all collapsed to CW).
 
 **00q safe to proceed?**
 
