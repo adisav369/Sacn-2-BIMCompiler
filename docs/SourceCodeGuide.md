@@ -693,6 +693,10 @@ VERIFIED ✓ (or drift detected ✗)
 - Never produce or reference monolithic `library/BOM.db` — only `{PREFIX}_BOM.db`
 
 ### Java / Compiler
+- **BIMEyes proof edits require `mvn install -pl BIMEyes -DskipTests`** — DAGCompiler Maven test
+  picks up `.m2/bim-eyes-1.0-SNAPSHOT.jar`, not `target/classes/`. `mvn compile` alone leaves
+  the stale jar in place; Fix A appeared in bytecode but the old jar ran — diagnosed via
+  `ls -la ~/.m2/repository/com/bim/bim-eyes/`.
 - PlacementProver: P01-P03/P16-P17/P22 = gate (critical); P04-P15/P18-P21/P23 = advisory
 - MeshBinder `isNS`: mesh-proximity comparison, NOT bbox aspect ratio
 - GUID ordinal: ALWAYS use `++ordinalCounter`, NEVER `line.getOrdinal()`

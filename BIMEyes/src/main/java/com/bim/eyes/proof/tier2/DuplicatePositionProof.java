@@ -5,7 +5,12 @@ import com.bim.eyes.proof.PlacementData;
 import com.bim.eyes.proof.ProofResult;
 import java.util.*;
 
-/** P05: No two elements share the same centroid (within 1mm). */
+/**
+ * P05: No two elements share the same centroid (within 1mm).
+ *
+ * <p>Build note: edits to this class require {@code mvn install -pl BIMEyes -DskipTests}.
+ * DAGCompiler uses the {@code .m2} jar, not {@code target/classes/}.
+ */
 public final class DuplicatePositionProof {
     private DuplicatePositionProof() {}
 
