@@ -52,6 +52,13 @@ Zero `GEO_` fallback hashes in output. Every element's mesh traces to a real LOD
 
 The compiler must never connect to `*_extracted.db` during compilation. It reads only from `{PREFIX}_BOM.db` (the dictionary) and writes to `output.db`. Three tamper rules (T18/T19/T20) enforce zero references to extraction databases in compiler source code.
 
+**MEP_RECIPE cardinal rules** (violation = invention): MEP_RECIPE archetypes are
+abstract patterns — never explode recipe runs into per-instance LEAF rows during
+compilation. Validation Rules determine final expression; the callout only registers
+discipline scope and Qty (= IFC element count). LEAF children come from `*_SYSTEM`
+BOM only. See: `OrderLineProductCallout.java` and `IFCtoERP.java` class Javadoc,
+and [DISC_VALIDATION_DB_SRS §6.2](DISC_VALIDATION_DB_SRS.md#62-discipline-as-a-sub-bom).
+
 **Verdict:** PASS — 0 violations.
 
 ### 4. Openings and Furniture?

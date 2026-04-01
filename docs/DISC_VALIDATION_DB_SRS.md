@@ -294,6 +294,17 @@ follows iDempiere order: DocEvent per Org (1st, discipline blanket +
 government standards) → ASI resolution per instance (2nd) → AD_Val_Rule
 user override on specific lines (3rd, on demand).
 
+> **Cardinal rules (also in class Javadoc):**
+> - **MEP_RECIPE is abstract and reusable.** It encodes a geometric pattern (standoff,
+>   chain geometry). Never explode recipe runs into per-instance LEAF rows in compilation.
+> - **Validation Rules drive final expression.** DV rules (AD_Rule / M_BOM Validation
+>   Layer) resolve a recipe to a specific project. The callout only registers scope and Qty.
+> - **One DISCIPLINE row per discipline.** Qty = IFC element count from extraction
+>   (ad_sysconfig MEP_*_COUNT), not recipe archetype count.
+> - **LEAF children from *_SYSTEM BOM only** (FP_RISER, FP_SPRINKLER_LAYOUT, etc.).
+>
+> See: `OrderLineProductCallout.java` class Javadoc, `IFCtoERP.java` class Javadoc.
+
 ### 6.3 Three-Stage Validation — iDempiere Processing Order
 
 | Stage | iDempiere parallel | What it does | Fires | Example |
@@ -1173,7 +1184,7 @@ same as any other BOM line. No runtime host matching. No query. No
 ShimMatcher computation. The position was extracted from the IFC once and
 stored as a number on the M_BOM_Line.
 
-#### 3. Entry Point — OrderLine → MEP_System BOM
+#### 3. Entry Point — OrderLine → MEP_System BOM (abstract, VR-resolved)
 
 The MEP walk enters through an OrderLine whose Product has AD_Org = discipline
 (FP, ELEC, ACMV, CW, SP, LPG). That product IS the root MEP_System BOM in
