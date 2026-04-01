@@ -785,3 +785,102 @@ CREATE TABLE IF NOT EXISTS ad_mep_pattern (
     PRIMARY KEY (pattern_id, sequence)
 );
 
+-- ════════════════════════════════════════════════════════
+-- 00q-B: Pattern Mining — CW_TERMINAL_01 + SP_TERMINAL_01 from TE
+-- Source: DAGCompiler/lib/input/Terminal_Extracted.db
+-- Witness pre-check: each step cites supporting element count from TE query.
+-- ════════════════════════════════════════════════════════
+
+-- CW_TERMINAL_01: Cold Water supply topology mined from SJTII_Terminal
+-- Evidence:
+--   619 IfcPipeSegment CW + 638 IfcPipeFitting CW
+--   Axis dominance: X=639, Y=356, Z=262 (predominantly horizontal X/Y runs)
+--   7 IfcFlowController + 57 IfcValve (including 1 Water Meter) = 64 meter/valve nodes
+--   106 IfcFlowTerminal CW (toilets 16, sinks 20+, urinals 8+, bidets 15+, taps 13+)
+
+-- Seq 10: METER → JUNCTION — main distribution horizontal X run from water meter
+--   Evidence: 7 IfcFlowController (gate_valve_25mm-50mm) as isolation/meter; 57 IfcValve
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('CW_TERMINAL_01','CW','TERMINAL',10,'METER','JUNCTION','X','PIPE_STRAIGHT','DIRECT',NULL,
+        'Main distribution run from meter; 7 IfcFlowController + 57 IfcValve = 64 nodes',
+        'SJTII_Terminal');
+
+-- Seq 20: JUNCTION → JUNCTION — continued horizontal X run (mains)
+--   Evidence: 639 X-dominant IfcPipeSegment CW (HDPE/UPVC, avg centroid ordered by storey+Y+X)
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('CW_TERMINAL_01','CW','TERMINAL',20,'JUNCTION','JUNCTION','X','PIPE_STRAIGHT','DIRECT',NULL,
+        'Horizontal main run; 639 X-dominant IfcPipeSegment CW','SJTII_Terminal');
+
+-- Seq 30: JUNCTION → JUNCTION — cross-branch Y run (lateral distribution)
+--   Evidence: 356 Y-dominant IfcPipeSegment CW
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('CW_TERMINAL_01','CW','TERMINAL',30,'JUNCTION','JUNCTION','Y','PIPE_STRAIGHT','DIRECT',NULL,
+        'Cross-branch Y run; 356 Y-dominant IfcPipeSegment CW','SJTII_Terminal');
+
+-- Seq 40: JUNCTION → FIXTURE — vertical or short horizontal drop to fixture
+--   Evidence: 262 Z-dominant IfcPipeSegment CW; 106 IfcFlowTerminal CW (fixtures)
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('CW_TERMINAL_01','CW','TERMINAL',40,'JUNCTION','FIXTURE','Z','PIPE_STRAIGHT','DIRECT',NULL,
+        'Drop to fixture; 262 Z-dominant IfcPipeSegment, 106 IfcFlowTerminal CW','SJTII_Terminal');
+
+-- SP_TERMINAL_01: Sanitary/Sewage collection topology mined from SJTII_Terminal
+-- Evidence:
+--   455 IfcPipeSegment SP + 372 IfcPipeFitting SP
+--   Axis dominance: X=364, Y=289, Z=174 (mixed, gravity-drained runs)
+--   62 vertical stack pipes (Z-dominant, length > 500mm)
+--   150 IfcFlowTerminal SP: floor traps 46, sinks 20, toilets 16, bidets 12, urinals 11,
+--       gully traps 10, inspection chamber 1, grease trap 1, etc.
+--   Observed gradient (dz/dx for horizontal runs): 0.005–0.023 (below MS 1228 §5.3 min 0.025)
+--   NOTE: observed gradient below MS 1228 §5.3 minimum (0.025). TE models may use shallower
+--   slopes on flat sites. RouteWalker MUST enforce min 0.025 per code; pattern row is TENTATIVE.
+
+-- Seq 10: FIXTURE → JUNCTION — short horizontal drain from fixture to collection branch
+--   Evidence: 150 IfcFlowTerminal SP (floor traps, sinks, toilets, urinals, bidets, etc.)
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('SP_TERMINAL_01','SP','TERMINAL',10,'FIXTURE','JUNCTION','X','PIPE_STRAIGHT','DIRECT',0.025,
+        '150 IfcFlowTerminal SP (floor traps 46, sinks 20, toilets 16, urinals 11, bidets 12)',
+        'SJTII_Terminal');
+
+-- Seq 20: JUNCTION → JUNCTION — horizontal collection run with gravity gradient
+--   Evidence: 364 X-dominant IfcPipeSegment SP; observed gradient 0.005–0.023 (TENTATIVE: below MS 1228)
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('SP_TERMINAL_01','SP','TERMINAL',20,'JUNCTION','JUNCTION','X','PIPE_STRAIGHT','GRADIENT',0.025,
+        'TENTATIVE: TE observed gradient 0.005–0.023 < MS 1228 §5.3 min 0.025; enforce 0.025',
+        'SJTII_Terminal');
+
+-- Seq 30: JUNCTION → JUNCTION — Y-direction collection branch
+--   Evidence: 289 Y-dominant IfcPipeSegment SP
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('SP_TERMINAL_01','SP','TERMINAL',30,'JUNCTION','JUNCTION','Y','PIPE_STRAIGHT','GRADIENT',0.025,
+        '289 Y-dominant IfcPipeSegment SP (cross-branch collection)','SJTII_Terminal');
+
+-- Seq 40: JUNCTION → STACK — vertical drop into soil stack/riser
+--   Evidence: 62 Z-dominant IfcPipeSegment SP (length > 500mm, classified as stacks)
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('SP_TERMINAL_01','SP','TERMINAL',40,'JUNCTION','STACK','Z','PIPE_STRAIGHT','DIRECT',NULL,
+        '62 vertical stack IfcPipeSegment SP (Z-dominant, length > 500mm)','SJTII_Terminal');
+
+-- Seq 50: STACK → GENERIC — underground/sub-slab run to inspection chamber
+--   Evidence: 2 IfcValve SP (vent cowls) + remaining fittings; count < 5 → TENTATIVE
+INSERT OR IGNORE INTO ad_mep_pattern
+(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
+ direction_axis, piece_type, offset_rule, gradient, notes, source_building)
+VALUES ('SP_TERMINAL_01','SP','TERMINAL',50,'STACK','GENERIC','X','PIPE_STRAIGHT','GRADIENT',0.025,
+        'TENTATIVE: sub-slab discharge run; supporting elements < 5 in TE','SJTII_Terminal');
+
