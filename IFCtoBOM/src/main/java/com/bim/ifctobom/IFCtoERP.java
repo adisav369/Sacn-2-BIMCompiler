@@ -117,7 +117,177 @@ public class IFCtoERP {
         BIMLogger.info(TAG, "{}: {} MEP elements → {} joint types, {} new M_Products",
                 buildingType, mepElements.size(), staged, promoted);
 
+        // C: Extract anchor points for RouteWalker (§6.12.3 §1)
+        extractAnchors(erpConn, buildingType, refDb);
+
         return new Result(mepElements.size(), staged, promoted);
+    }
+
+    /**
+     * Extract MEP anchor points from extracted DB and write to ad_mep_anchor.
+     * Implementing DISC_VALIDATION_DB_SRS.md §6.12.3 §1 — Witness: W-PATTERN-CW/W-PATTERN-SP pre-check
+     */
+    private static void extractAnchors(Connection erpConn, String buildingType, Path refDb)
+            throws SQLException {
+        // Create table if not yet created by migration
+        try (Statement stmt = erpConn.createStatement()) {
+            stmt.execute("""
+                    CREATE TABLE IF NOT EXISTS ad_mep_anchor (
+                        anchor_id    TEXT PRIMARY KEY,
+                        source_building TEXT NOT NULL,
+                        anchor_type  TEXT NOT NULL CHECK(anchor_type IN ('METER','FIXTURE','VALVE','GENERIC')),
+                        x_m          REAL NOT NULL,
+                        y_m          REAL NOT NULL,
+                        z_m          REAL NOT NULL,
+                        storey       TEXT,
+                        ifc_guid     TEXT
+                    )""");
+        }
+
+        // Collect storey floor Z values from IfcSlab for METER boundary detection
+        Set<Double> slabZValues = new LinkedHashSet<>();
+        String refUrl = "jdbc:sqlite:" + refDb;
+        try (Connection refConn = DriverManager.getConnection(refUrl);
+             Statement stmt = refConn.createStatement()) {
+            ResultSet rs = stmt.executeQuery("""
+                    SELECT MIN(r.minZ) as floor_z FROM elements_meta em
+                    JOIN elements_rtree r ON em.id = r.id
+                    WHERE em.ifc_class = 'IfcSlab'
+                    GROUP BY em.storey
+                    """);
+            while (rs.next()) slabZValues.add(rs.getDouble(1));
+        } catch (SQLException ignored) { /* no slabs — skip METER detection */ }
+
+        // Read anchor candidate elements
+        String insertSql = """
+                INSERT OR IGNORE INTO ad_mep_anchor
+                (anchor_id, source_building, anchor_type, x_m, y_m, z_m, storey, ifc_guid)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        int meterCount = 0, fixtureCount = 0, valveCount = 0, genericCount = 0, skippedCount = 0;
+        int anchorSeq = 0;
+
+        try (Connection refConn = DriverManager.getConnection(refUrl);
+             Statement stmt = refConn.createStatement();
+             PreparedStatement ins = erpConn.prepareStatement(insertSql)) {
+
+            ResultSet rs = stmt.executeQuery("""
+                    SELECT em.guid, em.ifc_class, em.element_type, em.element_name,
+                           em.storey, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
+                    FROM elements_meta em
+                    JOIN elements_rtree r ON em.id = r.id
+                    WHERE em.ifc_class IN (
+                        'IfcFlowController','IfcFlowTerminal',
+                        'IfcFlowSegment','IfcFlowFitting')
+                    """);
+
+            while (rs.next()) {
+                String guid     = rs.getString(1);
+                String ifcClass = rs.getString(2);
+                String elType   = rs.getString(3);
+                String elName   = rs.getString(4);
+                String storey   = rs.getString(5);
+                double minX = rs.getDouble(6),  maxX = rs.getDouble(7);
+                double minY = rs.getDouble(8),  maxY = rs.getDouble(9);
+                double minZ = rs.getDouble(10), maxZ = rs.getDouble(11);
+
+                String anchorType = classifyAnchorType(
+                        ifcClass, elType, elName, minZ, maxZ, slabZValues);
+
+                if (anchorType == null) { skippedCount++; continue; } // ELEC — skip
+
+                double dx = maxX - minX, dy = maxY - minY, dz = maxZ - minZ;
+                double maxDim = Math.max(dx, Math.max(dy, dz));
+                double minDim = Math.min(dx, Math.min(dy, dz));
+                boolean elongated = minDim > 0 && maxDim > 3.0 * minDim;
+
+                if (elongated) {
+                    // Emit two anchors at AABB ends along dominant axis
+                    double[] start = dominantStart(dx, dy, dz, minX, maxX, minY, maxY, minZ, maxZ);
+                    double[] end   = dominantEnd(dx, dy, dz, minX, maxX, minY, maxY, minZ, maxZ);
+                    writeAnchor(ins, buildingType + "_" + (++anchorSeq) + "_A", buildingType,
+                            anchorType, start[0], start[1], start[2], storey, guid);
+                    writeAnchor(ins, buildingType + "_" + (++anchorSeq) + "_B", buildingType,
+                            anchorType, end[0], end[1], end[2], storey, guid);
+                } else {
+                    // Emit one anchor at AABB centre
+                    writeAnchor(ins, buildingType + "_" + (++anchorSeq), buildingType,
+                            anchorType,
+                            (minX + maxX) / 2.0, (minY + maxY) / 2.0, (minZ + maxZ) / 2.0,
+                            storey, guid);
+                }
+
+                switch (anchorType) {
+                    case "METER"   -> meterCount++;
+                    case "FIXTURE" -> fixtureCount++;
+                    case "VALVE"   -> valveCount++;
+                    default        -> genericCount++;
+                }
+            }
+        }
+
+        BIMLogger.info(TAG, "[IFCtoERP] {}: anchors extracted — METER={}, FIXTURE={}, VALVE={}, GENERIC={}, SKIPPED={}",
+                buildingType, meterCount, fixtureCount, valveCount, genericCount, skippedCount);
+
+        if (fixtureCount == 0 || meterCount == 0) {
+            BIMLogger.warn(TAG, "[IFCtoERP] {}: WARNING — FIXTURE={} METER={}: RouteWalker has no anchor pair to connect",
+                    buildingType, fixtureCount, meterCount);
+        }
+    }
+
+    /** Classify a MEP element into an anchor type (null = skip). */
+    private static String classifyAnchorType(String ifcClass, String elType, String elName,
+                                              double minZ, double maxZ, Set<Double> slabZs) {
+        if ("IfcFlowController".equals(ifcClass)) return "VALVE";
+
+        if ("IfcFlowTerminal".equals(ifcClass)) {
+            String et = (elType != null ? elType : "").toLowerCase();
+            String en = (elName != null ? elName : "").toLowerCase();
+            // Skip light fixtures — ELEC, not a pipe anchor
+            if (et.contains("light") || et.contains("lamp") || et.contains("fixture")
+                    || en.contains("light") || en.contains("lamp")) {
+                return null;
+            }
+            return "FIXTURE";
+        }
+
+        // IfcFlowSegment / IfcFlowFitting: check storey boundary for METER candidate
+        double cz = (minZ + maxZ) / 2.0;
+        for (double slabZ : slabZs) {
+            if (Math.abs(cz - slabZ) <= 0.200) return "METER";
+        }
+        return "GENERIC";
+    }
+
+    private static double[] dominantStart(double dx, double dy, double dz,
+                                           double minX, double maxX, double minY, double maxY,
+                                           double minZ, double maxZ) {
+        if (dx >= dy && dx >= dz) return new double[]{minX, (minY + maxY) / 2.0, (minZ + maxZ) / 2.0};
+        if (dy >= dx && dy >= dz) return new double[]{(minX + maxX) / 2.0, minY, (minZ + maxZ) / 2.0};
+        return new double[]{(minX + maxX) / 2.0, (minY + maxY) / 2.0, minZ};
+    }
+
+    private static double[] dominantEnd(double dx, double dy, double dz,
+                                         double minX, double maxX, double minY, double maxY,
+                                         double minZ, double maxZ) {
+        if (dx >= dy && dx >= dz) return new double[]{maxX, (minY + maxY) / 2.0, (minZ + maxZ) / 2.0};
+        if (dy >= dx && dy >= dz) return new double[]{(minX + maxX) / 2.0, maxY, (minZ + maxZ) / 2.0};
+        return new double[]{(minX + maxX) / 2.0, (minY + maxY) / 2.0, maxZ};
+    }
+
+    private static void writeAnchor(PreparedStatement ins, String anchorId, String sourceBuilding,
+                                     String anchorType, double x, double y, double z,
+                                     String storey, String guid) throws SQLException {
+        ins.setString(1, anchorId);
+        ins.setString(2, sourceBuilding);
+        ins.setString(3, anchorType);
+        ins.setDouble(4, x);
+        ins.setDouble(5, y);
+        ins.setDouble(6, z);
+        ins.setString(7, storey);
+        ins.setString(8, guid);
+        ins.executeUpdate();
     }
 
     /**
