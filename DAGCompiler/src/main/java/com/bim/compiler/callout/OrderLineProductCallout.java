@@ -273,8 +273,10 @@ public class OrderLineProductCallout {
                     int adOrgId = rs.getInt("AD_Org_ID");
                     String discipline = rs.getString("Discipline");
 
+                    // MEP recipe bridge — Witness: W-J1-RECIPE-LINK
+                    // Implementing DISC_VALIDATION_DB_SRS.md §6.12.2 recipe consumption
                     // Read BOM children from ERP.db for this discipline recipe
-                    String selectChildren = "SELECT bl.child_product_id, bl.qty, bl.verb_ref "
+                    String selectChildren = "SELECT bl.M_BOM_Line_ID, bl.child_product_id, bl.qty, bl.dz "
                                           + "FROM M_BOM_Line bl "
                                           + "JOIN M_BOM b ON bl.M_BOM_ID = b.M_BOM_ID "
                                           + "WHERE b.Value = ? AND bl.IsActive = 'Y' "
@@ -284,16 +286,19 @@ public class OrderLineProductCallout {
                         childPs.setString(1, bomValue);
                         try (ResultSet childRs = childPs.executeQuery()) {
                             while (childRs.next()) {
+                                int erpBomLineId = childRs.getInt("M_BOM_Line_ID");
                                 String childProduct = childRs.getString("child_product_id");
                                 int qty = childRs.getInt("qty");
+                                double recipeDz = childRs.getDouble("dz");
 
                                 maxSeq += 10;
                                 insertChildLine(compileDb, orderId, parentLineId, maxSeq,
-                                        childProduct, discipline, adOrgId, qty);
+                                        childProduct, discipline, adOrgId, qty,
+                                        erpBomLineId, recipeDz);
                                 inserted++;
 
-                                BIMLogger.fine("CALLOUT", "Parasitic qty: {} qty={} (disc={}, AD_Org={}) for order {}",
-                                        childProduct, qty, discipline, adOrgId, orderId);
+                                BIMLogger.fine("CALLOUT", "Parasitic qty: {} qty={} dz={} bomLine={} (disc={}, AD_Org={}) for order {}",
+                                        childProduct, qty, recipeDz, erpBomLineId, discipline, adOrgId, orderId);
                             }
                         }
                     }
@@ -309,28 +314,33 @@ public class OrderLineProductCallout {
     }
 
     /**
-     * Insert a parasitic child C_OrderLine — qty passthrough, no placement.
+     * Insert a parasitic child C_OrderLine — qty passthrough with ERP.db recipe linkage.
+     * M_BOM_Line_ID and dz come from the ERP.db BOM line (W-J1-RECIPE-LINK).
      */
     private static void insertChildLine(Connection conn, String orderId,
                                          int parentLineId, int seq,
                                          String childProduct, String discipline,
-                                         int adOrgId, int qty) throws SQLException {
+                                         int adOrgId, int qty,
+                                         int erpBomLineId, double dz) throws SQLException {
         String sql = "INSERT INTO C_OrderLine "
                    + "(C_Order_ID, Parent_OrderLine_ID, Line, family_ref, host_type, "
-                   + " m_product_category_id, dx, dy, dz, M_Product_ID, Discipline, AD_Org_ID, Qty, "
+                   + " m_product_category_id, M_BOM_Line_ID, dx, dy, dz, M_Product_ID, Discipline, AD_Org_ID, Qty, "
                    + " locator_ref) "
-                   + "VALUES (?, ?, ?, ?, 'LEAF', ?, 0, 0, 0, ?, ?, ?, ?, ?)";
+                   + "VALUES (?, ?, ?, ?, 'LEAF', ?, ?, 0, 0, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, orderId);
             ps.setInt(2, parentLineId);
             ps.setInt(3, seq);
-            ps.setString(4, childProduct);        // family_ref
-            ps.setString(5, discipline);           // m_product_category_id = discipline code
-            ps.setString(6, childProduct);         // M_Product_ID
-            ps.setString(7, discipline);           // Discipline
-            ps.setInt(8, adOrgId);                 // AD_Org_ID
-            ps.setInt(9, qty);                     // Qty from BOM
-            ps.setString(10, discipline + "." + childProduct);  // locator_ref
+            ps.setString(4, childProduct);         // family_ref
+            ps.setString(5, discipline);            // m_product_category_id = discipline code
+            if (erpBomLineId > 0) ps.setInt(6, erpBomLineId);
+            else ps.setNull(6, java.sql.Types.INTEGER);
+            ps.setDouble(7, dz);                   // standoff from ERP.db recipe
+            ps.setString(8, childProduct);         // M_Product_ID
+            ps.setString(9, discipline);            // Discipline
+            ps.setInt(10, adOrgId);                // AD_Org_ID
+            ps.setInt(11, qty);                    // Qty from BOM
+            ps.setString(12, discipline + "." + childProduct);  // locator_ref
             ps.executeUpdate();
         }
     }

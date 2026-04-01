@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- CP: Clinic Plumbing (Clinic_Plumbing)
 -- Source: DAGCompiler/lib/output/clinic_plumbing.db
--- Generated: 2026-03-31 00:21
+-- Generated: 2026-04-01 07:54
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
