@@ -75,9 +75,10 @@
   00m DONE (`8185d9df`): MEP DV rule audit — §6.3.1 gap written. Stage 1: 1 FP DocEvent rule only. Stage 3: 415 DIMENSION_RANGE, no MEP code checks. ad_code_requirement: 23 rows, not wired in.
   00n DONE (`b76218bc`): P05 sameDims guard + extraction dedup. W-RM-DEDUP. RM 7/8 (C9 rank-match artifact remains). SH 8/8.
   00o DONE (`d9823a70`): C9 position-based spatial match (50mm centroid window + nearest-neighbour guard). W-RM-C9. RM 8/8, SH 8/8. Fleet 16/16 PASS.
-  Next: 00p–00t written — DISC BOM single source of truth series. Start with `prompts/00p_disc_bom_audit.txt` (read-only forensics). 00p must resolve CW/SP disambiguation before 00q–00t proceed.
+  00p DONE (`f52c937c`): DISC BOM audit — piece-type→discipline map, CW/SP rule. G1/G2/G3 documented. §11 written. TE resolved via elements_meta.discipline. RM G2 (IFC2x3, no sub-discipline).
+  §6.12.3 DONE (`0fb61c62`): Hybrid pattern architecture spec — ad_mep_anchor + ad_mep_pattern (explicit rows), RouteWalker, W-PATTERN-CW/W-PATTERN-SP witness claims. old 00q_disc_bom_sql.txt superseded.
+  Next: `prompts/00q_route_walker_spec.txt` — Tasks A–D: DDL migration, TE pattern mining, RM anchor extraction, G3 fix.
   Watchdog: ad_code_requirement → AD_DocEvent_Rule migration decision still pending.
-  Watchdog: DISC BOM single-source-of-truth (00p→00t) — CW/SP disambiguation must be resolved at IFCtoERP, not in Placers. Hard stop if no IFC attribute resolves it.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
