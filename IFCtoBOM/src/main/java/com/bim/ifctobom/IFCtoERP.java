@@ -32,6 +32,26 @@ import java.util.*;
  *
  * <p>Toolbox grows across fleet — each building adds new types via INSERT OR IGNORE.
  * Reads *_extracted.db (never modifies). Writes to ERP.db only.
+ *
+ * <h3>Cardinal Rules — MEP_RECIPE Design</h3>
+ * <ol>
+ *   <li><b>MEP_RECIPE is abstract and reusable.</b> Each archetype encodes a geometric
+ *       PATTERN — standoff from host surface (coverage topology) or chain offset sequence
+ *       (routing topology). A recipe is valid for any building of the same type, not
+ *       tied to a specific building instance. Never add per-instance data to a recipe.</li>
+ *   <li><b>Validation Rules determine final expression.</b> The recipe is the input.
+ *       DV rules (AD_Rule / M_BOM Validation Layer) are what resolve a recipe into the
+ *       specific quantities, tolerances, and placements for a given project. Do not
+ *       bake project-specific logic into recipe rows.</li>
+ *   <li><b>Coverage topology:</b> group by (disc, ifcClass, dz_band). One archetype
+ *       per band — the shim line (seq=10, dz=0) plus the element line (seq=20,
+ *       dz=element_cz − ceiling_Z). All elements in the same band share one archetype.</li>
+ *   <li><b>Routing topology:</b> one recipe per spatial chain (storey + disc + run).
+ *       The chain captures the routing path; individual element types within the chain
+ *       are separate lines (seq=20,30,...). Chain identity survives building updates.</li>
+ *   <li><b>INSERT OR IGNORE on re-extract.</b> Re-running joint-extract on a building
+ *       must not duplicate recipes. The bom_id is the idempotency key.</li>
+ * </ol>
  */
 public class IFCtoERP {
 

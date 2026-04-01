@@ -22,7 +22,27 @@ import java.util.Set;
  * <p>// Implementing BBC.md §3.6.2a — Witness: W-DISC-CALLOUT-1
  * // Implementing DISC_VALIDATION_DB_SRS §10.4.11 T0.2
  *
+ * <h3>Cardinal Rules — MEP_RECIPE Architecture</h3>
+ * <ol>
+ *   <li><b>MEP_RECIPE is abstract.</b> A recipe archetype encodes a PATTERN (standoff,
+ *       chain geometry, piece sequence). It is building-type reusable, not per-instance.
+ *       Never explode recipe runs into per-instance LEAF rows here — that destroys
+ *       reusability and invents data that must come from IFC extraction.</li>
+ *   <li><b>Validation Rules drive expression.</b> The final spatial expression of a
+ *       recipe for a specific building is determined by DV rules (AD_Rule / M_BOM
+ *       Validation Layer), not by the compilation callout. The callout only registers
+ *       WHICH disciplines apply and in what quantity — not HOW they are placed.</li>
+ *   <li><b>One DISCIPLINE row per discipline.</b> The compiled output is one
+ *       host_type='DISCIPLINE' row per MEP discipline, with Qty from extraction counts
+ *       (ad_sysconfig MEP_*_COUNT). LEAF children come only from the abstract
+ *       *_SYSTEM BOM (e.g. FP_RISER, FP_SPRINKLER_LAYOUT) — never from recipe runs.</li>
+ *   <li><b>Qty = element count, not recipe count.</b> The Qty on a DISCIPLINE row
+ *       is the number of IFC elements extracted, not the number of MEP_RECIPE archetypes.
+ *       Recipe count is a planning metric, not a compiled quantity.</li>
+ * </ol>
+ *
  * @see com.bim.compiler.bom.BomDropper
+ * @see com.bim.ifctobom.IFCtoERP#buildMepBomRecipes
  */
 public class OrderLineProductCallout {
 
