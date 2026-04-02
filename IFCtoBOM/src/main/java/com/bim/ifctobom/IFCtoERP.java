@@ -794,9 +794,10 @@ public class IFCtoERP {
 
         // ── ROUTING TOPOLOGY BRANCH ──────────────────────────────────
         // Group by (storey, disc)
+        // Implementing DISC_VALIDATION_DB_SRS.md §11.4 G3 — Witness: W-TE-DISC
         Map<String, List<MepPosElement>> groups = new LinkedHashMap<>();
         for (MepPosElement e : elements) {
-            String disc = discFromClass(e.ifcClass, e.elementType);
+            String disc = discFromClass(e.ifcClass, e.elementType, e.discipline);
             groups.computeIfAbsent(e.storey + "|" + disc, k -> new ArrayList<>()).add(e);
         }
 
@@ -992,7 +993,10 @@ public class IFCtoERP {
             case "IfcDuctSegment", "IfcDuctFitting", "IfcAirTerminal" -> "ACMV";
             case "IfcLightFixture" -> "ELEC";
             case "IfcFlowTerminal" -> {
+                // Implementing DISC_VALIDATION_DB_SRS.md §11.4 G3 — Witness: W-TE-DISC
                 String et = elementType != null ? elementType.toLowerCase() : "";
+                if (et.contains("light") || et.contains("lamp") || et.contains("fixture")
+                        || et.contains("luminaire") || et.contains("pendant")) yield "ELEC";
                 yield (et.contains("drain") || et.contains("waste") || et.contains("soil")
                        || et.contains("inspection") || et.contains("interceptor")) ? "SP" : "CW";
             }
