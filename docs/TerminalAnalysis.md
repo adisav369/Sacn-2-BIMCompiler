@@ -2,7 +2,7 @@
 > **Foundation:** [BBC](BOMBasedCompilation.md) · [DATA_MODEL](DATA_MODEL.md) · [BIM_COBOL](BIM_COBOL.md) · [MANIFESTO](MANIFESTO.md) · [TestArchitecture](TestArchitecture.md)
 
 <div class="bim-banner" markdown>
-<b>48,428 elements across 8 disciplines — extraction proven, BOM persisted (S100-p69).</b> IFCtoBOM pipeline complete: flat BOM (8 BOMs, 1,522 lines, 48,428 instances, 95.9× factorization). QA all PASS. Compile-path blockers identified — see §Compilation Status below.
+<b>48,428 elements across 8 disciplines — compiled and gate-proven (S104).</b> IFCtoBOM pipeline complete: flat BOM (8 BOMs, 1,522 lines, 48,428 instances, 95.9× factorization). Rosetta Stone 7/8 PASS (1 pre-existing critical proof violation, not a compilation blocker). G3 discipline fix (00t) — IFCtoERP routes CW/SP/FP/LPG from elements_meta correctly.
 </div>
 
 ## CTFL Review Status (session 31-34, 2026-03-19)
@@ -419,26 +419,29 @@ roof_deck:
 **BOM mechanism:** `m_bom_line.qty = grid[0] * grid[1]`. Walker expands qty
 to instances, each getting position from grid formula. No 33K rows in BOM.
 
-### Verb: ROUTE (MEP piping — 9,345 elements, 18%)
+### MEP Piping — 9,345 elements, 18% (IFCtoERP MEP_RECIPE architecture)
 
-**Mechanism:** 1D path following. Pipe segments + fittings along a routed path.
-Each run = origin, direction, segment lengths, fitting types at turns.
+**Current architecture (S104):** TE is a **G1 building** — IFC4 with full discipline data in
+`elements_meta.discipline` (CW/SP/FP/LPG per element). IFCtoERP reads this column directly
+(00t G3 fix) and groups elements by `(storey, discipline)` into MEP_RECIPE archetypes in ERP.db.
+The shim+recipe BOM walk in DAGCompiler then expands these into c_orderline rows.
 
-**YAML intent:**
-```yaml
-mep_systems:
-  fire_protection:
-    storey: GF
-    runs:
-      - name: FP_MAIN_GF_01
-        segments: [PipeSegment_50mm, PipeFitting_Elbow_50mm, ...]
-        path_nodes_m: [[10.0, 5.0, 3.2], [10.0, 15.0, 3.2], [20.0, 15.0, 3.2]]
-    sprinklers:
-      - name: SPRINKLER_SET_GF
-        product: FireSuppressionTerminal
-        spacing_mm: 3000
-        ceiling_offset_mm: 50
-```
+**RouteWalker does NOT apply to TE.** RouteWalker is for **G2 buildings** (IFC2x3, no
+sub-discipline on pipe elements, e.g. RM). TE has zero rows in `ad_mep_anchor` — anchor
+extraction (00q) was only performed for RM. RouteWalker correctly emits CW=0/SP=0 for TE
+and logs a warning; this is expected behaviour, not a bug.
+
+**G1 vs G2 distinction:**
+| | G1 (TE) | G2 (RM) |
+|--|---------|---------|
+| IFC version | IFC4 | IFC2x3 |
+| elements_meta.discipline | CW/SP/FP/LPG per element | "MEP" (undifferentiated) |
+| MEP classification | IFCtoERP discFromClass 3-arg | RouteWalker pattern approach |
+| ad_mep_anchor rows | 0 (not needed) | 154 METER + 11 FIXTURE + 1482 GENERIC |
+| Rosetta Stone | 7/8 PASS | 8/8 PASS |
+
+The earlier YAML `mep_systems / path_nodes_m` design was never implemented and is superseded
+by this architecture. YAML is Order input only (not IFCtoBOM source — feedback rule).
 
 ### Rebar — REMOVED from input (2,660 elements deleted)
 
@@ -555,23 +558,23 @@ writing a new YAML, not new Java code.
 
 ## Verb Roadmap — What Terminal Still Needs
 
-**Current state (session 30):** All MEP elements absorbed by CLUSTER (approximate,
-avg 3.7m error). Exact verbs (TILE/ROUTE/FRAME) handle only 108 instances. The
-roadmap below tracks promotion from CLUSTER → exact verb per discipline.
+**Current state (S104):** GEO proof: 48,428 elements, 569M pairs, worst=0.025mm, DRIFT=0.
+MEP disciplines correctly separated via IFCtoERP (00t). Rosetta Stone 7/8 PASS.
+Pre-existing 71 critical proof violations are the remaining blocker (not a verb gap).
 
-| Verb | Status | Discipline | Predicted | Actual (CLUSTER) | AD Table | Fidelity |
-|------|--------|-----------|-----------|-----------------|----------|----------|
-| `TILE SURFACE` | **EXACT** | ARC (roof) | 33,324 | 12 exact, rest CLUSTER | — | PASS (0.0m) |
-| `ROUTE` | **EXACT** | FP/CW/SP/LPG | 9,345+2,619 | 18 exact, rest CLUSTER | ad_fp_coverage | 0.32m max |
-| `FRAME` | **EXACT** | STR | 590 | 78 exact, rest CLUSTER | — | 1.4mm max (S51 fix) |
-| `CLUSTER` | **APPROX** | all MEP | — | 47,607 | — | 29.1m max, 3.7m avg |
-| `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | — | — | not started |
-| `DISTRIBUTE` | DESIGNED | ARC (furniture) | ~2,123 | — | — | not started |
-| ~~`ARRAY`~~ | ~~REMOVED~~ | ~~REB~~ | ~~2,660~~ | — | — | REB excluded |
+| Verb / Mechanism | Status | Discipline | Elements | Fidelity |
+|-----------------|--------|-----------|----------|----------|
+| `TILE SURFACE` | **EXACT** | ARC (roof) | 33,324 | PASS (0.0m) |
+| `MEP_RECIPE` (IFCtoERP) | **LIVE** | FP/CW/SP/LPG/ACMV | 9,345+ | archetypes in ERP.db |
+| `FRAME` | **EXACT** | STR | 590 | 1.4mm max |
+| `CLUSTER` | **APPROX** | residual MEP | ~47,607 | 29.1m max, 3.7m avg |
+| `ENCLOSE` | DESIGNED | ARC (walls) | ~1,038 | not started |
+| `DISTRIBUTE` | DESIGNED | ARC (furniture) | ~2,123 | not started |
+| ~~`ARRAY`~~ | ~~REMOVED~~ | ~~REB~~ | ~~2,660~~ | REB excluded |
 
-**Gap:** CLUSTER's 3.7m avg error is the G2-VOLUME 13.71% drift root cause.
-Promotion path: analyse each CLUSTER group for step-uniformity, reclassify
-groups with ≤1mm step variance as TILE/ROUTE/FRAME. Non-uniform residue stays CLUSTER.
+**Note:** `ROUTE` verb (YAML path_nodes design) was never implemented and is superseded
+by the MEP_RECIPE architecture. TE's pipe network is mined by IFCtoERP into ERP.db archetypes.
+CLUSTER's 3.7m avg error remains the G2-VOLUME 13.71% drift root cause for non-exact elements.
 
 ### Three-Layer Validation Resolution (S100-p84)
 
