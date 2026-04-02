@@ -86,6 +86,7 @@
   00r DONE (`66264669`): RouteWalker.java — pattern select, anchor match, ARC clash check, c_orderline emit. Wired into CompilationPipeline after expandDisciplineLines. RM: CW=394, SP=134 lines. RM 8/8, SH 8/8.
   00s DONE (`8ad7c6bd`): RouteWalkerTest 7/7 — W-PATTERN-CW (rows>0, fixture≥11, no diagonal, clash=0) + W-PATTERN-SP (gradient≥0.024, STACK/storey, 80% connectivity).
   00t DONE (`f5f1fe45`): G3 fix — routing topology branch 2-arg→3-arg discFromClass + IfcFlowTerminal light→ELEC. W-TE-DISC: SJTII_Terminal CW=109, SP=167, FP=64, LPG=25. RM 8/8, SH 8/8. TE 7/8 (pre-existing 71 critical proof violations).
+  Next: `prompts/00u_te_critical_proofs.txt` — P05/P06 violations 71→0. Diagnose then fix. W-TE-PROOF. TE target: 8/8.
   Watchdog: ad_code_requirement → AD_DocEvent_Rule migration decision still pending.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
