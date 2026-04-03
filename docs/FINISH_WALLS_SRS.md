@@ -228,6 +228,63 @@ Walls can fill the gap using the compiler's library — then the round trip clos
 
 ---
 
+## 9.1 Completion Triage — Fleet Inventory of Incomplete Elements (S136)
+
+Not all incompleteness is the same. Three categories identified across the fleet:
+
+### Category A — Missing Walls (IfcWall deficit per IfcSpace)
+Already covered by §3 CompletionAuditService detection.
+
+| Building | IfcSpace | IfcWall | Status |
+|----------|----------|---------|--------|
+| Clinic | 269 | 1,080 | Has rooms declared, but some faces lack walls — **confirmed incomplete** |
+| Hospital | 0 | 1,468 | No IfcSpace → DECLARE ROOMS first (§11), then wall audit |
+| Terminal | 0 | 333 | No IfcSpace → DECLARE ROOMS first; terminal zones have many open faces by design |
+| Schependomlaan | 0 | 631 | No IfcSpace → DECLARE ROOMS; residential units expected to be closed |
+| HITOS | 0 | 838 | No IfcSpace → DECLARE ROOMS; likely incomplete residential |
+
+**Clinic note (S136):** Clinic has 269 IfcSpace and 1,080 walls — rooms ARE declared, so
+`CompletionAuditService` can run immediately without DECLARE ROOMS. Clinic is the first
+building where Finish Walls detection can be tested end-to-end with real data.
+**Clinic is the implementation target for FW-0 and FW-1 stages**, not Hospital.
+
+### Category B — Missing Steps (IfcStairFlight geometry incompleteness)
+
+**Hospital winding staircases have unfinished steps (S136 observation).**
+The Hospital ARC IFC models `IfcStairFlight` (1 element extracted) but winding/helical
+stairs require the full assembly: `IfcStair` (container) → multiple `IfcStairFlight`
+(flights) → `IfcStep` / tread geometry per step. When the IFC only contains the flight
+envelope without individual step geometry, the compiled output is a ramp-shaped solid
+rather than a stair with distinct treads and risers.
+
+**Symptom:** In the 3D viewport, a winding stair appears as a smooth helical ramp rather
+than discrete steps. The AABB and volume are correct; the tread/riser geometry is absent.
+
+**Detection:** `CompletionAuditService` extension — for each `IfcStairFlight` element,
+check that `rel_aggregates` contains at least N children (N = `flight_height / tread_height`
+from `ad_completion_rule`). If no children: COMPLETION_OPPORTUNITY for stair steps.
+
+**Resolution verb:** `FINISH STAIRS` — analogous to `FINISH WALLS`:
+```
+FINISH STAIRS <building_type> <storey> <stair_id>
+  → read IfcStairFlight AABB (run, rise, width) from elements_rtree
+  → compute step count = rise / target_riser_height (e.g. 175mm per HTM)
+  → place N IfcStep components from component_library.db
+  → add to BOM as assembly children of the IfcStairFlight BOM node
+```
+
+**Priority:** Lower than FINISH WALLS (stairs are rare; walls are pervasive).
+Design `FINISH_STAIRS_SRS.md` as a companion to this document when Hospital HO_003 is done.
+
+**Affects fleet:** Hospital (confirmed), possibly Clinic (multi-storey, check IfcStair count),
+Terminal (multi-level but escalators and ramps dominate — few stairs).
+
+### Category C — Missing Ceilings, Floors, Roofs
+Not yet systematically audited. Noted for future `CompletionAuditService` extension.
+Same pattern as Category A (detect deficit per IfcSpace, resolve from library).
+
+---
+
 ## 10. Implementation Roadmap
 
 Maps to SPATIAL_VARIANCE_SRS.md §16 stages:

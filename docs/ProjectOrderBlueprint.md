@@ -476,4 +476,137 @@ The engine doesn't change — only the post-hoc validation rules.
 
 ---
 
+---
+
+## 10. Product Chooser Taxonomy — Finding Products in a Rich Fleet (S136 TODO)
+
+> **Status:** Future — design specification only. Triggered by Hospital's 23,888-product
+> library and the question of how users navigate them.
+
+The `component_library.db` currently holds **23,888 products** across all extracted buildings.
+The current access model (compiler reads by `M_Product_ID`) is correct for pipeline use but
+provides no user-facing navigability. When Hospital, Clinic, and Terminal products are all
+seeded, a user choosing a wall for an ICU needs a structured search path, not a flat list.
+
+### 10.1 The Four-Axis Chooser
+
+iDempiere's existing schema gives us four orthogonal navigation axes:
+
+| Axis | iDempiere entity | Example values | User sees |
+|------|-----------------|----------------|-----------|
+| **Building domain** | M_Product_Category (top level) | HO (Hospital), TE (Airport), RE (Residential) | "I'm working on a hospital" |
+| **Discipline** | AD_Org_ID | ARC, STR, MECH, SPR, PLB, ELE | "I need a plumbing fixture" |
+| **Element category** | component_types.category | WALL, DOOR, PIPE_SEGMENT, SPRINKLER, STAIR | "I need a wall" |
+| **Size / material** | M_AttributeSetInstance | 200mm brick, 100mm glass, 25ACH HVAC unit | "I need 200mm thickness" |
+
+Navigation path for a hospital ICU wall:
+```
+HO (Hospital domain)
+  → ARC (architectural discipline)
+    → WALL (element category)
+      → M_AttributeSetInstance: 100mm | plasterboard | STC-50 acoustic
+```
+
+Current library inventory by discipline+category (23,888 products total):
+- ARC: IfcPlate(8,022) + IfcWall(372) + IfcDoor(129) + IfcWindow(202) + IfcStair(34) + ...
+- FP: IfcPipeSegment(3,788) + IfcFireSuppressionTerminal(892) + ...
+- ACMV: IfcDuctFitting(683) + IfcAirTerminal(268)
+- MEP: IfcFlowSegment(417) + IfcFlowFitting(291)
+- STR: IfcBeam(412) + IfcMember(399) + IfcColumn(122)
+- ELEC: IfcLightFixture(803) + IfcElectricAppliance(22)
+
+**Gap:** Products currently have no human-readable names — they are identified by geometry
+hash + dimensional signature (dx × dy × dz). The chooser needs display names:
+`"Toilet-Wall-Mounted 450×350×820"` not `"IfcBuildingElementProxy|geom_hash_a3f7c..."`
+
+### 10.2 Naming Convention TODO
+
+Product display name = `{IFC_Category}_{Material}_{DimSignature}` or, where Revit family
+names are preserved in `element_name`, use those directly:
+- Hospital toilet: `Toilet-Wall-Mounted:454944` → display as `Wall Toilet 450×350×820 (HTM-63)`
+- Hospital sink: `M_Sink - Island - Single:455mmx455mm` → `Island Sink 455×455 (clinical grade)`
+- SPR head: `IfcFireSuppressionTerminal` → `Sprinkler Head — Pendent 15mm (NFPA 13 LIGHT)`
+
+**Naming session scope:** One session. Read `element_name` from `elements_meta` for each
+unique `geometry_hash` → populate `component_definitions.name` with cleaned display string.
+Hospital (`MECH_`, `PLB_`, `SPR_` elements) will seed this for the first time with real
+Revit family names. This makes the chooser usable for HO_ products immediately.
+
+### 10.3 BOMType as Second Chooser Axis (iDempiere Pattern)
+
+`m_bom.bom_type` currently holds a tier label (`ROOT`, `FLOOR`, `ROOM`). Re-read as
+a chooser dimension: BOMType = the **context** where a product appears in the BOM tree.
+A sprinkler head only appears in FPR discipline BOMs. A toilet appears in both ARC and PLB.
+
+The user's chooser question: *"Show me all products that appear in ARC BOMs for ICU floors"*.
+Answer: filter by `m_bom.bom_category LIKE 'HO_ARC_ICU%'` + `component_types.category`.
+No new schema needed — BOMType and M_Product_Category together form the product shelf.
+
+---
+
+## 11. Healthcare Campus — Ultimate PoC Project Order (S136 TODO)
+
+> **Status:** Future concept — design specification only.
+
+The most ambitious demonstration of the Compiler-Designer model: a complete healthcare
+campus as a single `C_Project`, compiled from multiple building types, resting on real
+terrain with cut-and-fill earthworks.
+
+### 11.1 Campus Composition
+
+```
+C_Project: "Healthcare Campus — Phase 1"
+│   M_Warehouse → campus site grid (UTM coordinates as ABL)
+│   PDFTerrain: 689-point survey → M_InOutLineMA for Z elevation per plot
+│
+├── C_Order[1]: Hospital (HO_)          → M_Locator[A1]   ← 62,291 elements, 7 disciplines
+│     C_DocType: CO_HOSP                                   ← large healthcare complex
+│
+├── C_Order[2]: Clinic (CL_)            → M_Locator[A2]   ← ~16K elements (federated)
+│     C_DocType: CO_CLIN                                   ← outpatient + specialist
+│     Ref_Order_ID → Hospital (inherits campus MEP riser specs)
+│
+├── C_Order[3..N]: Staff Quarters (RE_) → M_Locator[B1..N] ← residential units
+│     C_DocType: RE_SH or RE_DX                            ← SampleHouse / Duplex variants
+│     Reference class: qty=20, exception-based variants
+│
+└── C_Order[INFRA]: Site Infrastructure → M_Locator[SITE]
+      C_DocType: IN_SITE
+      ├── Road network (IfcRoad segments)
+      ├── Utility risers (MEP campus trunks)
+      └── Cut-and-fill earthworks (PDFTerrain → IfcEarthworksFill)
+            terrain_z from survey_highres_extracted.json (689 points, 294m×229m)
+            → INFRA_DESIGNER_SRS.md §Cut-and-Fill
+```
+
+### 11.2 Why This Is the Ultimate Demo
+
+| Capability | What it proves |
+|-----------|---------------|
+| Multi-building C_Project | iDempiere C_Project groups Hospital + Clinic + Staff housing in one accounting entity |
+| Order inheritance | Staff quarters inherit campus MEP specs from Hospital via `Ref_Order_ID` |
+| Reference class | 20 staff units = 1 C_OrderLine with qty=20, indexed exceptions for corner plots |
+| PDFTerrain + cut-and-fill | Real survey data drives earthwork BOM (INFRA_DESIGNER_SRS.md) |
+| Cross-domain ERP | Hospital procurement (clinical grade), residential (standard grade), infra (civil) all in one ERP.db |
+| GPU-instanced DB | ~80K+ elements across 3+ building types, all rendering via transform-reference — no scene-graph collapse |
+| RouteSprinklersVerb | Hospital SPR + Clinic FP + Staff quarters FP all validated in one gate run |
+| DECLARE ROOMS → FINISH WALLS → 2D floor plan | Full round-trip on every building in the campus |
+
+### 11.3 Prerequisites Before Campus Session
+
+| Prerequisite | Where | Status |
+|-------------|-------|--------|
+| Hospital HO_001–HO_005 complete | HospitalAnalysis.md | Not started |
+| Clinic federation merge (--guid-prefix) | DISC_VALIDATE_SRS.md §TODO | Not started |
+| PDFTerrain → IfcEarthworksFill pipeline | INFRA_DESIGNER_SRS.md §Current State | Partial spec |
+| DECLARE ROOMS (Hospital + Clinic) | FINISH_WALLS_SRS.md §11 | Designed, not implemented |
+| HO_ product categories in ad_ifc_class_map | DISC_VALIDATE_SRS.md §TODO-HO-PC | Not started |
+| C_Project multi-order grouping | §2 (this doc) | Design only |
+
+**The campus demo is 6–8 sessions of work beyond HO_005.** It is the right north star.
+Each hospital session (HO_001–HO_005) makes progress toward it. The terrain and
+residential orders reuse fully proven code (SH/DX already gate at 8/8 PASS).
+
+---
+
 *Implementation history (Sessions 0-F, all DONE) archived in git history.*
