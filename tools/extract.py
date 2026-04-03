@@ -95,6 +95,120 @@ def get_space_for_element(element):
     return None
 
 
+def _rgba_from_surface_style(style):
+    """Extract RGBA string from IfcSurfaceStyle → IfcSurfaceStyleRendering."""
+    try:
+        for ss in (style.Styles or []):
+            if ss.is_a("IfcSurfaceStyleRendering"):
+                c = ss.SurfaceColour
+                t = float(ss.Transparency) if ss.Transparency else 0.0
+                return f"{float(c.Red):.3f},{float(c.Green):.3f},{float(c.Blue):.3f},{1.0 - t:.3f}"
+    except (AttributeError, TypeError):
+        pass
+    return None
+
+
+def _rgba_from_styled_item(item):
+    """Extract RGBA string from IfcStyledItem or a shape item with StyledByItem.
+
+    Handles both IFC2x3 (IfcSurfaceStyle direct) and IFC4
+    (IfcPresentationStyleAssignment wrapper).
+    """
+    try:
+        styled = item if item.is_a("IfcStyledItem") else None
+        if not styled:
+            for si in (getattr(item, "StyledByItem", None) or []):
+                styled = si; break
+        if not styled:
+            return None
+        for style in (styled.Styles or []):
+            if style.is_a("IfcSurfaceStyle"):
+                rgba = _rgba_from_surface_style(style)
+                if rgba:
+                    return rgba
+            # IFC4: IfcPresentationStyleAssignment wraps actual styles
+            if style.is_a("IfcPresentationStyleAssignment"):
+                for inner in (style.Styles or []):
+                    if inner.is_a("IfcSurfaceStyle"):
+                        rgba = _rgba_from_surface_style(inner)
+                        if rgba:
+                            return rgba
+    except (AttributeError, TypeError):
+        pass
+    return None
+
+
+def get_material_rgba(elem):
+    """Extract dominant surface RGBA from an IFC element.
+
+    Walk order:
+      1. HasAssociations → IfcRelAssociatesMaterial → material HasRepresentation
+      2. elem.Representation items → IfcStyledItem
+    Returns "R,G,B,A" string (0.0–1.0) or None.
+    """
+    # Path 1: via material association representation
+    try:
+        for assoc in (elem.HasAssociations or []):
+            if not assoc.is_a("IfcRelAssociatesMaterial"):
+                continue
+            mat = assoc.RelatingMaterial
+            if mat.is_a("IfcMaterialLayerSetUsage"):
+                mat = mat.ForLayerSet
+            if mat.is_a("IfcMaterialLayerSet") and mat.MaterialLayers:
+                mat = mat.MaterialLayers[0].Material
+            if not mat or not mat.is_a("IfcMaterial"):
+                continue
+            for mdr in (getattr(mat, "HasRepresentation", None) or []):
+                for rep in (mdr.Representations or []):
+                    for item in (rep.Items or []):
+                        rgba = _rgba_from_styled_item(item)
+                        if rgba:
+                            return rgba
+    except (AttributeError, TypeError):
+        pass
+    # Path 2: direct element representation styled items (including MappedRepresentation)
+    try:
+        if elem.Representation:
+            for rep in elem.Representation.Representations:
+                for item in rep.Items:
+                    rgba = _rgba_from_styled_item(item)
+                    if rgba:
+                        return rgba
+                    # IFC4: MappedRepresentation — follow into mapping source
+                    if item.is_a("IfcMappedItem"):
+                        try:
+                            for sub in item.MappingSource.MappedRepresentation.Items:
+                                rgba = _rgba_from_styled_item(sub)
+                                if rgba:
+                                    return rgba
+                        except (AttributeError, TypeError):
+                            pass
+    except (AttributeError, TypeError):
+        pass
+    return None
+
+
+def get_material_name(elem):
+    """Extract primary material name from IfcRelAssociatesMaterial."""
+    try:
+        for assoc in (elem.HasAssociations or []):
+            if not assoc.is_a("IfcRelAssociatesMaterial"):
+                continue
+            mat = assoc.RelatingMaterial
+            if mat.is_a("IfcMaterialLayerSetUsage"):
+                mat = mat.ForLayerSet
+            if mat.is_a("IfcMaterialLayerSet"):
+                return mat.LayerSetName or (
+                    mat.MaterialLayers[0].Material.Name if mat.MaterialLayers else None)
+            if mat.is_a("IfcMaterial"):
+                return mat.Name
+            if mat.is_a("IfcMaterialList") and mat.Materials:
+                return mat.Materials[0].Name
+    except (AttributeError, TypeError):
+        pass
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Reference schema (Layer 3: Rosetta)
 # ---------------------------------------------------------------------------
@@ -462,10 +576,14 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude, guid_prefix=
                             elem_type = rel.RelatingType.Name; break
                 except (AttributeError, TypeError):
                     pass
+                mat_name = get_material_name(elem)
+                mat_rgba = get_material_rgba(elem)
 
                 conn.execute(
-                    "INSERT OR IGNORE INTO elements_meta (id,guid,discipline,ifc_class,element_name,element_type,storey) "
-                    "VALUES (?,?,?,?,?,?,?)", (eid, guid, discipline, cls, name, elem_type, storey))
+                    "INSERT OR IGNORE INTO elements_meta "
+                    "(id,guid,discipline,ifc_class,element_name,element_type,storey,material_name,material_rgba) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    (eid, guid, discipline, cls, name, elem_type, storey, mat_name, mat_rgba))
                 conn.execute(
                     "INSERT OR IGNORE INTO elements_rtree (id,minX,maxX,minY,maxY,minZ,maxZ) "
                     "VALUES (?,?,?,?,?,?,?)",
