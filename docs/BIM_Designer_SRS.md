@@ -2653,7 +2653,7 @@ would block smooth daily use.
 
 ---
 
-### 28.8 BOM Drop Configurator Component Types (S53)
+### 28.14 BOM Drop Configurator Component Types (S53)
 
 iDempiere BOM Drop pattern maps to construction:
 
@@ -2667,7 +2667,7 @@ iDempiere BOM Drop pattern maps to construction:
 Chooser filters candidates by `m_product_category_id` + AABB fit — same as
 M_Product_Category browse in iDempiere. C_Order Complete (CO) triggers compilation.
 
-### 28.9 Click-to-Place — Interactive Discipline Placement
+### 28.15 Click-to-Place — Interactive Discipline Placement
 
 Two complementary placement modes:
 
@@ -2684,7 +2684,7 @@ area/context, rules define content. Data already exists in `ad_space_type_mep_bo
 **Status:** G-8+ feature (needs BlenderBridge pipe for real-time click events).
 Spec after G-7 assembly builder is wired.
 
-### 28.10 Macro Actions (10 designer-level operations)
+### 28.16 Macro Actions (10 designer-level operations)
 
 Higher-level operations that decompose into the 4 mutation primitives from
 [ProjectOrderBlueprint.md](ProjectOrderBlueprint.md) §1.1 (Replace, Remove,
@@ -2706,7 +2706,7 @@ Compress, Add) + DiffVerb + ASI:
 Each macro = AD_Process with AD_Process_Para (iDempiere pattern).
 Filter + Mutation + Cascade scope. No new primitive needed.
 
-### 28.11 — Completion Tools: Complete / Change Elements
+### 28.17 — Completion Tools: Complete / Change Elements
 
 **Purpose:** Allow users to complete half-finished IFC models or modify existing elements
 using library-backed, standard-driven placement. Addresses the gap where discipline-only
@@ -2718,7 +2718,7 @@ that its ProductCategory standard mandates.
 **Implementing:** DISC_VALIDATION_DB_SRS.md §6.12.3 (MEP anchor tables supply the
 spatial context for completion audits). Mathematical basis: unified_mathematical_formulation.txt.
 
-#### 28.11.1 — Detection (missing element audit)
+#### 28.17.1 — Detection (missing element audit)
 
 For each compiled building, at pipeline close:
 
@@ -2742,7 +2742,7 @@ V_λ(T(e)) =
 Where `constraint_λ = MIN_COUNT(ifc_class)` and `threshold_λ = min_value` from `ad_val_rule`.
 The deficit is `threshold_λ - actual`.
 
-#### 28.11.2 — Complete The Walls verb
+#### 28.17.2 — Complete The Walls verb
 
 **COMPLETE(ifc_class, storey, product_id)**
 
@@ -2764,7 +2764,7 @@ T(e) = T(p(e)) + R(θ(e)) · Δ(e)
 Where `p(e)` is the IfcSpace node, `Δ(e)` is the perimeter offset from AABB boundary,
 and `θ(e)` is the wall orientation angle (0°, 90°, 180°, 270° for axis-aligned walls).
 
-#### 28.11.3 — Change The Walls verb
+#### 28.17.3 — Change The Walls verb
 
 **CHANGE(element_filter, new_product_id)**
 
@@ -2777,7 +2777,7 @@ Use cases:
 - Upgrade fire rating (1hr → 2hr)
 - Change finish material (painted → tiled)
 
-#### 28.11.4 — Reusability via ProductCategory
+#### 28.17.4 — Reusability via ProductCategory
 
 Pattern selection, validation rules, and default wall types are keyed to `M_Product_Category`:
 
@@ -2790,7 +2790,7 @@ Pattern selection, validation rules, and default wall types are keyed to `M_Prod
 
 This table lives in `ad_val_rule` (`rule_type=MIN_COUNT`, `ifc_class=IfcWall`), not hardcoded.
 
-#### 28.11.5 — Mathematical foundation
+#### 28.17.5 — Mathematical foundation
 
 Completion tools operate on the same AABB spatial model formalised in
 unified_mathematical_formulation.txt. Specifically:
@@ -2804,7 +2804,7 @@ Wall placement invariant: `P(wall) ∈ boundary(IfcSpace)` — the wall centroid
 the convex hull of the space's AABB. AABB coordinates come from extracted.db;
 no mesh generation is required.
 
-#### 28.11.6 — Scope and anti-drift
+#### 28.17.6 — Scope and anti-drift
 
 - COMPLETE and CHANGE are ORDER mutations (WHAT concern) — they write to `M_OrderLine`
 - Geometry recomputation is HOW concern — triggers existing BOM walk
@@ -2817,12 +2817,30 @@ no mesh generation is required.
 element count for IfcWall at storey X increases by deficit amount,
 all new elements have valid AABB within IfcSpace boundary, T3-ARC passes.
 
+#### 28.17.7 — Implementation Roadmap
+
+Four sequenced stages; Stage E is independent of C/D and can be built in parallel.
+
+| Stage | Name | Depends on | Risk | Deliverable |
+|-------|------|-----------|------|-------------|
+| **A** | Migration: MIN_COUNT rules | — | Zero | New migration adding `rule_type` + `min_value` + `product_category` to `ad_val_rule` (or new `ad_completion_rule` table). Populate from §28.17.4 table. |
+| **B** | Detection only (§28.17.1) | Stage A | Zero | `CompletionAuditService.audit(buildingId, ifcClass)` — read-only, emits `COMPLETION_OPPORTUNITY` report. Witness: deficit computed correctly for SH. |
+| **C** | IfcSpace AABB extraction | — | Low | Extend `placement_extractor.py` to populate `elements_rtree` for IfcSpace nodes. Prerequisite for Stage D. Witness: `SELECT * FROM elements_rtree JOIN elements_meta WHERE ifc_class='IfcSpace'` returns rows. |
+| **D** | COMPLETE verb (§28.17.2) | Stage C | Medium | Compute perimeter wall placement from IfcSpace AABB + TILE verb. Write synthetic element rows to output.db. Full W-COMPLETE-WALLS witness. |
+| **E** | CHANGE verb (§28.17.3) | — | Low | Swap `product_id` on existing IfcWall `M_OrderLine` rows; trigger incremental storey recompile. No new spatial data required. |
+
+**Current blockers (as of S137):**
+- `ad_val_rule` has no `rule_type='MIN_COUNT'` column — Stage A prerequisite
+- IfcSpace geometry absent from `elements_rtree` — Stage C prerequisite (only IfcWall AABB present)
+
+**Priority:** Stage E (CHANGE) is most immediately useful — walls already exist in model. Start Stage A+B+E, then C+D.
+
 ---
 
 ## 33. Verb Emission Protocol — GUI → VerbStage Pipeline
 
 **Version:** 1.0 (2026-03-29)
-**Depends on:** §28.10 (10 macro actions), [BIM_COBOL.md](BIM_COBOL.md) §1 (verb tiers), [BBC.md](BOMBasedCompilation.md) §6 (GUI emits verbs)
+**Depends on:** §28.16 (10 macro actions), [BIM_COBOL.md](BIM_COBOL.md) §1 (verb tiers), [BBC.md](BOMBasedCompilation.md) §6 (GUI emits verbs)
 **Module:** `BonsaiBIMDesigner/` — `DesignerAPI.emitVerbs()`
 
 ### 33.1 Core Principle
@@ -2916,3 +2934,89 @@ VerbExecutor.ExecutionReport emitVerbs(String buildingId, List<String> verbLines
 [BlenderBridge.md](BlenderBridge.md) (Java-smart/Python-dumb, incremental viewport) |
 [MANIFESTO.md](MANIFESTO.md) (iDempiere M_Product/C_Order model) |
 [WorkOrderGuide.md](WorkOrderGuide.md) (pipeline flow, invention boundary)*
+
+---
+
+## §34 — Type-Safe Design Language (Spatial Variance)
+
+**Full spec:** [SPATIAL_VARIANCE_SRS.md](SPATIAL_VARIANCE_SRS.md)
+
+Every user design gesture (pull, stroke, cut, add — mouse or panel) resolves to a typed
+term in the BIM COBOL DSL before any geometry is touched. The system cascades through a
+**Type Resolution Ladder** (grid snap → standard size → ASI range → BOM choice → variance)
+and takes the most concrete resolution that satisfies `Λ`. Variance (level 5) is the last
+resort, requires user acknowledgment, and is stored as `W_BOM_Variance` in `output.db`
+with full replay via `verb_sequence`. The compiler re-runs on the base BOM + variance
+stack; G1-G6 re-validate at every commit.
+
+The first closed-loop proof is the **Synthetic Rosetta Stone** (SPATIAL_VARIANCE_SRS.md §12):
+panel input → variance → compile → 2D projection → measured dimension matches intent within
+0.025mm. Implementation roadmap: SPATIAL_VARIANCE_SRS.md §16.
+
+---
+
+## §35 — 2D Projection: The Compiler's Natural Output
+
+**Version:** 1.0 (2026-04-03)
+**Full spec:** [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §12–§13](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md)
+**Type-Safe Design:** [SPATIAL_VARIANCE_SRS.md §11](SPATIAL_VARIANCE_SRS.md) (variance → 2D update loop)
+**Prototype:** `2D_Layout/python/drawing_writer.py` — 6 SVG drawings (floor plan, roof plan, 4 elevations) from SH output.db
+
+### Core Principle
+
+> 2D drawings are **exact projections** of compiled 3D geometry — not separate authored artefacts.
+
+Because `B = C(Ω, Φ, Ψ, Λ, J)` is a pure function proven by G1-G6 to match source IFC within
+0.025mm, any 2D view derived from `T(e)` (Stage P placement) is equally exact. No inference,
+no approximation. This inverts the industry norm: instead of 2D→3D (imperfect, requires review),
+the compiler does 3D→2D (trivial, provable).
+
+**Three standard views** — all implemented in Python prototype:
+
+| View | Projection plane | Cut method | Status |
+|------|-----------------|-----------|--------|
+| Floor plan | XY at z = storey_FFL + 1.0m | Mesh section cut (triangle-plane intersection) | DONE (SH) |
+| Elevation (×4) | XZ or YZ (face-specific) | Convex hull of mesh vertex projection | DONE (SH) |
+| Roof plan | XY at z = roof_peak − 0.1m | Mesh section cut + slope arrows | DONE (SH) |
+| Section (custom) | Arbitrary vertical plane | Mesh section cut | PLANNED |
+
+### Round-Trip Proof
+
+```
+DXF/DWG → [2D23D] → provisional IFC
+                          ↓
+                    our extraction → BOM compile → output.db
+                          ↓
+                    3D→2D projection → SVG/DXF
+```
+
+The round trip `2D → 3D → 2D` proves correctness of both legs: if the projected 2D matches
+the source 2D within tolerance, both the import (2D23D) and the compiler (G1-G6) are validated.
+No existing BIM workflow offers this closed-loop verification.
+
+**2D23D integration** (GitHub: naquib0513/2D23D): open-source DXF→provisional IFC tool, validated
+on SJTII Terminal 1 (7 floors, 1038 walls, 35s). Shared stack (ezdxf, ifcopenshell, Bonsai).
+See `2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md §13` for integration spec.
+
+### Wireframe Connection (WF-R1..R3)
+
+The Designer shows GPU bbox overlays (§26 wireframe rules) until the user commits geometry.
+The 2D projection module reads the same `output.db` that the 3D viewport reads — so a committed
+BOM automatically generates correct 2D drawings without any additional authoring step.
+
+| Gate | Role in 2D |
+|------|-----------|
+| G1-COUNT | Element count matches → no phantom 2D lines |
+| G2-VOLUME | Volume preserved → section areas correct |
+| G3-DIGEST | Deterministic → identical compile always produces identical drawings |
+| G4-TAMPER | Seal on output.db → drawings cannot come from tampered geometry |
+| G5-PROVENANCE | Every 2D line traceable to a `W_Verb_Node` in output.db |
+| G6-ISOLATION | Per-building isolation → no cross-contamination between drawing sets |
+
+### Traceability
+
+| Req | Section | Prototype | Witness |
+|-----|---------|-----------|---------|
+| PR-01 | §34 + 2D_ARCH §12.1 | `drawing_writer.py:section_cut()` | W-2D-PLAN: floor plan contours match mesh slice at z=FFL+1.0 |
+| PR-02 | §34 + 2D_ARCH §12.2 | `drawing_writer.py:draw_elevation()` | W-2D-ELEV: elevation silhouette matches convex hull of mesh vertices |
+| PR-03 | §34 + 2D_ARCH §13 | — | W-2D-ROUNDTRIP: 2D23D→compile→project matches source DXF within 50mm |

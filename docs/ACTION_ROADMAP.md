@@ -83,9 +83,11 @@ The schema already supports multi-jurisdiction — `ad_val_rule.jurisdiction` pa
 | Assembly Builder | 5d | Layer-by-layer wall/roof/floor composition, U-value calculation. [ASSEMBLY_BUILDER_SRS](ASSEMBLY_BUILDER_SRS.md) |
 | Forge UI (p60–p63) | 8d | ForgePanel sidebar, ForgeMesh bridge, ForgeGizmo handles, LOD promotion. [FORGE_SUITE_SRS](FORGE_SUITE_SRS.md) |
 | Room-to-set matching | 3d | M_Product_Category drives room→furniture selection — bedroom gets bed set, not sofa set |
+| **Type-Safe Design Language** | 5d | Gesture → Type Resolution Ladder → W_BOM_Variance. Replays as BIM COBOL verbs. [SPATIAL_VARIANCE_SRS.md](SPATIAL_VARIANCE_SRS.md) |
+| **Finish Walls** | 3d | Detect missing ARC walls in half-finished IFC; click empty edge or panel "FINISH WALLS" → COMPLETE verb. [FINISH_WALLS_SRS.md](FINISH_WALLS_SRS.md) |
 | **Exit criterion** | | User can design a house from scratch and compile it without touching SQL |
 
-SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requirements specified)
+SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) §28–§35 | [SPATIAL_VARIANCE_SRS.md](SPATIAL_VARIANCE_SRS.md) | [FINISH_WALLS_SRS.md](FINISH_WALLS_SRS.md)
 
 ---
 
@@ -101,7 +103,8 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 | **6D Carbon** | 2d | Schema exists (V010) | Wire SustainabilityDAO, carbon rollup, UI panel |
 | **7D Facility Mgmt** | 2d | Schema exists (V010) | Wire FacilityMgmtDAO, maintenance schedule, UI panel |
 | **8D ERP Integration** | — | iDempiere table alignment DONE | Live sync to iDempiere instance |
-| **2D Layout** | 5d | Specced | Floor plans, elevations, sections as SVG from compiled BOM. [2D_LAYOUT](2D_LAYOUT.md) |
+| **2D Layout** | 5d | Python prototype DONE (6 SVGs, SH). Java port pending. [2D_ARCHITECTURAL_LAYOUT.md](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) |
+| **Synthetic Rosetta Stone** | 2d | panel→variance→compile→project→measure. Closes compiler-modeller loop. [SPATIAL_VARIANCE_SRS.md §12](SPATIAL_VARIANCE_SRS.md) |
 | **PDF Terrain** | 5d | Specced | Survey PDF → elevation points → IFC site topology. [PDF_TERRAIN](PDF_TERRAIN.md) |
 | **Audit trail** | 3d | Schema specced (V011) | ChangelogDAO, interceptor, history panel |
 
@@ -146,7 +149,7 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 |-------------|--------|
 | C_Project multi-building | Site grid generation, compile-once-copy-many, consolidated output. [ProjectOrderBlueprint](ProjectOrderBlueprint.md) |
 | Click-to-place | Interactive 3D element placement via BlenderBridge |
-| Freehand drawing → BOM | Viewport geometry becomes BOM mutation |
+| Type-Safe gesture editing | Stroke/pull/cut/add → Type Resolution Ladder → W_BOM_Variance (Level 5 only if no concrete type). [SPATIAL_VARIANCE_SRS.md §3–§4](SPATIAL_VARIANCE_SRS.md) |
 | ~~MIRROR verb for duplex~~ | **DONE** (P128 scope excludes, DX delta=+0, C9 111→50) |
 | Spatial predicate verbs | DISTANCE_BETWEEN, CLEARANCE_BETWEEN, NEAREST |
 | Infrastructure designer | Terrain, alignment, cut-and-fill for road/rail/bridge. [INFRA_DESIGNER_SRS](INFRA_DESIGNER_SRS.md) |
@@ -195,3 +198,6 @@ SRS: [BIM_Designer_SRS.md](BIM_Designer_SRS.md) (2,665 lines, 50 functional requ
 | **Pipeline guide** | [WorkOrderGuide.md](WorkOrderGuide.md) |
 | **Source code guide** | [SourceCodeGuide.md](SourceCodeGuide.md) |
 | **Data model** | [DATA_MODEL.md](DATA_MODEL.md) |
+| **Type-Safe Design Language** | [SPATIAL_VARIANCE_SRS.md](SPATIAL_VARIANCE_SRS.md) — gesture→verb→variance→compile loop |
+| **Finish Walls** | [FINISH_WALLS_SRS.md](FINISH_WALLS_SRS.md) — detect + complete missing ARC walls |
+| **2D Projection** | [2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md](../2D_Layout/docs/2D_ARCHITECTURAL_LAYOUT.md) §12–§13 |

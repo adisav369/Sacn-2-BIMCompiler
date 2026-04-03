@@ -477,3 +477,171 @@ All content verified within borders, XML well-formed. Diagrams unchanged — onl
 User confirmed multi-module Maven restructure done (DAGCompiler + 2D_Layout). Python `2D_layout/` stays as the prototype testing reference. The Java `2D_Layout/` module has 6 stub classes ready for porting. Fix Python prototype first, then port to Java.
 
 The multi-module reactor makes it easy to add further peer modules (e.g. a future Metadata Editor) — just add a directory with a `pom.xml` and a `<module>` entry in the parent.
+
+---
+
+## 12. Mathematical Foundation — 3D→2D Projection
+
+> **Type-Safe Design connection:** When a designer gesture is committed as a `W_BOM_Variance`
+> and promoted, the compiler re-runs and the 2D drawings update automatically — no re-authoring.
+> See [SPATIAL_VARIANCE_SRS.md §11](../../docs/SPATIAL_VARIANCE_SRS.md) for the full spec.
+> The Synthetic Rosetta Stone (SPATIAL_VARIANCE_SRS.md §12) uses the DrawingWriter as its
+> verification step: panel input → variance → compile → project → measured dimension.
+
+
+### 12.1 Core Principle
+
+The BIM compiler produces a building `B = C(Ω, Φ, Ψ, Λ, J)` — a pure function from intent to
+3D geometry. The Rosetta Stone gates G1-G6 prove the 3D output matches source IFC within 0.025mm.
+
+Because 3D placement is deterministic and verified, **2D drawings are exact projections, not
+approximations**. Every line in a floor plan, elevation, or section is a direct geometric consequence
+of `T(e)` (Stage P of the Unified Compilation Equation):
+
+```
+T(e) = T(p(e)) + R(θ(e)) · Δ(e)      [Stage P — element placement]
+```
+
+The 2D projection is:
+
+```
+2D_view(e, π) = project(T(e), π)
+```
+
+Where `π` is the projection plane (horizontal for plans, vertical for elevations, arbitrary for
+sections). This is an algebraic identity, not an approximation.
+
+**Industry contrast:** Conventional BIM workflows author 2D drawings manually or infer 3D from
+2D (fragile, lossy). This compiler inverts the flow: 3D is primary, 2D is derived. The derived
+views are mathematically equivalent to the 3D model — any discrepancy would violate G3-DIGEST.
+
+### 12.2 Three Standard Views
+
+| View | Projection Plane π | Operation | Implementation |
+|------|--------------------|-----------|----------------|
+| **Floor Plan** | XY at `z = storey_FFL + 1.0m` | Mesh section cut: `∀ triangle t: solve t ∩ π` → chain contour segments | `section_cut.py` / `SectionCut.java` |
+| **Elevation** | XZ (front/rear) or YZ (left/right) | Project mesh vertices onto plane; convex hull of projection | `drawing_writer.py:_convex_hull_2d()` |
+| **Roof Plan** | XY at `z = roof_peak − 0.1m` | Section cut + slope direction arrows | `drawing_writer.py:draw_roof_plan()` |
+| **Section** | Arbitrary vertical plane `ax + by = c` | Mesh section cut on custom plane | PLANNED |
+
+### 12.3 Section Cut Algorithm
+
+For floor plans and sections, the intersection of a triangle mesh with plane `z = z₀`:
+
+```
+For each triangle (v₀, v₁, v₂):
+  For each edge (vₐ, v_b) straddling z₀:
+    t = (z₀ − vₐ.z) / (v_b.z − vₐ.z)
+    p = vₐ + t · (v_b − vₐ)           → intersection point in XY
+  Two intersection points → one 2D line segment
+Chain segments by endpoint proximity → closed contours
+```
+
+For walls with opening voids (windows, doors), the mesh already encodes the voids as geometry.
+The section cut automatically produces correct outlines with gaps — no manual opening subtraction.
+
+### 12.4 Round-Trip Correctness Proof
+
+The 2D→3D→2D round trip proves both the import and the compile are correct:
+
+```
+Source 2D (DXF/DWG)
+    ↓ [2D23D import]
+Provisional IFC
+    ↓ [IFC extraction → BOM compile]
+output.db  (G1-G6 verified, ±0.025mm from source IFC)
+    ↓ [3D→2D projection]
+Derived 2D (SVG/DXF)
+```
+
+**Verification invariant:** `‖derived_2D − source_2D‖ ≤ tolerance`
+
+- If the round-trip matches within tolerance: both import and compiler are validated
+- If it fails: exactly one of the two legs is wrong — isolation is trivial (compare output.db vs source IFC directly using G1-G6 gates)
+
+No existing BIM tool can perform this verification because they do not have a pure-function
+compiler with cryptographic output sealing (G4-TAMPER).
+
+### 12.5 Witnesses
+
+| ID | Claim | How to verify |
+|----|-------|--------------|
+| W-2D-PLAN | Floor plan contours match mesh section cut at z=FFL+1.0 for SH | Count wall contours: must equal IfcWall count at storey |
+| W-2D-ELEV | Elevation silhouette matches convex hull of projected mesh vertices | Compare hull points to element_transforms bounding ranges |
+| W-2D-DIGEST | Identical output.db → identical SVG bytes (pure function property) | Run drawing_writer.py twice, diff outputs |
+| W-2D-ROUNDTRIP | 2D23D→compile→project matches source DXF within 50mm for SJTII T1 | Overlay derived DXF on source DXF, measure max offset |
+
+---
+
+## 13. 2D23D Integration — Closing the Import Loop
+
+### 13.1 What 2D23D Does
+
+[2D23D](https://github.com/naquib0513/2D23D) is an open-source tool that converts 2D CAD
+drawings (DXF/DWG) to provisional 3D IFC models. Key capabilities:
+
+| Capability | Detail |
+|-----------|--------|
+| Grid detection | 100% accuracy on orthogonal grids |
+| Wall detection | Merges collinear segments, handles T/L/X intersections |
+| Column placement | At grid intersections |
+| Slab generation | From grid extents per storey |
+| Scale | Validated on SJTII Terminal 1: 7 floors, 54MB DXF, 1038 walls, 35s |
+
+Shared dependency stack: `ezdxf`, `ifcopenshell`, Blender/Bonsai — zero new dependencies for
+this project.
+
+### 13.2 Complementary Roles
+
+| Tool | Direction | Quality | Review needed? |
+|------|-----------|---------|---------------|
+| 2D23D | 2D → 3D | Provisional (confidence-scored) | Yes — flags uncertain geometry |
+| This compiler | 3D → 2D | Exact (G1-G6 proof) | No — derived, not authored |
+
+2D23D solves the hard problem (inference from incomplete drawings). This compiler solves the
+easy problem (projection from verified geometry). Together they close the loop.
+
+### 13.3 Integration Pipeline
+
+```
+Legacy DXF archive
+    ↓  2D23D (35s for 7-floor terminal)
+Provisional IFC  [confidence scores flagged]
+    ↓  IFC extraction (placement_extractor.py)
+extracted.db  [element_instances, elements_rtree, spatial_structure]
+    ↓  BOM compile (BuildingCompiler.java)
+output.db  [G1-G6 gates run here]
+    ↓  3D→2D projection (DrawingWriter.java)
+SVG/DXF  [compare against source DXF → W-2D-ROUNDTRIP]
+```
+
+### 13.4 Provisional-by-Design Philosophy
+
+2D23D flags geometry with confidence scores. The compiler's wireframe-first interaction
+(BIM_Designer_SRS.md §26, WF-R1..R3) mirrors this exactly: GPU bbox overlays until commit.
+Low-confidence 2D23D elements map naturally to WF-R1 wireframe state; user review → commit
+transitions to WF-R2. The confidence score can be stored in `elements_meta.element_type` for
+display in the Designer panel.
+
+### 13.5 Validation Gate Application
+
+After 2D23D import, run the Rosetta Stone gates against the source DXF geometry:
+
+| Gate | 2D23D validation role |
+|------|-----------------------|
+| G1-COUNT | Wall count in IFC ≥ wall count detected by 2D23D |
+| G2-VOLUME | Slab volumes match DXF floor area × storey height |
+| G3-DIGEST | Re-running 2D23D on same DXF produces identical IFC |
+| G4-TAMPER | Seal output.db after first validated compile |
+| G5-PROVENANCE | Each element traceable to source DXF layer + line |
+| G6-ISOLATION | Per-floor isolation — SJTII 7 floors compile independently |
+
+### 13.6 Roadmap
+
+| Phase | Task | Milestone |
+|-------|------|-----------|
+| 1 | Run 2D23D on SJTII T1 DXF → produce IFC | W-2D-ROUNDTRIP baseline |
+| 2 | Feed IFC through extraction → compile → G1-G6 | Validate import quality |
+| 3 | Project output.db → SVG | Compare to source DXF visually |
+| 4 | Automate overlay diff (max offset metric) | W-2D-ROUNDTRIP quantified |
+| 5 | Confidence score → WF-R1/R2 state mapping in Designer | Wireframe-first UX for DXF imports |
