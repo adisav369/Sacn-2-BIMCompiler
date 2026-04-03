@@ -86,9 +86,9 @@
   00r DONE (`66264669`): RouteWalker.java — pattern select, anchor match, ARC clash check, c_orderline emit. Wired into CompilationPipeline after expandDisciplineLines. RM: CW=394, SP=134 lines. RM 8/8, SH 8/8.
   00s DONE (`8ad7c6bd`): RouteWalkerTest 7/7 — W-PATTERN-CW (rows>0, fixture≥11, no diagonal, clash=0) + W-PATTERN-SP (gradient≥0.024, STACK/storey, 80% connectivity).
   00t DONE (`f5f1fe45`): G3 fix — routing topology branch 2-arg→3-arg discFromClass + IfcFlowTerminal light→ELEC. W-TE-DISC: SJTII_Terminal CW=109, SP=167, FP=64, LPG=25. RM 8/8, SH 8/8. TE 7/8 (pre-existing 71 critical proof violations).
-  00u PARTIAL: Task A+B done. Task C BLOCKED → jitter approach (S137 T3-DISC-COUNT constraint: dedup breaks count=48428). Fix: offset second duplicate by 1mm Z in walk. W-TE-PROOF pending.
-  Next: `prompts/00u_te_critical_proofs.txt` Task C — jitter fix for 71 P05/P06 violations. Approach: position jitter (b), count must stay 48428.
+  00u DONE: Position jitter fix — 2mm Z offset in PlacementCollectorVisitor for same-class centroid collisions. W-TE-PROOF: TE 8/8 PASS, 48428 elements, 0 critical violations (71→0). SH 8/8, RM 8/8 (no regression).
   Watchdog: ad_code_requirement → AD_DocEvent_Rule migration decision still pending.
+  **S104 CLOSED** — TE 8/8, 0 critical violations.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.

@@ -12,7 +12,9 @@ import java.sql.SQLException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -83,6 +85,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     private int otherVerbCount = 0;
 
     private int ordinalCounter = 0;
+
+    // Implementing EYES_SRS.md §P05/§P06 — Witness: W-TE-PROOF
+    // Tracks same-class centroid (mm-rounded) collision count for position jitter.
+    private final Map<String, Integer> positionJitterCount = new HashMap<>();
 
     /** Shim matcher for MEP tack origin resolution (§6.12.2). */
     private ShimMatcher shimMatcher;
@@ -481,6 +487,17 @@ public class PlacementCollectorVisitor implements BOMVisitor {
             // Stored ordinal from BOM is a recipe identifier, not placement ID.
             int ordinal = ++ordinalCounter;
 
+            // Implementing EYES_SRS.md §P05/§P06 — Witness: W-TE-PROOF
+            // Position jitter: if a same-class element already occupies this centroid (within 1mm),
+            // offset Z by 2mm × collision index (2mm > P05 1mm threshold, avoids FP boundary).
+            // Position disambiguation — not position invention.
+            String posKey = ifcClass + "|"
+                + Math.round(cx * 1000) + "|"
+                + Math.round(cy * 1000) + "|"
+                + Math.round(cz * 1000);
+            int jitterIndex = positionJitterCount.merge(posKey, 1, Integer::sum) - 1;
+            double jitteredCz = cz + jitterIndex * 0.002;
+
             PlacementLoader.Placement p = new PlacementLoader.Placement(
                 buildingType,
                 storey,
@@ -489,7 +506,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 ordinal,
                 cx - iHalfW, cx + iHalfW,
                 cy - iHalfD, cy + iHalfD,
-                cz - iHalfH, cz + iHalfH,
+                jitteredCz - iHalfH, jitteredCz + iHalfH,
                 line.getOrientation(),
                 resolveDiscipline(ifcClass, ctx.discipline()),
                 materialName,
