@@ -95,9 +95,11 @@ public class BomHierarchyBuilder {
                     bldgDy = storeyLbd[1] - bldgMinY;
                     bldgDz = storeyLbd[2] - bldgMinZ;
                 }
+                // Implementing BBC.md §2.2.1 — Witness: W-DX-LEAF-FIX
+                // DX_ROOM_L1/L2 are sub-BOMs with children; MAKE, not LEAF
                 BomWriter.insertBomLine(bomConn, new BomWriter.BomLineRowBuilder(
                         buildingBomId, parentBomId, "ROOM_" + storey.code(), storey.seq() + 5)
-                        .componentType("LEAF")
+                        .componentType("MAKE")
                         .offset(bldgDx, bldgDy, bldgDz)
                         .build());
                 lineCount++;
