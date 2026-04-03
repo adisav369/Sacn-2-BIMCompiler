@@ -990,7 +990,9 @@ product catalog concern — see `DATA_MODEL.md` and `component_library.db` schem
 
 ---
 
-## 5. The 12-Stage Pipeline
+## 5. The 11-Stage Pipeline
+
+*ParseStage removed in S140 — `ctx.definition()` was never consumed by any downstream stage. YAML is sole intent source.*
 
 | # | Stage | What it does |
 |---|-------|-------------|

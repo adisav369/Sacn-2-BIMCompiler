@@ -11,16 +11,17 @@
 
 | Gate | SH | FK | IN | DX | TE | DM |
 |------|----|----|----|----|------|------|
-| G1-COUNT | PASS (58) | PASS (82) | PASS (699) | PASS (1099) | PASS (48428) | PASS (60) |
+| G1-COUNT | PASS (58) | PASS (82) | PASS (699) | PASS (1119) | PASS (48428) | PASS (60) |
 | G2-VOLUME | PASS | PASS | PASS | PASS | PASS | — |
 | G3-DIGEST | PASS | PASS | PASS | PASS | PASS | — (GENERATIVE) |
 | G4-TAMPER | PASS | PASS | PASS | PASS | PASS | PASS |
 | G5-PROVENANCE | PASS | PASS | PASS | PASS | PASS | PASS |
 | G6-ISOLATION | PASS | PASS | PASS | PASS | PASS | PASS |
+| VerbStage | VO (PLACE BOM) | ? | ? | VO (148 PLACEMENT) | ? | — |
 
 > **TE: BOM walk compiler LIVE (S100-p72).** 48,428 elements compiled via BOM walk. 6/7 PASS (C9 FAIL: 60 axis swaps — library mesh orientation, not walk bug). SH 7/7 PASS (zero regression). Script fix: compilation was never running (missing -Dpipeline.tests.skip=false).
 
-**Pipeline:** 12 stages. 77 verbs. 2475 products. 4-DB architecture (validation.db merged into ERP.db). 4D/5D/6D live.
+**Pipeline:** 11 stages (ParseStage removed S140). 77 verbs. 2475 products. 4-DB architecture (validation.db merged into ERP.db). 4D/5D/6D live.
 **Rosetta Stones:** 35 buildings (34 EXTRACTED + 1 GENERATIVE). 19 ALL GREEN. [TestArchitecture.md §Coverage](docs/TestArchitecture.md#rosetta-stone-coverage-s58c).
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
@@ -94,6 +95,26 @@
 **MANIFESTO:** [docs/MANIFESTO.md](docs/MANIFESTO.md) — ERP world view, mandatory first read.
 
 ## Session Log (recent first)
+
+**S140** (`ae8e7d72`) — DSL/YAML unification + spec fix + LEAF→MAKE + IFC aggregate findings.
+  T0: IFC Aggregate Verb Gap findings → BBC.md §Verb Gap. rel_aggregates populated but not consumed by VerbDetector. ExtractionElement lacks aggregateParentRef. Phase 0 IFC_AGGREGATE conceptualized.
+  T1: BBC §2.2.1 clarified: CHECK BOM may inspect component_type (validation exception).
+  T2: BomHierarchyBuilder:100 LEAF→MAKE (W-DX-LEAF-FIX). DX CHECK BOM errors resolved.
+  T3: 34 dsl_*.bim deleted. ParseStage removed (ctx.definition() never consumed). dslContent removed from BuildingEntry, BuildingRegistry, BuildingWriter, IFCtoBOMPipeline, ClassificationYaml, run.sh, run_RosettaStones.sh. W020 migration. -1181 lines.
+  T4: Generative audit: 3 lib/input/dsl/*.bim orphaned (safe to delete S141). 20 examples/*.bim live (4 tests use BuildingParser).
+  T5: VerbStage column added to gate table. SH: VO (PLACE BOM ProjectName column error, pre-existing). DX: VO (148 PLACEMENT violations, pre-existing).
+  Fleet: SH 8/8, DX 8/8 PASS (no regression). TE skipped.
+  Next: S141 — IFC_AGGREGATE Phase 0 decision + 3 orphaned .bim deletion + DX 148 PLACEMENT root cause.
+
+**S139-followup** (no commit) — DSL/YAML investigation + S140 prompt.
+  dsl_*.bim (IFCtoBOM/src/main/resources/) confirmed vestigial in extracted path:
+  ParseStage parses dsl_content but ctx.definition() never consumed by any subsequent stage.
+  run.sh:94 reads DSL to tmp file, immediately deletes it — dead code.
+  WitnessGenerator.setInputHash(dslContent) signature exists but generateWitness() not called from pipeline.
+  IFC aggregate gap: VerbDetector geometry-only; extractIFCtoDB.py already captures IfcRelAggregates but
+  ExtractionElement carries no aggregateParentRef — curtain wall → mullion grouping invisible to verb detection.
+  S140 prompt written: prompts/S140_dsl_unify_yaml.md
+  Next: S140 — IFC aggregate findings + spec fix + LEAF→MAKE + DSL removal (delete-first strategy).
 
 **S139** (`c5ae1689`) — Verb pattern + LMP boundary audit + DX VerbStage failure diagnosis.
   5 gate answers (BBC.md §S139). Finding 4 corrected: room/shell split is BY DESIGN.
