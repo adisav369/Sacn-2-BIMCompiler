@@ -1124,3 +1124,81 @@ that shows where the Construction Order goes when applied to real construction p
 *Assembly hierarchy: [`PREFAB_ARCHITECTURE.md`](PREFAB_ARCHITECTURE.md) |
 Terminal ERP model: [`TerminalAnalysis.md`](TerminalAnalysis.md) §ERP Model Architecture |
 Action roadmap: [`ACTION_ROADMAP.md`](ACTION_ROADMAP.md)*
+
+---
+
+## Audit Findings — S139
+
+Session S139 investigated four first-principle questions about the CLUSTER verb and
+the LMP boundary. Every claim cites a line number or commit hash.
+
+### Finding 1 — DAGCompiler Isolation: NO BREACH
+
+**Q: Does DAGCompiler open the extraction DB?**
+**A: No.** Exhaustive grep of all `DriverManager.getConnection()` calls in
+`DAGCompiler/src/main/java/` shows zero references to any `*_extracted.db` path.
+`ExtractionPopulator` (IFCtoBOM module) is the only class that opens `_extracted.db`
+and it is never called from DAGCompiler.
+`§6.12.1` Compilation Isolation Invariant is **not breached**.
+
+### Finding 2 — CLUSTER Coordinate Origin: GROUP-RELATIVE, NOT WORLD-RELATIVE
+
+**Q: Are CLUSTER verb_ref coordinates world-relative or floor-relative?**
+**A: Group-relative LBD-to-LBD.** `VerbDetector.java:449-517` (`detectCluster()`):
+
+- `gMinX = elements.stream().mapToDouble(ExtractionElement::minX).min()` — group LBD min (line 454)
+- `offsets[i][0] = e.minX() - gMinX` — element offset from group min LBD (line 463)
+
+The `floorMinX/Y/Z` parameters are received by `detectCluster()` but are **not used**
+inside it. The §4 tack convention is preserved at the parent level:
+`VerbFactorizer.java:161-163` writes `dx = gMinX - parentMinX` for each CLUSTER
+BOM line (group min LBD minus parent BOM LBD), making the group origin parent-relative.
+
+**History:** At `9e73d753` [R16] (2026-03-18), `detectCluster()` used centroid-to-centroid
+offsets (`gMinX = centroidX.min()`, `offsets[i][0] = e.centroidX() - gMinX`). At
+`ff0f344e` [S101] (2026-03-30), changed to LBD-to-LBD (conformant with §4 tack).
+Neither version stored world coordinates — offsets were always group-relative differences.
+
+### Finding 3 — CLUSTER Small-Group Violations: NONE
+
+**Q: How many CLUSTER lines in SH/DX BOM have < 4 instances?**
+**A: Zero.** `VerbDetector.java:43` sets `MIN_GROUP = 4`. `detectCluster()` returns
+`null` for groups < 4 (line 451). SH BOM CLUSTER counts: **4** (windows), **6**
+(dining chairs), **10+10** (curtain wall). All ≥ MIN_GROUP. No spec violation.
+
+**CLUSTER justification review:**
+- Curtain wall (ASM_1/ASM_2, 10 elements each): Mixed member types (vertical mullions,
+  horizontal rails, sills) with non-uniform dimensions AND varying Z — correctly falls
+  through TILE→ROUTE→FRAME→CLUSTER. Vertical mullions at Y=0, 1.87, 3.75, 5.62 appear
+  ROUTE-able but mixed with horizontal rails of different dimensions in the same product
+  group — ROUTE rejects non-uniform dimensions (VerbDetector.java:243).
+- Dining chairs (6 elements): End chairs are rotated 90° relative to side chairs →
+  W/D swap (end: 0.427×0.443, side: 0.443×0.427) → TILE rejects non-uniform dims.
+  CLUSTER is the only correct verb here.
+
+**Verdict:** CLUSTER usage in SH is **not an offensive violation** — the fallthrough
+is geometrically correct given mixed product orientations and non-uniform member types.
+
+### Finding 4 — DX Room BOM Hierarchy Gap: SPEC DECISION NEEDED
+
+**Q: Where in CompositionBomBuilder are B-side room BOMs written, and to which parent?**
+**A: Room BOMs are NOT written by CompositionBomBuilder.**
+
+`CompositionBomBuilder.java` writes:
+- `halfUnitBomId` (DUPLEX_SINGLE_UNIT_STD) header and leaf elements: lines 178, 187-194
+- UNIT_A (rotation=0) and UNIT_B (rotation=π) as children of `pairBomId`: lines 218-241
+
+Room BOMs (`DX_B102_SET`, `DX_B203_SET`, etc.) are written by `ScopeBomBuilder` and
+linked by `BomHierarchyBuilder.java:75-86` as children of the floor scope BOMs
+(`DX_ROOM_L1`, `DX_ROOM_L2`) using storey-relative offsets:
+`dx = childLbd[0] - storeyLbd[0]`.
+
+**The gap:** The π rotation from UNIT_B cascades only to direct children of
+`pairBomId` → children of `DUPLEX_SINGLE_UNIT_STD` (leaf elements). Room BOMs
+sit under the floor, bypassing the mirror cascade entirely. The current BOM hierarchy
+places DX_B102_SET at (5.393, 18.253, 0.137) relative to DX_ROOM_L1 — storey-relative,
+conformant individually, but the B-side mirror is never applied.
+
+**Spec decision needed for S140:** Should room BOMs be children of
+DUPLEX_SINGLE_UNIT_STD (enabling mirror cascade) or remain children of the floor
+(current, simpler, but π not applied)? See `docs/TerminalAnalysis.md §CP-4`.
