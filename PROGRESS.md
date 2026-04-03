@@ -95,6 +95,24 @@
 
 ## Session Log (recent first)
 
+**S139** (`c5ae1689`) — Verb pattern + LMP boundary audit + DX VerbStage failure diagnosis.
+  5 gate answers (BBC.md §S139). Finding 4 corrected: room/shell split is BY DESIGN.
+  New: DX VerbStage FAIL (2 CHECK BOM errors + 148 CHECK PLACEMENT violated).
+  Root cause: BomHierarchyBuilder:100 writes `.componentType("LEAF")` for DX_ROOM_L1/L2;
+  CheckBomVerb only handles BUY/MAKE/PHANTOM. Bug baked in since DISC-3 + S100-p116.
+  Fix: one-liner in BomHierarchyBuilder — LEAF → MAKE. Prompts/S139 has full DONE section.
+  Next: S140 — fix BomHierarchyBuilder LEAF bug + investigate 148 placement violations.
+
+**S138** (`e40e705a`) — Material extraction + RD cleanup.
+  extract.py: add get_material_rgba/get_material_name; handle IfcPresentationStyleAssignment (IFC4) + IfcMappedItem (doors/windows). INSERT now 9-col. SH 58/58 rgba (was 54/65), DX 164/1119 rgba, windows transparent (0.000,0.502,0.753,0.100). SH 8/8, DX 9/9 PASS.
+  classify_rd.yaml + dsl_rd.bim deleted (Road Infra not a pipeline target).
+  Audit findings — **first-principle violations identified (do NOT fix yet, see S139 prompt):**
+  - CLUSTER used offensively: SH curtain wall + chairs, DX furniture — all CLUSTER despite potential TILE/ROUTE/FRAME. BBC §2.1.7: CLUSTER is last resort. TE: 47,607 of 47,715 verb instances are CLUSTER.
+  - DX MIRRORED_PAIR cascade gap: B-side room BOMs (DX_B102_SET etc.) are under DX_L1_STR (structural floor), NOT under DUPLEX_SINGLE_UNIT_STD → π rotation from UNIT_B never reaches them. GEO log confirms: no ROT entry on room ENTER.
+  - Possible LMP breach: CLUSTER verb_ref in BOM carries per-instance world coordinates extracted from input DB. Whether DAGCompiler itself opens extraction DB is unconfirmed — Task 1 of S139.
+  - SH DSL says ROOF pitch:0deg but IFC roof is curved (Z=1.74→3.475m, ~70 unique Z levels). DSL inaccuracy.
+  Next: **prompts/S139_verb_pattern_lmp_audit.md** — systematic dissection.
+
 **S104-pipeline-housekeeping** — IFC/extraction pipeline audit + fleet cleanup.
   S137 (`35cfd241`): Black-box discipline split (T3-ARC/T3-DISC-COUNT) + emitGeoSummary removal. TE 8/8, SH 8/8.
   Material bug found: SH/DX extracted DBs were stale blobs (S100-p126 re-extract stripped materials). Re-extracted from source IFCs — SH 54/65 rgba, DX 143/1162 rgba (federated). TE was only DB with materials (re-extracted in S60).
@@ -105,10 +123,5 @@
   §28.11 Complete/Change Walls spec added to BIM_Designer_SRS.md.
   Revit federation (RA+RM+RS → Revit_Federated): deferred — RM RouteWalker patterns tagged building_type=Revit_MEP.
   ALL GREEN 16 stale extracted DBs re-extracted with materials. RD/RL/WI: 1 element each (expected minimal IFC).
-**S104-J1-J3** — IFCtoERP joint piece extraction + MEP BOM walk architecture. 00c: IFCtoERP.java extracts 11 MEP IFC classes into 31 piece types, 785 joint + 11 shim M_Products in ERP.db. 00d: Design session rewrote §6.12.2 — tack point is just a point (not AABB/LBD), shim IS root BOM (no FP_SYSTEM wrapper), tack offsets extracted at IFCtoERP time (child pos - parent pos). DisciplineBomBuilder writes MEP to BOM (was deferred). ShimMatcher + GEO logging. m_bom gains host_ifc_class/mount/offset_mm. X_M_BOM: isShim(). GAP: inter-piece tack offsets not yet extracted — J1 foundation. SH 8/8 PASS.
-**S103-disc-sep** — Discipline separation (§10.4.6.1) + joint piece architecture spec. Task A: DisciplineBomBuilder filters MEP (AD_Org 3-8) from FLOOR BOM, writes counts to ad_sysconfig + YAML `discipline_counts:`. Task B: OrderLineProductCallout updates DISC OrderLine Qty from MEP counts (handles BomDropper pre-created lines). IFCtoBOMPipeline: reconcileCount for QA/G1, YAML write-back. Spec: §6.12.1 Compilation Isolation Invariant (DAGCompiler SHALL NOT open extraction), §6.12.2 MEP as BOM Walk — joint pieces = Lego pieces in ERP.db, one abstract walker for all disciplines, IFCtoERP as separate extraction phase, standards as validation not generation, CrawlRouter preserved for generative only. SH 7/7 PASS, TE 5/7 (baseline, critical violations 71→2). Prompts 00c/00d/00e written (IFCtoERP series, test on TE+RM).
-**S102-fleet** — Full fleet fresh extraction (34 buildings, DM excluded). PATTERN default ON. Script: per-category scripts archived, single loop, no set -e, streamlined one-line summary + fleet table. Infra (BR/RD/RL/IP): YAML segments removed, auto-discover from IFC spatial structure, PATTERN FLOOR logging added to DisciplineBomBuilder. Results: 212/238 PASS, **19 ALL GREEN** (was ~14). CE clean (was DRIFT=39,900). RD/RL 7/7 (infra auto-discover). PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown elements — storey assignment gaps identified. 10 Maven FAIL on critical proofs. CL extraction FAIL. Prompts 00/00a/00b written.
-**S101-p131** — VerbDetector Z-guard + CLUSTER identity + ROUTE axis matching + GEO permanently ON. IN 6/7→7/7, CE DRIFT unchanged. P131/P132 prompts written.
-**S100-coder-p126-p130** — IFC extraction chain + routing audit + GEO white-box + P06 fleet fix. P130: P06 structural joint tolerance (DX 83→0, FK 15→0, fleet 186/208 PASS).
-*S100 (p84–p131) — TE forensic, fleet audit, PK, CrawlRouter, 6 MEP RouteBuilders, VerbStage, script split, StoreyZBandProof, IFC extraction chain, GEO white-box, P06 fleet fix, VerbDetector Z-guard, specsperson. [Full log in git history.]*
+*S100–S138 — MEP discipline separation, IFCtoERP joint piece, RouteWalker, fleet cleanup, TE 8/8, material extraction fix. [Full log in git history.]*
 *S39–S99 — AD Dictionary, ERP alignment, PK, BOM walk compiler, forge, BIMEyes, 6D/7D, BOM Drop. [Full log in git history.]*
