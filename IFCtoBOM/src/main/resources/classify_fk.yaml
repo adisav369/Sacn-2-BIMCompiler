@@ -14,7 +14,6 @@ building:
   product_category: RE                    # Residential
   name: FZK-Haus
   jurisdiction: MY
-  dsl_file: dsl_fk.bim                # BIM COBOL script for DAGCompiler
 
   storeys:
     Erdgeschoss:  { code: EG, product_category: EG, role: GROUND_FLOOR, seq: 1010 }

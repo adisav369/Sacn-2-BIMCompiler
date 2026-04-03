@@ -12,7 +12,6 @@ building:
   doc_sub_type: RM
   product_category: RE
   name: Revit MEP
-  dsl_file: dsl_rm.bim
 
   storeys:
     "Level 2": { code: L2, product_category: L2, role: UPPER_FLOOR, seq: 1010 }  # 1783 elements

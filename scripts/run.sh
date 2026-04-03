@@ -89,9 +89,7 @@ eval $(sqlite3 "$BOM_DB" "
     FROM C_DocType WHERE C_DocType_ID = '${DOC_TYPE}'
 " 2>/dev/null)
 
-# Load DSL content (may contain spaces/newlines — use file)
-DSL_FILE=$(mktemp)
-sqlite3 "$BOM_DB" "SELECT DSLContent FROM C_DocType WHERE C_DocType_ID='${DOC_TYPE}'" > "$DSL_FILE" 2>/dev/null
+# DSL files removed (S140) — YAML is sole intent source
 
 print_header "BUILD: ${PROJECT_NAME} (${DOC_TYPE})"
 echo "  DocSubType : ${DOC_SUB_TYPE}"
@@ -120,17 +118,16 @@ echo ""
 echo "  Creating C_Order stub..."
 
 # Template already has c_order/c_orderline tables — insert from prepared BOM.db via ATTACH.
-# This copies DSLContent etc. directly from C_DocType, avoiding shell quoting issues.
 sqlite3 "$OUTPUT_PATH" <<EOSQL
 ATTACH '${BOM_DB}' AS bom;
 INSERT OR REPLACE INTO c_order (
     C_Order_ID, Name, Description, DocStatus, C_DocType_ID,
-    DSLContent, OutputDbPath, SeqNo, ExpectedElements,
+    OutputDbPath, SeqNo, ExpectedElements,
     Provenance, AabbWidthMm, AabbDepthMm, AabbHeightMm, IsActive
 ) SELECT
     dt.ProjectName, dt.ProjectName, 'Build ' || dt.DocSubType,
     'DR', dt.C_DocType_ID,
-    dt.DSLContent, dt.OutputDbPath, dt.SeqNo,
+    dt.OutputDbPath, dt.SeqNo,
     COALESCE(dt.ExpectedElements, 0),
     COALESCE(dt.Provenance, 'EXTRACTED'),
     dt.AabbWidthMm, dt.AabbDepthMm, dt.AabbHeightMm, 1
@@ -138,7 +135,6 @@ FROM bom.C_DocType dt
 WHERE dt.C_DocType_ID = '${DOC_TYPE}';
 DETACH bom;
 EOSQL
-rm -f "$DSL_FILE"
 echo "  C_Order: ${PROJECT_NAME} (DocStatus=DR, C_DocType=${DOC_TYPE})"
 
 # ── Step 3: C_OrderLine table ─────────────────────────────────

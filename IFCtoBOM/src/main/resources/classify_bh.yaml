@@ -12,7 +12,6 @@ building:
   doc_sub_type: BH
   product_category: RE
   name: PCERT Building Hvac
-  dsl_file: dsl_bh.bim
 
   storeys:
     "00 groundfloor": { code: GF,   product_category: GF,   role: GROUND_FLOOR, seq: 1010 }  # 3 elements

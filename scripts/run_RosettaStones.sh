@@ -178,12 +178,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
                 verdict "SEED_${PREFIX}" "FAIL" "no seed SQL found: ${SEED_SQL}"
             fi
 
-            # Add DSLContent to C_DocType if dsl file exists
-            DSL_FILE="IFCtoBOM/src/main/resources/dsl_${PREFIX,,}.bim"
-            if [ -f "$DSL_FILE" ] && [ -f "$BOM_DB" ]; then
-                DSL_CONTENT=$(cat "$DSL_FILE")
-                sqlite3 "$BOM_DB" "UPDATE C_DocType SET DSLContent = '$(echo "$DSL_CONTENT" | sed "s/'/''/g")' WHERE C_DocType_ID = '${PRODUCT_CATEGORY}_${DOC_SUB_TYPE}'" 2>/dev/null || true
-            fi
+            # DSL files removed (S140) — YAML is sole intent source
         else
             # ── EXTRACTED path: normal IFCtoBOM pipeline ──
             section "IFCtoBOM Pipeline (${PREFIX})"

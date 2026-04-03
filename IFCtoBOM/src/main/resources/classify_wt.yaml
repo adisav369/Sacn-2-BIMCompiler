@@ -12,7 +12,6 @@ building:
   doc_sub_type: WT
   product_category: CO
   name: BimWhale Tall Building
-  dsl_file: dsl_wt.bim
 
   storeys:
     "Level 1": { code: L1, product_category: L1, role: UPPER_FLOOR, seq: 1010 }  # 18 elements

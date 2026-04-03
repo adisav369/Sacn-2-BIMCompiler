@@ -68,8 +68,7 @@ public class CompilationPipeline {
 
     private static final List<CompilerStage> STAGES = List.of(
         new MetadataValidator(),  // Step 1 — validate data before use
-        new ParseStage(),         // Step 2
-        new CompileStage(),       // Step 3
+        new CompileStage(),       // Step 2 — BOM walk (was Step 3 before ParseStage removal)
         new RouteStage(),         // Step 4 — callout + RouteDocEvent.fireAll() (§10.4.11 T3.1)
         new TemplateStage(),      // Step 5 — ST mode only; skipped for all other DocSubTypes
         new WriteStage(),         // Step 6
@@ -332,23 +331,6 @@ public class CompilationPipeline {
     static String toDocType(String docTypeId) {
         if (docTypeId == null) return "RE";
         return docTypeId.substring(0, Math.min(2, docTypeId.length())).toUpperCase();
-    }
-
-    private static class ParseStage implements CompilerStage {
-        @Override public String name() { return "PARSE DSL"; }
-
-        @Override
-        public void execute(CompilationContext ctx) throws Exception {
-            String dsl = ctx.entry().dslContent();
-            if (dsl == null || dsl.isBlank()) {
-                // No DSL — BOM walk handles compilation in CompileStage
-                BIMLogger.info("PARSE", "No DSL content — BOM walk path");
-                return;
-            }
-            BuildingDefinition def = BuildingParser.parse(dsl);
-            ctx.setDefinition(def);
-            System.out.println("Building: " + def.name());
-        }
     }
 
     private static class CompileStage implements CompilerStage {
@@ -916,33 +898,32 @@ public class CompilationPipeline {
 
             String sql = """
                 INSERT OR IGNORE INTO c_order (
-                    Value, Name, DSLContent,
+                    Value, Name,
                     OutputDbPath, ReferenceDbPath, IsActive, SeqNo,
                     ExpectedElements, Provenance, Description,
                     GeometryFailThreshold, DocStatus,
                     AabbWidthMm, AabbDepthMm, AabbHeightMm,
                     CompiledAt, CompilerVersion, C_DocType_ID
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),?,?)
                 """;
 
             try (PreparedStatement ps = outConn.prepareStatement(sql)) {
                 ps.setString(1, buildingId);                          // Value
                 ps.setString(2, entry.name());                        // Name
-                ps.setString(3, entry.dslContent() != null ? entry.dslContent() : "");  // DSLContent
-                ps.setString(4, entry.outputDbPath());                // OutputDbPath
-                ps.setString(5, entry.referenceDbPath());             // ReferenceDbPath
-                ps.setInt(6, entry.isActive() ? 1 : 0);              // IsActive
-                ps.setInt(7, entry.seqNo());                          // SeqNo
-                ps.setInt(8, entry.expectedElements());               // ExpectedElements
-                ps.setString(9, entry.provenance());                  // Provenance
-                ps.setString(10, entry.description());                // Description
-                ps.setInt(11, entry.geometryFailThreshold());         // GeometryFailThreshold
-                ps.setString(12, "IP");                               // DocStatus
-                ps.setObject(13, entry.aabbWidthMm() > 0 ? entry.aabbWidthMm() : null);   // AabbWidthMm
-                ps.setObject(14, entry.aabbDepthMm() > 0 ? entry.aabbDepthMm() : null);   // AabbDepthMm
-                ps.setObject(15, entry.aabbHeightMm() > 0 ? entry.aabbHeightMm() : null); // AabbHeightMm
-                ps.setString(16, "BIM-Compiler-1.0");                 // CompilerVersion
-                ps.setString(17, entry.docTypeId());                  // C_DocType_ID
+                ps.setString(3, entry.outputDbPath());                // OutputDbPath
+                ps.setString(4, entry.referenceDbPath());             // ReferenceDbPath
+                ps.setInt(5, entry.isActive() ? 1 : 0);              // IsActive
+                ps.setInt(6, entry.seqNo());                          // SeqNo
+                ps.setInt(7, entry.expectedElements());               // ExpectedElements
+                ps.setString(8, entry.provenance());                  // Provenance
+                ps.setString(9, entry.description());                // Description
+                ps.setInt(10, entry.geometryFailThreshold());         // GeometryFailThreshold
+                ps.setString(11, "IP");                               // DocStatus
+                ps.setObject(12, entry.aabbWidthMm() > 0 ? entry.aabbWidthMm() : null);   // AabbWidthMm
+                ps.setObject(13, entry.aabbDepthMm() > 0 ? entry.aabbDepthMm() : null);   // AabbDepthMm
+                ps.setObject(14, entry.aabbHeightMm() > 0 ? entry.aabbHeightMm() : null); // AabbHeightMm
+                ps.setString(15, "BIM-Compiler-1.0");                 // CompilerVersion
+                ps.setString(16, entry.docTypeId());                  // C_DocType_ID
                 ps.executeUpdate();
 
                 System.out.printf("[C_ORDER] Created C_Order for %s (DocType=%s, DocStatus=IP) in output.db%n",

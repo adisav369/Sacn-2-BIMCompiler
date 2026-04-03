@@ -12,7 +12,6 @@ building:
   doc_sub_type: JS
   product_category: RE
   name: AC90 Jasmin Sun
-  dsl_file: dsl_js.bim
 
   storeys:
     "Keller": { code: FDN, product_category: FDN, role: BASEMENT, seq: 1010 }  # 13 elements

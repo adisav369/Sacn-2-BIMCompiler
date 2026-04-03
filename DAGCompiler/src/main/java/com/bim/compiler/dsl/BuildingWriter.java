@@ -315,7 +315,6 @@ public class BuildingWriter {
                     C_Order_ID             INTEGER PRIMARY KEY AUTOINCREMENT,
                     Value                  TEXT NOT NULL UNIQUE, -- buildingId (ProjectName from C_DocType)
                     Name                   TEXT NOT NULL,        -- building display name
-                    DSLContent             TEXT NOT NULL,        -- DSL template (from C_DocType)
                     OutputDbPath           TEXT NOT NULL,        -- output path (from C_DocType)
                     ReferenceDbPath        TEXT,                 -- reference DB (from C_DocType)
                     IsActive               INTEGER DEFAULT 1,

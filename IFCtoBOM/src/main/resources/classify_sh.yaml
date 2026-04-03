@@ -13,7 +13,6 @@ building:
   product_category: RE
   name: Sample House
   jurisdiction: MY
-  dsl_file: dsl_sh.bim                  # BIM COBOL script for DAGCompiler
 
   # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
   # IfcBuildingStorey entries read from extraction DB, Z-ordered.

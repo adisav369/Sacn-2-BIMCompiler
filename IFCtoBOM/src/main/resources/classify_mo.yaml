@@ -12,7 +12,6 @@ building:
   doc_sub_type: MO
   product_category: RE
   name: Molio
-  dsl_file: dsl_mo.bim
   geometry_fail_threshold: 1  # 1 IfcCovering (FRAME_MD_6._SAL_468) has no library mesh
 
   storeys:

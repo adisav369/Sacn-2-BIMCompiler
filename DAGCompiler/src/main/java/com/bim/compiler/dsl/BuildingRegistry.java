@@ -29,7 +29,6 @@ public class BuildingRegistry {
         String name,                // human-readable ('Sample House')
         String mProductCategoryId,  // RE, CO, IN, ST — from m_bom.m_product_category_id
         String docSubType,          // SH, DX, TB, TE — from C_DocType.doc_sub_type / m_bom.doc_sub_type
-        String dslContent,          // DSL template text
         String outputDbPath,        // output DB path
         String referenceDbPath,     // reference DB for verification
         boolean isActive,
@@ -136,7 +135,7 @@ public class BuildingRegistry {
         + "b.project_name AS ProjectName, b.Name, "
         + "mpc.Value AS MProductCategoryId, "
         + "b.doc_sub_type AS DocSubType, "
-        + "b.dsl_content AS DSLContent, b.output_db_path AS OutputDbPath, "
+        + "b.output_db_path AS OutputDbPath, "
         + "b.reference_db_path AS ReferenceDbPath, b.is_active AS IsActive, "
         + "b.seq_no AS SeqNo, "
         + "COALESCE(b.expected_elements, 0) AS ExpectedElements, "
@@ -167,7 +166,6 @@ public class BuildingRegistry {
                         rs.getString("Name"),
                         rs.getString("MProductCategoryId"),
                         rs.getString("DocSubType"),
-                        rs.getString("DSLContent"),
                         rs.getString("OutputDbPath"),
                         rs.getString("ReferenceDbPath"),
                         rs.getInt("IsActive") == 1,

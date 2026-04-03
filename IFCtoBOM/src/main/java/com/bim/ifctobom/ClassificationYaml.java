@@ -138,7 +138,6 @@ public class ClassificationYaml {
             List<StaticChildConfig> staticChildren,
             CompositionConfig composition,
             Map<String, DisciplineConfig> disciplines,
-            String dslFile,
             int geometryFailThreshold,
             String jurisdiction,
             List<String> mepDisciplines
@@ -322,7 +321,6 @@ public class ClassificationYaml {
                 getString(bldg, "provenance"),
                 spatialContainers, floorRooms, staticChildren, composition,
                 disciplines,
-                getString(bldg, "dsl_file"),
                 getInt(bldg, "geometry_fail_threshold", 0),
                 getString(bldg, "jurisdiction"),
                 mepDisciplines

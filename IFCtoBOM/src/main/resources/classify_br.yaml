@@ -12,7 +12,6 @@ building:
   doc_sub_type: BR
   product_category: IN                          # IN = Infrastructure
   name: IFC Infra Bridge Sample
-  dsl_file: dsl_br.bim                       # EN-BLOC only — extracted, not generative
 
   # segments: removed — auto-discovered from IFC spatial structure (§10.4.13)
   # IfcBridgePart entries read from extraction DB, Z-ordered.

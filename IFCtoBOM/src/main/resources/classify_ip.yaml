@@ -12,7 +12,6 @@ building:
   doc_sub_type: IP
   product_category: IN
   name: PCERT Infra Plumbing
-  dsl_file: dsl_ip.bim
 
   # storeys: removed — auto-discovered from IFC spatial structure (§10.4.13)
 

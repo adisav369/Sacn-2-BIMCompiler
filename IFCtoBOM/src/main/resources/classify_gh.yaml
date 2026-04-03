@@ -12,7 +12,6 @@ building:
   doc_sub_type: GH
   product_category: RE
   name: AC9 Haus G-H
-  dsl_file: dsl_gh.bim
 
   storeys:
     "Dachgeschoss": { code: ROOF, product_category: ROOF, role: ROOF, seq: 1010 }  # 27 elements

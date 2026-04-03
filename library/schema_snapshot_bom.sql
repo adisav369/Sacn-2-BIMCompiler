@@ -1158,7 +1158,6 @@ CREATE TABLE IF NOT EXISTS "C_DocType" (
     IsActive       INTEGER DEFAULT 1,
     Description    TEXT,
     ProjectName    TEXT,
-    DSLContent     TEXT,
     OutputDbPath   TEXT,
     ReferenceDbPath TEXT,
     ExpectedElements INTEGER,

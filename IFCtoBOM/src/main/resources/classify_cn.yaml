@@ -15,7 +15,6 @@ building:
   product_category: RE
   name: Clinic (Federated)
   building_category: Clinic
-  dsl_file: dsl_cn.bim
 
   # Storeys from ARC base file (spatial structure preserved by MergeProjects)
   storeys:

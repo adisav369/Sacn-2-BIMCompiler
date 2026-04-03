@@ -13,7 +13,6 @@ building:
   doc_sub_type: IN
   product_category: RE
   name: AC11 Institute
-  dsl_file: dsl_in.bim
 
   storeys:
     Keller:             { code: KE,  product_category: KE,  role: BASEMENT,     seq: 1000 }

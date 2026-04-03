@@ -372,15 +372,6 @@ public class IFCtoBOMPipeline {
                 String refPath = "DAGCompiler/lib/input/"
                         + config.buildingType() + "_extracted.db";
 
-                // Read DSL content from file if specified in YAML
-                String dslContent = null;
-                if (config.dslFile() != null) {
-                    Path dslPath = yamlPath.getParent().resolve(config.dslFile());
-                    if (Files.exists(dslPath)) {
-                        dslContent = Files.readString(dslPath);
-                    }
-                }
-
                 try (PreparedStatement ps = bomConn.prepareStatement("""
                         UPDATE m_bom SET
                             project_name            = ?,
@@ -389,7 +380,6 @@ public class IFCtoBOMPipeline {
                             expected_elements       = ?,
                             provenance              = 'EXTRACTED',
                             geometry_fail_threshold = ?,
-                            dsl_content             = ?,
                             jurisdiction            = ?
                         WHERE bom_type = 'BUILDING'
                         """)) {
@@ -398,15 +388,10 @@ public class IFCtoBOMPipeline {
                     ps.setString(3, refPath);
                     ps.setInt(4, reconcileCount);
                     ps.setInt(5, config.geometryFailThreshold());
-                    if (dslContent != null) {
-                        ps.setString(6, dslContent);
+                    if (config.jurisdiction() != null) {
+                        ps.setString(6, config.jurisdiction());
                     } else {
                         ps.setNull(6, java.sql.Types.VARCHAR);
-                    }
-                    if (config.jurisdiction() != null) {
-                        ps.setString(7, config.jurisdiction());
-                    } else {
-                        ps.setNull(7, java.sql.Types.VARCHAR);
                     }
                     ps.executeUpdate();
                 }
@@ -707,7 +692,6 @@ public class IFCtoBOMPipeline {
                     offset_mm         REAL DEFAULT 0,
                     -- J4: building registry fields (moved from C_DocType, see J4_003)
                     project_name      TEXT,
-                    dsl_content       TEXT,
                     output_db_path    TEXT,
                     reference_db_path TEXT,
                     expected_elements INTEGER DEFAULT 0,

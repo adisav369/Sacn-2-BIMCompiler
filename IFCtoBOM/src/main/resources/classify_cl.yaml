@@ -13,7 +13,6 @@ building:
   doc_sub_type: CL
   product_category: RE
   name: Sample Castle
-  dsl_file: dsl_cl.bim
 
   storeys:
     "-1 fundering":        { code: -1_F, product_category: -1_F, role: UPPER_FLOOR,  seq: 1010 }  # 133 elements

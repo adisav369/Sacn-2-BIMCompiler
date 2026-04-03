@@ -12,7 +12,6 @@ building:
   doc_sub_type: BA
   product_category: RE
   name: PCERT Building Architecture
-  dsl_file: dsl_ba.bim
 
   storeys:
     "00 groundfloor": { code: GF,   product_category: GF,   role: GROUND_FLOOR, seq: 1010 }  # 6 elements
