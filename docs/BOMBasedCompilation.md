@@ -1179,26 +1179,32 @@ Neither version stored world coordinates — offsets were always group-relative 
 **Verdict:** CLUSTER usage in SH is **not an offensive violation** — the fallthrough
 is geometrically correct given mixed product orientations and non-uniform member types.
 
-### Finding 4 — DX Room BOM Hierarchy Gap: SPEC DECISION NEEDED
+### Finding 4 — DX Room BOM Hierarchy: BY DESIGN, NOT A GAP
 
 **Q: Where in CompositionBomBuilder are B-side room BOMs written, and to which parent?**
-**A: Room BOMs are NOT written by CompositionBomBuilder.**
+**A: Room BOMs are NOT written by CompositionBomBuilder — intentionally.**
 
-`CompositionBomBuilder.java` writes:
-- `halfUnitBomId` (DUPLEX_SINGLE_UNIT_STD) header and leaf elements: lines 178, 187-194
-- UNIT_A (rotation=0) and UNIT_B (rotation=π) as children of `pairBomId`: lines 218-241
+The system uses two complementary mechanisms:
 
-Room BOMs (`DX_B102_SET`, `DX_B203_SET`, etc.) are written by `ScopeBomBuilder` and
-linked by `BomHierarchyBuilder.java:75-86` as children of the floor scope BOMs
-(`DX_ROOM_L1`, `DX_ROOM_L2`) using storey-relative offsets:
-`dx = childLbd[0] - storeyLbd[0]`.
+**Mechanism 1 — Structural shell via MIRRORED_PAIR:**
+`CompositionBomBuilder.java` writes DUPLEX_SINGLE_UNIT_STD (walls, slabs, ceilings —
+elements modeled for A-side only). UNIT_A gets `rotation_rule=0`, UNIT_B gets
+`rotation_rule=3.14159` (DX_BOM.db query confirmed). The GEO log (pipeline_DX
+Duplex_extracted_20260404_021000.log, line 1897) shows this firing:
+`ROT 3.1416rad: leaf=(3.7390,9.0990) → rotated=(-3.7390,-9.0990)`.
+The rotation IS applied at compile time to structural shell elements. ✓
 
-**The gap:** The π rotation from UNIT_B cascades only to direct children of
-`pairBomId` → children of `DUPLEX_SINGLE_UNIT_STD` (leaf elements). Room BOMs
-sit under the floor, bypassing the mirror cascade entirely. The current BOM hierarchy
-places DX_B102_SET at (5.393, 18.253, 0.137) relative to DX_ROOM_L1 — storey-relative,
-conformant individually, but the B-side mirror is never applied.
+**Mechanism 2 — Room furniture via ScopeBomBuilder:**
+The IFC file contains B-side room furniture at correct world positions (independently
+modelled). `ScopeBomBuilder` reads both A-side and B-side rooms from IFC spatial
+containment and writes them directly with storey-relative offsets
+(`BomHierarchyBuilder.java:75-86`, `dx = childLbd[0] - storeyLbd[0]`). Room BOMs
+need no rotation — their positions are already mirrored in the IFC source.
 
-**Spec decision needed for S140:** Should room BOMs be children of
-DUPLEX_SINGLE_UNIT_STD (enabling mirror cascade) or remain children of the floor
-(current, simpler, but π not applied)? See `docs/TerminalAnalysis.md §CP-4`.
+GEO log confirms: `DX_B102_SET` ENTER at anchor=(5.758, 18.253, 1.550) in first pass,
+and the GEO validator second pass reaches these correctly. DX passes all gates (G1–G6).
+
+**Conclusion:** The cascade not reaching room BOMs is **correct**. Room BOMs carry
+IFC world positions for both sides directly. Applying π to them would double-mirror
+the B-side furniture (moving it back to A-side positions). S139 initially misread
+this as a gap; GEO log investigation resolves it as intentional two-mechanism design.
