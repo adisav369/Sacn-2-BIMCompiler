@@ -341,7 +341,7 @@ def detect_orientation(vertices, ifc_class):
 # Source: IFC file (tessellate via ifcopenshell)
 # ---------------------------------------------------------------------------
 
-def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
+def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude, guid_prefix=None):
     """Tessellate IFC → reference schema."""
     import ifcopenshell
     import ifcopenshell.geom
@@ -451,7 +451,7 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
                     existing.add(ghash)
 
                 eid = next_id; next_id += 1
-                guid = elem.GlobalId
+                guid = f"{guid_prefix}_{elem.GlobalId}" if guid_prefix else elem.GlobalId
                 name = getattr(elem, "Name", None)
                 storey = get_storey_for_element(elem)
                 discipline = infer_discipline(cls)
@@ -483,6 +483,9 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
                 failed += 1
     conn.commit()
 
+    # Helper: apply guid_prefix if set
+    def _guid(raw): return f"{guid_prefix}_{raw}" if guid_prefix else raw
+
     # R21: Extract IfcRelVoidsElement + IfcRelFillsElement chain
     # Maps doors/windows to their host walls via intermediate IfcOpeningElement.
     # Chain: Wall ←(IfcRelVoidsElement)← OpeningElement ←(IfcRelFillsElement)← Door/Window
@@ -495,7 +498,7 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
                 host = rel.RelatingBuildingElement
                 opening = rel.RelatedOpeningElement
                 if host and opening:
-                    opening_to_host[opening.GlobalId] = host.GlobalId
+                    opening_to_host[opening.GlobalId] = _guid(host.GlobalId)
             except (AttributeError, TypeError):
                 pass
 
@@ -508,7 +511,7 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
                     host_guid = opening_to_host[opening.GlobalId]
                     conn.execute(
                         "INSERT OR IGNORE INTO rel_fills_host (element_guid, host_guid) "
-                        "VALUES (?, ?)", (filling.GlobalId, host_guid))
+                        "VALUES (?, ?)", (_guid(filling.GlobalId), host_guid))
                     fills_count += 1
             except (AttributeError, TypeError):
                 pass
@@ -533,7 +536,7 @@ def extract_from_ifc_to_reference(ifc_path, conn, classes, exclude):
                         continue
                     conn.execute(
                         "INSERT OR IGNORE INTO rel_aggregates (parent_guid, child_guid) "
-                        "VALUES (?, ?)", (parent.GlobalId, child.GlobalId))
+                        "VALUES (?, ?)", (_guid(parent.GlobalId), _guid(child.GlobalId)))
                     agg_count += 1
             except (AttributeError, TypeError):
                 pass
@@ -929,6 +932,10 @@ def main():
     parser.add_argument("--classes", help="Comma-separated IFC classes to include (default: all)")
     parser.add_argument("--exclude", default="", help="Comma-separated IFC classes to exclude")
     parser.add_argument("--discipline", help="Comma-separated disciplines to include (DB sources only)")
+    parser.add_argument("--guid-prefix", metavar="DISC",
+                        help="Prefix all GUIDs with DISC_ (use when merging multi-discipline IFCs)")
+    parser.add_argument("--append", action="store_true",
+                        help="Append to existing output DB instead of replacing it")
     args = parser.parse_args()
 
     source = args.source
@@ -947,6 +954,8 @@ def main():
     classes = args.classes.split(",") if args.classes else REFERENCE_CLASSES
     exclude = set(args.exclude.split(",")) if args.exclude else set()
     disciplines = args.discipline.split(",") if args.discipline else None
+    guid_prefix = args.guid_prefix
+    append_mode = args.append
 
     # Resolve output path
     if target == "reference":
@@ -955,7 +964,7 @@ def main():
             sys.exit(1)
         out_path = args.output
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-        if os.path.exists(out_path):
+        if not append_mode and os.path.exists(out_path):
             os.remove(out_path)
         conn = sqlite3.connect(out_path)
         conn.executescript(REFERENCE_SCHEMA)
@@ -975,11 +984,15 @@ def main():
         print(f"  Exclude: {', '.join(exclude)}")
     if disciplines:
         print(f"  Disciplines: {', '.join(disciplines)}")
+    if guid_prefix:
+        print(f"  GUID prefix: {guid_prefix}_")
+    if append_mode:
+        print(f"  Mode:    APPEND (existing DB preserved)")
     print(f"{'='*60}")
 
     # Dispatch
     if is_ifc and target == "reference":
-        extract_from_ifc_to_reference(source, conn, classes, exclude)
+        extract_from_ifc_to_reference(source, conn, classes, exclude, guid_prefix)
     elif is_ifc and target == "library":
         extract_from_ifc_to_library(source, conn, classes, exclude)
     elif is_db and target == "reference":
