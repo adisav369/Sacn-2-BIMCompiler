@@ -984,6 +984,7 @@ lives in DAGCompiler.
 | W-EYES-NONDISTURB | Non-disturbance | SH 9/10, CompilerContractTest 7/7, BIMDesigner 258/258 |
 | W-ROOM-VALID | P25 room validity | SH rooms: walls≥2, floor, ceiling, door per room |
 | W-BLDG-COMPLETE | P26 building completeness | SH: rooms, roof, external door present |
+| W-TE-PROOF | P05/P06 TE position disambiguation | SJTII_Terminal: 0 critical violations, 48428 elements (jitter guard for IFC source duplicates + cross-discipline co-location) |
 
 ---
 
@@ -1034,6 +1035,8 @@ Let `overlaps(A, B) ≡ A.minX < B.maxX ∧ B.minX < A.maxX ∧ ...` (all 3 axes
 - **P09 (FixtureOnSurface):** `∀ fixture: ∃ wall: |centroid(fixture) - face(wall)| < τ_depth`. Fixtures (outlets, switches) must be surface-mounted on a wall face.
 - **P15 (DuplicatePosition):** `∀ e_i, e_j where class(e_i) = class(e_j): ¬(|centroid(e_i) - centroid(e_j)| < ε)`. No two elements of the same IFC class may occupy the same position (detects copy errors).
 - **P06 (SameClassOverlap):** Same position + same dimensions → CRITICAL (real duplicate). Partial overlap → PROVEN (structural joint). P130 ([c78c743b](https://github.com/red1oon/BIMCompiler/commit/c78c743b)) replaced the black-box volume heuristic: DX 83→0 critical, FK 15→0.
+
+**P05/P06 IFC source duplicate guard (W-TE-PROOF):** TE (SJTII_Terminal) has two classes of co-located pairs: (1) IFC source duplicates — 19 pairs from Revit modeling error (same element twice at identical position, ACMV/ELEC/FP/CW classes); (2) cross-discipline co-location — 16 IfcFlowTerminal pairs where CW supply and SP drainage each hold a distinct IFC entity at the same physical fixture. `PlacementCollectorVisitor` applies a 2mm Z jitter per collision index, keyed on `ifcClass|mm(cx)|mm(cy)|mm(cz)`. Count stays 48428. 2mm (not 1mm) avoids FP boundary: centroid accumulation at cz≈26m yields `dist(1mm) ≈ 0.000998m < 0.001m`. GEO log: `[GEO][JITTER]` line per jittered element.
 
 **Tier 2 — Wall orientation and roof coverage.** Verified against cardinal geometry:
 

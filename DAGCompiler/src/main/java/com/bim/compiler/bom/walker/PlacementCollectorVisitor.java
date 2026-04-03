@@ -497,6 +497,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 + Math.round(cz * 1000);
             int jitterIndex = positionJitterCount.merge(posKey, 1, Integer::sum) - 1;
             double jitteredCz = cz + jitterIndex * 0.002;
+            if (jitterIndex > 0) {
+                BIMLogger.geo("JITTER", "P05/P06 disambig {} class={} cz={:.4f} → {:.4f} (+{}mm)",
+                    elementRef, ifcClass, cz, jitteredCz, jitterIndex * 2);
+            }
 
             PlacementLoader.Placement p = new PlacementLoader.Placement(
                 buildingType,

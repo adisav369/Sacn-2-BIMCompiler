@@ -137,6 +137,7 @@ to. Without this mapping, spec changes silently orphan tests.
 | EYES §4.6 | P28 ROOF_COVERAGE | RoofCoverageProof | W-DH-ROOF-2 | IMPLEMENTED |
 | BIM_COBOL §17.3 | TRIM WALLS TO ROOF | TrimWallsToRoofVerbTest | W-TRIM-1..7 | IMPLEMENTED |
 | EYES §10 | 24 proof classes, PlacementProver facade | EyesProofRunner | W-EYES-NONDISTURB | IMPLEMENTED |
+| EYES §P05/P06 | IFC source duplicate + cross-discipline co-location jitter | PlacementCollectorVisitor | W-TE-PROOF | PASS |
 
 ### BIM_Designer_SRS — UX + Flywheel + Compile Bridge
 
