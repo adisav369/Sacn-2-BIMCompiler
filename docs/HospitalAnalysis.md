@@ -54,6 +54,44 @@ MEP fully recovered (2,187 → 41,126) via GUID-prefixed per-discipline extracti
 boundaries or are routed in ceiling/plenum space not tagged to a storey in the IFC. This is
 normal for large MEP models. Our pipeline assigns them to the nearest storey by Z centroid.
 
+## Cross-Discipline Fixture Stacking (S136 Finding)
+
+**Symptom:** Toilet seats appear double-stacked in the 3D viewport.
+
+**Diagnosis — IFC authoring origin, not our pipeline.**
+
+In Revit multi-discipline hospital projects, bathroom fixtures are independently placed in
+both the ARC and PLB discipline models using the same Revit family. This is deliberate:
+- ARC team needs toilet/basin counts for HTM room data sheet compliance
+- PLB team needs the same fixture at the same position for drain/vent pipe sizing
+
+Our `--guid-prefix` extraction correctly stores both. The pipeline is clean. The BOM is
+where deduplication must happen — not extraction.
+
+| Fixture | ARC count | PLB count | Near-pairs (<5cm XY) | Z offset | Visual result |
+|---------|-----------|-----------|---------------------|----------|--------------|
+| Toilet-Wall-Mounted | 147 | 136 | 120 | **69mm** | Obvious stack |
+| Sink_Wall-Mounted | 119 | 128 | 92 | **27mm** | Subtle (sub-perception at normal zoom) |
+
+**Why sinks look cleaner:** 27mm vs 69mm. Both stack — sinks are below typical human
+perception threshold in a 3D viewport at ward-floor zoom level. Same root cause.
+
+**Only 3 raw disciplines (ARC / STR / MEP):**
+`infer_discipline()` in `extract.py` maps from IFC class, not source IFC file:
+- `IfcBuildingElementProxy` → ARC (default) — PLB toilets/sinks land here
+- `IfcFlowSegment / IfcFlowFitting` → MEP — MECH, PLB, SPR pipe elements all merge here
+
+The true sub-discipline (MECH vs PLB vs SPR) survives only in the GUID prefix (`MECH_xxx`,
+`PLB_xxx`, `SPR_xxx`). The `guid_prefix` field in `classify_hosp.yaml` discipline block
+restores it at BOM compile time — it is the only mechanism that separates MEP sub-trades.
+
+**TODO (BOM level — separate session):** Cross-discipline fixture deduplication rule.
+When ARC and PLB both claim the same physical fixture (same XY within 5cm, Z within 10cm,
+same element_name), the compiled BOM quantity takeoff must count it **once**, from the PLB
+BOM subtree (PLB is the authoritative procurement discipline for sanitary fixtures). ARC
+retains the element for spatial compliance checking but its BOM line is marked `qty_for_takeoff=0`.
+See: `docs/DISC_VALIDATE_SRS.md §TODO-FIXTURE-DEDUP`.
+
 ## GUID Extraction Note (S136)
 
 The original merge (INSERT OR IGNORE, no prefix) lost 97% of MEP:

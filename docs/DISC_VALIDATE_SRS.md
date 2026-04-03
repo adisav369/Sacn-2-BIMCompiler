@@ -840,6 +840,95 @@ Implementation is BLOCKED until these claims are written as `@Test` methods.
 
 ---
 
+## TODO Registry (open items for future sessions)
+
+### TODO-FIXTURE-DEDUP — Cross-Discipline Fixture Deduplication (HO_ origin, S136)
+
+**Context:** Hospital IFC has bathroom fixtures (toilets, wall-mounted sinks) placed
+independently in both ARC and PLB discipline models. Both are correctly stored with
+GUID prefixes. At 69mm Z offset (toilets) and 27mm Z offset (sinks), they visually
+stack in the viewport. Root cause: Revit multi-discipline authoring practice (ARC counts
+for HTM compliance, PLB places for pipe routing).
+
+**Rule:** When ARC and PLB both claim the same physical fixture (same element_name,
+|ΔX| < 50mm, |ΔY| < 50mm, |ΔZ| < 100mm), the BOM quantity takeoff counts it **once**
+from the PLB subtree. ARC retains the element for spatial/compliance use but its
+`C_OrderLine.qty_for_takeoff = 0`.
+
+**Detection query:**
+```sql
+SELECT e1.guid as arc_guid, e2.guid as plb_guid, e1.element_name,
+       ABS(t1.center_z - t2.center_z) as z_offset_m
+FROM elements_meta e1
+JOIN element_transforms t1 ON t1.guid = e1.guid
+JOIN elements_meta e2 ON e1.element_name = e2.element_name
+JOIN element_transforms t2 ON t2.guid = e2.guid
+WHERE SUBSTR(e1.guid,1,3) = 'ARC' AND SUBSTR(e2.guid,1,3) = 'PLB'
+  AND ABS(t1.center_x - t2.center_x) < 0.05
+  AND ABS(t1.center_y - t2.center_y) < 0.05
+  AND ABS(t1.center_z - t2.center_z) < 0.10;
+```
+
+**Affects:** Hospital (confirmed: 120 toilet pairs + 92 sink pairs). Likely to appear
+in any federated building where ARC and MEP discipline files are authored in Revit.
+**Scope:** BOM compile step (BOMWalker or DisciplineBomBuilder), not extraction.
+**Priority:** Before HO_005 Route/Walker witnesses (quantity proofs require clean counts).
+
+### TODO-HO-PC-CONSISTENCY — HO_ Product Categories Aligned with TE_ (S136)
+
+**Context:** Hospital MEP uses the same IFC classes as Terminal but different product
+vocabulary (medical gas, sterile HVAC, clinical plumbing — see HospitalAnalysis.md
+§HO_ vs TE_ MEP). When seeding `ad_ifc_class_map` for Hospital, new HO_ product
+categories must be consistent with the existing TE_ naming convention.
+
+**Rule:** New product category codes follow pattern `{BUILDING_PREFIX}_{DISCIPLINE}_{SUBTYPE}`.
+Terminal examples: not yet explicitly prefixed (TE_ prefix should be added retroactively
+for consistency). Hospital to define: `HO_MECH_ICU`, `HO_MECH_WARD`, `HO_SPR_STERILE`,
+`HO_PLB_CLINICAL`, `HO_MED_GAS`. Verify TE_ equivalent names before naming HO_ to ensure
+the pattern is uniform across the fleet.
+
+**Session:** HO_004 (after DECLARE ROOMS, before Route/Walker witnesses).
+
+### TODO-DECLARE-ROOMS-FLEET — Buildings Needing DeclareRoomsService (S136)
+
+`DeclareRoomsService` (designed in FINISH_WALLS_SRS.md §11) is needed for any building
+with walls but no IfcSpace. Fleet audit as of S136:
+
+| Building | Elements | Walls | IfcSpace | DECLARE ROOMS needed? |
+|----------|----------|-------|----------|----------------------|
+| Hospital | 62,291 | 1,468 | 0 | **YES — HO_002** |
+| SJTII_Terminal | 48,428 | 333 | 0 | **YES** (discipline-only model, no arch zones) |
+| Schependomlaan | 3,214 | 631 | 0 | **YES** (residential — missing spatial zones) |
+| HITOS | 2,068 | 838 | 0 | **YES** |
+| SampleCastle | 3,284 | 879 | 100 | No (partial, may still benefit) |
+| Clinic | 2,989 | 1,080 | 269 | No |
+| Molio | 2,791 | 98 | 117 | No |
+
+Hospital is the primary implementation target (HO_002). Once implemented, the service
+applies fleet-wide to TE, Schependomlaan, and HITOS with no code changes.
+
+### TODO-SHOWCASE-POC — Large Building PoC Demo Candidates (S136)
+
+For a Compiler-Designer model demonstration ("move a 62K-element building smoothly"):
+
+| Building | Elements | Type | Status | Demo value |
+|----------|----------|------|--------|-----------|
+| Hospital | 62,291 | Healthcare | Extracting (HO_001–HO_005) | **Primary** — largest, most MEP-diverse |
+| Terminal | 48,428 | Airport | 8/8 PASS, fully gated | **Live demo-ready NOW** |
+| Clinic | ~16K (federated) | Healthcare companion | 5 separate DBs, needs federation merge | TE companion — same campus concept |
+| Schependomlaan | 3,214 | Residential | Partial gate | ARC reference model quality |
+
+**The "Healthcare Campus" demo:** Hospital + Clinic in one ERP instance, same iDempiere
+tenant, two buildings under one project order. Hospital is the main block, Clinic is the
+outpatient annex. Combined ~78K elements under one BOM tree. This is the demo that proves
+the multi-building compiler-designer model at PoC scale. No other open-source BIM tool
+can do this without scene-graph memory collapse.
+
+Clinic federation merge (using `--guid-prefix DISC --append` per S136 pattern) can be done
+in one session once Hospital HO_001–HO_002 are complete and the pattern is proven.
+
+---
+
 *References: BBC.md §1 (P0.1-DEDUP), BOMBasedCompilation.md §4 (tack convention),
 TheRosettaStoneStrategy.md (discipline vocabulary), CONCEPTUAL BLUEPRINT.txt (MEP AttributeSet taxonomy),
 DocAction_SRS.md §1 (processIt lifecycle), DocValidate.md §13 (three-tier cascade),
