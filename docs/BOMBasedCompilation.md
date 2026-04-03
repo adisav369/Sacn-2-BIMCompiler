@@ -214,6 +214,11 @@ BOM column (`BUY/MAKE/PHANTOM`) has no role. The walker decides BOM-vs-leaf
 purely by whether `child_product_id` has a matching `m_bom` row. The column
 remains in the schema for iDempiere compatibility; code must never branch on it.
 
+*Exception — validation verbs:* `CHECK BOM` may inspect `component_type` as an iDempiere
+well-formedness signal (valid values: BUY / MAKE / PHANTOM). The placement walker still
+never branches on it. Any value outside {BUY, MAKE, PHANTOM} is a BOM authoring error,
+not a compilation input.
+
 ### 2.2.2 BOM-to-BOM Recursion
 
 ```
@@ -1208,3 +1213,71 @@ and the GEO validator second pass reaches these correctly. DX passes all gates (
 IFC world positions for both sides directly. Applying π to them would double-mirror
 the B-side furniture (moving it back to A-side positions). S139 initially misread
 this as a gap; GEO log investigation resolves it as intentional two-mechanism design.
+
+---
+
+## Verb Gap — IFC Aggregate Path
+
+*S140 investigation. Findings only — no code changes. S141 decides implementation path.*
+
+### Current State
+
+`VerbDetector` is geometry-only. It receives a flat `List<ExtractionElement>` with AABB
+coordinates and attempts TILE → ROUTE → FRAME → SPRAY → CLUSTER. It is blind to IFC's
+own grouping intent already captured in the extraction database.
+
+`extractIFCtoDB.py` (lines 618–640) reads `IfcRelAggregates` (parent→child decomposition)
+and writes to a `rel_aggregates` table (parent_guid, child_guid). The table is defined
+in schema (line 101) and populated during extraction. However:
+
+- `ExtractionReader.ExtractionElement` (17-field record) carries: AABB, `ifcClass`, `guid`,
+  `hostElementRef` — **no aggregate parent, no mapped-item flag.**
+- `StructuralBomBuilder` (lines 88–236) reads `rel_aggregates` and creates ASSEMBLY BOMs
+  for groups with ≥2 matched children. These use `componentType("MAKE")`, not a verb_ref.
+- No `AGGREGATE` verb type exists in the verb detection cascade.
+
+### Findings
+
+**F1. rel_aggregates populated but not consumed by VerbDetector.**
+The extraction writes IFC aggregate relationships, and `StructuralBomBuilder` reads them
+for assembly BOMs. But `VerbDetector` never sees them — it only receives element AABBs.
+Elements that are IFC-declared assembly children (e.g. IfcCurtainWall → IfcMember[]) are
+treated as independent elements for verb detection and typically fall to CLUSTER.
+
+**F2. ExtractionElement needs an aggregateParentRef field.**
+To let VerbDetector (or a pre-verb Phase 0) recognize IFC assemblies, the Java record
+must carry the parent GUID from `rel_aggregates`. Currently 17 fields; adding
+`String aggregateParentGuid` would enable grouping before geometric verb detection.
+
+**F3. Conceptual Phase 0 — IFC_AGGREGATE.**
+Before the TILE → ROUTE → FRAME → SPRAY → CLUSTER cascade, a Phase 0 could:
+1. Group elements sharing an `aggregateParentGuid`
+2. Emit one BOM level per aggregate group (parent product → member children)
+3. Assign verb_ref `AGGREGATE:parentGuid:childCount` or simply use MAKE lines
+4. Remaining ungrouped elements proceed through geometric verb detection as today
+
+This would collapse IFC-declared assemblies (curtain walls, stair assemblies, railings)
+into sub-BOMs *before* geometry tries to rediscover the grouping pattern.
+
+**F4. BOM-to-BOM recursion (§2.2.2) enables this.**
+An IfcCurtainWall with 13 IfcMember children naturally maps to:
+```
+FLOOR BOM
+  └─ CURTAINWALL_01 (MAKE) → CURTAINWALL_01 BOM
+       ├─ MEMBER_01 (BUY, dx,dy,dz)
+       ├─ MEMBER_02 (BUY, dx,dy,dz)
+       └─ ... (13 members, each with relative offset from curtain wall LBD)
+```
+The walker already supports N-level recursion. The new level is just another BOM.
+
+**F5. IfcMappedItem (instanced copies).**
+`extractIFCtoDB.py` handles `IfcMappedItem` for material extraction (doors/windows,
+S138). The `object_type` TEXT column in `elements_meta` could flag mapped items.
+Currently no verb encoding for IFC-native array repetition — these also fall to CLUSTER.
+
+### Decision Required (S141)
+
+1. Should Phase 0 IFC_AGGREGATE be implemented? Would reduce CLUSTER count for buildings
+   with rich IFC grouping (SH curtain walls, DX stairs).
+2. Should `ExtractionElement` gain `aggregateParentGuid`? Breaking change to record.
+3. Should IfcMappedItem become a distinct verb (INSTANCE) or fold into AGGREGATE?
