@@ -1745,6 +1745,19 @@ matching. Centroid DRIFT (±50mm) applies only to extracted elements (FP, ACMV i
 in TE). Generated CW/SP geometry for RM is not compared against IFC positions (none exist at
 discipline level) — it is validated structurally (clash, connectivity, gradient).
 
+#### GEO Forensic Ceiling — G1 vs G2
+
+`emitGeoSummary()` compares compiled placements against source extraction positions
+by IFC GUID. RouteWalker-generated rows have no IFC GUID and are excluded.
+
+| Class | Example | GEO scope | Discipline proof | Generated-route proof |
+|-------|---------|-----------|-----------------|----------------------|
+| G1 | TE (IFC4) | All extracted GUIDs | W-TE-DISC (elements_meta.discipline) | — |
+| G2 | RM (IFC2x3) | Extracted GUIDs only; routes excluded | Typed classes only | W-PATTERN-CW/SP |
+
+**G2 invariant:** For G2 buildings, pattern+connectivity proofs are the primary validation
+mechanism for generated pipe routes. GEO comparison covers extraction-origin elements only.
+
 #### 5. Phasing
 
 | Phase | Scope | Prereq |

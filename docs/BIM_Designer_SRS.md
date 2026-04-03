@@ -2706,6 +2706,119 @@ Compress, Add) + DiffVerb + ASI:
 Each macro = AD_Process with AD_Process_Para (iDempiere pattern).
 Filter + Mutation + Cascade scope. No new primitive needed.
 
+### 28.11 — Completion Tools: Complete / Change Elements
+
+**Purpose:** Allow users to complete half-finished IFC models or modify existing elements
+using library-backed, standard-driven placement. Addresses the gap where discipline-only
+IFC files lack structural envelope, or where IFC authors left elements unspecified.
+
+**Trigger:** A building in the system has zero (or below threshold) elements of a class
+that its ProductCategory standard mandates.
+
+**Implementing:** DISC_VALIDATION_DB_SRS.md §6.12.3 (MEP anchor tables supply the
+spatial context for completion audits). Mathematical basis: unified_mathematical_formulation.txt.
+
+#### 28.11.1 — Detection (missing element audit)
+
+For each compiled building, at pipeline close:
+
+```
+MISSING_AUDIT(building_id, ifc_class) →
+  expected = ad_val_rule WHERE building_type=B.product_category
+                           AND rule_type='MIN_COUNT'
+                           AND ifc_class=C
+  actual   = COUNT(*) FROM element_instances WHERE ifc_class=C
+  IF actual < expected.min_value → emit COMPLETION_OPPORTUNITY(building_id, ifc_class, deficit)
+```
+
+This references the Stage V (Validation) equation from unified_mathematical_formulation.txt §2:
+
+```
+V_λ(T(e)) =
+  PASS   if constraint_λ(T(e)) ≥ threshold_λ
+  BLOCK  if constraint_λ(T(e)) < threshold_λ AND NOT waived
+```
+
+Where `constraint_λ = MIN_COUNT(ifc_class)` and `threshold_λ = min_value` from `ad_val_rule`.
+The deficit is `threshold_λ - actual`.
+
+#### 28.11.2 — Complete The Walls verb
+
+**COMPLETE(ifc_class, storey, product_id)**
+
+1. User selects storey and wall type from component library (`M_Product` filtered by
+   `ifc_class=IfcWall`, `ProductCategory=building_type`)
+2. System computes placement grid from spatial structure (IfcSpace boundaries at that storey)
+3. BOM walk places walls along space perimeter using TILE or CLUSTER verb
+4. Output: new `element_instances` rows in output.db, linked to the selected `M_Product`
+
+**Not invented:** positions derived from IfcSpace AABB boundaries (already in extracted.db).
+Wall dimensions from `M_Product` in component_library.db. No parametric generation.
+
+Placement satisfies the Stage P equation (unified_mathematical_formulation.txt §2, Stage P):
+
+```
+T(e) = T(p(e)) + R(θ(e)) · Δ(e)
+```
+
+Where `p(e)` is the IfcSpace node, `Δ(e)` is the perimeter offset from AABB boundary,
+and `θ(e)` is the wall orientation angle (0°, 90°, 180°, 270° for axis-aligned walls).
+
+#### 28.11.3 — Change The Walls verb
+
+**CHANGE(element_filter, new_product_id)**
+
+Replace existing wall products with a different library item. Triggers re-compilation of
+affected storey only (incremental compile). The BOM line `product_id` is updated;
+geometry recomputed from new `M_Product` dimensions.
+
+Use cases:
+- Swap wall type (brick → glass curtain wall)
+- Upgrade fire rating (1hr → 2hr)
+- Change finish material (painted → tiled)
+
+#### 28.11.4 — Reusability via ProductCategory
+
+Pattern selection, validation rules, and default wall types are keyed to `M_Product_Category`:
+
+| ProductCategory | Default wall | Min walls/storey | Standard |
+|----------------|-------------|-----------------|---------|
+| RESIDENTIAL    | IfcWall (200mm brick) | 4 external | local building code |
+| COMMERCIAL     | IfcWallStandardCase (150mm) | varies | UBBL |
+| HOSPITAL       | IfcWall (200mm, FR=2hr) | 6 per ward | HTM |
+| INDUSTRIAL     | IfcWall (sandwich panel) | 2 external | factory code |
+
+This table lives in `ad_val_rule` (`rule_type=MIN_COUNT`, `ifc_class=IfcWall`), not hardcoded.
+
+#### 28.11.5 — Mathematical foundation
+
+Completion tools operate on the same AABB spatial model formalised in
+unified_mathematical_formulation.txt. Specifically:
+
+- **Detection** uses Stage V: `V_λ(T(e)) = PASS if MIN_COUNT ≥ threshold_λ`
+- **Placement** uses Stage P: `T(e) = T(p(e)) + R(θ(e)) · Δ(e)`
+- **Repeatability** is guaranteed by the Pure Function property (§4):
+  `C₁(Ω, Φ, Ψ, Λ, J) = C₂(Ω, Φ, Ψ, Λ, J)` — identical inputs always produce identical walls
+
+Wall placement invariant: `P(wall) ∈ boundary(IfcSpace)` — the wall centroid lies on
+the convex hull of the space's AABB. AABB coordinates come from extracted.db;
+no mesh generation is required.
+
+#### 28.11.6 — Scope and anti-drift
+
+- COMPLETE and CHANGE are ORDER mutations (WHAT concern) — they write to `M_OrderLine`
+- Geometry recomputation is HOW concern — triggers existing BOM walk
+- No new geometry primitives: wall dimensions come from `M_Product` AABB in component_library.db
+- Does NOT generate meshes — LOD rendering is downstream (Bonsai viewport reads output.db)
+- BIM Designer edits only `Ω` and `Φ` (unified_mathematical_formulation.txt §5):
+  recipes `Ψ` and rules `Λ` remain fixed, preserving the pure function guarantee
+
+**Witness claim:** W-COMPLETE-WALLS: after `COMPLETE(IfcWall, storey=X)`,
+element count for IfcWall at storey X increases by deficit amount,
+all new elements have valid AABB within IfcSpace boundary, T3-ARC passes.
+
+---
+
 ## 33. Verb Emission Protocol — GUI → VerbStage Pipeline
 
 **Version:** 1.0 (2026-03-29)

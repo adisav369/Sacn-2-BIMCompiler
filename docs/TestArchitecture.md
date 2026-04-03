@@ -164,6 +164,7 @@ to. Without this mapping, spec changes silently orphan tests.
 | PENDING | 3 | Spec exists, no test spec yet. |
 
 **Rule:** No code change without checking this matrix first.
+**How to use:** PASS row touched → run its test. SPEC ONLY → write the test. PENDING → write the spec first.
 
 ### Executable Traceability — Code-Level Enforcement
 

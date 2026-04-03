@@ -1,0 +1,33 @@
+# ── YAML = ONLY HUMAN-CRAFTED ARTIFACT ──────────────────────────────
+# CN: Clinic (Federated — ARC + STR + HVAC + SP + ELEC)
+# Merged from 5 discipline IFC files via federation_preprocessor.py.
+# Federated IFC: DAGCompiler/lib/input/IFC/Clinic_Federated.ifc
+# Reference DB:  DAGCompiler/lib/input/Clinic_extracted.db
+# See docs/WorkOrderGuide.md for field dictionary.
+# ────────────────────────────────────────────────────────────────────
+schema_version: 1
+
+building:
+  building_type: Clinic_Federated
+  prefix: CN
+  building_bom_id: BUILDING_CN_STD
+  doc_sub_type: CN
+  product_category: RE
+  name: Clinic (Federated)
+  building_category: Clinic
+  dsl_file: dsl_cn.bim
+
+  # Storeys from ARC base file (spatial structure preserved by MergeProjects)
+  storeys:
+    "First Floor":  { code: L1,   product_category: L1,   role: UPPER_FLOOR,  seq: 1010 }  # ARC + STR + MEP elements
+    "Second Floor": { code: L2,   product_category: L2,   role: UPPER_FLOOR,  seq: 1020 }  # ARC + STR + MEP elements
+    "Roof - Main":  { code: ROOF, product_category: ROOF, role: ROOF,          seq: 1030 }  # ARC + STR elements
+    "TOF Footing":  { code: FDN,  product_category: FDN,  role: FOUNDATION,    seq: 1040 }  # Foundation elements
+
+  # disciplines: ARC, STR, HVAC, SP, ELEC (all 5 source files merged)
+  # MEP elements appear under discipline MEP in elements_meta (HVAC/SP/ELEC
+  # IFC classes mapped by extractIFCtoDB.py DISCIPLINE_MAP)
+
+  # floor_rooms:           # uncomment if building has named rooms
+  # static_children:       # uncomment for fixed assemblies
+  # composition: null      # uncomment for mirrored/paired buildings

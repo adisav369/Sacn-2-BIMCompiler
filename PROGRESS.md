@@ -86,7 +86,8 @@
   00r DONE (`66264669`): RouteWalker.java — pattern select, anchor match, ARC clash check, c_orderline emit. Wired into CompilationPipeline after expandDisciplineLines. RM: CW=394, SP=134 lines. RM 8/8, SH 8/8.
   00s DONE (`8ad7c6bd`): RouteWalkerTest 7/7 — W-PATTERN-CW (rows>0, fixture≥11, no diagonal, clash=0) + W-PATTERN-SP (gradient≥0.024, STACK/storey, 80% connectivity).
   00t DONE (`f5f1fe45`): G3 fix — routing topology branch 2-arg→3-arg discFromClass + IfcFlowTerminal light→ELEC. W-TE-DISC: SJTII_Terminal CW=109, SP=167, FP=64, LPG=25. RM 8/8, SH 8/8. TE 7/8 (pre-existing 71 critical proof violations).
-  Next: `prompts/00u_te_critical_proofs.txt` — P05/P06 violations 71→0. Diagnose then fix. W-TE-PROOF. TE target: 8/8.
+  00u PARTIAL: Task A+B done. Task C BLOCKED → jitter approach (S137 T3-DISC-COUNT constraint: dedup breaks count=48428). Fix: offset second duplicate by 1mm Z in walk. W-TE-PROOF pending.
+  Next: `prompts/00u_te_critical_proofs.txt` Task C — jitter fix for 71 P05/P06 violations. Approach: position jitter (b), count must stay 48428.
   Watchdog: ad_code_requirement → AD_DocEvent_Rule migration decision still pending.
 
 **Watchdog findings:** [AUDIT_S51_FOCUSED.md Appendix I–U](docs/AUDIT_S51_FOCUSED.md).
@@ -94,6 +95,16 @@
 
 ## Session Log (recent first)
 
+**S104-pipeline-housekeeping** — IFC/extraction pipeline audit + fleet cleanup.
+  S137 (`35cfd241`): Black-box discipline split (T3-ARC/T3-DISC-COUNT) + emitGeoSummary removal. TE 8/8, SH 8/8.
+  Material bug found: SH/DX extracted DBs were stale blobs (S100-p126 re-extract stripped materials). Re-extracted from source IFCs — SH 54/65 rgba, DX 143/1162 rgba (federated). TE was only DB with materials (re-extracted in S60).
+  Fleet cleaned: 23 active YAMLs (ALL GREEN + TE/DX/RM/RS/CN/DM). Deactivated: ES,HI,JE,SC,WA,RA,WB,NI,CA,CE,CH,CP,CS.
+  Clinic federated: CN=Clinic_Federated (5 IFC → 1), 2989 elements. classify_cn.yaml added.
+  Smiley_West + Vogel_Gesamt: IFC2X_FINAL header-patched → IFC2X3, extracted (SW=521, VG=157 elements).
+  W019_mep_anchor_tables.sql: formalises 00q-A DDL (ad_mep_anchor + ad_mep_pattern).
+  §28.11 Complete/Change Walls spec added to BIM_Designer_SRS.md.
+  Revit federation (RA+RM+RS → Revit_Federated): deferred — RM RouteWalker patterns tagged building_type=Revit_MEP.
+  ALL GREEN 16 stale extracted DBs re-extracted with materials. RD/RL/WI: 1 element each (expected minimal IFC).
 **S104-J1-J3** — IFCtoERP joint piece extraction + MEP BOM walk architecture. 00c: IFCtoERP.java extracts 11 MEP IFC classes into 31 piece types, 785 joint + 11 shim M_Products in ERP.db. 00d: Design session rewrote §6.12.2 — tack point is just a point (not AABB/LBD), shim IS root BOM (no FP_SYSTEM wrapper), tack offsets extracted at IFCtoERP time (child pos - parent pos). DisciplineBomBuilder writes MEP to BOM (was deferred). ShimMatcher + GEO logging. m_bom gains host_ifc_class/mount/offset_mm. X_M_BOM: isShim(). GAP: inter-piece tack offsets not yet extracted — J1 foundation. SH 8/8 PASS.
 **S103-disc-sep** — Discipline separation (§10.4.6.1) + joint piece architecture spec. Task A: DisciplineBomBuilder filters MEP (AD_Org 3-8) from FLOOR BOM, writes counts to ad_sysconfig + YAML `discipline_counts:`. Task B: OrderLineProductCallout updates DISC OrderLine Qty from MEP counts (handles BomDropper pre-created lines). IFCtoBOMPipeline: reconcileCount for QA/G1, YAML write-back. Spec: §6.12.1 Compilation Isolation Invariant (DAGCompiler SHALL NOT open extraction), §6.12.2 MEP as BOM Walk — joint pieces = Lego pieces in ERP.db, one abstract walker for all disciplines, IFCtoERP as separate extraction phase, standards as validation not generation, CrawlRouter preserved for generative only. SH 7/7 PASS, TE 5/7 (baseline, critical violations 71→2). Prompts 00c/00d/00e written (IFCtoERP series, test on TE+RM).
 **S102-fleet** — Full fleet fresh extraction (34 buildings, DM excluded). PATTERN default ON. Script: per-category scripts archived, single loop, no set -e, streamlined one-line summary + fleet table. Infra (BR/RD/RL/IP): YAML segments removed, auto-discover from IFC spatial structure, PATTERN FLOOR logging added to DisciplineBomBuilder. Results: 212/238 PASS, **19 ALL GREEN** (was ~14). CE clean (was DRIFT=39,900). RD/RL 7/7 (infra auto-discover). PATTERN forensics: MO 84%, JE 65%, RA 45% Unknown elements — storey assignment gaps identified. 10 Maven FAIL on critical proofs. CL extraction FAIL. Prompts 00/00a/00b written.

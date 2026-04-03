@@ -7,7 +7,7 @@
 A BOM is a recipe: one parent, N children, each with a quantity. Each child can itself be a BOM — building → floor → room → furniture → leaf, recursively. Each level is atomic and self-contained. **Three Concerns never merge:** WHAT (Orders, Categories, Products), HOW (BOMs, AttributeSets, Validation), WHERE (output.db for 4D–8D downstream).
 
 ## Session Startup
-1. Read this file
+1. User states activity category (BOM/geometry | schema/ERP | IFC/extraction | SRS/spec | pipeline/debug) → read only matching [category] feedback files from MEMORY.md
 2. Read PROGRESS.md §Current State (gate table, what's next)
 3. Read `docs/WorkOrderGuide.md` §Invention Boundary + §Step 5-6 (pipeline flow)
 4. Read the analysis doc for the building you're working on (`docs/{Building}Analysis.md`)
@@ -27,6 +27,7 @@ Before ending, update PROGRESS.md with:
 - Changed verb/witness count → update MEMORY.md. Changed schema row counts → update SCHEMA_QUICKREF.md
 - Obsolete topic file → delete + remove from MEMORY.md. New pattern → add to topic file or MEMORY.md
 - Keep MEMORY.md under 80 lines, CLAUDE.md under 45 lines. Screenshots: `~/Pictures/Screenshots/`
+- If PROGRESS.md > 80 lines, archive DONE items as single-line pointers to spec docs
 
 ## Standing Rules
 - One bounded task per session
