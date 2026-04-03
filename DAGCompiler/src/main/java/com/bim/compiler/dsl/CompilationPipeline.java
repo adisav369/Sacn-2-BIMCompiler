@@ -412,10 +412,9 @@ public class CompilationPipeline {
                 BIMLogger.fine("COMPILE", "{}: verb breakdown: {}",
                     ctx.entry().name(), verbBreakdown);
 
-                // GEO SUMMARY: all-pairs relative offset verification (BBC.md §4, LMP §7)
-                String extDbPath = "DAGCompiler/lib/input/"
-                    + ctx.entry().projectName() + "_extracted.db";
-                visitor.emitGeoSummary(extDbPath);
+                // Implementing AUDIT_20260402.txt §4 — emitGeoSummary removed.
+                // Black-box correctness is owned by ExtractedGeometryTruthTest T3-ARC.
+                // GEO forensic route confirmation via bim.geo.debug=true is sufficient.
             }
         }
     }

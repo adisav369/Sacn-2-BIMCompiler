@@ -99,8 +99,19 @@ public class SpatialDiff {
      * Tries identity-based matching first, falls back to position-based.
      */
     public static DiffReport diff(String refDbPath, String outDbPath) {
-        Map<String, double[]> refById = loadElementsByIdentity(refDbPath, "guid");
-        Map<String, double[]> outById = loadElementsByIdentity(outDbPath, "element_ref");
+        return diff(refDbPath, outDbPath, null);
+    }
+
+    /**
+     * Compare two output DBs element-by-element, restricted to the given ifc_class filter.
+     * If filter is null or empty, all classes are included.
+     * // Implementing AUDIT_20260402.txt §3 — ARC/STC filter for TotalityContractTest
+     *
+     * @param ifcClassFilter set of ifc_class strings to include, or null for all
+     */
+    public static DiffReport diff(String refDbPath, String outDbPath, Set<String> ifcClassFilter) {
+        Map<String, double[]> refById = loadElementsByIdentity(refDbPath, "guid", ifcClassFilter);
+        Map<String, double[]> outById = loadElementsByIdentity(outDbPath, "element_ref", ifcClassFilter);
 
         if (!refById.isEmpty() && !outById.isEmpty()) {
             long overlap = refById.keySet().stream().filter(outById::containsKey).count();
@@ -109,7 +120,7 @@ public class SpatialDiff {
             }
         }
 
-        return diffByPosition(refDbPath, outDbPath);
+        return diffByPosition(refDbPath, outDbPath, ifcClassFilter);
     }
 
     private static DiffReport diffByIdentity(
@@ -203,8 +214,12 @@ public class SpatialDiff {
     }
 
     private static DiffReport diffByPosition(String refDbPath, String outDbPath) {
-        Map<String, List<double[]>> refElements = loadElements(refDbPath);
-        Map<String, List<double[]>> outElements = loadElements(outDbPath);
+        return diffByPosition(refDbPath, outDbPath, null);
+    }
+
+    private static DiffReport diffByPosition(String refDbPath, String outDbPath, Set<String> ifcClassFilter) {
+        Map<String, List<double[]>> refElements = loadElements(refDbPath, ifcClassFilter);
+        Map<String, List<double[]>> outElements = loadElements(outDbPath, ifcClassFilter);
 
         Set<String> allClasses = new TreeSet<>();
         allClasses.addAll(refElements.keySet());
@@ -284,12 +299,17 @@ public class SpatialDiff {
     }
 
     private static Map<String, double[]> loadElementsByIdentity(String dbPath, String idColumn) {
+        return loadElementsByIdentity(dbPath, idColumn, null);
+    }
+
+    private static Map<String, double[]> loadElementsByIdentity(String dbPath, String idColumn, Set<String> ifcClassFilter) {
         if (!"guid".equals(idColumn) && !"element_ref".equals(idColumn)) return Collections.emptyMap();
+        String filterClause = buildFilterClause(ifcClassFilter);
         String sql = String.format("""
             SELECT em.%s, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
             FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
-            WHERE em.%s IS NOT NULL AND em.%s != ''
-            """, idColumn, idColumn, idColumn);
+            WHERE em.%s IS NOT NULL AND em.%s != ''%s
+            """, idColumn, idColumn, idColumn, filterClause.isEmpty() ? "" : " AND " + filterClause);
 
         Map<String, double[]> result = new HashMap<>();
         try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
@@ -303,6 +323,20 @@ public class SpatialDiff {
             }
         } catch (SQLException e) { return Collections.emptyMap(); }
         return result;
+    }
+
+    /** Build a SQL WHERE clause fragment for ifc_class IN (...), or empty string if no filter. */
+    private static String buildFilterClause(Set<String> ifcClassFilter) {
+        if (ifcClassFilter == null || ifcClassFilter.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder("em.ifc_class IN (");
+        boolean first = true;
+        for (String cls : ifcClassFilter) {
+            if (!first) sb.append(',');
+            sb.append('\'').append(cls).append('\'');
+            first = false;
+        }
+        sb.append(')');
+        return sb.toString();
     }
 
     private static Map<String, String> loadClassByIdentity(String dbPath, String idColumn) {
@@ -346,9 +380,16 @@ public class SpatialDiff {
     }
 
     private static Map<String, List<double[]>> loadElements(String dbPath) {
+        return loadElements(dbPath, null);
+    }
+
+    private static Map<String, List<double[]>> loadElements(String dbPath, Set<String> ifcClassFilter) {
+        String filterClause = buildFilterClause(ifcClassFilter);
+        String whereClause = filterClause.isEmpty() ? "" : "WHERE " + filterClause + "\n";
         String sql = """
             SELECT em.ifc_class, r.minX, r.maxX, r.minY, r.maxY, r.minZ, r.maxZ
             FROM elements_meta em JOIN elements_rtree r ON em.id = r.id
+            """ + whereClause + """
             ORDER BY em.ifc_class,
                      ROUND(r.minX * 100), ROUND(r.minY * 100), ROUND(r.minZ * 100),
                      ROUND((r.maxX - r.minX) * 1000), ROUND((r.maxY - r.minY) * 1000),

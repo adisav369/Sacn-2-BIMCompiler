@@ -67,9 +67,6 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
-    /** Parent BOM ID for each placement (parallel to placements list). For GEO sibling-only pairs. */
-    private final List<String> placementParents = new ArrayList<>();
-
     /** Current parent BOM stack — tracks the innermost MAKE ancestor for each leaf. */
     private final Deque<String> parentBomIdStack = new ArrayDeque<>();
 
@@ -299,6 +296,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     // For qty=1 (unfactored, SH/DX): single iteration with line dx/dy/dz — identical.
     // For qty>1 + verb_ref (factored, TE): parse verb, compute per-instance positions.
     // BIM_COBOL verbs: TILE, ROUTE, FRAME, SPRAY.
+    //
+    // GEO = white-box only. Black-box correctness is owned by ExtractedGeometryTruthTest T3-ARC.
+    // Do not add extraction-DB joins here. Forensic route confirmation via bim.geo.debug=true
+    // is sufficient for DISC device positioning review.
     @Override
     public void onLeaf(BOMWalker.NodeContext ctx) {
         MBOMLine line = ctx.line();
@@ -497,7 +498,6 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 productId
             );
             placements.add(p);
-            placementParents.add(parentBomIdStack.isEmpty() ? "ROOT" : parentBomIdStack.peek());
         }
     }
 
@@ -554,7 +554,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
 
         // Unknown verb — fall back to origin position for all instances
+        // Implementing AUDIT_20260402.txt §2 Gap A — verb unknown must appear in TACK channel
         BIMLogger.warn("COMPILE", "UnknownVerbRef prefix: {} — using origin", verbRef);
+        BIMLogger.geo("TACK", "VERB_UNKNOWN {} prefix='{}' qty={} — origin fallback ({:.4f},{:.4f},{:.4f})",
+            verbRef, verbRef, qty, originDx, originDy, originDz);
         double[][] result = new double[qty][3];
         for (int i = 0; i < qty; i++) {
             result[i] = new double[]{originDx, originDy, originDz};
@@ -857,6 +860,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         try {
             return Double.parseDouble(rule);
         } catch (NumberFormatException e) {
+            // Implementing AUDIT_20260402.txt §2 Gap B — silent rotation fallback made visible
+            String productRef = (line != null) ? String.valueOf(line.getBomLineId()) : "?";
+            BIMLogger.geo("TACK", "ROT_PARSE_ERR {} rule='{}' — fallback 0.0rad", productRef, rule);
             return 0.0;
         }
     }
@@ -899,123 +905,8 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return d != null ? d : Discipline.ARC;
     }
 
-    // ── GEO SUMMARY: all-pairs relative offset verification (LMP §7) ────
-
-    /**
-     * Emit a GEO SUMMARY line comparing compiled placements against extraction
-     * source positions. Uses relative offset deltas — cancels world origin,
-     * proves tack chain is lossless.
-     *
-     * <p>For small buildings (n &le; 10000): all-pairs O(n²).
-     * For large buildings: sibling-only pairs (same parent BOM) — proves
-     * tack chain at each hierarchy level without O(n²) explosion.
-     *
-     * <p>Only runs when {@code bim.geo.debug=true}. Opens the extraction DB
-     * once, emits one summary line.
-     *
-     * @param extractionDbPath path to *_extracted.db (elements_meta + elements_rtree)
-     */
-    public void emitGeoSummary(String extractionDbPath) {
-        if (!BIMLogger.geoMatch("")) return;  // GEO mode off → skip
-
-        // Collect compiled placements with valid IFC GUIDs + their parent BOM
-        List<String> guids = new ArrayList<>();
-        List<double[]> compiledLbd = new ArrayList<>();
-        List<String> parents = new ArrayList<>();
-        for (int idx = 0; idx < placements.size(); idx++) {
-            PlacementLoader.Placement p = placements.get(idx);
-            if (p.elementRef() != null && IFC_GUID.matcher(p.elementRef()).matches()) {
-                guids.add(p.elementRef());
-                compiledLbd.add(new double[]{p.minX(), p.minY(), p.minZ()});
-                parents.add(idx < placementParents.size() ? placementParents.get(idx) : "ROOT");
-            }
-        }
-
-        if (guids.isEmpty()) {
-            BIMLogger.geo("TACK", "SUMMARY 0 elements with IFC GUIDs — no comparison possible");
-            return;
-        }
-
-        // Load extraction positions by GUID
-        java.util.Map<String, double[]> extPos = new java.util.HashMap<>();
-        try (Connection extConn = java.sql.DriverManager.getConnection(
-                "jdbc:sqlite:" + extractionDbPath)) {
-            try (java.sql.PreparedStatement ps = extConn.prepareStatement(
-                    "SELECT r.minX, r.minY, r.minZ FROM elements_meta m "
-                    + "JOIN elements_rtree r ON m.id = r.id WHERE m.guid = ?")) {
-                for (String guid : guids) {
-                    ps.setString(1, guid);
-                    try (java.sql.ResultSet rs = ps.executeQuery()) {
-                        if (rs.next()) {
-                            extPos.put(guid, new double[]{
-                                rs.getDouble(1), rs.getDouble(2), rs.getDouble(3)});
-                        }
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            BIMLogger.geo("TACK", "SUMMARY extraction DB open failed: {} — skipping", e.getMessage());
-            return;
-        }
-
-        // Choose strategy: all-pairs for small, sibling-only for large
-        boolean siblingOnly = guids.size() > 10000;
-
-        int pairs = 0;
-        int driftCount = 0;
-        double worstDrift = 0.0;
-        double driftThreshold = 1.0;  // 1mm
-
-        if (siblingOnly) {
-            // Group indices by parent BOM — compare within each group only
-            java.util.Map<String, List<Integer>> groups = new java.util.LinkedHashMap<>();
-            for (int i = 0; i < guids.size(); i++) {
-                if (extPos.containsKey(guids.get(i))) {
-                    groups.computeIfAbsent(parents.get(i), k -> new ArrayList<>()).add(i);
-                }
-            }
-            for (List<Integer> group : groups.values()) {
-                for (int a = 0; a < group.size(); a++) {
-                    int i = group.get(a);
-                    double[] extI = extPos.get(guids.get(i));
-                    for (int b = a + 1; b < group.size(); b++) {
-                        int j = group.get(b);
-                        double[] extJ = extPos.get(guids.get(j));
-                        pairs++;
-                        double drift = pairDrift(compiledLbd.get(i), compiledLbd.get(j), extI, extJ);
-                        if (drift > worstDrift) worstDrift = drift;
-                        if (drift > driftThreshold) driftCount++;
-                    }
-                }
-            }
-            int elementsWithExt = (int) guids.stream().filter(extPos::containsKey).count();
-            int groupCount = groups.size();
-            BIMLogger.geo("TACK", "SUMMARY {} elements, {} sibling-pairs across {} groups, worst={:.3f}mm, DRIFT={}",
-                elementsWithExt, pairs, groupCount, worstDrift, driftCount);
-        } else {
-            // All-pairs for small buildings
-            for (int i = 0; i < guids.size(); i++) {
-                double[] extI = extPos.get(guids.get(i));
-                if (extI == null) continue;
-                for (int j = i + 1; j < guids.size(); j++) {
-                    double[] extJ = extPos.get(guids.get(j));
-                    if (extJ == null) continue;
-                    pairs++;
-                    double drift = pairDrift(compiledLbd.get(i), compiledLbd.get(j), extI, extJ);
-                    if (drift > worstDrift) worstDrift = drift;
-                    if (drift > driftThreshold) driftCount++;
-                }
-            }
-            int elementsWithExt = (int) guids.stream().filter(extPos::containsKey).count();
-            BIMLogger.geo("TACK", "SUMMARY {} elements, {} pairs, worst={:.3f}mm, DRIFT={}",
-                elementsWithExt, pairs, worstDrift, driftCount);
-        }
-    }
-
-    /** Compute max-axis drift (mm) between a compiled pair and extraction pair. */
-    private static double pairDrift(double[] cI, double[] cJ, double[] eI, double[] eJ) {
-        return Math.max(Math.abs((cI[0] - cJ[0]) - (eI[0] - eJ[0])),
-               Math.max(Math.abs((cI[1] - cJ[1]) - (eI[1] - eJ[1])),
-                        Math.abs((cI[2] - cJ[2]) - (eI[2] - eJ[2])))) * 1000.0;
-    }
+    // Implementing AUDIT_20260402.txt §4 — emitGeoSummary removed.
+    // GEO = white-box only. Black-box correctness is owned by ExtractedGeometryTruthTest T3-ARC.
+    // Do not add extraction-DB joins here. Forensic route confirmation via bim.geo.debug=true
+    // is sufficient for DISC device positioning review.
 }

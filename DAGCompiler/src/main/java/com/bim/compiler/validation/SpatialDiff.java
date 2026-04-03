@@ -74,4 +74,9 @@ public class SpatialDiff {
     public static DiffReport diff(String refDbPath, String outDbPath) {
         return DiffReport.fromEyes(com.bim.eyes.diff.SpatialDiff.diff(refDbPath, outDbPath));
     }
+
+    /** Filter diff to the given set of ifc_class values. Null = all classes. */
+    public static DiffReport diff(String refDbPath, String outDbPath, java.util.Set<String> ifcClassFilter) {
+        return DiffReport.fromEyes(com.bim.eyes.diff.SpatialDiff.diff(refDbPath, outDbPath, ifcClassFilter));
+    }
 }
