@@ -531,6 +531,7 @@ names are preserved in `element_name`, use those directly:
 unique `geometry_hash` → populate `component_definitions.name` with cleaned display string.
 Hospital (`MECH_`, `PLB_`, `SPR_` elements) will seed this for the first time with real
 Revit family names. This makes the chooser usable for HO_ products immediately.
+**Coder prompt:** `prompts/LI_001_display_names.md` — prereq: HO_001 done.
 
 ### 10.3 BOMType as Second Chooser Axis (iDempiere Pattern)
 
