@@ -214,6 +214,79 @@ The `--skip-extract` flag skips Step 2 since the DB already exists. Step 3 (YAML
 skeleton) will auto-generate from the existing DB. The ARC IFC is used only for the recon
 step; the actual reference DB is the pre-built multi-discipline extraction.
 
+## Engineering Reading — Key Metrics Interpreted
+
+### Assembly Depth (9,527 rel_aggregates) — Good
+
+Deep = faithful to procurement reality. A hospital MECH riser is assembled into:
+sub-branch → branch → floor trunk → building riser. Each level is a real subcontract
+scope, delivery unit, or inspection milestone. Our BOMWalker handles any depth natively
+(recursive `getChildren()` — no hardcoded level count). The depth is not complexity overhead;
+it IS the BOM. Compare TE at 0 rel_aggregates — Terminal MEP is flat (no assembly decomposition
+authored). Hospital gives us the first genuinely deep assembly hierarchy to test the walker.
+
+### IfcSpace = 0 — Rooms Not Declared (Not Missing)
+
+Zero IfcSpace does NOT mean "rooms exist but aren't named." It means the enclosed volumes
+were never authored as IFC spatial zones. The 1,468 IfcWall elements exist — the geometry
+of the room boundaries is there — but no IFC entity claims the enclosed air volume.
+
+**Consequence:** FINISH_WALLS_SRS.md cannot run. Its COMPLETE verb requires IfcSpace AABB
+as the spatial input for wall placement. There is nothing to place against.
+
+**Fix (separate session):** DECLARE ROOMS — infer IfcSpace boundaries from wall topology
+(convex hull of enclosing wall segments per storey), register synthetic IfcSpace records in
+`spatial_structure` and `elements_rtree`, then FINISH_WALLS can operate normally.
+See: `docs/FINISH_WALLS_SRS.md §11` (Hospital reference case).
+
+This is a one-session task that unlocks both FINISH_WALLS and room-level BOM granularity
+for the Hospital. Until then, the pipeline works at floor-level granularity only.
+
+### 62K Uniqueness — The DB Stress Test
+
+TE's 50K elements are dominated by 33,324 identical IfcPlate roof tiles — factorised to a
+handful of geometry hashes. Hospital's 62K has only 21,196 unique geometry hashes = 2.9×
+reuse ratio (vs TE's ~64× on the plate population alone). The hospital is genuinely diverse:
+valve variants, fitting angles, terminal types, clinical equipment proxies.
+
+**What this proves about our approach:** A Bonsai user without our GPU-instanced library
+loads each of the 62K elements as a full mesh object into Blender's scene graph — memory
+pressure rises linearly with element count, performance degrades. Our approach stores one
+geometry blob per `geometry_hash` in `base_geometries` and renders by transform reference.
+Even at 2.9× reuse, 62K elements render from 21K unique meshes. At higher reuse (TE roof),
+the ratio is extreme. The Hospital is the model that proves this matters even for low-reuse
+buildings — it moves smoothly in our DB, but would tax any scene-graph-based viewer.
+
+### HO_ vs TE_ MEP — Different Vocabulary, Not Classic
+
+Hospital MEP is structurally different from Terminal MEP — different hazard classes,
+different product specs, different regulatory frameworks:
+
+| Dimension | Terminal (TE_) | Hospital (HO_) |
+|-----------|---------------|----------------|
+| Dominant MEP | CW, LPG, airport fixtures | MECH HVAC, SPR, clinical PLB |
+| Pipe material | Galvanised / carbon steel | Stainless (sterile), copper (potable) |
+| Sprinkler type | Standard LIGHT hazard | Clean-room rated, EXTRA (helipad) |
+| Gas | LPG for airport kitchens | Medical O₂, N₂, medical air (medical gas system) |
+| HVAC | Airport comfort cooling | Positive-pressure clean rooms, OT 25 ACH |
+| Regulatory standard | NFPA 13 LIGHT/ORD | NFPA 13/99, HTM 03-01, ASHRAE 170 |
+
+The IFC classes are the same (`IfcFlowSegment`, `IfcPipeFitting`). The M_Product_Category
+vocabulary is completely different. `HO_MECH_ICU` is not `TE_ACMV`.
+
+**The user's dream is a real BOM decomposition:** Because the source IFCs are already
+discipline-separated, the compiler can offer:
+- HO_MECH_ICU — ICU mechanical (positive pressure, HEPA, 25 ACH)
+- HO_MECH_WARD — Standard ward HVAC (comfort cooling, 6 ACH)
+- HO_SPR_STERILE — Stainless sprinkler heads for sterile zones
+- HO_PLB_CLINICAL — Copper potable plumbing for clinical washbasins
+- HO_MED_GAS — Medical gas (O₂, N₂, medical air) manifold and drops
+
+Each is a separate BOM subtree under its floor → discipline node. The ERP.db classifies
+them under `AD_Org_ID=MECH` (or SPR/PLB) with `M_Product_Category=HO_*`. A procurement
+officer can pull "all ICU HVAC on Level 3" as a single BOM query — that is our compiler's
+demonstrable edge over any generic quantity surveyor tool.
+
 ## Fleet Position
 
 | Building | Elements | Type | MEP | FP Network |

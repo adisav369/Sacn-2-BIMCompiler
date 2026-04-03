@@ -297,6 +297,57 @@ and offers a "COMPLETE ALL" for each group. Each resolution goes through the sam
 
 ---
 
+## 11. Reference Case: Hospital (HO_) — DECLARE ROOMS First
+
+**See:** `docs/HospitalAnalysis.md §Engineering Reading` for full context.
+
+Hospital has 1,468 IfcWall elements across 7 levels but **zero IfcSpace records**.
+FINISH_WALLS cannot run: `§5 COMPLETE verb` needs IfcSpace AABB as spatial input.
+This is the canonical case that exposes the **DECLARE ROOMS prerequisite**.
+
+### 11.1 What DECLARE ROOMS Means
+
+DECLARE ROOMS ≠ adding missing walls. It is a prior step: inferring the enclosed
+air volumes from existing wall geometry and registering them as synthetic IfcSpace
+records so the rest of the pipeline (FINISH_WALLS, room-level BOM, 2D floor plan
+rooms) can proceed.
+
+```
+Hospital walls exist (1,468 IfcWall) — but no IfcSpace
+  → DECLARE ROOMS: infer bounding zone from wall topology per storey
+      For each storey:
+        1. Collect IfcWall AABBs on this level (from elements_rtree)
+        2. Run wall-segment graph → find enclosed polygons (rooms)
+        3. For each polygon: compute AABB, assign name ("Room_L1_001")
+        4. INSERT INTO spatial_structure (guid=synthetic, type='IfcSpace', ...)
+        5. INSERT OR IGNORE INTO elements_rtree (id, minX..maxZ) for each space
+  → Now FINISH_WALLS can run: IfcSpace AABB is available
+  → CompletionAuditService detects wall deficits per declared room
+  → COMPLETE verb places walls along room faces
+```
+
+### 11.2 Why Hospital Is the Right First Case
+
+- Large, real clinical building — not a toy example
+- 7 floors of rectangular ward plans → wall topology is tractable (grid-aligned walls,
+  mostly orthogonal — Level 1-L2 resolution in the Type Resolution Ladder)
+- IfcWall count (1,468) is sufficient to infer room boundaries without IfcSpace
+- Once declared, Hospital becomes the test case for the full round-trip:
+  `DECLARE ROOMS → FINISH_WALLS → 2D floor plan → room-level BOM → ERP procurement`
+
+### 11.3 Session Scope
+
+One bounded session:
+1. Read `HospitalAnalysis.md` + this section
+2. Implement `DeclareRoomsService.infer(buildingId, storeyId)` — wall topology → IfcSpace AABB
+3. Write witness: W-FW-DECLARE (count of declared rooms per storey > 0, AABB non-zero)
+4. Verify: FINISH_WALLS detection (§3) now finds deficit count > 0 for Hospital
+
+**Do NOT implement the COMPLETE verb placement in the same session.**
+Declare first, prove counts, then a separate session for wall placement.
+
+---
+
 *Cross-references:
 [BIM_Designer_SRS.md §28.17](BIM_Designer_SRS.md) (parent spec — §28.17.1-28.17.7) |
 [SPATIAL_VARIANCE_SRS.md §3](SPATIAL_VARIANCE_SRS.md) (Type Resolution Ladder) |

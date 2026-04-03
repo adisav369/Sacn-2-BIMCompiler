@@ -338,6 +338,79 @@ routing where the compiler must chain segments through fittings.
 4. Generate `TE_BOM.db` with 9 discipline sub-trees per storey
 5. Scale proof: 51,088 elements organized into ~N×9 discipline BOMs
 
+### Phase 5: Hospital (HO_) — Full MEP Discipline Suite + Route/Walker
+
+**Reference:** `docs/HospitalAnalysis.md` — 62,291 elements, 7 discipline IFCs (S136).
+
+Hospital is the first building in the fleet with all four major MEP disciplines at clinical
+scale: MECH(19,670), SPR(13,490), PLB(9,121), ELE(2,798). It is the primary Route/Walker
+test model beyond Terminal's FP network.
+
+#### HO_ Discipline BOM Structure
+
+```
+BUILDING_HOSP_STD
+├── [per storey L1–L7A]
+│   ├── ARC_HOSP_LXX    (~14,379 / 7 levels)
+│   ├── STR_HOSP_LXX    (~2,827)
+│   ├── MECH_HOSP_LXX   (~19,670) — HVAC: ducts, pipes, AHUs, FCUs
+│   │   ├── MECH_HOSP_ICU_LXX     (positive pressure, HEPA, 25 ACH)
+│   │   └── MECH_HOSP_WARD_LXX    (comfort cooling, 6 ACH)
+│   ├── SPR_HOSP_LXX    (~13,490) — Sprinkler: mains, branches, heads, valves
+│   │   ├── SPR_HOSP_STERILE_LXX  (stainless heads, clean zones)
+│   │   └── SPR_HOSP_HELIPAD      (NFPA 15 foam-water, Level 7A only)
+│   ├── PLB_HOSP_LXX    (~9,121)  — Plumbing: potable, waste, medical gas
+│   └── ELE_HOSP_LXX    (~2,798)  — Electrical: lighting, controls
+└── [risers — storey-spanning trunks]
+    ├── MECH_RISER_HOSP
+    ├── SPR_RISER_HOSP
+    └── PLB_RISER_HOSP
+```
+
+#### Why HO_ Vocabulary ≠ TE_ Vocabulary
+
+Hospital MEP is not generic commercial MEP. The product categories must be distinct:
+
+| TE_ product | HO_ equivalent | Why different |
+|-------------|---------------|---------------|
+| TE_ACMV (airport comfort) | HO_MECH_ICU | 25 ACH, HEPA, positive pressure — clinical standard |
+| TE_CW (chilled water) | HO_MECH_WARD | Comfort cooling only; no LPG; medical gas instead |
+| TE_SP (sanitary) | HO_PLB_CLINICAL | Copper (not galvanised), clinical washbasin spec |
+| TE_FP (standard) | HO_SPR_STERILE | Stainless heads for sterile zones (NFPA 13 §11) |
+| (no TE equivalent) | HO_MED_GAS | O₂/N₂/medical air — NFPA 99, HTM 02-01 |
+
+This is the compiler's demonstrable edge: same IFC classes (`IfcFlowSegment`,
+`IfcPipeFitting`), completely different M_Product_Category vocabulary, resolved at
+compile time from `AD_Org_ID` + `system_type` filter (see §5.2).
+
+#### Route/Walker Test Coverage — Disciplines Beyond FP
+
+Terminal validated `RouteSprinklersVerb` for FP only. Hospital extends to all MEP disciplines:
+
+| Discipline | Route/Walker Test | Standard | Witness Claim |
+|-----------|------------------|----------|---------------|
+| SPR | Head density per floor, zone valve coverage | NFPA 13 | W-HOSP-FP-1..5 (see HospitalAnalysis.md) |
+| MECH | HVAC duct continuity from AHU to terminal | ASHRAE 170 | W-HOSP-MECH-1: every FlowTerminal (AirTerminal) reachable from FlowSegment trunk |
+| PLB | Pipe run connectivity, no dead-end branches | HTM 04-01 | W-HOSP-PLB-1: every FlowTerminal (washbasin) reachable from PLB riser |
+| ELE | Light fixture coverage per floor area | MS1525 / HTM 06-01 | W-HOSP-ELE-1: fixture density ≥ 1 per N m² per room type |
+| MECH vs SPR | Co-routing clearance (HVAC ducts vs sprinkler mains) | NFPA 13 §10.2 | W-HOSP-FP-4 (AABB overlap < threshold) |
+
+**MECH and PLB route tests do not require a new verb.** They reuse the connectivity-walk
+pattern from `RouteSprinklersVerb`: load source-node elements (AHU / riser), walk
+`rel_aggregates` tree, assert all terminal nodes reachable. The verb is parameterised by
+`ifc_class_source` and `ifc_class_sink` — same algorithm, different class filter.
+
+#### Implementation Sequence for Phase 5
+
+1. `classify_hosp.yaml` schema_version 2 with discipline block (MECH/SPR/PLB/ELE)
+2. Seed `ad_ifc_class_map` with HO_* product category overrides
+3. Generate HOSP_BOM.db with discipline sub-trees per storey
+4. W-HOSP-MECH-1: MECH duct connectivity witness (reachability from FlowSegment trunk)
+5. W-HOSP-PLB-1: PLB pipe connectivity witness
+6. W-HOSP-ELE-1: ELE fixture density witness
+7. W-HOSP-FP-1..5: SPR witnesses (head count, zone valve coverage, helipad NFPA 15)
+8. Regression: SH/TE/DX gates GREEN (no discipline vocabulary pollution)
+
 ### Future: Generative Extension
 1. Add `system_type` column to `I_Element_Extraction` (from IFC property sets)
 2. Populate `layout_strategy`, `z_rule`, `anchor_face` on m_bom_line
