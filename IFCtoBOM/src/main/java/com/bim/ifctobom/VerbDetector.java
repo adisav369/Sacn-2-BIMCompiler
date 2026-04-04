@@ -3,7 +3,9 @@ package com.bim.ifctobom;
 import com.bim.ifctobom.ExtractionReader.ExtractionElement;
 import com.bim.orm.BIMLogger;
 
+import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Detects verb patterns (TILE, ROUTE, FRAME, SPRAY) in groups of extracted elements.
@@ -41,6 +43,32 @@ public class VerbDetector {
 
     /** Minimum group size to attempt pattern detection. */
     private static final int MIN_GROUP = 4;
+
+    /** Cached pattern hints from ad_verb_pattern. Key = ifc_class. */
+    private static Map<String, String> patternHints = Map.of();
+
+    /** Load pattern hints from ERP.db. Call once at pipeline start. */
+    public static void loadPatternHints(Connection discConn) {
+        try {
+            // Check table exists
+            try (ResultSet tables = discConn.getMetaData().getTables(
+                    null, null, "ad_verb_pattern", null)) {
+                if (!tables.next()) return;
+            }
+            Map<String, String> hints = new LinkedHashMap<>();
+            try (Statement stmt = discConn.createStatement();
+                 ResultSet rs = stmt.executeQuery(
+                    "SELECT ifc_class, expected_verb FROM ad_verb_pattern WHERE is_active = 1 AND ifc_class IS NOT NULL ORDER BY priority ASC")) {
+                while (rs.next()) {
+                    hints.putIfAbsent(rs.getString(1), rs.getString(2));
+                }
+            }
+            patternHints = hints;
+            BIMLogger.fine("VERB", "Loaded {} pattern hints from ad_verb_pattern", hints.size());
+        } catch (SQLException e) {
+            // Table may not exist — proceed without hints
+        }
+    }
 
     // ── Result records ────────────────────────────────────────────────
 
@@ -113,6 +141,23 @@ public class VerbDetector {
         public int instanceCount() { return count; }
     }
 
+    /** Detected LINE pattern: elements arrayed along a single axis.
+     *  Two of three LBD axes are constant (within TOL); positions enumerated on
+     *  the varying axis.  Format: {@code LINE:axis:pos1,pos2,...} */
+    public record LineResult(char axis, double[] positions,
+                             double originX, double originY, double originZ) {
+        public String verbRef() {
+            StringBuilder sb = new StringBuilder("LINE:");
+            sb.append(axis).append(':');
+            for (int i = 0; i < positions.length; i++) {
+                if (i > 0) sb.append(',');
+                sb.append(String.format("%.4f", positions[i]));
+            }
+            return sb.toString();
+        }
+        public int instanceCount() { return positions.length; }
+    }
+
     /** Detected CLUSTER pattern: exact per-instance offsets + dimensions (catch-all, lossless).
      *  Format: CLUSTER:dx,dy,dz,w,d,h;dx,dy,dz,w,d,h;...  (all metres)
      *  w,d,h are per-instance AABB dimensions — essential for G2-VOLUME accuracy
@@ -137,7 +182,7 @@ public class VerbDetector {
      * Run the detection cascade on a group of same-product elements.
      * Returns the verb_ref string if a pattern is detected, null otherwise.
      *
-     * <p>Priority: TILE > ROUTE > FRAME > CLUSTER.
+     * <p>Priority: TILE > LINE > ROUTE > FRAME > CLUSTER.
      * CLUSTER is the catch-all: stores exact per-instance offsets (lossless).
      * SPRAY is retained as a detection method but CLUSTER supersedes it in the cascade.
      *
@@ -151,30 +196,161 @@ public class VerbDetector {
                                 double floorMinX, double floorMinY, double floorMinZ) {
         if (elements.size() < MIN_GROUP) return null;
 
+        String productHint = elements.get(0).elementRef();
+        int qty = elements.size();
+
+        // Check pattern hint from ad_verb_pattern
+        String hint = patternHints.get(elements.get(0).ifcClass());
+
+        // If hint says CLUSTER, skip formula detection entirely (MEP elements)
+        if ("CLUSTER".equals(hint)) {
+            BIMLogger.pattern("VERB", "HINT→CLUSTER: {} qty={} (ad_verb_pattern: {} is MEP/DISC)",
+                productHint, qty, elements.get(0).ifcClass());
+            ClusterResult cluster = detectCluster(elements, floorMinX, floorMinY, floorMinZ);
+            if (cluster != null) return cluster.verbRef();
+            return null;
+        }
+
         TileResult tile = detectTile(elements, floorMinX, floorMinY, floorMinZ);
-        if (tile != null && tile.instanceCount() == elements.size()) return tile.verbRef();
+        if (tile != null && tile.instanceCount() == elements.size()) {
+            BIMLogger.pattern("VERB", "TILE: {} qty={} → {}x{} step={:.4f}x{:.4f}",
+                productHint, qty, tile.nx(), tile.ny(), tile.stepX(), tile.stepY());
+            return tile.verbRef();
+        }
+
+        // LINE: try whole group first, then spatial sub-groups
+        LineResult line = detectLine(elements, floorMinX, floorMinY, floorMinZ);
+        if (line != null && line.instanceCount() == elements.size()) {
+            BIMLogger.pattern("VERB", "LINE: {} qty={} → axis={} positions={}",
+                productHint, qty, line.axis(), line.positions().length);
+            return line.verbRef();
+        }
+
+        // Spatial sub-grouping: split by constant-axis alignment, try LINE on each sub-group.
+        // Captures L-shaped layouts (cabinets along 2 walls) and multi-facade windows.
+        List<List<ExtractionElement>> subGroups = splitByAxisAlignment(elements);
+        if (subGroups.size() > 1) {
+            boolean allLine = true;
+            for (List<ExtractionElement> sub : subGroups) {
+                if (sub.size() < MIN_GROUP) { allLine = false; break; }
+                LineResult subLine = detectLine(sub, floorMinX, floorMinY, floorMinZ);
+                if (subLine == null || subLine.instanceCount() != sub.size()) {
+                    allLine = false; break;
+                }
+            }
+            if (allLine) {
+                // Encode as multi-LINE: LINE_MULTI:axis1:pos1,pos2;axis2:pos3,pos4
+                StringBuilder sb = new StringBuilder("LINE_MULTI:");
+                for (int g = 0; g < subGroups.size(); g++) {
+                    if (g > 0) sb.append(';');
+                    LineResult subLine = detectLine(subGroups.get(g), floorMinX, floorMinY, floorMinZ);
+                    sb.append(subLine.axis()).append(':');
+                    for (int p = 0; p < subLine.positions().length; p++) {
+                        if (p > 0) sb.append(',');
+                        sb.append(String.format("%.4f", subLine.positions()[p]));
+                    }
+                }
+                BIMLogger.pattern("VERB", "LINE_MULTI: {} qty={} → {} sub-groups (split by axis alignment)",
+                    productHint, qty, subGroups.size());
+                return sb.toString();
+            }
+        }
 
         RouteResult route = detectRoute(elements, floorMinX, floorMinY, floorMinZ);
-        if (route != null && route.instanceCount() == elements.size()) return route.verbRef();
+        if (route != null && route.instanceCount() == elements.size()) {
+            BIMLogger.pattern("VERB", "ROUTE: {} qty={} → {} legs",
+                productHint, qty, route.legs().size());
+            return route.verbRef();
+        }
 
         FrameResult frame = detectFrame(elements, floorMinX, floorMinY, floorMinZ);
-        if (frame != null && frame.instanceCount() == elements.size()) return frame.verbRef();
+        if (frame != null && frame.instanceCount() == elements.size()) {
+            BIMLogger.pattern("VERB", "FRAME: {} qty={} → {}x{} gridlines",
+                productHint, qty, frame.xLines().length, frame.yLines().length);
+            return frame.verbRef();
+        }
 
         // CLUSTER: catch-all exact encoding (replaces SPRAY approximation)
         ClusterResult cluster = detectCluster(elements, floorMinX, floorMinY, floorMinZ);
         if (cluster != null) {
-            // Implementing DISC_VALIDATION_DB_SRS §10.4.10 — ClusterReprocessor
-            // Diagnostic: why did TILE/FRAME/ROUTE not match?
+            // White-box diagnostic: why did every formula verb fail?
             String tileReason = diagnoseTileFailure(elements);
+            String lineReason = diagnoseLineFailure(elements);
             String frameReason = diagnoseFrameFailure(elements);
             String routeReason = diagnoseRouteFailure(elements);
-            String productHint = elements.get(0).elementRef();
-            BIMLogger.fine("VERB", "CLUSTER fallback: {} qty={} tile=[{}] frame=[{}] route=[{}]",
-                productHint, elements.size(), tileReason, frameReason, routeReason);
+            BIMLogger.pattern("VERB", "CLUSTER fallback: {} qty={} tile=[{}] line=[{}] frame=[{}] route=[{}]",
+                productHint, qty, tileReason, lineReason, frameReason, routeReason);
             return cluster.verbRef();
         }
 
         return null;
+    }
+
+    // ── Spatial sub-grouping ─────────────────────────────────────────────
+
+    /**
+     * Split a product group into sub-groups by axis alignment.
+     * Elements sharing a constant Y (within TOL) go into one sub-group,
+     * elements sharing a constant X go into another.
+     * Captures L-shaped layouts (cabinets along perpendicular walls).
+     *
+     * <p>Algorithm: for each pair of axes (X,Y), (X,Z), (Y,Z), check if
+     * elements cluster into bands where one axis is constant. Pick the split
+     * that produces the most sub-groups with at least MIN_GROUP elements.
+     */
+    static List<List<ExtractionElement>> splitByAxisAlignment(List<ExtractionElement> elements) {
+        List<List<ExtractionElement>> best = List.of(elements); // default: no split
+
+        // Try splitting by Y-bands (elements along different Y-walls)
+        List<List<ExtractionElement>> yBands = splitByBands(elements, ExtractionElement::minY);
+        if (countValidGroups(yBands) > countValidGroups(best)) best = yBands;
+
+        // Try splitting by X-bands (elements along different X-walls)
+        List<List<ExtractionElement>> xBands = splitByBands(elements, ExtractionElement::minX);
+        if (countValidGroups(xBands) > countValidGroups(best)) best = xBands;
+
+        // Try splitting by Z-bands (elements on different floors)
+        List<List<ExtractionElement>> zBands = splitByBands(elements, ExtractionElement::minZ);
+        if (countValidGroups(zBands) > countValidGroups(best)) best = zBands;
+
+        return best;
+    }
+
+    /** Split elements into bands where the given axis is constant within TOL. */
+    private static List<List<ExtractionElement>> splitByBands(
+            List<ExtractionElement> elements,
+            java.util.function.ToDoubleFunction<ExtractionElement> axisGetter) {
+        // Sort by axis value
+        List<ExtractionElement> sorted = new ArrayList<>(elements);
+        sorted.sort(Comparator.comparingDouble(axisGetter));
+
+        List<List<ExtractionElement>> bands = new ArrayList<>();
+        List<ExtractionElement> current = new ArrayList<>();
+        current.add(sorted.get(0));
+        double bandValue = axisGetter.applyAsDouble(sorted.get(0));
+
+        for (int i = 1; i < sorted.size(); i++) {
+            double v = axisGetter.applyAsDouble(sorted.get(i));
+            if (Math.abs(v - bandValue) <= TOL) {
+                current.add(sorted.get(i));
+            } else {
+                bands.add(current);
+                current = new ArrayList<>();
+                current.add(sorted.get(i));
+                bandValue = v;
+            }
+        }
+        bands.add(current);
+        return bands;
+    }
+
+    /** Count sub-groups that have at least MIN_GROUP elements. */
+    private static int countValidGroups(List<List<ExtractionElement>> groups) {
+        int count = 0;
+        for (List<ExtractionElement> g : groups) {
+            if (g.size() >= MIN_GROUP) count++;
+        }
+        return count;
     }
 
     // ── TILE: 2D grid with uniform step ───────────────────────────────
@@ -218,6 +394,56 @@ public class VerbDetector {
         double originZ = elements.get(0).centroidZ() - floorMinZ;
 
         return new TileResult(nx, ny, stepX, stepY, originX, originY, originZ);
+    }
+
+    // ── LINE: single-axis array ────────────────────────────────────────
+
+    /**
+     * Detect a LINE pattern: elements arrayed along a single axis.
+     * Two of three LBD axes must be constant (within TOL); positions are
+     * enumerated on the varying axis.
+     */
+    public static LineResult detectLine(List<ExtractionElement> elements,
+                                        double floorMinX, double floorMinY, double floorMinZ) {
+        if (elements.size() < MIN_GROUP) return null;
+
+        // LBD positions
+        double[] xs = elements.stream().mapToDouble(ExtractionElement::minX).toArray();
+        double[] ys = elements.stream().mapToDouble(ExtractionElement::minY).toArray();
+        double[] zs = elements.stream().mapToDouble(ExtractionElement::minZ).toArray();
+
+        double xRange = Arrays.stream(xs).max().orElse(0) - Arrays.stream(xs).min().orElse(0);
+        double yRange = Arrays.stream(ys).max().orElse(0) - Arrays.stream(ys).min().orElse(0);
+        double zRange = Arrays.stream(zs).max().orElse(0) - Arrays.stream(zs).min().orElse(0);
+
+        // Count constant axes (range within tolerance)
+        boolean xConst = xRange <= TOL;
+        boolean yConst = yRange <= TOL;
+        boolean zConst = zRange <= TOL;
+
+        int constantCount = (xConst ? 1 : 0) + (yConst ? 1 : 0) + (zConst ? 1 : 0);
+        if (constantCount != 2) return null;  // need exactly 2 constant axes
+
+        // Determine varying axis
+        char axis;
+        double[] positions;
+        if (!xConst) {
+            axis = 'X';
+            positions = Arrays.stream(xs).sorted().map(v -> v - floorMinX).toArray();
+        } else if (!yConst) {
+            axis = 'Y';
+            positions = Arrays.stream(ys).sorted().map(v -> v - floorMinY).toArray();
+        } else {
+            axis = 'Z';
+            positions = Arrays.stream(zs).sorted().map(v -> v - floorMinZ).toArray();
+        }
+
+        // Origin = group LBD minimum relative to floor
+        double originX = Arrays.stream(xs).min().orElse(0) - floorMinX;
+        double originY = Arrays.stream(ys).min().orElse(0) - floorMinY;
+        double originZ = Arrays.stream(zs).min().orElse(0) - floorMinZ;
+
+        return new LineResult(axis, positions, originX, originY, originZ);
     }
 
     // ── ROUTE: axis-aligned linear runs ───────────────────────────────
@@ -774,6 +1000,25 @@ public class VerbDetector {
             return String.format("Z spread %.3fm (>0.5m)", maxZ - minZ);
         // Chain failure — elements can't form axis-aligned legs
         return "chain failure (no axis-aligned legs)";
+    }
+
+    private static String diagnoseLineFailure(List<ExtractionElement> elements) {
+        double[] xs = elements.stream().mapToDouble(ExtractionElement::minX).toArray();
+        double[] ys = elements.stream().mapToDouble(ExtractionElement::minY).toArray();
+        double[] zs = elements.stream().mapToDouble(ExtractionElement::minZ).toArray();
+        double xR = Arrays.stream(xs).max().orElse(0) - Arrays.stream(xs).min().orElse(0);
+        double yR = Arrays.stream(ys).max().orElse(0) - Arrays.stream(ys).min().orElse(0);
+        double zR = Arrays.stream(zs).max().orElse(0) - Arrays.stream(zs).min().orElse(0);
+        int constCount = (xR <= TOL ? 1 : 0) + (yR <= TOL ? 1 : 0) + (zR <= TOL ? 1 : 0);
+        if (constCount == 2) return "should match (bug?)";
+        // Also report sub-group split result
+        List<List<ExtractionElement>> subs = splitByAxisAlignment(elements);
+        String subInfo = subs.size() > 1
+            ? String.format(", sub-split=%d groups (%s)",
+                subs.size(), subs.stream().map(s -> String.valueOf(s.size())).collect(Collectors.joining("+")))
+            : ", no useful sub-split";
+        return String.format("%d const axes (need 2): X=%.3fm Y=%.3fm Z=%.3fm%s",
+            constCount, xR, yR, zR, subInfo);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

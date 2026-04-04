@@ -82,7 +82,17 @@ public class CompositionBomBuilder {
         List<ExtractionElement> spanning = new ArrayList<>();
         Map<String, Set<String>> excludeByStorey = new LinkedHashMap<>();
 
+        // MEP exclusion: MEP elements belong to DISC path (IFCtoERP), not composition BOM
+        Set<String> mepClasses = new HashSet<>();
+        if (config.disciplines() != null) {
+            var mep = config.disciplines().get("MEP");
+            if (mep != null && mep.ifcClasses() != null) {
+                mepClasses.addAll(mep.ifcClasses());
+            }
+        }
+
         int scopeSkipped = 0;
+        int mepSkipped = 0;
         for (var entry : storeyElements.entrySet()) {
             String storey = entry.getKey();
             Set<String> excluded = scopeExcludes.getOrDefault(storey, Set.of());
@@ -92,6 +102,11 @@ public class CompositionBomBuilder {
                     scopeSkipped++;
                     continue;
                 }
+                // MEP elements excluded — handled by IFCtoERP DISC path
+                if (!mepClasses.isEmpty() && mepClasses.contains(e.ifcClass())) {
+                    mepSkipped++;
+                    continue;
+                }
                 Side side = classify(e, mirror);
                 switch (side) {
                     case SHARED -> spanning.add(e);
@@ -99,6 +114,10 @@ public class CompositionBomBuilder {
                     case B -> bSide.computeIfAbsent(storey, k -> new ArrayList<>()).add(e);
                 }
             }
+        }
+        if (mepSkipped > 0) {
+            BIMLogger.pattern("COMPOSITION", "{} MEP elements excluded → DISC path (IFCtoERP)",
+                mepSkipped);
         }
 
         BIMLogger.fine("COMPOSITION", "Tier 1: A={}, B={}, spanning={}, scopeSkipped={}",

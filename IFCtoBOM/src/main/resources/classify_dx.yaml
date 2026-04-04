@@ -43,3 +43,7 @@ building:
     ARC: [IfcWall, IfcDoor, IfcWindow, IfcFurnishingElement, IfcCovering, IfcSlab, IfcStairFlight, IfcRailing]
     STR: [IfcBeam, IfcMember, IfcPlate]
     MEP: [IfcFlowController, IfcFlowFitting, IfcFlowSegment, IfcFlowTerminal]
+
+  # MEP element counts from extraction (editable — reduce for partial scope)
+  discipline_counts:
+    MEP: 904

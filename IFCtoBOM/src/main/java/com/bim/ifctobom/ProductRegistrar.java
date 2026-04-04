@@ -173,16 +173,19 @@ public class ProductRegistrar {
         }
 
         // Try to copy from component_library.db catalog first (reuse)
+        // Name = IFC family name from source_element_ref (human-readable).
+        // Value = abstract product_id (machine key). BOM DB is spatial
+        // arrangement for ARC/STR only — ERP.db is for DISC (§10.4.4).
         String copyFromCatalog = """
                 SELECT Value, product_type, width, depth, height,
-                       ifc_class, extracted_from, is_active
+                       ifc_class, extracted_from, is_active, source_element_ref
                 FROM M_Product WHERE Value = ?
                 """;
         String insertIntoBom = """
                 INSERT OR IGNORE INTO M_Product
-                (product_id, Value, product_type, width, depth, height,
+                (product_id, Value, Name, product_type, width, depth, height,
                  ifc_class, extracted_from, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         int count = 0;
@@ -203,15 +206,17 @@ public class ProductRegistrar {
                     try (ResultSet rs = readStmt.executeQuery()) {
                         if (rs.next()) {
                             String val = rs.getString(1);
+                            String srcRef = rs.getString(9); // source_element_ref
                             writeStmt.setString(1, val);
-                            writeStmt.setString(2, val);  // Value = product_id
-                            writeStmt.setString(3, rs.getString(2));
-                            writeStmt.setDouble(4, rs.getDouble(3));
-                            writeStmt.setDouble(5, rs.getDouble(4));
-                            writeStmt.setDouble(6, rs.getDouble(5));
-                            writeStmt.setString(7, rs.getString(6));
-                            writeStmt.setString(8, rs.getString(7));
-                            writeStmt.setInt(9, rs.getInt(8));
+                            writeStmt.setString(2, val);  // Value = product_id (machine key)
+                            writeStmt.setString(3, deriveName(srcRef, val)); // Name = IFC family
+                            writeStmt.setString(4, rs.getString(2));
+                            writeStmt.setDouble(5, rs.getDouble(3));
+                            writeStmt.setDouble(6, rs.getDouble(4));
+                            writeStmt.setDouble(7, rs.getDouble(5));
+                            writeStmt.setString(8, rs.getString(6));
+                            writeStmt.setString(9, rs.getString(7));
+                            writeStmt.setInt(10, rs.getInt(8));
                             int rows = writeStmt.executeUpdate();
                             if (rows > 0) { count++; copied = true; }
                         }
@@ -221,14 +226,15 @@ public class ProductRegistrar {
                 // Fallback: create from extraction data (backward compatibility)
                 if (!copied) {
                     writeStmt.setString(1, productId);
-                    writeStmt.setString(2, productId);  // Value = product_id
-                    writeStmt.setString(3, deriveProductType(e.ifcClass()));
-                    writeStmt.setDouble(4, e.maxX() - e.minX());
-                    writeStmt.setDouble(5, e.maxY() - e.minY());
-                    writeStmt.setDouble(6, e.maxZ() - e.minZ());
-                    writeStmt.setString(7, e.ifcClass());
-                    writeStmt.setString(8, "IFC_EXTRACTION");
-                    writeStmt.setInt(9, 1);
+                    writeStmt.setString(2, productId);  // Value = product_id (machine key)
+                    writeStmt.setString(3, deriveName(e.elementRef(), productId)); // Name = IFC family
+                    writeStmt.setString(4, deriveProductType(e.ifcClass()));
+                    writeStmt.setDouble(5, e.maxX() - e.minX());
+                    writeStmt.setDouble(6, e.maxY() - e.minY());
+                    writeStmt.setDouble(7, e.maxZ() - e.minZ());
+                    writeStmt.setString(8, e.ifcClass());
+                    writeStmt.setString(9, "IFC_EXTRACTION");
+                    writeStmt.setInt(10, 1);
                     int rows = writeStmt.executeUpdate();
                     if (rows > 0) count++;
                 }
@@ -345,6 +351,23 @@ public class ProductRegistrar {
                 return rs.next() ? rs.getInt(1) : 0;
             }
         }
+    }
+
+    /**
+     * Derive human-readable Name from IFC source_element_ref.
+     * Strips dimension suffix (e.g. ":1370x600x1170mm") to keep the
+     * IFC family name ("Furniture_Piano"). Falls back to product_id
+     * if source_element_ref is null.
+     */
+    static String deriveName(String sourceElementRef, String fallback) {
+        if (sourceElementRef == null || sourceElementRef.isBlank()) return fallback;
+        // IFC element_ref format: "FamilyName:TypeName" or "FamilyName:TypeName:Dims"
+        // Strip trailing dimension segment (digits, x, mm patterns)
+        int colon = sourceElementRef.indexOf(':');
+        if (colon > 0) {
+            return sourceElementRef.substring(0, colon);
+        }
+        return sourceElementRef;
     }
 
     /**

@@ -44,6 +44,7 @@ public class StructuralBomBuilder {
      */
     // Implementing BBC.md §2 + DISC_VALIDATION_DB_SRS §10.4.13 — IFC assembly BOMs
     // IfcRelAggregates defines parent-child structure, no heuristic grouping
+    // MEP elements (IfcFlow*) excluded from structural BOM — handled by IFCtoERP DISC path.
     public static BuildResult build(Connection bomConn, Connection extractionConn,
                                     BuildingConfig config,
                                     Map<String, SpatialContainerConfig> containers,
@@ -54,6 +55,16 @@ public class StructuralBomBuilder {
 
         String prefix = config.prefix();
         String buildingBomId = config.buildingBomId();
+
+        // Build MEP exclusion set from YAML disciplines (§10.4.4).
+        // MEP elements belong to DISC path (IFCtoERP), not structural BOM.
+        Set<String> mepClasses = new HashSet<>();
+        if (config.disciplines() != null) {
+            var mep = config.disciplines().get("MEP");
+            if (mep != null && mep.ifcClasses() != null) {
+                mepClasses.addAll(mep.ifcClasses());
+            }
+        }
 
         // ── Compute building origin (LBD corner) from all elements ───────────
         List<ExtractionElement> allElements = new ArrayList<>();
@@ -162,12 +173,22 @@ public class StructuralBomBuilder {
             // Small groups (<4) fall through to per-instance — backward compatible.
             Set<String> excluded = excludeByStorey.getOrDefault(storeyName, Set.of());
             List<ExtractionElement> floorElems = new ArrayList<>();
+            int mepSkipped = 0;
             for (ExtractionElement e : elems) {
                 if (!excluded.isEmpty()
                         && excluded.contains(ScopeBomBuilder.elementKey(e))) {
                     continue;  // assigned to a SET BOM
                 }
+                // MEP elements excluded from structural BOM — DISC path (IFCtoERP)
+                if (!mepClasses.isEmpty() && mepClasses.contains(e.ifcClass())) {
+                    mepSkipped++;
+                    continue;
+                }
                 floorElems.add(e);
+            }
+            if (mepSkipped > 0) {
+                BIMLogger.pattern("STR", "Storey '{}': {} MEP elements excluded → DISC path",
+                    storeyName, mepSkipped);
             }
 
             // ── Partition into assembly groups vs flat elements ──────────────

@@ -90,6 +90,8 @@ public class IFCtoBOMPipeline {
             throws IOException, SQLException {
 
         // Implementing BIMLogger.md §Wiring Status — IFCtoBOMPipeline initForRun() + stage()
+        // NOTE: Set bim.log.level=FINE in BIM.properties to see VerbDetector
+        // CLUSTER fallback diagnostics (why TILE/ROUTE/FRAME failed per group).
         // 1. Load YAML (the only human-crafted artifact)
         ClassificationYaml yaml = ClassificationYaml.load(yamlPath);
         BuildingConfig config = yaml.getBuilding();
@@ -118,6 +120,9 @@ public class IFCtoBOMPipeline {
 
             // 3a. Copy M_Product_Category from ERP.db to BOM.db (Phase B: DV027)
             copyCategoryLookup(bomConn, discConn);
+
+            // 3a-ii. Load verb pattern hints from ad_verb_pattern (if table exists)
+            VerbDetector.loadPatternHints(discConn);
 
             // 3b. Read extraction in-memory (R13: no persistent I_Element_Extraction table)
             BIMLogger.stage(3, "ReadExtraction", "in-memory from component_library.db");
@@ -338,8 +343,22 @@ public class IFCtoBOMPipeline {
             // GUARD: This runs BEFORE commit so broken data never reaches disk.
             // Previously ran post-commit (read-only) which let broken BOM.db persist
             // and silently produce 0 placements at compile time.
-            // §6.12.2: MEP elements now in BOM (shim+joint piece walk), reconcile all
-            int reconcileCount = extractionCount;
+            // §6.12.2: MEP elements excluded from BOM — handled by IFCtoERP DISC path.
+            // Reconciliation counts only ARC/STR elements in the BOM.
+            Set<String> mepClasses = new HashSet<>();
+            if (config.disciplines() != null) {
+                var mep = config.disciplines().get("MEP");
+                if (mep != null && mep.ifcClasses() != null) {
+                    mepClasses.addAll(mep.ifcClasses());
+                }
+            }
+            int mepCount = 0;
+            if (!mepClasses.isEmpty()) {
+                for (ExtractionElement e : allElements) {
+                    if (mepClasses.contains(e.ifcClass())) mepCount++;
+                }
+            }
+            int reconcileCount = extractionCount - mepCount;
             int qaFails = BomValidator.validateAndReport(bomConn,
                     reconcileCount, composition.halfUnitLines());
             if (qaFails > 0) {
@@ -415,8 +434,10 @@ public class IFCtoBOMPipeline {
             // 10c-2. Write MEP counts back to YAML (§10.4.6.1: YAML is primary source of truth)
             // Designer can edit YAML discipline_counts to reduce scope (e.g., partial wing).
             // In production, Orders from BIM Designer carry Qty directly on OrderLine.
-            if (reconcileCount != extractionCount) {
-                writeDisciplineCountsToYaml(yamlPath, bomConn);
+            if (mepCount > 0) {
+                Map<String, Integer> discCounts = new LinkedHashMap<>();
+                discCounts.put("MEP", mepCount);
+                writeDisciplineCountsToYaml(yamlPath, discCounts);
             }
 
             // 10c-3. Store mep_disciplines whitelist (§10.4.11 T3.4: RE subset)
@@ -503,26 +524,16 @@ public class IFCtoBOMPipeline {
 
     /**
      * Write MEP discipline counts back to the YAML file.
-     * §10.4.6.1: YAML is the primary source of truth for discipline quantities.
-     * Each RosettaStone building has its own YAML — this writes the extraction
-     * counts as preset defaults that the designer can later edit.
-     * In production, BIM Designer populates OrderLine.Qty directly (no YAML needed).
+     * §10.4.6.1: YAML is the single human-crafted artifact and primary source
+     * of truth for discipline quantities. Each building has its own YAML —
+     * this writes extraction counts as preset defaults the designer can edit.
+     * In production, BIM Designer populates OrderLine.Qty directly (no YAML).
+     *
+     * @param counts discipline → element count (e.g., MEP=904, or FP=64, CW=109)
      */
-    private static void writeDisciplineCountsToYaml(Path yamlPath, Connection bomConn)
-            throws IOException, SQLException {
-        // Read MEP counts from ad_sysconfig (already written by DisciplineBomBuilder)
-        Map<String, Integer> counts = new LinkedHashMap<>();
-        try (Statement st = bomConn.createStatement();
-             ResultSet rs = st.executeQuery(
-                 "SELECT config_key, config_value FROM ad_sysconfig "
-                 + "WHERE config_key LIKE 'MEP_%_COUNT' ORDER BY config_key")) {
-            while (rs.next()) {
-                String key = rs.getString(1);            // MEP_FP_COUNT
-                String disc = key.substring(4, key.length() - 6);  // FP
-                int qty = Integer.parseInt(rs.getString(2));
-                counts.put(disc, qty);
-            }
-        }
+    private static void writeDisciplineCountsToYaml(Path yamlPath,
+                                                     Map<String, Integer> counts)
+            throws IOException {
         if (counts.isEmpty()) return;
 
         // Read YAML, replace or append discipline_counts section
@@ -534,22 +545,31 @@ public class IFCtoBOMPipeline {
         // Find existing discipline_counts: section (indented under building:)
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
-            if (line.matches("\\s+discipline_counts:.*")) {
+            if (line.matches("  discipline_counts:.*")) {
                 removeStart = i;
-                // Remove until next non-indented-deeper line or end
+                // Children are indented 4+ spaces (    KEY: VAL). End at next
+                // line that's not a child (blank, comment at 2-space, or new 2-space key).
+                removeEnd = i + 1;
                 for (int j = i + 1; j < lines.size(); j++) {
                     String next = lines.get(j);
-                    if (next.isBlank() || next.matches("\\s{4}\\w.*")) {
-                        removeEnd = j;
-                        break;
+                    if (next.matches("    \\S.*")) {
+                        removeEnd = j + 1;  // still a child line
+                    } else {
+                        break;  // end of section
                     }
-                    removeEnd = j + 1;
                 }
                 break;
             }
-            // Insert after disciplines: section (last line of it)
-            if (line.matches("\\s+disciplines:.*") || line.matches("\\s+#.*REB.*")) {
-                insertIdx = i + 1;
+            // Track last line of disciplines: section for insert position
+            if (line.matches("  disciplines:.*")) {
+                // Skip to end of disciplines children
+                for (int j = i + 1; j < lines.size(); j++) {
+                    if (!lines.get(j).matches("    .*")) {
+                        insertIdx = j;
+                        break;
+                    }
+                    insertIdx = j + 1;
+                }
             }
         }
 

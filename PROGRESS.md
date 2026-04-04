@@ -96,6 +96,16 @@
 
 ## Session Log (recent first)
 
+**S142** (uncommitted) — DX + SH Output Quality: CLUSTER→0, MEP exclusion, LINE verb.
+  TACK-FIX verified: all 3 code paths already LBD. TACK_FIX_SPEC.md is stale.
+  Real problem: 904 MEP elements (77%) in DX spatial BOM + all factored groups were CLUSTER.
+  Fix: MEP IFC classes excluded from StructuralBomBuilder + CompositionBomBuilder → DISC path (IFCtoERP/RouteWalker).
+  LINE verb + LINE_MULTI (spatial sub-grouping) in VerbDetector. `ad_verb_pattern` table (DV035, 9 seed rows).
+  M_Product.Name from source_element_ref (S141 gap). CLUSTER diagnostics on [PATRN] channel (white-box).
+  DX: 775→165 lines, 8→0 CLUSTER, 0→4 LINE verbs. SH: unchanged (no MEP). Fleet: SH 8/8, DX 8/8.
+
+**S141** — Abstract Product Catalog Mapping (GAP-A from IFCtoBOM_S140_Gap_Analysis.txt).
+
 **S140** (`ae8e7d72`) — DSL/YAML unification + spec fix + LEAF→MAKE + IFC aggregate findings.
   T0: IFC Aggregate Verb Gap findings → BBC.md §Verb Gap. rel_aggregates populated but not consumed by VerbDetector. ExtractionElement lacks aggregateParentRef. Phase 0 IFC_AGGREGATE conceptualized.
   T1: BBC §2.2.1 clarified: CHECK BOM may inspect component_type (validation exception).
