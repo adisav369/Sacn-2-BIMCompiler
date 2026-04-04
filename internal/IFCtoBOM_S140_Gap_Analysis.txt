@@ -1,0 +1,234 @@
+IFCtoBOM Gap Analysis — S140 Database Review
+=============================================
+Date: 2026-04-04
+Scope: What IFCtoBOM writes to *_BOM.db and what IFCtoERP writes to ERP.db
+Test stones: SH (58 el), DX (1119 el), RM (6786 el)
+
+EXTRACTION IS DONE. extractIFCtoDB.py → *_extracted.db is correct and complete.
+This analysis is about the NEXT stage: IFCtoBOM + IFCtoERP.
+
+
+1. DATA FLOW (current)
+======================
+
+  IFC file
+    → extractIFCtoDB.py → XX_extracted.db (elements, spatial, aggregates, materials)
+    → IFCtoBOMPipeline.java → XX_BOM.db (BOMs, BOM lines, products)
+    → IFCtoERP.java → ERP.db (MEP recipes, joint pieces, products)
+    → DAGCompiler → output.db (C_OrderLine, compiled placement)
+
+  XX_BOM.db holds: WHAT (products) + WHERE (tack offsets per BOM line)
+  ERP.db holds: HOW (MEP recipes, discipline rules, validation)
+
+  Discipline lives ONLY in ERP.db (AD_Org table, AD_Org_ID on M_BOM_Line).
+  BOM.db has AD_Org_ID=0 on all lines — discipline-blind by design.
+
+
+2. WHAT IS IN EACH DATABASE (empirical, post-S140 run)
+======================================================
+
+--- XX_BOM.db ---
+
+  SH_BOM.db:
+    m_bom: 11 rows (1 BUILDING, 3 FLOOR, 2 ASSEMBLY, 1 FLOOR/ROOM, 2 SET, 2 static)
+    m_bom_line: 32 lines, 26 unique children
+    child_product_ids: Revit family:type names verbatim
+      "System Panel:Glazed", "Basic Wall:Wall-Ext_102Bwk-75Ins-100LBlk-12P"
+      "Furniture_Chair_Viper:1120x940x350mm", "Doors_IntSgl:810x2110mm"
+    Assembly BOMs: SH_UN_ASM_1, SH_UN_ASM_2 (curtain wall assemblies, 13 children each)
+    SET BOMs: SH_1_LIVING_ROOM_SET (living room furniture), SH_2_BEDROOM_SET
+
+  DX_BOM.db:
+    m_bom: 27 rows (1 BUILDING, 7 FLOOR, 2 ASSEMBLY, 11 SET, 6 static)
+    m_bom_line: ~1036 lines, ~350 unique children
+    child_product_ids: Revit family:type names, SOME with triple colon format:
+      "M_Elbow - Generic:Elbow - Generic:Elbow - Generic" (106 instances)
+      "Pipe Types:Mechanical Pipe" (81), "M_Tee - Generic:Tee - Generic:Tee - Generic" (38)
+    MEP elements are IN the floor BOMs (no separate MEP BOM level)
+    Composition: DUPLEX_SINGLE_UNIT_STD + DX_ROOM_L1/L2 for A/B mirroring
+
+  RM_BOM.db:
+    m_bom: 6 rows (1 BUILDING, 5 FLOOR). No SET BOMs, no ASSEMBLY BOMs.
+    m_bom_line: 278 lines, ~236 unique children
+    child_product_ids: Revit family:type names
+      "M_Supply Diffuser - Sidewall:450 x 200" (70 qty via CLUSTER)
+      "M_Duplex Receptacle:Standard" (137 qty via CLUSTER)
+      "Railing:Stahl (1) - Horizontal" (7)
+    AD_Org_ID=0 on all 278 lines (no discipline tagging in BOM.db)
+
+--- ERP.db ---
+
+  M_BOM: 3942 rows
+    6 system BOMs: FP_SYSTEM, ACMV_SYSTEM, ELEC_SYSTEM, CW_SYSTEM, SP_SYSTEM, LPG_SYSTEM
+    3936 MEP_RECIPE BOMs, broken by source_building:
+      Revit_MEP: 783 recipes (ACMV=441, CW=341, FP=1)
+      Ifc2x3_Duplex: 162 recipes
+      SJTII_Terminal: 964 recipes
+      Clinic_*: 2027 recipes (CE=434, CH=588, CP=1005)
+
+  M_BOM_Line for RM (Revit_MEP):
+    3157 lines. child_product_ids are abstract shim names:
+      "DUCT_STRAIGHT_325MM", "DUCT_FITTING_150MM", "ACMV_CEILING_SHIM"
+    These are GOOD — abstract, not Revit-specific.
+    component_type = "MAKE" on all (stale — was "LEAF" before S140 fix removed the INSERT)
+    c_uom_id: EA or MM (length-based for straights)
+
+  M_Product: 4202 rows total
+    RM products: building_type='Revit_MEP', product_id = Revit family:type name
+    These are building-specific, not abstract catalog entries.
+
+  AD_Org: 16 discipline orgs (ARC=1, STR=2, FP=3, ELEC=4, ACMV=5, CW=6, SP=7, LPG=8...)
+
+
+3. SPEC GAPS FOUND
+==================
+
+GAP-A: child_product_id in BOM.db is IFC-source-specific, not abstract
+-----------------------------------------------------------------------
+  BBC.md principle: products come from component_library.db catalog.
+  Reality: child_product_id = "M_Supply Diffuser - Sidewall:450 x 200" (Revit family name)
+  This is not reusable across buildings from different authoring tools.
+  An ArchiCAD project would have completely different names for the same physical product.
+
+  The component_library.db DOES have abstract products but the BOM.db doesn't reference them.
+  IFCtoBOM writes the raw IFC element name as the product ID.
+
+GAP-B: MEP_RECIPE bom_ids are building-stamped
+-----------------------------------------------
+  Every MEP recipe in ERP.db has prefix "RM_", "DX_", "CE_", etc.
+  "RM_ACMV_L1_RUN_1" is specific to Revit_MEP building.
+  Same duct run pattern recurring in another building gets a new recipe.
+  No pattern reuse across the fleet — each building reinvents its recipes.
+
+  The DATA FLYWHEEL (BBC §9) cannot learn from this because recipes are named per-building.
+  Abstract alternative: "ACMV_DUCT_RUN_TYPE_A" defined once, instantiated per-building via Order.
+
+GAP-C: M_Product in ERP.db is building-tagged, not catalog
+-----------------------------------------------------------
+  M_Product.building_type = 'Revit_MEP' ties products to one source.
+  "M_Duplex Receptacle:Standard" in Revit_MEP is the same physical product as
+  "Duplex Receptacle" in any other IFC source — but they get separate M_Product rows.
+
+GAP-D: No IfcRelAggregates consumption in RM
+---------------------------------------------
+  RM has 0 ASSEMBLY BOMs. SH has 2 (curtain wall), DX has 2 (stairs).
+  RM's rel_aggregates table IS populated during extraction but StructuralBomBuilder
+  requires matched children in the spatial structure. RM is IFC2x3 with different
+  aggregate patterns — the assembly code may not be finding them.
+  Potential: RM curtain walls, railing assemblies could collapse into sub-BOMs.
+
+GAP-E: Discipline in BOM.db is AD_Org_ID=0 (undifferentiated)
+--------------------------------------------------------------
+  All 278 RM_BOM.db lines have AD_Org_ID=0.
+  Discipline separation (S103) puts MEP COUNTS into ad_sysconfig and YAML,
+  but the BOM lines themselves don't carry discipline.
+  A supply diffuser (ACMV) and a duplex receptacle (ELEC) sit side by side
+  in the same FLOOR BOM with no distinction.
+  ERP.db MEP_RECIPE BOMs carry discipline via the prefix (RM_ACMV_, RM_CW_).
+
+GAP-F: ERP.db MEP_RECIPE component_type still says "MAKE"
+----------------------------------------------------------
+  IFCtoERP.java INSERT was fixed to remove 'LEAF' literal, but existing rows
+  in ERP.db still have component_type='MAKE' (was 'LEAF' before S140).
+  Column is deprecated but ERP.db hasn't been re-generated yet.
+  Non-issue for compilation (column ignored) but stale data.
+
+NOT-A-GAP: CLUSTER verb_ref carries world coordinates
+------------------------------------------------------
+  This is BY DESIGN. BBC §4 Tack Convention: BOM lines carry offsets relative
+  to parent LBD. For CLUSTER, each instance offset IS the tack position.
+  Reuse comes from the verb PATTERN (TILE/ROUTE/FRAME), not from CLUSTER.
+  CLUSTER is the honest "I found no pattern" fallback.
+
+NOT-A-GAP: BOM.db has no MEP separation
+----------------------------------------
+  This is BY DESIGN per S103 Discipline Separation. BOM.db is the WHAT.
+  Discipline (the HOW) lives in ERP.db. DisciplineBomBuilder writes counts
+  to ad_sysconfig; the actual MEP routing recipes go to ERP.db via IFCtoERP.
+  The BOM.db FLOOR BOMs carry ALL elements (ARC+STR+MEP) for spatial integrity.
+
+
+4. ROOT CAUSE
+=============
+
+IFCtoBOM writes child_product_id = element's IFC name verbatim.
+It does NOT look up or create an abstract product in component_library.db.
+The "product catalog" mapping step is missing from the pipeline.
+
+IFCtoERP writes abstract shim names (DUCT_STRAIGHT_325MM) for MEP recipes,
+which IS correct — but stamps them with building prefix (RM_ACMV_L1_RUN_1).
+
+The spec (BBC.md) assumes products are abstract catalog entries.
+The code assumes products are IFC element names.
+This divergence is the source of non-reusability.
+
+
+5. PLANNED SESSIONS (candidates — not yet decided)
+===================================================
+
+#A — Product Catalog Mapping in IFCtoBOM
+  Problem: child_product_id = raw IFC name, not catalog product
+  Approach: After extraction, map IFC family:type → M_Product in component_library.db
+  using ad_element_mep_alias cascade (already exists for MEP) extended to ARC/STR.
+  Where no catalog match: create abstract stub with dimensions from AABB.
+  Test: SH, DX, RM — verify child_product_ids resolve to library products.
+
+#B — Abstract MEP Recipe Patterns
+  Problem: RM_ACMV_L1_RUN_1 is building-specific, not reusable
+  Approach: IFCtoERP writes pattern-type recipes (ACMV_DUCT_RUN_TYPE_A) based on
+  topology signature (elbow-straight-fitting sequence + dimension band).
+  Building instantiation via C_OrderLine, not recipe duplication.
+  Depends on: #A (products must be abstract first)
+  Test: RM — verify recipe count drops from 783 to ~20-50 pattern types.
+
+#C — RM Assembly BOMs from IfcRelAggregates
+  Problem: RM has 0 ASSEMBLY BOMs despite populated rel_aggregates
+  Approach: Debug StructuralBomBuilder for IFC2x3 aggregate handling.
+  May need to relax the "matched children in spatial structure" requirement.
+  Test: RM — verify curtain wall/railing assemblies become sub-BOMs.
+
+#D — AD_Org_ID Discipline Tagging in BOM.db
+  Problem: All BOM lines have AD_Org_ID=0
+  Approach: DisciplineBomBuilder already knows disciplines — write AD_Org_ID
+  on m_bom_line when the element's discipline is known from extraction metadata.
+  This is informational (walker doesn't branch on it) but enables reporting.
+  Test: RM — verify MEP lines carry correct AD_Org_ID (3-8 per discipline).
+
+#E — M_Product Deduplication Across Buildings
+  Problem: Same physical product gets separate M_Product rows per building
+  Approach: M_Product lookup by (dimensions + IFC class) before INSERT.
+  If match found within tolerance band, reuse existing product_id.
+  Depends on: #A (abstract naming first)
+  Test: SH+DX — verify shared products (walls, doors) share product_ids.
+
+
+6. RECOMMENDED SEQUENCE
+========================
+
+  #A DONE (S141) — abstract product IDs via ProductResolver + ad_element_product_alias
+  #B second — MEP recipes become reusable (depends on #A)
+  #C and #D can be parallel — independent concerns
+  #E last — dedup needs #A naming convention stable first
+
+  Test stones for all: SH, DX, RM only.
+  TE deferred until these three are clean.
+
+  DX PENDING: unk=915 unknown elements, P04_STOREY_Z_BAND violations (14 elements),
+  finish floor gap analysis blocked on room overlap support, TACK offset fixes (ScopeBomBuilder).
+  DX output issues deferred to next session — #A naming is applied but DX-specific
+  structural issues predate this work.
+
+
+7. WHAT S140 ALREADY FIXED (for reference)
+===========================================
+
+  - dsl_*.bim files deleted (34 files, -1181 lines). YAML sole intent source.
+  - ParseStage removed from CompilationPipeline (ctx.definition() never consumed).
+  - component_type deprecated: no longer written in extracted pipeline.
+    Column kept as TEXT DEFAULT NULL for BIM_COBOL compat.
+  - BomHierarchyBuilder LEAF→MAKE fixed (now moot — component_type not written).
+  - BBC §2.2.1 clarified: component_type branch rule scoped to validation.
+  - BBC §Verb Gap: IFC Aggregate Path findings written.
+  - 3 orphaned lib/input/dsl/*.bim deleted.
+  - Pipeline now 11 stages (was 12).
+  - Fleet: SH 8/8, DX 8/8, RM 8/8 (no regression).

@@ -108,6 +108,15 @@
   IFCtoBOM gap analysis written: internal/IFCtoBOM_S140_Gap_Analysis.txt — 5 gaps (A-E), 5 candidate sessions.
   Next: S141 — review gap analysis, decide session plan for abstract product catalog mapping (#A first).
 
+**S141** — Abstract Product Catalog Mapping (GAP-A from IFCtoBOM_S140_Gap_Analysis.txt).
+  child_product_id now abstract: `DOOR_INT_810x2110` instead of `Doors_IntSgl:810x2110mm`.
+  ProductResolver.java: alias cascade (ad_element_product_alias 73 rows) → type+qualifier+dims fallback.
+  DV033: M_Product.source_element_ref bridges abstract product_id → I_Geometry_Map.element_ref.
+  DV034: ad_element_product_alias table (ifc_class priority 1 + element_name LIKE priority 2).
+  PlacementCollectorVisitor: familyRef = element_ref (raw IFC name) for C8/C9 fidelity.
+  Fleet: SH 8/8, DX 8/8, RM 8/8 — zero regression.
+  Next: GAP-B (abstract MEP recipe patterns) or GAP-C/D (RM assemblies / discipline tagging).
+
 **S139-followup** (no commit) — DSL/YAML investigation + S140 prompt.
   dsl_*.bim (IFCtoBOM/src/main/resources/) confirmed vestigial in extracted path:
   ParseStage parses dsl_content but ctx.definition() never consumed by any subsequent stage.

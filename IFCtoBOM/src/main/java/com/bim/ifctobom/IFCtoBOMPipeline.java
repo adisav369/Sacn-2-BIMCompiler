@@ -122,7 +122,7 @@ public class IFCtoBOMPipeline {
             // 3b. Read extraction in-memory (R13: no persistent I_Element_Extraction table)
             BIMLogger.stage(3, "ReadExtraction", "in-memory from component_library.db");
             Map<String, List<ExtractionElement>> storeyElements =
-                    ExtractionPopulator.populate(compConn, config.buildingType());
+                    ExtractionPopulator.populate(compConn, discConn, config.buildingType());
 
             List<ExtractionElement> allElements = new ArrayList<>();
             storeyElements.values().forEach(allElements::addAll);

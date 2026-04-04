@@ -248,6 +248,10 @@ Already covered by §3 CompletionAuditService detection.
 building where Finish Walls detection can be tested end-to-end with real data.
 **Clinic is the implementation target for FW-0 and FW-1 stages**, not Hospital.
 
+**Molio (S141):** 117 IfcSpace, 98 walls, 9 storeys. Small-scale residential with rooms
+declared — second candidate after Clinic for wall completion audit. YAML and Clinic/Molio
+YAMLs staged in `DAGCompiler/lib/input/UNFINISH/` for later-phase triage.
+
 ### Category B — Missing Steps (IfcStairFlight geometry incompleteness)
 
 **Hospital winding staircases have unfinished steps (S136 observation).**

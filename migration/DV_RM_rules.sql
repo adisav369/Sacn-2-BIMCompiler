@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- RM: Revit MEP (Revit_MEP)
 -- Source: DAGCompiler/lib/output/revit_mep.db
--- Generated: 2026-04-02 03:01
+-- Generated: 2026-04-04 16:33
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -46,9 +46,9 @@
 -- IfcCovering                 Level 3     18    7027.0    7662.0    50.0      2243.0    10789.0 
 -- IfcDoor                     Unknown     17    979.0     668.0     2283.0    190.0     2140.0  
 -- IfcFlowFitting              Roof Level  14    70.0      81.0      81.0      22.0      213.0   
--- IfcSlab                     Unknown     12    1600.0    4109.0    1808.0    1600.0    1600.0  
 -- IfcDuctSegment              Roof Level  9     2056.0    825.0     2118.0    400.0     11875.0 
 -- IfcRailing                  Unknown     8     40.0      7548.0    4411.0    40.0      40.0    
+-- IfcStairFlight              Unknown     8     1600.0    5094.0    2696.0    1600.0    1600.0  
 -- IfcDuctFitting              Roof Level  7     1161.0    1429.0    1327.0    604.0     2425.0  
 -- IfcSlab                     Level 1     7     33656.0   36741.0   171.0     7140.0    65835.0 
 -- IfcSlab                     Level 2     7     40114.0   39031.0   164.0     7105.0    65685.0 
@@ -56,6 +56,7 @@
 -- IfcBuildingElementProxy     Roof Level  5     2594.0    1627.0    2050.0    146.0     6130.0  
 -- IfcColumn                   Roof Level  4     38.0      38.0      2000.0    38.0      38.0    
 -- IfcSlab                     Level 3     4     49858.0   50554.0   175.0     12431.0   65850.0 
+-- IfcSlab                     Unknown     4     1600.0    2138.0    30.0      1600.0    1600.0  
 -- IfcRailing                  Level 2     3     2196.0    7998.0    917.0     1029.0    2780.0  
 -- IfcRailing                  Level 3     3     2780.0    7998.0    917.0     2780.0    2780.0  
 -- IfcStair                    Level 1     3     2458.0    4241.0    3806.0    2350.0    2675.0  
@@ -90,9 +91,10 @@
 -- IfcDuctFitting              ARC         120 
 -- IfcFlowTerminal             ARC         65  
 -- IfcCovering                 ARC         43  
--- IfcSlab                     STR         32  
+-- IfcSlab                     STR         24  
 -- IfcFlowFitting              ARC         15  
 -- IfcRailing                  ARC         14  
+-- IfcStairFlight              ARC         8   
 -- IfcFireSuppressionTerminal  FP          6   
 -- IfcStair                    ARC         4   
 
@@ -580,19 +582,6 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '81.0');
 
--- Rule: IfcSlab_Unknown (12 instances, avg 1600.0x4109.0x1808.0 mm)
--- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
---     description, provenance)
--- VALUES ('IfcSlab_Unknown', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
---     'IfcSlab on Unknown: 12 instances, avg W=1600.0 D=4109.0 H=1808.0mm',
---     'Revit_MEP');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_width_mm', '1600.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_depth_mm', '4109.0');
--- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
--- VALUES (last_insert_rowid(), 'typical_height_mm', '1808.0');
-
 -- Rule: IfcDuctSegment_Roof_Level (9 instances, avg 2056.0x825.0x2118.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
@@ -618,6 +607,19 @@
 -- VALUES (last_insert_rowid(), 'typical_depth_mm', '7548.0');
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '4411.0');
+
+-- Rule: IfcStairFlight_Unknown (8 instances, avg 1600.0x5094.0x2696.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcStairFlight_Unknown', 'IfcStairFlight', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcStairFlight on Unknown: 8 instances, avg W=1600.0 D=5094.0 H=2696.0mm',
+--     'Revit_MEP');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '5094.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '2696.0');
 
 -- Rule: IfcDuctFitting_Roof_Level (7 instances, avg 1161.0x1429.0x1327.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
@@ -710,6 +712,19 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '175.0');
 
+-- Rule: IfcSlab_Unknown (4 instances, avg 1600.0x2138.0x30.0 mm)
+-- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
+--     description, provenance)
+-- VALUES ('IfcSlab_Unknown', 'IfcSlab', 'DIMENSION_RANGE', 'WARNING', 1,
+--     'IfcSlab on Unknown: 4 instances, avg W=1600.0 D=2138.0 H=30.0mm',
+--     'Revit_MEP');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_width_mm', '1600.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_depth_mm', '2138.0');
+-- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
+-- VALUES (last_insert_rowid(), 'typical_height_mm', '30.0');
+
 -- Rule: IfcRailing_Level_2 (3 instances, avg 2196.0x7998.0x917.0 mm)
 -- INSERT INTO ad_val_rule (rule_name, ifc_class, check_method, severity, is_active,
 --     description, provenance)
@@ -749,138 +764,4 @@
 -- INSERT INTO ad_val_rule_param (ad_val_rule_id, param_name, param_value)
 -- VALUES (last_insert_rowid(), 'typical_height_mm', '3806.0');
 
--- ════════════════════════════════════════════════════════
--- 00q-A: RouteWalker DDL — Implementing DISC_VALIDATION_DB_SRS.md §6.12.3
--- ════════════════════════════════════════════════════════
-
--- A1: G1 fix — add discipline column to _import_joint_piece_types
-ALTER TABLE _import_joint_piece_types ADD COLUMN discipline TEXT;
-
--- A2: Anchor table — source/terminal XYZ points from RM by IFCtoERP
-CREATE TABLE IF NOT EXISTS ad_mep_anchor (
-    anchor_id    TEXT PRIMARY KEY,
-    source_building TEXT NOT NULL,
-    anchor_type  TEXT NOT NULL CHECK(anchor_type IN ('METER','FIXTURE','VALVE','GENERIC')),
-    x_m          REAL NOT NULL,
-    y_m          REAL NOT NULL,
-    z_m          REAL NOT NULL,
-    storey       TEXT,
-    ifc_guid     TEXT
-);
-
--- A3: Pattern table — topology step sequences mined from TE (CW+SP)
-CREATE TABLE IF NOT EXISTS ad_mep_pattern (
-    pattern_id       TEXT NOT NULL,
-    discipline       TEXT NOT NULL,
-    building_type    TEXT NOT NULL,
-    sequence         INTEGER NOT NULL,
-    from_node_type   TEXT NOT NULL,
-    to_node_type     TEXT NOT NULL,
-    direction_axis   TEXT NOT NULL,
-    piece_type       TEXT NOT NULL,
-    offset_rule      TEXT,
-    gradient         REAL,
-    notes            TEXT,
-    source_building  TEXT,
-    PRIMARY KEY (pattern_id, sequence)
-);
-
--- ════════════════════════════════════════════════════════
--- 00q-B: Pattern Mining — CW_TERMINAL_01 + SP_TERMINAL_01 from TE
--- Source: DAGCompiler/lib/input/Terminal_Extracted.db
--- Witness pre-check: each step cites supporting element count from TE query.
--- ════════════════════════════════════════════════════════
-
--- CW_TERMINAL_01: Cold Water supply topology mined from SJTII_Terminal
--- Evidence:
---   619 IfcPipeSegment CW + 638 IfcPipeFitting CW
---   Axis dominance: X=639, Y=356, Z=262 (predominantly horizontal X/Y runs)
---   7 IfcFlowController + 57 IfcValve (including 1 Water Meter) = 64 meter/valve nodes
---   106 IfcFlowTerminal CW (toilets 16, sinks 20+, urinals 8+, bidets 15+, taps 13+)
-
--- Seq 10: METER → JUNCTION — main distribution horizontal X run from water meter
---   Evidence: 7 IfcFlowController (gate_valve_25mm-50mm) as isolation/meter; 57 IfcValve
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('CW_TERMINAL_01','CW','TERMINAL',10,'METER','JUNCTION','X','PIPE_STRAIGHT','DIRECT',NULL,
-        'Main distribution run from meter; 7 IfcFlowController + 57 IfcValve = 64 nodes',
-        'SJTII_Terminal');
-
--- Seq 20: JUNCTION → JUNCTION — continued horizontal X run (mains)
---   Evidence: 639 X-dominant IfcPipeSegment CW (HDPE/UPVC, avg centroid ordered by storey+Y+X)
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('CW_TERMINAL_01','CW','TERMINAL',20,'JUNCTION','JUNCTION','X','PIPE_STRAIGHT','DIRECT',NULL,
-        'Horizontal main run; 639 X-dominant IfcPipeSegment CW','SJTII_Terminal');
-
--- Seq 30: JUNCTION → JUNCTION — cross-branch Y run (lateral distribution)
---   Evidence: 356 Y-dominant IfcPipeSegment CW
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('CW_TERMINAL_01','CW','TERMINAL',30,'JUNCTION','JUNCTION','Y','PIPE_STRAIGHT','DIRECT',NULL,
-        'Cross-branch Y run; 356 Y-dominant IfcPipeSegment CW','SJTII_Terminal');
-
--- Seq 40: JUNCTION → FIXTURE — vertical or short horizontal drop to fixture
---   Evidence: 262 Z-dominant IfcPipeSegment CW; 106 IfcFlowTerminal CW (fixtures)
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('CW_TERMINAL_01','CW','TERMINAL',40,'JUNCTION','FIXTURE','Z','PIPE_STRAIGHT','DIRECT',NULL,
-        'Drop to fixture; 262 Z-dominant IfcPipeSegment, 106 IfcFlowTerminal CW','SJTII_Terminal');
-
--- SP_TERMINAL_01: Sanitary/Sewage collection topology mined from SJTII_Terminal
--- Evidence:
---   455 IfcPipeSegment SP + 372 IfcPipeFitting SP
---   Axis dominance: X=364, Y=289, Z=174 (mixed, gravity-drained runs)
---   62 vertical stack pipes (Z-dominant, length > 500mm)
---   150 IfcFlowTerminal SP: floor traps 46, sinks 20, toilets 16, bidets 12, urinals 11,
---       gully traps 10, inspection chamber 1, grease trap 1, etc.
---   Observed gradient (dz/dx for horizontal runs): 0.005–0.023 (below MS 1228 §5.3 min 0.025)
---   NOTE: observed gradient below MS 1228 §5.3 minimum (0.025). TE models may use shallower
---   slopes on flat sites. RouteWalker MUST enforce min 0.025 per code; pattern row is TENTATIVE.
-
--- Seq 10: FIXTURE → JUNCTION — short horizontal drain from fixture to collection branch
---   Evidence: 150 IfcFlowTerminal SP (floor traps, sinks, toilets, urinals, bidets, etc.)
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('SP_TERMINAL_01','SP','TERMINAL',10,'FIXTURE','JUNCTION','X','PIPE_STRAIGHT','DIRECT',0.025,
-        '150 IfcFlowTerminal SP (floor traps 46, sinks 20, toilets 16, urinals 11, bidets 12)',
-        'SJTII_Terminal');
-
--- Seq 20: JUNCTION → JUNCTION — horizontal collection run with gravity gradient
---   Evidence: 364 X-dominant IfcPipeSegment SP; observed gradient 0.005–0.023 (TENTATIVE: below MS 1228)
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('SP_TERMINAL_01','SP','TERMINAL',20,'JUNCTION','JUNCTION','X','PIPE_STRAIGHT','GRADIENT',0.025,
-        'TENTATIVE: TE observed gradient 0.005–0.023 < MS 1228 §5.3 min 0.025; enforce 0.025',
-        'SJTII_Terminal');
-
--- Seq 30: JUNCTION → JUNCTION — Y-direction collection branch
---   Evidence: 289 Y-dominant IfcPipeSegment SP
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('SP_TERMINAL_01','SP','TERMINAL',30,'JUNCTION','JUNCTION','Y','PIPE_STRAIGHT','GRADIENT',0.025,
-        '289 Y-dominant IfcPipeSegment SP (cross-branch collection)','SJTII_Terminal');
-
--- Seq 40: JUNCTION → STACK — vertical drop into soil stack/riser
---   Evidence: 62 Z-dominant IfcPipeSegment SP (length > 500mm, classified as stacks)
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('SP_TERMINAL_01','SP','TERMINAL',40,'JUNCTION','STACK','Z','PIPE_STRAIGHT','DIRECT',NULL,
-        '62 vertical stack IfcPipeSegment SP (Z-dominant, length > 500mm)','SJTII_Terminal');
-
--- Seq 50: STACK → GENERIC — underground/sub-slab run to inspection chamber
---   Evidence: 2 IfcValve SP (vent cowls) + remaining fittings; count < 5 → TENTATIVE
-INSERT OR IGNORE INTO ad_mep_pattern
-(pattern_id, discipline, building_type, sequence, from_node_type, to_node_type,
- direction_axis, piece_type, offset_rule, gradient, notes, source_building)
-VALUES ('SP_TERMINAL_01','SP','TERMINAL',50,'STACK','GENERIC','X','PIPE_STRAIGHT','GRADIENT',0.025,
-        'TENTATIVE: sub-slab discharge run; supporting elements < 5 in TE','SJTII_Terminal');
 

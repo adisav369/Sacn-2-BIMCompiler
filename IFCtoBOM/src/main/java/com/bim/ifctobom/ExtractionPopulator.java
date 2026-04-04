@@ -56,19 +56,31 @@ public class ExtractionPopulator {
      */
     public static Map<String, List<ExtractionReader.ExtractionElement>> populate(
             Connection compConn, String buildingType) throws SQLException {
+        return populate(compConn, null, buildingType);
+    }
+
+    /**
+     * Populate with abstract product resolution via alias lookup in ERP.db.
+     *
+     * @param compConn  writable connection to component_library.db
+     * @param discConn  read connection to ERP.db (for ad_element_product_alias); null = fallback naming
+     * @param buildingType building type identifier
+     */
+    public static Map<String, List<ExtractionReader.ExtractionElement>> populate(
+            Connection compConn, Connection discConn, String buildingType) throws SQLException {
         Path refDb = Path.of("DAGCompiler/lib/input", buildingType + "_extracted.db");
         if (!Files.exists(refDb)) {
             System.err.printf("  [ExtractionPopulator] Reference DB not found: %s — skipping extraction%n", refDb);
             return Map.of();
         }
-        return populate(compConn, buildingType, refDb);
+        return populate(compConn, discConn, buildingType, refDb);
     }
 
     /**
      * Extract from a specific reference DB.
      */
     public static Map<String, List<ExtractionReader.ExtractionElement>> populate(
-            Connection compConn, String buildingType, Path refDb) throws SQLException {
+            Connection compConn, Connection discConn, String buildingType, Path refDb) throws SQLException {
 
         // Read elements from reference DB (source truth — read-only)
         List<RawElement> rawElements = readReferenceDb(refDb);
@@ -77,11 +89,15 @@ public class ExtractionPopulator {
             return Map.of();
         }
 
+        // Load abstract product resolver from ERP.db alias table (DV034)
+        ProductResolver resolver = (discConn != null)
+                ? ProductResolver.load(discConn) : null;
+
         // R21: Read opening→host mappings from reference DB
         Map<String, String> fillsHostMap = readFillsHost(refDb);
 
         // Derive enriched rows in memory (element_ref, ordinal, M_Product_ID, orientation)
-        List<ExtractionRow> rows = deriveRows(rawElements, buildingType, fillsHostMap);
+        List<ExtractionRow> rows = deriveRows(rawElements, buildingType, fillsHostMap, resolver);
 
         // Filter: exclude REBAR (Bonsai addon, not main construction)
         rows = rows.stream()
@@ -220,7 +236,8 @@ public class ExtractionPopulator {
     // ── Derive extraction rows ──────────────────────────────────────────────
 
     private static List<ExtractionRow> deriveRows(List<RawElement> raw, String buildingType,
-                                                     Map<String, String> fillsHostMap) {
+                                                     Map<String, String> fillsHostMap,
+                                                     ProductResolver resolver) {
         // R21: Build GUID→element_ref map for host resolution
         // First pass: derive element_ref for every element (needed to resolve host GUIDs)
         Map<String, String> guidToElementRef = new HashMap<>();
@@ -255,8 +272,17 @@ public class ExtractionPopulator {
                 String elementRef = deriveElementRef(e.elementName(), e.ifcClass());
                 String orientation = classifyOrientation(e, ifcClass);
                 String discipline = e.discipline() != null ? e.discipline() : "ARC";
-                // M_Product_ID = element_ref — deterministic, no invention
-                String mProductId = elementRef;
+                // M_Product_ID: abstract catalog name via alias cascade, or element_ref fallback
+                // Implementing BBC.md §9 Data Flywheel — Witness: W-PRODUCT-ABSTRACT
+                String mProductId;
+                if (resolver != null) {
+                    double w = e.maxX() - e.minX();
+                    double d = e.maxY() - e.minY();
+                    double h = e.maxZ() - e.minZ();
+                    mProductId = resolver.resolve(elementRef, ifcClass, orientation, w, d, h);
+                } else {
+                    mProductId = elementRef;  // backward compat: no resolver = raw names
+                }
 
                 // R21: Resolve host element_ref from GUID chain
                 String hostElementRef = null;

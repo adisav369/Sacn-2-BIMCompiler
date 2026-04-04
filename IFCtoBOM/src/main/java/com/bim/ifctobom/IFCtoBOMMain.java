@@ -123,7 +123,7 @@ public class IFCtoBOMMain {
         try {
             // 1. Extract + enrich in memory, fill geometry gaps in library
             Map<String, List<ExtractionElement>> storeyElements =
-                    ExtractionPopulator.populate(compConn, buildingType);
+                    ExtractionPopulator.populate(compConn, discConn, buildingType);
             List<ExtractionElement> allElements = new ArrayList<>();
             storeyElements.values().forEach(allElements::addAll);
             System.out.printf("[populate] Extracted: %d elements%n", allElements.size());

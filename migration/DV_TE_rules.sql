@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- TE: Airport Terminal (SJTII_Terminal)
 -- Source: DAGCompiler/lib/output/sjtii_terminal.db
--- Generated: 2026-04-01 16:35
+-- Generated: 2026-04-03 16:26
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)

@@ -1,7 +1,7 @@
 -- ════════════════════════════════════════════════════════
 -- SH: Sample House (Ifc4_SampleHouse)
 -- Source: DAGCompiler/lib/output/ifc4_samplehouse.db
--- Generated: 2026-04-01 16:35
+-- Generated: 2026-04-04 16:30
 -- ════════════════════════════════════════════════════════
 
 -- §1: Structural dimensions per (ifc_class, storey)
@@ -19,6 +19,23 @@
 
 -- §2: Material distribution
 
+-- ifc_class             material_name                                  cnt
+-- --------------------  ---------------------------------------------  ---
+-- IfcMember             Aluminium                                      20 
+-- IfcFurnishingElement  Wood - Birch                                   8  
+-- IfcPlate              Glass                                          6  
+-- IfcWindow             Window Frame                                   4  
+-- IfcCovering           Compound Ceiling:Plain                         3  
+-- IfcDoor               Door - Handle                                  3  
+-- IfcFurnishingElement  Metal - Chrome                                 3  
+-- IfcWall               Brick, Common                                  3  
+-- IfcWall               Basic Wall:Wall-Partn_12P-70MStd-12P           2  
+-- IfcFurnishingElement  Laminate, Ivory, Matte                         1  
+-- IfcFurnishingElement  Textile - White                                1  
+-- IfcFurnishingElement  Wood - Mahogany                                1  
+-- IfcRoof               Concrete, Sand/Cement Screed                   1  
+-- IfcSlab               Floor:Floor-Grnd-Susp_65Scr-80Ins-100Blk-75PC  1  
+-- IfcSlab               Floor:Simple floor                             1  
 
 -- §3: Spacing patterns (adjacent element gaps)
 -- Elements of the same ifc_class on the same storey, sorted by X

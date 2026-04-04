@@ -75,7 +75,8 @@ public class ProductRegistrar {
                         ifc_class         TEXT,
                         extracted_from    TEXT NOT NULL DEFAULT 'IFC_EXTRACTION',
                         is_active         INTEGER DEFAULT 1,
-                        building_type     TEXT
+                        building_type     TEXT,
+                        source_element_ref TEXT
                     )""");
         }
 
@@ -90,8 +91,8 @@ public class ProductRegistrar {
         String sql = """
                 INSERT OR IGNORE INTO M_Product
                 (product_id, Value, product_type, width, depth, height,
-                 ifc_class, extracted_from, is_active, building_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'IFC_EXTRACTION', 1, ?)
+                 ifc_class, extracted_from, is_active, building_type, source_element_ref)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'IFC_EXTRACTION', 1, ?, ?)
                 """;
 
         int count = 0;
@@ -107,6 +108,8 @@ public class ProductRegistrar {
                 double d = e.maxY() - e.minY();
                 double h = e.maxZ() - e.minZ();
                 String ifcClass = e.ifcClass();
+                // element_ref = raw IFC name (geometry bridge to I_Geometry_Map)
+                String sourceElementRef = e.elementRef();
 
                 // Write to component_library.db (for ensureProductImages geometry join)
                 stmt.setString(1, productId);
@@ -117,6 +120,7 @@ public class ProductRegistrar {
                 stmt.setDouble(6, h);
                 stmt.setString(7, ifcClass);
                 stmt.setString(8, buildingType);
+                stmt.setString(9, sourceElementRef);
                 int rows = stmt.executeUpdate();
                 if (rows > 0) count++;
                 else reused++;
@@ -130,6 +134,7 @@ public class ProductRegistrar {
                 discStmt.setDouble(6, h);
                 discStmt.setString(7, ifcClass);
                 discStmt.setString(8, buildingType);
+                discStmt.setString(9, sourceElementRef);
                 discStmt.executeUpdate();
             }
         }
@@ -290,14 +295,16 @@ public class ProductRegistrar {
                     )""");
         }
 
-        // R17: Join M_Product → I_Geometry_Map (I_Element_Extraction removed).
-        // M_Product.Value = element_ref by extraction convention.
+        // R17+DV033: Join M_Product → I_Geometry_Map via source_element_ref.
+        // source_element_ref = raw IFC name (geometry key in I_Geometry_Map).
+        // product_id/Value = abstract catalog name (used as M_Product_Image.M_Product_ID).
+        // Fallback: if source_element_ref is NULL (pre-DV033 data), use Value.
         // One geometry_hash per product (product type = one canonical shape).
         String sql = """
                 INSERT OR IGNORE INTO M_Product_Image (M_Product_ID, geometry_hash)
                 SELECT p.Value, g.geometry_hash
                 FROM M_Product p
-                JOIN I_Geometry_Map g ON g.element_ref = p.Value
+                JOIN I_Geometry_Map g ON g.element_ref = COALESCE(p.source_element_ref, p.Value)
                 WHERE p.building_type = ?
                     AND p.is_active = 1
                 GROUP BY p.Value
