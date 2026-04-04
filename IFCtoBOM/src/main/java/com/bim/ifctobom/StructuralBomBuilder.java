@@ -224,7 +224,7 @@ public class StructuralBomBuilder {
                 double asmDx = aMinX - fMinX;
                 double asmDy = aMinY - fMinY;
                 double asmDz = aMinZ - fMinZ;
-                insertBomLine(bomConn, floorBomId, asmBomId, "MAKE",
+                insertBomLine(bomConn, floorBomId, asmBomId,
                         "ASM_" + asmCount, asmSeq, "0",
                         asmDx, asmDy, asmDz,
                         0, 0, 0, null, null, 0, null, null, null);
@@ -257,7 +257,7 @@ public class StructuralBomBuilder {
             BIMLogger.pattern("FLOOR", "Storey '{}' (code={}): {} elements, fMinZ={:.3f}m, makeDz={:.3f}m",
                     storeyName, storeyInfo.code(), elems.size(), fMinZ, makeDz);
 
-            insertBomLine(bomConn, buildingBomId, floorBomId, "MAKE",
+            insertBomLine(bomConn, buildingBomId, floorBomId,
                     storeyInfo.role(), storeyInfo.seq(), "0",
                     makeDx, makeDy, makeDz,
                     0, 0, 0,  // MAKE children don't carry allocated size
@@ -300,7 +300,7 @@ public class StructuralBomBuilder {
     }
 
     private static void insertBomLine(Connection conn,
-                                      String bomId, String childProductId, String componentType,
+                                      String bomId, String childProductId,
                                       String role, int sequence, String rotationRule,
                                       double dx, double dy, double dz,
                                       double allocW, double allocD, double allocH,
@@ -308,13 +308,13 @@ public class StructuralBomBuilder {
                                       String orientation,
                                       String materialName, String materialRgba)
             throws SQLException {
-        insertBomLine(conn, bomId, childProductId, componentType, role, sequence,
+        insertBomLine(conn, bomId, childProductId, role, sequence,
                 rotationRule, dx, dy, dz, allocW, allocD, allocH,
                 storey, elementRef, ordinal, orientation, materialName, materialRgba, 1);
     }
 
     private static void insertBomLine(Connection conn,
-                                      String bomId, String childProductId, String componentType,
+                                      String bomId, String childProductId,
                                       String role, int sequence, String rotationRule,
                                       double dx, double dy, double dz,
                                       double allocW, double allocD, double allocH,
@@ -328,7 +328,6 @@ public class StructuralBomBuilder {
         String scaleBand = VerbFactorizer.classifyScaleBand(allocW, allocD, allocH);
 
         BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(bomId, childProductId, role, sequence)
-                .componentType(componentType)
                 .rotationRule(rotationRule)
                 .offset(dx, dy, dz)
                 .qty(qty)

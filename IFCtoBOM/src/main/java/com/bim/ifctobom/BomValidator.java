@@ -35,7 +35,7 @@ import java.util.*;
  *
  * <p>Assembly-ref lines (parent→child BOM) are identified structurally:
  * {@code child_product_id IN (SELECT bom_id FROM m_bom)}.
- * Leaf lines are everything else: {@code component_type = 'LEAF'}.
+ * Leaf lines are everything else: {@code child_product_id NOT IN (SELECT Value FROM m_bom)}.
  *
  * <p>Each check prints PASS/WARN/FAIL. Any FAIL means the BOM needs attention
  * before attempting compilation.
@@ -52,8 +52,9 @@ public class BomValidator {
     private static final String IS_ASSEMBLY_REF =
             "child_product_id IN (SELECT Value FROM m_bom)";
 
-    /** SQL fragment: leaf lines (component_type = 'LEAF'). */
-    private static final String IS_LEAF = "component_type = 'LEAF'";
+    /** SQL fragment: leaf lines (child_product_id not in m_bom — no children). */
+    private static final String IS_LEAF =
+            "child_product_id NOT IN (SELECT Value FROM m_bom)";
 
     /**
      * Validate and print QA report for a BOM database.
@@ -646,7 +647,7 @@ public class BomValidator {
             // Count LEAF rows with dimensions > 0 but no archetype
             ResultSet rs = stmt.executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF'
+                    WHERE child_product_id NOT IN (SELECT Value FROM m_bom)
                       AND MAX(allocated_width_mm, allocated_depth_mm, allocated_height_mm) > 0
                       AND (shape_archetype IS NULL OR scale_band IS NULL)
                     """);
@@ -655,7 +656,7 @@ public class BomValidator {
             // Count LEAF rows with invalid archetype values
             rs = stmt.executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF'
+                    WHERE child_product_id NOT IN (SELECT Value FROM m_bom)
                       AND shape_archetype IS NOT NULL
                       AND shape_archetype NOT IN ('PLANAR', 'ELONGATED', 'COMPACT', 'MIXED')
                     """);
@@ -664,7 +665,7 @@ public class BomValidator {
             // Count LEAF rows with invalid scale_band values
             rs = stmt.executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF'
+                    WHERE child_product_id NOT IN (SELECT Value FROM m_bom)
                       AND scale_band IS NOT NULL
                       AND scale_band NOT IN ('ARCHITECTURAL', 'FURNITURE', 'FITTING', 'TINY')
                     """);
@@ -673,7 +674,7 @@ public class BomValidator {
             // Total classified
             rs = stmt.executeQuery("""
                     SELECT COUNT(*) FROM m_bom_line
-                    WHERE component_type = 'LEAF' AND shape_archetype IS NOT NULL
+                    WHERE child_product_id NOT IN (SELECT Value FROM m_bom) AND shape_archetype IS NOT NULL
                     """);
             int classified = rs.next() ? rs.getInt(1) : 0;
 
@@ -834,7 +835,7 @@ public class BomValidator {
                        b.m_product_category_id
                 FROM m_bom_line l
                 JOIN m_bom b ON l.M_BOM_ID = b.M_BOM_ID
-                WHERE l.component_type = 'LEAF' AND l.verb_ref IS NOT NULL
+                WHERE l.child_product_id NOT IN (SELECT Value FROM m_bom) AND l.verb_ref IS NOT NULL
                 ORDER BY l.storey, l.child_product_id
                 """)) {
             while (rs.next()) {

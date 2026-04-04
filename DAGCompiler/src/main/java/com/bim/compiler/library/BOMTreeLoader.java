@@ -61,7 +61,7 @@ public final class BOMTreeLoader {
      */
     public record BOMChild(
         int id, String bomId, String role, String childProductId,
-        String namePattern, String componentType, String locatorRef,
+        String namePattern, String locatorRef,
         double dx, double dy, double dz,
         int sequence, boolean isVariance,
         String layoutStrategy,
@@ -71,21 +71,16 @@ public final class BOMTreeLoader {
          * Returns childProductId as a candidate sub-BOM reference.  Callers check
          * {@code bomTree.get(childBomId())} — returns non-null only when the child
          * is itself a BOM (has children).  Recursion is determined by BOM tree
-         * structure, not by component_type.
-         *
-         * <p>Everything is BUY (full LOD in component_library.db).  MAKE only applies
-         * when LOD does not exist in library — see {@code docs/archive/Mesh2Library.txt}.
+         * structure, not by whether a child_product_id has an m_bom row.
          */
         public String childBomId() { return childProductId; }
 
         /**
-         * Backward compat: returns childProductId when component is a catalog BUY leaf
-         * (active M_Product, product_type != STRUCTURAL).
-         * Returns null for structural IFC-class-only BUY rows (childProductId starts with "Ifc"),
+         * Returns childProductId as a catalog product reference.
+         * Returns null for structural IFC-class-only stubs (childProductId starts with "Ifc"),
          * so dimension lookup falls through to namePattern (which carries the element name from params).
          */
         public String productRef() {
-            if (!"BUY".equals(componentType)) return null;
             // Structural stubs use IFC class names — not real catalog product IDs
             if (childProductId != null && childProductId.startsWith("Ifc")) return null;
             return childProductId;
@@ -184,7 +179,6 @@ public final class BOMTreeLoader {
                     raw.getRole(),
                     raw.getChildProductId(),
                     effectiveName,
-                    raw.getComponentType(),
                     raw.getLocatorRef(),
                     paramDouble(params, "dx",
                         paramDouble(params, "x_offset", raw.getDx())),

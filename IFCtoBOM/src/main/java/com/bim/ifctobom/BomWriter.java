@@ -141,7 +141,6 @@ public class BomWriter {
     public static final class BomLineRow {
         String bomId;
         String childProductId;
-        String componentType = "LEAF";
         String role;
         int sequence = 100;
         String rotationRule = "0";
@@ -176,7 +175,6 @@ public class BomWriter {
             r.sequence = sequence;
         }
 
-        public BomLineRowBuilder componentType(String v) { r.componentType = v; return this; }
         public BomLineRowBuilder rotationRule(String v) { r.rotationRule = v; return this; }
         public BomLineRowBuilder fitPriority(int v) { r.fitPriority = v; return this; }
         public BomLineRowBuilder offset(double dx, double dy, double dz) {
@@ -205,7 +203,7 @@ public class BomWriter {
 
     private static final String BOM_LINE_SQL = """
             INSERT INTO m_bom_line
-            (bom_id, M_BOM_ID, child_product_id, component_type, role, sequence,
+            (bom_id, M_BOM_ID, child_product_id, role, sequence,
              rotation_rule, fit_priority, min_space_mm,
              dx, dy, dz, is_active, entity_type, qty, verb_ref,
              allocated_width_mm, allocated_depth_mm, allocated_height_mm,
@@ -213,7 +211,7 @@ public class BomWriter {
              material_name, material_rgba,
              shape_archetype, scale_band,
              host_element_ref, AD_Org_ID)
-            VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?, ?,
+            VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?,
                     ?, ?, ?,
                     ?, ?, ?, ?, ?, ?, ?,
                     ?, ?, ?,
@@ -229,32 +227,31 @@ public class BomWriter {
             stmt.setString(1, r.bomId);
             stmt.setString(2, r.bomId);        // M_BOM_ID subquery
             stmt.setString(3, r.childProductId);
-            stmt.setString(4, r.componentType);
-            stmt.setString(5, r.role);
-            stmt.setInt(6, r.sequence);
-            stmt.setString(7, r.rotationRule);
-            stmt.setInt(8, r.fitPriority);
-            stmt.setInt(9, r.minSpaceMm);
-            stmt.setDouble(10, r.dx);
-            stmt.setDouble(11, r.dy);
-            stmt.setDouble(12, r.dz);
-            stmt.setInt(13, r.isActive ? 1 : 0);
-            stmt.setString(14, r.entityType);
-            stmt.setInt(15, r.qty);
-            stmt.setString(16, r.verbRef);
-            stmt.setDouble(17, r.allocW);
-            stmt.setDouble(18, r.allocD);
-            stmt.setDouble(19, r.allocH);
-            stmt.setString(20, r.storey);
-            stmt.setString(21, r.elementRef);
-            stmt.setInt(22, r.ordinal);
-            stmt.setString(23, r.orientation);
-            stmt.setString(24, r.materialName);
-            stmt.setString(25, r.materialRgba);
-            stmt.setString(26, r.shapeArchetype);
-            stmt.setString(27, r.scaleBand);
-            stmt.setString(28, r.hostElementRef);
-            stmt.setInt(29, r.adOrgId);
+            stmt.setString(4, r.role);
+            stmt.setInt(5, r.sequence);
+            stmt.setString(6, r.rotationRule);
+            stmt.setInt(7, r.fitPriority);
+            stmt.setInt(8, r.minSpaceMm);
+            stmt.setDouble(9, r.dx);
+            stmt.setDouble(10, r.dy);
+            stmt.setDouble(11, r.dz);
+            stmt.setInt(12, r.isActive ? 1 : 0);
+            stmt.setString(13, r.entityType);
+            stmt.setInt(14, r.qty);
+            stmt.setString(15, r.verbRef);
+            stmt.setDouble(16, r.allocW);
+            stmt.setDouble(17, r.allocD);
+            stmt.setDouble(18, r.allocH);
+            stmt.setString(19, r.storey);
+            stmt.setString(20, r.elementRef);
+            stmt.setInt(21, r.ordinal);
+            stmt.setString(22, r.orientation);
+            stmt.setString(23, r.materialName);
+            stmt.setString(24, r.materialRgba);
+            stmt.setString(25, r.shapeArchetype);
+            stmt.setString(26, r.scaleBand);
+            stmt.setString(27, r.hostElementRef);
+            stmt.setInt(28, r.adOrgId);
             stmt.executeUpdate();
         }
     }

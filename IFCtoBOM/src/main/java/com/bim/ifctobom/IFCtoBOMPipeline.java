@@ -730,7 +730,7 @@ public class IFCtoBOMPipeline {
                     allocated_width_mm  INTEGER DEFAULT 0,
                     allocated_depth_mm  INTEGER DEFAULT 0,
                     allocated_height_mm INTEGER DEFAULT 0,
-                    component_type      TEXT NOT NULL DEFAULT 'MAKE',
+                    component_type      TEXT DEFAULT NULL,
                     storey              TEXT,
                     element_ref         TEXT,
                     ordinal             INTEGER DEFAULT 0,

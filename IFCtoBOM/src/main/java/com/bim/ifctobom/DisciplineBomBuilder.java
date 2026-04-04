@@ -187,7 +187,7 @@ public class DisciplineBomBuilder {
                     double mepDx = dMinX - fMinX;
                     double mepDy = dMinY - fMinY;
                     double mepDz = dMinZ - fMinZ;
-                    insertBomLine(bomConn, floorBomId, discBomId, "MAKE",
+                    insertBomLine(bomConn, floorBomId, discBomId,
                             "MEP_" + discCode, discSeq, "0",
                             mepDx, mepDy, mepDz,
                             0, 0, 0,
@@ -216,7 +216,7 @@ public class DisciplineBomBuilder {
             BIMLogger.pattern("FLOOR", "Container '{}' (code={}): {} elements, fMinZ={:.3f}m, makeDz={:.3f}m",
                     storeyName, storeyInfo.code(), elems.size(), fMinZ, makeDz);
 
-            insertBomLine(bomConn, buildingBomId, floorBomId, "MAKE",
+            insertBomLine(bomConn, buildingBomId, floorBomId,
                     storeyInfo.role(), storeyInfo.seq(), "0",
                     makeDx, makeDy, makeDz,
                     0, 0, 0,
@@ -288,7 +288,7 @@ public class DisciplineBomBuilder {
      * Insert a MAKE BOM line (no qty/verb_ref — structural hierarchy only).
      */
     private static void insertBomLine(Connection conn,
-                                      String bomId, String childProductId, String componentType,
+                                      String bomId, String childProductId,
                                       String role, int sequence, String rotationRule,
                                       double dx, double dy, double dz,
                                       double allocW, double allocD, double allocH,
@@ -301,7 +301,6 @@ public class DisciplineBomBuilder {
         String scaleBand = VerbFactorizer.classifyScaleBand(allocW, allocD, allocH);
 
         BomWriter.insertBomLine(conn, new BomWriter.BomLineRowBuilder(bomId, childProductId, role, sequence)
-                .componentType(componentType)
                 .rotationRule(rotationRule)
                 .offset(dx, dy, dz)
                 .alloc(allocW, allocD, allocH)

@@ -31,7 +31,7 @@ public class IntegrityHash {
                 SELECT l.bom_id, l.child_product_id,
                        round(l.dx, 6), round(l.dy, 6), round(l.dz, 6)
                 FROM m_bom_line l
-                WHERE l.component_type = 'LEAF'
+                WHERE l.child_product_id NOT IN (SELECT Value FROM m_bom)
                 ORDER BY l.bom_id, l.child_product_id,
                          round(l.dx,6), round(l.dy,6), round(l.dz,6)
                 """;

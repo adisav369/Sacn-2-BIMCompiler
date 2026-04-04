@@ -170,7 +170,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
                     library/schema_snapshot_bom.sql | sqlite3 "$BOM_DB" 2>/dev/null || true
                 sqlite3 "$BOM_DB" < "$SEED_SQL"
                 bom_count=$(sqlite3 "$BOM_DB" "SELECT COUNT(*) FROM m_bom" 2>/dev/null || echo "0")
-                line_count=$(sqlite3 "$BOM_DB" "SELECT COUNT(*) FROM m_bom_line WHERE component_type='LEAF'" 2>/dev/null || echo "0")
+                line_count=$(sqlite3 "$BOM_DB" "SELECT COUNT(*) FROM m_bom_line WHERE child_product_id NOT IN (SELECT Value FROM m_bom)" 2>/dev/null || echo "0")
                 echo "  [seed] ${BOM_DB}: ${bom_count} BOMs, ${line_count} LEAF elements from ${SEED_SQL}"
                 verdict "SEED_${PREFIX}" "PASS" "${bom_count} BOMs, ${line_count} LEAF elements"
             else
@@ -295,7 +295,7 @@ for yaml_file in "${YAML_FILES[@]}"; do
     fi
     # Fallback: element count from BOM.db
     if [ "$_TOTAL_EL" = "-" ] || [ "$_TOTAL_EL" = "?" ]; then
-        _TOTAL_EL=$(sqlite3 "$BOM_DB" "SELECT SUM(qty) FROM m_bom_line WHERE component_type='LEAF' OR component_type='MAKE'" 2>/dev/null || echo "?")
+        _TOTAL_EL=$(sqlite3 "$BOM_DB" "SELECT SUM(qty) FROM m_bom_line WHERE is_active = 1" 2>/dev/null || echo "?")
     fi
 
     # Status word

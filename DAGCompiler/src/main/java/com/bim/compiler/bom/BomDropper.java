@@ -361,10 +361,6 @@ public class BomDropper {
                         line.getDx(), line.getDy(), line.getDz(),
                         locatorRef, exceptions);
 
-            } else if ("PHANTOM".equals(line.getComponentType())) {
-                // PHANTOM — skip (only component_type that matters)
-                continue;
-
             } else {
                 // Leaf product — structural detection: no matching bom_id = leaf.
                 String leafLocator = buildLocatorRef(locatorRef, null, childProductId);
@@ -497,9 +493,6 @@ public class BomDropper {
                         depth + 1, leafCount, lineSeq, line.getBomLineId(),
                         line.getDx(), line.getDy(), line.getDz(),
                         locatorRef, exceptions);
-
-            } else if ("PHANTOM".equals(line.getComponentType())) {
-                continue;
 
             } else {
                 String leafLocator = buildLocatorRef(locatorRef, null, childProductId);

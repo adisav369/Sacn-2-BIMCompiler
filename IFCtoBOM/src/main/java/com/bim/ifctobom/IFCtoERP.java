@@ -1249,8 +1249,8 @@ public class IFCtoERP {
         try (PreparedStatement ps = erpConn.prepareStatement("""
                 INSERT INTO M_BOM_Line
                 (M_BOM_ID, bom_id, child_product_id, sequence, qty, dx, dy, dz,
-                 component_type, c_uom_id, qty_type, rotation_rule, IsActive)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'LEAF', ?, ?, ?, 'Y')
+                 c_uom_id, qty_type, rotation_rule, IsActive)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Y')
                 """)) {
             ps.setInt(1, intBomId);
             ps.setString(2, bomId);
