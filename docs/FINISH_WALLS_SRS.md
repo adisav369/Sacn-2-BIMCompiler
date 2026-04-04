@@ -219,12 +219,12 @@ Walls can fill the gap using the compiler's library — then the round trip clos
 
 | ID | Claim | Verify |
 |----|-------|--------|
-| W-FW-DETECT | CompletionAuditService returns deficit=4 for a known wall-less storey | Unit test against TE extracted.db (discipline-only building) |
+| W-FW-DETECT | CompletionAuditService returns deficit=4 for a known wall-less storey | Unit test against Clinic extracted.db (confirmed incomplete) |
 | W-FW-PANEL | "FINISH WALLS" button creates W_BOM_Variance batch for all deficit faces | Check W_BOM_Variance rows count = deficit |
 | W-FW-COMPILE | After COMPLETE verb, IfcWall count at storey increases by deficit | G1-COUNT delta check |
 | W-FW-AABB | New wall AABB lies within IfcSpace AABB boundary | `elements_rtree` containment check |
 | W-FW-2D | Floor plan SVG shows new walls after COMPLETE (solid lines, correct length) | Visual + SVG path length measurement |
-| W-FW-ROUNDTRIP | TE discipline-only → Finish Walls → compile → 2D floor plan matches expected layout | Manual overlay against TE architectural drawings |
+| W-FW-ROUNDTRIP | Clinic incomplete → Finish Walls → compile → 2D floor plan matches expected layout | Manual overlay against Clinic architectural drawings |
 
 ---
 
@@ -239,7 +239,7 @@ Already covered by §3 CompletionAuditService detection.
 |----------|----------|---------|--------|
 | Clinic | 269 | 1,080 | Has rooms declared, but some faces lack walls — **confirmed incomplete** |
 | Hospital | 0 | 1,468 | No IfcSpace → DECLARE ROOMS first (§11), then wall audit |
-| Terminal | 0 | 333 | No IfcSpace → DECLARE ROOMS first; terminal zones have many open faces by design |
+| Terminal | 0 | 333 | 333 walls present — NOT a Finish Walls candidate. Open faces are by design. |
 | Schependomlaan | 0 | 631 | No IfcSpace → DECLARE ROOMS; residential units expected to be closed |
 | HITOS | 0 | 838 | No IfcSpace → DECLARE ROOMS; likely incomplete residential |
 
