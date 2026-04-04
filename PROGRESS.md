@@ -104,7 +104,9 @@
   T4: Generative audit: 3 lib/input/dsl/*.bim orphaned (safe to delete S141). 20 examples/*.bim live (4 tests use BuildingParser).
   T5: VerbStage column added to gate table. SH: VO (PLACE BOM ProjectName column error, pre-existing). DX: VO (148 PLACEMENT violations, pre-existing).
   Fleet: SH 8/8, DX 8/8 PASS (no regression). TE skipped.
-  Next: S141 — IFC_AGGREGATE Phase 0 decision + 3 orphaned .bim deletion + DX 148 PLACEMENT root cause.
+  component_type deprecated: column kept as DEFAULT NULL, write path removed, PHANTOM branch removed.
+  IFCtoBOM gap analysis written: internal/IFCtoBOM_S140_Gap_Analysis.txt — 5 gaps (A-E), 5 candidate sessions.
+  Next: S141 — review gap analysis, decide session plan for abstract product catalog mapping (#A first).
 
 **S139-followup** (no commit) — DSL/YAML investigation + S140 prompt.
   dsl_*.bim (IFCtoBOM/src/main/resources/) confirmed vestigial in extracted path:
