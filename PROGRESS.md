@@ -26,6 +26,8 @@
 **Tests:** BIMBackOffice 20/20. BonsaiBIMDesigner 408/414 (42 classes, 6 CalibrationTest pre-existing).
 **BIMEyes:** 28 proof classes. [EYES_SRS.md §10](docs/EYES_SRS.md#10-audit-finding-proof-coverage-honesty-s60-post-audit).
 
+**S144 GEO White-Box Logging DONE:** GeoProofRecord + GeoProofFormatter — structured Input→Process→Output proof chain per element. 58 SH / 215 DX proof records. LMP with inverse rotation (0 FAIL). Envelope UNKNOWN (parent dims not on M_Product stubs). DX B-side rot=π negation confirmed. §6.12.1 isolation maintained. Existing TACK logs preserved.
+
 ## What's Next
 
 **Blueprint Sessions (§14.3):** [ProjectOrderBlueprint.md](docs/ProjectOrderBlueprint.md)
@@ -96,13 +98,17 @@
 
 ## Session Log (recent first)
 
-**S142** (uncommitted) — DX + SH Output Quality: CLUSTER→0, MEP exclusion, LINE verb.
-  TACK-FIX verified: all 3 code paths already LBD. TACK_FIX_SPEC.md is stale.
-  Real problem: 904 MEP elements (77%) in DX spatial BOM + all factored groups were CLUSTER.
-  Fix: MEP IFC classes excluded from StructuralBomBuilder + CompositionBomBuilder → DISC path (IFCtoERP/RouteWalker).
-  LINE verb + LINE_MULTI (spatial sub-grouping) in VerbDetector. `ad_verb_pattern` table (DV035, 9 seed rows).
-  M_Product.Name from source_element_ref (S141 gap). CLUSTER diagnostics on [PATRN] channel (white-box).
-  DX: 775→165 lines, 8→0 CLUSTER, 0→4 LINE verbs. SH: unchanged (no MEP). Fleet: SH 8/8, DX 8/8.
+**S142** (`a14e5f6f` + uncommitted) — DX + SH Output Quality + ERP.db From-Scratch Chain.
+  Part 1 (committed): LINE verb, MEP exclusion, CLUSTER→0, product naming, DV035 ad_verb_pattern.
+  Part 2 (this session): DV036 — AD_Org_ID on M_Product_Category (discipline chain §6.4).
+  Forensic: Parent_Category_ID was intentionally dropped (DV020), not accidentally lost (DV027).
+  AD_Org_ID was specified in §6.4 but never implemented — DV036 completes the spec.
+  ProductRegistrar: auto-backfill M_Product_Category_ID from ifc_class (always runs, not gated on compConn count).
+  `scripts/rebuild_erp.sh`: from-scratch ERP.db builder (44 tables, 127 categories, 49 with AD_Org_ID).
+  W019 added to rebuild chain (ad_mep_anchor, ad_mep_pattern — DAGCompiler needs them).
+  From-scratch proof: SH 8/8, DX 8/8 on fresh 1.5MB ERP.db (no legacy data).
+  Remaining: 5 migration ordering WARNs (S62/S67 TE products, DV015 schema mismatch — cosmetic).
+  Next: S143 — RM third stone on fresh ERP.db + fix rebuild_erp.sh warnings.
 
 **S141** — Abstract Product Catalog Mapping (GAP-A from IFCtoBOM_S140_Gap_Analysis.txt).
 

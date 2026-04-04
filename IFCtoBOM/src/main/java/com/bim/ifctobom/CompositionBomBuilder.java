@@ -130,6 +130,8 @@ public class CompositionBomBuilder {
         // excess from either side → SHARED (stays in structural)
 
         List<ExtractionElement> halfUnitElements = new ArrayList<>();
+        // CP-1: Track B-side counterparts for MA GUID writing (qi=0=A, qi=1=B)
+        List<ExtractionElement> bSideCounterparts = new ArrayList<>();
         // Excluded = A-side paired + B-side paired
         // (paired B produced by mirror from A; excess from BOTH sides stays in structural)
 
@@ -146,23 +148,34 @@ public class CompositionBomBuilder {
 
             Set<String> excludedKeys = new LinkedHashSet<>();
 
+            String axis = mirror.axis().toUpperCase();
+            double mirrorPos = mirror.position();
+
             for (String productId : allProducts) {
-                List<ExtractionElement> aGroup = aByProduct.getOrDefault(productId, List.of());
-                List<ExtractionElement> bGroup = bByProduct.getOrDefault(productId, List.of());
+                List<ExtractionElement> aGroup = new ArrayList<>(aByProduct.getOrDefault(productId, List.of()));
+                List<ExtractionElement> bGroup = new ArrayList<>(bByProduct.getOrDefault(productId, List.of()));
+
+                // Mirror-proximity pairing: for each A element, find the B element
+                // closest to its mirror position on cross-axes (Y,Z for X-mirror).
+                // This ensures true spatial mirrors pair together.
+                // IFC modelling slop is typical (~600mm median) — the shared template
+                // asserts the design intent (perfect mirror); validation corrects slop.
+                Comparator<ExtractionElement> crossAxisOrder = Comparator
+                        .comparingDouble((ExtractionElement e) -> crossAxis1(e, axis))
+                        .thenComparingDouble(e -> crossAxis2(e, axis));
+                aGroup.sort(crossAxisOrder);
+                bGroup.sort(crossAxisOrder);
+
                 int paired = Math.min(aGroup.size(), bGroup.size());
 
-                // Take 'paired' from A-side → half-unit
+                // Take 'paired' from A-side → half-unit, track B counterpart
                 for (int i = 0; i < paired; i++) {
                     halfUnitElements.add(aGroup.get(i));
+                    bSideCounterparts.add(bGroup.get(i));
                     excludedKeys.add(ScopeBomBuilder.elementKey(aGroup.get(i)));
                 }
 
-                // A-side excess → NOT excluded (stays in structural as shared)
-                // But we still need to exclude from structural's A/B partition
-                // Actually: excess A stays in structural. Only paired A goes to half-unit.
-
                 // B-side paired → excluded (produced by mirror from A)
-                // B-side excess → NOT excluded (stays in structural as shared)
                 for (int i = 0; i < paired; i++) {
                     excludedKeys.add(ScopeBomBuilder.elementKey(bGroup.get(i)));
                 }
@@ -201,17 +214,37 @@ public class CompositionBomBuilder {
                 catLookup);
 
         // Insert half-unit LEAF lines with offset relative to half-unit LFD origin
+        // CP-1: Write MA rows for per-instance GUID traceability (A=qi:0, B=qi:1)
         int halfUnitLines = 0;
         int seq = 10;
-        for (ExtractionElement e : halfUnitElements) {
-            double dx = e.centroidX() - huMinX;
-            double dy = e.centroidY() - huMinY;
-            double dz = e.centroidZ() - huMinZ;
+        int maWritten = 0;
+        for (int idx = 0; idx < halfUnitElements.size(); idx++) {
+            ExtractionElement e = halfUnitElements.get(idx);
+            // §4 tack convention: offset = element LBD - parent LBD (not centroid)
+            // VerbFactorizer uses minX; CompositionBomBuilder must match.
+            double dx = e.minX() - huMinX;
+            double dy = e.minY() - huMinY;
+            double dz = e.minZ() - huMinZ;
 
             insertLeafLine(bomConn, halfUnitBomId, e, seq, dx, dy, dz);
+
+            // MA: qi=0 → A-side IFC GUID, qi=1 → B-side IFC GUID
+            String aGuid = e.guid();
+            String bGuid = (idx < bSideCounterparts.size()) ? bSideCounterparts.get(idx).guid() : null;
+            if (aGuid != null && !aGuid.isEmpty()) {
+                insertMaRow(bomConn, halfUnitBomId, seq, 0, aGuid);
+                maWritten++;
+            }
+            if (bGuid != null && !bGuid.isEmpty()) {
+                insertMaRow(bomConn, halfUnitBomId, seq, 1, bGuid);
+                maWritten++;
+            }
+
             seq += 10;
             halfUnitLines++;
         }
+        BIMLogger.fine("COMPOSITION", "CP-1 MA: {} rows written for {} half-unit lines (A+B GUIDs)",
+                maWritten, halfUnitLines);
 
         // ── Create pair container BOM ────────────────────────────────────────
         String pairBomId = comp.pairBomId();
@@ -309,12 +342,59 @@ public class CompositionBomBuilder {
         return axisMin(x, y, z, axis);  // same selector for offsets
     }
 
+    /** Centroid on the mirror axis. */
+    private static double centroidOnAxis(ExtractionElement e, String mirrorAxis) {
+        return switch (mirrorAxis) {
+            case "X" -> (e.minX() + e.maxX()) / 2;
+            case "Y" -> (e.minY() + e.maxY()) / 2;
+            case "Z" -> (e.minZ() + e.maxZ()) / 2;
+            default -> 0;
+        };
+    }
+
+    /** Primary cross-axis value for sorting (perpendicular to mirror axis). */
+    private static double crossAxis1(ExtractionElement e, String mirrorAxis) {
+        return switch (mirrorAxis) {
+            case "X" -> e.minY();
+            case "Y" -> e.minX();
+            case "Z" -> e.minX();
+            default -> 0;
+        };
+    }
+
+    /** Secondary cross-axis value for sorting. */
+    private static double crossAxis2(ExtractionElement e, String mirrorAxis) {
+        return switch (mirrorAxis) {
+            case "X" -> e.minZ();
+            case "Y" -> e.minZ();
+            case "Z" -> e.minY();
+            default -> 0;
+        };
+    }
+
     private static Map<String, List<ExtractionElement>> groupByProduct(List<ExtractionElement> elements) {
         Map<String, List<ExtractionElement>> map = new LinkedHashMap<>();
         for (ExtractionElement e : elements) {
             map.computeIfAbsent(e.mProductId(), k -> new ArrayList<>()).add(e);
         }
         return map;
+    }
+
+    // ── CP-1: MA row for per-instance GUID on shared template BOM ─────────
+    // Same pattern as VerbFactorizer.insertMaRow — qi differentiates instances.
+    // For mirrored compositions: qi=0 → A-side GUID, qi=1 → B-side GUID.
+    private static void insertMaRow(Connection conn, String bomId, int sequence,
+                                     int qi, String guid) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "INSERT OR IGNORE INTO m_bom_line_ma (bom_id, M_BOM_ID, sequence, qi, guid) "
+                + "VALUES (?, (SELECT M_BOM_ID FROM m_bom WHERE Value = ?), ?, ?, ?)")) {
+            stmt.setString(1, bomId);
+            stmt.setString(2, bomId);
+            stmt.setInt(3, sequence);
+            stmt.setInt(4, qi);
+            stmt.setString(5, guid);
+            stmt.executeUpdate();
+        }
     }
 
     // ── SQL helpers (delegated to BomWriter — BBC.md §2.1.9) ────────────────

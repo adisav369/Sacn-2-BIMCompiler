@@ -69,6 +69,12 @@ public class PlacementCollectorVisitor implements BOMVisitor {
     /** Collected placements from leaf nodes. */
     private final List<PlacementLoader.Placement> placements = new ArrayList<>();
 
+    /** GEO proof records — one per placed element instance. Implementing S144 §Task 2 — Witness: W-GEO-PROOF */
+    private final List<GeoProofRecord> proofRecords = new ArrayList<>();
+
+    /** Parent AABB dimensions stack (width, depth, height in metres). Pushed on sub-assembly enter. */
+    private final Deque<double[]> parentAABBStack = new ArrayDeque<>();
+
     /** Current parent BOM stack — tracks the innermost MAKE ancestor for each leaf. */
     private final Deque<String> parentBomIdStack = new ArrayDeque<>();
 
@@ -116,6 +122,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
     public List<PlacementLoader.Placement> getPlacements() {
         return List.copyOf(placements);
+    }
+
+    /** GEO proof records collected during walk — one per placed element instance. */
+    public List<GeoProofRecord> getProofRecords() {
+        return List.copyOf(proofRecords);
     }
 
     /** Number of sub-assemblies entered during the walk (onSubAssembly events at depth > 0). */
@@ -254,6 +265,15 @@ public class PlacementCollectorVisitor implements BOMVisitor {
 
         // Track parent BOM for sibling-only GEO pairs
         parentBomIdStack.push(childBomId != null ? childBomId : "ROOT");
+
+        // S144: Push parent AABB for envelope containment checks on leaf elements.
+        // Use M_Product dims (metres) when available; (0,0,0) means "unknown envelope".
+        MProduct subProduct = ctx.product();
+        if (subProduct != null && subProduct.getWidth() > 0) {
+            parentAABBStack.push(new double[]{subProduct.getWidth(), subProduct.getDepth(), subProduct.getHeight()});
+        } else {
+            parentAABBStack.push(new double[]{0, 0, 0});  // unknown — envelope check will report UNKNOWN
+        }
     }
 
     @Override
@@ -278,6 +298,9 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         }
         if (!unitPrefixStack.isEmpty()) {
             unitPrefixStack.pop();
+        }
+        if (!parentAABBStack.isEmpty()) {
+            parentAABBStack.pop();
         }
         // Pop storey if this was a FLOOR-level BOM
         MBOMLine line = ctx.line();
@@ -415,8 +438,11 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         else if (verbRef.startsWith("SPRAY:"))   { sprayCount++; }
         else { otherVerbCount++; }
 
-        // CP-1: Load MA (Material Allocation) GUIDs for identity-based matching
-        String[] maGuids = loadMaGuids(line.getBomId(), line.getSequence(), qty);
+        // CP-1: Load MA (Material Allocation) GUIDs for identity-based matching.
+        // For mirrored compositions: shared BOM line has MA qi=0 (A-side) and qi=1 (B-side).
+        // Unit prefix "B_" → offset qi by 1 to pick B-side GUIDs.
+        int maQiOffset = "B_".equals(currentUnitPrefix()) ? 1 : 0;
+        String[] maGuids = loadMaGuids(line.getBomId(), line.getSequence(), qty, maQiOffset);
 
         for (int qi = 0; qi < qty; qi++) {
             // Per-instance dimensions from CLUSTER verb_ref (6-value format)
@@ -479,7 +505,61 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                     iHalfW * 2000, iHalfD * 2000, iHalfH * 2000,
                     line.getAllocatedWidthMmExact(), line.getAllocatedDepthMmExact(), line.getAllocatedHeightMmExact());
                 // Log 3d: CONTAIN — is LEAF inside parent AABB? (proves no LMP drift)
-                logContainmentCheck(productId, cx, cy, cz, iHalfW, iHalfD, iHalfH, anchor);
+                double cumRotForCheck = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
+                logContainmentCheck(productId, cx, cy, cz, iHalfW, iHalfD, iHalfH, anchor, cumRotForCheck);
+            }
+
+            // S144: Build GeoProofRecord — structured proof chain per element
+            {
+                double[] outLBD = {cx - iHalfW, cy - iHalfD, cz - iHalfH};
+                double[] outCentroid = {cx, cy, cz};
+                double[] rawOffset = {line.getDx(), line.getDy(), line.getDz()};
+                double[] rotOffset = {offsets[qi][0], offsets[qi][1], offsets[qi][2]};
+                double[] halfExts = {iHalfW, iHalfD, iHalfH};
+                double[] pAnchor = {anchor[0], anchor[1], anchor[2]};
+                double[] pAABB = parentAABBStack.isEmpty() ? null : parentAABBStack.peek();
+                double cumRotVal = rotationStack.isEmpty() ? 0.0 : rotationStack.peek();
+                String chain = formatAncestorChain(parentBomIdStack, productId);
+
+                // LMP check: outputLBD >= parentAnchor in parent's local frame.
+                // Apply inverse rotation to offset before checking (same as logContainmentCheck).
+                double dx0 = outLBD[0] - pAnchor[0];
+                double dy0 = outLBD[1] - pAnchor[1];
+                double dz0 = outLBD[2] - pAnchor[2];
+                double localDx0 = dx0, localDy0 = dy0;
+                if (Math.abs(cumRotVal) > 0.01) {
+                    double cosInv = Math.cos(-cumRotVal);
+                    double sinInv = Math.sin(-cumRotVal);
+                    localDx0 = dx0 * cosInv - dy0 * sinInv;
+                    localDy0 = dx0 * sinInv + dy0 * cosInv;
+                }
+                boolean lmp = localDx0 >= -0.001 && localDy0 >= -0.001 && dz0 >= -0.001;
+
+                // Envelope check: childMAX <= parentMAX
+                boolean envelope;
+                if (pAABB == null || (pAABB[0] == 0 && pAABB[1] == 0 && pAABB[2] == 0)) {
+                    envelope = true;  // unknown parent dims — can't check, assume OK
+                } else {
+                    double childMaxX = outLBD[0] + 2 * iHalfW;
+                    double childMaxY = outLBD[1] + 2 * iHalfD;
+                    double childMaxZ = outLBD[2] + 2 * iHalfH;
+                    double parentMaxX = pAnchor[0] + pAABB[0];
+                    double parentMaxY = pAnchor[1] + pAABB[1];
+                    double parentMaxZ = pAnchor[2] + pAABB[2];
+                    envelope = childMaxX <= parentMaxX + 0.001
+                            && childMaxY <= parentMaxY + 0.001
+                            && childMaxZ <= parentMaxZ + 0.001;
+                }
+
+                proofRecords.add(new GeoProofRecord(
+                    elementRef, productId, chain,
+                    null,  // inputLBD — populated by proof stage (§6.12.1 isolation)
+                    pAnchor, cumRotVal, rawOffset, rotOffset,
+                    outCentroid, outLBD, halfExts,
+                    pAABB != null ? new double[]{pAABB[0], pAABB[1], pAABB[2]} : null,
+                    false,  // roundTrip — populated by proof stage
+                    lmp, envelope
+                ));
             }
 
             // Ordinal: always sequential — ensures GUID uniqueness across
@@ -721,7 +801,7 @@ public class PlacementCollectorVisitor implements BOMVisitor {
      * m_bom_line_ma stores per-instance IFC GUIDs (iDempiere M_InOutLineMA pattern).
      * Returns null if no MA rows exist (SH/DX or old BOM DBs).
      */
-    private String[] loadMaGuids(String bomId, int sequence, int qty) {
+    private String[] loadMaGuids(String bomId, int sequence, int qty, int qiOffset) {
         try (java.sql.PreparedStatement ps = bomConn.prepareStatement(
                 "SELECT qi, guid FROM m_bom_line_ma WHERE bom_id = ? AND sequence = ? ORDER BY qi")) {
             ps.setString(1, bomId);
@@ -731,8 +811,10 @@ public class PlacementCollectorVisitor implements BOMVisitor {
                 boolean hasAny = false;
                 while (rs.next()) {
                     int qi = rs.getInt(1);
-                    if (qi >= 0 && qi < qty) {
-                        guids[qi] = rs.getString(2);
+                    // For mirrored units: qiOffset shifts into B-side range (qi=1 → slot 0)
+                    int slot = qi - qiOffset;
+                    if (slot >= 0 && slot < qty) {
+                        guids[slot] = rs.getString(2);
                         hasAny = true;
                     }
                 }
@@ -765,25 +847,34 @@ public class PlacementCollectorVisitor implements BOMVisitor {
         return sb.toString();
     }
 
-    /** Log AABB containment: is the placed LEAF inside the parent anchor region? */
+    /** Log AABB containment: is the placed LEAF inside the parent anchor region?
+     *  When cumRot ≠ 0, apply inverse rotation to offset before checking —
+     *  containment is verified in the parent's local frame, not world frame. */
     private void logContainmentCheck(String productId,
             double cx, double cy, double cz,
             double halfW, double halfD, double halfH,
-            double[] parentAnchor) {
-        // LEAF LBD (min corner)
-        double lx = cx - halfW, ly = cy - halfD, lz = cz - halfH;
-        // Check: LEAF LBD should be >= parent anchor (elements don't precede their parent origin)
-        // Negative offset from parent = element placed before parent origin = potential LMP
-        double dx = lx - parentAnchor[0];
-        double dy = ly - parentAnchor[1];
-        double dz = lz - parentAnchor[2];
-        boolean contained = dx >= -0.001 && dy >= -0.001 && dz >= -0.001;
+            double[] parentAnchor, double cumRot) {
+        // LEAF LBD (min corner) relative to parent anchor
+        double dx = (cx - halfW) - parentAnchor[0];
+        double dy = (cy - halfD) - parentAnchor[1];
+        double dz = (cz - halfH) - parentAnchor[2];
+        // Apply inverse rotation to get offset in parent's local frame
+        // R(-θ) = [cos θ, sin θ; -sin θ, cos θ]  (inverse of the forward rotation)
+        double localDx = dx, localDy = dy;
+        boolean rotated = Math.abs(cumRot) > 0.01;
+        if (rotated) {
+            double cos = Math.cos(-cumRot);
+            double sin = Math.sin(-cumRot);
+            localDx = dx * cos - dy * sin;
+            localDy = dx * sin + dy * cos;
+        }
+        boolean contained = localDx >= -0.001 && localDy >= -0.001 && dz >= -0.001;
         if (contained) {
-            BIMLogger.geo("TACK", "  CONTAIN {}: OK offset=({:.4f},{:.4f},{:.4f})m from parent",
-                productId, dx, dy, dz);
+            BIMLogger.geo("TACK", "  CONTAIN {}: OK local=({:.4f},{:.4f},{:.4f})m from parent{}",
+                productId, localDx, localDy, dz, rotated ? " [ROT=" + String.format("%.2f", cumRot) + "]" : "");
         } else {
-            BIMLogger.geo("TACK", "  CONTAIN {}: OVERSHOOT offset=({:.4f},{:.4f},{:.4f})m — LMP candidate",
-                productId, dx, dy, dz);
+            BIMLogger.geo("TACK", "  CONTAIN {}: OVERSHOOT local=({:.4f},{:.4f},{:.4f})m — LMP candidate{}",
+                productId, localDx, localDy, dz, rotated ? " [ROT=" + String.format("%.2f", cumRot) + "]" : "");
         }
     }
 

@@ -1,6 +1,8 @@
 package com.bim.compiler.dsl;
 
 import com.bim.compiler.bom.walker.BOMWalker;
+import com.bim.compiler.bom.walker.GeoProofFormatter;
+import com.bim.compiler.bom.walker.GeoProofRecord;
 import com.bim.compiler.bom.walker.PlacementCollectorVisitor;
 import com.bim.compiler.bom.walker.ShimMatcher;
 import com.bim.compiler.callout.OrderLineProductCallout;
@@ -113,6 +115,9 @@ public class CompilationPipeline {
         BIMLogger.info("PIPELINE", "PIPELINE COMPLETE: {} — {} elements", entry.name(), ctx.elementCount());
         BIMLogger.info("PIPELINE", "=".repeat(70));
 
+        // ── FORENSIC SUMMARY (INFO — always visible in log) ──
+        emitForensicSummary(entry, ctx);
+
         // ── LAST_MILE_PROBLEM drift check (FINE only — file, not console) ──
         logDriftCheck(entry, ctx);
 
@@ -129,6 +134,144 @@ public class CompilationPipeline {
      * Each line maps to one of the 11 drift points so that pipeline logs
      * surface known risk areas without needing a viewer.
      */
+    /**
+     * Forensic summary at INFO level — auto-verifies pipeline health without human inspection.
+     * Covers: verb distribution, BOM cascade, discipline chain, RouteWalker, category coverage.
+     * Implementing BBC.md §PATTERN — Witness: W-FORENSIC-SUMMARY
+     */
+    private static void emitForensicSummary(BuildingEntry entry, CompilationContext ctx) {
+        String TAG = "FORENSIC";
+        BIMLogger.info(TAG, "-".repeat(50));
+        BIMLogger.info(TAG, "FORENSIC SUMMARY: {}", entry.name());
+
+        // ── 1. Verb distribution (from BOM walk) ──
+        String verbBreakdown = ctx.verbBreakdown();
+        if (verbBreakdown != null) {
+            BIMLogger.info(TAG, "VERBS: {}", verbBreakdown);
+        }
+
+        // ── 2. BOM cascade structure (query BOM DB) ──
+        String bomDbPath = System.getProperty("bom.db", "");
+        if (!bomDbPath.isEmpty()) {
+            try (Connection bomConn = DriverManager.getConnection("jdbc:sqlite:" + bomDbPath)) {
+                // Top-level BOM parents and their child counts
+                try (Statement stmt = bomConn.createStatement();
+                     ResultSet rs = stmt.executeQuery("""
+                             SELECT bom_id, COUNT(*) as lines
+                             FROM m_bom_line
+                             GROUP BY bom_id
+                             ORDER BY lines DESC
+                             LIMIT 5
+                             """)) {
+                    StringBuilder sb = new StringBuilder();
+                    int maxLines = 0;
+                    while (rs.next()) {
+                        if (sb.length() > 0) sb.append(", ");
+                        int lines = rs.getInt(2);
+                        sb.append(rs.getString(1)).append("=").append(lines);
+                        if (lines > maxLines) maxLines = lines;
+                    }
+                    BIMLogger.info(TAG, "BOM CASCADE (top 5): {}", sb);
+                    if (maxLines > 500) {
+                        BIMLogger.warn(TAG, "MONOLITHIC BOM: {} lines in single parent — consider room subdivision", maxLines);
+                    }
+                }
+                // Verb type distribution from BOM lines
+                try (Statement stmt = bomConn.createStatement();
+                     ResultSet rs = stmt.executeQuery("""
+                             SELECT CASE
+                                 WHEN verb_ref LIKE 'CLUSTER%' THEN 'CLUSTER'
+                                 WHEN verb_ref LIKE 'LINE_MULTI%' THEN 'LINE_MULTI'
+                                 WHEN verb_ref LIKE 'LINE:%' THEN 'LINE'
+                                 WHEN verb_ref LIKE 'TILE%' THEN 'TILE'
+                                 WHEN verb_ref LIKE 'PLACE%' THEN 'PLACE'
+                                 ELSE 'OTHER'
+                             END as verb_type, COUNT(*)
+                             FROM m_bom_line
+                             WHERE verb_ref IS NOT NULL
+                             GROUP BY verb_type
+                             ORDER BY COUNT(*) DESC
+                             """)) {
+                    StringBuilder sb = new StringBuilder();
+                    while (rs.next()) {
+                        if (sb.length() > 0) sb.append(", ");
+                        sb.append(rs.getString(1)).append("=").append(rs.getInt(2));
+                    }
+                    if (sb.length() > 0) {
+                        BIMLogger.info(TAG, "VERB TYPES: {}", sb);
+                    }
+                }
+            } catch (SQLException e) {
+                BIMLogger.fine(TAG, "BOM DB query failed: {}", e.getMessage());
+            }
+        }
+
+        // ── 3. AD_Org ↔ M_Product_Category coupling (abstract model, not per-building) ──
+        try (Connection erpConn = DriverManager.getConnection("jdbc:sqlite:library/ERP.db")) {
+            // Product category coverage: how many products resolved to a category
+            try (Statement stmt = erpConn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                    SELECT COUNT(*) as total,
+                           SUM(CASE WHEN M_Product_Category_ID IS NOT NULL THEN 1 ELSE 0 END) as categorized
+                    FROM M_Product WHERE is_active = 1
+""")) {
+                if (rs.next()) {
+                    int total = rs.getInt(1);
+                    int categorized = rs.getInt(2);
+                    int uncategorized = total - categorized;
+                    BIMLogger.info(TAG, "PRODUCTS: {} total, {} categorized, {} uncategorized",
+                            total, categorized, uncategorized);
+                    if (uncategorized > 0) {
+                        BIMLogger.warn(TAG, "CATEGORY GAP: {} products missing M_Product_Category_ID", uncategorized);
+                    }
+                }
+            }
+            // Abstract coupling: AD_Org (discipline) ↔ M_Product_Category
+            // This is industry-level — same coupling serves RE, CO, IN archetypes
+            try (Statement stmt = erpConn.createStatement();
+                 ResultSet rs = stmt.executeQuery("""
+                    SELECT o.Value as discipline, COUNT(DISTINCT c.Value) as categories,
+                           COUNT(p.M_Product_ID) as products
+                    FROM AD_Org o
+                    JOIN M_Product_Category c ON c.AD_Org_ID = o.AD_Org_ID
+                    LEFT JOIN M_Product p ON p.M_Product_Category_ID = c.M_Product_Category_ID
+                    GROUP BY o.Value ORDER BY o.Value
+                    """)) {
+                StringBuilder sb = new StringBuilder();
+                int totalLinked = 0;
+                while (rs.next()) {
+                    if (sb.length() > 0) sb.append(", ");
+                    String disc = rs.getString(1);
+                    int cats = rs.getInt(2);
+                    int prods = rs.getInt(3);
+                    sb.append(disc).append("(").append(cats).append("cat/").append(prods).append("prod)");
+                    totalLinked += cats;
+                }
+                if (sb.length() > 0) {
+                    BIMLogger.info(TAG, "DISC CHAIN: {} categories linked → {}", totalLinked, sb);
+                } else {
+                    BIMLogger.warn(TAG, "NO DISCIPLINE CHAIN — AD_Org ↔ M_Product_Category unlinked");
+                }
+            }
+        } catch (SQLException e) {
+            BIMLogger.fine(TAG, "ERP.db query failed: {}", e.getMessage());
+        }
+
+        // ── 4. RouteWalker report (if DISC stage ran) ──
+        RouteExecutor.RouteReport rr = ctx.routeReport();
+        if (rr != null) {
+            BIMLogger.info(TAG, "ROUTE: {} routes, {} segments, {} fittings, {} edges",
+                    rr.routeCount(), rr.totalSegments(), rr.totalFittings(), rr.edges().size());
+        }
+
+        // ── 5. GEO proof chain (S144 — structured Input→Process→Output) ──
+        if (ctx.geoProofRecords() != null && !ctx.geoProofRecords().isEmpty()) {
+            GeoProofFormatter.emit(ctx.geoProofRecords(), entry.name());
+        }
+
+        BIMLogger.info(TAG, "-".repeat(50));
+    }
+
     private static void logDriftCheck(BuildingEntry entry, CompilationContext ctx) {
         BIMLogger.fine("DRIFT", "-".repeat(50));
         BIMLogger.fine("DRIFT", "LAST MILE CHECK: {} (LAST_MILE_PROBLEM.md §Session Checklist)", entry.name());
@@ -223,7 +366,7 @@ public class CompilationPipeline {
         // §11 Factorization — material/dimension/identity guards (BBC §6)
         BIMLogger.fine("DRIFT", "§11 Factorization: BOM line guards (checked at extraction)");
 
-        BIMLogger.fine("DRIFT", "SUMMARY: {} pass, {} fail, {} deferred", pass, fail, skip);
+        BIMLogger.info("DRIFT", "LMP: {} pass, {} fail, {} deferred (LAST_MILE_PROBLEM.md §1-§11)", pass, fail, skip);
         BIMLogger.fine("DRIFT", "-".repeat(50));
     }
 
@@ -393,6 +536,12 @@ public class CompilationPipeline {
                 ctx.setVerbBreakdown(verbBreakdown);
                 BIMLogger.fine("COMPILE", "{}: verb breakdown: {}",
                     ctx.entry().name(), verbBreakdown);
+
+                // S144: Collect GEO proof records for forensic summary
+                java.util.List<GeoProofRecord> proofRecords = visitor.getProofRecords();
+                ctx.setGeoProofRecords(proofRecords);
+                BIMLogger.fine("COMPILE", "{}: {} GEO proof records collected",
+                    ctx.entry().name(), proofRecords.size());
 
                 // Implementing AUDIT_20260402.txt §4 — emitGeoSummary removed.
                 // Black-box correctness is owned by ExtractedGeometryTruthTest T3-ARC.

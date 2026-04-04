@@ -66,6 +66,7 @@ compile_building() {
         -Dbom.db="${compile_db}" \
         -Dproduct.category="${product_category}" \
         -Dpipeline.tests.skip=false \
+        -Dbim.log.level="${BIM_LOG_LEVEL:-INFO}" \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -q 2>&1) && CC_RC=0 || CC_RC=$?
     echo "$CC_OUTPUT" | tail -3

@@ -69,8 +69,10 @@ public class ExtractionPopulator {
     public static Map<String, List<ExtractionReader.ExtractionElement>> populate(
             Connection compConn, Connection discConn, String buildingType) throws SQLException {
         Path refDb = Path.of("DAGCompiler/lib/input", buildingType + "_extracted.db");
-        if (!Files.exists(refDb)) {
-            System.err.printf("  [ExtractionPopulator] Reference DB not found: %s — skipping extraction%n", refDb);
+        if (!Files.exists(refDb) || refDb.toFile().length() == 0) {
+            System.err.printf("  [ExtractionPopulator] Reference DB missing or empty: %s%n", refDb);
+            System.err.printf("  [ExtractionPopulator] To create it: python3 tools/extract.py --to reference <IFC_FILE> -o %s%n", refDb);
+            System.err.printf("  [ExtractionPopulator] For multi-discipline IFC: merge first with tools/federation_preprocessor.py (see docs/RevitAnalysis.md)%n");
             return Map.of();
         }
         return populate(compConn, discConn, buildingType, refDb);

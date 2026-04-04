@@ -38,6 +38,9 @@ def parse_geo_log(log_path):
                 line)
             if m:
                 guid = m.group(2)
+                # Strip mirrored unit prefix (A_/B_) to match raw IFC GUIDs
+                if re.match(r'^[AB]_', guid):
+                    guid = guid[2:]
                 occurrence[guid] = occurrence.get(guid, 0) + 1
                 if occurrence[guid] == 1:
                     geo[guid] = {
@@ -89,20 +92,23 @@ def main():
                         abs(v['z']-out_pos[g][2])) * 1000 <= 1.0)
     print(f'A. GEO log == output DB: {geo_match}/{len(geo)} within 1mm')
 
-    # B. GUID chain: output element_ref found in extraction guid
-    guid_both = [g for g in geo.keys() if g in out_pos and g in ext_pos]
-    print(f'B. GUID chain intact: {len(guid_both)}/{len(geo)} (output element_ref found in extraction)')
+    # B. GUID chain: GEO log GUID found in extraction guid (direct match)
+    guid_both = [g for g in geo.keys() if g in ext_pos]
+    guid_in_out = sum(1 for g in geo.keys() if g in out_pos)
+    print(f'B. GUID chain intact: {len(guid_both)}/{len(geo)} GEO→extraction, {guid_in_out}/{len(geo)} GEO→output')
 
-    # C. All-pairs relative offset
+    # C. All-pairs relative offset (GEO compiled LBD vs extraction positions)
     total = match = drift = 0
     worst = 0.0
     worst_pair = ''
     for i in range(len(guid_both)):
         for j in range(i + 1, len(guid_both)):
             g1, g2 = guid_both[i], guid_both[j]
-            o1, o2 = out_pos[g1], out_pos[g2]
+            # Compiled positions from GEO log (LBD = placed min corner)
+            c1 = (geo[g1]['x'], geo[g1]['y'], geo[g1]['z'])
+            c2 = (geo[g2]['x'], geo[g2]['y'], geo[g2]['z'])
             e1, e2 = ext_pos[g1], ext_pos[g2]
-            err = max(abs((o2[k]-o1[k]) - (e2[k]-e1[k])) * 1000 for k in range(3))
+            err = max(abs((c2[k]-c1[k]) - (e2[k]-e1[k])) * 1000 for k in range(3))
             total += 1
             if err <= 1.0:
                 match += 1
@@ -111,9 +117,6 @@ def main():
                 if err > worst:
                     worst = err
                     worst_pair = f'{geo[g1]["name"][:30]} <> {geo[g2]["name"][:30]}'
-            if err > worst:
-                worst = err
-                worst_pair = f'{geo[g1]["name"][:30]} <> {geo[g2]["name"][:30]}'
 
     print()
     print(f'C. All-pairs relative offset (GUID-matched):')

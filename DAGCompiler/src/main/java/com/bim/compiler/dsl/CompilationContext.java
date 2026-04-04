@@ -4,6 +4,7 @@ import com.bim.compiler.compliance.ComplianceReport;
 import com.bim.compiler.dsl.BuildingRegistry.BuildingEntry;
 import com.bim.compiler.dsl.BuildingSpecs.*;
 import com.bim.compiler.dsl.CompilationPipeline.PipelineResult;
+import com.bim.compiler.bom.walker.GeoProofRecord;
 import com.bim.compiler.validation.GeometryIntegrityChecker;
 import com.bim.compiler.validation.PlacementProver;
 import com.bim.compiler.validation.SpatialDigest;
@@ -37,6 +38,7 @@ public class CompilationContext {
     private ComplianceReport complianceReport;
     private RouteExecutor.RouteReport routeReport;
     private String verbBreakdown;
+    private List<GeoProofRecord> geoProofRecords;
 
     public CompilationContext(BuildingEntry entry) {
         this.entry = entry;
@@ -88,6 +90,7 @@ public class CompilationContext {
     public ComplianceReport complianceReport() { return complianceReport; }
     public RouteExecutor.RouteReport routeReport() { return routeReport; }
     public String verbBreakdown() { return verbBreakdown; }
+    public List<GeoProofRecord> geoProofRecords() { return geoProofRecords; }
 
     // --- Setters (called by stages) ---
     public void setDefinition(BuildingDefinition definition) { this.definition = definition; }
@@ -102,4 +105,5 @@ public class CompilationContext {
     public void setComplianceReport(ComplianceReport r) { this.complianceReport = r; }
     public void setRouteReport(RouteExecutor.RouteReport r) { this.routeReport = r; }
     public void setVerbBreakdown(String verbBreakdown) { this.verbBreakdown = verbBreakdown; }
+    public void setGeoProofRecords(List<GeoProofRecord> r) { this.geoProofRecords = r; }
 }
